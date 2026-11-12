@@ -25,6 +25,7 @@ use bytes::Bytes;
 use dima_web::{Body, UpgradeGuard};
 use http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode, header};
 use http_body_util::BodyExt as _;
+use tokio::sync::OwnedSemaphorePermit;
 use tower::ServiceExt as _;
 
 use crate::client_files;
@@ -38,11 +39,21 @@ use crate::server::ServerInner;
 pub(crate) struct FirstRequest {
     pub origin: Arc<Origin>,
     guard: Arc<Mutex<Option<UpgradeGuard>>>,
+    /// The connection's slot, reserved before the handshake reached Engine.IO (for a WebSocket,
+    /// before its asynchronous part). Dropped with the request when no session comes of it.
+    permit: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
 }
 
 impl FirstRequest {
     pub fn take_guard(&self) -> Option<UpgradeGuard> {
         self.guard
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
+    }
+
+    pub fn take_permit(&self) -> Option<OwnedSemaphorePermit> {
+        self.permit
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .take()
@@ -190,6 +201,15 @@ fn plain(
     response
 }
 
+/// The answer when no connection or stream slot is free.
+fn unavailable() -> Response<Body> {
+    plain(
+        StatusCode::SERVICE_UNAVAILABLE,
+        Some("text/plain; charset=utf-8"),
+        "Service Unavailable",
+    )
+}
+
 /// `abortRequest` / `abortUpgrade`.
 fn abort(upgrade: bool, code: u8) -> Response<Body> {
     if upgrade {
@@ -242,17 +262,32 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             if params.eio.as_deref() != Some("4") {
                 return abort(upgrade, 5);
             }
-            if io.shared.stopping() || io.connection_count() >= io.shared.options.max_connections {
-                io.shared.telemetry.connection_refused();
-                return plain(
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    Some("text/plain; charset=utf-8"),
-                    "Service Unavailable",
-                );
-            }
             None
         }
     };
+    // A new session takes its connection slot now, before Engine.IO creates anything (for a
+    // WebSocket, before the asynchronous part of its handshake); the slot is released when the
+    // session ends, or with the request when none comes of it.
+    let permit = match &conn {
+        Some(_) => None,
+        None => match io.reserve_connection() {
+            Some(permit) => Some(permit),
+            None => {
+                io.shared.telemetry.connection_refused();
+                return unavailable();
+            }
+        },
+    };
+    // A WebSocket (a new session or an upgrade) holds one of `dima-web`'s stream slots once it
+    // is upgraded: reserve it before Engine.IO sees the request, so a full quota refuses here
+    // instead of after the session was created.
+    if upgrade
+        && let Some(admission) = req.extensions().get::<dima_web::StreamAdmission>()
+        && admission.reserve().is_err()
+    {
+        io.shared.telemetry.connection_refused();
+        return unavailable();
+    }
     if let (Some(conn), true) = (&conn, polling) {
         if method == Method::POST {
             let binary = req
@@ -301,6 +336,7 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             req.extensions_mut().insert(FirstRequest {
                 origin,
                 guard: Arc::new(Mutex::new(guard)),
+                permit: Arc::new(Mutex::new(permit)),
             });
         }
     }

@@ -61,7 +61,7 @@
 //! let shutdown = dima_core::Shutdown::new();
 //! let mut builder = SocketIo::builder(Options::default(), Runtime::default(), shutdown.clone());
 //! let triggers = builder.family(r"^\/overlays\/triggers\/\w+$", NamespaceOptions::default(), Triggers)?;
-//! let io = builder.build();
+//! let io = builder.build(&dima_web::ServeOptions::default())?;
 //! // Later, from an HTTP route: `io.of('/overlays/triggers/123').emit('trigger', payload)`.
 //! let sent = triggers.emit("/overlays/triggers/123", "trigger", &[json!({"name": "wave"})])?;
 //! assert_eq!(sent, 0); // nobody connected (with recovery the event is still kept)
@@ -72,8 +72,9 @@
 //! ```
 //!
 //! Serving, in the binary: `dima_web::serve(listener, io.layer(app), shutdown.cancellation_token(),
-//! options)` next to `io.closed().await`, with the same [`dima_core::Shutdown`] given to the
-//! builder, so the Socket.IO drain (5 s) finishes inside the web server's (10 s). `/socket.io/`
+//! options)` next to `io.closed().await`, with the same `options` given to [`Builder::build`]
+//! (which refuses a connection cap larger than the web server's stream quota) and the same
+//! [`dima_core::Shutdown`] given to the builder, so the Socket.IO drain (5 s) finishes inside the web server's (10 s). `/socket.io/`
 //! requests (Engine.IO sessions and the browser client files) are answered here; every other path
 //! and upgrade, `/v1/desktop/ws` included, reaches the app.
 //!

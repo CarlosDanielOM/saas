@@ -246,9 +246,22 @@ impl Builder {
         Ok(NamespaceRef { def })
     }
 
-    /// Builds the server. Must be called inside a Tokio runtime: it starts the task that runs
-    /// the shutdown when the token fires.
-    pub fn build(mut self) -> SocketIo {
+    /// Builds the server for the `dima_web` server that will serve it (`serve` are the options
+    /// given to `dima_web::serve`). Must be called inside a Tokio runtime: it starts the task
+    /// that runs the shutdown when the token fires.
+    ///
+    /// Refuses ([`BuildError::StreamQuota`]) when `max_connections` is larger than
+    /// `serve.max_streams`: every WebSocket of this server also holds one of the web server's
+    /// stream slots (reserved before its handshake reaches Engine.IO), so a larger cap here
+    /// would promise connections the web server refuses.
+    pub fn build(mut self, serve: &dima_web::ServeOptions) -> Result<SocketIo, BuildError> {
+        let connections = self.shared.options.max_connections;
+        if connections > serve.max_streams {
+            return Err(BuildError::StreamQuota {
+                connections,
+                streams: serve.max_streams,
+            });
+        }
         if !self.statics.contains_key("/") {
             let def = Arc::new(Def::new(
                 Arc::clone(&self.shared),
@@ -294,6 +307,9 @@ impl Builder {
                 }),
                 config,
             ),
+            connection_slots: Arc::new(tokio::sync::Semaphore::new(
+                shared.options.max_connections,
+            )),
             capacity,
             shutting_down: AtomicBool::new(false),
             done: CancellationToken::new(),
@@ -328,7 +344,7 @@ impl Builder {
                 }
             }
         });
-        SocketIo { inner }
+        Ok(SocketIo { inner })
     }
 }
 
@@ -337,6 +353,8 @@ pub(crate) struct ServerInner {
     pub registry: Arc<Registry>,
     connections: Mutex<HashMap<String, Arc<Connection>>>,
     pub engine: EngineIoService<EngineHandler, NotFoundService>,
+    /// `max_connections` slots: each Engine.IO session holds one from its handshake to its end.
+    connection_slots: Arc<tokio::sync::Semaphore>,
     capacity: usize,
     shutting_down: AtomicBool,
     done: CancellationToken,
@@ -357,6 +375,15 @@ impl ServerInner {
 
     pub fn connection_count(&self) -> usize {
         self.connections().len()
+    }
+
+    /// A connection slot (`max_connections`), or `None` when every one is taken or the server
+    /// is stopping.
+    pub fn reserve_connection(&self) -> Option<tokio::sync::OwnedSemaphorePermit> {
+        if self.shared.stopping() {
+            return None;
+        }
+        Arc::clone(&self.connection_slots).try_acquire_owned().ok()
     }
 
     /// Runs the shutdown when the server that delivers upgrades shuts down (the
@@ -398,11 +425,21 @@ impl EngineIoHandler for EngineHandler {
             socket.close(EngineReason::ClosingServer);
             return;
         }
-        let (first, guard) = match socket
+        let first_request = socket
             .req_parts
             .extensions
-            .get::<crate::service::FirstRequest>()
-        {
+            .get::<crate::service::FirstRequest>();
+        // The slot reserved by the handshake (always there for a handshake that came through
+        // the service; taken here otherwise).
+        let permit = first_request
+            .and_then(crate::service::FirstRequest::take_permit)
+            .or_else(|| server.reserve_connection());
+        let Some(permit) = permit else {
+            server.shared.telemetry.connection_refused();
+            socket.close(EngineReason::ClosingServer);
+            return;
+        };
+        let (first, guard) = match first_request {
             Some(first) => (Arc::clone(&first.origin), first.take_guard()),
             None => (
                 Arc::new(Origin {
@@ -426,6 +463,7 @@ impl EngineIoHandler for EngineHandler {
             Arc::clone(&socket),
             first,
             guard,
+            permit,
             server.capacity,
         );
         socket.data.set(Arc::clone(&conn));

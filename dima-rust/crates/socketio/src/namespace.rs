@@ -342,7 +342,19 @@ impl<N: Namespace> ErasedDef for Def<N> {
                     child
                 }
             };
-            child.lock().pending += 1;
+            {
+                let mut members = child.lock();
+                // Joined and joining sockets are counted under the member lock: a reservation.
+                if members.pending + members.sockets.len()
+                    >= self.shared.options.max_sockets_per_namespace
+                {
+                    drop(members);
+                    drop(children);
+                    self.release_if_empty(&child);
+                    return Err(Refusal::NamespaceFull);
+                }
+                members.pending += 1;
+            }
             child
         };
         let shared = Arc::clone(&self.shared);
@@ -380,6 +392,33 @@ async fn guarded(shared: &Shared, nsp: &str, future: impl Future<Output = ()>) {
     }
 }
 
+/// An admitted socket's claim on its namespace member and its connection entry, released on
+/// every way out of [`run_socket`] that does not end with the socket joined: a refusal, a
+/// cancellation, the task being dropped, a panic.
+struct Admission<N: Namespace> {
+    def: Arc<Def<N>>,
+    child: Arc<Child<N::Data>>,
+    conn: Arc<Connection>,
+    nsp: String,
+    ticket: Ticket,
+    /// The socket created for it, opened in the connection's outbox.
+    socket: Option<u64>,
+    joined: bool,
+}
+
+impl<N: Namespace> Drop for Admission<N> {
+    fn drop(&mut self) {
+        if self.joined {
+            return;
+        }
+        if let Some(key) = self.socket {
+            self.conn.forget_socket(key);
+        }
+        self.def
+            .abandon(&self.child, &self.conn, &self.nsp, &self.ticket);
+    }
+}
+
 /// Missed events sent per round of a restore.
 const REPLAY_BATCH: usize = 64;
 
@@ -394,6 +433,15 @@ async fn run_socket<N: Namespace>(
 ) {
     let shared = Arc::clone(&def.shared);
     let now = shared.clock.now_ms();
+    let mut admission = Admission {
+        def: Arc::clone(&def),
+        child: Arc::clone(&child),
+        conn: Arc::clone(&conn),
+        nsp: nsp.clone(),
+        ticket: ticket.clone(),
+        socket: None,
+        joined: false,
+    };
 
     // Recovery: `{pid, offset}` strings in the CONNECT data, in a namespace that keeps sessions.
     let mut restored = None;
@@ -421,7 +469,6 @@ async fn run_socket<N: Namespace>(
             let Some(result) =
                 result.filter(|_| !conn.is_closed() && !ticket.cancel.is_cancelled())
             else {
-                def.abandon(&child, &conn, &nsp, &ticket);
                 return;
             };
             let refusal = match result {
@@ -456,7 +503,6 @@ async fn run_socket<N: Namespace>(
                         &error.message,
                         error.data.as_ref(),
                     ));
-                    def.abandon(&child, &conn, &nsp, &ticket);
                     return;
                 }
             }
@@ -483,16 +529,17 @@ async fn run_socket<N: Namespace>(
     });
     let _ = core.me.set(Arc::downgrade(&core));
     conn.open_socket(core.key);
+    admission.socket = Some(core.key);
 
     let joined = match cursor {
         Some(cursor) => replay(&def, &child, &core, cursor, &ticket).await,
         None => register(&child, &core, &ticket),
     };
     if !joined {
-        conn.forget_socket(core.key);
-        def.abandon(&child, &conn, &nsp, &ticket);
         return;
     }
+    admission.joined = true;
+    drop(admission);
     conn.mark_joined();
     shared.telemetry.socket_connected(&nsp, core.recovered);
 

@@ -41,6 +41,9 @@ pub struct Options {
     /// family member that would exceed it is refused with `Invalid namespace`. Members are
     /// released when their last socket leaves (the reference never releases them).
     pub max_namespaces: usize,
+    /// Sockets joined or joining one concrete namespace at once (4096, the connection cap, so
+    /// by default it never refuses before the connection cap does). Beyond, `Invalid namespace`.
+    pub max_sockets_per_namespace: usize,
     /// Namespaces one connection may join or be joining at once (8). Beyond, `Invalid namespace`.
     pub max_namespaces_per_connection: usize,
     /// The longest namespace name considered (256 bytes). A longer name is refused with
@@ -87,6 +90,7 @@ impl Default for Options {
             recovery_sweep_interval: Duration::from_secs(60),
             max_connections: 4096,
             max_namespaces: 4096,
+            max_sockets_per_namespace: 4096,
             max_namespaces_per_connection: 8,
             max_namespace_name: 256,
             max_inbound_queue: 256,

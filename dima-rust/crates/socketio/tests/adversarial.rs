@@ -915,7 +915,8 @@ async fn the_web_server_shutting_down_shuts_socket_io_down() {
     let web_token = tokio_util::sync::CancellationToken::new();
     let io =
         dima_socketio::SocketIo::builder(Options::default(), Runtime::default(), io_token.clone())
-            .build();
+            .build(&dima_web::ServeOptions::default())
+            .unwrap();
     let listener = dima_web::bind_to(std::net::SocketAddr::from(([127, 0, 0, 1], 0))).unwrap();
     let addr = listener.local_addr().unwrap();
     let serve = tokio::spawn(dima_web::serve(
@@ -1278,5 +1279,145 @@ async fn polling_answers_vary_on_the_accepted_encoding() {
     .unwrap();
     assert_eq!(answer.status, 200);
     assert_eq!(answer.header("vary"), Some("Accept-Encoding"));
+    s.server.stop().await;
+}
+
+/// A WebSocket handshake to `/socket.io/`: `Ok` with the client once the open packet arrived,
+/// `Err(status)` when the server answered the handshake with an error status.
+async fn try_open(addr: std::net::SocketAddr) -> Result<impl Sized, Option<u16>> {
+    use futures_util::StreamExt as _;
+    let url = format!("ws://{addr}/socket.io/?EIO=4&transport=websocket");
+    match tokio_tungstenite::connect_async(url).await {
+        Ok((mut ws, _)) => match tokio::time::timeout(5 * SECOND, ws.next()).await {
+            Ok(Some(Ok(message))) if message.to_text().is_ok_and(|t| t.starts_with('0')) => {
+                Ok(ws)
+            }
+            _ => Err(None),
+        },
+        Err(tokio_tungstenite::tungstenite::Error::Http(response)) => {
+            Err(Some(response.status().as_u16()))
+        }
+        Err(_) => Err(None),
+    }
+}
+
+/// Finding 5: the connection cap is a reservation taken before the asynchronous part of a
+/// WebSocket handshake, so handshakes racing each other cannot all pass it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_websocket_handshakes_never_exceed_the_connection_cap() {
+    let options = Options {
+        max_connections: 5,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let addr = s.server.addr;
+    let attempts: Vec<_> = (0..40).map(|_| tokio::spawn(try_open(addr))).collect();
+    let mut open = Vec::new();
+    let mut refused = 0;
+    for attempt in attempts {
+        match attempt.await.unwrap() {
+            Ok(ws) => open.push(ws),
+            Err(Some(503)) => refused += 1,
+            Err(other) => panic!("unexpected handshake outcome {other:?}"),
+        }
+    }
+    assert_eq!((open.len(), refused), (5, 35));
+    assert_eq!(s.server.io.stats().connections, 5);
+    assert_eq!(s.telemetry.get("refused"), 35);
+    // Slots come back when sessions end.
+    drop(open);
+    let io = s.server.io.clone();
+    eventually("the sessions ended", || io.stats().connections == 0).await;
+    assert!(try_open(addr).await.is_ok());
+    s.server.stop().await;
+}
+
+/// Finding 5: the connection cap may not exceed `dima-web`'s stream quota, which every
+/// WebSocket of the server also takes a slot of.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_connection_cap_beyond_the_stream_quota_refuses_to_build() {
+    let builder = dima_socketio::SocketIo::builder(
+        Options {
+            max_connections: 11,
+            ..Options::default()
+        },
+        Runtime::default(),
+        dima_core::Shutdown::new(),
+    );
+    let serve = dima_web::ServeOptions {
+        max_streams: 10,
+        ..dima_web::ServeOptions::default()
+    };
+    assert_eq!(
+        builder.build(&serve).err(),
+        Some(dima_socketio::BuildError::StreamQuota {
+            connections: 11,
+            streams: 10
+        })
+    );
+}
+
+/// Finding 5: a WebSocket reserves its `dima-web` stream slot before Engine.IO sees it; when
+/// other streams (the app's own WebSocket here) took the quota, it is refused with `503` and no
+/// session exists, while polling (no stream) still connects.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_full_stream_quota_refuses_a_websocket_before_its_session_exists() {
+    use futures_util::{SinkExt as _, StreamExt as _};
+    let serve = dima_web::ServeOptions {
+        max_streams: 2,
+        ..dima_web::ServeOptions::default()
+    };
+    let options = Options {
+        max_connections: 2,
+        ..Options::default()
+    };
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let server =
+        TestServer::start_serving(options, runtime, serve, support::declare).await;
+    let addr = server.addr;
+    let (mut app_ws, _) = tokio_tungstenite::connect_async(format!("ws://{addr}/raw-ws"))
+        .await
+        .unwrap();
+    app_ws
+        .send(tokio_tungstenite::tungstenite::Message::text("hi"))
+        .await
+        .unwrap();
+    assert!(app_ws.next().await.is_some());
+    let first = try_open(addr).await;
+    assert!(first.is_ok());
+    assert_eq!(try_open(addr).await.err(), Some(Some(503)));
+    assert_eq!(server.io.stats().connections, 1);
+    assert_eq!(telemetry.get("opened"), 1);
+    let polling = Polling::open(addr).await;
+    assert!(!polling.sid.is_empty());
+    assert_eq!(server.io.stats().connections, 2);
+    drop(first);
+    server.stop().await;
+}
+
+/// Finding 5: sockets per namespace are reserved under the member lock.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_full_namespace_refuses_further_sockets() {
+    let options = Options {
+        max_sockets_per_namespace: 1,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut a = Ws::open(s.server.addr).await;
+    a.join("/p", &ok()).await.unwrap();
+    let mut b = Ws::open(s.server.addr).await;
+    assert_eq!(
+        b.join("/p", &ok()).await,
+        Err(json!({"message": "Invalid namespace"}))
+    );
+    assert_eq!(s.telemetry.get("refusal:NamespaceFull"), 1);
+    a.close().await;
+    let probe = s.probe.clone();
+    eventually("the socket left", || probe.sockets("/p").is_empty()).await;
+    assert!(b.join("/p", &ok()).await.is_ok());
     s.server.stop().await;
 }

@@ -102,6 +102,8 @@ pub(crate) struct Connection {
     posting: std::sync::atomic::AtomicBool,
     /// `engineioxide` was told to close the session.
     engine_closing: std::sync::atomic::AtomicBool,
+    /// This connection's slot of `max_connections`, given back when the session ends.
+    slot: Mutex<Option<tokio::sync::OwnedSemaphorePermit>>,
 }
 
 /// One polling request in Engine.IO, a poll or a POST. Dropped before [`PollGuard::finish`]
@@ -154,6 +156,7 @@ impl Connection {
         engine: Arc<EngineSocket>,
         first: Arc<Origin>,
         guard: Option<UpgradeGuard>,
+        slot: tokio::sync::OwnedSemaphorePermit,
         capacity: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -176,6 +179,7 @@ impl Connection {
             polls: std::sync::atomic::AtomicUsize::new(0),
             posting: std::sync::atomic::AtomicBool::new(false),
             engine_closing: std::sync::atomic::AtomicBool::new(false),
+            slot: Mutex::new(Some(slot)),
         })
     }
 
@@ -579,6 +583,7 @@ impl Connection {
         };
         self.outbox().clear(&self.shared.outbound_bytes);
         self.state().guard = None;
+        self.slot.lock().unwrap_or_else(PoisonError::into_inner).take();
         self.engine
             .lock()
             .unwrap_or_else(PoisonError::into_inner)

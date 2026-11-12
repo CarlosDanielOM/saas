@@ -18,6 +18,8 @@ pub enum Refusal {
     TooManyOnConnection,
     /// `max_namespaces` concrete namespaces exist.
     TooManyNamespaces,
+    /// The namespace has `max_sockets_per_namespace` sockets joined or joining.
+    NamespaceFull,
     /// The namespace's check refused it (a CONNECT_ERROR with the check's message).
     Check,
     /// The check panicked (a CONNECT_ERROR `Internal server error`).
