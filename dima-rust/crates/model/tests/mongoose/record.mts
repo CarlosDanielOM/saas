@@ -169,6 +169,7 @@ const rewardSeed = (extra: any = {}) => ({
     duration: 0, cooldown: 0, createdFrom: 'domdimabot', createdFor: 'twitch', __v: 0, ...extra,
 });
 const scheduled = { token: '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f', previousEnabled: true, restoreAt: T2, pending: false, nextAt: T2 };
+const timerSeed = (extra: any = {}) => ({ _id: OID(1), name: 'a', message: 'm', frequency: 5, frequencyUnit: 'minutes', channel: 'c', channelID: '1', active: true, created_at: T1, updated_at: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
     commands: [
@@ -195,6 +196,10 @@ const CASES: Record<string, any[]> = {
         { name: 'save_enabled_back', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'enabled', value: true }, { set: 'count', value: 5 }] },
         { name: 'save_enabled_default', op: 'save', seed: [(({ enabled, ...rest }) => rest)(commandSeed())], id: OID(1), changes: [{ set: 'enabled', value: false }] },
         { name: 'save_other', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'variables.k', value: TEXT }] },
+        // Validation runs before the availability hook: an invalid save writes nothing.
+        { name: 'save_invalid_enum', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'activation', value: 'button' }] },
+        { name: 'save_unset_channel', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ unset: 'channelID' }] },
+        { name: 'save_stored_invalid', op: 'save', seed: [commandSeed(1, { authoring: 'voice' })], id: OID(1), changes: [{ set: 'count', value: 9 }] },
     ],
     redemptionrewards: [
         { name: 'create_reward', op: 'create', rust: 'reward', doc: { eventsubID: 'sub-1', channelID: '111', channel: 'seed', rewardID: 'r9', title: TEXT, originalCost: 100, cost: 150, message: 'gracias' } },
@@ -205,6 +210,7 @@ const CASES: Record<string, any[]> = {
         { name: 'find_and_enable', op: 'findOneAndUpdate', seed: [rewardSeed({ isEnabled: false, availability: scheduled })], filter: { _id: OID(1) }, update: { isEnabled: true }, options: { new: true } },
         { name: 'save_disable', op: 'save', seed: [rewardSeed()], id: OID(1), changes: [{ set: 'isEnabled', value: false }] },
         { name: 'save_cost', op: 'save', seed: [rewardSeed()], id: OID(1), changes: [{ set: 'cost', value: 200 }] },
+        { name: 'save_unset_title', op: 'save', seed: [rewardSeed()], id: OID(1), changes: [{ set: 'isEnabled', value: false }, { unset: 'title' }] },
     ],
     admins: [
         { name: 'create_admin', op: 'create', rust: 'admin', doc: { channelID: '111', channelName: 'seed', adminID: '42', adminName: 'mod', permissions: ['commands', 'timers'], actived: true } },
@@ -214,6 +220,8 @@ const CASES: Record<string, any[]> = {
         { name: 'save_hook_no_change', op: 'save', seed: [adminSeed()], id: OID(1), changes: [] },
         { name: 'save_hook_legacy', op: 'save', seed: [{ _id: OID(2), adminName: 'old', channelID: '1', permissions: [], createdAt: T1, updatedAt: T1, __v: 0 }], id: OID(2), changes: [{ set: 'actived', value: false }] },
         { name: 'update_no_hook', op: 'updateOne', seed: [adminSeed()], filter: { channelID: '111', adminID: '42' }, update: { $set: { permissions: ['a'] } } },
+        { name: 'save_invalid_role', op: 'save', seed: [adminSeed()], id: OID(1), changes: [{ set: 'role', value: 'owner' }] },
+        { name: 'save_stored_invalid_role', op: 'save', seed: [{ ...adminSeed(), role: 'owner' }], id: OID(1), changes: [{ set: 'actived', value: false }] },
     ],
     app_configs: [
         { name: 'create_config', op: 'create', rust: 'config', doc: { name: 'domdimabot', access_token: { iv: 'i', content: 'c' } } },
@@ -227,6 +235,9 @@ const CASES: Record<string, any[]> = {
         { name: 'validate_show_if', op: 'validate', doc: { ...eventInput(), config: [{ id: 'a', label: { EN: 'a', ES: 'a' }, value: 1, showIf: {} }] } },
         { name: 'save_hook', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'config.0.value', value: TEXT }] },
         { name: 'save_push_config', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ push: 'config', values: [{ id: ' new ', label: { EN: 'n', ES: 'n' }, value: 0 }] }] },
+        { name: 'save_invalid_element', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ set: 'config.0.type', value: 'slider' }, { set: 'name', value: '' }] },
+        { name: 'save_push_invalid', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ push: 'config', values: [{ id: 'x', label: { EN: 'n' }, showIf: { controlId: 'msg' } }] }] },
+        { name: 'save_empty_condition', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ set: 'condition', value: {} }] },
         { name: 'update_no_hook', op: 'updateOne', seed: [eventSeed()], filter: { type: 'stream.online' }, update: { $set: { name: ' Online ', 'config.0.value': 'yo' } } },
     ],
     domain_events: [
@@ -253,6 +264,7 @@ const CASES: Record<string, any[]> = {
         { name: 'update_settings', op: 'updateOne', seed: [eventsubSeed()], filter: { channelID: '111', type: 'channel.follow' }, update: { $set: { enabled: false, message: TEXT, cheerTiers: [{ id: 't', name: 'n', message: 'm', minAmount: 1, maxAmount: 5 }] } } },
         { name: 'upsert_subscription', op: 'updateOne', filter: { channelID: '222', type: 'channel.raid' }, update: { $set: { id: 'sub-2', status: 'enabled', version: '1', condition: { to_broadcaster_user_id: '222' }, created_at: 'x', transport: { method: 'webhook', callback: 'c' }, cost: 0, channel: 'two' } }, options: { upsert: true } },
         { name: 'save_message', op: 'save', seed: [eventsubSeed()], id: OID(1), changes: [{ set: 'message', value: 'bye' }, { set: 'remote_missing_since', value: T2 }] },
+        { name: 'save_unset_required', op: 'save', seed: [eventsubSeed()], id: OID(1), changes: [{ unset: 'transport' }, { set: 'cost', value: null }] },
     ],
     astvariables: [
         { name: 'create_scope', op: 'create', rust: 'scope', doc: { channelID: 'c', userId: 'u1', userLogin: 'login', variables: { a: '1', [TEXT]: TEXT } } },
@@ -280,6 +292,19 @@ const CASES: Record<string, any[]> = {
         { name: 'duplicate_name', op: 'create', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, channel: 'c', channelID: '1', active: true, created_at: T1, updated_at: T1, __v: 0 }], doc: { name: ' a ', message: 'other', frequency: 6, channel: 'c', channelID: '1' } },
         { name: 'update_trims', op: 'updateOne', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, frequencyUnit: 'minutes', channel: 'c', channelID: '1', active: true, created_at: T1, updated_at: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { name: '  renamed ', frequency: 20 } } },
         { name: 'save_active', op: 'save', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, channel: 'c', channelID: '1', created_at: T1, updated_at: T1, __v: 0 }], id: OID(1), changes: [{ set: 'active', value: false }] },
+        // Save validation (`validateBeforeSave`): which paths, in which order, before the hooks.
+        { name: 'save_frequency_zero', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'frequency', value: 0 }] },
+        { name: 'save_unset_required', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ unset: 'message' }] },
+        { name: 'save_enum', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'frequencyUnit', value: 'hours' }] },
+        { name: 'save_null_required', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'channel', value: null }] },
+        { name: 'save_trimmed_empty', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'name', value: '   ' }] },
+        { name: 'save_trim', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'frequency', value: 15 }, { set: 'name', value: '  pad 👋🏽 é ' }] },
+        // An unchanged stored value is validated too (Mongoose validates every loaded path).
+        { name: 'save_stored_invalid', op: 'save', seed: [timerSeed({ frequency: 0 })], id: OID(1), changes: [{ set: 'active', value: false }] },
+        { name: 'save_stored_missing_required', op: 'save', seed: [(({ channel, ...rest }) => rest)(timerSeed())], id: OID(1), changes: [{ set: 'active', value: false }] },
+        // Error order: stored keys out of schema order, a missing required path, two changes.
+        { name: 'save_error_order', op: 'save', seed: [{ _id: OID(1), frequency: 2000, channelID: '1', message: 'm', frequencyUnit: 'weeks', name: 'x'.repeat(31), active: true, created_at: T1, updated_at: T1, __v: 0 }], id: OID(1), changes: [{ set: 'message', value: 'y'.repeat(351) }, { set: 'frequency', value: 1.5 }] },
+        { name: 'save_error_order_changes', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'frequencyUnit', value: 'days' }, { set: 'frequency', value: 0 }, { set: 'name', value: 'z'.repeat(31) }, { unset: 'channelID' }] },
     ],
     countdowntimers: [
         { name: 'create_basic', op: 'create', rust: 'basic', doc: { channel: 'c', channelID: '1', startTime: 7200 } },
@@ -297,6 +322,8 @@ const CASES: Record<string, any[]> = {
         { name: 'update_close', op: 'updateOne', seed: [sessionSeed()], filter: { _id: OID(1), ended_at: null }, update: { $set: { ended_at: T2, status: 'offline', closure_source: 'eventsub', duration_minutes: 90.25 }, $addToSet: { applied_domain_event_keys: 'k1' }, $inc: { messages: 1 } } },
         { name: 'find_and_count', op: 'findOneAndUpdate', seed: [sessionSeed()], filter: { channelID: '111', ended_at: null }, update: { $inc: { follows: 1 }, $push: { applied_domain_event_keys: 'k2' } }, options: { new: true } },
         { name: 'duplicate_open', op: 'create', seed: [sessionSeed()], doc: { channelID: '111', stream_id: 's2', started_at: T2 } },
+        { name: 'save_close', op: 'save', seed: [sessionSeed()], id: OID(1), changes: [{ set: 'status', value: 'offline' }, { set: 'ended_at', value: T2 }] },
+        { name: 'save_invalid', op: 'save', seed: [sessionSeed()], id: OID(1), changes: [{ set: 'status', value: 'paused' }, { unset: 'stream_id' }] },
     ],
     domain_event_deliveries: [
         { name: 'create_basic', op: 'create', rust: 'basic', doc: { consumer: 'chat', topic: 'channel', eventID: OID(0x900), eventKey: 'e1', expiresAt: T2 } },
@@ -304,6 +331,7 @@ const CASES: Record<string, any[]> = {
         { name: 'upsert_pending', op: 'updateOne', filter: { consumer: 'chat', eventKey: 'e2' }, update: { $setOnInsert: { topic: 'channel', eventID: OID(0x902), expiresAt: T2, status: 'pending' } }, options: { upsert: true } },
         { name: 'claim', op: 'findOneAndUpdate', seed: [deliverySeed(1, 'pending'), deliverySeed(2, 'succeeded')], filter: { consumer: 'chat', status: { $in: ['pending', 'retry'] } }, update: { $set: { status: 'processing', lockedUntil: T2, leaseToken: 'lease-1', firstAttemptAt: T1 }, $inc: { attempts: 1 } }, options: { new: true } },
         { name: 'duplicate', op: 'create', seed: [deliverySeed(1, 'pending')], doc: { consumer: 'chat', topic: 'channel', eventID: OID(0x901), eventKey: 'k1', expiresAt: T2 } },
+        { name: 'save_invalid', op: 'save', seed: [deliverySeed(1, 'pending')], id: OID(1), changes: [{ set: 'attempts', value: null }, { set: 'lastAttemptDurationMs', value: -5 }, { set: 'status', value: 'lost' }] },
     ],
     domain_event_checkpoints: [
         { name: 'create_basic', op: 'create', rust: 'basic', doc: { consumer: 'chat', topic: 'channel', lastEventID: OID(0x900) } },
@@ -328,6 +356,9 @@ const CASES: Record<string, any[]> = {
         { name: 'push_account', op: 'updateOne', seed: [userSeed()], filter: { _id: OID(1) }, update: { $push: { accounts: { type: 'spotify', id: 's1' } } } },
         { name: 'save', op: 'save', seed: [userSeed()], id: OID(1), changes: [{ set: 'name', value: 'renamed' }, { set: 'accounts.0.access_token', value: { iv: 'i2', content: 'c2' } }] },
         { name: 'save_sparse_legacy', op: 'save', seed: [{ _id: OID(2), name: 'old', accounts: [{ _id: OID(0x102), id: '5' }] }], id: OID(2), changes: [{ set: 'email', value: 'old@example.com' }] },
+        { name: 'save_invalid_account', op: 'save', seed: [userSeed()], id: OID(1), changes: [{ set: 'accounts.0.type', value: 'myspace' }, { set: 'plan_tier', value: 'gold' }] },
+        { name: 'save_partial_reset', op: 'save', seed: [userSeed()], id: OID(1), changes: [{ set: 'free_credit_reset.status', value: 'pending' }] },
+        { name: 'save_stored_invalid_account', op: 'save', seed: [{ ...userSeed(), accounts: [{ _id: OID(0x101), type: 'myspace', id: '1' }] }], id: OID(1), changes: [{ set: 'name', value: 'x' }] },
     ],
 };
 

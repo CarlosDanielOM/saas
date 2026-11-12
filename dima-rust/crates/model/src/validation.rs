@@ -1,10 +1,12 @@
-//! Mongoose's document validation, for new documents.
+//! Mongoose's document validation, for new documents and saves.
 //!
 //! Mongoose validates on `create` and `save` only (no call site sets `runValidators`), so read
 //! types never validate. Each collection module lists its validators as [`Rule`]s in schema path
 //! order, the way `schema.path(p).validators` lists them; the input type runs them on the document
 //! it is about to insert ([`validate`]), after defaults and `trim` were applied, exactly where
-//! Mongoose runs them. `tests/schema_drift.rs` compares every rule with Mongoose's own list.
+//! Mongoose runs them, and every save runs them on the whole document after the caller's changes
+//! (see `writes.rs` for the scope and order a save has). `tests/schema_drift.rs` compares every
+//! rule with Mongoose's own list.
 //!
 //! What each check accepts is Mongoose 8.24.3's:
 //!
@@ -216,6 +218,25 @@ pub fn validate_given(
     document: &Document,
     given: Option<&Document>,
 ) -> Result<(), ValidationError> {
+    validate_ordered(model, schema, rules, document, given, None)
+}
+
+/// Where an error of the top level goes in Mongoose's report, for a save: the key the errors of
+/// the top level's own paths are sorted by (the errors of sub-documents and array elements still
+/// come after them, in schema order). Given the local path, whether it holds a value, and its
+/// schema position.
+pub(crate) type ErrorOrder<'o> = &'o dyn Fn(&str, bool, &[usize]) -> (u8, Vec<usize>);
+
+/// [`validate_given`] with the top level's errors in the order `order` gives (saves), or in the
+/// order of a new document (`None`).
+pub(crate) fn validate_ordered(
+    model: &'static str,
+    schema: &Schema,
+    rules: &[Rule],
+    document: &Document,
+    given: Option<&Document>,
+    order: Option<ErrorOrder<'_>>,
+) -> Result<(), ValidationError> {
     let split: Vec<(Vec<&'static str>, Check)> = rules
         .iter()
         .map(|rule| (rule.path.split('.').collect(), rule.check))
@@ -235,6 +256,7 @@ pub fn validate_given(
         &level,
         "",
         document,
+        order,
         &mut errors,
     );
     if errors.is_empty() {
@@ -366,9 +388,12 @@ fn validate_level(
     rules: &[LevelRule<'_>],
     prefix: &str,
     root: &Document,
+    order: Option<ErrorOrder<'_>>,
     errors: &mut Vec<ValidatorError>,
 ) {
     let mut missing: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
+    // With an order: the same errors with their sort keys.
+    let mut ordered: Vec<((u8, Vec<usize>), ValidatorError)> = Vec::new();
     let mut present: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
     let mut children: Vec<ChildRules<'_>> = Vec::new();
     // An empty-object default (`default: () => ({})`) is present when Mongoose validates, and
@@ -399,6 +424,10 @@ fn validate_level(
                         kind,
                         message,
                     };
+                    if let Some(order) = order {
+                        let key = order(&local, value.is_some(), &position);
+                        ordered.push((key, error.clone()));
+                    }
                     if value.is_none() {
                         missing.push((position, error));
                     } else {
@@ -429,16 +458,22 @@ fn validate_level(
             None => {}
         }
     }
-    missing.sort_by(|a, b| b.0.cmp(&a.0));
-    present.sort_by(|a, b| a.0.cmp(&b.0));
     // A sub-document whose own path failed (a user-defined validator on it) is not validated.
     let failed: Vec<Vec<usize>> = missing
         .iter()
         .chain(present.iter())
         .map(|(position, _)| position.clone())
         .collect();
-    errors.extend(missing.into_iter().map(|(_, e)| e));
-    errors.extend(present.into_iter().map(|(_, e)| e));
+    if order.is_some() {
+        // The sort is stable: errors with equal keys keep the order they were found in.
+        ordered.sort_by(|a, b| a.0.cmp(&b.0));
+        errors.extend(ordered.into_iter().map(|(_, e)| e));
+    } else {
+        missing.sort_by(|a, b| b.0.cmp(&a.0));
+        present.sort_by(|a, b| a.0.cmp(&b.0));
+        errors.extend(missing.into_iter().map(|(_, e)| e));
+        errors.extend(present.into_iter().map(|(_, e)| e));
+    }
     children.sort_by(|a, b| a.position.cmp(&b.position));
     for child in children {
         if failed.contains(&child.position) {
@@ -459,6 +494,7 @@ fn validate_level(
                     &child.rules,
                     &path,
                     root,
+                    None,
                     errors,
                 );
             }
@@ -480,6 +516,7 @@ fn validate_level(
                             &child.rules,
                             &at,
                             root,
+                            None,
                             errors,
                         );
                     }

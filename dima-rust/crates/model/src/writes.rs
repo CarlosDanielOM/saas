@@ -13,10 +13,11 @@
 use crate::collection::{CollectionInfo, Hooks};
 use crate::error::ModelError;
 use crate::loaded::LoadedForSave;
+use crate::validation::validate_ordered;
 use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::save::{Change, PreparedSave, prepare_save};
-use dima_store::mongo::schema::{Field, Kind, Schema};
+use dima_store::mongo::schema::{DefaultValue, Field, Kind, Schema};
 use dima_store::mongo::update::{
     PreparedFindAndModify, PreparedUpdate, Returned, Update, UpdateOptions,
     prepare_find_one_and_update, prepare_update,
@@ -128,9 +129,264 @@ pub(crate) fn save_with_hooks(
     }
     let schema = info.schema;
     let changes = kept_changes(schema, changes);
+    validate_save(info, loaded.document(), &changes, ctx)?;
     let mut all = changes.clone();
     all.extend(hooks(loaded.document(), &changes, ctx)?);
     Ok(prepare_save(schema, loaded.document(), &all, ctx)?)
+}
+
+/// `validateBeforeSave`, as Mongoose 8.24.3 runs it (recorded: the `save_*` cases with errors):
+///
+/// - **when**: first of the `pre('save')` middleware (the plugin registers itself with
+///   `unshift`), so the collection's own hooks run after it and what they set is not validated;
+///   a refused save sends nothing, the hooks' writes included;
+/// - **what**: the whole hydrated document after the caller's changes (casts, `trim`, defaults
+///   of missing paths): every loaded path, every changed one, every required one. A stored value
+///   the caller did not touch fails the save too, as does a required path the document lacks;
+/// - **order** of the report: required paths that are missing and were not changed (reverse
+///   schema order), then the unchanged stored paths in the stored document's key order, then
+///   the changed paths in the order they were first changed, then paths a default filled; the
+///   errors inside sub-documents and array elements follow, in schema order.
+///
+/// The document validated is the loaded one with the delta the store prepares for these changes
+/// applied to it (the same casts and `trim`), plus the `default: null` paths hydration adds.
+fn validate_save(
+    info: &CollectionInfo,
+    loaded: &Document,
+    changes: &[Change],
+    ctx: &WriteContext,
+) -> Result<(), ModelError> {
+    let delta = prepare_save(info.schema, loaded, changes, &mut ctx.clone())?;
+    let mut after = loaded.clone();
+    if let Some(update) = &delta.update {
+        apply_update(&mut after, update);
+    }
+    fill_null_defaults(info.schema.fields, &mut after);
+    // Mongoose validates before `minimize`: an object the caller set counts even when empty.
+    let mut given = Document::new();
+    for change in changes {
+        if let Change::Set(path, value) = change
+            && !path
+                .split('.')
+                .any(|segment| segment.parse::<usize>().is_ok())
+        {
+            put(&mut given, path, value.clone());
+        }
+    }
+    let stored = stored_order(loaded);
+    let key = |local: &str, has_value: bool, position: &[usize]| -> (u8, Vec<usize>) {
+        let changed = changes.iter().position(|change| {
+            let path = match change {
+                Change::Set(path, _) | Change::Unset(path) | Change::Push(path, _) => path,
+            };
+            let covers = path == local
+                || local
+                    .strip_prefix(path.as_str())
+                    .is_some_and(|rest| rest.starts_with('.'));
+            // Setting a path to the value it holds does not modify it.
+            covers && (matches!(change, Change::Unset(_)) || at(loaded, local) != at(&after, local))
+        });
+        match changed {
+            Some(index) => (2, vec![index]),
+            None if !has_value => (0, position.iter().map(|p| usize::MAX - p).collect()),
+            None => match stored.iter().position(|path| path == local) {
+                Some(index) => (1, vec![index]),
+                None => (3, position.to_vec()),
+            },
+        }
+    };
+    validate_ordered(
+        info.model,
+        info.schema,
+        info.rules,
+        &after,
+        Some(&given),
+        Some(&key),
+    )?;
+    Ok(())
+}
+
+/// Every path of plain objects in `document`, in stored key order (`a`, `a.b`, …).
+fn stored_order(document: &Document) -> Vec<String> {
+    fn walk(document: &Document, prefix: &str, out: &mut Vec<String>) {
+        for (key, value) in document {
+            let path = if prefix.is_empty() {
+                key.clone()
+            } else {
+                format!("{prefix}.{key}")
+            };
+            out.push(path.clone());
+            if let Bson::Document(inner) = value {
+                walk(inner, &path, out);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(document, "", &mut out);
+    out
+}
+
+/// The `default: null` paths a hydrated document shows where the stored one has nothing (the
+/// store does not write them on a save, but validators see `null` there).
+fn fill_null_defaults(fields: &'static [Field], document: &mut Document) {
+    for field in fields {
+        match field.kind {
+            Kind::Nested(children) => match document.get_mut(field.name) {
+                Some(Bson::Document(inner)) => fill_null_defaults(children, inner),
+                None => {
+                    let mut inner = Document::new();
+                    fill_null_defaults(children, &mut inner);
+                    if !inner.is_empty() {
+                        document.insert(field.name, inner);
+                    }
+                }
+                Some(_) => {}
+            },
+            Kind::Subdocument(sub) => {
+                if let Some(Bson::Document(inner)) = document.get_mut(field.name) {
+                    fill_null_defaults(sub.fields, inner);
+                }
+            }
+            Kind::DocumentArray(sub) => {
+                if let Some(Bson::Array(items)) = document.get_mut(field.name) {
+                    for item in items {
+                        if let Bson::Document(inner) = item {
+                            fill_null_defaults(sub.fields, inner);
+                        }
+                    }
+                }
+            }
+            _ => {
+                let null_default = field
+                    .default
+                    .is_some_and(|d| matches!(d.value, DefaultValue::Null));
+                if null_default && !document.contains_key(field.name) {
+                    document.insert(field.name, Bson::Null);
+                }
+            }
+        }
+    }
+}
+
+/// `update` (`$set`, `$unset`, `$push: {$each}`, `$inc`, as a save sends them) applied to
+/// `document`, the way the server applies it.
+fn apply_update(document: &mut Document, update: &Document) {
+    for (operator, paths) in update {
+        let Bson::Document(paths) = paths else {
+            continue;
+        };
+        for (path, value) in paths {
+            match operator.as_str() {
+                "$set" => put(document, path, value.clone()),
+                "$unset" => remove(document, path),
+                "$push" => {
+                    let each = match value {
+                        Bson::Document(each) => match each.get("$each") {
+                            Some(Bson::Array(items)) => items.clone(),
+                            _ => vec![value.clone()],
+                        },
+                        other => vec![other.clone()],
+                    };
+                    match at_mut(document, path) {
+                        Some(Bson::Array(items)) => items.extend(each),
+                        _ => put(document, path, Bson::Array(each)),
+                    }
+                }
+                "$inc" => {
+                    let current = at(document, path)
+                        .and_then(dima_store::mongo::number::read_number)
+                        .unwrap_or(0.0);
+                    let step = dima_store::mongo::number::read_number(value).unwrap_or(0.0);
+                    put(
+                        document,
+                        path,
+                        dima_store::mongo::number::js_number(current + step),
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The value at a dotted path through documents and array positions.
+fn at<'a>(document: &'a Document, path: &str) -> Option<&'a Bson> {
+    let mut segments = path.split('.');
+    let mut current = document.get(segments.next()?)?;
+    for segment in segments {
+        current = match current {
+            Bson::Document(inner) => inner.get(segment)?,
+            Bson::Array(items) => items.get(segment.parse::<usize>().ok()?)?,
+            _ => return None,
+        };
+    }
+    Some(current)
+}
+
+fn at_mut<'a>(document: &'a mut Document, path: &str) -> Option<&'a mut Bson> {
+    let mut segments = path.split('.');
+    let mut current = document.get_mut(segments.next()?)?;
+    for segment in segments {
+        current = match current {
+            Bson::Document(inner) => inner.get_mut(segment)?,
+            Bson::Array(items) => items.get_mut(segment.parse::<usize>().ok()?)?,
+            _ => return None,
+        };
+    }
+    Some(current)
+}
+
+/// `$set` of one dotted path: missing objects on the way are created, array positions are
+/// followed.
+fn put(document: &mut Document, path: &str, value: Bson) {
+    let Some((head, rest)) = path.split_once('.') else {
+        document.insert(path, value);
+        return;
+    };
+    if !matches!(document.get(head), Some(Bson::Document(_) | Bson::Array(_))) {
+        document.insert(head, Document::new());
+    }
+    match document.get_mut(head) {
+        Some(Bson::Document(inner)) => put(inner, rest, value),
+        Some(Bson::Array(items)) => put_in_array(items, rest, value),
+        _ => {}
+    }
+}
+
+fn put_in_array(items: &mut [Bson], path: &str, value: Bson) {
+    let (index, rest) = match path.split_once('.') {
+        Some((index, rest)) => (index, Some(rest)),
+        None => (path, None),
+    };
+    let Some(slot) = index.parse::<usize>().ok().and_then(|i| items.get_mut(i)) else {
+        return;
+    };
+    match (rest, slot) {
+        (None, slot) => *slot = value,
+        (Some(rest), Bson::Document(inner)) => put(inner, rest, value),
+        (Some(rest), Bson::Array(inner)) => put_in_array(inner, rest, value),
+        _ => {}
+    }
+}
+
+/// `$unset` of one dotted path.
+fn remove(document: &mut Document, path: &str) {
+    match path.rsplit_once('.') {
+        None => {
+            document.remove(path);
+        }
+        Some((parent, last)) => match at_mut(document, parent) {
+            Some(Bson::Document(inner)) => {
+                inner.remove(last);
+            }
+            Some(Bson::Array(items)) => {
+                if let Some(slot) = last.parse::<usize>().ok().and_then(|i| items.get_mut(i)) {
+                    *slot = Bson::Null;
+                }
+            }
+            _ => {}
+        },
+    }
 }
 
 /// The caller's changes without those Mongoose ignores (paths below an immutable `Mixed` path).
@@ -225,6 +481,46 @@ mod tests {
     use super::*;
     use crate::REGISTRY;
     use bson::doc;
+
+    /// Validation runs before the save hooks (the scratch probe against Mongoose 8.24.3 stored
+    /// a value a `pre('save')` hook set outside its enum): what a hook sets is not validated,
+    /// what the caller changes is, and so is every stored path.
+    #[test]
+    fn saves_validate_before_the_hooks() {
+        static SCHEMA: Schema = Schema::new(&[Field::string("tier"), Field::number("n")]);
+        static RULES: &[crate::Rule] = &[
+            crate::Rule::one_of("tier", &["a", "b"]),
+            crate::Rule::min("n", 1.0),
+        ];
+        let info = CollectionInfo {
+            name: "probes",
+            model: "Probe",
+            source: "",
+            schema: &SCHEMA,
+            id_type: dima_store::mongo::id::IdType::ObjectId,
+            hidden: &[],
+            indexes: &[],
+            rules: RULES,
+            hooks: Hooks::Save,
+            decode: |_| Ok(()),
+        };
+        let mut ctx = WriteContext::new(0);
+        let hook = |_: &Document, _: &[Change], _: &mut WriteContext| {
+            Ok(vec![Change::set("tier", "set-by-hook")])
+        };
+        let loaded = LoadedForSave::for_test(&info, doc! { "_id": 1, "tier": "a", "n": 2 });
+        let saved = save_with_hooks(&info, &loaded, &[Change::set("n", 3)], hook, &mut ctx);
+        assert!(saved.is_ok(), "{saved:?}");
+        let refused = save_with_hooks(&info, &loaded, &[Change::set("tier", "c")], hook, &mut ctx);
+        assert!(matches!(refused, Err(ModelError::Validation(_))));
+        // An unchanged stored value is validated too.
+        let stored = LoadedForSave::for_test(&info, doc! { "_id": 1, "tier": "a", "n": 0 });
+        let refused = save_with_hooks(&info, &stored, &[Change::set("tier", "b")], hook, &mut ctx);
+        let Err(ModelError::Validation(error)) = refused else {
+            panic!("must fail: {refused:?}");
+        };
+        assert_eq!(error.errors[0].path, "n");
+    }
 
     /// A generic save must not skip a collection's `pre('save')` middleware.
     #[test]

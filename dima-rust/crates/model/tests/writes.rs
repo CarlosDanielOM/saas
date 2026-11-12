@@ -738,13 +738,7 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             ) {
                 Ok(_) => {}
                 Err(ModelError::Validation(error)) => {
-                    outcome.error = Some(serde_json::json!({
-                        "name": "ValidationError",
-                        "message": error.to_string(),
-                        "errors": error.errors.iter().map(|e| serde_json::json!({
-                            "path": e.path, "kind": e.kind.as_str(), "message": e.message,
-                        })).collect::<Vec<_>>(),
-                    }));
+                    outcome.error = Some(validation_json(&error));
                 }
                 Err(other) => return Err(other.into()),
             }
@@ -828,14 +822,22 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
             let prepared = match collection {
-                "admins" => admins::prepare_save(&loaded, &changes, &mut ctx)?,
-                "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx)?,
-                "events" => events::prepare_save(&loaded, &changes, &mut ctx)?,
-                "commands" => commands::prepare_save(&loaded, &changes, &mut ctx, &random)?,
+                "admins" => admins::prepare_save(&loaded, &changes, &mut ctx),
+                "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx),
+                "events" => events::prepare_save(&loaded, &changes, &mut ctx),
+                "commands" => commands::prepare_save(&loaded, &changes, &mut ctx, &random),
                 "redemptionrewards" => {
-                    redemption_rewards::prepare_save(&loaded, &changes, &mut ctx, &random)?
+                    redemption_rewards::prepare_save(&loaded, &changes, &mut ctx, &random)
                 }
-                _ => info.prepare_save(&loaded, &changes, &mut ctx)?,
+                _ => info.prepare_save(&loaded, &changes, &mut ctx),
+            };
+            let prepared = match prepared {
+                Ok(prepared) => prepared,
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
+                }
+                Err(other) => return Err(other.into()),
             };
             if let Some(update) = &prepared.update {
                 outcome.sent.push(sent_update(
@@ -851,6 +853,17 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         other => bail!("unknown op {other}"),
     }
     Ok(outcome)
+}
+
+/// A validation error as the recording writes it.
+fn validation_json(error: &dima_model::ValidationError) -> Value {
+    serde_json::json!({
+        "name": "ValidationError",
+        "message": error.to_string(),
+        "errors": error.errors.iter().map(|e| serde_json::json!({
+            "path": e.path, "kind": e.kind.as_str(), "message": e.message,
+        })).collect::<Vec<_>>(),
+    })
 }
 
 fn write_error(error: &dima_store::mongo::write::WriteError) -> String {
