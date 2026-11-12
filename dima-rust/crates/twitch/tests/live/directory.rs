@@ -191,34 +191,57 @@ async fn the_cached_list_is_published_then_read_back() -> Result<()> {
     .await
 }
 
+/// Review finding 9: a malformed envelope (the reference's `decrypt` throws and stops the whole
+/// load) and a document Rust cannot decode skip that streamer only, reported by id; the load
+/// goes on.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_malformed_envelope_stops_the_load_like_the_reference() -> Result<()> {
+async fn a_bad_stored_user_is_skipped_and_the_load_goes_on() -> Result<()> {
     with_stores(|stores| async move {
         let server = twitch_mock(quiet_mock_state(), helix_ok).await?;
         let process = process(&stores, &server, fast_timings())?;
         insert_user(&stores, user_document("1", "ok", "a", "r", None)).await?;
-        let mut broken = user_document("2", "broken", "a", "r", None);
+        let mut broken = user_document("2", "broken", "a-2", "r-2", None);
         if let Ok(accounts) = broken.get_array_mut("accounts")
             && let Some(Bson::Document(account)) = accounts.get_mut(0)
         {
             account.insert("refresh_token", doc! { "iv": "00", "content": "abcd" });
         }
         insert_user(&stores, broken).await?;
+        let mut undecodable = user_document("4", "odd", "a-4", "r-4", None);
+        if let Ok(accounts) = undecodable.get_array_mut("accounts")
+            && let Some(Bson::Document(account)) = accounts.get_mut(0)
+        {
+            account.insert("actived", "yes");
+        }
+        insert_user(&stores, undecodable).await?;
         insert_user(&stores, user_document("3", "after", "a", "r", None)).await?;
-        let error = process.twitch.load_streamers().await.unwrap_err();
-        assert!(
-            matches!(error, dima_twitch::TwitchError::Cipher(_)),
-            "{error}"
-        );
+        let loaded = process.twitch.load_streamers().await?;
+        assert_eq!(loaded, ["1", "3"]);
         let mut ids = process.twitch.streamer_ids().await;
         ids.sort();
-        assert_eq!(
-            ids,
-            ["1"],
-            "the users after the malformed one are not loaded"
+        assert_eq!(ids, ["1", "3"], "the users after the bad ones are loaded");
+        let skipped: Vec<_> = process
+            .events
+            .entries()
+            .into_iter()
+            .filter(|entry| entry.action() == Some("streamer_skipped"))
+            .collect();
+        assert_eq!(skipped.len(), 2);
+        assert_eq!(skipped[0].data["id"], "2");
+        assert_eq!(skipped[0].data["reason"], "undecryptable_envelope");
+        assert_eq!(skipped[1].data["id"], "4");
+        assert_eq!(skipped[1].data["reason"], "undecodable_document");
+        assert_no_secrets(
+            &process.events,
+            &[
+                "a-2",
+                "r-2",
+                "a-4",
+                "r-4",
+                "broken@example.invalid",
+                "odd@example.invalid",
+            ],
         );
-        // The third is still reachable on demand.
-        assert!(process.twitch.streamer("3").await.is_some());
         Ok(())
     })
     .await

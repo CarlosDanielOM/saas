@@ -30,10 +30,11 @@
 //! **What expires.** Only the aggregate (`EX 3600`). The hashes and the set never expire;
 //! billing's plan invalidation deletes a hash, and the next read hydrates it.
 //!
-//! **Quirk kept** (`MIGRATION.md` section 3, behaviour-preserving port): a stored envelope whose
-//! IV is malformed makes the reference's `decrypt` throw, which stops the whole start-up load at
-//! that user (the ones before it are loaded). [`Twitch::load_streamers`] does the same and
-//! returns the error; the real-data test counts such envelopes in the production copy (none).
+//! **Intended difference** (review finding 9): a stored envelope whose IV is malformed makes the
+//! reference's `decrypt` throw, which stops the whole start-up load at that user. Here that
+//! streamer is skipped and reported (`streamer_skipped`, its ids only) and the load goes on; a
+//! user document Rust cannot decode is skipped the same way. The real-data test counts such
+//! envelopes in the production copy (none).
 //!
 //! **Intended difference**: the list read finds account hashes with `SCAN`, not `KEYS` (same
 //! result, without blocking the server).
@@ -349,7 +350,42 @@ fn plan_projection() -> Document {
     projection
 }
 
+/// The user's `_id` and its first Twitch account's id, read from a document that does not decode.
+fn raw_ids(raw: &RawDocumentBuf) -> (Option<String>, Option<String>) {
+    let user_id = raw
+        .get_object_id("_id")
+        .ok()
+        .map(|id| id.to_hex())
+        .or_else(|| raw.get_str("_id").ok().map(str::to_owned));
+    let twitch = raw.get_array("accounts").ok().and_then(|accounts| {
+        accounts.into_iter().flatten().find_map(|account| {
+            let account = account.as_document()?;
+            let kind = account.get_str("type").unwrap_or("twitch");
+            (kind == "twitch")
+                .then(|| account.get_str("id").ok().map(str::to_owned))
+                .flatten()
+        })
+    });
+    (user_id, twitch)
+}
+
 impl Inner {
+    /// A streamer the start-up load leaves out, reported by its ids only.
+    fn skipped(&self, user_id: Option<String>, id: Option<String>, reason: &'static str) {
+        self.log(
+            Level::Error,
+            Destination::Both,
+            id.as_deref(),
+            json!({
+                "function": "TwitchStreamers.getTwitchAccountsFromDB",
+                "action": "streamer_skipped",
+                "userId": user_id,
+                "id": id,
+                "reason": reason,
+            }),
+        );
+    }
+
     /// `WRITE_PLAN_ACCOUNT_SCRIPT`: `false` when billing's fence is newer than the user's plan.
     async fn write_account(
         &self,
@@ -703,19 +739,11 @@ impl Twitch {
         while let Some(raw) = inner.mongo_op("find users", cursor.try_next()).await? {
             let user: User = match dima_model::decode(&raw) {
                 Ok(user) => user,
-                Err(error) => {
+                Err(_) => {
                     // Mongoose's lean read has no decode step; a document Rust cannot read is
-                    // skipped and named (the real-data test shows none).
-                    inner.log(
-                        Level::Error,
-                        Destination::Both,
-                        None,
-                        json!({
-                            "function": "TwitchStreamers.getTwitchAccountsFromDB",
-                            "action": "user_skipped",
-                            "error": error.to_string(),
-                        }),
-                    );
+                    // skipped and named by its ids only (the real-data test shows none).
+                    let (user_id, id) = raw_ids(&raw);
+                    inner.skipped(user_id, id, "undecodable_document");
                     continue;
                 }
             };
@@ -724,7 +752,13 @@ impl Twitch {
             };
             let id = account.id.clone().unwrap_or_default();
             let existing = inner.hget_text(&keys.account(&id), "expires_at").await?;
-            let fields = cache_fields(&user, account, existing, &inner.cipher)?;
+            let fields = match cache_fields(&user, account, existing, &inner.cipher) {
+                Ok(fields) => fields,
+                Err(_) => {
+                    inner.skipped(Some(user.id.to_hex()), Some(id), "undecryptable_envelope");
+                    continue;
+                }
+            };
             if !inner.write_account(&user, &id, &fields).await? {
                 continue;
             }
