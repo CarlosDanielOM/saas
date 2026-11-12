@@ -52,3 +52,8 @@ where
 pub mod stream_session_event_projection;
 pub mod stream_timeline;
 mod timeline_store;
+
+pub mod raid_analytics;
+mod raid_native_bson_compat;
+mod raid_projection;
+pub mod raid_subscriptions;

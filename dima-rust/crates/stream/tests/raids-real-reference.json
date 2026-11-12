@@ -1,0 +1,355 @@
+{
+  "cases": [
+    {
+      "channel": "533538623",
+      "expected": {
+        "incoming": {
+          "id": "533538623:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "533538623:outgoing",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "733328717",
+      "expected": {
+        "incoming": {
+          "id": "733328717:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "733328717:outgoing",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "181697260",
+      "expected": {
+        "incoming": {
+          "id": "181697260:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "181697260:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "810249317",
+      "expected": {
+        "incoming": {
+          "id": "810249317:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "810249317:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "128348267",
+      "expected": {
+        "incoming": {
+          "id": "128348267:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "128348267:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "206973156",
+      "expected": {
+        "incoming": {
+          "id": "206973156:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "206973156:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "236335984",
+      "expected": {
+        "incoming": {
+          "id": "236335984:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "236335984:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "426580588",
+      "expected": {
+        "incoming": {
+          "id": "426580588:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "426580588:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "579845444",
+      "expected": {
+        "incoming": {
+          "id": "579845444:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "579845444:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "758844609",
+      "expected": {
+        "incoming": {
+          "id": "758844609:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "758844609:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "533945592",
+      "expected": {
+        "incoming": {
+          "id": "533945592:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "533945592:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "277645557",
+      "expected": {
+        "incoming": {
+          "id": "277645557:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "277645557:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "channel": "1000593349",
+      "expected": {
+        "incoming": {
+          "id": "1000593349:incoming",
+          "deleted": false,
+          "repair": true,
+          "accept": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        "outgoing": {
+          "id": "1000593349:outgoing",
+          "deleted": false,
+          "repair": false,
+          "accept": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -20,6 +20,7 @@ rust-version = "1.99"
 # `name = { workspace = true }`. TLS is rustls with ring only; no OpenSSL, no
 # vendor SDK crates: outside services are called with the shared HTTP client.
 [workspace.dependencies]
+garde = { version = "0.23.0", features = ["derive"] }
 # Internal crates.
 dima-stream = { path = "crates/stream" }
 dima-ai = { path = "crates/ai" }
