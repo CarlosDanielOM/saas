@@ -52,6 +52,7 @@ pub mod desktop;
 pub mod duel;
 pub mod goals;
 pub mod overlays;
+#[path = "pets/mod.rs"]
 pub mod pets;
 pub mod roulette;
 pub mod timers;
