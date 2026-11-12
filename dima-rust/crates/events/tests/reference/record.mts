@@ -270,8 +270,9 @@ try {
         } })
     });
     const queue = 'cron:stream-memory:queue';
+    // Jobs in the property order `enqueueCronJob` builds (and the production intents show).
     const job = (id: string, extra: Record<string, unknown> = {}) => ({ id, job: 'stream-memory-summary', requestedAt: new RealDate(clock).toISOString(),
-        channelID: '1001', dedupeKey: 'cron:jobs:dedupe:stream-memory-summary:1001', data: { reason: 'manual' }, ...extra });
+        channelID: '1001', data: { reason: 'manual' }, dedupeKey: 'cron:jobs:dedupe:stream-memory-summary:1001', ...extra });
     const steps: unknown[] = [];
     const step = async (name: string, action: () => Promise<unknown>) => {
         frozen = clock;
