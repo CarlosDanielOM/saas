@@ -446,3 +446,88 @@ async fn a_batch_whose_reply_was_lost_is_resent_with_the_same_ids_after_a_restar
     );
     support::cleanup(&second.dragonfly, &channel).await.unwrap();
 }
+
+/// Item 6 of P2-BILLING-01c (re-check finding N7): a destination key of the wrong type. The
+/// dead-letter and requeue scripts removed the item from the processing list first and then
+/// failed on the push, and Lua does not undo the removal: the item was lost. Every script that
+/// moves an item between two keys now checks both types before it changes anything; the flush
+/// stops with a store failure and the item stays where it was.
+#[tokio::test]
+async fn a_destination_of_the_wrong_type_never_loses_an_item() {
+    if support::dragonfly(9).await.unwrap().is_none() {
+        return;
+    }
+    use dima_billing::polar::flush::FlushEnd;
+    let server = MockServer::start().await.unwrap();
+    let process = Process::new(&server, 8).await;
+    let channel = support::channel_id();
+    let (queue, processing, dead) = (
+        queue_key(&channel),
+        processing_key(&channel),
+        dead_letter_key(&channel),
+    );
+    let string = |key: String| {
+        let dragonfly = process.dragonfly.clone();
+        async move {
+            dragonfly.del(&[&key]).await.unwrap();
+            dragonfly
+                .set(&key, b"not a list", Default::default())
+                .await
+                .unwrap();
+        }
+    };
+
+    // Dead letter: the item cannot be sent and the dead-letter key holds a string.
+    process
+        .dragonfly
+        .rpush(&queue, &[b"not json".as_slice()])
+        .await
+        .unwrap();
+    string(dead.clone()).await;
+    let report = process.ingest().flush(&channel).await;
+    assert!(
+        matches!(report.end, FlushEnd::StoreFailed { .. }),
+        "{report:?}"
+    );
+    assert_eq!(
+        list(&process.dragonfly, &processing).await,
+        ["not json"],
+        "the item is kept"
+    );
+    process.dragonfly.del(&[&processing, &dead]).await.unwrap();
+
+    // Requeue: Polar refuses the first event of the batch for good and the rest goes back to
+    // the queue, which holds a string by the time the answer arrives.
+    for id in ["aiu_bad", "aiu_good"] {
+        process
+            .ingest()
+            .ingest_usage(&usage(&channel, id), IngestMode::Cache)
+            .await;
+    }
+    let refusal = json!({"detail": [{"type": "missing", "loc": ["body", "events", 0, "metadata"], "msg": "x"}]});
+    server.push(MockResponse::json(422, &refusal.to_string()).delay(Duration::from_millis(300)));
+    let flush = process.ingest();
+    let flushing = flush.flush(&channel);
+    let meanwhile = async {
+        server.wait_for(1).await;
+        string(queue.clone()).await;
+    };
+    let (report, ()) = tokio::join!(flushing, meanwhile);
+    assert!(
+        matches!(report.end, FlushEnd::StoreFailed { .. }),
+        "{report:?}"
+    );
+    assert_eq!(
+        external_ids(&list(&process.dragonfly, &processing).await),
+        ["aiu_good"],
+        "the event to requeue is kept"
+    );
+    assert_eq!(
+        list(&process.dragonfly, &dead).await.len(),
+        1,
+        "the refused one was set aside"
+    );
+    support::cleanup(&process.dragonfly, &channel)
+        .await
+        .unwrap();
+}
