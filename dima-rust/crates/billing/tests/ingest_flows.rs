@@ -8,8 +8,8 @@ mod support;
 use dima_billing::NoopObserver;
 use dima_billing::plans::credits_cache::CreditsCache;
 use dima_billing::polar::{
-    AcceptedUsage, GrantInput, Ingest, IngestEvent, IngestMode, IngestOutcome, LlmUsage, PolarClient, UsageEventInput,
-    UsageSink, build_usage_event,
+    AcceptedUsage, GrantInput, Ingest, IngestEvent, IngestMode, IngestOutcome, LlmUsage,
+    PolarClient, UsageEventInput, UsageSink, build_usage_event,
 };
 use dima_core::{ManualClock, SecretString};
 use dima_http::HttpClient;
@@ -25,9 +25,16 @@ struct Sink {
 }
 
 impl UsageSink for Sink {
-    fn enqueue_receipt<'a>(&'a self, usage: AcceptedUsage<'a>) -> BoxFuture<'a, Result<(), String>> {
+    fn enqueue_receipt<'a>(
+        &'a self,
+        usage: AcceptedUsage<'a>,
+    ) -> BoxFuture<'a, Result<(), String>> {
         Box::pin(async move {
-            self.receipts.lock().unwrap().push((usage.channel_id.into(), usage.context.entry_id.clone(), usage.credits));
+            self.receipts.lock().unwrap().push((
+                usage.channel_id.into(),
+                usage.context.entry_id.clone(),
+                usage.credits,
+            ));
             Ok(())
         })
     }
@@ -43,7 +50,12 @@ fn usage(channel: &str, external: &str) -> UsageEventInput {
         external_id: Some(external.into()),
         cost: 0.0015,
         reason: "messages".into(),
-        llm: Some(LlmUsage { model: "openai/gpt-4o".into(), prompt_tokens: Some(10.0), completion_tokens: Some(5.0), total_tokens: Some(15.0) }),
+        llm: Some(LlmUsage {
+            model: "openai/gpt-4o".into(),
+            prompt_tokens: Some(10.0),
+            completion_tokens: Some(5.0),
+            total_tokens: Some(15.0),
+        }),
         ..Default::default()
     }
 }
@@ -61,82 +73,189 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
     let server = MockServer::start().await.unwrap();
     let polar = PolarClient::new(
         HttpClient::builder().build().unwrap(),
-        server.provider(PolarClient::provider(&Default::default())).unwrap(),
+        server
+            .provider(PolarClient::provider(&Default::default()))
+            .unwrap(),
         Some(SecretString::from("t")),
     );
     let clock = Arc::new(ManualClock::new(1_793_000_000_000));
     let credits = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
     let sink = Sink::default();
     let random = support::ZeroRandom;
-    let ingest = Ingest { polar: &polar, dragonfly: &dragonfly, credits: &credits, sink: &sink, random: &random, observer: &NoopObserver };
+    let ingest = Ingest {
+        polar: &polar,
+        dragonfly: &dragonfly,
+        credits: &credits,
+        sink: &sink,
+        random: &random,
+        observer: &NoopObserver,
+    };
     let channel = support::channel_id();
     let queue = format!("twitch:{channel}:ai:polarshevent");
     let snapshot = r#"{"version":3,"used":0,"limit":25000,"balance":5000,"meterId":"m","updatedAt":"x","available":true,"status":"available"}"#;
-    dragonfly.set(&format!("twitch:{channel}:ai:credits"), snapshot.as_bytes(), dima_store::dragonfly::SetOptions::ex(300)).await.unwrap();
+    dragonfly
+        .set(
+            &format!("twitch:{channel}:ai:credits"),
+            snapshot.as_bytes(),
+            dima_store::dragonfly::SetOptions::ex(300),
+        )
+        .await
+        .unwrap();
     let llen = |q: String| {
         let dragonfly = dragonfly.clone();
-        async move { dragonfly.query::<i64>(redis::cmd("LLEN").arg(q)).await.unwrap() }
+        async move {
+            dragonfly
+                .query::<i64>(redis::cmd("LLEN").arg(q))
+                .await
+                .unwrap()
+        }
     };
 
     // Immediate: one event, projected and receipted once Polar stored it.
     server.push(MockResponse::json(200, r#"{"inserted":1,"duplicates":0}"#));
     let input = usage(&channel, "aiu_immediate");
-    assert_eq!(ingest.ingest_usage(&input, IngestMode::Immediate).await, IngestOutcome::Done { message: None });
+    assert_eq!(
+        ingest.ingest_usage(&input, IngestMode::Immediate).await,
+        IngestOutcome::Done { message: None }
+    );
     let (event, _) = build_usage_event(&input, &random).unwrap();
     let sent = server.wait_for(1).await;
     assert_eq!(sent[0].body_text(), body_of(std::slice::from_ref(&event)));
     assert_eq!(event.metadata["credits"], json!(150.0));
-    assert_eq!(sink.receipts.lock().unwrap().last().map(|r| r.2), Some(150.0));
-    let after: Value = serde_json::from_str(&dragonfly.get_text(&format!("twitch:{channel}:ai:credits")).await.unwrap().unwrap()).unwrap();
+    assert_eq!(
+        sink.receipts.lock().unwrap().last().map(|r| r.2),
+        Some(150.0)
+    );
+    let after: Value = serde_json::from_str(
+        &dragonfly
+            .get_text(&format!("twitch:{channel}:ai:credits"))
+            .await
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(after["balance"], json!(4850));
     assert_eq!(llen(queue.clone()).await, 0);
 
     // Polar refusing: nothing projected, nothing receipted.
     server.push(MockResponse::json(500, "{}"));
-    let outcome = ingest.ingest_usage(&usage(&channel, "aiu_failed"), IngestMode::Immediate).await;
-    assert!(matches!(outcome, IngestOutcome::Failed { ref message } if message == "Polar API error 500"), "{outcome:?}");
+    let outcome = ingest
+        .ingest_usage(&usage(&channel, "aiu_failed"), IngestMode::Immediate)
+        .await;
+    assert!(
+        matches!(outcome, IngestOutcome::Failed { ref message } if message == "Polar API error 500"),
+        "{outcome:?}"
+    );
     assert_eq!(sink.receipts.lock().unwrap().len(), 1);
 
     // Cache: queued and projected, nothing sent.
-    assert_eq!(ingest.ingest_usage(&usage(&channel, "aiu_cached"), IngestMode::Cache).await, IngestOutcome::Done { message: None });
+    assert_eq!(
+        ingest
+            .ingest_usage(&usage(&channel, "aiu_cached"), IngestMode::Cache)
+            .await,
+        IngestOutcome::Done { message: None }
+    );
     assert_eq!(llen(queue.clone()).await, 1);
     assert_eq!(server.requests().len(), 2);
 
     // Batch with an incomplete answer: both stay queued; the next batch resends all and trims.
     server.push(MockResponse::json(200, r#"{"inserted":1,"duplicates":0}"#));
-    let outcome = ingest.ingest_usage(&usage(&channel, "aiu_batch_1"), IngestMode::Batch).await;
-    assert_eq!(outcome, IngestOutcome::Failed { message: "PolarSH ingest incomplete".into() });
+    let outcome = ingest
+        .ingest_usage(&usage(&channel, "aiu_batch_1"), IngestMode::Batch)
+        .await;
+    assert_eq!(
+        outcome,
+        IngestOutcome::Failed {
+            message: "PolarSH ingest incomplete".into()
+        }
+    );
     assert_eq!(llen(queue.clone()).await, 2);
     server.push(MockResponse::json(200, r#"{"inserted":2,"duplicates":1}"#));
-    assert_eq!(ingest.ingest_usage(&usage(&channel, "aiu_batch_2"), IngestMode::Batch).await, IngestOutcome::Done { message: None });
+    assert_eq!(
+        ingest
+            .ingest_usage(&usage(&channel, "aiu_batch_2"), IngestMode::Batch)
+            .await,
+        IngestOutcome::Done { message: None }
+    );
     let sent = server.wait_for(4).await;
     let flushed: Value = serde_json::from_str(&sent[3].body_text()).unwrap();
-    let ids: Vec<_> = flushed["events"].as_array().unwrap().iter().map(|e| e["external_id"].as_str().unwrap().to_owned()).collect();
+    let ids: Vec<_> = flushed["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["external_id"].as_str().unwrap().to_owned())
+        .collect();
     assert_eq!(ids, ["aiu_cached", "aiu_batch_1", "aiu_batch_2"]);
     assert_eq!(llen(queue.clone()).await, 0);
-    assert!(dragonfly.get_text(&format!("locks:polar-ingest:{channel}")).await.unwrap().is_none(), "lock released");
+    assert!(
+        dragonfly
+            .get_text(&format!("locks:polar-ingest:{channel}"))
+            .await
+            .unwrap()
+            .is_none(),
+        "lock released"
+    );
 
     // A busy lock: the event is queued and projected, nothing is sent.
-    dragonfly.set(&format!("locks:polar-ingest:{channel}"), b"other", dima_store::dragonfly::SetOptions::ex(30)).await.unwrap();
-    let outcome = ingest.ingest_usage(&usage(&channel, "aiu_busy"), IngestMode::Batch).await;
-    assert_eq!(outcome, IngestOutcome::Done { message: Some("queued (flush in progress)") });
+    dragonfly
+        .set(
+            &format!("locks:polar-ingest:{channel}"),
+            b"other",
+            dima_store::dragonfly::SetOptions::ex(30),
+        )
+        .await
+        .unwrap();
+    let outcome = ingest
+        .ingest_usage(&usage(&channel, "aiu_busy"), IngestMode::Batch)
+        .await;
+    assert_eq!(
+        outcome,
+        IngestOutcome::Done {
+            message: Some("queued (flush in progress)")
+        }
+    );
     assert_eq!(llen(queue.clone()).await, 1);
     assert_eq!(server.requests().len(), 4);
 
     // Validation before anything happens.
     let mut no_channel = usage(&channel, "x");
     no_channel.channel_id = None;
-    assert_eq!(ingest.ingest_usage(&no_channel, IngestMode::Batch).await, IngestOutcome::Failed { message: "channelID is required for batch/cache modes".into() });
+    assert_eq!(
+        ingest.ingest_usage(&no_channel, IngestMode::Batch).await,
+        IngestOutcome::Failed {
+            message: "channelID is required for batch/cache modes".into()
+        }
+    );
 
     // Grants: negative usage, receipted with the channel.
     server.push(MockResponse::json(200, r#"{"inserted":1}"#));
-    let grant = GrantInput { customer_id: "cus_1".into(), channel_id: Some(channel.clone()), credits: 500.9, reason: "support".into(), ..Default::default() };
-    assert_eq!(ingest.grant_ai_credits(&grant).await, IngestOutcome::Done { message: None });
+    let grant = GrantInput {
+        customer_id: "cus_1".into(),
+        channel_id: Some(channel.clone()),
+        credits: 500.9,
+        reason: "support".into(),
+        ..Default::default()
+    };
+    assert_eq!(
+        ingest.grant_ai_credits(&grant).await,
+        IngestOutcome::Done { message: None }
+    );
     let sent = server.wait_for(5).await;
     assert!(sent[4].body_text().contains(r#""credits":-500"#));
-    assert_eq!(sink.receipts.lock().unwrap().last().map(|r| r.2), Some(-500.0));
-    let refused = GrantInput { credits: 0.5, ..grant };
-    assert_eq!(ingest.grant_ai_credits(&refused).await, IngestOutcome::Failed { message: "credits must be a positive number".into() });
+    assert_eq!(
+        sink.receipts.lock().unwrap().last().map(|r| r.2),
+        Some(-500.0)
+    );
+    let refused = GrantInput {
+        credits: 0.5,
+        ..grant
+    };
+    assert_eq!(
+        ingest.grant_ai_credits(&refused).await,
+        IngestOutcome::Failed {
+            message: "credits must be a positive number".into()
+        }
+    );
 
     // Named events: never credits; incomplete answers are errors.
     let named = IngestEvent {
@@ -147,12 +266,17 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
     };
     server.push(MockResponse::json(200, r#"{"inserted":0,"duplicates":0}"#));
     assert_eq!(
-        ingest.ingest_named_events(std::slice::from_ref(&named)).await,
+        ingest
+            .ingest_named_events(std::slice::from_ref(&named))
+            .await,
         Err("PolarSH ingest incomplete (0 inserted, 0 duplicates of 1)".into())
     );
     let mut credit = named.clone();
     credit.metadata.insert("credits".into(), json!(1));
-    assert_eq!(ingest.ingest_named_events(&[credit]).await, Err("ingestPolarNamedEvents must not send AI credit usage".into()));
+    assert_eq!(
+        ingest.ingest_named_events(&[credit]).await,
+        Err("ingestPolarNamedEvents must not send AI credit usage".into())
+    );
 
     support::cleanup(&dragonfly, &channel).await.unwrap();
 }

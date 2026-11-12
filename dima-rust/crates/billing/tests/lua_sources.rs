@@ -5,7 +5,8 @@ use dima_billing::plans::credits_cache::APPLY_AI_CREDIT_USAGE;
 
 #[test]
 fn apply_ai_credit_usage_is_the_typescript_text() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../dimabot/src/utils/billing.ts");
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../dimabot/src/utils/billing.ts");
     let source = std::fs::read_to_string(path).unwrap_or_default();
     let marker = "const APPLY_AI_CREDIT_USAGE_SCRIPT = `";
     let text = source
