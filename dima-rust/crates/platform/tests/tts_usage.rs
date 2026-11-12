@@ -1,3 +1,5 @@
+// Test helpers read fixed fixtures and hold test-only locks.
+#![allow(clippy::unwrap_used)]
 use anyhow::{Context, Result};
 use dima_billing::{
     polar::{IngestMode, IngestOutcome, UsageEventInput},
