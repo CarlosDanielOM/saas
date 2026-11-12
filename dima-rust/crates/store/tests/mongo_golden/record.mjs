@@ -395,6 +395,17 @@ const cases = [
     { name: 'save_hand_written_timestamps', schema: 'hand', seed: [handSeed()], op: 'save', id: oid1, changes: [{ set: 'name', value: 'x' }] },
     { name: 'save_push_then_set_element', schema: 'camel', seed: [camelSubdocSparseSeed()], op: 'save', id: oid3, changes: [{ push: 'items', values: [{ label: 'p' }] }, { set: 'items.0.label', value: 'q' }] },
     { name: 'save_set_default_path_to_default', schema: 'camel', seed: [camelSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'count', value: 0 }, { set: 'flag', value: null }] },
+    // ---- save with compare-and-set predicates (`doc.$where`) and a document that went away
+    { name: 'save_where_match', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T1, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_where_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_where_overrides_version', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { __v: 2 }, changes: [{ set: 'tags', value: ['v'] }] },
+    { name: 'save_where_after_version', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { count: 5, updatedAt: T1 }, changes: [{ set: 'tags', value: ['w'] }] },
+    { name: 'save_where_null_matches_missing', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { blob: null, flag: null }, changes: [{ set: 'name', value: 'n' }] },
+    { name: 'save_where_no_change_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2 }, changes: [] },
+    { name: 'save_where_no_version_key', schema: 'plain', seed: [plainSeed()], op: 'save', id: 'p1', where: { dueAt: 1700000000000 }, changes: [{ set: 'label', value: 'x' }] },
+    { name: 'save_deleted_no_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [] },
+    { name: 'save_deleted_with_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_deleted_versioned_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [{ push: 'tags', values: ['p'] }] },
     { name: 'save_snake_push_account', schema: 'snake', seed: [snakeSeed()], op: 'save', id: oid1, changes: [{ push: 'accounts', values: [{ id: '9', type: 'kick' }] }] },
 ];
 
@@ -477,7 +488,11 @@ async function runCase(spec) {
             case 'save': {
                 capturing = null;
                 const doc = await Model.findById(a.id);
+                // Another writer removes the document between the read and the save.
+                if (a.deleteBeforeSave) await collection.deleteOne({ _id: doc._id });
                 capturing = commands;
+                // Compare-and-set predicates added to the save's filter (ai_personality.service.ts:414).
+                if (a.where) doc.$where = a.where;
                 for (const change of a.changes) {
                     if ('set' in change) doc.set(change.set, change.value);
                     else if ('unset' in change) doc.set(change.unset, undefined);
@@ -490,9 +505,11 @@ async function runCase(spec) {
             default: throw new Error(`unknown op ${spec.op}`);
         }
     } catch (caught) {
-        // A failing operation is recorded too: the Rust side must fail the same way.
-        if (!(caught instanceof mongoose.mongo.MongoServerError)) throw caught;
-        error = { code: caught.code };
+        // A failing operation is recorded too: the Rust side must fail the same way. Server
+        // errors by code; Mongoose's own errors (cast, strict mode, version, not found) by name.
+        if (caught instanceof mongoose.mongo.MongoServerError) error = { code: caught.code };
+        else if (caught instanceof mongoose.Error || caught?.name === 'MongooseError' || caught?.name === 'Error') error = { name: caught.name, message: caught.message };
+        else throw caught;
     } finally {
         capturing = null;
     }

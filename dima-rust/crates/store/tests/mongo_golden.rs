@@ -452,7 +452,30 @@ fn sort_by_id(stored: Bson) -> Bson {
 struct Outcome {
     commands: Vec<Document>,
     result: Option<Document>,
-    error_code: Option<i32>,
+    failure: Option<Failure>,
+}
+
+/// How an operation failed, in terms both sides share.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Failure {
+    /// A server error, by code (`-1`: a driver error without one).
+    Code(i32),
+    /// A save matched nothing (Mongoose: `VersionError` or `DocumentNotFoundError`; Rust:
+    /// `SaveOutcome::Conflict`).
+    Conflict,
+    /// A Mongoose error raised before anything was sent, by name (`CastError`, ...).
+    Mongoose(String),
+}
+
+fn expected_failure(case: &Value) -> Option<Failure> {
+    let error = case.get("error")?;
+    if let Some(code) = error["code"].as_i64().and_then(|c| i32::try_from(c).ok()) {
+        return Some(Failure::Code(code));
+    }
+    Some(match error["name"].as_str()? {
+        "VersionError" | "DocumentNotFoundError" => Failure::Conflict,
+        other => Failure::Mongoose(other.to_owned()),
+    })
 }
 
 fn now_ms() -> i64 {
@@ -552,10 +575,11 @@ fn insert_command(collection: &str, documents: Vec<Document>) -> Document {
     doc! { "insert": collection, "documents": documents, "ordered": true }
 }
 
+/// Runs one update statement; the matched count.
 async fn execute_update(
     coll: &Collection<Document>,
     statement: &Document,
-) -> mongodb::error::Result<()> {
+) -> mongodb::error::Result<u64> {
     let filter = statement.get_document("q").cloned().unwrap_or_default();
     let update: mongodb::options::UpdateModifications = match statement.get("u") {
         Some(Bson::Array(stages)) => mongodb::options::UpdateModifications::Pipeline(
@@ -579,13 +603,13 @@ async fn execute_update(
         if let Some(filters) = filters {
             action = action.array_filters(filters);
         }
-        action.await.map(|_| ())
+        action.await.map(|r| r.matched_count)
     } else {
         let mut action = coll.update_one(filter, update).upsert(upsert);
         if let Some(filters) = filters {
             action = action.array_filters(filters);
         }
-        action.await.map(|_| ())
+        action.await.map(|r| r.matched_count)
     }
 }
 
@@ -610,7 +634,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
     let mut ctx = WriteContext::new(now);
     let mut commands = Vec::new();
     let mut result = None;
-    let mut error_code = None;
+    let mut failure = None;
     let options = intent.get_document("options").ok();
 
     match op {
@@ -636,7 +660,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                 .collect::<Result<Vec<_>, _>>()?;
             commands.push(insert_command(collection, prepared.clone()));
             if let Err(e) = coll.insert_many(prepared).await {
-                error_code = error_code_of(&e);
+                failure = failure_of(&e);
             }
         }
         "updateOne" | "updateMany" => {
@@ -654,7 +678,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                     prepared.array_filters,
                 );
                 if let Err(e) = execute_update(&coll, &statement).await {
-                    error_code = error_code_of(&e);
+                    failure = failure_of(&e);
                 }
                 commands.push(update_command(collection, vec![statement]));
             }
@@ -700,7 +724,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                         .await
                     {
                         Ok(found) => result = found,
-                        Err(e) => error_code = error_code_of(&e),
+                        Err(e) => failure = failure_of(&e),
                     }
                 }
                 None => result = coll.find_one(filter).await?,
@@ -779,9 +803,12 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
         "save" => {
             let id = intent.get("id").context("id")?.clone();
             let loaded = coll
-                .find_one(doc! { "_id": id })
+                .find_one(doc! { "_id": id.clone() })
                 .await?
                 .context("loaded document")?;
+            if intent.get_bool("deleteBeforeSave").unwrap_or(false) {
+                coll.delete_one(doc! { "_id": id }).await?;
+            }
             let changes = intent
                 .get_array("changes")?
                 .iter()
@@ -799,19 +826,32 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                     })
                 })
                 .collect::<Result<Vec<_>>>()?;
-            let prepared = prepare_save(schema, &loaded, &changes, &mut ctx)?;
-            if let Some(update) = prepared.update {
-                let statement = statement(
-                    prepared.filter,
-                    UpdateDoc::Document(update),
-                    false,
-                    false,
-                    None,
-                );
-                if let Err(e) = execute_update(&coll, &statement).await {
-                    error_code = error_code_of(&e);
+            let mut prepared = prepare_save(schema, &loaded, &changes, &mut ctx)?;
+            if let Ok(predicates) = intent.get_document("where") {
+                prepared = prepared.with_predicates(predicates)?;
+            }
+            match prepared.update {
+                Some(update) => {
+                    let statement = statement(
+                        prepared.filter,
+                        UpdateDoc::Document(update),
+                        false,
+                        false,
+                        None,
+                    );
+                    match execute_update(&coll, &statement).await {
+                        Ok(0) => failure = Some(Failure::Conflict),
+                        Ok(_) => {}
+                        Err(e) => failure = failure_of(&e),
+                    }
+                    commands.push(update_command(collection, vec![statement]));
                 }
-                commands.push(update_command(collection, vec![statement]));
+                // What `Writes::save` does with nothing to write: the document must still exist.
+                None => {
+                    if coll.find_one(prepared.filter).await?.is_none() {
+                        failure = Some(Failure::Conflict);
+                    }
+                }
             }
         }
         other => bail!("unknown op {other}"),
@@ -819,12 +859,12 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
     Ok(Outcome {
         commands,
         result,
-        error_code,
+        failure,
     })
 }
 
-fn error_code_of(error: &mongodb::error::Error) -> Option<i32> {
-    error_code(error).or(Some(-1))
+fn failure_of(error: &mongodb::error::Error) -> Option<Failure> {
+    Some(Failure::Code(error_code(error).unwrap_or(-1)))
 }
 
 /// The statements the Rust driver really sent must be the prepared ones, byte for byte (key
@@ -956,14 +996,11 @@ async fn check_case(
             show(&expected_stored)
         ));
     }
-    let expected_error = case
-        .get("error")
-        .and_then(|e| e["code"].as_i64())
-        .and_then(|c| i32::try_from(c).ok());
-    if outcome.error_code != expected_error {
+    let expected = expected_failure(case);
+    if outcome.failure != expected {
         problems.push(format!(
-            "{name}: error {:?}, mongoose {:?}",
-            outcome.error_code, expected_error
+            "{name}: failure {:?}, mongoose {:?}",
+            outcome.failure, expected
         ));
     }
     Ok((problems, prepared))

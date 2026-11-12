@@ -275,3 +275,47 @@ async fn outcomes_of_updates_upserts_finds_and_saves() -> Result<()> {
     })
     .await
 }
+
+#[tokio::test]
+async fn saves_guarded_by_compare_and_set_predicates() -> Result<()> {
+    with_store(None, |store, _| async move {
+        let mut ctx = WriteContext::with_sequential_ids(NOW, 1);
+        let mut items = store.writes("items");
+        let insert = prepare_insert(&ITEMS, &doc! { "name": "p" }, InsertStyle::Create, &mut ctx)?;
+        items.insert_one(&insert).await?;
+        let loaded = all(&store).await?.first().context("inserted")?.clone();
+        let revision = doc! {
+            "updatedAt": loaded.get("updatedAt").cloned().unwrap_or(Bson::Null),
+            "__v": loaded.get("__v").cloned().unwrap_or(Bson::Null),
+        };
+
+        // The revision still holds: the save lands (a second later, so `updatedAt` moves), and
+        // its filter carries the predicates after `_id` (numbers typed as Node types them).
+        let mut ctx = WriteContext::new(NOW + 1_000);
+        let save = prepare_save(&ITEMS, &loaded, &[Change::set("count", 1)], &mut ctx)?
+            .with_predicates(
+                &doc! { "updatedAt": revision.get("updatedAt").cloned(), "__v": Bson::Int64(0) },
+            )?;
+        let keys: Vec<&str> = save.filter.keys().map(String::as_str).collect();
+        assert_eq!(keys, ["_id", "updatedAt", "__v"]);
+        assert_eq!(save.filter.get("__v"), Some(&Bson::Int32(0)));
+        assert_eq!(items.save(&save).await?, SaveOutcome::Saved);
+
+        // The same revision again: `updatedAt` moved on, so it is a conflict and nothing is
+        // written.
+        let before = all(&store).await?;
+        let stale = prepare_save(&ITEMS, &loaded, &[Change::set("count", 9)], &mut ctx)?
+            .with_predicates(&revision)?;
+        assert_eq!(items.save(&stale).await?, SaveOutcome::Conflict);
+        assert_eq!(all(&store).await?, before);
+
+        // Nothing to write: Mongoose ignores the predicates and only checks the document exists.
+        let unchanged = prepare_save(&ITEMS, &loaded, &[], &mut ctx)?.with_predicates(&revision)?;
+        assert_eq!(unchanged.filter, doc! { "_id": loaded.get("_id").cloned() });
+        assert_eq!(items.save(&unchanged).await?, SaveOutcome::Unchanged);
+        store.documents("items").delete_many(doc! {}).await?;
+        assert_eq!(items.save(&unchanged).await?, SaveOutcome::Conflict);
+        Ok(())
+    })
+    .await
+}

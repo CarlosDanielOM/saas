@@ -100,14 +100,15 @@ pub struct UpdateOutcome {
 /// What a save did.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SaveOutcome {
-    /// Nothing changed: no command was sent (Mongoose's save resolves without a write).
+    /// Nothing changed and the document still exists: nothing was written (Mongoose's save
+    /// only reads `{_id}` then).
     Unchanged,
     /// The document was updated.
     Saved,
-    /// Nothing matched the save's filter: the document is gone, or its version or another
-    /// compare-and-set predicate no longer holds (Mongoose's `VersionError` or
-    /// `DocumentNotFoundError`). Not an error: the caller decides (reload and retry, or
-    /// report a conflict).
+    /// Nothing matched the save's filter: the document is gone, or its version or a
+    /// predicate added with [`PreparedSave::with_predicates`] no longer holds (Mongoose's
+    /// `VersionError` when the save was versioned, `DocumentNotFoundError` otherwise). Not an
+    /// error: the caller decides (reload and retry, or report a conflict).
     Conflict,
 }
 
@@ -314,7 +315,21 @@ impl<'a> Writes<'a> {
     pub async fn save(&mut self, prepared: &PreparedSave) -> Result<SaveOutcome, WriteError> {
         self.check("save", &prepared.dropped_paths)?;
         let Some(update) = prepared.update.clone() else {
-            return Ok(SaveOutcome::Unchanged);
+            // Mongoose still checks that the document exists (`findOne({_id})`, predicates
+            // ignored) and fails with `DocumentNotFoundError` when it is gone.
+            let action = self
+                .collection
+                .find_one(prepared.filter.clone())
+                .projection(bson::doc! { "_id": 1 });
+            let found = match self.session.as_deref_mut() {
+                Some(session) => action.session(session).await?,
+                None => action.await?,
+            };
+            return Ok(if found.is_some() {
+                SaveOutcome::Unchanged
+            } else {
+                SaveOutcome::Conflict
+            });
         };
         let mut action = self.collection.update_one(prepared.filter.clone(), update);
         if let Some(concern) = &self.write_concern {

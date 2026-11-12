@@ -79,6 +79,30 @@ pub struct PreparedSave {
     pub dropped_paths: Vec<String>,
 }
 
+impl PreparedSave {
+    /// Adds compare-and-set predicates to the filter, as Mongoose's `doc.$where` does
+    /// (`ai_personality.service.ts:414` guards a save with `{updatedAt, __v}`): each key goes
+    /// after `_id` and the version condition, and a key already there (the version key) keeps
+    /// its position and takes the predicate's value. The values are sent as given (Mongoose does
+    /// not cast them), numbers typed as Node types them.
+    ///
+    /// A save with nothing to write ignores the predicates, as Mongoose does: it only checks that
+    /// the document still exists (`findOne({_id})`), so it succeeds even when a predicate no
+    /// longer holds. Run the save with [`crate::mongo::write::Writes::save`], which reports a
+    /// filter that matched nothing as [`crate::mongo::write::SaveOutcome::Conflict`].
+    pub fn with_predicates(mut self, predicates: &Document) -> Result<Self, PrepareError> {
+        check_document_depth(predicates)?;
+        if self.update.is_none() {
+            return Ok(self);
+        }
+        for (key, value) in predicates {
+            self.filter.insert(key.clone(), value.clone());
+        }
+        normalize_js_numbers(&mut self.filter);
+        Ok(self)
+    }
+}
+
 /// What a save sends for `loaded` (the stored document, as read) after `changes`.
 pub fn prepare_save(
     schema: &Schema,
