@@ -1,6 +1,125 @@
 {
  "mongoose": "8.24.3",
  "fixedMs": 1794392430456,
+ "reference": "0c71108ee6e5d537104ad26b10db9d558fac22ab",
+ "sources": [
+  {
+   "path": "src/domain_events/domain_event.types.ts",
+   "sha256": "30303af7e97683f75a54c230e7987db8dba2e44e58b63f451a9ab31567cb846b"
+  },
+  {
+   "path": "src/interfaces/twitch/eventsub.interface.ts",
+   "sha256": "1c87c0f20fe259a1cf485bee2dc974b24b2294ce16c38be89fa0b188a96eb7a1"
+  },
+  {
+   "path": "src/middleware/channel_permissions.ts",
+   "sha256": "2743fa9f21e3e0b441185382b9e2c412b707248627cc6cd879a65aeeb92ea17a"
+  },
+  {
+   "path": "src/schemas/admin.schema.ts",
+   "sha256": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0"
+  },
+  {
+   "path": "src/schemas/app_config.schema.ts",
+   "sha256": "ae2e1d246a21d5d1931267ce01441e0ca06d032b24a50985738eb3d26520c7b5"
+  },
+  {
+   "path": "src/schemas/ast_variables.schema.ts",
+   "sha256": "b6ae8e21c7db3c0dbbda6e426573f0f913d06750d44b8a153159ec8bcf794f85"
+  },
+  {
+   "path": "src/schemas/command_timer.schema.ts",
+   "sha256": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5"
+  },
+  {
+   "path": "src/schemas/command_user_variables.schema.ts",
+   "sha256": "c0b95165952a5120526f441996bafcbd15659588b682617301211a4860f4cf64"
+  },
+  {
+   "path": "src/schemas/commands.schema.ts",
+   "sha256": "1a6ed070b37a850b9d358a86b2f97ff0a5e6b977f41ac7b51f2b01e0d9bb7da3"
+  },
+  {
+   "path": "src/schemas/countdown_timer.schema.ts",
+   "sha256": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990"
+  },
+  {
+   "path": "src/schemas/countdown_timer_config.schema.ts",
+   "sha256": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a"
+  },
+  {
+   "path": "src/schemas/custom_timer.schema.ts",
+   "sha256": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f"
+  },
+  {
+   "path": "src/schemas/domain_event.schema.ts",
+   "sha256": "b73e7918e8cb43dc8bff85b8bab082a875de9b61b45852f7f8acf34ace593d25"
+  },
+  {
+   "path": "src/schemas/domain_event_checkpoint.schema.ts",
+   "sha256": "751a15ab92f12b23605962e6fa46cdaa1f208c5680bfd289acff50c68436fc5a"
+  },
+  {
+   "path": "src/schemas/domain_event_delivery.schema.ts",
+   "sha256": "d6fd780e484f2e7ef4fe6e4385ee737455908a761dfbdc30bac41791284b5a68"
+  },
+  {
+   "path": "src/schemas/event.schema.ts",
+   "sha256": "8c0cc3002858594aa4dd448004c1b59ce5341a5dfcd7a42359bcc42815c3c49b"
+  },
+  {
+   "path": "src/schemas/eventsub.schema.ts",
+   "sha256": "9d641eb036d2dba0907ab5b70bfb58265bbd7174915ddfd8f87b676319d75bf3"
+  },
+  {
+   "path": "src/schemas/redemption_reward.schema.ts",
+   "sha256": "acc13c1d532d1078bbbb3d8260c7815565e63cae003fbad00564930b6b53e5a2"
+  },
+  {
+   "path": "src/schemas/stream_session.schema.ts",
+   "sha256": "8c084a4cec26ac0a2ba98085ab020166c01f2064185a6b2ff6b811478a80c965"
+  },
+  {
+   "path": "src/schemas/users.schema.ts",
+   "sha256": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13"
+  },
+  {
+   "path": "src/utils/ast_blocks/types.ts",
+   "sha256": "134788079bb7077fb5af2d06badef3c77f661e162f43bad16a3768d1642b2cea"
+  },
+  {
+   "path": "src/utils/availability/schema.ts",
+   "sha256": "98785af1992534d8d723cd429626d4da268aa8bf41023b3e12b01b2bdc4a2b26"
+  },
+  {
+   "path": "src/utils/databases/dragonfly.database.ts",
+   "sha256": "0d08dd4cdb931633473227fb59f043251b7be59a09a034ef6f392e0f64aebe9c"
+  },
+  {
+   "path": "src/utils/keywords.ts",
+   "sha256": "4a8038884f8d2f45dc8dc491bf05d98cd77f9371de1495cd96354868046c2f44"
+  },
+  {
+   "path": "src/utils/observability/bot_runtime_metrics.ts",
+   "sha256": "104e8a448318f9098cc095c4b2fde1a25e0637f66ca9ee44919a144d9547e9ac"
+  },
+  {
+   "path": "src/utils/observability/telemetry.ts",
+   "sha256": "44c9a71e5699abf9ef49242beaf8b883bbc9825e977de29e371011912ce52c2b"
+  },
+  {
+   "path": "src/utils/permissions/error_rate_limit.ts",
+   "sha256": "4e840093ef500738588ea7990f4303ea18f9368abd4d9e898557af73e08e8d56"
+  },
+  {
+   "path": "src/utils/permissions/expression.ts",
+   "sha256": "34a3d2900bbad64bde838504e16a73f361bf7d317ef4089dcbf58fe0b1e79ab2"
+  },
+  {
+   "path": "src/utils/permissions/roles.ts",
+   "sha256": "9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20"
+  }
+ ],
  "models": {
   "users": {
    "model": "users",

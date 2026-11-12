@@ -17,7 +17,14 @@
 // declaration order, kinds, defaults, trim, immutable, sub-schema options), the `select: false`
 // paths, every validator (required, enum, min, max, maxlength, user defined), and the declared
 // indexes as `schema.indexes()` returns them.
-import { writeFileSync } from 'node:fs';
+//
+// Provenance: `reference` is the last commit that changed `src/` in the checkout, and `sources`
+// the SHA-256 of every TypeScript file the dump was made from: each schema file and every file it
+// imports inside `src/`, recursively (hooks, plugins, enums). `tests/schema_drift.rs` fails when
+// one of them differs in the checkout the test runs in.
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -236,6 +243,35 @@ for (const [file, name] of MODELS) {
     };
 }
 
-writeFileSync(out, `${JSON.stringify({ mongoose: mongoose.version, fixedMs: FIXED_MS, models }, null, 1)}\n`);
-console.log(`dumped ${Object.keys(models).length} models to ${out}`);
+/// Every file under `src/` the schema files import, recursively (relative imports only; `.js`
+/// resolves to the `.ts` source, a directory to its `index.ts`), sorted, with its SHA-256.
+function sourceFiles(entries: string[]): Array<{ path: string; sha256: string }> {
+    const seen = new Set<string>();
+    const queue = [...entries];
+    const pattern = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"](\.{1,2}\/[^'"]+)['"]/g;
+    const resolve = (from: string, spec: string): string | null => {
+        const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), spec));
+        const candidates = [base.replace(/\.js$/, '.ts'), `${base}.ts`, base, `${base}/index.ts`];
+        return candidates.find((c) => c.startsWith('src/') && c.endsWith('.ts') && existsSync(path.join(root, c))) ?? null;
+    };
+    while (queue.length) {
+        const file = queue.shift()!;
+        if (seen.has(file)) continue;
+        seen.add(file);
+        const text = readFileSync(path.join(root, file), 'utf8');
+        for (const match of text.matchAll(pattern)) {
+            const next = resolve(file, match[1]);
+            if (next && !seen.has(next)) queue.push(next);
+        }
+    }
+    return [...seen].sort().map((file) => ({
+        path: file,
+        sha256: createHash('sha256').update(readFileSync(path.join(root, file))).digest('hex'),
+    }));
+}
+
+const reference = execFileSync('git', ['log', '-1', '--format=%H', '--', 'src'], { cwd: root, encoding: 'utf8' }).trim();
+const sources = sourceFiles(MODELS.map(([file]) => file));
+writeFileSync(out, `${JSON.stringify({ mongoose: mongoose.version, fixedMs: FIXED_MS, reference, sources, models }, null, 1)}\n`);
+console.log(`dumped ${Object.keys(models).length} models from ${sources.length} source files to ${out}`);
 process.exit(0);
