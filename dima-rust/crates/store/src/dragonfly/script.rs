@@ -29,6 +29,8 @@
 //!   such argument, or whose step is not a literal of at least 1: so `1e309`, `math.huge`,
 //!   `0x7fffffff`, `tonumber(ARGV[1])` and step `0` are refused, while `#ARGV - 1`,
 //!   `#account, 2` and `math.min(tonumber(ARGV[1]), 1000)` pass;
+//! - nested numeric `for` loops whose literal bounds multiply past 1e6 iterations (a loop
+//!   bounded by a length counts as 1);
 //! - a named function that calls itself by its own name inside its body (a tail call does not
 //!   grow the stack, so it can run for ever).
 //!
@@ -201,7 +203,84 @@ fn unbounded_construct(source: &str) -> Option<&'static str> {
             _ => {}
         }
     }
-    recursion(&tokens)
+    nested_iterations(&tokens).or_else(|| recursion(&tokens))
+}
+
+/// Nested numeric `for` loops whose literal bounds multiply past [`MAX_LITERAL_BOUND`]
+/// iterations (each loop alone may be within it). A loop bounded by a length counts as 1: its
+/// size is unknown here.
+fn nested_iterations(tokens: &[Token<'_>]) -> Option<&'static str> {
+    // One factor per open block (1 for anything but a numeric for with literal bounds).
+    let mut blocks: Vec<f64> = Vec::new();
+    let mut header: Option<f64> = None;
+    for (index, token) in tokens.iter().enumerate() {
+        match token {
+            Token::Name(b"for") => {
+                let rest: Vec<Token<'_>> = tokens
+                    .iter()
+                    .skip(index + 1)
+                    .take_while(|token| **token != Token::Name(b"do"))
+                    .copied()
+                    .collect();
+                header = Some(iterations(&rest));
+            }
+            Token::Name(b"do") => {
+                blocks.push(header.take().unwrap_or(1.0));
+                if blocks.iter().product::<f64>() > MAX_LITERAL_BOUND {
+                    return Some("nested loops multiply past 1e6 iterations");
+                }
+            }
+            Token::Name(b"function" | b"if" | b"repeat") => blocks.push(1.0),
+            Token::Name(b"end" | b"until") => {
+                blocks.pop();
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// How many times a `for` header (between `for` and `do`) runs at most, as far as its
+/// literals tell: 1 when a bound is not a literal.
+fn iterations(header: &[Token<'_>]) -> f64 {
+    if header.get(1) != Some(&Token::Symbol(b"=")) {
+        return 1.0;
+    }
+    let parts = split_top_level(header.get(2..).unwrap_or_default());
+    let step = parts
+        .get(2)
+        .and_then(|step| literal(step))
+        .map_or(1.0, f64::abs)
+        .max(1.0);
+    let start = parts.first().and_then(|start| literal(start));
+    let end = parts.get(1).and_then(|end| capped(end));
+    match (start, end) {
+        (Some(start), Some(end)) => ((end - start).abs() / step).floor() + 1.0,
+        (None, Some(end)) => end.abs() / step + 1.0,
+        _ => 1.0,
+    }
+}
+
+/// The literal a bound is, or the smallest literal a `math.min(...)` bound is capped by.
+fn capped(expression: &[Token<'_>]) -> Option<f64> {
+    if let Some(value) = literal(expression) {
+        return Some(value);
+    }
+    if let [
+        Token::Name(b"math"),
+        Token::Symbol(b"."),
+        Token::Name(b"min"),
+        Token::Symbol(b"("),
+        arguments @ ..,
+        Token::Symbol(b")"),
+    ] = expression
+    {
+        return split_top_level(arguments)
+            .into_iter()
+            .filter_map(literal)
+            .reduce(f64::min);
+    }
+    None
 }
 
 /// A `for` header (between `for` and `do`) whose iteration count is not obviously bounded.
@@ -562,6 +641,22 @@ mod tests {
             ("for i = 1, #t, 1e-300 do end", true),
             ("for i = 1, #t * 1e9 do end", true),
             ("for i = 1, n do end", true),
+            (
+                "for a = 1, 1000 do for b = 1, 1000 do end end for c = 1, 1000 do end",
+                false,
+            ),
+            (
+                "for a = 1, 1000 do for b = 1, 1000 do for c = 1, 2 do end end end",
+                true,
+            ),
+            (
+                "for a = 1, math.min(tonumber(ARGV[1]), 1000) do for b = 1, 1e6 do end end",
+                true,
+            ),
+            (
+                "for _, k in ipairs(KEYS) do for i = 1, 1e6 do if k then end end end",
+                false,
+            ),
             ("for i = 1, math.min(n, m) do end", true),
             (
                 "local function f(n) if n > 0 then return f(n - 1) end return 0 end return f(1)",

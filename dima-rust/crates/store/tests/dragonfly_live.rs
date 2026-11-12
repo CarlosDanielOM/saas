@@ -130,10 +130,17 @@ async fn a_killed_connection_fails_the_next_command_once_then_reconnects() -> Re
 /// Never loop on `TIME` here: Dragonfly freezes the clock inside a script, so a time-based loop
 /// never ends, and Dragonfly has no `SCRIPT KILL` and no Lua time limit: the thread spins until
 /// the server restarts. A counted loop always ends.
-static SLOW_SCRIPT: Script = Script::new(
-    "TEST_SLOW",
-    "local n = 0 for i = 1, tonumber(ARGV[1]) do n = n + 1 end return n",
-);
+///
+/// Sent with a plain `EVAL`, not through [`Script`]: its bound is computed from its argument,
+/// which the loop check refuses on purpose, and its argument is the fixed count below.
+const SLOW_SCRIPT: &str = "local n = 0 for i = 1, tonumber(ARGV[1]) do n = n + 1 end return n";
+
+/// `EVAL source 0 count` for a test script whose only loop runs `count` times.
+fn counted_eval(source: &str, count: &str) -> redis::Cmd {
+    let mut cmd = redis::cmd("EVAL");
+    cmd.arg(source).arg(0).arg(count);
+    cmd
+}
 
 /// Iterations for roughly one second on the local Dragonfly (30 million took 0.18 s).
 const SLOW_ITERATIONS: &str = "150000000";
@@ -144,8 +151,8 @@ async fn the_response_timeout_fires_on_a_slow_script_and_no_stale_reply_follows(
         return Ok(());
     };
     let started = tokio::time::Instant::now();
-    let slow = SLOW_SCRIPT
-        .run_value(&df, &[] as &[&str], &[SLOW_ITERATIONS])
+    let slow = df
+        .query_value(&counted_eval(SLOW_SCRIPT, SLOW_ITERATIONS))
         .await;
     let elapsed = started.elapsed();
     match slow {
@@ -242,15 +249,12 @@ async fn dragonfly_freezes_time_inside_a_script() -> Result<()> {
     let Some(df) = plain().await? else {
         return Ok(());
     };
-    // Bounded by an iteration count: about 0.1 s of work between the two TIME calls.
-    static TWO_TIMES: Script = Script::new(
-        "TEST_TWO_TIMES",
-        "local a = redis.call('TIME') local n = 0 for i = 1, tonumber(ARGV[1]) do n = n + 1 end \
-         local b = redis.call('TIME') return {a[1], a[2], b[1], b[2], n}",
-    );
-    let value = TWO_TIMES
-        .run_value(&df, &[] as &[&str], &["20000000"])
-        .await?;
+    // Bounded by an iteration count: about 0.1 s of work between the two TIME calls. A plain
+    // EVAL, as for SLOW_SCRIPT: the bound is computed from the fixed argument.
+    const TWO_TIMES: &str = "local a = redis.call('TIME') local n = 0 \
+        for i = 1, tonumber(ARGV[1]) do n = n + 1 end \
+        local b = redis.call('TIME') return {a[1], a[2], b[1], b[2], n}";
+    let value = df.query_value(&counted_eval(TWO_TIMES, "20000000")).await?;
     let (s1, us1, s2, us2, n): (String, String, String, String, i64) =
         redis::from_redis_value(value).map_err(redis::RedisError::from)?;
     ensure!(n == 20_000_000);
