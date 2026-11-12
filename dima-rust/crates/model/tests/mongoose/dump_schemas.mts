@@ -55,6 +55,13 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/oauth_session.schema.ts', 'OAuthSession'],
     ['src/schemas/cron_job_intent.schema.ts', 'cron_job_intent'],
     ['src/schemas/site_analytics.schema.ts', 'site_analytics'],
+    ['src/schemas/ai_usage_receipt.schema.ts', 'ai_usage_receipts'],
+    ['src/schemas/ai_usage_daily.schema.ts', 'ai_usage_daily'],
+    ['src/schemas/ai_usage_ledger_state.schema.ts', 'ai_usage_ledger_states'],
+    ['src/schemas/ai_usage_dashboard.schema.ts', 'ai_usage_dashboards'],
+    ['src/schemas/credit_gift.schema.ts', 'CreditGift'],
+    ['src/schemas/credit_transaction.schema.ts', 'CreditTransaction'],
+    ['src/schemas/referral_code.schema.ts', 'ReferralCode'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

@@ -100,7 +100,7 @@ pub mod entry {
     use dima_model::availability::Writer;
     use dima_model::{
         CollectionInfo, LoadedForSave, ModelError, admins, app_configs, commands, events,
-        redemption_rewards,
+        redemption_rewards, referral_codes,
     };
     use dima_store::mongo::WriteContext;
     use dima_store::mongo::save::{Change, PreparedSave};
@@ -164,6 +164,7 @@ pub mod entry {
             admins::COLLECTION => admins::prepare_save(loaded, changes, ctx),
             app_configs::COLLECTION => app_configs::prepare_save(loaded, changes, ctx),
             events::COLLECTION => events::prepare_save(loaded, changes, ctx),
+            referral_codes::COLLECTION => referral_codes::prepare_save(loaded, changes, ctx),
             commands::COLLECTION => commands::prepare_save(loaded, changes, ctx, random),
             redemption_rewards::COLLECTION => {
                 redemption_rewards::prepare_save(loaded, changes, ctx, random)

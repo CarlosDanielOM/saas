@@ -85,6 +85,13 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/oauth_session.schema.ts', 'OAuthSession'],
     ['src/schemas/cron_job_intent.schema.ts', 'cron_job_intent'],
     ['src/schemas/site_analytics.schema.ts', 'site_analytics'],
+    ['src/schemas/ai_usage_receipt.schema.ts', 'ai_usage_receipts'],
+    ['src/schemas/ai_usage_daily.schema.ts', 'ai_usage_daily'],
+    ['src/schemas/ai_usage_ledger_state.schema.ts', 'ai_usage_ledger_states'],
+    ['src/schemas/ai_usage_dashboard.schema.ts', 'ai_usage_dashboards'],
+    ['src/schemas/credit_gift.schema.ts', 'CreditGift'],
+    ['src/schemas/credit_transaction.schema.ts', 'CreditTransaction'],
+    ['src/schemas/referral_code.schema.ts', 'ReferralCode'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -248,7 +255,118 @@ const analyticsSeed = () => ({
     totalCommands: 3, liveChannels: [], created_at: T1, updated_at: T1, __v: 0,
 });
 
+const receiptDoc = (extra: any = {}) => ({
+    channelID: '111', customerId: 'cus_1', entryId: 'e1', requestId: 'req-1', occurredAt: T1, entryKind: 'usage', category: 'chat',
+    operation: 'ai.chat', source: 'twitch_chat', adjustmentType: null, provider: 'openrouter', model: 'm-1', quantity: 1200, unit: 'tokens',
+    credits: 7, resourceType: null, resourceId: null, itemized: true, retentionTier: 'premium', expiresAt: T2, ...extra,
+});
+const receiptSeed = (extra: any = {}) => ({ _id: OID(1), ...receiptDoc(), created_at: T1, updated_at: T1, __v: 0, ...extra });
+const dailySeed = (extra: any = {}) => ({
+    _id: OID(1), channelID: '111', customerId: 'cus_1', date: '2020-01-02', dayStart: T1, spentCredits: 7, grantedCredits: 0,
+    netConsumedCredits: 7, transactionCount: 1, categories: { chat: { credits: 7, transactionCount: 1 } }, retentionTier: 'free',
+    expiresAt: T2, created_at: T1, updated_at: T1, __v: 0, ...extra,
+});
+const ledgerSeed = () => ({ _id: OID(1), channelID: '111', customerId: 'cus_1', coverageStart: T1, backfilledAt: T1, reportVersion: 2, created_at: T1, updated_at: T1, __v: 0 });
+const dashboardDoc = () => ({
+    key: 'k'.repeat(64), channelID: '111', customerId: 'cus_1', planTier: 'pro',
+    request: { channelID: '111', customerId: 'cus_1', planTier: 'pro', window: { days: 30 } }, data: { summary: { spent: 7, label: TEXT } },
+    dirty: false, refreshedAt: T1, expiresAt: T2,
+});
+const giftReservation = () => ({
+    buyerId: OID(0x11), recipientId: OID(0x12), buyerLogin: 'buyer', recipientLogin: 'recipient', recipientName: TEXT, recipientChannelId: '222',
+    productId: 'prod_1', fulfillmentProductId: 'prod_f', benefitId: 'ben_1', credits: 500, priceAmount: 499, priceCurrency: 'usd',
+    status: 'awaiting_payment', noRefundsAcknowledgedAt: T1, nextAttemptAt: T1,
+});
+const giftSeed = (extra: any = {}) => ({ _id: 'a'.repeat(64), ...giftReservation(), announcementAttempts: 0, attempts: 0, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+const creditMeta = (extra: any = {}) => ({
+    referralCodeUsed: null, referredUserId: OID(0x11), subscriptionId: 'ord_1', planId: 'prod_1', description: 'Subscription reward for PRO (monthly)',
+    externalReference: 'polar:paid-order:ord_1', rewardTargetType: 'bot', ...extra,
+});
+const creditSeed = (extra: any = {}) => ({
+    _id: OID(1), user: OID(0x21), type: 'subscription_reward', amount: 100, balanceAfter: null, idempotencyKey: 'polar:paid-order:ord_1',
+    metadata: creditMeta(), createdAt: T1, updatedAt: T1, __v: 0, ...extra,
+});
+const codeSeed = (extra: any = {}) => ({ _id: OID(1), code: 'abc', owner: OID(0x11), label: '', stats: { conversions: 2 }, active: true, createdAt: T1, updatedAt: T1, __v: 0, ...extra });
+
 const CASES: Record<string, any[]> = {
+    ai_usage_receipts: [
+        { name: 'create_usage', op: 'create', rust: 'usage', doc: receiptDoc({ category: TEXT }) },
+        { name: 'create_adjustment', op: 'create', rust: 'adjustment', doc: receiptDoc({ entryId: 'e2', requestId: null, entryKind: 'adjustment', source: null, adjustmentType: 'grant', model: null, quantity: null, unit: null, credits: -50, itemized: false }) },
+        { name: 'create_wide_numbers', op: 'create', rust: 'wide', doc: receiptDoc({ entryId: 'e3', credits: 3000000000, quantity: 2.5 }) },
+        { name: 'validate_missing', op: 'validate', doc: { entryKind: 'refund', retentionTier: 'gold', credits: 0, itemized: false } },
+        // `utils/ai_usage_ledger.ts:189`: one receipt, idempotent on its entry.
+        { name: 'persist_upsert', op: 'updateOne', filter: { channelID: '111', customerId: 'cus_1', entryId: 'e9' }, update: { $setOnInsert: receiptDoc({ entryId: 'e9', resourceId: 'clip-1', resourceType: 'clip' }) }, options: { upsert: true } },
+        { name: 'persist_duplicate', op: 'updateOne', seed: [receiptSeed()], filter: { channelID: '111', customerId: 'cus_1', entryId: 'e1' }, update: { $setOnInsert: receiptDoc({ credits: 99 }) }, options: { upsert: true } },
+        // `utils/ai_usage_ledger.ts:222`: the backfill keeps `source` and `adjustmentType` current.
+        { name: 'backfill_upsert', op: 'updateOne', seed: [receiptSeed()], filter: { channelID: '111', customerId: 'cus_1', entryId: 'e1' }, update: { $setOnInsert: without(receiptDoc(), 'source', 'adjustmentType'), $set: { source: null, adjustmentType: 'refund' } }, options: { upsert: true } },
+        // `utils/ai_usage_ledger.ts:424`: a plan change moves every receipt's retention.
+        { name: 'retention_pipeline', op: 'updateMany', seed: [receiptSeed()], filter: { channelID: { $in: ['111'] } }, update: [{ $set: { retentionTier: 'pro', expiresAt: { $dateAdd: { startDate: '$occurredAt', unit: 'day', amount: 365 } } } }] },
+        { name: 'duplicate_entry', op: 'create', seed: [receiptSeed()], doc: receiptDoc() },
+    ],
+    ai_usage_dailies: [
+        { name: 'create_day', op: 'create', rust: 'day', doc: { channelID: '111', customerId: 'cus_1', date: '2020-01-02', dayStart: T1, spentCredits: 7, grantedCredits: 50, netConsumedCredits: -43, transactionCount: 1, categories: { [TEXT]: { credits: 7, transactionCount: 1 } }, retentionTier: 'premium', expiresAt: T2 } },
+        // Validation runs before `minimize`: a required `{}` passes and is not stored.
+        { name: 'create_empty_categories', op: 'create', rust: 'empty_categories', doc: { channelID: '111', customerId: 'cus_1', date: '2020-01-03', dayStart: T2, spentCredits: 0, grantedCredits: 5, netConsumedCredits: -5, transactionCount: 0, categories: {}, retentionTier: 'free', expiresAt: T2 } },
+        { name: 'validate_missing', op: 'validate', doc: { retentionTier: 'gold' } },
+        { name: 'retention_pipeline', op: 'updateMany', seed: [dailySeed()], filter: { channelID: { $in: ['111'] } }, update: [{ $set: { retentionTier: 'premium', expiresAt: { $dateAdd: { startDate: '$dayStart', unit: 'day', amount: 91 } } } }] },
+        { name: 'duplicate_day', op: 'create', seed: [dailySeed()], doc: { channelID: '111', customerId: 'cus_1', date: '2020-01-02', dayStart: T1, spentCredits: 1, grantedCredits: 0, netConsumedCredits: 1, transactionCount: 1, retentionTier: 'free', expiresAt: T2 } },
+    ],
+    ai_usage_ledger_states: [
+        { name: 'create_state', op: 'create', rust: 'state', doc: { channelID: '111', customerId: 'cus_1', coverageStart: T1, backfilledAt: T2 } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        // `utils/ai_usage_ledger.ts:241`: the backfill's upsert.
+        { name: 'backfill_upsert', op: 'findOneAndUpdate', filter: { channelID: '111', customerId: 'cus_1' }, update: { $min: { coverageStart: T1 }, $set: { backfilledAt: T2, reportVersion: 3 }, $setOnInsert: { channelID: '111', customerId: 'cus_1' } }, options: { upsert: true } },
+        { name: 'backfill_existing', op: 'findOneAndUpdate', seed: [ledgerSeed()], filter: { channelID: '111', customerId: 'cus_1' }, update: { $min: { coverageStart: T2 }, $set: { backfilledAt: T2, reportVersion: 3 }, $setOnInsert: { channelID: '111', customerId: 'cus_1' } }, options: { upsert: true } },
+        { name: 'retention_max', op: 'updateMany', seed: [ledgerSeed()], filter: { channelID: { $in: ['111'] } }, update: { $max: { coverageStart: T2 } } },
+    ],
+    ai_usage_dashboards: [
+        { name: 'create_dashboard', op: 'create', rust: 'dashboard', doc: dashboardDoc() },
+        { name: 'validate_missing', op: 'validate', doc: { dirty: true } },
+        // `utils/ai_usage_dashboard.ts:102`: the recomputed dashboard.
+        { name: 'refresh_upsert', op: 'updateOne', filter: { key: 'k'.repeat(64) }, update: { $set: dashboardDoc() }, options: { upsert: true } },
+        { name: 'mark_dirty', op: 'updateMany', seed: [{ _id: OID(1), ...dashboardDoc(), __v: 0 }], filter: { channelID: '111', customerId: 'cus_1' }, update: { $set: { dirty: true } } },
+        { name: 'refresh_existing', op: 'updateOne', seed: [{ _id: OID(1), ...dashboardDoc(), dirty: true, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { data: { summary: { spent: 9 } }, dirty: false, refreshedAt: T2 } } },
+    ],
+    creditgifts: [
+        { name: 'create_gift', op: 'create', rust: 'gift', doc: { _id: 'a'.repeat(64), ...giftReservation() } },
+        { name: 'validate_missing', op: 'validate', doc: { status: 'lost', credits: 0 } },
+        // `utils/credit_gifts.ts:149`: the reservation, idempotent on its deterministic id.
+        { name: 'reserve_upsert', op: 'updateOne', filter: { _id: 'b'.repeat(64) }, update: { $setOnInsert: giftReservation() }, options: { upsert: true } },
+        { name: 'reserve_existing', op: 'updateOne', seed: [giftSeed()], filter: { _id: 'a'.repeat(64) }, update: { $setOnInsert: { ...giftReservation(), credits: 1 } }, options: { upsert: true } },
+        { name: 'claim_purchase', op: 'updateOne', seed: [giftSeed()], filter: { _id: 'a'.repeat(64), purchaseCreateStartedAt: { $exists: false } }, update: { $set: { purchaseCreateStartedAt: T2 } } },
+        { name: 'record_checkout', op: 'updateOne', seed: [giftSeed({ purchaseCreateStartedAt: T1 })], filter: { _id: 'a'.repeat(64), paidAt: { $exists: false } }, update: { $set: { checkoutId: 'co_1', checkoutUrl: 'https://polar.sh/checkout/secret', buyerCustomerId: 'cus_b', nextAttemptAt: T2 } } },
+        { name: 'paid', op: 'updateOne', seed: [giftSeed({ checkoutId: 'co_1' })], filter: { _id: 'a'.repeat(64), paidAt: { $exists: false } }, update: { $set: { paidOrderId: 'ord_1', buyerCustomerId: 'cus_b', paidAt: T2, status: 'payment_received', nextAttemptAt: T2 } } },
+        // `utils/credit_gifts.ts:236`: the worker's lease (the checkout URL stays hidden in the result).
+        { name: 'lease', op: 'findOneAndUpdate', seed: [giftSeed({ checkoutId: 'co_1', checkoutUrl: 'https://polar.sh/checkout/secret' })], filter: { nextAttemptAt: { $lte: T2 }, $and: [{ $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: { $lte: T2 } }] }, { $or: [{ status: { $ne: 'delivered' } }, { announcedAt: { $exists: false }, announcementStoppedAt: { $exists: false } }] }] }, update: { $set: { leaseToken: '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f', leaseUntil: T2 } }, options: { new: true } },
+        { name: 'deliver', op: 'updateOne', seed: [giftSeed({ leaseToken: 'tok', leaseUntil: T2 })], filter: { _id: 'a'.repeat(64), leaseToken: 'tok', leaseUntil: { $gt: T1 } }, update: { $set: { grantId: 'gr_1', deliveredAt: T2, status: 'delivered', lastError: '', attempts: 1, announcementAttempts: 2 } } },
+        { name: 'release', op: 'updateOne', seed: [giftSeed({ leaseToken: 'tok', leaseUntil: T2 })], filter: { _id: 'a'.repeat(64), leaseToken: 'tok', leaseUntil: { $gt: T1 } }, update: { $set: { nextAttemptAt: T2 }, $unset: { leaseToken: '', leaseUntil: '' } } },
+    ],
+    credittransactions: [
+        { name: 'create_referral', op: 'create', rust: 'referral', doc: { user: OID(0x21), type: 'referral_bonus', amount: 250, metadata: { referralCodeUsed: 'abc', referredUserId: OID(0x11), subscriptionId: 'sub_1', planId: 'prod_1', description: `Referral bonus for ${TEXT}` } } },
+        // `utils/referral.ts:307` passes the payer's `referralCodeUsed: null` through.
+        { name: 'create_null_code', op: 'create', rust: 'null_code', doc: { user: OID(0x21), type: 'subscription_reward', amount: 100, metadata: { referralCodeUsed: null, referredUserId: OID(0x11), subscriptionId: 'sub_2', planId: 'prod_1', description: 'd', externalReference: 'ext', rewardTargetType: 'bot' } } },
+        { name: 'validate_enums', op: 'validate', doc: { type: 'gift', amount: 1, metadata: { rewardTargetType: 'nobody' } } },
+        // `utils/paid_order_reward.ts:68`: the reservation, idempotent on its key.
+        { name: 'reserve_upsert', op: 'findOneAndUpdate', filter: { idempotencyKey: 'polar:paid-order:ord_9' }, update: { $setOnInsert: { idempotencyKey: 'polar:paid-order:ord_9', user: OID(0x21), type: 'subscription_reward', amount: 3000000000, metadata: creditMeta({ subscriptionId: 'ord_9', externalReference: 'polar:paid-order:ord_9' }) } }, options: { upsert: true, new: true } },
+        { name: 'reserve_existing', op: 'findOneAndUpdate', seed: [creditSeed()], filter: { idempotencyKey: 'polar:paid-order:ord_1' }, update: { $setOnInsert: { idempotencyKey: 'polar:paid-order:ord_1', user: OID(0x22), type: 'subscription_reward', amount: 5, metadata: creditMeta() } }, options: { upsert: true, new: true } },
+        { name: 'apply', op: 'updateOne', seed: [creditSeed()], filter: { _id: OID(1), appliedAt: { $exists: false } }, update: { $set: { appliedAt: T2, balanceAfter: 150 } } },
+        { name: 'balance_bare', op: 'updateOne', seed: [without(creditSeed(), 'idempotencyKey')], filter: { _id: OID(1) }, update: { balanceAfter: 2.5 } },
+        { name: 'duplicate_key', op: 'create', seed: [creditSeed()], doc: { user: OID(0x22), type: 'subscription_reward', amount: 1, idempotencyKey: 'polar:paid-order:ord_1', metadata: {} } },
+        // The unique index is partial: receipts without a key never collide.
+        { name: 'no_key_twice', op: 'create', seed: [without(creditSeed(), 'idempotencyKey')], doc: { user: OID(0x22), type: 'manual_credit', amount: 1 } },
+    ],
+    referralcodes: [
+        { name: 'create_code', op: 'create', rust: 'code', doc: { code: 'MyCode_1', owner: OID(0x11), label: TEXT, stats: { conversions: 0 } } },
+        { name: 'validate_code', op: 'validate', doc: { code: 'bad code!', label: 'x'.repeat(51) } },
+        // Mongoose counts UTF-16 units (50 emoji are 100); Rust counts characters (MIGRATION.md 4).
+        { name: 'validate_emoji_label', op: 'validate', differs: 'lengths count characters', doc: { code: 'ok', owner: OID(0x11), label: '👋'.repeat(50) } },
+        { name: 'deactivate', op: 'updateOne', seed: [codeSeed()], filter: { _id: OID(1), owner: OID(0x11) }, update: { active: false } },
+        { name: 'count_conversion', op: 'updateOne', seed: [codeSeed()], filter: { code: 'abc' }, update: { $inc: { 'stats.conversions': 1 } } },
+        { name: 'save_code_upper', op: 'save', seed: [codeSeed()], id: OID(1), changes: [{ set: 'code', value: 'NEW_Code' }] },
+        { name: 'save_label', op: 'save', seed: [codeSeed({ code: 'Legacy' })], id: OID(1), changes: [{ set: 'label', value: TEXT }] },
+        { name: 'save_invalid_code', op: 'save', seed: [codeSeed()], id: OID(1), changes: [{ set: 'code', value: 'no way' }] },
+        { name: 'duplicate_code', op: 'create', seed: [codeSeed()], doc: { code: 'abc', owner: OID(0x12) } },
+    ],
     accounts: [
         { name: 'create_account', op: 'create', rust: 'account', doc: {
             user_id: '111', user_login: 'seed', user_email: 'seed@example.com', channelID: '111', channelName: TEXT, user_type: '',

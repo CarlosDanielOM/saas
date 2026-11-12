@@ -201,6 +201,9 @@ fn rules_json(info: &CollectionInfo) -> Value {
                 Check::Custom { message, .. } => {
                     json!({ "path": rule.path, "type": "user defined", "message": message })
                 }
+                Check::CustomWith { declared, .. } => {
+                    json!({ "path": rule.path, "type": "user defined", "message": declared })
+                }
             })
             .collect(),
     )

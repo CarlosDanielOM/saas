@@ -97,6 +97,25 @@ impl Rule {
             check: Check::Custom { message, valid },
         }
     }
+
+    /// `validate: { validator, message: (props) => ... }`: a message built from the value
+    /// (`message` gets it as JavaScript's template literal shows it). `declared` is the message
+    /// function's text as Mongoose reports it (`String(validator.message)`), for the drift test.
+    pub const fn custom_with(
+        path: &'static str,
+        declared: &'static str,
+        message: fn(&str) -> String,
+        valid: fn(&Bson) -> bool,
+    ) -> Self {
+        Self {
+            path,
+            check: Check::CustomWith {
+                declared,
+                message,
+                valid,
+            },
+        }
+    }
 }
 
 /// What a [`Rule`] checks.
@@ -118,6 +137,15 @@ pub enum Check {
     Custom {
         /// The message (Mongoose's `{PATH}`/`{VALUE}` placeholders are not used by the schemas).
         message: &'static str,
+        /// The validator; it is not called for a missing value.
+        valid: fn(&Bson) -> bool,
+    },
+    /// A user-defined validator whose message is a function of the value.
+    CustomWith {
+        /// The message function's text as Mongoose reports it (for the drift test).
+        declared: &'static str,
+        /// The message, given the value as text.
+        message: fn(&str) -> String,
         /// The validator; it is not called for a missing value.
         valid: fn(&Bson) -> bool,
     },
@@ -603,6 +631,10 @@ fn check(
         },
         Check::Custom { message, valid } => match value {
             Some(v) if !valid(v) => Some((ValidatorKind::UserDefined, message.to_owned())),
+            _ => None,
+        },
+        Check::CustomWith { message, valid, .. } => match value {
+            Some(v) if !valid(v) => Some((ValidatorKind::UserDefined, message(&js_string(v)))),
             _ => None,
         },
     }

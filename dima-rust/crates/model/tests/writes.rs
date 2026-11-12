@@ -16,6 +16,10 @@ use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
 use dima_model::accounts::NewAccount as NewSignIn;
 use dima_model::admins::NewAdmin;
+use dima_model::ai_usage_dailies::NewAiUsageDaily;
+use dima_model::ai_usage_dashboards::NewAiUsageDashboard;
+use dima_model::ai_usage_ledger_states::NewAiUsageLedgerState;
+use dima_model::ai_usage_receipts::{EntryKind, NewAiUsageReceipt, RetentionTier};
 use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
@@ -23,6 +27,10 @@ use dima_model::channel_configs::{ChannelConfigDate, NewChannelConfig};
 use dima_model::command_user_variables::NewCommandUserVariables;
 use dima_model::commands::{self, Activation, MatchMode, NewCommand, NewKeywordSettings};
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
+use dima_model::credit_gifts::{GiftStatus, NewCreditGift};
+use dima_model::credit_transactions::{
+    NewCreditMetadata, NewCreditTransaction, RewardTarget, TransactionType,
+};
 use dima_model::cron_job_intents::{IntentStatus, NewCronJobIntent};
 use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
@@ -36,6 +44,7 @@ use dima_model::oauth_grants::NewOAuthGrant;
 use dima_model::oauth_refresh_tokens::NewOAuthRefreshToken;
 use dima_model::oauth_sessions::NewOAuthSession;
 use dima_model::redemption_rewards::NewRedemptionReward;
+use dima_model::referral_codes::{NewReferralCode, NewReferralStats};
 use dima_model::site_analytics::{BotPlatform, NewLiveChannel, NewSiteAnalytics};
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
@@ -789,6 +798,179 @@ fn typed_create(
             };
             pair(snapshot.to_document()?, snapshot.prepare(ctx))
         }
+        ("ai_usage_receipts", "usage" | "adjustment" | "wide") => {
+            let mut receipt = NewAiUsageReceipt {
+                channel_id: "111".into(),
+                customer_id: "cus_1".into(),
+                entry_id: "e1".into(),
+                request_id: "req-1".to_owned().into(),
+                occurred_at: ms("2020-01-02T03:04:05.006Z")?,
+                entry_kind: EntryKind::Usage,
+                category: "chat".into(),
+                operation: "ai.chat".into(),
+                source: "twitch_chat".to_owned().into(),
+                adjustment_type: Nullable::Null,
+                provider: "openrouter".into(),
+                model: "m-1".to_owned().into(),
+                quantity: JsNumber(1200.0).into(),
+                unit: "tokens".to_owned().into(),
+                credits: JsNumber(7.0),
+                resource_type: Nullable::Null,
+                resource_id: Nullable::Null,
+                itemized: true,
+                retention_tier: RetentionTier::Premium,
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            match key {
+                "usage" => receipt.category = text.into(),
+                "adjustment" => {
+                    receipt.entry_id = "e2".into();
+                    receipt.request_id = Nullable::Null;
+                    receipt.entry_kind = EntryKind::Adjustment;
+                    receipt.source = Nullable::Null;
+                    receipt.adjustment_type = "grant".to_owned().into();
+                    receipt.model = Nullable::Null;
+                    receipt.quantity = Nullable::Null;
+                    receipt.unit = Nullable::Null;
+                    receipt.credits = JsNumber(-50.0);
+                    receipt.itemized = false;
+                }
+                _ => {
+                    receipt.entry_id = "e3".into();
+                    receipt.credits = JsNumber(3_000_000_000.0);
+                    receipt.quantity = JsNumber(2.5).into();
+                }
+            }
+            pair(receipt.to_document()?, receipt.prepare(ctx))
+        }
+        ("ai_usage_dailies", "day" | "empty_categories") => {
+            let day = if key == "day" {
+                NewAiUsageDaily {
+                    channel_id: "111".into(),
+                    customer_id: "cus_1".into(),
+                    date: "2020-01-02".into(),
+                    day_start: ms("2020-01-02T03:04:05.006Z")?,
+                    spent_credits: JsNumber(7.0),
+                    granted_credits: JsNumber(50.0),
+                    net_consumed_credits: JsNumber(-43.0),
+                    transaction_count: JsNumber(1.0),
+                    categories: doc! { text: { "credits": 7, "transactionCount": 1 } },
+                    retention_tier: RetentionTier::Premium,
+                    expires_at: ms("2021-06-07T08:09:10.011Z")?,
+                }
+            } else {
+                NewAiUsageDaily {
+                    channel_id: "111".into(),
+                    customer_id: "cus_1".into(),
+                    date: "2020-01-03".into(),
+                    day_start: ms("2021-06-07T08:09:10.011Z")?,
+                    spent_credits: JsNumber(0.0),
+                    granted_credits: JsNumber(5.0),
+                    net_consumed_credits: JsNumber(-5.0),
+                    transaction_count: JsNumber(0.0),
+                    categories: doc! {},
+                    retention_tier: RetentionTier::Free,
+                    expires_at: ms("2021-06-07T08:09:10.011Z")?,
+                }
+            };
+            pair(day.to_document()?, day.prepare(ctx))
+        }
+        ("ai_usage_ledger_states", "state") => {
+            let state = NewAiUsageLedgerState {
+                channel_id: "111".into(),
+                customer_id: "cus_1".into(),
+                coverage_start: ms("2020-01-02T03:04:05.006Z")?,
+                backfilled_at: ms("2021-06-07T08:09:10.011Z")?,
+                report_version: None,
+            };
+            pair(state.to_document()?, state.prepare(ctx))
+        }
+        ("ai_usage_dashboards", "dashboard") => {
+            let dashboard = NewAiUsageDashboard {
+                key: "k".repeat(64),
+                channel_id: "111".into(),
+                customer_id: "cus_1".into(),
+                plan_tier: "pro".into(),
+                request: doc! {
+                    "channelID": "111", "customerId": "cus_1", "planTier": "pro", "window": { "days": 30 },
+                }
+                .into(),
+                data: doc! { "summary": { "spent": 7, "label": text } },
+                dirty: Some(false),
+                refreshed_at: ms("2020-01-02T03:04:05.006Z")?,
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            pair(dashboard.to_document()?, dashboard.prepare(ctx))
+        }
+        ("creditgifts", "gift") => {
+            let t1 = ms("2020-01-02T03:04:05.006Z")?;
+            let gift = NewCreditGift {
+                id: "a".repeat(64),
+                buyer_id: oid(0x11)?,
+                recipient_id: oid(0x12)?,
+                buyer_login: "buyer".into(),
+                recipient_login: "recipient".into(),
+                recipient_name: text.into(),
+                recipient_channel_id: "222".into(),
+                product_id: "prod_1".into(),
+                fulfillment_product_id: "prod_f".into(),
+                benefit_id: "ben_1".into(),
+                credits: JsNumber(500.0),
+                price_amount: JsNumber(499.0),
+                price_currency: "usd".into(),
+                status: GiftStatus::AwaitingPayment,
+                no_refunds_acknowledged_at: t1,
+                next_attempt_at: t1,
+            };
+            pair(gift.to_document()?, gift.prepare(ctx))
+        }
+        ("credittransactions", "referral") => {
+            let credit = NewCreditTransaction {
+                user: oid(0x21)?,
+                kind: TransactionType::ReferralBonus,
+                amount: JsNumber(250.0),
+                idempotency_key: None,
+                metadata: NewCreditMetadata {
+                    referral_code_used: "abc".to_owned().into(),
+                    referred_user_id: Some(oid(0x11)?),
+                    subscription_id: Some("sub_1".into()),
+                    plan_id: Some("prod_1".into()),
+                    description: Some(format!("Referral bonus for {text}")),
+                    ..NewCreditMetadata::default()
+                },
+            };
+            pair(credit.to_document()?, credit.prepare(ctx))
+        }
+        ("credittransactions", "null_code") => {
+            let credit = NewCreditTransaction {
+                user: oid(0x21)?,
+                kind: TransactionType::SubscriptionReward,
+                amount: JsNumber(100.0),
+                idempotency_key: None,
+                metadata: NewCreditMetadata {
+                    referral_code_used: Nullable::Null,
+                    referred_user_id: Some(oid(0x11)?),
+                    subscription_id: Some("sub_2".into()),
+                    plan_id: Some("prod_1".into()),
+                    description: Some("d".into()),
+                    external_reference: Some("ext".into()),
+                    reward_target_type: Some(RewardTarget::Bot),
+                },
+            };
+            pair(credit.to_document()?, credit.prepare(ctx))
+        }
+        ("referralcodes", "code") => {
+            let code = NewReferralCode {
+                code: "MyCode_1".into(),
+                owner: oid(0x11)?,
+                label: Some(text.into()),
+                stats: Some(NewReferralStats {
+                    conversions: JsNumber(0.0),
+                }),
+                active: None,
+            };
+            pair(code.to_document()?, code.prepare(ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
 }
@@ -979,10 +1161,26 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         }
         "updateOne" | "updateMany" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
-            let update = document_of(intent.get("update").context("update")?)?;
             let options = update_options(intent)?;
-            let prepared =
-                support::entry::update(info, &filter, update, options, writer, &mut ctx, &random);
+            let raw_update = intent.get("update").context("update")?;
+            let prepared = match raw_update.as_array() {
+                // A pipeline (no collection with update hooks uses one).
+                Some(stages) => info.prepare_update(
+                    &filter,
+                    stages.iter().map(document_of).collect::<Result<Vec<_>>>()?,
+                    options,
+                    &mut ctx,
+                ),
+                None => support::entry::update(
+                    info,
+                    &filter,
+                    document_of(raw_update)?,
+                    options,
+                    writer,
+                    &mut ctx,
+                    &random,
+                ),
+            };
             let prepared = match prepared {
                 Ok(prepared) => prepared,
                 Err(ModelError::Validation(error)) => {
@@ -1397,7 +1595,12 @@ async fn unique_indexes_report_duplicates() -> Result<()> {
             }
             if let Some(filter) = unique.partial_filter {
                 for (key, value) in filter() {
-                    insert_path(&mut document, &key, value);
+                    // An operator (`{$type: 'string'}`) is met by the value already there.
+                    let operator =
+                        matches!(&value, Bson::Document(d) if d.keys().any(|k| k.starts_with('$')));
+                    if !operator {
+                        insert_path(&mut document, &key, value);
+                    }
                 }
             }
             let collection = store.documents(info.name);

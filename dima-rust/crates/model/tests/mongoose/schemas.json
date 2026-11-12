@@ -24,6 +24,22 @@
    "sha256": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0"
   },
   {
+   "path": "src/schemas/ai_usage_daily.schema.ts",
+   "sha256": "80b5debff08e77578275a5267df1a1499138441d1bb5d55875f1eb2092318585"
+  },
+  {
+   "path": "src/schemas/ai_usage_dashboard.schema.ts",
+   "sha256": "0a284872d00400c766cb61995353dec43214d8564c31abb6e0c9e83e716f36c6"
+  },
+  {
+   "path": "src/schemas/ai_usage_ledger_state.schema.ts",
+   "sha256": "ede6fc369c432d97bee0db835871c0773c1000023ac2c34ff044510c5c60121c"
+  },
+  {
+   "path": "src/schemas/ai_usage_receipt.schema.ts",
+   "sha256": "87f132f55c47cf082f37dabadc0d42f790e8324d1925f6990a3794f46d845b92"
+  },
+  {
    "path": "src/schemas/app_config.schema.ts",
    "sha256": "ae2e1d246a21d5d1931267ce01441e0ca06d032b24a50985738eb3d26520c7b5"
   },
@@ -54,6 +70,14 @@
   {
    "path": "src/schemas/countdown_timer_config.schema.ts",
    "sha256": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a"
+  },
+  {
+   "path": "src/schemas/credit_gift.schema.ts",
+   "sha256": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607"
+  },
+  {
+   "path": "src/schemas/credit_transaction.schema.ts",
+   "sha256": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f"
   },
   {
    "path": "src/schemas/cron_job_intent.schema.ts",
@@ -102,6 +126,10 @@
   {
    "path": "src/schemas/redemption_reward.schema.ts",
    "sha256": "acc13c1d532d1078bbbb3d8260c7815565e63cae003fbad00564930b6b53e5a2"
+  },
+  {
+   "path": "src/schemas/referral_code.schema.ts",
+   "sha256": "d31791bbc11483a2894f22258f1445676aa95efc79ee3a88b4692eafb97a63d5"
   },
   {
    "path": "src/schemas/site_analytics.schema.ts",
@@ -5426,6 +5454,1595 @@
      ],
      "options": {
       "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "ai_usage_receipts": {
+   "model": "ai_usage_receipts",
+   "file": "src/schemas/ai_usage_receipt.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "customerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "entryId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "requestId",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "entryKind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "category",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "operation",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "source",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "adjustmentType",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "provider",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "model",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "quantity",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "unit",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "credits",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "resourceType",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "resourceId",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "itemized",
+      "kind": "value",
+      "type": "Boolean"
+     },
+     {
+      "name": "retentionTier",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "customerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "entryId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "entryKind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "entryKind",
+     "type": "enum",
+     "values": [
+      "usage",
+      "adjustment"
+     ]
+    },
+    {
+     "path": "category",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "operation",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "provider",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "credits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "itemized",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "retentionTier",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "retentionTier",
+     "type": "enum",
+     "values": [
+      "free",
+      "premium",
+      "pro"
+     ]
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "entryId",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "category",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "source",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "resourceId",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "requestId",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "entryKind",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "adjustmentType",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "entryId",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "ai_usage_dailies": {
+   "model": "ai_usage_daily",
+   "file": "src/schemas/ai_usage_daily.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "customerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "date",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "dayStart",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "spentCredits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "grantedCredits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "netConsumedCredits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "transactionCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "categories",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {}
+      }
+     },
+     {
+      "name": "retentionTier",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "customerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "date",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "dayStart",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "spentCredits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "grantedCredits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "netConsumedCredits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "transactionCount",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "categories",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "retentionTier",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "retentionTier",
+     "type": "enum",
+     "values": [
+      "free",
+      "premium",
+      "pro"
+     ]
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ],
+      [
+       "date",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "ai_usage_ledger_states": {
+   "model": "ai_usage_ledger_states",
+   "file": "src/schemas/ai_usage_ledger_state.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "customerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "coverageStart",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "backfilledAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "reportVersion",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "customerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "coverageStart",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "backfilledAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "ai_usage_dashboards": {
+   "model": "ai_usage_dashboards",
+   "file": "src/schemas/ai_usage_dashboard.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "customerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "planTier",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "request",
+      "kind": "mixed"
+     },
+     {
+      "name": "data",
+      "kind": "mixed"
+     },
+     {
+      "name": "dirty",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "refreshedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "key",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "customerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "planTier",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "request",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "data",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "refreshedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "key",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "customerId",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "dirty",
+       1
+      ],
+      [
+       "refreshedAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "creditgifts": {
+   "model": "CreditGift",
+   "file": "src/schemas/credit_gift.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "buyerId",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "recipientId",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "buyerLogin",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "recipientLogin",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "recipientName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "recipientChannelId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "productId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fulfillmentProductId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "benefitId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "credits",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "priceAmount",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "priceCurrency",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "noRefundsAcknowledgedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "purchaseCreateStartedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "checkoutId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "checkoutUrl",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "paidOrderId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "buyerCustomerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "paidAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "fulfillmentCreateStartedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "fulfillmentCheckoutId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fulfillmentOrderId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "recipientCustomerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "grantId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "deliveredAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "announcedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "announcementMessageId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "announcementStoppedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "announcementAttempts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "attempts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "nextAttemptAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "lastError",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "leaseToken",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [
+    "checkoutUrl"
+   ],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "buyerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "recipientId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "buyerLogin",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "recipientLogin",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "recipientName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "recipientChannelId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "productId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fulfillmentProductId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "benefitId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "credits",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "priceAmount",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "priceCurrency",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "awaiting_payment",
+      "payment_received",
+      "delivering",
+      "delivered",
+      "needs_support"
+     ]
+    },
+    {
+     "path": "noRefundsAcknowledgedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "nextAttemptAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "nextAttemptAt",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "checkoutId",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "credittransactions": {
+   "model": "CreditTransaction",
+   "file": "src/schemas/credit_transaction.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "user",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "amount",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "balanceAfter",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "idempotencyKey",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "appliedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "metadata",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "referralCodeUsed",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": null
+        }
+       },
+       {
+        "name": "referredUserId",
+        "kind": "value",
+        "type": "ObjectId",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": null
+        }
+       },
+       {
+        "name": "subscriptionId",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": null
+        }
+       },
+       {
+        "name": "planId",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": null
+        }
+       },
+       {
+        "name": "description",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": ""
+        }
+       },
+       {
+        "name": "externalReference",
+        "kind": "value",
+        "type": "String",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": null
+        }
+       },
+       {
+        "name": "rewardTargetType",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "user",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "enum",
+     "values": [
+      "referral_bonus",
+      "referral_payout",
+      "subscription_reward",
+      "manual_credit",
+      "manual_debit"
+     ]
+    },
+    {
+     "path": "amount",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "metadata.rewardTargetType",
+     "type": "enum",
+     "values": [
+      "bot",
+      "referrer"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "user",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "user",
+       1
+      ],
+      [
+       "createdAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "idempotencyKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "partialFilterExpression": {
+       "idempotencyKey": {
+        "$type": "string"
+       }
+      },
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "metadata.subscriptionId",
+       1
+      ]
+     ],
+     "options": {
+      "sparse": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "referralcodes": {
+   "model": "ReferralCode",
+   "file": "src/schemas/referral_code.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "code",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "label",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "stats",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "conversions",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "0"
+         }
+        }
+       }
+      ]
+     },
+     {
+      "name": "active",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "code",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "code",
+     "type": "user defined",
+     "message": "props=>`${props.value} is not a valid referral code. Must be 1-16 alphanumeric characters or underscores.`"
+    },
+    {
+     "path": "owner",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "label",
+     "type": "maxlength",
+     "maxlength": 50
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "code",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "owner",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "owner",
+       1
+      ],
+      [
+       "createdAt",
+       -1
+      ]
+     ],
+     "options": {
       "background": true
      }
     }

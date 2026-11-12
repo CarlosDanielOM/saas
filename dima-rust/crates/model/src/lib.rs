@@ -245,6 +245,10 @@ mod writes;
 
 pub mod accounts;
 pub mod admins;
+pub mod ai_usage_dailies;
+pub mod ai_usage_dashboards;
+pub mod ai_usage_ledger_states;
+pub mod ai_usage_receipts;
 pub mod app_configs;
 pub mod ast_variables;
 pub mod availability;
@@ -252,6 +256,8 @@ pub mod channel_configs;
 pub mod command_user_variables;
 pub mod commands;
 pub mod countdown_timers;
+pub mod credit_gifts;
+pub mod credit_transactions;
 pub mod cron_job_intents;
 pub mod custom_timers;
 pub mod domain_event_checkpoints;
@@ -264,6 +270,7 @@ pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
 pub mod oauth_sessions;
 pub mod redemption_rewards;
+pub mod referral_codes;
 pub mod site_analytics;
 pub mod stream_sessions;
 pub mod timer_commands;
@@ -309,4 +316,11 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &oauth_sessions::INFO,
     &cron_job_intents::INFO,
     &site_analytics::INFO,
+    &ai_usage_receipts::INFO,
+    &ai_usage_dailies::INFO,
+    &ai_usage_ledger_states::INFO,
+    &ai_usage_dashboards::INFO,
+    &credit_gifts::INFO,
+    &credit_transactions::INFO,
+    &referral_codes::INFO,
 ];

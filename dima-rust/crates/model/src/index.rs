@@ -176,12 +176,17 @@ impl IndexPolicy {
 ///   duplicate key is how it knows a job is already accepted;
 /// - the four OAuth collections (all): the API awaits their `init()` before it starts
 ///   (`server/oauth/service.ts:27`); the unique ones keep one grant per user, client and channel
-///   and one record per refresh token hash.
+///   and one record per refresh token hash;
+/// - `credittransactions` (unique): `CreditTransactionSchema.init()` is awaited before a
+///   paid-order reward is reserved, and a duplicate `idempotencyKey` would credit twice;
+/// - `ai_usage_receipts` (unique): nothing awaits it, but the upsert on `{channelID, customerId,
+///   entryId}` is what makes a receipt idempotent, and a duplicate would count its credits twice.
 pub fn startup_policy(info: &CollectionInfo) -> IndexPolicy {
     match info.name {
-        crate::domain_events::COLLECTION | crate::cron_job_intents::COLLECTION => {
-            IndexPolicy::RequireUnique
-        }
+        crate::domain_events::COLLECTION
+        | crate::cron_job_intents::COLLECTION
+        | crate::credit_transactions::COLLECTION
+        | crate::ai_usage_receipts::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION
         | crate::oauth_grants::COLLECTION
         | crate::oauth_refresh_tokens::COLLECTION
