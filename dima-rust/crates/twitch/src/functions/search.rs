@@ -46,9 +46,19 @@ pub fn category_tokens(title: &str) -> Result<Vec<String>, regex::Error> {
 /// At most four distinct discovery queries, retaining the original query first.
 pub fn category_queries(query: &str) -> Result<Vec<String>, regex::Error> {
     let tokens = category_tokens(query)?;
-    let original = Regex::new(r"[\s\u{feff}]+")?
-        .replace_all(&dima_text::to_lower(dima_text::trim(query)), " ")
-        .into_owned();
+    let mut original = String::new();
+    let mut space = false;
+    for ch in dima_text::to_lower(dima_text::trim(query)).chars() {
+        if dima_text::is_js_whitespace(ch) {
+            if !space {
+                original.push(' ');
+            }
+            space = true;
+        } else {
+            original.push(ch);
+            space = false;
+        }
+    }
     let arabic = tokens.join(" ");
     let roman = tokens
         .iter()

@@ -224,6 +224,15 @@ async fn chat_request_shapes_and_response_branches() -> Result<()> {
                     "{op}"
                 );
                 assert_eq!(
+                    result["status"],
+                    match op {
+                        "clear" | "settings" => 400,
+                        "emotes" => 500,
+                        _ => status,
+                    },
+                    "{op}"
+                );
+                assert_eq!(
                     server.requests().len(),
                     before + 1,
                     "reference does not retry 401"
@@ -240,6 +249,31 @@ async fn chat_request_shapes_and_response_branches() -> Result<()> {
                     "Internal server error"
                 }
             );
+        }
+        for op in [
+            "chatters",
+            "settings",
+            "emotes",
+            "set_emotes",
+            "color",
+            "pins",
+        ] {
+            *reply.lock().expect("reply") = (200, r#"{"data":[]}"#.into());
+            let result = call(&process.twitch, op).await;
+            assert_eq!(
+                result["error"],
+                ["emotes", "color"].contains(&op),
+                "{op}: {result}"
+            );
+            if op == "chatters" {
+                assert_eq!(result["chatters"], json!([]));
+            }
+        }
+        for op in ["pins", "pin", "update_pin", "unpin"] {
+            *reply.lock().expect("reply") = (200, String::new());
+            let result = call(&process.twitch, op).await;
+            assert_eq!(result["message"], "Twitch API returned an empty response");
+            assert_eq!(result["type"], "empty_response");
         }
         let before = server.requests().len();
         for n in [0.0, 29.0, 1801.0, 30.5, f64::NAN] {
