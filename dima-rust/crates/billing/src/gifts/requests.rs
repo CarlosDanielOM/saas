@@ -287,6 +287,21 @@ pub(crate) async fn verify_gift_customer(gifts: &Gifts<'_>, user: &User) -> Resu
     verify_customer_answer(gifts, user).await
 }
 
+/// The error `Promise.all([buyer, recipient])` rejects with: a payload refusal (immediate)
+/// before a failed read, the buyer's before the recipient's.
+fn first_rejection(
+    buyer: Result<(), GiftError>,
+    recipient: Result<(), GiftError>,
+) -> Result<(), GiftError> {
+    let immediate = |e: &GiftError| matches!(e, GiftError::Request { status: 409, message } if message.starts_with("This billing account is not ready"));
+    match (buyer, recipient) {
+        (Err(e), _) if immediate(&e) => Err(e),
+        (_, Err(e)) if immediate(&e) => Err(e),
+        (Err(e), _) | (_, Err(e)) => Err(e),
+        (Ok(()), Ok(())) => Ok(()),
+    }
+}
+
 /// The owner of a checkout or order: the user and its linked customer.
 pub(crate) fn owner_of(user: &User) -> (String, Option<String>) {
     (
@@ -436,16 +451,15 @@ pub async fn create_credit_gift_checkout(
     )?;
     let pair = load_gift_pair(gifts.polar, request.product_id).await?;
     // Refuse payment until both identities already exist in Polar; never resolve the recipient
-    // by e-mail. Both payloads are checked first (a synchronous throw), then both reads run.
-    customer_payload(user)?;
-    customer_payload(&recipient)?;
+    // by e-mail. `Promise.all` of two checks: each sends its read unless its own payload check
+    // threw, and the call fails with the first rejection in time (a payload check throws at
+    // once, before any read answers).
     let (buyer_check, recipient_check) = futures_util::future::join(
-        verify_customer_answer(gifts, user),
-        verify_customer_answer(gifts, &recipient),
+        verify_gift_customer(gifts, user),
+        verify_gift_customer(gifts, &recipient),
     )
     .await;
-    buyer_check?;
-    recipient_check?;
+    first_rejection(buyer_check, recipient_check)?;
 
     let now = gifts.clock.now_ms();
     let insert = doc! { "$setOnInsert": {
