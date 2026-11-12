@@ -242,12 +242,13 @@ pub fn accounting_metadata(input: &UsageEventInput) -> Map<String, Value> {
             ("currency", usd()),
             ("reason", reason()),
         ]);
-        // `characters: characters`: an undefined value is a key the SDK refuses in immediate
-        // mode (no immediate caller passes `_cost`); the queued copy loses it in `JSON.stringify`.
-        map.insert(
-            "characters".into(),
-            input.characters.map_or(Value::Null, js_number),
-        );
+        // `characters: characters`. Intended difference: an unset value is left out. The
+        // reference sends `undefined`, which the SDK refuses in immediate mode (no immediate
+        // caller passes `_cost`) and which its queued copy loses in `JSON.stringify` (batch and
+        // cache modes, the TTS path), so leaving it out is what production sends.
+        if let Some(characters) = input.characters {
+            map.insert("characters".into(), js_number(characters));
+        }
         map
     } else {
         object(vec![

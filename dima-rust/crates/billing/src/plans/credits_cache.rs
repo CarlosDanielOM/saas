@@ -88,7 +88,8 @@ pub struct LookupError(pub String);
 
 /// The current plan of the Twitch owner (`aiCreditReadDependencies.getCurrentPlan`).
 pub trait PlanLookup: Send + Sync {
-    /// The owner of Twitch account `twitch_id`, pinned to `customer_id` when given.
+    /// The owner of Twitch account `twitch_id`, pinned to `customer_id` when it is not empty
+    /// (the caller's value is passed as it is, as the reference passes it).
     fn current_plan<'a>(
         &'a self,
         twitch_id: &'a str,
@@ -387,7 +388,7 @@ impl CreditsCache {
             let mut version = String::new();
             if let Some(fence) = &fence {
                 let Some(current) = plans
-                    .current_plan(twitch_id, user.customer_id())
+                    .current_plan(twitch_id, user.polar_sh_customer_id.as_deref())
                     .await
                     .map_err(|e| e.to_string())?
                 else {
