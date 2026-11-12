@@ -149,6 +149,20 @@ const schemas = {
         list: [String],
     }, { minimize: false, timestamps: true, versionKey: false }),
 
+    // typed paths of every kind, immutable paths at every level (top, nested object, single
+    // nested sub-document, document array element).
+    typed: new Schema({
+        owner: Schema.Types.ObjectId,
+        label: { type: String, trim: true },
+        n: Number,
+        at: Date,
+        on: Boolean,
+        key: { type: String, immutable: true },
+        info: { since: Date, tag: { type: String, immutable: true } },
+        one: new Schema({ when: Date, k: { type: Number, default: 1 }, code: { type: String, immutable: true } }, { _id: false }),
+        entries: [new Schema({ who: Schema.Types.ObjectId, at: Date, n: Number, code: { type: String, immutable: true } })],
+    }, { timestamps: true }),
+
     // no timestamps option, hand-written createdAt/updatedAt with Date.now defaults (admins, events).
     hand: new Schema({
         name: String,
@@ -160,6 +174,7 @@ const schemas = {
 
 const collections = {
     camel: 'golden_camels', snake: 'golden_snakes', plain: 'golden_plains', nomin: 'golden_nomins', hand: 'golden_hands',
+    typed: 'golden_typeds',
 };
 const models = {};
 
@@ -203,6 +218,13 @@ const snakeSeed = () => ({
 });
 const plainSeed = () => ({ _id: 'p1', channelID: 'c1', dueAt: 1700000000000, payload: { deep: [1, { two: 2 }] }, state: { seq: 4, ids: ['a'] }, expiresAt: T2, label: 'l' });
 const nominSeed = () => ({ _id: 'n1', config: { theme: {} }, extra: {}, meta: { a: 'x', b: {} }, list: [], createdAt: T1, updatedAt: T1 });
+const typedSeed = () => ({
+    _id: oid1, owner: OID(0x50), label: 'l', n: 1, at: T1, on: true, key: 'k1', info: { since: T1, tag: 't1' },
+    one: { when: T1, k: 2, code: 'c1' }, entries: [{ _id: sub1, who: OID(0x51), at: T1, n: 1, code: 'e1' }],
+    createdAt: T1, updatedAt: T1, __v: 0,
+});
+// Immutable paths that were never written.
+const typedSparseSeed = () => ({ _id: oid2, label: 's', entries: [{ _id: sub1, n: 1 }], createdAt: T1, updatedAt: T1, __v: 0 });
 const handSeed = () => ({ _id: oid1, name: 'h', enabled: true, createdAt: T1, updatedAt: T1, __v: 0 });
 
 // Text that must survive untouched: emoji, combining marks, right-to-left, zero-width joiner.
@@ -395,6 +417,30 @@ const cases = [
     { name: 'save_hand_written_timestamps', schema: 'hand', seed: [handSeed()], op: 'save', id: oid1, changes: [{ set: 'name', value: 'x' }] },
     { name: 'save_push_then_set_element', schema: 'camel', seed: [camelSubdocSparseSeed()], op: 'save', id: oid3, changes: [{ push: 'items', values: [{ label: 'p' }] }, { set: 'items.0.label', value: 'q' }] },
     { name: 'save_set_default_path_to_default', schema: 'camel', seed: [camelSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'count', value: 0 }, { set: 'flag', value: null }] },
+    // ---- save of immutable paths: Mongoose keeps the stored value unless the (sub)document is new
+    { name: 'create_typed', schema: 'typed', op: 'create', doc: { label: ' t ', key: 'k', info: { tag: 'g', since: T1 }, one: { code: 'c' }, entries: [{ code: 'e', n: 1 }] } },
+    { name: 'save_immutable_top', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'key', value: 'changed' }, { set: 'label', value: 'x' }] },
+    { name: 'save_immutable_created_at', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'createdAt', value: T2 }] },
+    { name: 'save_immutable_created_at_with_change', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'createdAt', value: T2 }, { set: 'n', value: 2 }] },
+    { name: 'save_immutable_unset', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ unset: 'key' }, { unset: 'createdAt' }] },
+    { name: 'save_immutable_nested_path', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info.tag', value: 'x' }, { set: 'info.since', value: T2 }] },
+    { name: 'save_immutable_nested_object', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info', value: { since: T2, tag: 'x' } }] },
+    { name: 'save_immutable_nested_object_without_it', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info', value: { since: T2 } }] },
+    { name: 'save_immutable_single_nested_path', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'one.code', value: 'x' }, { set: 'one.k', value: 3 }] },
+    { name: 'save_immutable_single_nested_whole', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'one', value: { code: 'x', when: T2 } }] },
+    { name: 'save_immutable_array_element', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries.0.code', value: 'x' }, { set: 'entries.0.n', value: 5 }] },
+    { name: 'save_immutable_pushed_element', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ push: 'entries', values: [{ code: 'p', n: 2 }] }, { set: 'entries.1.code', value: 'q' }] },
+    { name: 'save_immutable_replaced_array', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries', value: [{ code: 'r' }] }, { set: 'entries.0.code', value: 's' }] },
+    { name: 'save_immutable_never_set', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'key', value: 'k' }, { set: 'info.tag', value: 'x' }, { set: 'entries.0.code', value: 'y' }] },
+    { name: 'save_immutable_missing_single_nested', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one.code', value: 'z' }] },
+    { name: 'save_immutable_array_element_same', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries.0.code', value: 'e1' }] },
+    { name: 'save_immutable_push_only', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ push: 'entries', values: [{ code: 'p', n: 2 }] }] },
+    { name: 'save_missing_single_nested_path', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one.when', value: T2 }] },
+    { name: 'save_single_nested_whole_on_sparse', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one', value: { code: 'x', when: T2 } }] },
+    { name: 'update_push_subdoc_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $push: { entries: { code: 'u', n: 3 } } } },
+    { name: 'update_set_subdoc_array_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { entries: [{ code: 'v' }], one: { code: 'w' }, 'entries.0.code': 'x' } } },
+    { name: 'save_immutable_same_value', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'key', value: 'k1' }] },
+
     // ---- save with compare-and-set predicates (`doc.$where`) and a document that went away
     { name: 'save_where_match', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T1, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
     { name: 'save_where_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2, __v: 3 }, changes: [{ set: 'score', value: 2 }] },

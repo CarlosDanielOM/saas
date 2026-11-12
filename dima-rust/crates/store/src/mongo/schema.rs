@@ -450,6 +450,11 @@ impl Target {
         }
     }
 
+    /// A target of `kind` with no setters.
+    pub(crate) fn of_kind(kind: TargetKind) -> Self {
+        Self::plain(kind)
+    }
+
     fn plain(kind: TargetKind) -> Self {
         Self {
             kind,

@@ -19,6 +19,15 @@
 //!   filter; changing a path inside an array element adds `__v` to the filter only;
 //! - with `minimize`, an object that is empty after removing its empty objects is moved from
 //!   `$set` to `$unset` (appended last);
+//! - immutable paths (`immutable: true` and the creation timestamp) keep their stored value:
+//!   setting or unsetting one at the top level, in a nested object or in a loaded single nested
+//!   sub-document is ignored; setting one inside a document array element writes the stored
+//!   value back (`$set: {'entries.0.code': <stored>}`), or removes the value from an element
+//!   added by this save; a whole nested object that is set loses its immutable paths, a whole
+//!   single nested sub-document takes them from the stored one, and the elements of a document
+//!   array that is set whole lose them (pushed elements keep them);
+//! - a path inside a missing single nested sub-document creates it with its defaults and sets
+//!   it whole (`$set: {one: {k: 1, when: …}}`);
 //! - every number in the filter and the update is typed as the Node BSON writer types a
 //!   JavaScript number (a loaded int64 `__v` goes into the filter as int32);
 //! - nothing to write: `update` is `None`, no command at all (the dropped paths are still
@@ -34,7 +43,7 @@ use crate::mongo::cast::{
     get_path_mut, remove_path, set_path,
 };
 use crate::mongo::number::normalize_js_numbers;
-use crate::mongo::schema::{Field, Kind, Schema, TargetKind, resolve};
+use crate::mongo::schema::{Field, Kind, Schema, Target, TargetKind, resolve};
 use bson::{Bson, Document};
 use std::collections::{HashMap, HashSet};
 
@@ -128,6 +137,8 @@ pub fn prepare_save(
     let mut caster = Caster::new(ctx);
     let (mut doc, mut defaults) = caster.hydrate(schema, loaded)?;
     let mut tracker = Tracker::default();
+    // Document arrays this save replaced whole: their elements are all new.
+    let mut replaced: HashSet<String> = HashSet::new();
 
     for change in changes {
         match change {
@@ -136,39 +147,90 @@ pub fn prepare_save(
                     caster.drop_path(path.clone());
                     continue;
                 };
-                let cast = match (target.kind, value) {
-                    (TargetKind::Nested(fields), Bson::Document(given)) => {
-                        Bson::Document(caster.set_nested(fields, given, &format!("{path}."))?)
+                let place = place_of(schema, path);
+                // A path inside a missing (or null) single nested sub-document: Mongoose builds
+                // the sub-document (with its defaults) and sets it whole.
+                if let Place::InSubdocument {
+                    path: sub_path,
+                    schema: sub,
+                } = &place
+                    && matches!(get_path(&doc, sub_path), None | Some(Bson::Null))
+                {
+                    let mut built = caster.construct(sub, None, "")?;
+                    let rest = path
+                        .strip_prefix(sub_path.as_str())
+                        .and_then(|rest| rest.strip_prefix('.'))
+                        .unwrap_or_default();
+                    if !target.immutable {
+                        let cast = cast_change(&mut caster, target, path, value)?;
+                        set_path(&mut built, rest, cast);
                     }
-                    _ => caster.cast_value(target, value.clone(), path)?,
-                };
-                let current = get_path(&doc, path);
-                // Setting a defaulted path to its (current) default value still counts.
-                let is_default = defaults.iter().any(|d| d == path) && !matches!(cast, Bson::Null);
-                let modify = tracker.is_modified(path)
-                    || !current.is_some_and(|c| deep_equal(&cast, c))
-                    || is_default;
-                if !modify {
+                    let whole = Target::of_kind(TargetKind::Subdocument(sub));
+                    commit(
+                        &mut doc,
+                        &mut defaults,
+                        &mut tracker,
+                        sub_path,
+                        Bson::Document(built),
+                        whole,
+                    )?;
                     continue;
                 }
-                if !set_path(&mut doc, path, cast) {
-                    return Err(PrepareError::InvalidChange {
-                        path: path.clone(),
-                        reason: "its parent is not a document",
-                    });
+                if target.immutable {
+                    // An immutable path keeps its stored value. Top-level, nested and single
+                    // nested paths: the change is ignored. Inside a document array element:
+                    // the element's value becomes the stored one again (none for an element
+                    // added by this save), and the path counts as changed unless both are
+                    // missing (recorded: `save_immutable_*`).
+                    if let Place::InElement { array, index } = &place {
+                        let original = !replaced.contains(array)
+                            && matches!(get_path(loaded, array), Some(Bson::Array(items)) if *index < items.len());
+                        let prior = original.then(|| get_path(loaded, path).cloned()).flatten();
+                        let current = get_path(&doc, path).is_some();
+                        match prior {
+                            Some(value) => {
+                                set_path(&mut doc, path, value);
+                            }
+                            None if current => {
+                                remove_path(&mut doc, path);
+                            }
+                            None => continue,
+                        }
+                        tracker.modify(path);
+                    }
+                    continue;
                 }
-                defaults.retain(|d| d != path);
-                tracker.modify(path);
-                if matches!(
-                    target.kind,
-                    TargetKind::Array | TargetKind::MixedArray | TargetKind::DocumentArray(_)
-                ) {
-                    tracker.replace_array(path);
+                let mut cast = cast_change(&mut caster, target, path, value)?;
+                // Immutable paths inside a whole new value (recorded): a nested object loses
+                // them, a single nested sub-document takes the stored values, the elements of a
+                // replaced document array lose them.
+                match (target.kind, &mut cast) {
+                    (TargetKind::Nested(fields), Bson::Document(built)) => {
+                        drop_immutables(fields, built);
+                    }
+                    (TargetKind::Subdocument(sub), Bson::Document(built)) => {
+                        let prior = get_path(loaded, path).and_then(Bson::as_document);
+                        restore_immutables(sub.fields, built, prior);
+                    }
+                    (TargetKind::DocumentArray(sub), Bson::Array(items)) => {
+                        for item in items.iter_mut() {
+                            if let Bson::Document(built) = item {
+                                drop_immutables(sub.fields, built);
+                            }
+                        }
+                        replaced.insert(path.clone());
+                    }
+                    _ => {}
                 }
+                commit(&mut doc, &mut defaults, &mut tracker, path, cast, target)?;
             }
             Change::Unset(path) => {
-                if resolve(schema, path).is_none() {
+                let Some(target) = resolve(schema, path) else {
                     caster.drop_path(path.clone());
+                    continue;
+                };
+                if target.immutable {
+                    // `doc.set(path, undefined)` on an immutable path keeps the stored value.
                     continue;
                 }
                 let was_default = defaults.iter().any(|d| d == path);
@@ -330,6 +392,144 @@ pub fn prepare_save(
         update: Some(update),
         dropped_paths: caster.dropped,
     })
+}
+
+/// The value a `Set` change writes, cast for its path.
+fn cast_change(
+    caster: &mut Caster<'_>,
+    target: Target,
+    path: &str,
+    value: &Bson,
+) -> Result<Bson, PrepareError> {
+    match (target.kind, value) {
+        (TargetKind::Nested(fields), Bson::Document(given)) => Ok(Bson::Document(
+            caster.set_nested(fields, given, &format!("{path}."))?,
+        )),
+        _ => caster.cast_value(target, value.clone(), path),
+    }
+}
+
+/// Writes `cast` at `path` unless it equals the current value (Mongoose's `$__set` checks).
+fn commit(
+    doc: &mut Document,
+    defaults: &mut Vec<String>,
+    tracker: &mut Tracker,
+    path: &str,
+    cast: Bson,
+    target: Target,
+) -> Result<(), PrepareError> {
+    let current = get_path(doc, path);
+    // Setting a defaulted path to its (current) default value still counts.
+    let is_default = defaults.iter().any(|d| d == path) && !matches!(cast, Bson::Null);
+    let modify =
+        tracker.is_modified(path) || !current.is_some_and(|c| deep_equal(&cast, c)) || is_default;
+    if !modify {
+        return Ok(());
+    }
+    if !set_path(doc, path, cast) {
+        return Err(PrepareError::InvalidChange {
+            path: path.to_owned(),
+            reason: "its parent is not a document",
+        });
+    }
+    defaults.retain(|d| d != path);
+    tracker.modify(path);
+    if matches!(
+        target.kind,
+        TargetKind::Array | TargetKind::MixedArray | TargetKind::DocumentArray(_)
+    ) {
+        tracker.replace_array(path);
+    }
+    Ok(())
+}
+
+/// Where a path lies, for immutability.
+enum Place {
+    /// Not inside a sub-document.
+    Plain,
+    /// Inside element `index` of the document array at `array`.
+    InElement { array: String, index: usize },
+    /// Inside the single nested sub-document at `path`.
+    InSubdocument {
+        path: String,
+        schema: &'static Schema,
+    },
+}
+
+/// The first sub-document (array element or single nested) that `path` goes through, the
+/// path's own last segment excluded.
+fn place_of(schema: &Schema, path: &str) -> Place {
+    let segments: Vec<&str> = path.split('.').collect();
+    let Some((_, parents)) = segments.split_last() else {
+        return Place::Plain;
+    };
+    let mut fields: &'static [Field] = schema.fields;
+    for (i, segment) in parents.iter().enumerate() {
+        let Some(field) = fields.iter().find(|f| f.name == *segment) else {
+            return Place::Plain;
+        };
+        match field.kind {
+            Kind::Nested(children) => fields = children,
+            Kind::Subdocument(sub) => {
+                return Place::InSubdocument {
+                    path: segments[..=i].join("."),
+                    schema: sub,
+                };
+            }
+            Kind::DocumentArray(_) => {
+                return match parents.get(i + 1).and_then(|s| s.parse::<usize>().ok()) {
+                    Some(index) => Place::InElement {
+                        array: segments[..=i].join("."),
+                        index,
+                    },
+                    None => Place::Plain,
+                };
+            }
+            _ => return Place::Plain,
+        }
+    }
+    Place::Plain
+}
+
+/// Removes the immutable paths present in `doc` (nested objects included).
+fn drop_immutables(fields: &[Field], doc: &mut Document) {
+    for field in fields {
+        match field.kind {
+            Kind::Nested(children) => {
+                if let Some(Bson::Document(inner)) = doc.get_mut(field.name) {
+                    drop_immutables(children, inner);
+                }
+            }
+            _ if field.immutable => {
+                doc.remove(field.name);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Gives each immutable path present in `doc` the value it has in `prior` (removing it when
+/// `prior` has none), keeping its position.
+fn restore_immutables(fields: &[Field], doc: &mut Document, prior: Option<&Document>) {
+    for field in fields {
+        let before = prior.and_then(|p| p.get(field.name));
+        match field.kind {
+            Kind::Nested(children) => {
+                if let Some(Bson::Document(inner)) = doc.get_mut(field.name) {
+                    restore_immutables(children, inner, before.and_then(Bson::as_document));
+                }
+            }
+            _ if field.immutable && doc.contains_key(field.name) => match before {
+                Some(value) => {
+                    doc.insert(field.name, value.clone());
+                }
+                None => {
+                    doc.remove(field.name);
+                }
+            },
+            _ => {}
+        }
+    }
 }
 
 /// Which paths changed, in order, and how each changed array is to be written. Lookups are

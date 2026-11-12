@@ -152,6 +152,34 @@ static NOMIN: Schema = Schema::new(&[
 .no_minimize()
 .timestamps(Timestamps::CAMEL);
 
+static TYPED_ONE: Schema = Schema::subdocument(&[
+    Field::value("when"),
+    Field::value("k").default(D::Int(1)),
+    Field::value("code").immutable(),
+])
+.no_id();
+static TYPED_ENTRY: Schema = Schema::subdocument(&[
+    Field::value("who"),
+    Field::value("at"),
+    Field::value("n"),
+    Field::value("code").immutable(),
+]);
+static TYPED: Schema = Schema::new(&[
+    Field::value("owner"),
+    Field::value("label").trim(),
+    Field::value("n"),
+    Field::value("at"),
+    Field::value("on"),
+    Field::value("key").immutable(),
+    Field::nested(
+        "info",
+        &[Field::value("since"), Field::value("tag").immutable()],
+    ),
+    Field::subdocument("one", &TYPED_ONE),
+    Field::document_array("entries", &TYPED_ENTRY),
+])
+.timestamps(Timestamps::CAMEL);
+
 static HAND: Schema = Schema::new(&[
     Field::value("name"),
     Field::value("enabled").default(D::Bool(true)),
@@ -167,6 +195,7 @@ fn schema_for(name: &str) -> Result<(&'static Schema, bool)> {
         "plain" => (&PLAIN, false),
         "nomin" => (&NOMIN, false),
         "hand" => (&HAND, true),
+        "typed" => (&TYPED, true),
         other => bail!("unknown schema {other}"),
     })
 }
