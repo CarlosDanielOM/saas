@@ -21,7 +21,7 @@
 //! [`BLOCKING_GRACE`], so a hung server cannot hold the caller forever; on expiry the connection
 //! is abandoned as above and [`DragonflyError::BlockingDeadline`] is returned.
 
-use super::client::Shared;
+use super::client::{AUTH_REFUSED, Shared, is_auth_refused};
 use super::commands::{End, reply};
 use super::error::{DragonflyError, Result};
 use super::queue::QueueItem;
@@ -121,6 +121,9 @@ impl BlockingConnection {
         };
         let live = match tokio::time::timeout(self.shared.config.connect_timeout * 2, open).await {
             Ok(Ok(live)) => live,
+            Ok(Err(error)) if is_auth_refused(&error) => {
+                return Err(DragonflyError::Config(AUTH_REFUSED));
+            }
             Ok(Err(error)) => return Err(self.failed(error)),
             Err(_) => {
                 return Err(self.failed(redis::RedisError::from(std::io::Error::new(

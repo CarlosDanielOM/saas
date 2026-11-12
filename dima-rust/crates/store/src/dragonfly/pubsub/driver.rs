@@ -137,6 +137,8 @@ pub(super) async fn run(
     let mut entries: HashMap<Topic, Entry> = HashMap::new();
     let mut attempt = 0_u32;
     let mut first = true;
+    // A refused AUTH is reported once, until a connection works again.
+    let mut auth_reported = false;
     loop {
         if !first {
             let sleep = tokio::time::sleep(backoff(attempt));
@@ -173,7 +175,13 @@ pub(super) async fn run(
                 for entry in entries.values_mut() {
                     entry.went_offline();
                 }
-                shared.hooks.report(&shared.config.caller, &error);
+                let refused = matches!(error, ConnectError::AuthRefused);
+                if !(refused && auth_reported) {
+                    shared
+                        .hooks
+                        .report(&shared.config.caller, &error.into_error());
+                }
+                auth_reported |= refused;
                 continue;
             }
         };
@@ -185,6 +193,7 @@ pub(super) async fn run(
         let lost = serve(&mut connection, &mut control, &mut entries, &state, limits).await;
         if connection.ready {
             attempt = 0;
+            auth_reported = false;
         }
         drop(connection);
         state.connection_id.store(0, Ordering::Relaxed);
@@ -592,25 +601,78 @@ pub(super) fn backoff(attempt: u32) -> Duration {
     Duration::from_millis(50u64.saturating_mul(1u64 << attempt.min(16)).min(2000))
 }
 
-/// Opens the subscriber connection and learns its `CLIENT ID` (for diagnostics and tests)
-/// before it switches to subscribe mode, all within the connect timeout. Pub/sub is not
-/// scoped to a logical database, so no `SELECT` is sent.
-async fn connect(shared: &Shared) -> redis::RedisResult<Connection> {
+/// Why a connection attempt failed.
+enum ConnectError {
+    /// The server refused the credentials: a configuration error, reported once.
+    AuthRefused,
+    Other(redis::RedisError),
+}
+
+impl ConnectError {
+    fn into_error(self) -> redis::RedisError {
+        match self {
+            Self::AuthRefused => redis::RedisError::from(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "Dragonfly refused the subscriber's AUTH: check the credentials in the address",
+            )),
+            Self::Other(error) => error,
+        }
+    }
+}
+
+/// Opens the subscriber connection: `AUTH` when the address carries credentials, then learns its
+/// `CLIENT ID` (for diagnostics and tests) before it switches to subscribe mode, all within the
+/// connect timeout. Pub/sub is not scoped to a logical database, so no `SELECT` is sent.
+async fn connect(shared: &Shared) -> Result<Connection, ConnectError> {
     let info = shared.client.get_connection_info();
     let ConnectionAddr::Tcp(host, port) = info.addr() else {
-        return Err(redis::RedisError::from((
+        return Err(ConnectError::Other(redis::RedisError::from((
             redis::ErrorKind::InvalidClientConfig,
             "subscriber needs a TCP address",
-        )));
+        ))));
     };
+    let settings = info.redis_settings();
     let open = async {
         let mut stream = tokio::net::TcpStream::connect((host.as_str(), *port)).await?;
         stream.set_nodelay(true)?;
-        let id = client_id(&mut stream).await?;
-        Ok::<_, std::io::Error>((stream, id))
+        if let Some(password) = settings.password() {
+            let mut auth = Vec::new();
+            match settings.username() {
+                Some(user) => {
+                    resp::command(&mut auth, &[b"AUTH", user.as_bytes(), password.as_bytes()])
+                }
+                None => resp::command(&mut auth, &[b"AUTH", password.as_bytes()]),
+            }
+            stream.write_all(&auth).await?;
+            let reply = reply_line(&mut stream).await?;
+            if reply.first() == Some(&b'-') {
+                return Ok(Err(ConnectError::AuthRefused));
+            }
+            if reply != b"+OK" {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "unexpected AUTH reply",
+                ));
+            }
+        }
+        stream
+            .write_all(b"*2\r\n$6\r\nCLIENT\r\n$2\r\nID\r\n")
+            .await?;
+        let id = reply_line(&mut stream)
+            .await?
+            .strip_prefix(b":")
+            .and_then(|digits| std::str::from_utf8(digits).ok())
+            .and_then(|digits| digits.parse::<i64>().ok())
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "unexpected CLIENT ID reply",
+                )
+            })?;
+        Ok::<_, std::io::Error>(Ok((stream, id)))
     };
     match tokio::time::timeout(shared.config.connect_timeout, open).await {
-        Ok(Ok((stream, id))) => {
+        Ok(Ok(Ok((stream, id)))) => {
             let (reader, writer) = stream.into_split();
             Ok(Connection {
                 id,
@@ -625,42 +687,35 @@ async fn connect(shared: &Shared) -> redis::RedisResult<Connection> {
                 ready: false,
             })
         }
-        Ok(Err(error)) => Err(redis::RedisError::from(error)),
-        Err(_) => Err(redis::RedisError::from(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            "Dragonfly subscriber connection did not open within the connect timeout",
+        Ok(Ok(Err(refused))) => Err(refused),
+        Ok(Err(error)) => Err(ConnectError::Other(redis::RedisError::from(error))),
+        Err(_) => Err(ConnectError::Other(redis::RedisError::from(
+            std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "Dragonfly subscriber connection did not open within the connect timeout",
+            ),
         ))),
     }
 }
 
-/// `CLIENT ID` over the raw socket: the request, then one `:<integer>\r\n` reply.
-async fn client_id(stream: &mut tokio::net::TcpStream) -> std::io::Result<i64> {
-    stream
-        .write_all(b"*2\r\n$6\r\nCLIENT\r\n$2\r\nID\r\n")
-        .await?;
+/// The longest reply line read while connecting (`+OK`, an integer, or an error message).
+const MAX_CONNECT_REPLY: usize = 512;
+
+/// One reply line (without its CRLF), read byte by byte so nothing after it is consumed.
+async fn reply_line(stream: &mut tokio::net::TcpStream) -> std::io::Result<Vec<u8>> {
     let mut line = Vec::with_capacity(24);
     loop {
         let byte = stream.read_u8().await?;
         line.push(byte);
         if line.ends_with(b"\r\n") {
-            break;
+            line.truncate(line.len() - 2);
+            return Ok(line);
         }
-        if line.len() > 32 {
+        if line.len() > MAX_CONNECT_REPLY {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "CLIENT ID reply too long",
+                "Dragonfly reply line too long while connecting",
             ));
         }
     }
-    let digits = line
-        .strip_prefix(b":")
-        .and_then(|rest| rest.strip_suffix(b"\r\n"))
-        .and_then(|digits| std::str::from_utf8(digits).ok())
-        .and_then(|digits| digits.parse::<i64>().ok());
-    digits.ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "unexpected CLIENT ID reply",
-        )
-    })
 }

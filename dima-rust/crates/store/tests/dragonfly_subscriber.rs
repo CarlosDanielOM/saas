@@ -14,6 +14,7 @@ use dima_store::dragonfly::{
     Dragonfly, DragonflyConfig, DragonflyError, Event, Gap, Hooks, Overflow, Subscriber,
     Subscription, Topic,
 };
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
@@ -115,28 +116,81 @@ async fn read_command(reader: &mut BufReader<OwnedReadHalf>) -> Result<Option<Ve
     Ok(Some(parts))
 }
 
+/// One `AUTH` command the mock received, and whether it accepted it.
+type Auth = (Vec<String>, bool);
+
+/// A lock that a panicking test thread may have poisoned still holds valid data.
+fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 struct Mock {
     port: u16,
     peers: mpsc::UnboundedReceiver<Peer>,
+    /// The password every connection must send with `AUTH` first (`None`: no authentication).
+    password: Arc<Mutex<Option<String>>>,
+    /// Every `AUTH` command received, in order, with whether it was accepted.
+    auths: Arc<Mutex<Vec<Auth>>>,
 }
 
 impl Mock {
     async fn start() -> Result<Self> {
+        Self::start_with_password(None).await
+    }
+
+    /// A mock that refuses every command before a successful `AUTH <password>` (or
+    /// `AUTH <user> <password>`), as a server with `requirepass` does.
+    async fn start_with_password(password: Option<&str>) -> Result<Self> {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let port = listener.local_addr()?.port();
         let (peers_tx, peers) = mpsc::unbounded_channel();
+        let password = Arc::new(Mutex::new(password.map(str::to_owned)));
+        let auths = Arc::new(Mutex::new(Vec::new()));
+        let (required, log) = (password.clone(), auths.clone());
         tokio::spawn(async move {
             let mut next_id = 100_i64;
             while let Ok((socket, _)) = listener.accept().await {
                 next_id += 1;
                 let id = next_id;
                 let peers_tx = peers_tx.clone();
+                let (required, log) = (required.clone(), log.clone());
                 tokio::spawn(async move {
                     let (reader, mut writer) = socket.into_split();
                     let mut reader = BufReader::new(reader);
-                    let Ok(Some(first)) = read_command(&mut reader).await else {
+                    let Ok(Some(mut first)) = read_command(&mut reader).await else {
                         return;
                     };
+                    // Authentication first, when the mock requires it.
+                    loop {
+                        let expected = locked(&required).clone();
+                        let Some(expected) = expected else { break };
+                        let is_auth = first
+                            .first()
+                            .is_some_and(|name| name.eq_ignore_ascii_case("AUTH"));
+                        let accepted = is_auth && first.last() == Some(&expected);
+                        if is_auth {
+                            locked(&log).push((first.clone(), accepted));
+                        }
+                        let reply: &[u8] = if accepted {
+                            b"+OK\r\n"
+                        } else if is_auth {
+                            b"-WRONGPASS invalid username-password pair or user is disabled.\r\n"
+                        } else {
+                            b"-NOAUTH Authentication required.\r\n"
+                        };
+                        if writer.write_all(reply).await.is_err() {
+                            return;
+                        }
+                        let Ok(Some(next)) = read_command(&mut reader).await else {
+                            return;
+                        };
+                        first = next;
+                        if accepted {
+                            break;
+                        }
+                    }
                     if first
                         .iter()
                         .map(|p| p.to_ascii_uppercase())
@@ -161,15 +215,22 @@ impl Mock {
                     } else {
                         let mut command = Some(first);
                         while let Some(current) = command {
-                            let reply: &[u8] = if current
-                                .first()
-                                .is_some_and(|name| name.eq_ignore_ascii_case("PING"))
+                            let name = current
+                                .iter()
+                                .map(|p| p.to_ascii_uppercase())
+                                .collect::<Vec<_>>();
+                            let reply: Vec<u8> = match name
+                                .iter()
+                                .map(String::as_str)
+                                .collect::<Vec<_>>()
+                                .as_slice()
                             {
-                                b"+PONG\r\n"
-                            } else {
-                                b"+OK\r\n"
+                                ["PING", ..] => b"+PONG\r\n".to_vec(),
+                                ["CLIENT", "ID"] => format!(":{id}\r\n").into_bytes(),
+                                ["BLPOP", ..] => b"*-1\r\n".to_vec(),
+                                _ => b"+OK\r\n".to_vec(),
                             };
-                            if writer.write_all(reply).await.is_err() {
+                            if writer.write_all(&reply).await.is_err() {
                                 return;
                             }
                             command = read_command(&mut reader).await.ok().flatten();
@@ -178,7 +239,12 @@ impl Mock {
                 });
             }
         });
-        Ok(Self { port, peers })
+        Ok(Self {
+            port,
+            peers,
+            password,
+            auths,
+        })
     }
 
     fn config(&self, response_timeout: Duration) -> DragonflyConfig {
@@ -482,5 +548,141 @@ async fn keep_alive_pings_are_answered_by_dragonfly() -> Result<()> {
         Event::Message(message) => ensure!(message.payload == b"still here"),
         other => bail!("{other:?}"),
     }
+    Ok(())
+}
+
+/// Counts the connection errors reported, by code.
+#[derive(Default)]
+struct CountingErrors {
+    messages: Mutex<Vec<String>>,
+}
+
+impl dima_store::dragonfly::ErrorHook for CountingErrors {
+    fn connection_error(&self, error: &dima_store::dragonfly::hooks::ConnectionError<'_>) {
+        locked(&self.messages).push(error.error.to_string());
+    }
+}
+
+fn with_credentials(mock: &Mock, userinfo: &str) -> DragonflyConfig {
+    let mut config = DragonflyConfig::from_env_values(
+        Some(&format!("{userinfo}@127.0.0.1")),
+        Some(&mock.port.to_string()),
+        "mock",
+    );
+    config.response_timeout = Duration::from_secs(5);
+    config
+}
+
+#[tokio::test]
+async fn credentials_in_the_address_authenticate_every_connection() -> Result<()> {
+    let mut mock = Mock::start_with_password(Some("s3cret")).await?;
+    let config = with_credentials(&mock, "dima:s3cret");
+    let shown = format!("{config:?}");
+    ensure!(!shown.contains("s3cret"), "{shown}");
+    ensure!(shown.contains("127.0.0.1"), "{shown}");
+    let df = Dragonfly::connect(config, Hooks::default()).await?;
+    let pong: String = df.query(&redis::cmd("PING")).await?;
+    ensure!(pong == "PONG");
+    ensure!(!format!("{df:?}").contains("s3cret"));
+
+    // The blocking connection authenticates too.
+    let mut blocking = df.blocking();
+    ensure!(
+        blocking
+            .blpop(&["k"], Duration::from_secs(1))
+            .await?
+            .is_none()
+    );
+
+    // So does the subscriber: AUTH, then CLIENT ID, then its subscriptions; no SELECT.
+    let subscriber = df.subscriber();
+    let mut peer = mock.peer().await?;
+    let _subscription = subscribed(&subscriber, &mut peer, "a").await?;
+    let auths = locked(&mock.auths).clone();
+    ensure!(auths.len() >= 3, "{auths:?}");
+    ensure!(
+        auths
+            .iter()
+            .all(|(command, accepted)| *accepted && command == &["AUTH", "dima", "s3cret"]),
+        "{auths:?}"
+    );
+
+    // A password alone (`:password@host`) is sent as `AUTH password`.
+    let mut solo = Mock::start_with_password(Some("only")).await?;
+    let df = Dragonfly::connect(with_credentials(&solo, ":only"), Hooks::default()).await?;
+    let subscriber = df.subscriber();
+    let mut peer = solo.peer().await?;
+    let _subscription = subscribed(&subscriber, &mut peer, "b").await?;
+    let auths = locked(&solo.auths).clone();
+    ensure!(
+        auths
+            .iter()
+            .all(|(command, accepted)| *accepted && command == &["AUTH", "only"]),
+        "{auths:?}"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_wrong_password_is_refused_without_showing_it() -> Result<()> {
+    let mock = Mock::start_with_password(Some("right")).await?;
+    let started = Instant::now();
+    let error = Dragonfly::connect(with_credentials(&mock, "dima:wrong-pass"), Hooks::default())
+        .await
+        .map(|_| ())
+        .err()
+        .context("a wrong password connected")?;
+    // A configuration error at once, not the connect deadline after retries.
+    ensure!(matches!(error, DragonflyError::Config(_)), "{error:?}");
+    ensure!(
+        started.elapsed() < Duration::from_secs(2),
+        "{:?}",
+        started.elapsed()
+    );
+    for shown in [error.to_string(), format!("{error:?}")] {
+        ensure!(!shown.contains("wrong-pass"), "{shown}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_refused_subscriber_auth_is_reported_once_and_retried_with_backoff() -> Result<()> {
+    let mut mock = Mock::start_with_password(Some("old")).await?;
+    let errors = Arc::new(CountingErrors::default());
+    let hooks = Hooks {
+        command: None,
+        errors: Some(errors.clone()),
+    };
+    let df = Dragonfly::connect(with_credentials(&mock, "dima:old"), hooks).await?;
+    // The password is rotated on the server before the subscriber connects.
+    *locked(&mock.password) = Some("new".to_owned());
+    // A blocking connection opened now is refused with a configuration error.
+    let refused = df.blocking().connect().await;
+    ensure!(
+        matches!(refused, Err(DragonflyError::Config(_))),
+        "{refused:?}"
+    );
+    locked(&mock.auths).clear();
+    let subscriber = df.subscriber();
+    let (subscription, ()) = tokio::join!(
+        subscriber.subscribe(Topic::Channel("a".into()), Overflow::Gap),
+        tokio::time::sleep(Duration::from_millis(800))
+    );
+    let subscription = subscription?;
+    ensure!(!subscription.confirmed());
+    let refused = locked(&mock.auths).len();
+    // Back-off 50, 100, 200, 400 ms: about five attempts in 800 ms, not a busy loop.
+    ensure!((2..=6).contains(&refused), "{refused} AUTH attempts");
+    let messages = locked(&errors.messages).clone();
+    ensure!(messages.len() == 1, "reported {messages:?}");
+    ensure!(
+        messages[0].contains("refused the subscriber's AUTH"),
+        "{messages:?}"
+    );
+    ensure!(!messages[0].contains("old"), "{messages:?}");
+    // Once the credentials work again the subscriber comes back.
+    *locked(&mock.password) = Some("old".to_owned());
+    let mut peer = mock.peer().await?;
+    ensure!(peer.command().await? == ["SUBSCRIBE", "a"]);
     Ok(())
 }

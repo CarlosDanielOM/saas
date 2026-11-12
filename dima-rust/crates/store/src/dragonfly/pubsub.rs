@@ -46,6 +46,10 @@
 //!
 //! # Connection
 //!
+//! - **Opening**: `AUTH` first when the address carries credentials (a refused `AUTH` is
+//!   reported once and retried with the back-off below), then `CLIENT ID`, all within
+//!   [`super::DragonflyConfig::connect_timeout`]. No `SELECT`: pub/sub ignores the logical
+//!   database, channels are server-wide.
 //! - **Reconnect**: when the connection drops, the task reconnects with back-off
 //!   (`min(50 ms × 2^attempt, 2 s)`, node-redis 5's default strategy without its random jitter) and
 //!   subscribes again to every channel and pattern, as node-redis does. Messages published while it
