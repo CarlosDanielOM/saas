@@ -386,19 +386,28 @@ export const TWINS = [
 ];
 const TWIN_OF = new Map(TWINS);
 const astralIn = text => [...text].filter(ch => ch.codePointAt(0) > 0xFFFF);
+// Also twinned: an object with an own `toString` key. JavaScript's String() then throws (the
+// key shadows Object.prototype.toString); in Rust an object is data and prints [object Object].
+// The twin renames the key, which the Rust test maps back.
+const TO_STRING_TWIN = ['toString', 'toStringKey'];
+const hasOwnToString = value => Array.isArray(value) ? value.some(hasOwnToString)
+  : value && typeof value === 'object' ? Object.keys(value).includes('toString') || Object.values(value).some(hasOwnToString) : false;
 export function twinInput(input) {
   const text = JSON.stringify(input);
   const astral = [...new Set(astralIn(text))];
-  if (!astral.length) return undefined;
+  const toString = hasOwnToString(input);
+  if (!astral.length && !toString) return undefined;
   for (const ch of astral) assert(TWIN_OF.has(ch), `no BMP twin for U+${ch.codePointAt(0).toString(16)}`);
-  const used = astral.map(ch => TWIN_OF.get(ch));
   for (const [, bmp] of TWINS) assert(!text.includes(bmp), `twin ${bmp} already occurs in the case`);
+  assert(!text.includes(TO_STRING_TWIN[1]), 'toString twin key already occurs in the case');
   // Case pairs travel together: a case with one of them can produce the other.
   const map = TWINS.filter(([ch]) => astral.includes(ch) || (ch === '\u{10428}' && astral.includes('\u{10400}')) || (ch === '\u{10400}' && astral.includes('\u{10428}')));
-  const swap = value => typeof value === 'string' ? [...value].map(ch => TWIN_OF.get(ch) ?? ch).join('')
+  if (toString) map.push(TO_STRING_TWIN);
+  const swapText = value => [...value].map(ch => TWIN_OF.get(ch) ?? ch).join('');
+  const swapKey = key => toString && key === 'toString' ? TO_STRING_TWIN[1] : swapText(key);
+  const swap = value => typeof value === 'string' ? swapText(value)
     : Array.isArray(value) ? value.map(swap)
-    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [swap(k), swap(v)])) : value;
-  assert(used.length);
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [swapKey(k), swap(v)])) : value;
   return { map, input: swap(input) };
 }
 export async function withTwin(oracle, definition, source) {
