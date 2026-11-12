@@ -534,7 +534,12 @@ async fn main() -> Result<()> {
         None => Variant::Good,
     };
     let port: u16 = env("PORT")?.parse()?;
-    let client = mongodb::Client::with_uri_str(env("MONGO_URI")?).await?;
+    // One connection, authenticated at start-up before the fixture reports ready: a new pooled
+    // connection costs a SCRAM handshake, slow in debug builds under load, which would move a
+    // request's times by seconds.
+    let mut opts = mongodb::options::ClientOptions::parse(env("MONGO_URI")?).await?;
+    opts.max_pool_size = Some(1);
+    let client = mongodb::Client::with_options(opts)?;
     let db = client.database(&env("MONGO_DB")?);
     let redis = redis::Client::open(env("REDIS_URL")?)?
         .get_multiplexed_async_connection()
