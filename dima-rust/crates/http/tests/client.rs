@@ -1502,3 +1502,39 @@ async fn request_bodies_are_bounded_per_provider_and_per_request() {
         ("/stream-ok", "1234567890")
     );
 }
+
+/// A POST is retried after a 429 only when the provider states that a 429 means "not
+/// processed".
+#[tokio::test]
+async fn a_429_retries_a_post_only_when_the_provider_guarantees_it() {
+    let server = MockServer::start().await.unwrap();
+    let policy = RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(429));
+    let plain = Provider::builder("plain", &server.url())
+        .retry(policy.clone())
+        .build()
+        .unwrap();
+    let guaranteed = Provider::builder("guaranteed", &server.url())
+        .retry(policy)
+        .rate_limit_means_unprocessed(true)
+        .build()
+        .unwrap();
+    let client = client();
+    server.push(MockResponse::new(429));
+    let response = client
+        .post(&plain, "/charge")
+        .body("x")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (429, 1));
+    drop(response);
+    server.push(MockResponse::new(429));
+    server.push(MockResponse::new(200));
+    let response = client
+        .post(&guaranteed, "/charge")
+        .body("x")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (200, 2));
+}

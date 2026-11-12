@@ -10,8 +10,13 @@
 //! **Idempotency.** A request is retried only if its body can be replayed (bytes, not a stream)
 //! and it is idempotent (GET, HEAD, OPTIONS, TRACE, PUT, DELETE, or marked so by the caller), or
 //! the policy says [`RetryPolicy::retry_non_idempotent`], or the failure proves the server did
-//! not act on it: the connection was never established, the server answered 429, or it answered
-//! 401 and the credential was refreshed.
+//! not act on it: the connection was never established, or the server answered 401 and the
+//! credential was refreshed. A 429 is such proof only for a provider that states it
+//! ([`crate::ProviderBuilder::rate_limit_means_unprocessed`], off by default): not every
+//! service rate-limits before acting.
+//!
+//! The reference Helix wrapper (`utils/twitch_helix_retry.ts`) retries 401 only, for every
+//! method; it never retries 429, so [`RetryPolicy::twitch_helix`] needs no 429 guarantee.
 //!
 //! **Reference policies this type expresses** (each is checked by a test in this module):
 //!
@@ -292,6 +297,9 @@ pub struct Context {
     pub replayable: bool,
     /// Whether a credential can be refreshed on 401.
     pub refreshable: bool,
+    /// Whether the provider guarantees that a 429 means the request was not processed
+    /// ([`crate::ProviderBuilder::rate_limit_means_unprocessed`]).
+    pub rate_limit_unprocessed: bool,
     /// Time since the first attempt started.
     pub elapsed: Duration,
 }
@@ -507,7 +515,8 @@ impl RetryPolicy {
                 }
                 (
                     retryable,
-                    code == 429 || (code == 401 && self.refresh_unauthorized),
+                    (code == 429 && ctx.rate_limit_unprocessed)
+                        || (code == 401 && self.refresh_unauthorized),
                 )
             }
             Outcome::Failure(class) => match class {
@@ -572,6 +581,7 @@ mod tests {
             idempotent: true,
             replayable: true,
             refreshable: true,
+            rate_limit_unprocessed: false,
             elapsed: Duration::ZERO,
         }
     }
@@ -751,7 +761,8 @@ mod tests {
             idempotent: false,
             ..ctx(1)
         };
-        // POST: a 503 or a timeout may have been acted on; a refused connection or a 429 not.
+        // POST: a 503, a timeout or (by default) a 429 may have been acted on; a refused
+        // connection not.
         assert_eq!(
             policy.decide(post, status(503, &empty), &clock, &random),
             Decision::Stop(StopReason::NotIdempotent)
@@ -776,7 +787,20 @@ mod tests {
         );
         assert_eq!(
             policy.decide(post, status(429, &empty), &clock, &random),
+            Decision::Stop(StopReason::NotIdempotent)
+        );
+        // Only a provider that guarantees it makes a 429 proof of "not processed".
+        let guaranteed = Context {
+            rate_limit_unprocessed: true,
+            ..post
+        };
+        assert_eq!(
+            policy.decide(guaranteed, status(429, &empty), &clock, &random),
             Decision::Retry(ms(500))
+        );
+        assert_eq!(
+            policy.decide(guaranteed, status(503, &empty), &clock, &random),
+            Decision::Stop(StopReason::NotIdempotent)
         );
         assert_eq!(
             policy.clone().retry_non_idempotent(true).decide(

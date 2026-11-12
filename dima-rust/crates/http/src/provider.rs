@@ -87,6 +87,7 @@ pub(crate) struct ProviderInner {
     pub semaphore: Option<Arc<Semaphore>>,
     pub secret_query: Arc<[&'static str]>,
     pub internal: bool,
+    pub rate_limit_unprocessed: bool,
 }
 
 impl std::fmt::Debug for Provider {
@@ -121,6 +122,7 @@ impl Provider {
             max_concurrency: None,
             secret_query: Vec::new(),
             internal: false,
+            rate_limit_unprocessed: false,
         }
     }
 
@@ -177,6 +179,7 @@ pub struct ProviderBuilder {
     max_concurrency: Option<usize>,
     secret_query: Vec<&'static str>,
     internal: bool,
+    rate_limit_unprocessed: bool,
 }
 
 /// The name and the header names only: the base URL is not validated yet (it could hold
@@ -283,6 +286,14 @@ impl ProviderBuilder {
         self
     }
 
+    /// States that this service answers 429 only for requests it did not process, so a
+    /// non-idempotent request may be retried after a 429 (when the retry policy retries 429).
+    /// Off by default: only set it where the service documents that guarantee.
+    pub fn rate_limit_means_unprocessed(mut self, guaranteed: bool) -> Self {
+        self.rate_limit_unprocessed = guaranteed;
+        self
+    }
+
     /// Marks one of our own services: the [`crate::TraceInjector`] adds trace headers.
     pub fn internal(mut self, internal: bool) -> Self {
         self.internal = internal;
@@ -330,6 +341,7 @@ impl ProviderBuilder {
             semaphore: self.max_concurrency.map(|n| Arc::new(Semaphore::new(n))),
             secret_query: Arc::from(self.secret_query),
             internal: self.internal,
+            rate_limit_unprocessed: self.rate_limit_unprocessed,
         })))
     }
 }

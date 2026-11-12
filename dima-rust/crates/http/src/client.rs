@@ -685,6 +685,7 @@ impl<'a> Sender<'a> {
                 idempotent: self.idempotent,
                 replayable,
                 refreshable,
+                rate_limit_unprocessed: provider.rate_limit_unprocessed,
                 elapsed,
             };
             match result {
