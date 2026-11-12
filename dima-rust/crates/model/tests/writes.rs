@@ -822,10 +822,8 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         }
         "save" => {
             let id = bson_of(intent.get("id").context("id")?)?;
-            // A save reads the whole document (see the crate docs on hidden paths).
-            let loaded = store
-                .documents(collection)
-                .find_one(doc! { "_id": id })
+            let loaded = info
+                .load_for_save(store, &doc! { "_id": id }, &mut ctx)
                 .await?
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
@@ -1188,12 +1186,11 @@ fn insert_path(document: &mut Document, path: &str, value: Bson) {
     }
 }
 
-/// A generic write must not skip a collection's Mongoose middleware: the collection's module is
-/// the only way in.
+/// A generic update must not skip a collection's update middleware: the collection's module is
+/// the only way in (saves: `writes::tests::hooked_collections_refuse_generic_saves`).
 #[test]
-fn hooked_collections_refuse_generic_writes() -> Result<()> {
+fn hooked_collections_refuse_generic_updates() -> Result<()> {
     let mut ctx = WriteContext::new(0);
-    let loaded = doc! { "_id": oid(1)?, "enabled": true };
     for info in REGISTRY {
         let update = info.prepare_update(
             &doc! {},
@@ -1201,28 +1198,57 @@ fn hooked_collections_refuse_generic_writes() -> Result<()> {
             UpdateOptions::default(),
             &mut ctx,
         );
-        let save = info.prepare_save(&loaded, &[], &mut ctx);
-        let update = matches!(update, Err(ModelError::Hooked { .. }));
-        let save = matches!(save, Err(ModelError::Hooked { .. }));
-        match info.hooks {
-            dima_model::Hooks::None => {
-                if update || save {
-                    bail!("{} has no hooks but a generic write was refused", info.name);
-                }
-            }
-            dima_model::Hooks::Save => {
-                if update || !save {
-                    bail!("{}: only saves must be refused", info.name);
-                }
-            }
-            dima_model::Hooks::UpdatesAndSave => {
-                if !update || !save {
-                    bail!("{}: updates and saves must be refused", info.name);
-                }
-            }
+        let refused = matches!(update, Err(ModelError::Hooked { .. }));
+        if refused != (info.hooks == dima_model::Hooks::UpdatesAndSave) {
+            bail!("{}: generic update refused: {refused}", info.name);
         }
     }
     Ok(())
+}
+
+/// A save hydrates the loaded document and writes the defaults of the paths it lacks; the only
+/// loaded document a save accepts is a whole one, so `select: false` paths survive a save.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn saves_keep_hidden_paths() -> Result<()> {
+    support::with_store(|store| async move {
+        let info = &dima_model::stream_sessions::INFO;
+        let mut ctx = WriteContext::with_sequential_ids(1_794_392_430_456, 1);
+        let session =
+            NewStreamSession::new("111", "s1", JsDate(1_700_000_000_000)).prepare(&mut ctx)?;
+        let mut document = session.document.clone();
+        document.insert("applied_domain_event_keys", vec!["k0", "k1"]);
+        // Without the projection a normal read uses: the field a hidden path default would erase.
+        let id = document.get_object_id("_id")?;
+        store.documents(info.name).insert_one(document).await?;
+        let loaded = info
+            .load_for_save(&store, &doc! { "_id": id.to_hex() }, &mut ctx)
+            .await?
+            .context("loaded")?;
+        let save = info.prepare_save(&loaded, &[Change::set("status", "offline")], &mut ctx)?;
+        if let Some(update) = &save.update
+            && update
+                .get_document("$set")
+                .is_ok_and(|set| set.contains_key("applied_domain_event_keys"))
+        {
+            bail!("the save overwrites a hidden path: {update}");
+        }
+        store.writes(info.name).save(&save).await?;
+        let stored = store
+            .documents(info.name)
+            .find_one(doc! { "_id": id })
+            .await?
+            .context("stored")?;
+        if stored.get_array("applied_domain_event_keys")?.len() != 2 {
+            bail!("hidden path lost: {stored}");
+        }
+        // A document loaded from one collection cannot be saved to another.
+        let wrong = dima_model::custom_timers::INFO.prepare_save(&loaded, &[], &mut ctx);
+        if !matches!(wrong, Err(ModelError::WrongCollection { .. })) {
+            bail!("a save to another collection must be refused: {wrong:?}");
+        }
+        Ok(())
+    })
+    .await
 }
 
 /// Reads for HTTP responses leave out the `select: false` paths unless the projection names them,

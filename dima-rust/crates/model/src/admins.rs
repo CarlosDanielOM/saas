@@ -13,6 +13,7 @@ use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
@@ -153,9 +154,9 @@ impl NewAdmin {
 
 /// `doc.save()` of a loaded admin after `changes`, with the hook's `updatedAt = new Date()`.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
 ) -> Result<PreparedSave, ModelError> {
-    save_stamping(&SCHEMA, loaded, changes, "updatedAt", ctx)
+    save_stamping(&INFO, loaded, changes, "updatedAt", ctx)
 }

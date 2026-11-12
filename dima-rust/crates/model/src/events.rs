@@ -12,6 +12,7 @@ use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
 use crate::users::PlanTier;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
@@ -392,9 +393,9 @@ impl NewEvent {
 
 /// `doc.save()` of a loaded event after `changes`, with the hook's `updatedAt = new Date()`.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
 ) -> Result<PreparedSave, ModelError> {
-    save_stamping(&SCHEMA, loaded, changes, "updatedAt", ctx)
+    save_stamping(&INFO, loaded, changes, "updatedAt", ctx)
 }

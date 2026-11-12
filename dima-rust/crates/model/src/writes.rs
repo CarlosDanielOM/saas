@@ -12,6 +12,7 @@
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::error::ModelError;
+use crate::loaded::LoadedForSave;
 use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::save::{Change, PreparedSave, prepare_save};
@@ -47,16 +48,16 @@ impl CollectionInfo {
         find_and_update_unchecked(self.schema, filter, update.into(), options, returned, ctx)
     }
 
-    /// `doc.save()` of a loaded document of a collection without hooks. Load the whole document
-    /// (no projection): see the crate docs on `select: false` paths.
+    /// `doc.save()` of a document of a collection without hooks, loaded whole with
+    /// [`CollectionInfo::load_for_save`].
     pub fn prepare_save(
         &self,
-        loaded: &Document,
+        loaded: &LoadedForSave,
         changes: &[Change],
         ctx: &mut WriteContext,
     ) -> Result<PreparedSave, ModelError> {
         self.refuse_hooked(Hooks::Save, "save")?;
-        save_unchecked(self.schema, loaded, changes, ctx)
+        save_with_hooks(self, loaded, changes, |_, _, _| Ok(Vec::new()), ctx)
     }
 
     /// Refuses when the collection has hooks that `operation` would skip: any hooks for a save,
@@ -108,14 +109,33 @@ pub(crate) fn find_and_update_unchecked(
     )?)
 }
 
-/// [`CollectionInfo::prepare_save`] without the hooks check.
-pub(crate) fn save_unchecked(
-    schema: &Schema,
-    loaded: &Document,
+/// Every save of `info` (the generic one and the modules' adapters): checks that `loaded` was
+/// loaded from this collection, then prepares the caller's changes followed by the changes the
+/// collection's `pre('save')` middleware makes (`hooks`, given the loaded document and the
+/// caller's changes).
+pub(crate) fn save_with_hooks(
+    info: &CollectionInfo,
+    loaded: &LoadedForSave,
     changes: &[Change],
+    hooks: impl FnOnce(&Document, &[Change], &mut WriteContext) -> Result<Vec<Change>, ModelError>,
     ctx: &mut WriteContext,
 ) -> Result<PreparedSave, ModelError> {
-    let kept: Vec<Change> = changes
+    if loaded.collection() != info.name {
+        return Err(ModelError::WrongCollection {
+            expected: info.name,
+            found: loaded.collection(),
+        });
+    }
+    let schema = info.schema;
+    let changes = kept_changes(schema, changes);
+    let mut all = changes.clone();
+    all.extend(hooks(loaded.document(), &changes, ctx)?);
+    Ok(prepare_save(schema, loaded.document(), &all, ctx)?)
+}
+
+/// The caller's changes without those Mongoose ignores (paths below an immutable `Mixed` path).
+fn kept_changes(schema: &Schema, changes: &[Change]) -> Vec<Change> {
+    changes
         .iter()
         .filter(|change| {
             let path = match change {
@@ -124,8 +144,7 @@ pub(crate) fn save_unchecked(
             !below_immutable_mixed(schema.fields, path)
         })
         .cloned()
-        .collect();
-    Ok(prepare_save(schema, loaded, &kept, ctx)?)
+        .collect()
 }
 
 /// `true` when `path` lies strictly below an immutable `Mixed` field (through plain nested
@@ -204,7 +223,22 @@ fn immutable_mixed_children(schema: &Schema, update: Update, upsert: bool) -> Up
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::REGISTRY;
     use bson::doc;
+
+    /// A generic save must not skip a collection's `pre('save')` middleware.
+    #[test]
+    fn hooked_collections_refuse_generic_saves() {
+        let mut ctx = WriteContext::new(0);
+        for info in REGISTRY {
+            let loaded = LoadedForSave::for_test(info, doc! { "_id": 1 });
+            let refused = matches!(
+                info.prepare_save(&loaded, &[], &mut ctx),
+                Err(ModelError::Hooked { .. })
+            );
+            assert_eq!(refused, info.hooks != Hooks::None, "{}", info.name);
+        }
+    }
 
     static S: Schema = Schema::new(&[
         Field::mixed("payload").immutable(),

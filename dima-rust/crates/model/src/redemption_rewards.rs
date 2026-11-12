@@ -12,8 +12,9 @@ use crate::decode::decode;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
 use crate::validation::Rule;
-use crate::writes::{find_and_update_unchecked, save_unchecked, update_unchecked};
+use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
 use dima_core::Random;
@@ -237,11 +238,24 @@ pub fn prepare_find_one_and_update(
 
 /// `doc.save()` of a loaded reward (read without projection) after `changes`, with the save hook.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
     random: &dyn Random,
 ) -> Result<PreparedSave, ModelError> {
-    let changes = availability::guard_save(loaded, changes, ENABLED, ctx.now_ms(), random)?;
-    save_unchecked(&SCHEMA, loaded, &changes, ctx)
+    save_with_hooks(
+        &INFO,
+        loaded,
+        changes,
+        |loaded, changes, ctx| {
+            Ok(availability::guard_save(
+                loaded,
+                changes,
+                ENABLED,
+                ctx.now_ms(),
+                random,
+            )?)
+        },
+        ctx,
+    )
 }

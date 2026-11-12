@@ -95,10 +95,11 @@
 //!   also treat paths below an immutable `Mixed` path as immutable (the store does not). They
 //!   refuse collections with [`Hooks`]: use the module's adapters (`commands::prepare_update`
 //!   with an [`availability::Writer`], `admins::prepare_save`...).
-//! - A save hydrates the loaded document: load it **without** the `select: false` projection,
-//!   or the store would write the defaults of the paths the read left out
-//!   (`streamsessions.applied_domain_event_keys` would become `[]`; the reference never saves
-//!   that collection).
+//! - A save takes a [`LoadedForSave`], which only [`CollectionInfo::load_for_save`] creates (the
+//!   whole document, `select: false` paths included). A save hydrates the loaded document and
+//!   writes the defaults of the paths it lacks, so a projected document would lose what the
+//!   projection left out (`streamsessions.applied_domain_event_keys` would become `[]`). Module
+//!   adapters take it too and go through `writes::save_with_hooks`.
 //! - Filters: `dima_store::mongo::filter::prepare_filter(INFO.schema, …)`; responses:
 //!   [`CollectionInfo::find_json`] and friends leave out the hidden paths.
 //! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry (Mongoose's
@@ -149,6 +150,7 @@ pub mod enums;
 pub mod error;
 mod hooks;
 pub mod index;
+pub mod loaded;
 pub mod validation;
 pub mod values;
 mod writes;
@@ -176,6 +178,7 @@ pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;
 pub use index::{IndexFailure, IndexSpec, ensure_indexes};
+pub use loaded::LoadedForSave;
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
 
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its

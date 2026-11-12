@@ -10,6 +10,7 @@ use crate::decode::decode;
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
+use crate::loaded::LoadedForSave;
 use crate::users::EncryptedToken;
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
@@ -89,9 +90,9 @@ impl NewAppConfig {
 
 /// `doc.save()` after `changes`, with the hook's `refreshed_at = new Date()`.
 pub fn prepare_save(
-    loaded: &Document,
+    loaded: &LoadedForSave,
     changes: &[Change],
     ctx: &mut WriteContext,
 ) -> Result<PreparedSave, ModelError> {
-    save_stamping(&SCHEMA, loaded, changes, "refreshed_at", ctx)
+    save_stamping(&INFO, loaded, changes, "refreshed_at", ctx)
 }

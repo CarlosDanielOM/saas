@@ -18,6 +18,14 @@ pub enum ModelError {
     /// The random source failed (tokens a hook generates).
     #[error(transparent)]
     Random(#[from] dima_core::RandomError),
+    /// A save of a document loaded from another collection.
+    #[error("a document loaded from {found} cannot be saved to {expected}")]
+    WrongCollection {
+        /// The collection of the save.
+        expected: &'static str,
+        /// The collection the document was loaded from.
+        found: &'static str,
+    },
     /// A generic write to a collection whose Mongoose middleware would be skipped: use the
     /// collection module's adapter.
     #[error("{operation} on {collection} must go through its module (Mongoose hooks)")]
