@@ -137,6 +137,18 @@ static UNPARK: Script = Script::new(
     include_str!("lua/unpark_answer.lua"),
 );
 
+/// Moves the record and the side record (`KEYS[1]`, `KEYS[2]`) to the quarantine hash
+/// (`KEYS[3]`, replaced) unless their generation is at least `ARGV[1]` (a record that is not a
+/// hash, or has no readable generation, moves too); `ARGV[2]` the time, `ARGV[3]` the
+/// quarantine's lifetime in ms (Rust only; no loop). Returns how many moved.
+static QUARANTINE: Script = Script::new(
+    "RUST_QUARANTINE_TWITCH_RECORDS_SCRIPT",
+    include_str!("lua/quarantine_records.lua"),
+);
+
+/// How long a quarantined record is kept for inspection.
+pub(crate) const QUARANTINE_TTL: Duration = Duration::from_secs(30 * 86_400);
+
 /// Most answers a process holds unwritten at once. A new exchange is refused (nothing is sent)
 /// while the registry is full, so an answer never finds it full.
 pub(crate) const MAX_ANSWERS: usize = crate::base::MAX_FLIGHTS;
@@ -422,6 +434,55 @@ impl Inner {
         Ok(reply::int(reply).map_err(|_| TwitchError::Protocol {
             op: "unpark answer",
         })? == 1)
+    }
+
+    /// After a sign-in stored at `generation`: the records it supersedes move to the
+    /// quarantine (see [`crate::Twitch::store_sign_in`]); how many moved.
+    pub(crate) async fn quarantine_records(
+        &self,
+        user_id: &str,
+        generation: i64,
+    ) -> Result<usize, TwitchError> {
+        let keys = &self.config.keys;
+        let (generation_text, now, ttl) = (
+            generation.to_string(),
+            self.now_ms().to_string(),
+            QUARANTINE_TTL.as_millis().to_string(),
+        );
+        let reply = QUARANTINE
+            .run_value(
+                &self.dragonfly,
+                &[
+                    keys.parked_rotation(user_id),
+                    keys.parked_conflict(user_id),
+                    keys.refresh_quarantine(user_id),
+                ],
+                &[generation_text.as_str(), now.as_str(), ttl.as_str()],
+            )
+            .await
+            .map_err(|error| TwitchError::cache("quarantine records", error))?;
+        let moved = reply::int(reply)
+            .ok()
+            .and_then(|moved| usize::try_from(moved).ok())
+            .ok_or(TwitchError::Protocol {
+                op: "quarantine records",
+            })?;
+        if moved > 0 {
+            self.log(
+                Level::Warn,
+                Destination::Both,
+                Some(user_id),
+                json!({
+                    "function": "storeSignIn",
+                    "userId": user_id,
+                    "action": "token_recovery_quarantined",
+                    "records": moved,
+                    "generation": generation,
+                    "consequence": "a verified sign-in superseded the rotations kept in Dragonfly; they are kept in the quarantine for 30 days and never used",
+                }),
+            );
+        }
+        Ok(moved)
     }
 
     /// The `rotation` text of the record at `key`.
@@ -1083,10 +1144,14 @@ pub struct RecoveryReport {
     /// Unmatched records are not counted here. The rollback runs the reconciliation until this
     /// and `failed` are 0.
     pub left: usize,
-    /// Records left as they are because MongoDB holds another refresh token at their generation
-    /// (see `crate::recovery`): nothing proves which is newer. They stay until MongoDB's
-    /// generation moves (a refresh, a sign-in) or an operator settles them.
+    /// Records left as they are because MongoDB holds another refresh token at their generation,
+    /// or because two different answers of one generation are kept (see `crate::recovery`):
+    /// nothing proves which is newer. They stay until MongoDB's generation moves (a refresh, a
+    /// sign-in) or an operator settles them.
     pub unmatched: usize,
+    /// Quarantine keys present (`twitch:{id}:refresh:quarantine`, one per streamer): records a
+    /// sign-in superseded, kept 30 days for inspection. Never applied.
+    pub quarantined: usize,
 }
 
 impl Inner {
@@ -1095,6 +1160,7 @@ impl Inner {
         let context = RefreshContext::new("recovery_reconciliation", "reconcile_recovery");
         let mut report = RecoveryReport::default();
         let mut seen: HashSet<String> = HashSet::new();
+        let mut quarantines: HashSet<String> = HashSet::new();
         let mut scan = self
             .dragonfly
             .scan(&self.config.keys.recovery_pattern(), Some(SCAN_PAGE));
@@ -1108,12 +1174,17 @@ impl Inner {
                 if self.shutdown.is_triggered() {
                     break 'scan Err(TwitchError::Shutdown);
                 }
-                let Some((user_id, _)) = std::str::from_utf8(&key)
+                let Some((user_id, kind)) = std::str::from_utf8(&key)
                     .ok()
                     .and_then(|key| self.config.keys.recovery_key(key))
                 else {
                     continue;
                 };
+                if kind == crate::keys::RecoveryKey::Quarantine {
+                    // Counted, never read.
+                    report.quarantined += usize::from(quarantines.insert(user_id.to_owned()));
+                    continue;
+                }
                 // `SCAN` can return a key twice.
                 if !seen.insert(user_id.to_owned()) {
                     continue;
@@ -1166,6 +1237,7 @@ impl Inner {
                 "failed": report.failed,
                 "left": report.left,
                 "unmatched": report.unmatched,
+                "quarantined": report.quarantined,
             }),
         );
         outcome.map(|()| report)

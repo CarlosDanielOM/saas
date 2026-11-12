@@ -13,6 +13,7 @@
 //! | `app:twitch:token` (envelope, `EX expires_in`; plain text in the reference) | `getNewTwitchAppToken` | **rebuilt**: a new app token is requested on first use |
 //! | `twitch:{id}:refresh:parked` (hash: `generation`, `rotation` as JSON of envelopes; **no expiry**) | Rust only: the recovery record of an answer MongoDB has not taken (`crate::recovery`) | **drained**, never flushed while one is left: the next refresh of that streamer or the reconciliation ([`crate::Twitch::reconcile_recovery`], at every start and on its tick) writes it to MongoDB. Rust's database starts without any at the cutover; before a rollback it is reconciled until none is left |
 //! | `twitch:{id}:refresh:parked:conflict` (hash: `generation`, `rotation`, as the record; **no expiry**) | Rust only: a second, different answer of the record's generation (review G2: two exchanges of one stored state); both are unmatched until MongoDB's generation moves or an operator settles them | **drained** with the records |
+//! | `twitch:{id}:refresh:quarantine` (hash: `parked:` and `conflict:` + `generation`, `rotation`, `type`; `signed_in_generation`, `quarantined_at` in ms; `PX` 30 days) | Rust only: records a verified sign-in superseded (older than its generation, or unreadable), moved there for inspection (review G3); never read by a refresh or the reconciliation, only counted and listed | **rebuilt** (inspection only; may be flushed once no one needs it) |
 //! | `twitch:{id}:emote-catalog:v1` (JSON, `EX 86400`) | `twitch_emotes.ts` | **rebuilt** from Helix on first use |
 //! | `twitch:{id}:ai:credits:plan-version` (fence) | billing | read here (fence of the account hash); owned by the billing package |
 //! | `streamers:by:name` | legacy (`DEL` only, no writer) | not written or deleted by Rust |
@@ -30,6 +31,8 @@ pub enum RecoveryKey {
     Parked,
     /// `twitch:{id}:refresh:parked:conflict`, its side record.
     Conflict,
+    /// `twitch:{id}:refresh:quarantine`, records a sign-in superseded.
+    Quarantine,
 }
 
 /// The prefix of every key (empty in production).
@@ -103,6 +106,11 @@ impl KeySpace {
         format!("{}:conflict", self.parked_rotation(id))
     }
 
+    /// `twitch:{id}:refresh:quarantine`, where a sign-in moves the records it supersedes.
+    pub fn refresh_quarantine(&self, id: &str) -> String {
+        format!("{}twitch:{id}:refresh:quarantine", self.prefix)
+    }
+
     /// `twitch:*:refresh:*`, the pattern the reconciliation scans: every recovery key
     /// ([`KeySpace::recovery_key`]).
     pub fn recovery_pattern(&self) -> String {
@@ -121,6 +129,7 @@ impl KeySpace {
         let kind = match rest {
             "parked" => RecoveryKey::Parked,
             "parked:conflict" => RecoveryKey::Conflict,
+            "quarantine" => RecoveryKey::Quarantine,
             _ => return None,
         };
         Some((id, kind))
@@ -200,6 +209,14 @@ mod tests {
         assert_eq!(
             test.recovery_key(&test.parked_conflict("42")),
             Some(("42", RecoveryKey::Conflict))
+        );
+        assert_eq!(
+            test.recovery_key(&test.refresh_quarantine("42")),
+            Some(("42", RecoveryKey::Quarantine))
+        );
+        assert_eq!(
+            keys.refresh_quarantine("42"),
+            "twitch:42:refresh:quarantine"
         );
         for other in [
             "twitch:42:refresh:parked",

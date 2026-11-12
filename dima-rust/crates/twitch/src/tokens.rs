@@ -161,6 +161,9 @@ pub struct SignIn {
 pub struct SignInStored {
     /// The generation written (the user's `refreshed_at`, epoch milliseconds).
     pub generation: i64,
+    /// Recovery records this sign-in superseded (older than its generation, or unreadable),
+    /// moved to `twitch:{id}:refresh:quarantine` (review G3).
+    pub quarantined: usize,
 }
 
 /// The result of `refreshTwitchToken`.
@@ -639,6 +642,12 @@ impl Twitch {
     /// from the state before finds a newer generation and keeps these credentials. The route
     /// writes its other fields (`actived`, `chat_enabled`) itself; the sign-in route must use
     /// this instead of writing the tokens and calling [`Twitch::credentials_changed`].
+    ///
+    /// A verified sign-in **supersedes what is parked** for the account (review G3): after the
+    /// write, every recovery record of an older generation, or that cannot be read, moves to
+    /// the quarantine key `twitch:{id}:refresh:quarantine` (kept 30 days for inspection, read
+    /// by no refresh and no reconciliation). Signing in again is how a streamer whose record is
+    /// corrupt gets unblocked. A record newer than the sign-in stays.
     /// `Ok(None)` when no user has the account.
     pub async fn store_sign_in(
         &self,

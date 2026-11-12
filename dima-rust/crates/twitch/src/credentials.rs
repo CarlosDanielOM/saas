@@ -371,8 +371,12 @@ impl Inner {
                 )
                 .await?;
             if let Written::Done(generation) = written {
+                let quarantined = self.quarantine_records(id, generation).await?;
                 self.publish(id, generation, &fields).await?;
-                return Ok(Some(crate::tokens::SignInStored { generation }));
+                return Ok(Some(crate::tokens::SignInStored {
+                    generation,
+                    quarantined,
+                }));
             }
         }
         Err(TwitchError::Write(

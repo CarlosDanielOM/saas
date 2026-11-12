@@ -300,7 +300,8 @@ async fn every_credential_writer_advances_the_generation() -> Result<()> {
 }
 
 /// A sign-in after an answer was parked: its write advances the generation past the record's,
-/// so the record is older and the reconciliation removes it, keeping the sign-in's tokens.
+/// so the record is older; the sign-in moves it to the quarantine (review G3) and the
+/// reconciliation only counts it, keeping the sign-in's tokens.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_sign_in_is_newer_than_a_parked_answer() -> Result<()> {
     with_stores(|stores| async move {
@@ -312,7 +313,13 @@ async fn a_sign_in_is_newer_than_a_parked_answer() -> Result<()> {
             .store_sign_in("u1", &sign_in("u1-access-s", "u1-refresh-s", 14_400.0))
             .await?;
         let report = next.twitch.reconcile_recovery().await?;
-        assert_eq!(report.already_newer, 1, "{report:?}");
+        assert_eq!(
+            report,
+            RecoveryReport {
+                quarantined: 1,
+                ..Default::default()
+            }
+        );
         assert!(records(&stores).await?.is_empty());
         assert_eq!(
             stored_refresh(&stores, "u1").await?.as_deref(),
@@ -549,6 +556,175 @@ async fn a_third_answer_for_one_generation_is_not_taken_for_kept() -> Result<()>
                 .as_deref(),
             Some("u1-refresh-9")
         );
+        Ok(())
+    })
+    .await
+}
+
+/// Review G3, the reproduced sequence: a recovery record that cannot be read blocks the
+/// streamer's refreshes and the reconciliation reports it failed; the streamer signs in again.
+/// The sign-in moves the record to the quarantine key (kept 30 days, read by nothing), so the
+/// next refresh works and the reconciliation is clean. (Before: blocked for ever.)
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_sign_in_quarantines_a_record_that_cannot_be_read() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        let mut user = user_document(
+            "u1",
+            "u1",
+            "u1-access-0",
+            "u1-refresh-0",
+            Some(NOW_SECS - 10),
+        );
+        user.insert("refreshed_at", bson::DateTime::from_millis(G0));
+        insert_user(&stores, user).await?;
+        let record = stores.keys.parked_rotation("u1");
+        stores
+            .dragonfly
+            .hset(
+                &record,
+                &[
+                    ("generation", G0.to_string().as_bytes()),
+                    ("rotation", b"not an answer".as_slice()),
+                ],
+            )
+            .await?;
+        let p = process(&stores, &server, fast_timings())?;
+        p.twitch.load_streamers().await?;
+        assert!(
+            p.twitch
+                .streamer_token("u1", None, "blocked")
+                .await
+                .is_err()
+        );
+        let report = p.twitch.reconcile_recovery().await?;
+        assert_eq!((report.failed, report.left), (1, 1), "{report:?}");
+        assert!(token_requests(&server).is_empty());
+
+        // The sign-in's access token needs a refresh at once; Twitch knows its refresh token.
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .valid
+            .insert("u1-refresh-s".to_owned(), "u1".to_owned());
+        p.twitch
+            .store_sign_in("u1", &sign_in("u1-access-s", "u1-refresh-s", 10.0))
+            .await?;
+        assert!(!key_exists(&stores, &record).await?);
+        let token = p.twitch.streamer_token("u1", None, "after sign-in").await?;
+        assert_eq!(token.expose(), "u1-access-1");
+        assert_eq!(
+            form_value(&token_requests(&server)[0], "refresh_token").as_deref(),
+            Some("u1-refresh-s")
+        );
+        let report = p.twitch.reconcile_recovery().await?;
+        assert_eq!((report.failed, report.left), (0, 0), "{report:?}");
+        Ok(())
+    })
+    .await
+}
+
+/// Review G3: a sign-in moves an older readable record and its side record to the quarantine
+/// (both in one hash, 30 days), and the report counts it; a record newer than the sign-in (it
+/// cannot be, but the script checks) stays, and so does a later sign-in's own.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn a_sign_in_quarantines_older_records_and_keeps_newer_ones() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .consume = false;
+        let (_a, _b) = two_answers_for_one_generation(&stores, &server, false).await?;
+        let p = process(&stores, &server, fast_timings())?;
+        let stored = p
+            .twitch
+            .store_sign_in("u1", &sign_in("u1-access-s", "u1-refresh-s", 14_400.0))
+            .await?
+            .context("the account exists")?;
+        assert_eq!(stored.quarantined, 2);
+        assert!(records(&stores).await?.is_empty());
+        let quarantine = stores.keys.refresh_quarantine("u1");
+        let fields: std::collections::HashMap<String, String> = stores
+            .dragonfly
+            .hgetall(&quarantine)
+            .await?
+            .into_iter()
+            .collect();
+        assert_eq!(fields["parked:generation"], G0.to_string());
+        assert_eq!(fields["conflict:generation"], G0.to_string());
+        assert_eq!(fields["parked:type"], "hash");
+        assert_eq!(
+            fields["signed_in_generation"],
+            stored.generation.to_string()
+        );
+        assert_eq!(fields["quarantined_at"], NOW_MS.to_string());
+        match stores.dragonfly.ttl(&quarantine).await? {
+            dima_store::dragonfly::Ttl::Seconds(left) => {
+                assert!(left > 29 * 86_400 && left <= 30 * 86_400, "{left}")
+            }
+            other => anyhow::bail!("the quarantine must expire: {other:?}"),
+        }
+        let report = p.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            RecoveryReport {
+                quarantined: 1,
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-s")
+        );
+        assert!(
+            key_exists(&stores, &quarantine).await?,
+            "never read, never removed"
+        );
+
+        // A record newer than the next sign-in, and a key of another type in the side slot.
+        let future = NOW_MS + 86_400_000;
+        let record = stores.keys.parked_rotation("u1");
+        stores
+            .dragonfly
+            .hset(
+                &record,
+                &[
+                    ("generation", future.to_string().as_bytes()),
+                    ("rotation", b"{}".as_slice()),
+                ],
+            )
+            .await?;
+        stores
+            .dragonfly
+            .set(
+                &stores.keys.parked_conflict("u1"),
+                b"corrupt",
+                dima_store::dragonfly::SetOptions::default(),
+            )
+            .await?;
+        let again = p
+            .twitch
+            .store_sign_in("u1", &sign_in("u1-access-t", "u1-refresh-t", 14_400.0))
+            .await?
+            .context("the account exists")?;
+        assert_eq!(again.quarantined, 1);
+        assert!(
+            key_exists(&stores, &record).await?,
+            "the newer record stays"
+        );
+        assert!(!key_exists(&stores, &stores.keys.parked_conflict("u1")).await?);
+        let fields: std::collections::HashMap<String, String> = stores
+            .dragonfly
+            .hgetall(&quarantine)
+            .await?
+            .into_iter()
+            .collect();
+        assert_eq!(fields["conflict:type"], "string");
+        assert!(!fields.contains_key("parked:type"), "{fields:?}");
+        assert_no_plain_tokens(&stores, &["u1-refresh-1", "u1-refresh-2", "u1-refresh-t"]).await?;
         Ok(())
     })
     .await
