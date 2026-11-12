@@ -30,6 +30,17 @@
 //! or activity write that fails is reported and ignored (as in the reference). Twitch unreachable
 //! is a refusal, never access.
 //!
+//! # The one accepted exception to "fail closed"
+//!
+//! When `/validate` fails with a status other than 401 (a 5xx, a 429…) and a JSON body, the
+//! Helix user lookup decides, and a successful lookup **accepts** the request (as the
+//! reference does; such a validation is cached for [`AuthConfig::cache_ttl`], since no
+//! `expires_in` is known). This is kept on purpose: Helix accepts a user token only together
+//! with the client id it was issued to (this application's `Client-Id` is sent), so a
+//! successful lookup is itself a validation of the token for this application, and refusing
+//! would sign everyone out during an outage of `/validate` alone. A 401 from `/validate` is
+//! never overridden: it is refused before Helix is asked.
+//!
 //! # Forgetting
 //!
 //! [`Authenticator::forget`] (sign-out) and [`Authenticator::forget_user`] (account deletion, a

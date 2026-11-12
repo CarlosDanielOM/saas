@@ -826,3 +826,107 @@ async fn a_token_without_life_left_is_not_cached() -> Result<()> {
     })
     .await
 }
+
+/// kind, `/validate` status, `/users` status, answer status, message, Twitch calls.
+type HelixRow = (
+    &'static str,
+    u16,
+    u16,
+    u16,
+    Option<&'static str>,
+    &'static [&'static str],
+);
+
+/// A5: `/validate` failing with another status than 401 lets Helix decide, and a successful
+/// lookup is accepted (Helix accepts a token only with the client id it was issued to); a 401
+/// from `/validate` is never overridden, even when Helix would answer.
+#[tokio::test]
+async fn helix_decides_only_when_validate_fails_without_a_401() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?.to_owned();
+        let run = stores.run.clone();
+        let rows: [HelixRow; 4] = [
+            (
+                "helix_after_500",
+                500,
+                200,
+                200,
+                None,
+                &["validate", "users"],
+            ),
+            (
+                "helix_after_429",
+                429,
+                200,
+                200,
+                None,
+                &["validate", "users"],
+            ),
+            (
+                "helix_refuses_after_503",
+                503,
+                401,
+                401,
+                Some("Invalid token or user not found"),
+                &["validate", "users"],
+            ),
+            (
+                "validate_401",
+                401,
+                200,
+                401,
+                Some("Invalid token"),
+                &["validate"],
+            ),
+        ];
+        let server = MockServer::start().await?;
+        let answers: Vec<(String, u16, u16)> = rows
+            .iter()
+            .map(|(kind, validate, users, ..)| (token_of(kind, &run), *validate, *users))
+            .collect();
+        let user_id = id_of("helix", &run);
+        let mock_id = user_id.clone();
+        server.fallback(move |request| {
+            let auth = request.header("authorization").unwrap_or_default();
+            let token = auth.strip_prefix("Bearer ").unwrap_or(auth);
+            let Some((_, validate, users)) = answers.iter().find(|(t, ..)| t == token) else {
+                return MockResponse::json(401, r#"{"status":401}"#);
+            };
+            if endpoint(request) == "validate" {
+                MockResponse::json(
+                    *validate,
+                    &format!(r#"{{"status":{validate},"message":"x"}}"#),
+                )
+            } else if *users == 200 {
+                MockResponse::json(
+                    200,
+                    &format!(r#"{{"data":[{{"id":"{mock_id}","login":"h","display_name":"H"}}]}}"#),
+                )
+            } else {
+                MockResponse::json(*users, r#"{"status":401,"message":"Invalid OAuth token"}"#)
+            }
+        });
+        let app = app(authenticator(&stores, &server, &client_id, None)?)?;
+        stores.track(activity_touch_key(&user_id));
+        for (kind, _, _, status, message, expected_calls) in rows {
+            let token = token_of(kind, &run);
+            stores.track(token_cache_key(&token));
+            let before = server.requests().len();
+            let (got, _, body) = send(&app, "/probe", Some(&format!("Bearer {token}"))).await?;
+            assert_eq!(got, status, "{kind}: {body}");
+            let calls: Vec<_> = server.requests()[before..].iter().map(endpoint).collect();
+            assert_eq!(calls, expected_calls, "{kind}");
+            if let Some(message) = message {
+                let body: Value = serde_json::from_str(&body)?;
+                assert_eq!(body["message"], message, "{kind}");
+            } else {
+                assert!(body.contains(&user_id), "{kind}: {body}");
+            }
+            let cached = stores.cache.exists(&[&token_cache_key(&token)]).await? == 1;
+            assert_eq!(cached, status == 200, "{kind}: cached");
+        }
+        Ok(())
+    })
+    .await
+}
