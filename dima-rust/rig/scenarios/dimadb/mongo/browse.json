@@ -567,7 +567,7 @@
     {
       "path": "steps[3].body.data",
       "kind": "set",
-      "reason": "listCollections returns collections in the server's order, which is not specified; the reference does not sort them."
+      "reason": "listCollections returns collections in the server's order, which is not specified and was seen to change between two runs of the reference; the reference does not sort them."
     }
   ]
 }
