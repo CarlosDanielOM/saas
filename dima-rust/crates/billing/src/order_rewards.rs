@@ -82,6 +82,9 @@ pub enum RewardError {
     /// MongoDB failed.
     #[error(transparent)]
     Mongo(#[from] MongoOpError),
+    /// A test interrupt stopped the call ([`crate::gifts::Interrupt`]).
+    #[error("interrupted at {0}")]
+    Interrupted(&'static str),
 }
 
 fn failed(message: &str) -> RewardError {
@@ -112,10 +115,16 @@ pub enum RewardOutcome {
 
 /// The rewards, with the readiness of their index (checked once per process, as Mongoose's
 /// `init()` promise is).
-#[derive(Debug)]
 pub struct OrderRewards<'a> {
     store: &'a MongoStore,
     ready: tokio::sync::OnceCell<()>,
+    interrupt: Option<&'a dyn crate::gifts::Interrupt>,
+}
+
+impl std::fmt::Debug for OrderRewards<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("OrderRewards")
+    }
 }
 
 impl<'a> OrderRewards<'a> {
@@ -124,6 +133,21 @@ impl<'a> OrderRewards<'a> {
         Self {
             store,
             ready: tokio::sync::OnceCell::new(),
+            interrupt: None,
+        }
+    }
+
+    /// **Test seam**: stops at the named points (`reward:reserved`, `reward:credited`) as if
+    /// the process had died there.
+    pub fn with_interrupt(mut self, interrupt: &'a dyn crate::gifts::Interrupt) -> Self {
+        self.interrupt = Some(interrupt);
+        self
+    }
+
+    fn stop(&self, point: &'static str) -> Result<(), RewardError> {
+        match self.interrupt {
+            Some(interrupt) if interrupt.at(point) => Err(RewardError::Interrupted(point)),
+            _ => Ok(()),
         }
     }
 
@@ -264,6 +288,7 @@ impl<'a> OrderRewards<'a> {
         let Some(reservation) = reservation else {
             return Err(failed("Paid order reward reservation not found"));
         };
+        self.stop("reward:reserved")?;
         if reservation
             .get("appliedAt")
             .is_some_and(|v| !matches!(v, Bson::Null))
@@ -297,6 +322,7 @@ impl<'a> OrderRewards<'a> {
             now_ms,
         )
         .await?;
+        self.stop("reward:credited")?;
         if credited.is_none()
             && !mongo_ops::exists(
                 self.store,
