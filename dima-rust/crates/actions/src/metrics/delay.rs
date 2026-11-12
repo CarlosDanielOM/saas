@@ -63,7 +63,8 @@ impl DelaySamples {
 
     /// The window's figures, and a fresh window (`histogram.reset()`).
     pub(crate) fn take(&self) -> DelayStats {
-        let samples = std::mem::take(&mut *self.samples.lock().unwrap_or_else(PoisonError::into_inner));
+        let samples =
+            std::mem::take(&mut *self.samples.lock().unwrap_or_else(PoisonError::into_inner));
         stats(samples.into())
     }
 }
@@ -80,7 +81,10 @@ fn stats(mut samples: Vec<f64>) -> DelayStats {
     // `getValueAtPercentile`, without its bucketing).
     let percentile = |p: f64| {
         let rank = ((p / 100.0) * count).ceil().max(1.0) as usize;
-        samples.get(rank.saturating_sub(1)).copied().unwrap_or_default()
+        samples
+            .get(rank.saturating_sub(1))
+            .copied()
+            .unwrap_or_default()
     };
     DelayStats {
         min_ms: three_decimals(samples.first().copied().unwrap_or_default()),
@@ -118,7 +122,10 @@ mod tests {
         for _ in 0..MAX_SAMPLES + 10 {
             window.record(Duration::from_micros(1500));
         }
-        assert_eq!(window.samples.lock().map(|s| s.len()).unwrap_or(0), MAX_SAMPLES);
+        assert_eq!(
+            window.samples.lock().map(|s| s.len()).unwrap_or(0),
+            MAX_SAMPLES
+        );
         assert_eq!(window.take().p95_ms, 1.5);
     }
 }

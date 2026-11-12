@@ -185,7 +185,10 @@ enum Counter {
 
 const COUNTERS: [(Counter, &str); 15] = [
     (Counter::EventsubNotifications, "eventsubNotifications"),
-    (Counter::EventsubNotificationBytes, "eventsubNotificationBytes"),
+    (
+        Counter::EventsubNotificationBytes,
+        "eventsubNotificationBytes",
+    ),
     (Counter::EventsubHandled, "eventsubHandled"),
     (Counter::EventsubHandleErrors, "eventsubHandleErrors"),
     (Counter::MessageHandlerStarted, "messageHandlerStarted"),
@@ -194,11 +197,23 @@ const COUNTERS: [(Counter, &str); 15] = [
     (Counter::EmbeddingEnqueued, "embeddingEnqueued"),
     (Counter::EmbeddingBatchesSuccess, "embeddingBatchesSuccess"),
     (Counter::EmbeddingBatchesFailed, "embeddingBatchesFailed"),
-    (Counter::EmbeddingMessagesProcessed, "embeddingMessagesProcessed"),
+    (
+        Counter::EmbeddingMessagesProcessed,
+        "embeddingMessagesProcessed",
+    ),
     (Counter::RedisOpsEstimated, "redisOpsEstimated"),
-    (Counter::OpenrouterEmbeddingRequests, "openrouterEmbeddingRequests"),
-    (Counter::OpenrouterEmbeddingErrors, "openrouterEmbeddingErrors"),
-    (Counter::OpenrouterEmbeddingInputChars, "openrouterEmbeddingInputChars"),
+    (
+        Counter::OpenrouterEmbeddingRequests,
+        "openrouterEmbeddingRequests",
+    ),
+    (
+        Counter::OpenrouterEmbeddingErrors,
+        "openrouterEmbeddingErrors",
+    ),
+    (
+        Counter::OpenrouterEmbeddingInputChars,
+        "openrouterEmbeddingInputChars",
+    ),
 ];
 
 #[derive(Debug)]
@@ -485,7 +500,9 @@ impl BotMetrics {
 
     /// `observeEmbeddingQueue(queueSize, isProcessing)`.
     pub fn observe_embedding_queue(&self, queue_size: u64, processing: bool) {
-        self.inner.embedding_queue.store(queue_size, Ordering::Relaxed);
+        self.inner
+            .embedding_queue
+            .store(queue_size, Ordering::Relaxed);
         self.inner
             .embedding_processing
             .store(processing, Ordering::Relaxed);
@@ -591,7 +608,12 @@ impl BotMetrics {
         let mut pipeline = redis::pipe();
         for key in &keys {
             for (field, amount) in fields {
-                pipeline.cmd("HINCRBY").arg(key).arg(field).arg(amount).ignore();
+                pipeline
+                    .cmd("HINCRBY")
+                    .arg(key)
+                    .arg(field)
+                    .arg(amount)
+                    .ignore();
             }
         }
         if let Some(cumulative) = keys.last() {
@@ -609,12 +631,7 @@ impl BotMetrics {
                 .arg(RECORDER_TTL_SECONDS)
                 .ignore();
         }
-        if let Err(error) = self
-            .inner
-            .dragonfly
-            .query_pipeline::<()>(&pipeline)
-            .await
-        {
+        if let Err(error) = self.inner.dragonfly.query_pipeline::<()>(&pipeline).await {
             self.failed(function, &error, Some(channel));
         }
     }
@@ -626,30 +643,47 @@ impl BotMetrics {
             ("requestedTotal".to_owned(), whole(input.requested)),
             ("retrievedTotal".to_owned(), whole(input.retrieved)),
             ("latencyMsTotal".to_owned(), whole(input.latency_ms)),
-            ("avgScoreMilliTotal".to_owned(), thousandths(input.avg_score)),
+            (
+                "avgScoreMilliTotal".to_owned(),
+                thousandths(input.avg_score),
+            ),
         ];
         if input.failed {
             fields.push(("errors".to_owned(), 1));
         }
         let pass = field_part(or_default(input.pass.as_deref(), "none"));
         fields.push((format!("pass:{pass}"), 1));
-        self.record("recordSemanticMemoryMetric", "semantic", &input.channel_id, &fields)
-            .await;
+        self.record(
+            "recordSemanticMemoryMetric",
+            "semantic",
+            &input.channel_id,
+            &fields,
+        )
+        .await;
     }
 
     /// `recordThreadRoutingMetric(input)`.
     pub async fn record_thread_routing(&self, input: &ThreadRoutingMetric) {
         let mut fields = vec![
             ("requests".to_owned(), 1),
-            ("candidateCountTotal".to_owned(), whole(input.candidate_count)),
+            (
+                "candidateCountTotal".to_owned(),
+                whole(input.candidate_count),
+            ),
             (
                 "selectedScoreMilliTotal".to_owned(),
                 thousandths(input.selected_score),
             ),
-            ("promptTurnsTotal".to_owned(), whole(input.prompt_turns_used)),
+            (
+                "promptTurnsTotal".to_owned(),
+                whole(input.prompt_turns_used),
+            ),
             ("latencyMsTotal".to_owned(), whole(input.latency_ms)),
             ("userEvictions".to_owned(), whole(input.user_evictions)),
-            ("channelEvictions".to_owned(), whole(input.channel_evictions)),
+            (
+                "channelEvictions".to_owned(),
+                whole(input.channel_evictions),
+            ),
         ];
         if input.created {
             fields.push(("created".to_owned(), 1));
@@ -660,8 +694,13 @@ impl BotMetrics {
         if input.failed {
             fields.push(("errors".to_owned(), 1));
         }
-        self.record("recordThreadRoutingMetric", "threading", &input.channel_id, &fields)
-            .await;
+        self.record(
+            "recordThreadRoutingMetric",
+            "threading",
+            &input.channel_id,
+            &fields,
+        )
+        .await;
     }
 
     /// `recordStreamMemoryJobMetric(input)`.
@@ -719,7 +758,10 @@ impl BotMetrics {
         let window: Counts = COUNTERS
             .iter()
             .map(|(counter, name)| {
-                (*name, inner.window[*counter as usize].swap(0, Ordering::Relaxed))
+                (
+                    *name,
+                    inner.window[*counter as usize].swap(0, Ordering::Relaxed),
+                )
             })
             .collect();
         let window_types: Counts = (0..types::SLOTS)
@@ -855,11 +897,26 @@ impl BotMetrics {
             .arg("updatedAt")
             .arg(&now_iso)
             .arg("maxInflightEventsubHandlers")
-            .arg(inner.max_inflight_eventsub.load(Ordering::Relaxed).to_string())
+            .arg(
+                inner
+                    .max_inflight_eventsub
+                    .load(Ordering::Relaxed)
+                    .to_string(),
+            )
             .arg("maxInflightMessageHandlers")
-            .arg(inner.max_inflight_message.load(Ordering::Relaxed).to_string())
+            .arg(
+                inner
+                    .max_inflight_message
+                    .load(Ordering::Relaxed)
+                    .to_string(),
+            )
             .arg("maxEmbeddingQueueSize")
-            .arg(inner.max_embedding_queue.load(Ordering::Relaxed).to_string())
+            .arg(
+                inner
+                    .max_embedding_queue
+                    .load(Ordering::Relaxed)
+                    .to_string(),
+            )
             .ignore();
         pipe.cmd("EXPIRE").arg(&cumulative).arg(ttl).ignore();
         pipe.cmd("EXPIRE").arg(&cumulative_types).arg(ttl).ignore();
@@ -882,7 +939,11 @@ impl BotMetrics {
                 .ignore();
         }
         for (name, value) in &window_types {
-            pipe.cmd("HINCRBY").arg(&minute).arg(*name).arg(*value).ignore();
+            pipe.cmd("HINCRBY")
+                .arg(&minute)
+                .arg(*name)
+                .arg(*value)
+                .ignore();
         }
         pipe.cmd("EXPIRE").arg(&minute).arg(ttl).ignore();
         pipe.cmd("EXPIRE").arg(&minute_meta).arg(ttl).ignore();
@@ -993,8 +1054,7 @@ mod tests {
         assert_eq!(config.interval_ms, 30000.0);
         assert_eq!(config.prefix, "metrics:bot");
         assert_eq!(config.ttl_seconds, 172_800);
-        let config =
-            MetricsConfig::from_env_values(Some("10"), Some("1000"), Some(""), Some("60"));
+        let config = MetricsConfig::from_env_values(Some("10"), Some("1000"), Some(""), Some("60"));
         assert_eq!(config.history_limit, 120);
         assert_eq!(config.interval_ms, 5000.0);
         assert_eq!(config.prefix, "metrics:bot");
