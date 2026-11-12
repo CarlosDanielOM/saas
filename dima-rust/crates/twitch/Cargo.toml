@@ -1,0 +1,40 @@
+[package]
+name = "dima-twitch"
+description = "Twitch base: app, bot and streamer tokens, the streamer directory, Helix and OAuth providers, badges, emotes."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Test seams for other crates' tests: a recording event sink and the fault point that parks a
+# refresh between Twitch's answer and the write. Enable it only from `[dev-dependencies]`.
+test-util = []
+
+[dependencies]
+bson = { workspace = true }
+dima-core = { workspace = true }
+dima-http = { workspace = true }
+dima-model = { workspace = true }
+dima-store = { workspace = true }
+dima-text = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dima-core = { workspace = true, features = ["test-util"] }
+dima-http = { workspace = true, features = ["test-util"] }
+dima-twitch = { path = ".", features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util"] }
+# Reading the form bodies the mock receives.
+url = { workspace = true }

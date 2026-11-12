@@ -1,0 +1,3411 @@
+{
+  "generator": "dima-rust/crates/twitch/tests/corpus/generate.mjs",
+  "node": "v24.22.2",
+  "typescript": "5.9.3",
+  "secret_key": "dima-twitch-test-key",
+  "now_ms": 1000000,
+  "sources": {
+    "dimabot/src/utils/crypto.ts": "6d2cd4ed54d87a3d0daf0ad7548d02dda07990eb5b3279e613aa260b4d3b2f71",
+    "dimabot/src/utils/plan_cache_fence.ts": "2639f0021342fba252e7c9ef331dc42cdb9cc4eb19b5e063eda7d167ac7787ee",
+    "dimabot/src/classes/twitch_streamers.class.ts": "c72c98526e373c5115deb1de3e39adfc8617d7bef1e8a614e5d8d82281fa050f",
+    "dimabot/src/utils/tokens.ts": "b5265073a62aee18e5e3244628be6aa2ed8ae2aba58f05a3ab70d83987796ce4",
+    "dimabot/src/utils/badges.ts": "b026c1d3f407ab7e93698f5309527ab7940cc61448e98af7b43b6d7155027c3e"
+  },
+  "usable": [
+    {
+      "token": "access",
+      "expiry": null,
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": null,
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1301",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "1301",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "1300",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1300",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "1061",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1061",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "1060",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1060",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "2000garbage",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "2000garbage",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "+2000.9",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "+2000.9",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "-0x10",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "-0x10",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "﻿2000",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "﻿2000",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": " 2000",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": " 2000",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "2000",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "2000",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "Infinity",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "Infinity",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1e9",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1e9",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "0x7d0",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "0x7d0",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "  1400  ",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "  1400  ",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "١٢٣٤",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "١٢٣٤",
+      "skew": 60,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": "access",
+      "expiry": "1400😀",
+      "skew": 300,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "access",
+      "expiry": "1400😀",
+      "skew": 60,
+      "now": 1000,
+      "expected": true
+    },
+    {
+      "token": "",
+      "expiry": "9999",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    },
+    {
+      "token": null,
+      "expiry": "9999",
+      "skew": 300,
+      "now": 1000,
+      "expected": false
+    }
+  ],
+  "mapping": [
+    {
+      "name": "plan-free",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000005",
+              "content": "cd3e7dd262e97d90a5"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000006",
+              "content": "3e6a5e25076c4678"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "plan-premium",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000009",
+              "content": "f7061533a89e2f493d"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000000a",
+              "content": "7c38e780301fdf33"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "premium"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "premium",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "plan-pro-until",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000000d",
+              "content": "7ff93b95f70bb4f91e"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000000e",
+              "content": "9399352b004be406"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "pro",
+        "plan_tier_until": {
+          "$date": {
+            "$numberLong": "1794441599000"
+          }
+        }
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "pro",
+        "plan_tier_until",
+        "Wed Nov 11 2026",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "plan-until-old-year",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000011",
+              "content": "1488bcc0cee7d4c4aa"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000012",
+              "content": "d0c44512171da7dd"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": {
+          "$date": {
+            "$numberLong": "-2051222400000"
+          }
+        }
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "Sun Jan 01 1905",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "polar-version",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000015",
+              "content": "f98df56e1d76d61fcd"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000016",
+              "content": "1ed0ba3916fdab36"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "polar_plan_event_at": {
+          "$date": {
+            "$numberLong": "1700000000000"
+          }
+        },
+        "polar_plan_event_key": "evt_1"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "1700000000000:evt_1",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        "1700000000000:evt_1"
+      ]
+    },
+    {
+      "name": "polar-version-key-missing",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000019",
+              "content": "31c7a09b89017727ad"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000001a",
+              "content": "6d6a609111a29171"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "polar_plan_event_at": {
+          "$date": {
+            "$numberLong": "1700000000000"
+          }
+        }
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "polar-customer",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000001d",
+              "content": "162202d23a7a9a9420"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000001e",
+              "content": "73cb89523d001804"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "polar_sh_customer_id": "cus_1"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "cus_1",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "nulls",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": null,
+            "email": null,
+            "refresh_token": {
+              "iv": "00000000000000000000000000000021",
+              "content": "1ac8589efbb720962b"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000022",
+              "content": "df7bf45a5f773a86"
+            },
+            "access_token_expires_at": null,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": null,
+        "polar_sh_customer_id": null
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "",
+        "email",
+        "",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "expiry-missing",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000025",
+              "content": "4bf3476fdfd2e9bb20"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000026",
+              "content": "562bbd19702b6b50"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "expiry-zero",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000029",
+              "content": "9e58c930dfbb1776f9"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000002a",
+              "content": "f3105eaa8d1dac89"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "0"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "expiry-double",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000002d",
+              "content": "793154db7518d8d933"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000002e",
+              "content": "001ee32afe443d60"
+            },
+            "access_token_expires_at": {
+              "$numberDouble": "1793104200.5"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200.5",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "expiry-past-int32",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000031",
+              "content": "16d2c0640711251319"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000032",
+              "content": "2002621020340d41"
+            },
+            "access_token_expires_at": {
+              "$numberDouble": "2200000000"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "2200000000",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "cache-expiry-wins",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000035",
+              "content": "5669a89291440b3a46"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000036",
+              "content": "591d84e0d899b340"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": "1700000000",
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1700000000",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "cache-expiry-empty",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000039",
+              "content": "06a8ed5486f3ebbebb"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000003a",
+              "content": "55b8dd32813d14d5"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": "",
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "flags-false",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000003d",
+              "content": "91de83427531772703"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000003e",
+              "content": "6c896ccaa1f58495"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": false,
+            "chat_enabled": false,
+            "has_permissions": false,
+            "up_to_date_permissions": false
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "false",
+        "chat_enabled",
+        "false",
+        "has_permissions",
+        "false",
+        "up_to_date_permissions",
+        "false",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "empty-envelopes",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "",
+              "content": ""
+            },
+            "access_token": {
+              "iv": null,
+              "content": null
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "",
+        "access_token",
+        "",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "missing-envelopes",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "",
+        "access_token",
+        "",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "unicode",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "cañón_👋",
+            "email": "ñandú+🎮@example.invalid",
+            "refresh_token": {
+              "iv": "00000000000000000000000000000001",
+              "content": "c52009d54dd27e0451e65f4f41"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000002",
+              "content": "773c45c8aacb314e8c60be01f99c"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "cañón_👋",
+        "email",
+        "ñandú+🎮@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "rëfresh 🎮",
+        "access_token",
+        "مرحبا é",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    },
+    {
+      "name": "second-account-first",
+      "user": {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "accounts": [
+          {
+            "_id": {
+              "$oid": "000000000000000000000102"
+            },
+            "type": "youtube",
+            "id": "yt",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000004d",
+              "content": "bc8c3d092ef4583c90"
+            },
+            "access_token": {
+              "iv": "0000000000000000000000000000004e",
+              "content": "fb4db5c764f0fdd3"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          },
+          {
+            "_id": {
+              "$oid": "000000000000000000000101"
+            },
+            "type": "twitch",
+            "id": "111",
+            "name": "chan",
+            "email": "chan@example.invalid",
+            "refresh_token": {
+              "iv": "0000000000000000000000000000004f",
+              "content": "f2720f091e2f9135a6"
+            },
+            "access_token": {
+              "iv": "00000000000000000000000000000050",
+              "content": "ec106a6b73d51ee9"
+            },
+            "access_token_expires_at": {
+              "$numberInt": "1793104200"
+            },
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "cached_expires_at": null,
+      "keys": [
+        "twitch:111:ai:credits:plan-version",
+        "accounts:twitch:111:data",
+        "twitch:accounts"
+      ],
+      "args": [
+        "",
+        "id",
+        "111",
+        "name",
+        "chan",
+        "email",
+        "chan@example.invalid",
+        "plan_tier",
+        "free",
+        "plan_tier_until",
+        "",
+        "polar_sh_customer_id",
+        "",
+        "refresh_token",
+        "refresh-1",
+        "access_token",
+        "access-1",
+        "expires_at",
+        "1793104200",
+        "actived",
+        "true",
+        "chat_enabled",
+        "true",
+        "has_permissions",
+        "true",
+        "up_to_date_permissions",
+        "true",
+        "__polar_plan_version",
+        ""
+      ]
+    }
+  ],
+  "classification": [
+    {
+      "status": 400,
+      "payload": {
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "message": "Invalid refresh token",
+      "permanent": true
+    },
+    {
+      "status": 401,
+      "payload": {
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "message": "Invalid refresh token",
+      "permanent": true
+    },
+    {
+      "status": 403,
+      "payload": {
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "message": "Invalid refresh token",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "message": "Invalid refresh token",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "message": "Invalid refresh token",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "error": "Bad Request",
+        "status": 400,
+        "message": "invalid client secret"
+      },
+      "message": "invalid client secret | Bad Request",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "error": "Bad Request",
+        "status": 400,
+        "message": "invalid client secret"
+      },
+      "message": "invalid client secret | Bad Request",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "error": "Bad Request",
+        "status": 400,
+        "message": "invalid client secret"
+      },
+      "message": "invalid client secret | Bad Request",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "error": "Bad Request",
+        "status": 400,
+        "message": "invalid client secret"
+      },
+      "message": "invalid client secret | Bad Request",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "error": "Bad Request",
+        "status": 400,
+        "message": "invalid client secret"
+      },
+      "message": "invalid client secret | Bad Request",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "status": 400,
+        "message": "missing client secret"
+      },
+      "message": "missing client secret",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "status": 400,
+        "message": "missing client secret"
+      },
+      "message": "missing client secret",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "status": 400,
+        "message": "missing client secret"
+      },
+      "message": "missing client secret",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "status": 400,
+        "message": "missing client secret"
+      },
+      "message": "missing client secret",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "status": 400,
+        "message": "missing client secret"
+      },
+      "message": "missing client secret",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "status": 403,
+        "message": "invalid client"
+      },
+      "message": "invalid client",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "status": 403,
+        "message": "invalid client"
+      },
+      "message": "invalid client",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "status": 403,
+        "message": "invalid client"
+      },
+      "message": "invalid client",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "status": 403,
+        "message": "invalid client"
+      },
+      "message": "invalid client",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "status": 403,
+        "message": "invalid client"
+      },
+      "message": "invalid client",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "error": "invalid_grant",
+        "error_description": "The authorization grant is invalid"
+      },
+      "message": "The authorization grant is invalid | invalid_grant",
+      "permanent": true
+    },
+    {
+      "status": 401,
+      "payload": {
+        "error": "invalid_grant",
+        "error_description": "The authorization grant is invalid"
+      },
+      "message": "The authorization grant is invalid | invalid_grant",
+      "permanent": true
+    },
+    {
+      "status": 403,
+      "payload": {
+        "error": "invalid_grant",
+        "error_description": "The authorization grant is invalid"
+      },
+      "message": "The authorization grant is invalid | invalid_grant",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "error": "invalid_grant",
+        "error_description": "The authorization grant is invalid"
+      },
+      "message": "The authorization grant is invalid | invalid_grant",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "error": "invalid_grant",
+        "error_description": "The authorization grant is invalid"
+      },
+      "message": "The authorization grant is invalid | invalid_grant",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "message": "Authorization has been REVOKED"
+      },
+      "message": "Authorization has been REVOKED",
+      "permanent": true
+    },
+    {
+      "status": 401,
+      "payload": {
+        "message": "Authorization has been REVOKED"
+      },
+      "message": "Authorization has been REVOKED",
+      "permanent": true
+    },
+    {
+      "status": 403,
+      "payload": {
+        "message": "Authorization has been REVOKED"
+      },
+      "message": "Authorization has been REVOKED",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "message": "Authorization has been REVOKED"
+      },
+      "message": "Authorization has been REVOKED",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "message": "Authorization has been REVOKED"
+      },
+      "message": "Authorization has been REVOKED",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "message": "  ",
+        "error_description": " ",
+        "error": "x"
+      },
+      "message": "x",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "message": "  ",
+        "error_description": " ",
+        "error": "x"
+      },
+      "message": "x",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "message": "  ",
+        "error_description": " ",
+        "error": "x"
+      },
+      "message": "x",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "message": "  ",
+        "error_description": " ",
+        "error": "x"
+      },
+      "message": "x",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "message": "  ",
+        "error_description": " ",
+        "error": "x"
+      },
+      "message": "x",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "message": 5,
+        "error": [
+          "invalid refresh token"
+        ]
+      },
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "message": 5,
+        "error": [
+          "invalid refresh token"
+        ]
+      },
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "message": 5,
+        "error": [
+          "invalid refresh token"
+        ]
+      },
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "message": 5,
+        "error": [
+          "invalid refresh token"
+        ]
+      },
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "message": 5,
+        "error": [
+          "invalid refresh token"
+        ]
+      },
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "message": "İNVALİD REFRESH TOKEN"
+      },
+      "message": "İNVALİD REFRESH TOKEN",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {
+        "message": "İNVALİD REFRESH TOKEN"
+      },
+      "message": "İNVALİD REFRESH TOKEN",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {
+        "message": "İNVALİD REFRESH TOKEN"
+      },
+      "message": "İNVALİD REFRESH TOKEN",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "message": "İNVALİD REFRESH TOKEN"
+      },
+      "message": "İNVALİD REFRESH TOKEN",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "message": "İNVALİD REFRESH TOKEN"
+      },
+      "message": "İNVALİD REFRESH TOKEN",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {
+        "message": "invalid refresh 🔑 token"
+      },
+      "message": "invalid refresh 🔑 token",
+      "permanent": true
+    },
+    {
+      "status": 401,
+      "payload": {
+        "message": "invalid refresh 🔑 token"
+      },
+      "message": "invalid refresh 🔑 token",
+      "permanent": true
+    },
+    {
+      "status": 403,
+      "payload": {
+        "message": "invalid refresh 🔑 token"
+      },
+      "message": "invalid refresh 🔑 token",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {
+        "message": "invalid refresh 🔑 token"
+      },
+      "message": "invalid refresh 🔑 token",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {
+        "message": "invalid refresh 🔑 token"
+      },
+      "message": "invalid refresh 🔑 token",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": "Invalid refresh token",
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": "Invalid refresh token",
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": "Invalid refresh token",
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": "Invalid refresh token",
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": "Invalid refresh token",
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": null,
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": null,
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": null,
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": null,
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": null,
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": [],
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": [],
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": [],
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": [],
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": [],
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 400,
+      "payload": {},
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 401,
+      "payload": {},
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 403,
+      "payload": {},
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 500,
+      "payload": {},
+      "message": "",
+      "permanent": false
+    },
+    {
+      "status": 200,
+      "payload": {},
+      "message": "",
+      "permanent": false
+    }
+  ],
+  "badges": [
+    {
+      "badges": [],
+      "expected": {
+        "formattedBadges": "",
+        "badgeList": [],
+        "isMod": false,
+        "isSub": false,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "broadcaster",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "12"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[STREAMER] [SUB 12M] ",
+        "badgeList": [
+          "[STREAMER]",
+          "[SUB 12M]"
+        ],
+        "isMod": true,
+        "isSub": true,
+        "subMonths": 12
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "moderator",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "vip",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "founder",
+          "id": "1",
+          "info": "3"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[MOD] [FOUNDER 3M] ",
+        "badgeList": [
+          "[MOD]",
+          "[FOUNDER 3M]"
+        ],
+        "isMod": true,
+        "isSub": true,
+        "subMonths": 3
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "vip",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "0"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[VIP] [SUB 0M] ",
+        "badgeList": [
+          "[VIP]",
+          "[SUB 0M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": ""
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 0M] ",
+        "badgeList": [
+          "[SUB 0M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "0x1A"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 26M] ",
+        "badgeList": [
+          "[SUB 26M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 26
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "12abc"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 12M] ",
+        "badgeList": [
+          "[SUB 12M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 12
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "-3"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB -3M] ",
+        "badgeList": [
+          "[SUB -3M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": -3
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": " 7"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 7M] ",
+        "badgeList": [
+          "[SUB 7M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 7
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "١٢"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 0M] ",
+        "badgeList": [
+          "[SUB 0M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "1e3"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 1M] ",
+        "badgeList": [
+          "[SUB 1M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 1
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "-0"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 0M] ",
+        "badgeList": [
+          "[SUB 0M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "12.9"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 12M] ",
+        "badgeList": [
+          "[SUB 12M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 12
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "99999999999999999999"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 100000000000000000000M] ",
+        "badgeList": [
+          "[SUB 100000000000000000000M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 100000000000000000000
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "premium",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "partner",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "staff",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "turbo",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "sub-gifter",
+          "id": "1",
+          "info": "50"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[PRIME] [PARTNER] [STAFF] [TURBO] [SUB-GIFTER] ",
+        "badgeList": [
+          "[PRIME]",
+          "[PARTNER]",
+          "[STAFF]",
+          "[TURBO]",
+          "[SUB-GIFTER]"
+        ],
+        "isMod": false,
+        "isSub": false,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "sub-gifter",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "turbo",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "staff",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "partner",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "premium",
+          "id": "1",
+          "info": ""
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[PRIME] [PARTNER] [STAFF] [TURBO] [SUB-GIFTER] ",
+        "badgeList": [
+          "[PRIME]",
+          "[PARTNER]",
+          "[STAFF]",
+          "[TURBO]",
+          "[SUB-GIFTER]"
+        ],
+        "isMod": false,
+        "isSub": false,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "5"
+        },
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "9"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[SUB 5M] ",
+        "badgeList": [
+          "[SUB 5M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 5
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "glhf-pledge",
+          "id": "1",
+          "info": ""
+        },
+        {
+          "set_id": "bits",
+          "id": "1",
+          "info": "100"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "",
+        "badgeList": [],
+        "isMod": false,
+        "isSub": false,
+        "subMonths": 0
+      }
+    },
+    {
+      "badges": [
+        {
+          "set_id": "founder",
+          "id": "1",
+          "info": "😀"
+        },
+        {
+          "set_id": "subscriber",
+          "id": "1",
+          "info": "2"
+        }
+      ],
+      "expected": {
+        "formattedBadges": "[FOUNDER 0M] ",
+        "badgeList": [
+          "[FOUNDER 0M]"
+        ],
+        "isMod": false,
+        "isSub": true,
+        "subMonths": 0
+      }
+    }
+  ],
+  "refresh": [
+    {
+      "name": "success",
+      "answers": [
+        [
+          200,
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_in": 3600
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 3600,
+        "kind": "success"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": "new-refresh"
+            },
+            "accounts.$.access_token": {
+              "plain": "new-access"
+            },
+            "accounts.$.access_token_expires_at": 4600,
+            "accounts.$.has_permissions": true,
+            "accounts.$.up_to_date_permissions": true
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_at": "4600",
+            "has_permissions": "true",
+            "up_to_date_permissions": "true"
+          }
+        ],
+        "actions": [
+          "info:token_refresh_succeeded"
+        ]
+      },
+      "finalCache": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "4600",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "name": "default-expiry",
+      "answers": [
+        [
+          200,
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_in": "3600"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 7200,
+        "kind": "success"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": "new-refresh"
+            },
+            "accounts.$.access_token": {
+              "plain": "new-access"
+            },
+            "accounts.$.access_token_expires_at": 8200,
+            "accounts.$.has_permissions": true,
+            "accounts.$.up_to_date_permissions": true
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_at": "8200",
+            "has_permissions": "true",
+            "up_to_date_permissions": "true"
+          }
+        ],
+        "actions": [
+          "info:token_refresh_succeeded"
+        ]
+      },
+      "finalCache": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "8200",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "name": "fractional-expiry",
+      "answers": [
+        [
+          200,
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_in": 3600.5
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 3600.5,
+        "kind": "success"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": "new-refresh"
+            },
+            "accounts.$.access_token": {
+              "plain": "new-access"
+            },
+            "accounts.$.access_token_expires_at": 4600.5,
+            "accounts.$.has_permissions": true,
+            "accounts.$.up_to_date_permissions": true
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_at": "4600.5",
+            "has_permissions": "true",
+            "up_to_date_permissions": "true"
+          }
+        ],
+        "actions": [
+          "info:token_refresh_succeeded"
+        ]
+      },
+      "finalCache": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "4600.5",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "name": "permanent",
+      "answers": [
+        [
+          400,
+          {
+            "status": 400,
+            "message": "Invalid refresh token"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "permanent_failure",
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": null
+            },
+            "accounts.$.access_token": {
+              "plain": null
+            },
+            "accounts.$.access_token_expires_at": null,
+            "accounts.$.has_permissions": false,
+            "accounts.$.up_to_date_permissions": false
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "",
+            "refresh_token": "",
+            "expires_at": "",
+            "has_permissions": "false",
+            "up_to_date_permissions": "false"
+          }
+        ],
+        "actions": [
+          "error:token_refresh_rejected",
+          "error:tokens_invalidated"
+        ]
+      },
+      "finalCache": {
+        "access_token": "",
+        "refresh_token": "",
+        "expires_at": "",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      }
+    },
+    {
+      "name": "permanent-401-revoked",
+      "answers": [
+        [
+          401,
+          {
+            "status": 401,
+            "message": "authorization has been revoked"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "permanent_failure",
+        "status": 401,
+        "message": "authorization has been revoked"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": null
+            },
+            "accounts.$.access_token": {
+              "plain": null
+            },
+            "accounts.$.access_token_expires_at": null,
+            "accounts.$.has_permissions": false,
+            "accounts.$.up_to_date_permissions": false
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "",
+            "refresh_token": "",
+            "expires_at": "",
+            "has_permissions": "false",
+            "up_to_date_permissions": "false"
+          }
+        ],
+        "actions": [
+          "error:token_refresh_rejected",
+          "error:tokens_invalidated"
+        ]
+      },
+      "finalCache": {
+        "access_token": "",
+        "refresh_token": "",
+        "expires_at": "",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      }
+    },
+    {
+      "name": "rotated-usable",
+      "answers": [
+        [
+          400,
+          {
+            "status": 400,
+            "message": "Invalid refresh token"
+          }
+        ]
+      ],
+      "options": {
+        "stored": "winner",
+        "expires": "4600"
+      },
+      "attempts": 1,
+      "result": {
+        "token": "winner-access",
+        "refreshToken": "winner-refresh",
+        "expiresIn": 3600,
+        "kind": "success"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_rejected",
+          "info:token_refresh_rotation_detected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "winner-access",
+        "refresh_token": "winner-refresh",
+        "expires_at": "4600"
+      }
+    },
+    {
+      "name": "rotated-expired",
+      "answers": [
+        [
+          400,
+          {
+            "status": 400,
+            "message": "Invalid refresh token"
+          }
+        ]
+      ],
+      "options": {
+        "stored": "winner",
+        "expires": "1050"
+      },
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 400,
+        "message": "Invalid refresh token (stored token already rotated by a concurrent refresh)"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_rejected",
+          "warn:token_refresh_rotation_detected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "winner-access",
+        "refresh_token": "winner-refresh",
+        "expires_at": "1050"
+      }
+    },
+    {
+      "name": "transient-client-secret",
+      "answers": [
+        [
+          400,
+          {
+            "error": "Bad Request",
+            "status": 400,
+            "message": "invalid client secret"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 400,
+        "message": "invalid client secret | Bad Request"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "warn:token_refresh_rejected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "transient-forbidden",
+      "answers": [
+        [
+          403,
+          {
+            "status": 403,
+            "message": "invalid client"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 403,
+        "message": "invalid client"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "warn:token_refresh_rejected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "transient-503-three-times",
+      "answers": [
+        [
+          503,
+          {
+            "message": "busy"
+          }
+        ],
+        [
+          503,
+          {
+            "message": "busy"
+          }
+        ],
+        [
+          503,
+          {
+            "message": "busy"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 3,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 503,
+        "message": "busy"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "warn:token_refresh_rejected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "transient-503-then-success",
+      "answers": [
+        [
+          503,
+          {
+            "message": "busy"
+          }
+        ],
+        [
+          200,
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_in": 3600
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 2,
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 3600,
+        "kind": "success"
+      },
+      "effects": {
+        "store": [
+          {
+            "accounts.$.refresh_token": {
+              "plain": "new-refresh"
+            },
+            "accounts.$.access_token": {
+              "plain": "new-access"
+            },
+            "accounts.$.access_token_expires_at": 4600,
+            "accounts.$.has_permissions": true,
+            "accounts.$.up_to_date_permissions": true
+          }
+        ],
+        "cache": [
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_at": "4600",
+            "has_permissions": "true",
+            "up_to_date_permissions": "true"
+          }
+        ],
+        "actions": [
+          "info:token_refresh_succeeded"
+        ]
+      },
+      "finalCache": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "4600",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "name": "error-flag-on-200",
+      "answers": [
+        [
+          200,
+          {
+            "error": "temporarily_unavailable"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 200,
+        "message": "temporarily_unavailable"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "warn:token_refresh_rejected"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "incomplete",
+      "answers": [
+        [
+          200,
+          {
+            "access_token": "new-access"
+          }
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 200,
+        "message": "Twitch token refresh returned incomplete payload"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_failed"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "empty-body",
+      "answers": [
+        [
+          200,
+          ""
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 200,
+        "message": "Twitch token refresh returned incomplete payload"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_failed"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "unparseable-502",
+      "answers": [
+        [
+          502,
+          "<html>bad gateway</html>"
+        ],
+        [
+          502,
+          "<html>bad gateway</html>"
+        ],
+        [
+          502,
+          "<html>bad gateway</html>"
+        ]
+      ],
+      "options": {},
+      "attempts": 3,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 502,
+        "message": "Failed to parse Twitch token refresh response"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_failed"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "unparseable-200",
+      "answers": [
+        [
+          200,
+          "{\"access_token\":\"new-acc"
+        ]
+      ],
+      "options": {},
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 200,
+        "message": "Failed to parse Twitch token refresh response"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_failed"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "name": "missing-user",
+      "answers": [
+        [
+          200,
+          {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_in": 3600
+          }
+        ]
+      ],
+      "options": {
+        "missingUser": true
+      },
+      "attempts": 1,
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "message": "User not found while storing refreshed token"
+      },
+      "effects": {
+        "store": [],
+        "cache": [],
+        "actions": [
+          "error:token_refresh_store_failed"
+        ]
+      },
+      "finalCache": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    }
+  ]
+}
