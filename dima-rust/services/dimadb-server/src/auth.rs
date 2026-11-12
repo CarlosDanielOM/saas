@@ -64,17 +64,7 @@ pub fn session_id(cookie_header: Option<&str>) -> ApiResult<Option<String>> {
 
 /// `encodeURIComponent(text)`.
 pub fn encode_uri_component(text: &str) -> String {
-    const KEEP: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
-        .remove(b'-')
-        .remove(b'_')
-        .remove(b'.')
-        .remove(b'!')
-        .remove(b'~')
-        .remove(b'*')
-        .remove(b'\'')
-        .remove(b'(')
-        .remove(b')');
-    percent_encoding::utf8_percent_encode(text, KEEP).to_string()
+    dima_text::encode_uri_component(text).into_owned()
 }
 
 /// `sessionCookie(id, secure)`.
@@ -361,6 +351,16 @@ fn valid_username(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn uri_encoding_contract() {
+        for text in ["", "!*'()~", "a /?%+", "café 😀 مرحبا e\u{301}", "\0"] {
+            assert_eq!(
+                encode_uri_component(text),
+                dima_text::encode_uri_component(text)
+            );
+        }
+    }
 
     #[test]
     fn cookies_parse_like_the_reference() -> Result<(), ApiError> {
