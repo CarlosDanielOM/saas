@@ -312,6 +312,25 @@ impl Flush<'_> {
         }
     }
 
+    /// Takes the channel's lease if it is free, without waiting (P2-BILLING-02a: the flush of
+    /// channels that have gone quiet, which must not wait on a channel that is flushing).
+    pub async fn try_acquire(&self, channel: &str) -> Result<Option<Lease>, DragonflyError> {
+        let owner = self
+            .random
+            .uuid_v4()
+            .map_err(|_| DragonflyError::Reply("lease token unavailable"))?;
+        let key = lease_key(channel);
+        let options = SetOptions {
+            condition: SetCondition::IfMissing,
+            expiry: SetExpiry::Millis(INGEST_LOCK_TTL_MS),
+            get: false,
+        };
+        Ok(
+            (self.dragonfly.set(&key, owner.as_bytes(), options).await? == SetOutcome::Written)
+                .then_some(Lease { key, owner }),
+        )
+    }
+
     /// Releases the lease if it is still this flush's.
     pub async fn release(&self, channel: &str, lease: &Lease) {
         let processing = processing_list(channel);

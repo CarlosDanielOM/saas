@@ -26,6 +26,13 @@ futures-util = { workspace = true }
 redis = { workspace = true }
 # WHATWG URL parsing of checkout redirect URLs (`new URL`).
 url = { workspace = true }
+# The AI usage page's IANA time zones (`usage_ledger::zones`).
+jiff = { workspace = true }
+# Stored identities: the ledger lock key, the dashboard key, the transaction cursor scope.
+sha2 = { workspace = true }
+hex = { workspace = true }
+# The transaction cursor (`base64url`).
+base64 = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

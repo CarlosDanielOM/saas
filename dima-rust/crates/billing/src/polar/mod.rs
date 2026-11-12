@@ -459,6 +459,43 @@ impl PolarClient {
         self.get(path, &[], Profile::Fetch).await
     }
 
+    /// `customers.getState({id})` through the SDK (`resolveAiUsagePeriod`), as Polar sent it
+    /// (P2-BILLING-02a). The SDK's call has no timeout: the provider's 60 s applies.
+    pub async fn get_customer_state_sdk(&self, customer_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/customers/{}/state", customer_id)?;
+        self.get(path, &[], Profile::Sdk(None)).await
+    }
+
+    /// `events.list(request)` through the SDK (`fetchAiUsageTransactions`): one page of a
+    /// customer's events, newest first, as Polar sent it (P2-BILLING-02a). The query is the
+    /// SDK's, keys in its order (`customer_id`, `end_timestamp`, `limit`, `name`, `page`,
+    /// `sorting`, `source`, `start_timestamp`), dates as ISO text; recorded from
+    /// `@polar-sh/sdk` 0.42.5. No timeout in the reference: the provider's 60 s applies.
+    pub async fn list_events_page(
+        &self,
+        request: &crate::usage_ledger::history::EventsRequest,
+    ) -> Result<Value, PolarError> {
+        let iso = |ms: i64| {
+            dima_text::to_iso_string(ms)
+                .ok_or(PolarError::InvalidInput("event window out of range"))
+        };
+        let (end, start) = (iso(request.end_ms)?, iso(request.start_ms)?);
+        let page = request.page.to_string();
+        let limit = crate::usage_ledger::history::POLAR_PAGE_SIZE.to_string();
+        let query = [
+            ("customer_id", request.customer_id.as_str()),
+            ("end_timestamp", end.as_str()),
+            ("limit", limit.as_str()),
+            ("name", request.name),
+            ("page", page.as_str()),
+            ("sorting", "-timestamp"),
+            ("source", request.source),
+            ("start_timestamp", start.as_str()),
+        ];
+        self.get(Path::fixed("/v1/events/"), &query, Profile::Sdk(None))
+            .await
+    }
+
     // ------------------------------------------------------- ai_credit_sources.ts (gift profile)
 
     /// `GET /v1/benefit-grants/?customer_id=…&limit=100&page=…&sorting=-created_at`.
