@@ -39,8 +39,8 @@
 //! - a timer's snapshot is a copy taken when it is scheduled (the reference shares the
 //!   responses array with the live context until the scheduler serialises it, which it does
 //!   immediately);
-//! - `JSON.parse` of stored lists rejects nesting deeper than 127 and numbers beyond the double
-//!   range, which the reference reads (as deep structures, or `Infinity`).
+//! - `JSON.parse` of stored values ([`crate::json`]) refuses nesting deeper than
+//!   [`crate::json::MAX_JSON_NESTING`] (V8 reads any depth).
 
 mod coerce;
 mod frame;

@@ -1176,6 +1176,11 @@ pub enum Difference {
     /// A timer's snapshot is a copy at scheduling (the reference shares the responses array with
     /// the live context until the scheduler serialises it, immediately in production).
     SnapshotCopy,
+    /// A stored value nested deeper than `MAX_JSON_NESTING` reads as invalid JSON (V8 reads any
+    /// depth; the Rust reader keeps the values it builds shallow enough for the stack contract).
+    /// The expectation is the generator's second recording of the same case, with the
+    /// reference's `JSON.parse` refusing such text.
+    JsonNesting,
 }
 
 /// Replaces every occurrence of the twins' BMP characters (values and keys) by the originals.
@@ -1298,7 +1303,20 @@ pub fn expected(case: &Json) -> (Json, Vec<Difference>) {
     let mut differences = Vec::new();
     let input = &case["input"];
     let mut source = case["source"].clone();
-    if let Some(twin) = case.get("twin") {
+    if let Some(twin) = case
+        .get("twin")
+        .filter(|twin| twin.get("jsonNesting").is_some())
+    {
+        assert_eq!(
+            twin["jsonNesting"].as_u64(),
+            Some(dima_engine::json::MAX_JSON_NESTING as u64),
+            "the corpus was recorded for another JSON nesting bound"
+        );
+        if comparable(&twin["source"]) != comparable(&source) {
+            differences.push(Difference::JsonNesting);
+        }
+        source = twin["source"].clone();
+    } else if let Some(twin) = case.get("twin") {
         let map: Vec<(String, String)> = twin["map"]
             .as_array()
             .unwrap()

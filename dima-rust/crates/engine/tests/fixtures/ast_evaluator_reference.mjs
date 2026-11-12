@@ -104,6 +104,15 @@ export async function buildSourceBundle(options = {}) {
 
 const sourceBundle = () => buildSourceBundle();
 
+// The Rust port's JSON reader (`dima_engine::json`) refuses lists and objects nested deeper than
+// MAX_JSON_NESTING; V8's JSON.parse has no bound. For a case marked `boundedJson`, the generator
+// also records the same source with every JSON.parse refusing such text (all of them sit inside
+// a try), which is what the port does on purpose.
+const RUST_JSON_NESTING = 256;
+const boundedJsonSource = (path, text) => path !== 'dimabot/src/utils/ast_parser/evaluator.ts' ? text
+  : `const boundedJsonParse = (raw: string): any => { const value = JSON.parse(raw); const pending: [unknown, number][] = [[value, 0]]; while (pending.length) { const [item, depth] = pending.pop()!; if (item && typeof item === 'object') { if (depth + 1 > ${RUST_JSON_NESTING}) throw new SyntaxError('nesting'); for (const child of Object.values(item)) pending.push([child, depth + 1]); } } return value; };\n`
+    + text.replaceAll('JSON.parse(', 'boundedJsonParse(');
+
 // Self-contained runtime shared by ordinary generator and serialized offline loader.
 // Only actual source is transpiled. Host adapters below are deterministic test fakes.
 function runtimeFactory(code, vm, contextBuiltins = false, options = {}) {
@@ -551,7 +560,44 @@ function caseDefinitions() {
   appendRepeatedPrefixCases(cases);
   appendUtf16BoundaryCases(cases);
   appendToStringBoundaryCases(cases);
+  appendJsonReaderCases(cases);
   return cases;
+}
+
+// Stored values read as JSON: numbers beyond the double range, the JSON grammar's edges, and
+// nesting up to and past the Rust reader's bound.
+function appendJsonReaderCases(cases) {
+  const add = (name, input, extra = {}) => cases.push({id:`json-reader-${String(cases.length).padStart(4,'0')}-${name}`,category:'json-reader',input,...extra});
+  const nested = (depth, inner = '1') => `${'['.repeat(depth)}${inner}${']'.repeat(depth)}`;
+  const texts = [
+    ['overflow','[1e400]'], ['overflow-negative','[-1e400]'], ['underflow','[1e-400,-0]'],
+    ['numbers','[12345678901234567890,0.1,1E+2,1e21,1.7976931348623157e308,1.7976931348623159e308]'],
+    ['overflow-nested','{"a":[1e400]}'], ['overflow-bare','1e400'], ['object-repeated','{"a":1,"a":2}'],
+    ['string-bare','"text"'], ['literals','[true,false,null]'], ['escapes','["\\u00e9\\ud83d\\ude00\\/\\b"]'],
+    ['padded',' \t[ 1 ,\r\n2 ] '], ['raw-tab','["a\tb"]'], ['leading-zero','[01]'], ['bare-point','[1.]'],
+    ['plus','[+1]'], ['trailing-comma','[1,]'], ['trailing-text','[1] x'], ['empty-key','{"":1}'],
+    ...[128,255,256,257,300,1000].map(depth => [`nested-${depth}`,nested(depth)]),
+    ['objects-257',`${'{"a":'.repeat(257)}1${'}'.repeat(257)}`],
+    ['nested-empty-257',nested(257,'')]
+  ];
+  const depthOf = text => { let depth = 0, max = 0; for (const ch of text) { if (ch === '[' || ch === '{') max = Math.max(max, ++depth); else if (ch === ']' || ch === '}') depth--; } return max; };
+  const reads = [
+    ['index',root(lit('a'),get('memory','items',index('0')))],
+    ['length',get('memory','items',{type:'length'})],
+    ['array',get('memory','items',{type:'array'})],
+    ['foreach',root(foreach(get('memory','items'),[set('memory',loopVar('item'),'out',{type:'append'})]),get('memory','out',{type:'length'}))],
+    ['append',root(set('memory',lit('z'),'items',{type:'append'}),get('memory','items',{type:'length'}))]
+  ];
+  for (const [tname,text] of texts) for (const [rname,ast] of reads) {
+    const extra = depthOf(text) > RUST_JSON_NESTING ? {boundedJson:true} : {};
+    add(`${rname}-${tname}`,{operation:'evaluate',ast,context:{variables:[['items',text]]},host:{}},extra);
+  }
+  // The same reader serves the database and the cache.
+  for (const [tname,text] of [['overflow','[1e400]'],['nested-300',nested(300)]]) {
+    const extra = depthOf(text) > RUST_JSON_NESTING ? {boundedJson:true} : {};
+    add(`db-${tname}`,{operation:'evaluate',ast:root(lit('a'),get('db','items',index('0')),get('db','items',{type:'length'})),context:{},host:{db:[['items',text]]}},extra);
+    add(`cache-${tname}`,{operation:'evaluate',ast:root(lit('a'),get('cache','items',index('0')),get('cache','items',{type:'length'})),context:{},host:{cache:[['twitch:123:variable:items',text]]}},extra);
+  }
 }
 
 // Values that String() or Number() cannot convert (an own `toString` key, also inside a list
@@ -736,10 +782,17 @@ export async function buildCorpus() {
   const definitions = caseDefinitions();
   assert.ok(definitions.length >= 1000 && definitions.length <= 5000, `bounded corpus: ${definitions.length}`);
   const cases = [];
+  let boundedOracle;
   for (const definition of definitions) {
     const source = await oracle.execute(definition.input);
     if (definition.invariant) assert.deepEqual(source.value, definition.invariant, `source test invariant ${definition.id}`);
-    cases.push(await withTwin(oracle, definition, source));
+    const recorded = await withTwin(oracle, definition, source);
+    if (definition.boundedJson) {
+      assert(!recorded.twin, `bounded JSON case with another twin: ${definition.id}`);
+      boundedOracle ??= runtimeFactory((await buildSourceBundle({transformSource:boundedJsonSource})).code, vm);
+      recorded.twin = {map:[],jsonNesting:RUST_JSON_NESTING,source:await boundedOracle.execute(definition.input)};
+    }
+    cases.push(recorded);
   }
   const benchmarks = [];
   for (const definition of benchmarkDefinitions()) {

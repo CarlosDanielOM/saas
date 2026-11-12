@@ -174,12 +174,11 @@ impl Value {
         })
     }
 
-    /// `JSON.parse(text)`, or `None` where it throws. Lone surrogate escapes become U+FFFD (text
-    /// rule 3). Differences from V8, all on input no writer of this system produces: nesting
-    /// deeper than 127 containers and numbers beyond the double range (`1e400`) are rejected.
+    /// `JSON.parse(text)`, or `None` where it throws ([`crate::json::parse`]): numbers beyond
+    /// the double range are infinite, lone surrogate escapes become U+FFFD (text rule 3), and
+    /// containers nest up to [`crate::json::MAX_JSON_NESTING`].
     pub fn parse_json(text: &str) -> Option<Value> {
-        let clean = dima_text::sanitize_lone_surrogates(text.as_bytes());
-        serde_json::from_slice(&clean).ok()
+        crate::json::parse(text)
     }
 
     /// `JSON.stringify(value)`; `None` for `undefined` (JavaScript returns `undefined`).

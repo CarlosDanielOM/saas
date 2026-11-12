@@ -8,7 +8,8 @@
 //!   block tree, compiling it to command text with a round-trip guarantee, and importing text.
 //! - [`eval`]: the evaluator (`evaluator.ts`, `render.ts`, `timer.ts`): [`eval::Engine`] renders
 //!   compiled text against a [`context::Context`] and a [`host::Host`].
-//! - [`value`]: the values expressions compute ([`value::Value`]).
+//! - [`value`]: the values expressions compute ([`value::Value`]); [`json`] reads stored
+//!   values as `JSON.parse` does.
 //! - [`context`]: the invocation, the run's state, command references, timer snapshots.
 //! - [`host`]: every effect (chat, Twitch, variables in Dragonfly and MongoDB, timers, time,
 //!   randomness) leaves the engine through [`host::Host`].
@@ -31,6 +32,7 @@ pub mod context;
 pub mod eval;
 mod functions;
 pub mod host;
+pub mod json;
 pub mod map;
 pub mod permissions;
 pub mod registry;

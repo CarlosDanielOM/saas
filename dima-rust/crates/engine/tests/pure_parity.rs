@@ -10,6 +10,13 @@ mod support;
 fn pure_corpus_matches_the_reference() {
     let tally = support::run_corpus("ast_pure_cases.json");
     println!("{tally:#?}");
+    assert_eq!(
+        tally.differences,
+        [(support::Difference::CharacterCount, 62)]
+            .into_iter()
+            .collect(),
+        "the intended differences changed"
+    );
     assert!(
         tally.failures.is_empty(),
         "{} cases differ:\n{}",

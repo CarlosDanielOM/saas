@@ -484,7 +484,7 @@ async function registryEvidence(bundle) {
 }
 
 export async function buildCorpus() {
-  assert.equal(sha256(await readFile(oldOutput)),'17f8250d5b4374928eca3ee55bbeb785d521d9d51ec6b3ca4ac3fa54c4f8b1ce','evaluator corpus (regenerated from today\'s TypeScript) must remain byte-identical');
+  assert.equal(sha256(await readFile(oldOutput)),'cc98d53a3177f4221a5e0f7cc25d2645a3d5ea2381455ed3be1f6e2e733962a0','evaluator corpus (regenerated from today\'s TypeScript) must remain byte-identical');
   const bundle=await sourceBundle();
   const registryMetadata=await registryEvidence(bundle);
   const oracle=createPreparedSourceOracle(bundle.code,{registrations});
