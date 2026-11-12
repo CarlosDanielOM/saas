@@ -1,0 +1,26 @@
+[package]
+name = "dima-commands"
+description = "Who may run a chat command and when: permissions and roles, keywords, moderation patterns, cooldowns, timer policy."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-text = { workspace = true }
+dima-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Stored permission expressions are untyped `Mixed` values read as raw BSON (`dima-model`).
+bson = { workspace = true }
+regex = { workspace = true }
+# The keyword index cache coalesces cold loads (`sync`) and resolves roles concurrently (`macros`).
+tokio = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+dima-core = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util"] }

@@ -25,6 +25,7 @@ dima-telemetry = { path = "crates/telemetry" }
 dima-http = { path = "crates/http" }
 dima-web = { path = "crates/web" }
 dima-model = { path = "crates/model" }
+dima-commands = { path = "crates/commands" }
 # Runtime.
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net", "process", "fs", "io-util"] }
 tokio-util = { version = "0.7.20", features = ["rt", "io"] }
