@@ -1704,6 +1704,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-cron"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-engine",
+ "dima-http",
+ "dima-model",
+ "dima-store",
+ "dima-stream",
+ "dima-telemetry",
+ "dima-twitch",
+ "futures-util",
+ "nix",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "dima-email"
 version = "0.1.0"
 dependencies = [
