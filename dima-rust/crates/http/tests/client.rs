@@ -1395,3 +1395,110 @@ async fn a_stalled_destination_is_bounded_by_the_deadline_and_shutdown() {
     .unwrap_err();
     assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
 }
+
+#[tokio::test]
+async fn request_bodies_are_bounded_per_provider_and_per_request() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(204));
+    let provider = Provider::builder("mock", &server.url())
+        .max_request_bytes(10)
+        .build()
+        .unwrap();
+    assert_eq!(
+        Provider::builder("default", "https://x.test")
+            .build()
+            .unwrap()
+            .max_request_bytes(),
+        dima_http::provider::DEFAULT_MAX_REQUEST_BYTES
+    );
+    let client = client();
+    let too_large = |error: Error| {
+        assert!(
+            matches!(error, Error::RequestBodyTooLarge { limit: 10, .. }),
+            "{error:?}"
+        );
+        assert_eq!(error.class(), FailureClass::RequestTooLarge);
+    };
+    // Exactly at the limit is sent; one byte over is refused before sending, for every kind of
+    // body built from bytes.
+    client
+        .post(&provider, "/ok")
+        .body(vec![b'a'; 10])
+        .send()
+        .await
+        .unwrap();
+    too_large(
+        client
+            .post(&provider, "/")
+            .body(vec![b'a'; 11])
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .json(&serde_json::json!({"text": "0123456789"}))
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .json_js(&serde_json::json!({"text": "0123456789"}))
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    too_large(
+        client
+            .post(&provider, "/")
+            .form(&[("text", "0123456789")])
+            .send()
+            .await
+            .unwrap_err(),
+    );
+    assert_eq!(server.requests().len(), 1);
+    // A request raises its own limit, before or after setting the body.
+    client
+        .post(&provider, "/raised")
+        .json(&serde_json::json!({"text": "0123456789"}))
+        .max_request_bytes(100)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(server.requests().len(), 2);
+
+    // A stream is counted as it is sent and stops when it passes the limit.
+    let chunks: Vec<Result<Bytes, std::io::Error>> = vec![
+        Ok(Bytes::from_static(b"123456")),
+        Ok(Bytes::from_static(b"789012")),
+    ];
+    let error = client
+        .request(&provider, Method::PUT, "/stream")
+        .body_stream(dima_http::StreamBody::wrap_stream(
+            futures_util::stream::iter(chunks),
+        ))
+        .send()
+        .await
+        .unwrap_err();
+    too_large(error);
+    let chunks: Vec<Result<Bytes, std::io::Error>> = vec![
+        Ok(Bytes::from_static(b"12345")),
+        Ok(Bytes::from_static(b"67890")),
+    ];
+    client
+        .request(&provider, Method::PUT, "/stream-ok")
+        .body_stream(dima_http::StreamBody::wrap_stream(
+            futures_util::stream::iter(chunks),
+        ))
+        .send()
+        .await
+        .unwrap();
+    let last = server.requests().pop().unwrap();
+    assert_eq!(
+        (last.path(), last.body_text().as_str()),
+        ("/stream-ok", "1234567890")
+    );
+}

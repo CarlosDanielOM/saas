@@ -293,6 +293,7 @@ pub struct RequestBuilder<'a> {
     idle_timeout: Duration,
     refresh_timeout: Option<Duration>,
     max_bytes: u64,
+    max_request_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: Option<bool>,
     shutdown: Option<Shutdown>,
@@ -340,6 +341,7 @@ impl<'a> RequestBuilder<'a> {
             idle_timeout: p.idle_timeout,
             refresh_timeout: None,
             max_bytes: p.max_bytes,
+            max_request_bytes: p.max_request_bytes,
             retry: None,
             idempotent: None,
             shutdown: None,
@@ -510,6 +512,13 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
+    /// The limit on the body this request sends (instead of the provider's). Checked when the
+    /// request is sent, so it may be set before or after the body.
+    pub fn max_request_bytes(mut self, max: u64) -> Self {
+        self.max_request_bytes = max;
+        self
+    }
+
     /// The retry policy for this request (instead of the provider's).
     pub fn retry(mut self, policy: RetryPolicy) -> Self {
         self.retry = Some(policy);
@@ -540,6 +549,22 @@ impl<'a> RequestBuilder<'a> {
     pub async fn send_json<T: serde::de::DeserializeOwned>(self) -> Result<T> {
         self.send().await?.error_for_status().await?.json().await
     }
+}
+
+/// A streamed body that fails as soon as more than `limit` bytes have passed.
+fn counted(body: reqwest::Body, limit: u64) -> reqwest::Body {
+    use futures_util::StreamExt;
+    use http_body_util::BodyExt;
+    let mut sent: u64 = 0;
+    let stream = body.into_data_stream().map(move |chunk| {
+        let chunk = chunk.map_err(|error| -> crate::error::BoxError { Box::new(error) })?;
+        sent = sent.saturating_add(chunk.len() as u64);
+        if sent > limit {
+            return Err(Box::new(crate::error::RequestLimit(limit)) as crate::error::BoxError);
+        }
+        Ok(chunk)
+    });
+    reqwest::Body::wrap_stream(stream)
 }
 
 /// The headers that describe a request body (fetch's "request-body-header names", plus the
@@ -574,6 +599,7 @@ struct Sender<'a> {
     idle_timeout: Duration,
     refresh_timeout: Duration,
     max_bytes: u64,
+    max_request_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: bool,
     cancel: Cancel,
@@ -609,6 +635,7 @@ impl<'a> Sender<'a> {
             idle_timeout: request.idle_timeout,
             refresh_timeout: request.refresh_timeout.unwrap_or(request.timeout),
             max_bytes: request.max_bytes,
+            max_request_bytes: request.max_request_bytes,
             retry: request.retry,
             idempotent,
             cancel: Cancel::new(client.shutdown.clone(), request.shutdown),
@@ -628,6 +655,14 @@ impl<'a> Sender<'a> {
             return Err(Error::Invalid {
                 info: self.info(),
                 reason,
+            });
+        }
+        if let Body::Bytes(bytes) = &self.body
+            && bytes.len() as u64 > self.max_request_bytes
+        {
+            return Err(Error::RequestBodyTooLarge {
+                info: self.info(),
+                limit: self.max_request_bytes,
             });
         }
         let provider = Arc::clone(&self.provider.0);
@@ -887,7 +922,7 @@ impl<'a> Sender<'a> {
                 Body::Bytes(bytes) => builder = builder.body(bytes.clone()),
                 Body::Stream(_) => {
                     if let Body::Stream(stream) = std::mem::take(&mut self.body) {
-                        builder = builder.body(stream);
+                        builder = builder.body(counted(stream, self.max_request_bytes));
                     }
                     // The stream is consumed: a later attempt or hop has no body to send (and
                     // the retry policy never sends a stream twice).

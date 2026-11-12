@@ -26,6 +26,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+# Counting a streamed request body against its limit (`reqwest::Body` as a data stream).
+http-body-util = { workspace = true }
+futures-util = { workspace = true }
 
 [dev-dependencies]
 # The integration tests use the mock server and the test-only guard exemption.

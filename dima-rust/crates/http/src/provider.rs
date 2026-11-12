@@ -24,6 +24,11 @@ pub const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 /// from APIs (Twitch pages of 100, Qdrant scrolls, OpenRouter answers) are well under it; TTS
 /// audio, media and S3 objects set their own limits.
 pub const DEFAULT_MAX_BYTES: u64 = 8 * 1024 * 1024;
+/// The default limit on a request body we send: 8 MiB. The reference's largest outgoing API
+/// bodies (AI prompts with history, OTLP batches) are far below it; uploads (S3 objects, media)
+/// set their own. Over it the request fails with [`crate::Error::RequestBodyTooLarge`] before
+/// anything is sent (bytes, JSON, forms) or as soon as the count passes it (streams).
+pub const DEFAULT_MAX_REQUEST_BYTES: u64 = 8 * 1024 * 1024;
 
 /// What happens when a provider answers with a redirect.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -76,6 +81,7 @@ pub(crate) struct ProviderInner {
     pub headers_timeout: Option<Duration>,
     pub idle_timeout: Duration,
     pub max_bytes: u64,
+    pub max_request_bytes: u64,
     pub retry: RetryPolicy,
     pub redirects: Redirects,
     pub semaphore: Option<Arc<Semaphore>>,
@@ -109,6 +115,7 @@ impl Provider {
             headers_timeout: None,
             idle_timeout: DEFAULT_IDLE_TIMEOUT,
             max_bytes: DEFAULT_MAX_BYTES,
+            max_request_bytes: DEFAULT_MAX_REQUEST_BYTES,
             retry: RetryPolicy::none(),
             redirects: Redirects::default(),
             max_concurrency: None,
@@ -125,6 +132,11 @@ impl Provider {
     /// The base URL in use (the real host, or the override).
     pub fn base_url(&self) -> &Url {
         &self.0.base
+    }
+
+    /// The default limit on request bodies.
+    pub fn max_request_bytes(&self) -> u64 {
+        self.0.max_request_bytes
     }
 
     /// The default retry policy.
@@ -159,6 +171,7 @@ pub struct ProviderBuilder {
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
     max_bytes: u64,
+    max_request_bytes: u64,
     retry: RetryPolicy,
     redirects: Redirects,
     max_concurrency: Option<usize>,
@@ -238,6 +251,12 @@ impl ProviderBuilder {
         self
     }
 
+    /// The default limit on request bodies (see [`DEFAULT_MAX_REQUEST_BYTES`]).
+    pub fn max_request_bytes(mut self, max: u64) -> Self {
+        self.max_request_bytes = max;
+        self
+    }
+
     /// The default retry policy.
     pub fn retry(mut self, policy: RetryPolicy) -> Self {
         self.retry = policy;
@@ -305,6 +324,7 @@ impl ProviderBuilder {
             headers_timeout: self.headers_timeout,
             idle_timeout: self.idle_timeout,
             max_bytes: self.max_bytes,
+            max_request_bytes: self.max_request_bytes,
             retry: self.retry,
             redirects: self.redirects,
             semaphore: self.max_concurrency.map(|n| Arc::new(Semaphore::new(n))),

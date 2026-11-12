@@ -152,6 +152,8 @@ pub enum FailureClass {
     Invalid,
     /// An unexpected redirect.
     Redirect,
+    /// The request body was larger than its limit.
+    RequestTooLarge,
 }
 
 impl FailureClass {
@@ -173,6 +175,7 @@ impl FailureClass {
             Self::Blocked => "blocked",
             Self::Invalid => "invalid",
             Self::Redirect => "redirect",
+            Self::RequestTooLarge => "request_too_large",
         }
     }
 }
@@ -316,6 +319,15 @@ pub enum Error {
         /// The 1-based column of a JSON error (0 when unknown).
         column: usize,
     },
+    /// The request body was longer than its limit
+    /// ([`crate::ProviderBuilder::max_request_bytes`], [`crate::RequestBuilder::max_request_bytes`]).
+    #[error("{info}: request body larger than {limit} bytes")]
+    RequestBodyTooLarge {
+        /// The request.
+        info: RequestInfo,
+        /// The limit.
+        limit: u64,
+    },
     /// Shutdown fired while the request was waiting.
     #[error("{info}: cancelled")]
     Cancelled {
@@ -389,6 +401,7 @@ impl Error {
             | Self::Connect { info, .. }
             | Self::Transport { info, .. }
             | Self::BodyTooLarge { info, .. }
+            | Self::RequestBodyTooLarge { info, .. }
             | Self::Decode { info, .. }
             | Self::Cancelled { info }
             | Self::Blocked { info, .. }
@@ -405,6 +418,7 @@ impl Error {
             Self::Transport { .. } => FailureClass::Transport,
             Self::Status(_) => FailureClass::Status,
             Self::BodyTooLarge { .. } => FailureClass::TooLarge,
+            Self::RequestBodyTooLarge { .. } => FailureClass::RequestTooLarge,
             Self::Decode { .. } => FailureClass::Decode,
             Self::Cancelled { .. } => FailureClass::Cancelled,
             Self::RetriesExhausted { last, .. } => last.class(),
@@ -451,6 +465,9 @@ impl Error {
         if let Some(reason) = crate::guard::find_block(&error) {
             return Self::Blocked { info, reason };
         }
+        if let Some(limit) = find_request_limit(&error) {
+            return Self::RequestBodyTooLarge { info, limit };
+        }
         let connect = error.is_connect();
         let timeout = error.is_timeout();
         // `Response::chunk` reports every body failure as "decode"; a failure of the connection
@@ -476,6 +493,30 @@ impl Error {
             Self::Transport { info, source }
         }
     }
+}
+
+/// The error a counted request stream ends with when it passes its limit; found again in the
+/// transport error's source chain.
+#[derive(Debug)]
+pub(crate) struct RequestLimit(pub u64);
+
+impl fmt::Display for RequestLimit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "request body larger than {} bytes", self.0)
+    }
+}
+
+impl std::error::Error for RequestLimit {}
+
+fn find_request_limit(error: &(dyn std::error::Error + 'static)) -> Option<u64> {
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(e) = current {
+        if let Some(RequestLimit(limit)) = e.downcast_ref::<RequestLimit>() {
+            return Some(*limit);
+        }
+        current = e.source();
+    }
+    None
 }
 
 /// Whether a "decode" error from `reqwest` is really a broken connection: the decompression
