@@ -12,8 +12,15 @@ pub struct EvalLimits {
     /// Calls into the host (functions, variable reads and writes, timers).
     pub host_calls: u64,
     /// The longest text any value, stored variable or the output may become, in bytes. Text
-    /// that doubles in a loop would otherwise grow without bound.
+    /// that doubles in a loop would otherwise grow without bound. It is also the budget for
+    /// what one step gathers: the arguments of one call together, the items of one list
+    /// literal, the argument of one command reference, and the result of a builtin, which is
+    /// sized before it is built.
     pub text_bytes: usize,
+    /// The most a run may keep, in bytes: the variables it writes (memory variables and the
+    /// database memo), its loop variables and the arguments of the command references it
+    /// starts. Each value is within [`Self::text_bytes`]; this bounds how many there are.
+    pub memory_bytes: usize,
     /// The deepest tree evaluated. The parser accepts up to [`crate::syntax::MAX_NESTING`]
     /// levels, but the evaluator recurses on the thread's stack, one level per tree level; a
     /// deeper program is refused before it runs (its segment shows `[Parse error: …]`) and the
@@ -32,6 +39,7 @@ impl Default for EvalLimits {
             steps: 200_000,
             host_calls: 2_000,
             text_bytes: 256 * 1024,
+            memory_bytes: 4 * 1024 * 1024,
             nesting: 256,
             stack_bytes: 1024 * 1024,
         }
@@ -49,6 +57,8 @@ pub enum LimitKind {
     TextSize,
     /// [`EvalLimits::nesting`].
     Nesting,
+    /// [`EvalLimits::memory_bytes`].
+    Memory,
 }
 
 impl LimitKind {
@@ -59,6 +69,7 @@ impl LimitKind {
             Self::HostCalls => "This command calls too many functions",
             Self::TextSize => "This command builds text that is too long",
             Self::Nesting => "Nesting limit exceeded",
+            Self::Memory => "This command keeps too much data",
         }
     }
 }

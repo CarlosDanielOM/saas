@@ -1,6 +1,7 @@
 //! `user.functions.ts`: `user` (with the `ignore symbols|numbers` filters) and `touser`.
 //! (`randomuser` reads the chatter list and the blacklist: it is a host function.)
 
+use super::TooLong;
 use crate::context::Context;
 use crate::value::Value;
 use dima_text::{is_js_whitespace, to_lower, trim};
@@ -91,8 +92,9 @@ pub(crate) fn user(args: &[Value], context: &Context) -> String {
     filtered
 }
 
-/// `$(touser)`: the target with `$`, `%` and `*` escaped, else the chatter's name.
-pub(crate) fn touser(args: &[Value], context: &Context) -> String {
+/// `$(touser)`: the target with `$`, `%` and `*` escaped, else the chatter's name. Escaping
+/// adds a byte per escaped character, counted before the result is built.
+pub(crate) fn touser(args: &[Value], context: &Context, max: usize) -> Result<String, TooLong> {
     let target = match args.first() {
         Some(arg) if arg.js_truthy() => Some(arg.clone()),
         _ => context
@@ -101,9 +103,18 @@ pub(crate) fn touser(args: &[Value], context: &Context) -> String {
             .filter(|argument| !argument.is_empty())
             .map(|argument| Value::text(argument.as_str())),
     };
-    match target {
+    Ok(match target {
         Some(Value::Text(text)) => {
-            let mut out = String::with_capacity(text.len());
+            let escapes = text
+                .bytes()
+                .filter(|b| matches!(b, b'$' | b'%' | b'*'))
+                .count();
+            let size = text
+                .len()
+                .checked_add(escapes)
+                .filter(|size| *size <= max)
+                .ok_or(TooLong)?;
+            let mut out = String::with_capacity(size);
             for ch in text.chars() {
                 if matches!(ch, '$' | '%' | '*') {
                     out.push('\\');
@@ -114,7 +125,7 @@ pub(crate) fn touser(args: &[Value], context: &Context) -> String {
         }
         Some(other) => other.to_text().into_owned(),
         None => user_name(context),
-    }
+    })
 }
 
 #[cfg(test)]
@@ -151,8 +162,13 @@ mod tests {
             Value::object(vec![("chatter_user_name".into(), Value::text("Ev"))]),
         );
         assert_eq!(user(&[], &event), "Ev");
-        assert_eq!(touser(&[Value::text("a$b%c*")], &ctx), "a\\$b\\%c\\*");
-        assert_eq!(touser(&[Value::empty()], &ctx), "Ca_ll3r😀");
-        assert_eq!(touser(&[Value::Number(5.0)], &ctx), "5");
+        assert_eq!(
+            touser(&[Value::text("a$b%c*")], &ctx, 64).unwrap(),
+            "a\\$b\\%c\\*"
+        );
+        assert_eq!(touser(&[Value::empty()], &ctx, 64).unwrap(), "Ca_ll3r😀");
+        assert_eq!(touser(&[Value::Number(5.0)], &ctx, 64).unwrap(), "5");
+        assert_eq!(touser(&[Value::text("$$$")], &ctx, 5), Err(TooLong));
+        assert_eq!(touser(&[Value::text("$$$")], &ctx, 6).unwrap(), "\\$\\$\\$");
     }
 }

@@ -19,7 +19,11 @@
 //! - resource limits ([`EvalLimits`]): when one is hit inside an expression, that expression's
 //!   output is `[Parse error: …]` and rendering goes on (once the work, call or text budget is
 //!   spent, every later expression hits it too); [`Engine::evaluate`] returns
-//!   [`EvalError::Limit`]. A tree deeper than [`EvalLimits::nesting`] (256; the parser accepts
+//!   [`EvalError::Limit`]. Nothing is allocated past a limit first: a builtin sizes its
+//!   result before building it, the values one step gathers (a call's arguments, a list
+//!   literal's items, a reference's argument, a list written as JSON) are counted as they are
+//!   gathered, and what a run keeps (variables, the database memo, loop variables, reference
+//!   arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper than [`EvalLimits::nesting`] (256; the parser accepts
 //!   16,384) is refused before any of it runs, and the stack an evaluation uses is measured
 //!   against [`EvalLimits::stack_bytes`] as it recurses, so no tree can overflow the thread's
 //!   stack in any build;

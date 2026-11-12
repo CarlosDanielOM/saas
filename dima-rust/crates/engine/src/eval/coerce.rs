@@ -119,28 +119,43 @@ pub(crate) fn arithmetic(operator: BinaryOp, left: f64, right: f64) -> String {
     number_to_string(result)
 }
 
-/// `applyLoopAssignment`: `#i++`, `#i += 2`, `#i = …`.
+/// `applyLoopAssignment`: `#i++`, `#i += 2`, `#i = …`. A `+=` that joins text longer than
+/// `max` bytes is refused before the text is built.
 pub(crate) fn loop_assignment(
     current: Option<&str>,
     operator: LoopAssignOp,
     value: &Value,
-) -> String {
+    max: usize,
+) -> Result<String, crate::functions::TooLong> {
     let current_value = || Value::text(current.unwrap_or_default());
     match operator {
-        LoopAssignOp::Increment => return number_to_string(to_number_safe(&current_value()) + 1.0),
-        LoopAssignOp::Decrement => return number_to_string(to_number_safe(&current_value()) - 1.0),
+        LoopAssignOp::Increment => {
+            return Ok(number_to_string(to_number_safe(&current_value()) + 1.0));
+        }
+        LoopAssignOp::Decrement => {
+            return Ok(number_to_string(to_number_safe(&current_value()) - 1.0));
+        }
         _ => {}
     }
     let next = value.to_text_or_empty();
-    match operator {
+    Ok(match operator {
         LoopAssignOp::Assign => next.into_owned(),
         LoopAssignOp::Add => {
-            let left = parse_number(trim(current.unwrap_or_default()));
+            let current = current.unwrap_or_default();
+            let left = parse_number(trim(current));
             let right = parse_number(trim(&next));
             if left.is_finite() && right.is_finite() {
                 number_to_string(left + right)
             } else {
-                format!("{}{next}", current.unwrap_or_default())
+                let size = current
+                    .len()
+                    .checked_add(next.len())
+                    .filter(|size| *size <= max)
+                    .ok_or(crate::functions::TooLong)?;
+                let mut joined = String::with_capacity(size);
+                joined.push_str(current);
+                joined.push_str(&next);
+                joined
             }
         }
         _ => {
@@ -153,10 +168,10 @@ pub(crate) fn loop_assignment(
                 LoopAssignOp::Divide => left / right,
                 LoopAssignOp::Modulo if right == 0.0 => 0.0,
                 LoopAssignOp::Modulo => left % right,
-                _ => return next.into_owned(),
+                _ => return Ok(next.into_owned()),
             })
         }
-    }
+    })
 }
 
 #[cfg(test)]
@@ -185,17 +200,11 @@ mod tests {
         assert_eq!(arithmetic(BinaryOp::Divide, 1.0, 3.0), "0.333333");
         assert_eq!(arithmetic(BinaryOp::Divide, 1.0, 0.0), "0");
         assert_eq!(arithmetic(BinaryOp::Add, 1.5, 2.25), "3.75");
-        assert_eq!(
-            loop_assignment(Some("2"), LoopAssignOp::Add, &Value::text("3")),
-            "5"
-        );
-        assert_eq!(
-            loop_assignment(Some("a"), LoopAssignOp::Add, &Value::text("3")),
-            "a3"
-        );
-        assert_eq!(
-            loop_assignment(None, LoopAssignOp::Increment, &Value::Undefined),
-            "1"
-        );
+        let assign =
+            |current, op, value: &str| loop_assignment(current, op, &Value::text(value), 8);
+        assert_eq!(assign(Some("2"), LoopAssignOp::Add, "3").unwrap(), "5");
+        assert_eq!(assign(Some("a"), LoopAssignOp::Add, "3").unwrap(), "a3");
+        assert_eq!(assign(None, LoopAssignOp::Increment, "").unwrap(), "1");
+        assert!(assign(Some("abcde"), LoopAssignOp::Add, "fghij").is_err());
     }
 }

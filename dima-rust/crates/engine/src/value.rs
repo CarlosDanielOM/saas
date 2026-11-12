@@ -183,6 +183,40 @@ impl Value {
         out
     }
 
+    /// The length of `JSON.stringify(items)` in bytes, computed without building it
+    /// (saturating), so that a caller can refuse a list too long to write before writing it.
+    pub(crate) fn list_json_size(items: &[Value]) -> usize {
+        let mut total = 2usize.saturating_add(items.len().saturating_sub(1));
+        let mut pending: Vec<&Value> = items.iter().collect();
+        while let Some(value) = pending.pop() {
+            let size = match value {
+                Self::Undefined | Self::Null | Self::Bool(true) => 4,
+                Self::Bool(false) => 5,
+                Self::Number(number) if number.is_finite() => number_to_string(*number).len(),
+                Self::Number(_) => 4,
+                Self::Text(text) => json_string_size(text),
+                Self::List(items) => {
+                    pending.extend(items.iter());
+                    2usize.saturating_add(items.len().saturating_sub(1))
+                }
+                Self::Object(entries) => {
+                    let mut size = 1usize;
+                    for (key, value) in entries {
+                        if matches!(value, Self::Undefined) {
+                            continue;
+                        }
+                        pending.push(value);
+                        // The key, its colon and a comma or the closing brace.
+                        size = size.saturating_add(json_string_size(key).saturating_add(2));
+                    }
+                    size.max(2)
+                }
+            };
+            total = total.saturating_add(size);
+        }
+        total
+    }
+
     /// The approximate number of bytes this value holds, for the evaluator's size limits.
     pub(crate) fn weight(&self) -> usize {
         let mut total = 0usize;
@@ -320,6 +354,17 @@ fn write_list_json(items: &[Value], out: &mut String) {
         write_json(item, out);
     }
     out.push(']');
+}
+
+/// The length of `JSON.stringify(text)` in bytes.
+pub(crate) fn json_string_size(text: &str) -> usize {
+    text.bytes().fold(2usize, |total, byte| {
+        total.saturating_add(match byte {
+            b'"' | b'\\' | b'\n' | b'\r' | b'\t' | 0x08 | 0x0c => 2,
+            0x00..=0x1f => 6,
+            _ => 1,
+        })
+    })
 }
 
 /// `JSON.stringify` of a string: `"` `\` and control characters escaped, everything else literal.
@@ -500,6 +545,34 @@ mod tests {
             ("y".into(), Value::Number(f64::NAN)),
         ]);
         assert_eq!(object.to_json().as_deref(), Some(r#"{"y":null}"#));
+    }
+
+    #[test]
+    fn json_sizes_are_exact() {
+        let list = vec![
+            Value::Undefined,
+            Value::Null,
+            Value::Bool(false),
+            Value::Number(1.5e300),
+            Value::Number(f64::NAN),
+            Value::text("a\"\\\n\u{1}😀"),
+            Value::List(vec![]),
+            Value::List(vec![Value::Bool(true), Value::Number(-0.0)]),
+            Value::object(vec![]),
+            Value::object(vec![
+                ("k\n".into(), Value::Number(2.0)),
+                ("u".into(), Value::Undefined),
+                (
+                    "o".into(),
+                    Value::object(vec![("x".into(), Value::Undefined)]),
+                ),
+            ]),
+        ];
+        assert_eq!(
+            Value::list_json_size(&list),
+            Value::list_to_json(&list).len()
+        );
+        assert_eq!(Value::list_json_size(&[]), 2);
     }
 
     #[test]

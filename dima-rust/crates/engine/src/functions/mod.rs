@@ -12,6 +12,10 @@ use crate::registry::Builtin;
 use crate::value::Value;
 use dima_text::{Radix, number_to_string, parse_int};
 
+/// A builtin's result would be over its budget; nothing of its size was allocated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct TooLong;
+
 /// The per-run scalars a builtin may change (`count`, `countModified`, `loopExit`).
 pub(crate) struct Counters<'a> {
     pub(crate) count: &'a mut f64,
@@ -35,25 +39,30 @@ fn first_truthy(args: &[Value]) -> Option<&Value> {
 }
 
 /// Runs a builtin that needs neither the host nor the evaluator. `random` is a draw in
-/// `[0, 1)` (`Math.random()`), taken only by `$(random)`.
+/// `[0, 1)` (`Math.random()`), taken only by `$(random)`. `max` is the budget for the result,
+/// in bytes: a function whose result grows with its arguments (the text functions, `user` and
+/// `touser`) computes the result's size first and returns [`TooLong`] instead of building a
+/// larger one. The others build text from the run's context (the event accessors, `bits`,
+/// `user` without a filter) or a number, never larger than what the host supplied.
 pub(crate) fn run(
     builtin: Builtin,
     args: &[Value],
     context: &Context,
     counters: Counters<'_>,
     random: &mut dyn FnMut() -> f64,
-) -> Value {
+    max: usize,
+) -> Result<Value, TooLong> {
     let text = match builtin {
-        Builtin::Upper => strings::upper(args),
-        Builtin::Lower => strings::lower(args),
-        Builtin::Title => strings::title(args),
-        Builtin::Capitalize => strings::capitalize(args),
-        Builtin::Trim => strings::trim_text(args),
+        Builtin::Upper => strings::upper(args, max)?,
+        Builtin::Lower => strings::lower(args, max)?,
+        Builtin::Title => strings::title(args, max)?,
+        Builtin::Capitalize => strings::capitalize(args, max)?,
+        Builtin::Trim => strings::trim_text(args, max)?,
         Builtin::Length => strings::length(args),
-        Builtin::Slice => strings::slice(args),
-        Builtin::Replace => strings::replace(args),
+        Builtin::Slice => strings::slice(args, max)?,
+        Builtin::Replace => strings::replace(args, max)?,
         Builtin::User => user::user(args, context),
-        Builtin::ToUser => user::touser(args, context),
+        Builtin::ToUser => user::touser(args, context, max)?,
         Builtin::Random => {
             // parseInt(String(args[0] || '100'), 10) || 100
             let max = match first_truthy(args) {
@@ -118,7 +127,7 @@ pub(crate) fn run(
         // Run by the evaluator.
         Builtin::Delay | Builtin::Timer => String::new(),
     };
-    Value::Text(text)
+    Ok(Value::Text(text))
 }
 
 /// `$(delay seconds)` before the pause: the milliseconds to wait, or the answer to give.

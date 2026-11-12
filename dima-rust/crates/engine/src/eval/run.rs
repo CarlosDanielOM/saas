@@ -29,6 +29,29 @@ const MAX_TIMER_SECONDS: f64 = 604_800.0;
 /// Command references nest at most this deep (`depth >= 5`).
 const MAX_REFERENCE_DEPTH: u32 = 5;
 
+/// The maps of what a run keeps, charged to [`super::EvalLimits::memory_bytes`].
+#[derive(Clone, Copy)]
+pub(super) enum Kept {
+    /// Memory variables.
+    Variables,
+    /// The database read memo of channel variables.
+    ChannelMemo,
+    /// The database read memo of viewer variables.
+    UserMemo,
+    /// Loop variables.
+    LoopVars,
+}
+
+fn entry_size(key: &str, value: &str) -> usize {
+    key.len().saturating_add(value.len())
+}
+
+fn map_size(map: &OrderedMap<String, String>) -> usize {
+    map.iter().fold(0usize, |total, (k, v)| {
+        total.saturating_add(entry_size(k, v))
+    })
+}
+
 /// How a loop body ended.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum BodyEnd {
@@ -48,6 +71,8 @@ pub(super) struct Run<'a> {
     depth: usize,
     /// Where the current poll's stack started.
     stack: StackBase,
+    /// Bytes this run added to what it keeps ([`Kept`], command reference arguments).
+    memory: usize,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -204,16 +229,12 @@ fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Value {
 }
 
 /// A root keeps every value but `undefined` and empty text, joined by spaces.
-fn push_root_value(out: &mut String, first: &mut bool, value: &Value) -> bool {
+/// The text a root adds for `value`, if any.
+fn root_text(value: &Value) -> Option<std::borrow::Cow<'_, str>> {
     if matches!(value, Value::Undefined) || value.as_str() == Some("") {
-        return false;
+        return None;
     }
-    if !*first {
-        out.push(' ');
-    }
-    *first = false;
-    out.push_str(&value.to_text());
-    true
+    Some(value.to_text())
 }
 
 /// `snapshotTimerContext`.
@@ -290,6 +311,7 @@ impl<'a> Run<'a> {
             stats: EvalStats::default(),
             depth: 0,
             stack,
+            memory: 0,
         }
     }
 
@@ -334,6 +356,75 @@ impl<'a> Run<'a> {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
         self.step()
+    }
+
+    /// Charges what the run keeps: `added` bytes in, `removed` bytes out.
+    fn keep(&mut self, added: usize, removed: usize) -> Result<(), EvalError> {
+        let memory = self.memory.saturating_sub(removed).saturating_add(added);
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        self.memory = memory;
+        Ok(())
+    }
+
+    fn kept(&mut self, which: Kept) -> &mut OrderedMap<String, String> {
+        match which {
+            Kept::Variables => &mut self.state.variables,
+            Kept::ChannelMemo => &mut self.state.command_variables,
+            Kept::UserMemo => &mut self.state.user_command_variables,
+            Kept::LoopVars => &mut self.frames.loop_vars,
+        }
+    }
+
+    /// Whether [`Run::put`] of this entry would fit, without inserting it.
+    pub(super) fn can_put(&mut self, which: Kept, key: &str, value: &str) -> Result<(), EvalError> {
+        let old = self
+            .kept(which)
+            .get(key)
+            .map_or(0, |old| entry_size(key, old));
+        let memory = self
+            .memory
+            .saturating_sub(old)
+            .saturating_add(entry_size(key, value));
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        Ok(())
+    }
+
+    /// Inserts into a kept map, within the memory budget (checked before the insert).
+    pub(super) fn put(&mut self, which: Kept, key: String, value: String) -> Result<(), EvalError> {
+        let old = self
+            .kept(which)
+            .get(&key)
+            .map_or(0, |old| entry_size(&key, old));
+        self.keep(entry_size(&key, &value), old)?;
+        self.kept(which).insert(key, value);
+        Ok(())
+    }
+
+    /// Removes from a kept map.
+    pub(super) fn forget(&mut self, which: Kept, key: &str) {
+        if let Some(old) = self.kept(which).remove(key) {
+            self.memory = self.memory.saturating_sub(entry_size(key, &old));
+        }
+    }
+
+    /// Restores the loop variables a loop started with.
+    fn restore_loop_vars(&mut self, outer: OrderedMap<String, String>) {
+        let inner = map_size(&self.frames.loop_vars);
+        self.memory = self
+            .memory
+            .saturating_sub(inner)
+            .saturating_add(map_size(&outer));
+        self.frames.loop_vars = outer;
+    }
+
+    /// Adds `bytes` to a running total of one step's gathered values, within the text budget.
+    fn gather(&self, total: &mut usize, bytes: usize) -> Result<(), EvalError> {
+        *total = total.saturating_add(bytes);
+        self.check_size(*total)
     }
 
     pub(super) fn check_size(&self, bytes: usize) -> Result<(), EvalError> {
@@ -551,11 +642,9 @@ impl<'a> Run<'a> {
             None => Value::Undefined,
         };
         let current = self.frames.loop_vars.get(name).map(String::as_str);
-        let resolved = loop_assignment(current, operator, &next);
-        self.check_size(resolved.len())?;
-        self.frames
-            .loop_vars
-            .insert(name.to_owned(), resolved.clone());
+        let resolved = loop_assignment(current, operator, &next, self.engine.limits.text_bytes)
+            .map_err(|_| EvalError::Limit(LimitKind::TextSize))?;
+        self.put(Kept::LoopVars, name.to_owned(), resolved.clone())?;
         Ok(Value::Text(resolved))
     }
 
@@ -615,13 +704,17 @@ impl<'a> Run<'a> {
         let mut out = String::new();
         for segment in segments {
             match segment {
-                TemplateSegment::Text { value } => out.push_str(value),
+                TemplateSegment::Text { value } => {
+                    self.check_size(out.len().saturating_add(value.len()))?;
+                    out.push_str(value);
+                }
                 TemplateSegment::Expr { node } => {
                     let value = self.child(node).await?;
-                    out.push_str(&value.to_text_or_empty());
+                    let text = value.to_text_or_empty();
+                    self.check_size(out.len().saturating_add(text.len()))?;
+                    out.push_str(&text);
                 }
             }
-            self.check_size(out.len())?;
         }
         Ok(Value::Text(out))
     }
@@ -632,9 +725,11 @@ impl<'a> Run<'a> {
         accessor: Option<&ArrayAccessor>,
     ) -> Result<Value, EvalError> {
         let mut values = Vec::with_capacity(items.len());
+        let mut total = 0usize;
         for item in items {
-            let value = self.child(item).await?;
-            values.push(text_of(value));
+            let value = text_of(self.child(item).await?);
+            self.gather(&mut total, value.len())?;
+            values.push(value);
         }
         Ok(match accessor {
             Some(ArrayAccessor::Index { index }) => {
@@ -658,10 +753,15 @@ impl<'a> Run<'a> {
         let mut first = true;
         for child in children {
             let value = self.child(child).await?;
-            if !push_root_value(&mut out, &mut first, &value) {
+            let Some(text) = root_text(&value) else {
                 continue;
+            };
+            self.check_size(out.len().saturating_add(text.len()).saturating_add(1))?;
+            if !first {
+                out.push(' ');
             }
-            self.check_size(out.len())?;
+            first = false;
+            out.push_str(&text);
         }
         Ok(Value::Text(out))
     }
@@ -680,7 +780,15 @@ impl<'a> Run<'a> {
         if Self::responses(name, storage) {
             let responses = &self.state.command_responses;
             return Ok(match accessor {
-                None | Some(ArrayAccessor::Array) => Value::Text(json_of_texts(responses)),
+                None | Some(ArrayAccessor::Array) => {
+                    let size = responses
+                        .iter()
+                        .fold(responses.len().saturating_add(1), |total, item| {
+                            total.saturating_add(crate::value::json_string_size(item))
+                        });
+                    self.check_size(size)?;
+                    Value::Text(json_of_texts(&self.state.command_responses))
+                }
                 Some(ArrayAccessor::Index { index }) => {
                     let index = self.discarded(index).await?;
                     let responses = &self.state.command_responses;
@@ -739,9 +847,14 @@ impl<'a> Run<'a> {
         if Self::responses(name, storage) {
             match accessor {
                 Some(ArrayAccessor::Append) => {
-                    self.state.command_responses.extend(appended);
-                    let total: usize = self.state.command_responses.iter().map(String::len).sum();
+                    let total = self
+                        .state
+                        .command_responses
+                        .iter()
+                        .chain(&appended)
+                        .fold(0usize, |total, item| total.saturating_add(item.len()));
                     self.check_size(total)?;
+                    self.state.command_responses.extend(appended);
                     self.save_responses().await?;
                 }
                 Some(ArrayAccessor::SetIndex { index }) => {
@@ -830,18 +943,21 @@ impl<'a> Run<'a> {
 
     /// `JSON.stringify` of a list, within the size limit.
     pub(super) fn write_json(&mut self, list: &[Value]) -> Result<String, EvalError> {
-        let json = Value::list_to_json(list);
-        self.charge_bytes(json.len())?;
-        self.check_size(json.len())?;
-        Ok(json)
+        let size = Value::list_json_size(list);
+        self.check_size(size)?;
+        self.charge_bytes(size)?;
+        Ok(Value::list_to_json(list))
     }
 
     // ---- functions ----
 
     async fn args(&mut self, nodes: &[AstNode]) -> Result<Vec<Value>, EvalError> {
         let mut values = Vec::with_capacity(nodes.len());
+        let mut total = 0usize;
         for node in nodes {
-            values.push(self.child(node).await?);
+            let value = self.child(node).await?;
+            self.gather(&mut total, value.weight())?;
+            values.push(value);
         }
         Ok(values)
     }
@@ -894,13 +1010,15 @@ impl<'a> Run<'a> {
                     loop_exit: &mut scalars.loop_exit,
                 };
                 let mut random = || draw.unwrap_or(0.0);
-                Ok(functions::run(
+                functions::run(
                     builtin,
                     &args,
                     self.context,
                     counters,
                     &mut random,
-                ))
+                    self.engine.limits.text_bytes,
+                )
+                .map_err(|_| EvalError::Limit(LimitKind::TextSize))
             }
             FunctionKind::Host(function) => {
                 self.host_op()?;
@@ -982,7 +1100,7 @@ impl<'a> Run<'a> {
                 plan.max_loop_iterations(),
             )
             .await;
-        self.frames.loop_vars = outer_vars;
+        self.restore_loop_vars(outer_vars);
         self.frames.scalars.loop_depth = depth;
         result?;
         // { ...activeContext, loopDepth: context.loopDepth, loopExit: undefined, loopVars: context.loopVars }
@@ -1021,7 +1139,7 @@ impl<'a> Run<'a> {
                 if iterations >= max {
                     break;
                 }
-                self.frames.loop_vars.insert(loop_var.to_owned(), item);
+                self.put(Kept::LoopVars, loop_var.to_owned(), item)?;
                 let end = self.body(body, depth).await?;
                 iterations += 1;
                 if end == BodyEnd::Break {
@@ -1115,8 +1233,12 @@ impl<'a> Run<'a> {
             return Ok(Value::empty());
         }
         let mut values = Vec::with_capacity(args.len());
+        let mut total = 0usize;
         for arg in args {
-            values.push(self.child_text(arg).await?);
+            let value = self.child_text(arg).await?;
+            // The argument is the values joined by spaces.
+            self.gather(&mut total, value.len().saturating_add(1))?;
+            values.push(value);
         }
         if !budget.take() {
             return Ok(Value::empty());
@@ -1132,7 +1254,7 @@ impl<'a> Run<'a> {
             _ => None,
         };
         let argument = values.join(" ");
-        self.check_size(argument.len())?;
+        self.keep(argument.len(), 0)?;
         let mut visited = context.visited_commands.clone();
         if !visited.contains(&key) {
             visited.push(key);
