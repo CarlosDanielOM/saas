@@ -151,7 +151,8 @@ impl<D> Core<D> {
                 }
                 match not_sent {
                     NotSent::SlowConsumer => {
-                        self.conn.close(DisconnectReason::SlowConsumer);
+                        // Locks of the store or the namespace may be held here.
+                        self.conn.close_soon(DisconnectReason::SlowConsumer);
                         Err(SendError::SlowConsumer)
                     }
                     NotSent::Dropped => Err(SendError::Dropped),
@@ -225,15 +226,13 @@ impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
     }
 
     fn disconnect(&self) {
-        if !self.is_connected() {
-            return;
+        // A DISCONNECT that does not fit closes the connection as a slow consumer instead.
+        if self
+            .push(codec::encode_disconnect(&self.nsp), &Delivery::Reliable)
+            .is_ok()
+        {
+            self.leave(DisconnectReason::ServerNamespaceDisconnect);
         }
-        let _ = self.conn.push(Outgoing {
-            socket: Some((self.key, self.def.queue())),
-            packet: codec::encode_disconnect(&self.nsp),
-            delivery: &Delivery::Lossy,
-        });
-        self.leave(DisconnectReason::ServerNamespaceDisconnect);
     }
 
     fn queue(&self) -> (u64, QueueLimits) {

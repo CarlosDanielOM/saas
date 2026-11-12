@@ -74,10 +74,6 @@ struct State {
 /// How often a busy connection's queue is swept while nothing else happens.
 const TICK: Duration = Duration::from_millis(100);
 
-/// How long a closing connection may take to hand its last packets and the close packet to the
-/// client (`Polling.closeTimeout` of `engine.io`: 30 s).
-const CLOSE_TIMEOUT: Duration = Duration::from_secs(30);
-
 pub(crate) struct Connection {
     pub shared: Arc<Shared>,
     registry: Arc<Registry>,
@@ -90,10 +86,14 @@ pub(crate) struct Connection {
     /// Fires when the Engine.IO session is gone.
     gone: CancellationToken,
     reason: OnceLock<DisconnectReason>,
+    /// A close requested from a send path, where locks may be held: the task carries it out.
+    close_requested: OnceLock<DisconnectReason>,
     drained: Notify,
     poke: Notify,
     /// Polling requests waiting for data.
     polls: std::sync::atomic::AtomicUsize,
+    /// `engineioxide` was told to close the session.
+    engine_closing: std::sync::atomic::AtomicBool,
 }
 
 /// One polling request waiting in Engine.IO. Dropped before [`PollGuard::finish`] (the client
@@ -154,9 +154,11 @@ impl Connection {
             closed: CancellationToken::new(),
             gone: CancellationToken::new(),
             reason: OnceLock::new(),
+            close_requested: OnceLock::new(),
             drained: Notify::new(),
             poke: Notify::new(),
             polls: std::sync::atomic::AtomicUsize::new(0),
+            engine_closing: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
@@ -367,7 +369,7 @@ impl Connection {
             delivery: &Delivery::Reliable,
         });
         if pushed == Err(NotSent::SlowConsumer) {
-            self.close(DisconnectReason::SlowConsumer);
+            self.close_soon(DisconnectReason::SlowConsumer);
         }
     }
 
@@ -470,7 +472,8 @@ impl Connection {
     /// Closes the connection (`Client.close`): every socket leaves with `reason` and inbound
     /// packets are ignored from now on. As in `engine.io`, what is queued still reaches the
     /// client, then the close packet (on the next poll for a polling client), within
-    /// [`CLOSE_TIMEOUT`]; a slow consumer and a shutdown close at once. The first reason wins.
+    /// `close_timeout`; a slow consumer and a shutdown close at once. A session that has not
+    /// ended `close_timeout` after that has its socket aborted. The first reason wins.
     pub fn close(&self, reason: DisconnectReason) {
         if self.reason.set(reason).is_err() {
             return;
@@ -481,10 +484,25 @@ impl Connection {
             reason,
             DisconnectReason::SlowConsumer | DisconnectReason::ServerShuttingDown
         ) {
-            self.engine
-                .close(engineioxide::DisconnectReason::TransportClose);
+            self.close_engine();
         }
         // Otherwise the connection's task drains, then closes.
+    }
+
+    fn close_engine(&self) {
+        self.engine_closing
+            .store(true, std::sync::atomic::Ordering::Release);
+        self.engine
+            .close(engineioxide::DisconnectReason::TransportClose);
+    }
+
+    /// Fails the upgraded socket's I/O (`UpgradeGuard::abort`): the WebSocket writer of
+    /// `engineioxide` does not notice a closed session while a write to a peer that stopped
+    /// reading is pending, and holds the session until that write fails.
+    fn abort_transport(&self) {
+        if let Some(guard) = self.state().guard.take() {
+            guard.abort();
+        }
     }
 
     /// `engineioxide` reports the session closed (by the client, the transport, the heartbeat,
@@ -510,9 +528,17 @@ impl Connection {
         self.shared.telemetry.connection_closed(reason);
     }
 
+    /// [`Connection::close`] from a path that may hold store or member locks (closing makes
+    /// sockets leave, which takes them): the connection's task closes it right after.
+    pub fn close_soon(&self, reason: DisconnectReason) {
+        if self.close_requested.set(reason).is_ok() {
+            self.poke.notify_one();
+        }
+    }
+
     /// The deferred part of [`Connection::close`].
     async fn drain_then_close(&self) {
-        let deadline = tokio::time::sleep(CLOSE_TIMEOUT);
+        let deadline = tokio::time::sleep(self.shared.options.close_timeout);
         tokio::pin!(deadline);
         loop {
             self.sweep_and_flush();
@@ -530,8 +556,7 @@ impl Connection {
                 () = tokio::time::sleep(Duration::from_millis(10)) => {}
             }
         }
-        self.engine
-            .close(engineioxide::DisconnectReason::TransportClose);
+        self.close_engine();
     }
 
     /// The connection's own task: the connect timeout and the queue sweeps.
@@ -550,12 +575,28 @@ impl Connection {
                         self.close(DisconnectReason::ForcedServerClose);
                     }
                 }
-                () = self.poke.notified() => {}
+                () = self.poke.notified() => {
+                    if let Some(reason) = self.close_requested.get() {
+                        self.close(*reason);
+                    }
+                }
                 () = tokio::time::sleep(TICK), if busy => self.sweep_and_flush(),
             }
         }
-        if !self.gone.is_cancelled() {
+        if self.gone.is_cancelled() {
+            return;
+        }
+        if !self
+            .engine_closing
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
             self.drain_then_close().await;
+        }
+        // The session must end within the close timeout.
+        tokio::select! {
+            () = self.gone.cancelled() => {}
+            () = tokio::time::sleep(self.shared.options.close_timeout) => self.abort_transport(),
+            () = self.shared.hard_stop.cancelled() => self.abort_transport(),
         }
     }
 }

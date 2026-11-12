@@ -500,27 +500,35 @@ async fn run_socket<N: Namespace>(
 }
 
 /// Makes the socket a member and sends its CONNECT, under the member lock, so a namespace emit
-/// either sees the socket after its CONNECT or not at all.
+/// either sees the socket after its CONNECT or not at all. `false` when the attempt was
+/// cancelled or the connection closed meanwhile; a CONNECT that does not fit the connection's
+/// queue (every other socket of it backlogged) gets the connection closed as a slow consumer.
 fn register<D: Send + Sync + 'static>(
     child: &Child<D>,
     core: &Arc<Core<D>>,
     ticket: &Ticket,
 ) -> bool {
-    let mut members = child.lock();
-    let erased: Arc<dyn ErasedSocket> = Arc::clone(core) as Arc<dyn ErasedSocket>;
-    if ticket.cancel.is_cancelled() || !core.conn.join(&core.nsp, ticket, erased) {
-        return false;
+    let sent = {
+        let mut members = child.lock();
+        let erased: Arc<dyn ErasedSocket> = Arc::clone(core) as Arc<dyn ErasedSocket>;
+        if ticket.cancel.is_cancelled() || !core.conn.join(&core.nsp, ticket, erased) {
+            return false;
+        }
+        members.pending = members.pending.saturating_sub(1);
+        members.sockets.insert(core.key, Arc::clone(core));
+        let sent = core.conn.push(crate::outbox::Outgoing {
+            socket: Some((core.key, core.def.queue())),
+            packet: codec::encode_connect(&core.nsp, &core.id, &core.pid),
+            delivery: &Delivery::Reliable,
+        });
+        core.joined
+            .store(true, std::sync::atomic::Ordering::Release);
+        sent
+    };
+    if sent.is_err() {
+        // The store lock may be held (a restore): the connection's task closes it.
+        core.conn.close_soon(DisconnectReason::SlowConsumer);
     }
-    members.pending = members.pending.saturating_sub(1);
-    members.sockets.insert(core.key, Arc::clone(core));
-    // The CONNECT is never dropped: a full queue here means the client reads nothing at all.
-    let _ = core.conn.push(crate::outbox::Outgoing {
-        socket: Some((core.key, core.def.queue())),
-        packet: codec::encode_connect(&core.nsp, &core.id, &core.pid),
-        delivery: &Delivery::Lossy,
-    });
-    core.joined
-        .store(true, std::sync::atomic::Ordering::Release);
     true
 }
 

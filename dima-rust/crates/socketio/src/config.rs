@@ -64,6 +64,10 @@ pub struct Options {
     /// At shutdown, how long queued output may take to reach the clients before every
     /// connection is closed (5 s); handlers still running are dropped at the same deadline.
     pub shutdown_drain: Duration,
+    /// How long a closing connection may take to hand its last packets and the close packet to
+    /// the client, and then to end, before its socket is aborted (30 s: `engine.io`'s polling
+    /// `closeTimeout` and `ws`'s close timeout).
+    pub close_timeout: Duration,
 }
 
 impl Default for Options {
@@ -88,6 +92,7 @@ impl Default for Options {
             queue: QueueLimits::default(),
             recovery: RecoveryLimits::default(),
             shutdown_drain: Duration::from_secs(5),
+            close_timeout: Duration::from_secs(30),
         }
     }
 }

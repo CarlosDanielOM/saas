@@ -43,7 +43,8 @@ pub enum SendError {
     /// The encoded packet is larger than `max_outbound_message`.
     #[error("packet too large")]
     TooLarge,
-    /// The socket's queue was full: the connection was closed as a slow consumer.
+    /// The socket's queue was full: the connection is closed as a slow consumer (right after,
+    /// by its own task).
     #[error("slow consumer disconnected")]
     SlowConsumer,
     /// A lossy event was dropped because the socket's queue was full.

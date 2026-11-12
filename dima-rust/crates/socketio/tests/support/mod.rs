@@ -3,6 +3,8 @@
 //! of a small `dima_web::App`, and the helpers that find Node and the pinned clients.
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+pub mod raw;
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
