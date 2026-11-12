@@ -44,7 +44,7 @@ async fn recorded_capture_projection_and_all_tier_reads() -> Result<()> {
         let activity = Activities::new(
             store.clone(),
             Arc::new(ManualClock::new(now)),
-            Config::default(),
+            test_config(),
         )?;
         let fragments: Vec<Fragment> = serde_json::from_value(r["fragments"].clone())?;
         assert_eq!(
@@ -186,7 +186,7 @@ async fn real_session_reads_match_recorded_reference() -> Result<()> {
     let activity = Activities::new(
         store,
         Arc::new(ManualClock::new(r["now"].as_i64().context("now")?)),
-        Config::default(),
+        test_config(),
     )?;
     for case in r["cases"].as_array().context("cases")? {
         let mut actual = activity
@@ -206,7 +206,7 @@ async fn seed(store: &MongoStore, now: i64) -> Result<Activities> {
     let a = Activities::new(
         store.clone(),
         Arc::new(ManualClock::new(now)),
-        Config::default(),
+        test_config(),
     )?;
     seed_sessions(store, &recording()?, now).await?;
     for step in recording()?["steps"].as_array().context("steps")? {
@@ -244,7 +244,7 @@ async fn interrupted_after_every_write_and_two_processes_do_not_double_count() -
             let counter = Arc::new(AtomicUsize::new(0));
             let stopped = Arc::new(tokio::sync::Notify::new());
             let signal = stopped.clone();
-            let a = Activities::new(store.clone(), clock.clone(), Config::default())?
+            let a = Activities::new(store.clone(), clock.clone(), test_config())?
                 .with_write_hook(Arc::new(move || {
                     let hit = counter.fetch_add(1, Ordering::SeqCst) + 1 == cut;
                     let signal = signal.clone();
@@ -255,15 +255,21 @@ async fn interrupted_after_every_write_and_two_processes_do_not_double_count() -
                         }
                     })
                 }));
-            let task =
+            let mut task =
                 tokio::spawn(
                     async move { a.project_stream_activity_batch(1000, "killed-owner").await },
                 );
-            tokio::time::timeout(std::time::Duration::from_secs(30), stopped.notified()).await?;
+            // Observe the committed boundary; surface an early projector failure immediately.
+            // Three minutes bounds a hung harness under concurrent builds, not lease validity.
+            tokio::select! {
+                _=stopped.notified()=>{},
+                result=&mut task=>anyhow::bail!("projector ended before boundary {cut}: {result:?}"),
+                _=tokio::time::sleep(std::time::Duration::from_secs(180))=>{task.abort();let _=task.await;anyhow::bail!("boundary {cut} was not reached");}
+            }
             task.abort();
             assert!(task.await.is_err_and(|e| e.is_cancelled()));
             clock.advance(61_000);
-            let a = Activities::new(store.clone(), clock, Config::default())?;
+            let a = Activities::new(store.clone(), clock, test_config())?;
             a.project_stream_activity_batch(1000, "repair").await?;
             while a.project_stream_activity_batch(1000, "drain").await? > 0 {}
             let read = a
@@ -298,16 +304,27 @@ async fn interrupted_after_every_write_and_two_processes_do_not_double_count() -
                     .args(["--exact", "projection_child", "--nocapture"])
                     .env("DIMA_ACTIVITY_CHILD_DB", store.database().name())
                     .env("DIMA_ACTIVITY_CHILD_OWNER", owner)
+                    .kill_on_drop(true)
                     .spawn()?,
             );
         }
         for mut child in children {
-            assert!(child.wait().await?.success());
+            // Bounds process startup/completion under other builds, observing actual exit.
+            let status =
+                match tokio::time::timeout(std::time::Duration::from_secs(180), child.wait()).await
+                {
+                    Ok(status) => status?,
+                    Err(e) => {
+                        child.kill().await?;
+                        return Err(e.into());
+                    }
+                };
+            assert!(status.success());
         }
         let a = Activities::new(
             store.clone(),
             Arc::new(ManualClock::new(now)),
-            Config::default(),
+            test_config(),
         )?;
         let read = a
             .get_stream_activity(
@@ -344,7 +361,7 @@ async fn projection_child() -> Result<()> {
         Arc::new(ManualClock::new(
             recording()?["now"].as_i64().context("now")?,
         )),
-        Config::default(),
+        test_config(),
     )?;
     a.project_stream_activity_batch(1000, &std::env::var("DIMA_ACTIVITY_CHILD_OWNER")?)
         .await?;
@@ -362,7 +379,7 @@ async fn every_real_activity_document_decodes_through_model() -> Result<()> {
         &dima_model::stream_sessions::INFO,
     ] {
         let mut cursor = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
+            std::time::Duration::from_secs(30),
             store
                 .documents(info.name)
                 .clone_with_type::<bson::RawDocumentBuf>()
@@ -372,7 +389,7 @@ async fn every_real_activity_document_decodes_through_model() -> Result<()> {
         .await??;
         let mut count = 0;
         while let Some(raw) =
-            tokio::time::timeout(std::time::Duration::from_secs(5), cursor.try_next()).await??
+            tokio::time::timeout(std::time::Duration::from_secs(30), cursor.try_next()).await??
         {
             (info.decode)(&raw)?;
             count += 1;
@@ -396,4 +413,66 @@ async fn seed_sessions(store: &MongoStore, r: &Value, now: i64) -> Result<()> {
 
 fn normalized(value: &Value) -> Result<Value> {
     Ok(serde_json::from_str(&dima_text::to_js_json(value))?)
+}
+
+/// Force a real renewal while projection work is paused, then compare the finite write
+/// boundary count with an unpaused pass. The clock advance makes renewal observable in Mongo;
+/// no sleep duration is treated as evidence that renewal occurred.
+#[tokio::test]
+async fn lease_renewals_do_not_change_cancellation_boundary_count() -> Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let now = recording()?["now"].as_i64().context("now")?;
+    let baseline = Arc::new(AtomicUsize::new(0));
+    support::with_store(|store| {
+        let count = baseline.clone();
+        async move {
+            let a = seed(&store, now).await?.with_write_hook(Arc::new(move || {
+                count.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async {})
+            }));
+            a.project_stream_activity_batch(1000, "baseline").await?;
+            Ok(())
+        }
+    })
+    .await?;
+    support::with_store(|store|async move{
+        seed(&store,now).await?;
+        let clock=Arc::new(ManualClock::new(now));
+        let writes=Arc::new(AtomicUsize::new(0));let count=writes.clone();
+        let paused=Arc::new(tokio::sync::Notify::new());let signal=paused.clone();
+        let resume=Arc::new(tokio::sync::Notify::new());let release=resume.clone();
+        let a=Activities::new(store.clone(),clock.clone(),test_config())?.with_write_hook(Arc::new(move||{
+            let pause=count.fetch_add(1,Ordering::SeqCst)==2;let signal=signal.clone();let release=release.clone();
+            Box::pin(async move{if pause{signal.notify_one();release.notified().await;}})
+        }));
+        let mut task=tokio::spawn(async move{a.project_stream_activity_batch(1000,"slow-owner").await});
+        let observation=async {
+            paused.notified().await;clock.advance(1000);
+            loop{
+                let collection=store.documents("stream_activity_states");
+                let state=tokio::time::timeout(std::time::Duration::from_secs(30),collection.find_one(doc!{"_id":"projector-v1","owner":"slow-owner"})).await??.context("owned state")?;
+                if state.get_datetime("leaseUntil")?.timestamp_millis()==now+61_000{break;}
+                tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+            }
+            Ok::<(),anyhow::Error>(())
+        };
+        tokio::select!{
+            result=observation=>{result?;},
+            result=&mut task=>anyhow::bail!("projector stopped before renewal: {result:?}"),
+            _=tokio::time::sleep(std::time::Duration::from_secs(180))=>{task.abort();let _=task.await;anyhow::bail!("renewal was not observed");}
+        }
+        resume.notify_one();task.await??;
+        assert_eq!(writes.load(Ordering::SeqCst),baseline.load(Ordering::SeqCst),"timer renewals must not become replay cut points");
+        eprintln!("real lease renewal observed during paused projection; finite write count unchanged");Ok(())
+    }).await
+}
+
+// Store-backed replay competes with whole-copy scans and other builds. This is the driver
+// wait budget, not a relaxed work/lease budget: the 45s pass and 60s lease are unchanged,
+// and assert_owner reserves the full 30s before a write. Server query budgets stay unchanged.
+fn test_config() -> Config {
+    Config {
+        store_deadline: std::time::Duration::from_secs(30),
+        ..Config::default()
+    }
 }
