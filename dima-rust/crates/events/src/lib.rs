@@ -31,3 +31,4 @@ pub mod identity;
 pub mod producers;
 pub mod store;
 pub mod value;
+pub mod wakeups;
