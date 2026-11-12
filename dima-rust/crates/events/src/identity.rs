@@ -84,7 +84,10 @@ pub fn automatic_acceptance_key(
     data_source: Option<&serde_json::Value>,
     session_id: Option<&serde_json::Value>,
 ) -> Option<String> {
-    let session = session_id.and_then(serde_json::Value::as_str).map(trim).unwrap_or("");
+    let session = session_id
+        .and_then(serde_json::Value::as_str)
+        .map(trim)
+        .unwrap_or("");
     let channel = channel_id.map(trim).unwrap_or("");
     if data_source.and_then(serde_json::Value::as_str) != Some("stream_offline")
         || session.is_empty()
@@ -207,8 +210,14 @@ mod tests {
             event_key("twitch-eventsub", "-3zzqD0yswolijfLdgpN93W8FWC2vkAFtgSxfolPYs4=", "channel.subscription.received"),
             Ok("twitch-eventsub:-3zzqD0yswolijfLdgpN93W8FWC2vkAFtgSxfolPYs4%3D:channel.subscription.received".into())
         );
-        assert_eq!(event_key("a:b", " c/d ", "e f"), Ok("a%3Ab:c%2Fd:e%20f".into()));
-        assert_eq!(event_key("\u{feff}s\u{a0}", "é👋", "t"), Ok("s:%C3%A9%F0%9F%91%8B:t".into()));
+        assert_eq!(
+            event_key("a:b", " c/d ", "e f"),
+            Ok("a%3Ab:c%2Fd:e%20f".into())
+        );
+        assert_eq!(
+            event_key("\u{feff}s\u{a0}", "é👋", "t"),
+            Ok("s:%C3%A9%F0%9F%91%8B:t".into())
+        );
         // U+0085 is not JavaScript whitespace.
         assert_eq!(event_key("\u{85}", "x", "t"), Ok("%C2%85:x:t".into()));
         assert_eq!(event_key("s", " \n", "t"), Err(KeyComponentRequired));
@@ -230,15 +239,26 @@ mod tests {
     #[test]
     fn cron_keys() {
         assert_eq!(cron_dedupe_key(" a:b "), "cron:jobs:dedupe:a:b");
-        assert_eq!(intent_active_key("q", Some("cron:jobs:dedupe:x"), "id"), "q\u{0}cron:jobs:dedupe:x");
+        assert_eq!(
+            intent_active_key("q", Some("cron:jobs:dedupe:x"), "id"),
+            "q\u{0}cron:jobs:dedupe:x"
+        );
         assert_eq!(intent_active_key("q", Some(""), "id"), "q\u{0}job:id");
         let offline = serde_json::json!("stream_offline");
         let session = serde_json::json!(" s1 ");
         assert_eq!(
-            automatic_acceptance_key("stream-memory-summary", Some("42"), Some(&offline), Some(&session)),
+            automatic_acceptance_key(
+                "stream-memory-summary",
+                Some("42"),
+                Some(&offline),
+                Some(&session)
+            ),
             Some("cron:jobs:accepted:stream-memory-summary:42:s1".into())
         );
-        assert_eq!(automatic_acceptance_key("j", Some(" "), Some(&offline), Some(&session)), None);
+        assert_eq!(
+            automatic_acceptance_key("j", Some(" "), Some(&offline), Some(&session)),
+            None
+        );
         assert!(is_user_id("693B4cc2e046b90ea3c06ebe"));
         assert!(!is_user_id("693b4cc2e046b90ea3c06eb"));
     }

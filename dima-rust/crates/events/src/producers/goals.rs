@@ -7,7 +7,9 @@
 //! runs from a configured Twitch event (`RequiredGoalContributionError`), and reported as
 //! `goal_contribution_failed` otherwise.
 
-use crate::contracts::{ContractError, JournalInput, OccurredAt, SubjectInput, SubjectKind, Topic, sources};
+use crate::contracts::{
+    ContractError, JournalInput, OccurredAt, SubjectInput, SubjectKind, Topic, sources,
+};
 use crate::identity::goal_contribution_id;
 use crate::value::{Object, Value};
 use dima_text::utf16_len;

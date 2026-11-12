@@ -111,7 +111,11 @@ pub fn evaluate(policy: &DeliveryPolicy, event: PolicyEvent, now_ms: f64) -> Pol
 
 /// `Math.min(a, b)`: `NaN` when either is.
 fn js_min(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() { f64::NAN } else { a.min(b) }
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else {
+        a.min(b)
+    }
 }
 
 /// `canAdminReplayDomainEvent(policy, event, now)`. `expires_at_ms` is the event's `expiresAt`.
@@ -188,7 +192,12 @@ impl ConsumerDefinition {
 }
 
 fn strings(values: &[&str]) -> Bson {
-    Bson::Array(values.iter().map(|v| Bson::String((*v).to_owned())).collect())
+    Bson::Array(
+        values
+            .iter()
+            .map(|v| Bson::String((*v).to_owned()))
+            .collect(),
+    )
 }
 
 fn twitch_sources() -> Document {
@@ -321,14 +330,56 @@ pub static CONSUMERS: [ConsumerDefinition; 15] = [
     consumer("raid-history-v1", CHANNEL, true, None, raid_history),
     consumer("stream-timeline-v1", CHANNEL, true, None, stream_timeline),
     consumer("channel-goals-v1", CHANNEL, true, None, channel_goals),
-    consumer("goal-custom-contributions-v1", DOMAIN, true, None, goal_custom),
-    consumer("widget-actions-v1", CHANNEL, false, Some(WIDGET_EVENT_MAX_AGE_MS), widget_actions),
-    consumer("overlay-interactions-v1", CHANNEL, false, Some(86_400_000.0), overlay_interactions),
-    consumer("follow-defense-v1", CHANNEL, false, Some(300_000.0), follow_defense),
+    consumer(
+        "goal-custom-contributions-v1",
+        DOMAIN,
+        true,
+        None,
+        goal_custom,
+    ),
+    consumer(
+        "widget-actions-v1",
+        CHANNEL,
+        false,
+        Some(WIDGET_EVENT_MAX_AGE_MS),
+        widget_actions,
+    ),
+    consumer(
+        "overlay-interactions-v1",
+        CHANNEL,
+        false,
+        Some(86_400_000.0),
+        overlay_interactions,
+    ),
+    consumer(
+        "follow-defense-v1",
+        CHANNEL,
+        false,
+        Some(300_000.0),
+        follow_defense,
+    ),
     consumer("stream-analytics-v1", CHANNEL, true, None, stream_analytics),
-    consumer("stream-operations-v1", CHANNEL, true, None, stream_operations),
-    consumer("chat-announcements-v1", CHANNEL, false, Some(300_000.0), chat_announcements),
-    consumer("account-health-notifications-v1", CHANNEL, false, Some(300_000.0), account_health),
+    consumer(
+        "stream-operations-v1",
+        CHANNEL,
+        true,
+        None,
+        stream_operations,
+    ),
+    consumer(
+        "chat-announcements-v1",
+        CHANNEL,
+        false,
+        Some(300_000.0),
+        chat_announcements,
+    ),
+    consumer(
+        "account-health-notifications-v1",
+        CHANNEL,
+        false,
+        Some(300_000.0),
+        account_health,
+    ),
     consumer("polar-plan-v1", DOMAIN, true, None, polar_plan),
     consumer("polar-credits-v1", DOMAIN, true, None, polar_credits),
     consumer("polar-rewards-v1", DOMAIN, true, None, polar_rewards),
@@ -350,7 +401,8 @@ pub mod delivery {
     /// `PREREQUISITE_RETRY_MS`.
     pub const PREREQUISITE_RETRY_MS: i64 = 30_000;
     /// `METRIC_RETRY_OFFSETS_MS`: retries of a missing metric session, from `journaledAt`.
-    pub const METRIC_RETRY_OFFSETS_MS: [i64; 6] = [30_000, 90_000, 210_000, 450_000, 750_000, 900_000];
+    pub const METRIC_RETRY_OFFSETS_MS: [i64; 6] =
+        [30_000, 90_000, 210_000, 450_000, 750_000, 900_000];
     /// The metric session recovery window (`journaledAt + 900_000`).
     pub const METRIC_HORIZON_MS: i64 = 900_000;
     /// Stored error texts are cut at 8,000 UTF-16 units (`slice(0, 8_000)`).
@@ -394,9 +446,19 @@ mod tests {
             occurred_at_ms: 1_000.0,
             journaled_at_ms: Some(5_000.0),
         };
-        assert_eq!(evaluate(&policy(None), event, 0.0), PolicyDecision::Eligible);
         assert_eq!(
-            evaluate(&policy(None), PolicyEvent { schema_version: 2.0, ..event }, 0.0),
+            evaluate(&policy(None), event, 0.0),
+            PolicyDecision::Eligible
+        );
+        assert_eq!(
+            evaluate(
+                &policy(None),
+                PolicyEvent {
+                    schema_version: 2.0,
+                    ..event
+                },
+                0.0
+            ),
             PolicyDecision::Dead("Unsupported schema version 2 for c".into())
         );
         // Age counts from the earlier of occurrence and journal time.
@@ -404,13 +466,31 @@ mod tests {
             evaluate(&policy(Some(1_000.0)), event, 2_000.0),
             PolicyDecision::Skipped("Event exceeds maxEventAgeMs 1000 for c".into())
         );
-        assert_eq!(evaluate(&policy(Some(1_000.0)), event, 1_999.0), PolicyDecision::Eligible);
+        assert_eq!(
+            evaluate(&policy(Some(1_000.0)), event, 1_999.0),
+            PolicyDecision::Eligible
+        );
         assert!(matches!(
-            evaluate(&policy(Some(1.0)), PolicyEvent { occurred_at_ms: f64::NAN, ..event }, 0.0),
+            evaluate(
+                &policy(Some(1.0)),
+                PolicyEvent {
+                    occurred_at_ms: f64::NAN,
+                    ..event
+                },
+                0.0
+            ),
             PolicyDecision::Dead(_)
         ));
-        assert!(can_admin_replay(Some(&policy(None)), Some((event, 10.0)), 5.0));
-        assert!(!can_admin_replay(Some(&policy(None)), Some((event, 10.0)), 10.0));
+        assert!(can_admin_replay(
+            Some(&policy(None)),
+            Some((event, 10.0)),
+            5.0
+        ));
+        assert!(!can_admin_replay(
+            Some(&policy(None)),
+            Some((event, 10.0)),
+            10.0
+        ));
         assert!(!can_admin_replay(None, Some((event, 10.0)), 5.0));
     }
 

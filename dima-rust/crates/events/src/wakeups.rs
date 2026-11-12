@@ -137,7 +137,11 @@ pub struct Publisher {
 
 impl Publisher {
     /// Starts the publishing task on `dragonfly`; it stops with `shutdown`.
-    pub fn start(dragonfly: Dragonfly, config: WakeupConfig, shutdown: Shutdown) -> (Self, JoinHandle<()>) {
+    pub fn start(
+        dragonfly: Dragonfly,
+        config: WakeupConfig,
+        shutdown: Shutdown,
+    ) -> (Self, JoinHandle<()>) {
         let state = Arc::new(PublisherState::default());
         let enabled = config.enabled;
         let task_state = state.clone();
@@ -268,9 +272,17 @@ mod tests {
         signal.wake();
         let started = tokio::time::Instant::now();
         signal.wait(Duration::from_secs(1)).await;
-        assert_eq!(started.elapsed(), Duration::ZERO, "a pending wake returns at once");
+        assert_eq!(
+            started.elapsed(),
+            Duration::ZERO,
+            "a pending wake returns at once"
+        );
         signal.wait(Duration::from_secs(1)).await;
-        assert_eq!(started.elapsed(), Duration::from_secs(1), "two wakes are one");
+        assert_eq!(
+            started.elapsed(),
+            Duration::from_secs(1),
+            "two wakes are one"
+        );
         signal.stop();
         signal.wait(Duration::from_secs(1)).await;
         assert_eq!(started.elapsed(), Duration::from_secs(1));

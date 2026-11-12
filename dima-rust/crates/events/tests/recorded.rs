@@ -142,7 +142,10 @@ fn same_object_unordered(expected: &Object, actual: &Object, name: &str) -> Resu
         if let (Value::Object(a), Value::Object(b)) = (value, other) {
             let ka: Vec<&str> = a.iter().map(|(k, _)| k).collect();
             let kb: Vec<&str> = b.iter().map(|(k, _)| k).collect();
-            ensure!(ka == kb, "{name}: normalized {key} key order differs: {ka:?} {kb:?}");
+            ensure!(
+                ka == kb,
+                "{name}: normalized {key} key order differs: {ka:?} {kb:?}"
+            );
         }
     }
     Ok(())
@@ -167,7 +170,9 @@ fn recorded_outcome(json: &Json) -> Json {
 /// `consumer/eventKey`, `eventID` to the event key it points at.
 fn normalized(mut document: Document, ids: &HashMap<bson::oid::ObjectId, String>) -> Document {
     let key = |id: Option<&Bson>| match id {
-        Some(Bson::ObjectId(id)) => Bson::String(ids.get(id).cloned().unwrap_or_else(|| "unknown".into())),
+        Some(Bson::ObjectId(id)) => {
+            Bson::String(ids.get(id).cloned().unwrap_or_else(|| "unknown".into()))
+        }
         other => other.cloned().unwrap_or(Bson::Null),
     };
     if document.contains_key("consumer") {
@@ -177,7 +182,8 @@ fn normalized(mut document: Document, ids: &HashMap<bson::oid::ObjectId, String>
         // `_id`, in an order the server does not fix (the reference's own recording has both
         // orders): put the two in one order, every other key keeps its place.
         let leading: Vec<String> = document.keys().take(3).cloned().collect();
-        if leading == ["_id", "eventKey", "consumer"] || leading == ["_id", "consumer", "eventKey"] {
+        if leading == ["_id", "eventKey", "consumer"] || leading == ["_id", "consumer", "eventKey"]
+        {
             let mut ordered = Document::new();
             ordered.insert("_id", "generated");
             for key in ["consumer", "eventKey"] {
@@ -196,7 +202,11 @@ fn normalized(mut document: Document, ids: &HashMap<bson::oid::ObjectId, String>
     document
 }
 
-async fn all(store: &dima_store::mongo::MongoStore, collection: &str, sort: Document) -> Result<Vec<Document>> {
+async fn all(
+    store: &dima_store::mongo::MongoStore,
+    collection: &str,
+    sort: Document,
+) -> Result<Vec<Document>> {
     Ok(store
         .documents(collection)
         .find(doc! {})
@@ -381,7 +391,9 @@ async fn the_journal_writes_what_the_reference_writes() -> Result<()> {
 fn the_recording_names_the_frozen_reference() -> Result<()> {
     let recording = recorded()?;
     ensure!(
-        recording["reference"].as_str().is_some_and(|r| r.starts_with("0c71108e")),
+        recording["reference"]
+            .as_str()
+            .is_some_and(|r| r.starts_with("0c71108e")),
         "recorded from {}",
         recording["reference"]
     );

@@ -27,7 +27,8 @@ pub use validate::{
     validate_contract,
 };
 pub(crate) use validate::{
-    is_goal_item_key as validate_goal_item_key, is_outgoing_raid_condition as validate_outgoing_raid,
+    is_goal_item_key as validate_goal_item_key,
+    is_outgoing_raid_condition as validate_outgoing_raid,
     is_safe_integer as validate_is_safe_integer,
 };
 
@@ -77,7 +78,8 @@ pub const HYPE_TRAIN_TYPES: [(&str, &str); 3] = [
 ];
 
 /// `AD_BREAK_EVENT_TYPES` (`overlays/live-events-model.ts`).
-pub const AD_BREAK_TYPES: [(&str, &str); 1] = [("channel.ad_break.begin", "channel.ad_break.began")];
+pub const AD_BREAK_TYPES: [(&str, &str); 1] =
+    [("channel.ad_break.begin", "channel.ad_break.began")];
 
 /// `TWITCH_GOAL_EVENT_TYPES` (`goals/twitch.ts`).
 pub const TWITCH_GOAL_TYPES: [(&str, &str); 3] = [
@@ -110,7 +112,10 @@ pub const TWITCH_TYPES: [(&str, &str); 26] = [
     ("channel.raid", "channel.raid.received"),
     ("channel.chat.notification", "channel.chat.notification"),
     ("channel.subscribe", "channel.subscription.received"),
-    ("channel.subscription.message", "channel.subscription.received"),
+    (
+        "channel.subscription.message",
+        "channel.subscription.received",
+    ),
     ("channel.subscription.gift", "channel.subscription.gifted"),
     ("channel.subscription.end", "channel.subscription.ended"),
     ("stream.online", "stream.started"),

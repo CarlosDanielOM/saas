@@ -88,7 +88,8 @@ impl DispatchEvent {
             expires_at,
             policy: PolicyEvent {
                 schema_version,
-                occurred_at_ms: date("occurredAt").map_or(f64::NAN, |d| d.timestamp_millis() as f64),
+                occurred_at_ms: date("occurredAt")
+                    .map_or(f64::NAN, |d| d.timestamp_millis() as f64),
                 journaled_at_ms: date("journaledAt").map(|d| d.timestamp_millis() as f64),
             },
         })
@@ -173,10 +174,21 @@ pub async fn ensure_delivery(
         Returned::After,
         &mut ctx,
     )?;
-    let mut writes = store.writes(deliveries::COLLECTION).write_concern(journaled());
-    match bounded_write("create the delivery", deadline, writes.find_one_and_update(&prepared)).await {
+    let mut writes = store
+        .writes(deliveries::COLLECTION)
+        .write_concern(journaled());
+    match bounded_write(
+        "create the delivery",
+        deadline,
+        writes.find_one_and_update(&prepared),
+    )
+    .await
+    {
         Ok(Some(found)) => Ok(found),
-        Ok(None) => Err(DispatchError::Event(event.id, "delivery upsert returned nothing")),
+        Ok(None) => Err(DispatchError::Event(
+            event.id,
+            "delivery upsert returned nothing",
+        )),
         Err(error) if duplicate_key(&error).is_some() => {
             let found = bounded(
                 "read the delivery",
@@ -245,7 +257,14 @@ pub async fn finish_policy_delivery(
     } else {
         set.insert("lastDeadLetterError", previous_dead_letter);
     }
-    set.insert("deadLetteredAt", if dead { Bson::DateTime(now) } else { Bson::Null });
+    set.insert(
+        "deadLetteredAt",
+        if dead {
+            Bson::DateTime(now)
+        } else {
+            Bson::Null
+        },
+    );
     set.insert("lockedUntil", Bson::Null);
     set.insert("leaseToken", Bson::Null);
     set.insert("nextAttemptAt", Bson::Null);
@@ -256,8 +275,15 @@ pub async fn finish_policy_delivery(
         UpdateOptions::default(),
         &mut ctx,
     )?;
-    let mut writes = store.writes(deliveries::COLLECTION).write_concern(journaled());
-    let outcome = bounded_write("settle the delivery", deadline, writes.update_one(&prepared)).await?;
+    let mut writes = store
+        .writes(deliveries::COLLECTION)
+        .write_concern(journaled());
+    let outcome = bounded_write(
+        "settle the delivery",
+        deadline,
+        writes.update_one(&prepared),
+    )
+    .await?;
     Ok(match (outcome.modified > 0, dead) {
         (true, true) => PolicyOutcome::Dead,
         (true, false) => PolicyOutcome::Skipped,
@@ -310,19 +336,15 @@ impl Dispatcher {
     pub async fn dispatch(&self, batch_size: i64) -> Result<Dispatched, DispatchError> {
         let limit = batch_size.clamp(1, 500);
         let journal = self.store.documents(events::COLLECTION);
-        let marked: Vec<Document> = bounded(
-            "read the events to dispatch",
-            self.deadline,
-            async {
-                journal
-                    .find(doc! { "dispatchPending": true })
-                    .sort(doc! { "_id": 1 })
-                    .limit(limit)
-                    .await?
-                    .try_collect()
-                    .await
-            },
-        )
+        let marked: Vec<Document> = bounded("read the events to dispatch", self.deadline, async {
+            journal
+                .find(doc! { "dispatchPending": true })
+                .sort(doc! { "_id": 1 })
+                .limit(limit)
+                .await?
+                .try_collect()
+                .await
+        })
         .await?;
         if marked.is_empty() {
             return Ok(Dispatched::default());
@@ -386,8 +408,16 @@ impl Dispatcher {
             UpdateOptions::default(),
             &mut ctx,
         )?;
-        let mut writes = self.store.writes(events::COLLECTION).write_concern(journaled());
-        bounded_write("clear the dispatch marker", self.deadline, writes.update_many(&clear)).await?;
+        let mut writes = self
+            .store
+            .writes(events::COLLECTION)
+            .write_concern(journaled());
+        bounded_write(
+            "clear the dispatch marker",
+            self.deadline,
+            writes.update_many(&clear),
+        )
+        .await?;
         Ok(Dispatched {
             events: batch.len(),
             deliveries: made,

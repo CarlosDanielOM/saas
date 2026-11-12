@@ -141,9 +141,9 @@ pub(crate) fn is_strict_date_time(text: &str) -> bool {
     }
     let mut index = 19;
     if at(index, b'.') {
-        let run = bytes
-            .get(index + 1..)
-            .map_or(0, |rest| rest.iter().take_while(|b| b.is_ascii_digit()).count());
+        let run = bytes.get(index + 1..).map_or(0, |rest| {
+            rest.iter().take_while(|b| b.is_ascii_digit()).count()
+        });
         if !(1..=9).contains(&run) {
             return false;
         }
@@ -152,7 +152,9 @@ pub(crate) fn is_strict_date_time(text: &str) -> bool {
     match bytes.get(index) {
         Some(b'Z') => index + 1 == bytes.len(),
         Some(b'+' | b'-') => {
-            digits(index + 1..index + 3) && at(index + 3, b':') && digits(index + 4..index + 6)
+            digits(index + 1..index + 3)
+                && at(index + 3, b':')
+                && digits(index + 4..index + 6)
                 && index + 6 == bytes.len()
         }
         _ => false,
@@ -160,8 +162,9 @@ pub(crate) fn is_strict_date_time(text: &str) -> bool {
 }
 
 fn ascii_number(text: &str) -> u32 {
-    text.bytes()
-        .fold(0_u32, |n, b| n.saturating_mul(10).saturating_add(u32::from(b - b'0')))
+    text.bytes().fold(0_u32, |n, b| {
+        n.saturating_mul(10).saturating_add(u32::from(b - b'0'))
+    })
 }
 
 /// `date(value, field, allowDate)`.
@@ -181,10 +184,7 @@ fn date(value: &Value, field: &str, allow_date: bool) -> Result {
     let part = |range: std::ops::Range<usize>| text.get(range).map_or(0, ascii_number);
     let (year, month, day, hour) = (part(0..4), part(5..7), part(8..10), part(11..13));
     require(
-        (1..=12).contains(&month)
-            && day >= 1
-            && day <= days_in_month(year, month)
-            && hour < 24,
+        (1..=12).contains(&month) && day >= 1 && day <= days_in_month(year, month) && hour < 24,
         invalid,
     )
 }
@@ -194,7 +194,9 @@ fn days_in_month(year: u32, month: u32) -> u32 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
-        _ if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 => 29,
+        _ if (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400) => {
+            29
+        }
         _ => 28,
     }
 }
@@ -280,10 +282,12 @@ pub fn serialize_provider_data(value: &Value) -> Result<Object> {
     record(value, "providerData")?;
     check_json(value, true)?;
     match value.to_json() {
-        Some(serde_json::Value::Object(map)) => match Value::from_json(&serde_json::Value::Object(map)) {
-            Value::Object(object) => Ok(object),
-            _ => Err(ContractError::new("providerData must be a plain record")),
-        },
+        Some(serde_json::Value::Object(map)) => {
+            match Value::from_json(&serde_json::Value::Object(map)) {
+                Value::Object(object) => Ok(object),
+                _ => Err(ContractError::new("providerData must be a plain record")),
+            }
+        }
         _ => Err(ContractError::new("providerData must be a plain record")),
     }
 }
@@ -304,11 +308,11 @@ fn is_str(value: &Value, expected: &str) -> bool {
     value.as_str() == Some(expected)
 }
 
-
 /// `raidDirection(condition) === 'outgoing'` (`utils/raid_direction.ts`): a truthy
 /// `from_broadcaster_user_id` and a falsy `to_broadcaster_user_id`.
 pub(crate) fn is_outgoing_raid_condition(condition: &Value) -> bool {
-    condition.at("from_broadcaster_user_id").truthy() && !condition.at("to_broadcaster_user_id").truthy()
+    condition.at("from_broadcaster_user_id").truthy()
+        && !condition.at("to_broadcaster_user_id").truthy()
 }
 
 fn has_own<'a>(table: &'a [(&'a str, &'a str)], key: &str) -> bool {
@@ -415,9 +419,17 @@ pub fn validate_contract(input: &Object, check: Check) -> Result {
     if !twitch && !polar {
         return Ok(());
     }
-    require(version_is_one, || format!("unsupported schemaVersion for {source}"))?;
-    text(metadata.at("originalEventType"), "metadata.originalEventType")?;
-    let original = metadata.at("originalEventType").as_str().unwrap_or_default();
+    require(version_is_one, || {
+        format!("unsupported schemaVersion for {source}")
+    })?;
+    text(
+        metadata.at("originalEventType"),
+        "metadata.originalEventType",
+    )?;
+    let original = metadata
+        .at("originalEventType")
+        .as_str()
+        .unwrap_or_default();
     let parts = Parts {
         input,
         payload,
@@ -482,7 +494,9 @@ fn validate_goals(
         matches!(payload.at("quantity"), Value::Number(n) if is_safe_integer(*n) && *n >= 1.0 && *n <= 1_000_000_000.0),
         || "invalid goal quantity".to_owned(),
     )?;
-    require(payload.len() == 2, || "invalid goals-custom payload".to_owned())
+    require(payload.len() == 2, || {
+        "invalid goals-custom payload".to_owned()
+    })
 }
 
 fn validate_twitch(parts: &Parts<'_>) -> Result {
@@ -498,7 +512,8 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
     } = *parts;
     let channel_id = input.at("channelID");
     let raid = original == "channel.raid";
-    let outgoing_raid = raid && is_outgoing_raid_condition(payload.at("subscription").at("condition"));
+    let outgoing_raid =
+        raid && is_outgoing_raid_condition(payload.at("subscription").at("condition"));
     let expected = if outgoing_raid {
         Some("channel.raid.sent")
     } else {
@@ -521,10 +536,14 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
         && input.has("eventKey")
         && input.at("eventKey").as_str()
             == Some(
-                [source, input.at("sourceEventId").as_str().unwrap_or_default(), kind]
-                    .map(encode_uri_component)
-                    .join(":")
-                    .as_str(),
+                [
+                    source,
+                    input.at("sourceEventId").as_str().unwrap_or_default(),
+                    kind,
+                ]
+                .map(encode_uri_component)
+                .join(":")
+                .as_str(),
             )
         && matches!(input.at("occurredAt"), Value::Date(_))
         && matches!(input.at("journaledAt"), Value::Date(_))
@@ -550,11 +569,12 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
     }
     let version = subscription.at("version");
     if !version.is_undefined() {
-        let expected = if original == "channel.follow" || original.starts_with("channel.hype_train.") {
-            "2"
-        } else {
-            "1"
-        };
+        let expected =
+            if original == "channel.follow" || original.starts_with("channel.hype_train.") {
+                "2"
+            } else {
+                "1"
+            };
         require(is_str(version, expected), || {
             "unsupported Twitch subscription.version".to_owned()
         })?;
@@ -563,7 +583,11 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
         count(subscription.at("cost"), "subscription.cost", 0.0)?;
     }
     if !subscription.at("created_at").is_undefined() {
-        date(subscription.at("created_at"), "subscription.created_at", false)?;
+        date(
+            subscription.at("created_at"),
+            "subscription.created_at",
+            false,
+        )?;
     }
     let condition_value = subscription.at("condition");
     if !condition_value.is_undefined() {
@@ -645,7 +669,11 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
     }
     if has_own(&super::INTERACTION_TYPES, original) {
         let at = metadata.at("messageTimestamp");
-        let occurred = if at.truthy() { at } else { input.at("occurredAt") };
+        let occurred = if at.truthy() {
+            at
+        } else {
+            input.at("occurredAt")
+        };
         live::parse_interaction(
             original,
             event,
@@ -682,12 +710,18 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
         live::parse_twitch_goal_event(original, event).map_err(ContractError)?;
     }
     if raid {
-        text(event.at("from_broadcaster_user_id"), "event.from_broadcaster_user_id")?;
+        text(
+            event.at("from_broadcaster_user_id"),
+            "event.from_broadcaster_user_id",
+        )?;
         count(event.at("viewers"), "event.viewers", 0.0)?;
     }
     if matches!(
         original,
-        "channel.follow" | "channel.subscribe" | "channel.subscription.message" | "channel.subscription.end"
+        "channel.follow"
+            | "channel.subscribe"
+            | "channel.subscription.message"
+            | "channel.subscription.end"
     ) {
         text(event.at("user_id"), "event.user_id")?;
     }
@@ -761,7 +795,11 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
     }
     let provider_time = |field: &str| {
         let value = event.at(field);
-        if value.is_nullish() { message_timestamp } else { value }
+        if value.is_nullish() {
+            message_timestamp
+        } else {
+            value
+        }
     };
     let occurred = match original {
         "channel.follow" => provider_time("followed_at"),
@@ -773,7 +811,9 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
         let expected = occurred.as_str().and_then(parse_date);
         require(
             !stored.is_undefined()
-                && live::date_of(stored).zip(expected).is_some_and(|(a, b)| a == b as f64),
+                && live::date_of(stored)
+                    .zip(expected)
+                    .is_some_and(|(a, b)| a == b as f64),
             || "Twitch occurredAt/payload timestamp mismatch".to_owned(),
         )?;
     }
@@ -801,9 +841,10 @@ fn validate_twitch(parts: &Parts<'_>) -> Result {
 fn validate_chat_notification(event: &Object) -> Result {
     text(event.at("notice_type"), "event.notice_type")?;
     text(event.at("message_id"), "event.message_id")?;
-    require(matches!(event.at("chatter_is_anonymous"), Value::Bool(_)), || {
-        "event.chatter_is_anonymous must be boolean".to_owned()
-    })?;
+    require(
+        matches!(event.at("chatter_is_anonymous"), Value::Bool(_)),
+        || "event.chatter_is_anonymous must be boolean".to_owned(),
+    )?;
     for field in [
         "chatter_user_id",
         "chatter_user_login",
@@ -819,12 +860,17 @@ fn validate_chat_notification(event: &Object) -> Result {
     }
     let message = record(event.at("message"), "event.message")?;
     require(
-        matches!(message.at("text"), Value::String(_)) && matches!(message.at("fragments"), Value::Array(_)),
+        matches!(message.at("text"), Value::String(_))
+            && matches!(message.at("fragments"), Value::Array(_)),
         || "event.message must contain text and fragments".to_owned(),
     )?;
     if is_str(event.at("notice_type"), "watch_streak") {
         let streak = record(event.at("watch_streak"), "event.watch_streak")?;
-        count(streak.at("streak_count"), "event.watch_streak.streak_count", 1.0)?;
+        count(
+            streak.at("streak_count"),
+            "event.watch_streak.streak_count",
+            1.0,
+        )?;
         count(
             streak.at("channel_points_awarded"),
             "event.watch_streak.channel_points_awarded",
@@ -899,14 +945,21 @@ fn validate_polar(parts: &Parts<'_>) -> Result {
         } else {
             customer_id
         };
-        let subject_kind = if customer_id.truthy() { "customer" } else { "resource" };
+        let subject_kind = if customer_id.truthy() {
+            "customer"
+        } else {
+            "resource"
+        };
         return require(
             is_str(subject.at("kind"), subject_kind) && same(subject.at("id"), subject_id),
             || "Polar providerData/subject mismatch".to_owned(),
         );
     }
     require(
-        matches!(metadata.at("unmapped"), Value::Undefined | Value::Bool(false)),
+        matches!(
+            metadata.at("unmapped"),
+            Value::Undefined | Value::Bool(false)
+        ),
         || "mapped Polar event cannot be unmapped".to_owned(),
     )?;
     text(payload.at("customerId"), "payload.customerId")?;
@@ -971,7 +1024,11 @@ fn validate_polar(parts: &Parts<'_>) -> Result {
             }
             for field in ["currentPeriodEnd", "endsAt", "trialStart", "trialEnd"] {
                 if !subscription.at(field).is_nullish() {
-                    date(subscription.at(field), &format!("subscription.{field}"), false)?;
+                    date(
+                        subscription.at(field),
+                        &format!("subscription.{field}"),
+                        false,
+                    )?;
                 }
             }
         }
@@ -990,9 +1047,10 @@ fn validate_polar(parts: &Parts<'_>) -> Result {
             text(meter.at("meter_id"), "meter.meter_id")?;
             for field in ["consumed_units", "credited_units", "balance"] {
                 if !meter.at(field).is_undefined() {
-                    require(matches!(meter.at(field), Value::Number(n) if n.is_finite()), || {
-                        format!("meter.{field} must be finite")
-                    })?;
+                    require(
+                        matches!(meter.at(field), Value::Number(n) if n.is_finite()),
+                        || format!("meter.{field} must be finite"),
+                    )?;
                 }
             }
         }
@@ -1044,7 +1102,10 @@ mod tests {
     #[test]
     fn json_walk_budgets() {
         let big = Value::String("é".repeat(MAX_JSON_BYTES / 2));
-        assert!(check_json(&big, false).is_err(), "UTF-8 bytes of the JSON text count");
+        assert!(
+            check_json(&big, false).is_err(),
+            "UTF-8 bytes of the JSON text count"
+        );
         let mut nested = Value::Null;
         for _ in 0..33 {
             nested = Value::Array(vec![nested]);

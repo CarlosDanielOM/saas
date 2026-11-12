@@ -23,7 +23,14 @@ pub const MAX_TIME_MS: u64 = 1_000;
 /// `DOMAIN_EVENT_HEALTH_EXPIRY_WINDOW_MS`.
 pub const EXPIRY_WINDOW_MS: i64 = 60 * 60_000;
 
-const STATUSES: [&str; 6] = ["pending", "processing", "retry", "succeeded", "skipped", "dead"];
+const STATUSES: [&str; 6] = [
+    "pending",
+    "processing",
+    "retry",
+    "succeeded",
+    "skipped",
+    "dead",
+];
 
 const SCOPE: &str = "retained-deliveries; dispatch is global; independent reads, not a snapshot";
 const SEMANTICS: &str = "When capped, counts and maximum ages/durations are lower bounds over an unordered sample. Delivery ages use createdAt; ready age is the age of currently ready work, not time overdue. Dispatch age uses journaledAt. Only succeeded is success. Owner/subject signals use the last prerequisite failure, not journal identity presence. Legacy unclassified failures are not inferred.";
@@ -48,7 +55,10 @@ fn summarize(row: Option<&Document>, now_ms: i64) -> Map<String, Json> {
         if key == "oldestAt" || key == "oldestReadyAt" {
             continue;
         }
-        out.insert(key.clone(), Value::from_bson(value).to_json().unwrap_or(Json::Null));
+        out.insert(
+            key.clone(),
+            Value::from_bson(value).to_json().unwrap_or(Json::Null),
+        );
     }
     let count = row
         .get("count")
@@ -159,7 +169,8 @@ pub async fn report(
             Ok::<_, StoreError>((status, Json::Object(entry)))
         }
     });
-    let mut dispatch_group = doc! { "_id": Bson::Null, "count": { "$sum": 1 }, "oldestAt": { "$min": "$journaledAt" } };
+    let mut dispatch_group =
+        doc! { "_id": Bson::Null, "count": { "$sum": 1 }, "oldestAt": { "$min": "$journaledAt" } };
     dispatch_group.extend(expiry(now, soon));
     let dispatch = aggregate(
         store,

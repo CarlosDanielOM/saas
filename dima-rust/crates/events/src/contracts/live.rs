@@ -54,9 +54,13 @@ fn starts_with_date(text: &str) -> bool {
     bytes.len() >= 11
         && bytes.iter().take(4).all(u8::is_ascii_digit)
         && bytes.get(4) == Some(&b'-')
-        && bytes.get(5..7).is_some_and(|d| d.iter().all(u8::is_ascii_digit))
+        && bytes
+            .get(5..7)
+            .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
         && bytes.get(7) == Some(&b'-')
-        && bytes.get(8..10).is_some_and(|d| d.iter().all(u8::is_ascii_digit))
+        && bytes
+            .get(8..10)
+            .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
         && bytes.get(10) == Some(&b'T')
 }
 
@@ -68,7 +72,9 @@ fn safe_count(value: &Value) -> bool {
 
 fn interaction_text(value: &Value, max: usize) -> Result<&str, String> {
     match value {
-        Value::String(text) if !dima_text::trim(text).is_empty() && utf16_len(text) <= max => Ok(text),
+        Value::String(text) if !dima_text::trim(text).is_empty() && utf16_len(text) <= max => {
+            Ok(text)
+        }
         _ => Err("Invalid interaction text".into()),
     }
 }
@@ -97,7 +103,10 @@ fn or<'a>(value: &'a Value, fallback: &'a Value) -> &'a Value {
 
 /// `parseInteraction(type, event, occurredAt, receipt)`.
 pub fn parse_interaction(kind: &str, event: &Object, occurred_at: &str, receipt: &str) -> Check {
-    if !super::INTERACTION_TYPES.iter().any(|(from, _)| *from == kind) {
+    if !super::INTERACTION_TYPES
+        .iter()
+        .any(|(from, _)| *from == kind)
+    {
         return Err("Invalid interaction event".into());
     }
     let poll = kind.starts_with("channel.poll.");
@@ -196,7 +205,9 @@ fn is_object_like(value: &Value) -> bool {
 
 fn live_text(value: &Value, max: usize) -> Result<&str, String> {
     match value {
-        Value::String(text) if !dima_text::trim(text).is_empty() && utf16_len(text) <= max => Ok(text),
+        Value::String(text) if !dima_text::trim(text).is_empty() && utf16_len(text) <= max => {
+            Ok(text)
+        }
         _ => Err("Invalid live event text".into()),
     }
 }
@@ -262,13 +273,18 @@ fn list(raw: &Value) -> Vec<&Value> {
 
 /// `parseHypeTrain(type, event, occurredAt)`.
 pub fn parse_hype_train(kind: &str, event: &Object, occurred_at: &str) -> Check {
-    if !super::HYPE_TRAIN_TYPES.iter().any(|(from, _)| *from == kind) {
+    if !super::HYPE_TRAIN_TYPES
+        .iter()
+        .any(|(from, _)| *from == kind)
+    {
         return Err("Invalid hype train event".into());
     }
     let ended = kind == "channel.hype_train.end";
     for raw in list(event.at("top_contributions")).into_iter().take(10) {
         // `raw && typeof raw === 'object' ? raw : {}`: a primitive reads as an empty record.
-        let total = if raw.truthy() && !matches!(raw, Value::String(_) | Value::Number(_) | Value::Bool(_)) {
+        let total = if raw.truthy()
+            && !matches!(raw, Value::String(_) | Value::Number(_) | Value::Bool(_))
+        {
             raw.at("total")
         } else {
             &Value::Undefined
@@ -308,7 +324,10 @@ pub fn parse_ad_break(event: &Object) -> Check {
 
 /// `parseTwitchGoalEvent(subscriptionType, event)`.
 pub fn parse_twitch_goal_event(kind: &str, event: &Object) -> Check {
-    if !super::TWITCH_GOAL_TYPES.iter().any(|(from, _)| *from == kind) {
+    if !super::TWITCH_GOAL_TYPES
+        .iter()
+        .any(|(from, _)| *from == kind)
+    {
         return Err("Invalid Twitch goal event".into());
     }
     let id_ok = event.at("id").as_str().is_some_and(|id| {
@@ -382,7 +401,10 @@ mod tests {
             "id": "p", "title": "Best?", "started_at": T, "ends_at": T,
             "choices": [{"id": "a", "title": "A"}, {"id": "b", "title": "B"}]
         }));
-        assert_eq!(parse_interaction("channel.poll.begin", &poll, T, "r"), Ok(()));
+        assert_eq!(
+            parse_interaction("channel.poll.begin", &poll, T, "r"),
+            Ok(())
+        );
         assert_eq!(
             parse_interaction("channel.poll.progress", &poll, T, "r"),
             Err("Invalid interaction count".into())
@@ -409,19 +431,32 @@ mod tests {
 
     #[test]
     fn hype_trains_and_goals() {
-        let train = object(json!({"id": "t", "level": "2", "total": 5, "started_at": T, "top_contributions": {"total": "x"}}));
+        let train = object(
+            json!({"id": "t", "level": "2", "total": 5, "started_at": T, "top_contributions": {"total": "x"}}),
+        );
         assert_eq!(
             parse_hype_train("channel.hype_train.begin", &train, T),
             Err("Invalid live event count".into())
         );
         let train = object(json!({"id": "t", "level": "2", "total": 5, "started_at": T}));
-        assert_eq!(parse_hype_train("channel.hype_train.end", &train, T), Ok(()));
+        assert_eq!(
+            parse_hype_train("channel.hype_train.end", &train, T),
+            Ok(())
+        );
         assert_eq!(
             parse_hype_train("channel.hype_train.end", &train, "nope"),
             Err("Invalid live event timestamp".into())
         );
-        let goal = object(json!({"id": "g-1", "type": "follower", "current_amount": "3", "target_amount": 10, "started_at": T}));
-        assert_eq!(parse_twitch_goal_event("channel.goal.progress", &goal, ), Ok(()));
-        assert_eq!(date_to_string(1_788_609_600_000.0), "Sat Sep 05 2026 12:00:00 GMT+0000 (Coordinated Universal Time)");
+        let goal = object(
+            json!({"id": "g-1", "type": "follower", "current_amount": "3", "target_amount": 10, "started_at": T}),
+        );
+        assert_eq!(
+            parse_twitch_goal_event("channel.goal.progress", &goal,),
+            Ok(())
+        );
+        assert_eq!(
+            date_to_string(1_788_609_600_000.0),
+            "Sat Sep 05 2026 12:00:00 GMT+0000 (Coordinated Universal Time)"
+        );
     }
 }

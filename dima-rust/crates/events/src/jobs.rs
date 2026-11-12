@@ -135,9 +135,13 @@ impl JobQueue for DragonflyQueue {
     }
 
     async fn marker_exists(&self, key: &str) -> Result<bool, StoreError> {
-        bounded_dragonfly("read the acceptance marker", self.deadline, self.dragonfly.exists(&[key]))
-            .await
-            .map(|count| count > 0)
+        bounded_dragonfly(
+            "read the acceptance marker",
+            self.deadline,
+            self.dragonfly.exists(&[key]),
+        )
+        .await
+        .map(|count| count > 0)
     }
 }
 
@@ -264,7 +268,11 @@ pub fn stored_job(payload: Option<&Bson>) -> Result<CronQueueJob, JobError> {
         Some(json) => json,
         None => return Err(JobError::Stored("payload is not JSON".into())),
     };
-    let text = |key: &str| json.get(key).and_then(serde_json::Value::as_str).map(str::to_owned);
+    let text = |key: &str| {
+        json.get(key)
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned)
+    };
     Ok(CronQueueJob {
         id: text("id").unwrap_or_default(),
         job: text("job").unwrap_or_default(),
@@ -321,15 +329,25 @@ fn due_at(job: &CronQueueJob, now_ms: i64) -> i64 {
         .map_or(0.0, js_number);
     if unix.is_finite() && unix > 0.0 {
         let at = (unix * 1000.0).trunc();
-        if at > now_ms as f64 { at as i64 } else { now_ms }
+        if at > now_ms as f64 {
+            at as i64
+        } else {
+            now_ms
+        }
     } else {
         now_ms
     }
 }
 
 fn assert_job(job: &CronQueueJob, queue_key: &str) -> Result<(), JobError> {
-    if job.id.is_empty() || job.job.is_empty() || queue_key.is_empty() || job.requested_at.is_empty() {
-        return Err(JobError::Invalid("Invalid durable cron job identity".into()));
+    if job.id.is_empty()
+        || job.job.is_empty()
+        || queue_key.is_empty()
+        || job.requested_at.is_empty()
+    {
+        return Err(JobError::Invalid(
+            "Invalid durable cron job identity".into(),
+        ));
     }
     Ok(())
 }
@@ -392,17 +410,26 @@ impl<Q: JobQueue> DurableJobs<Q> {
             "memory-maintenance-weekly" => self.config.weekly_dedupe_seconds,
             "memory-maintenance-monthly" => self.config.monthly_dedupe_seconds,
             "clip-recommendation-analysis"
-                if data_field(job, "source").and_then(serde_json::Value::as_str) == Some("recovery") =>
+                if data_field(job, "source").and_then(serde_json::Value::as_str)
+                    == Some("recovery") =>
             {
                 3600.0
             }
             _ => self.config.clip_dedupe_seconds,
         };
-        if configured.is_finite() { configured.max(60.0) } else { 60.0 }
+        if configured.is_finite() {
+            configured.max(60.0)
+        } else {
+            60.0
+        }
     }
 
     /// `identity(job, queueKey)`: the intent of this job (by id, automatic key or active key).
-    async fn identity(&self, job: &CronQueueJob, queue_key: &str) -> Result<Option<Document>, JobError> {
+    async fn identity(
+        &self,
+        job: &CronQueueJob,
+        queue_key: &str,
+    ) -> Result<Option<Document>, JobError> {
         let mut predicates = vec![doc! { "jobID": job.id.as_str() }];
         if let Some(key) = job_automatic_key(job) {
             predicates.push(doc! { "automaticKey": key });
@@ -422,19 +449,38 @@ impl<Q: JobQueue> DurableJobs<Q> {
         Ok(bounded(
             "read the cron job intent",
             self.deadline(),
-            self.store.documents(COLLECTION).find_one(doc! { "_id": id.clone() }),
+            self.store
+                .documents(COLLECTION)
+                .find_one(doc! { "_id": id.clone() }),
         )
         .await?)
     }
 
-    async fn update_one(&self, filter: Document, update: Document) -> Result<dima_store::mongo::write::UpdateOutcome, JobError> {
+    async fn update_one(
+        &self,
+        filter: Document,
+        update: Document,
+    ) -> Result<dima_store::mongo::write::UpdateOutcome, JobError> {
         let mut ctx = WriteContext::new(self.now());
         let prepared = INFO.prepare_update(&filter, update, UpdateOptions::default(), &mut ctx)?;
-        let mut writes = self.store.writes(COLLECTION).write_concern(intent_write_concern());
-        Ok(bounded_write("update the cron job intent", self.deadline(), writes.update_one(&prepared)).await?)
+        let mut writes = self
+            .store
+            .writes(COLLECTION)
+            .write_concern(intent_write_concern());
+        Ok(bounded_write(
+            "update the cron job intent",
+            self.deadline(),
+            writes.update_one(&prepared),
+        )
+        .await?)
     }
 
-    async fn find_and_update(&self, filter: Document, update: Document, sort: Option<Document>) -> Result<Option<Document>, JobError> {
+    async fn find_and_update(
+        &self,
+        filter: Document,
+        update: Document,
+        sort: Option<Document>,
+    ) -> Result<Option<Document>, JobError> {
         let mut ctx = WriteContext::new(self.now());
         let prepared = INFO.prepare_find_one_and_update(
             &filter,
@@ -443,16 +489,27 @@ impl<Q: JobQueue> DurableJobs<Q> {
             Returned::After,
             &mut ctx,
         )?;
-        let writes = self.store.writes(COLLECTION).write_concern(intent_write_concern());
+        let writes = self
+            .store
+            .writes(COLLECTION)
+            .write_concern(intent_write_concern());
         let Some(sort) = sort else {
             let mut writes = writes;
-            return Ok(bounded_write("update the cron job intent", self.deadline(), writes.find_one_and_update(&prepared)).await?);
+            return Ok(bounded_write(
+                "update the cron job intent",
+                self.deadline(),
+                writes.find_one_and_update(&prepared),
+            )
+            .await?);
         };
         // `Writes::find_one_and_update` has no `sort`: the same prepared update, checked the
         // same way, sent with it.
         writes
             .check("findOneAndUpdate", &prepared.dropped_paths)
-            .map_err(|source| StoreError::Write { operation: "update the cron job intent", source })?;
+            .map_err(|source| StoreError::Write {
+                operation: "update the cron job intent",
+                source,
+            })?;
         let Some(update) = prepared.update.clone() else {
             return Err(JobError::Invalid("empty intent update".into()));
         };
@@ -471,7 +528,12 @@ impl<Q: JobQueue> DurableJobs<Q> {
     }
 
     /// `prepare(job, queueKey, options)`: accepts the job once (see the module documentation).
-    pub async fn prepare(&self, job: &CronQueueJob, queue_key: &str, options: &PrepareOptions) -> Result<Prepared, JobError> {
+    pub async fn prepare(
+        &self,
+        job: &CronQueueJob,
+        queue_key: &str,
+        options: &PrepareOptions,
+    ) -> Result<Prepared, JobError> {
         assert_job(job, queue_key)?;
         let automatic = job_automatic_key(job);
         if let Some(given) = options.acceptance_key.as_deref().filter(|k| !k.is_empty())
@@ -536,8 +598,17 @@ impl<Q: JobQueue> DurableJobs<Q> {
             given.insert("nextPublishAt", date(eligible));
             let mut ctx = WriteContext::new(at);
             let prepared = INFO.prepare_create(&given, &mut ctx)?;
-            let mut writes = self.store.writes(COLLECTION).write_concern(intent_write_concern());
-            match bounded_write("accept the cron job", self.deadline(), writes.insert_one(&prepared)).await {
+            let mut writes = self
+                .store
+                .writes(COLLECTION)
+                .write_concern(intent_write_concern());
+            match bounded_write(
+                "accept the cron job",
+                self.deadline(),
+                writes.insert_one(&prepared),
+            )
+            .await
+            {
                 Ok(()) => {
                     return Ok(Prepared {
                         job: job.clone(),
@@ -575,7 +646,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
         let Some(intent) = self.identity(job, queue_key).await? else {
             return Ok(false);
         };
-        if status_of(&intent) != "queued" || date_ms(&intent, "dueAt").is_none_or(|due| due > self.now()) {
+        if status_of(&intent) != "queued"
+            || date_ms(&intent, "dueAt").is_none_or(|due| due > self.now())
+        {
             return Ok(false);
         }
         self.publish_intent(&intent).await
@@ -590,7 +663,12 @@ impl<Q: JobQueue> DurableJobs<Q> {
         &self,
         plan: EnqueuePlan,
     ) -> Result<(bool, &'static str, CronQueueJob), JobError> {
-        let EnqueuePlan::Durable { job, queue_key, dedupe_seconds } = plan else {
+        let EnqueuePlan::Durable {
+            job,
+            queue_key,
+            dedupe_seconds,
+        } = plan
+        else {
             return Err(JobError::Invalid("not a durable cron job".into()));
         };
         let acceptance_key = job_automatic_key(&job);
@@ -615,16 +693,27 @@ impl<Q: JobQueue> DurableJobs<Q> {
         let fresh = prepared.created && prepared.status == "queued";
         Ok((
             fresh,
-            if fresh { "Cron job durably accepted" } else { "Cron job already accepted" },
+            if fresh {
+                "Cron job durably accepted"
+            } else {
+                "Cron job already accepted"
+            },
             prepared.job,
         ))
     }
 
     /// `claim(job, queueKey, owner)`: the fence of a popped job (see the module documentation).
-    pub async fn claim(&self, job: &CronQueueJob, queue_key: &str, owner: &str) -> Result<ClaimResult, JobError> {
+    pub async fn claim(
+        &self,
+        job: &CronQueueJob,
+        queue_key: &str,
+        owner: &str,
+    ) -> Result<ClaimResult, JobError> {
         assert_job(job, queue_key)?;
         if owner.is_empty() {
-            return Err(JobError::Invalid("Durable cron job owner is required".into()));
+            return Err(JobError::Invalid(
+                "Durable cron job owner is required".into(),
+            ));
         }
         let legacy_options = || PrepareOptions {
             dedupe_seconds: self.legacy_dedupe_seconds(job),
@@ -645,7 +734,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
             && intent.get_str("jobID").ok() != Some(job.id.as_str())
             && matches!(status_of(&intent), "completed" | "dead")
             && date_ms(&intent, "dedupeUntil").is_some_and(|until| until <= self.now())
-            && requested.zip(date_ms(&intent, "dedupeUntil")).is_some_and(|(r, until)| r >= until)
+            && requested
+                .zip(date_ms(&intent, "dedupeUntil"))
+                .is_some_and(|(r, until)| r >= until)
         {
             // A new legacy producer may reuse an expired ordinary dedupe key, if its request
             // postdates that window.
@@ -656,7 +747,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
                 .ok_or_else(|| JobError::Invalid("Durable cron job readoption failed".into()))?;
         }
         let id = intent.get("_id").cloned().unwrap_or(Bson::Null);
-        if status_of(&intent) == "legacy_accepted" && intent.get_str("automaticKey").ok() == automatic.as_deref() {
+        if status_of(&intent) == "legacy_accepted"
+            && intent.get_str("automaticKey").ok() == automatic.as_deref()
+        {
             // A real old transport payload proves there is work to adopt; a bare old marker
             // does not. The compare-and-set lets one payload become canonical.
             let due = due_at(job, self.now());
@@ -669,7 +762,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
                 .await?;
             intent = match adopted {
                 Some(adopted) => adopted,
-                None => self.by_id(&id).await?.ok_or_else(|| JobError::Invalid("Durable cron job intent disappeared".into()))?,
+                None => self.by_id(&id).await?.ok_or_else(|| {
+                    JobError::Invalid("Durable cron job intent disappeared".into())
+                })?,
             };
         }
         let at = self.now();
@@ -708,7 +803,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
             current = self.by_id(&id).await?;
         }
         let Some(intent) = current else {
-            return Err(JobError::Invalid("Durable cron job intent disappeared".into()));
+            return Err(JobError::Invalid(
+                "Durable cron job intent disappeared".into(),
+            ));
         };
         let job = stored_job(intent.get("payload"))?;
         Ok(if matches!(status_of(&intent), "queued" | "processing") {
@@ -719,8 +816,9 @@ impl<Q: JobQueue> DurableJobs<Q> {
     }
 
     fn claim_filter(claim: &Claim, at: i64) -> Result<Document, JobError> {
-        let id = ObjectId::parse_str(&claim.intent_id)
-            .map_err(|_| JobError::Invalid("Cast to ObjectId failed for value of the claim".into()))?;
+        let id = ObjectId::parse_str(&claim.intent_id).map_err(|_| {
+            JobError::Invalid("Cast to ObjectId failed for value of the claim".into())
+        })?;
         Ok(doc! {
             "_id": id,
             "queueKey": claim.queue_key.as_str(),
@@ -731,7 +829,12 @@ impl<Q: JobQueue> DurableJobs<Q> {
         })
     }
 
-    async fn transition(&self, claim: &Claim, status: &str, reason: &str) -> Result<bool, JobError> {
+    async fn transition(
+        &self,
+        claim: &Claim,
+        status: &str,
+        reason: &str,
+    ) -> Result<bool, JobError> {
         let outcome = self
             .update_one(
                 Self::claim_filter(claim, self.now())?,
@@ -757,7 +860,12 @@ impl<Q: JobQueue> DurableJobs<Q> {
     }
 
     /// `retry(claim, job, due)`: queues the claimed canonical job again for `due_ms`.
-    pub async fn retry(&self, claim: &Claim, job: &CronQueueJob, due_ms: f64) -> Result<bool, JobError> {
+    pub async fn retry(
+        &self,
+        claim: &Claim,
+        job: &CronQueueJob,
+        due_ms: f64,
+    ) -> Result<bool, JobError> {
         assert_job(job, &claim.queue_key)?;
         if !due_ms.is_finite() {
             return Err(JobError::Invalid("Invalid retry time".into()));
@@ -768,9 +876,15 @@ impl<Q: JobQueue> DurableJobs<Q> {
         filter.insert("payload.job", job.job.as_str());
         filter.insert(
             "payload.channelID",
-            job.channel_id.as_deref().filter(|c| !c.is_empty()).map_or(Bson::Null, |c| Bson::String(c.to_owned())),
+            job.channel_id
+                .as_deref()
+                .filter(|c| !c.is_empty())
+                .map_or(Bson::Null, |c| Bson::String(c.to_owned())),
         );
-        filter.insert("automaticKey", job_automatic_key(job).map_or(Bson::Null, Bson::String));
+        filter.insert(
+            "automaticKey",
+            job_automatic_key(job).map_or(Bson::Null, Bson::String),
+        );
         let outcome = self
             .update_one(
                 filter,

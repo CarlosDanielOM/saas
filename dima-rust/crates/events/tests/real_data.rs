@@ -58,13 +58,22 @@ fn check_twitch(event: &Envelope, tally: &mut Tally) {
     let legacy = event.subject.is_none();
     let notification = TwitchNotification {
         message_id: event.source_event_id.clone(),
-        message_timestamp: event.metadata.at("messageTimestamp").as_str().map(str::to_owned),
+        message_timestamp: event
+            .metadata
+            .at("messageTimestamp")
+            .as_str()
+            .map(str::to_owned),
         message_retry: event.metadata.at("messageRetry").as_number(),
         stale_retry: match event.metadata.at("staleRetry") {
             Value::Bool(flag) => Some(*flag),
             _ => None,
         },
-        subscription: event.payload.at("subscription").as_object().cloned().unwrap_or_default(),
+        subscription: event
+            .payload
+            .at("subscription")
+            .as_object()
+            .cloned()
+            .unwrap_or_default(),
         event: event.payload.at("event").clone(),
         source: Some(event.source.clone()),
         durable_chat_handled: metadata_flag(&event.metadata, "durableChatHandled"),
@@ -75,36 +84,63 @@ fn check_twitch(event: &Envelope, tally: &mut Tally) {
         Ok(None) => {
             // `isForeignSharedChatEvent` arrived with 568600ab (2026-10-20 18:04:39 UTC); copies
             // journaled before it are a former version of the rule.
-            let original = event.metadata.at("originalEventType").as_str().unwrap_or_default();
-            if dima_events::producers::twitch::is_foreign_shared_chat_event(original, &notification.event)
-                && event.journaled_at_ms.is_some_and(|at| at < SHARED_CHAT_FILTER_MS)
+            let original = event
+                .metadata
+                .at("originalEventType")
+                .as_str()
+                .unwrap_or_default();
+            if dima_events::producers::twitch::is_foreign_shared_chat_event(
+                original,
+                &notification.event,
+            ) && event
+                .journaled_at_ms
+                .is_some_and(|at| at < SHARED_CHAT_FILTER_MS)
             {
                 tally.explained(
                     "shared-chat copy from another channel journaled before 568600ab (2026-10-20) added the filter",
                 );
             } else {
-                tally.mismatch(format!("{}: the producer would not journal it", event.event_key));
+                tally.mismatch(format!(
+                    "{}: the producer would not journal it",
+                    event.event_key
+                ));
             }
             return;
         }
         Err(error) => {
-            tally.mismatch(format!("{}: the producer refuses it: {error}", event.event_key));
+            tally.mismatch(format!(
+                "{}: the producer refuses it: {error}",
+                event.event_key
+            ));
             return;
         }
     };
     tally.checked("twitch events re-produced");
-    let key = event_key(&normalized.source, &normalized.source_event_id, &normalized.kind);
+    let key = event_key(
+        &normalized.source,
+        &normalized.source_event_id,
+        &normalized.kind,
+    );
     if key.as_deref() != Ok(event.event_key.as_str()) {
         tally.mismatch(format!("{}: re-produced key {key:?}", event.event_key));
     }
     if normalized.kind != event.kind {
-        tally.mismatch(format!("{}: type {} re-produced as {}", event.event_key, event.kind, normalized.kind));
+        tally.mismatch(format!(
+            "{}: type {} re-produced as {}",
+            event.event_key, event.kind, normalized.kind
+        ));
     }
     if normalized.channel_id != event.channel_id {
-        tally.mismatch(format!("{}: channel {:?} re-produced as {:?}", event.event_key, event.channel_id, normalized.channel_id));
+        tally.mismatch(format!(
+            "{}: channel {:?} re-produced as {:?}",
+            event.event_key, event.channel_id, normalized.channel_id
+        ));
     }
     if normalized.stream_id.filter(|s| !s.is_empty()) != event.stream_id {
-        tally.mismatch(format!("{}: stream re-produced differently", event.event_key));
+        tally.mismatch(format!(
+            "{}: stream re-produced differently",
+            event.event_key
+        ));
     }
     match (&normalized.subject, &event.subject) {
         (Some(want), Some(got)) => {
@@ -120,10 +156,15 @@ fn check_twitch(event: &Envelope, tally: &mut Tally) {
     match &normalized.occurred_at {
         Some(dima_events::contracts::OccurredAt::Text(text)) => {
             if dima_text::parse_date(text) != Some(event.occurred_at_ms) {
-                tally.mismatch(format!("{}: occurredAt {text} stored as {}", event.event_key, event.occurred_at_ms));
+                tally.mismatch(format!(
+                    "{}: occurredAt {text} stored as {}",
+                    event.event_key, event.occurred_at_ms
+                ));
             }
         }
-        _ => tally.explained("no provider time: occurredAt was the journal time (not recomputable)"),
+        _ => {
+            tally.explained("no provider time: occurredAt was the journal time (not recomputable)")
+        }
     }
     // Metadata: every producer field stored as produced (observability is the trace context).
     let produced = normalized.metadata.unwrap_or_default();
@@ -136,7 +177,9 @@ fn check_twitch(event: &Envelope, tally: &mut Tally) {
     if produced != stored {
         let keys = |o: &Object| o.iter().map(|(k, _)| k.to_owned()).collect::<Vec<_>>();
         if legacy && keys(&stored).iter().all(|k| produced.has(k)) {
-            tally.explained("legacy Twitch row: metadata without the durable markers of later producers");
+            tally.explained(
+                "legacy Twitch row: metadata without the durable markers of later producers",
+            );
         } else {
             tally.mismatch(format!(
                 "{}: metadata re-produced as {:?}, stored {:?}",
@@ -149,7 +192,10 @@ fn check_twitch(event: &Envelope, tally: &mut Tally) {
         let keys_produced: Vec<&str> = produced.iter().map(|(k, _)| k).collect();
         let keys_stored: Vec<&str> = stored.iter().map(|(k, _)| k).collect();
         if keys_produced != keys_stored {
-            tally.mismatch(format!("{}: metadata key order {keys_stored:?}", event.event_key));
+            tally.mismatch(format!(
+                "{}: metadata key order {keys_stored:?}",
+                event.event_key
+            ));
         }
     }
     // Retention: expiresAt = journaledAt + retention.
@@ -203,7 +249,9 @@ async fn stored_identities_are_recomputed_byte_for_byte() -> Result<()> {
         }
         match event.validate_retained(now_ms) {
             Ok(()) => tally.checked("retained contract"),
-            Err(error) => tally.mismatch(format!("{}: retained contract: {error}", event.event_key)),
+            Err(error) => {
+                tally.mismatch(format!("{}: retained contract: {error}", event.event_key))
+            }
         }
         if event.source.starts_with("twitch-eventsub") {
             check_twitch(&event, &mut tally);
@@ -229,9 +277,15 @@ async fn stored_identities_are_recomputed_byte_for_byte() -> Result<()> {
         };
         if delivery.get_object_id("eventID").ok() != Some(*id)
             || delivery.get_str("topic").ok() != Some(topic.as_str())
-            || delivery.get_datetime("expiresAt").ok().map(|d| d.timestamp_millis()) != Some(*expires)
+            || delivery
+                .get_datetime("expiresAt")
+                .ok()
+                .map(|d| d.timestamp_millis())
+                != Some(*expires)
         {
-            tally.mismatch(format!("{consumer}/{key}: delivery does not match its event"));
+            tally.mismatch(format!(
+                "{consumer}/{key}: delivery does not match its event"
+            ));
         }
         if CONSUMERS.iter().all(|c| c.consumer != consumer) {
             tally.mismatch(format!("{consumer}: a consumer the registry does not list"));
@@ -239,7 +293,10 @@ async fn stored_identities_are_recomputed_byte_for_byte() -> Result<()> {
         let created = delivery
             .get_datetime("createdAt")
             .map_or(i64::MAX, |d| d.timestamp_millis());
-        by_consumer.entry(consumer.to_owned()).or_default().push((*id, created));
+        by_consumer
+            .entry(consumer.to_owned())
+            .or_default()
+            .push((*id, created));
     }
     let journal = store.documents(dima_model::domain_events::COLLECTION);
     for consumer in &CONSUMERS {
@@ -247,11 +304,17 @@ async fn stored_identities_are_recomputed_byte_for_byte() -> Result<()> {
             continue;
         };
         let mut filter = (consumer.event_filter)();
-        filter.insert("topic", doc! { "$in": consumer.topics.iter().map(|t| t.as_str()).collect::<Vec<_>>() });
+        filter.insert(
+            "topic",
+            doc! { "$in": consumer.topics.iter().map(|t| t.as_str()).collect::<Vec<_>>() },
+        );
         let mut admitted = HashSet::new();
         for chunk in ids.chunks(5_000) {
             let mut scoped = filter.clone();
-            scoped.insert("_id", doc! { "$in": chunk.iter().map(|(id, _)| Bson::ObjectId(*id)).collect::<Vec<_>>() });
+            scoped.insert(
+                "_id",
+                doc! { "$in": chunk.iter().map(|(id, _)| Bson::ObjectId(*id)).collect::<Vec<_>>() },
+            );
             let found: Vec<Document> = journal
                 .find(scoped)
                 .projection(doc! { "_id": 1 })
@@ -319,13 +382,19 @@ async fn stored_identities_are_recomputed_byte_for_byte() -> Result<()> {
             json("sessionID").as_ref(),
         );
         if intent.get_str("automaticKey").ok().map(str::to_owned) != automatic {
-            tally.mismatch(format!("{job_id}: automaticKey recomputed as {automatic:?}"));
+            tally.mismatch(format!(
+                "{job_id}: automaticKey recomputed as {automatic:?}"
+            ));
         }
         let active = intent_active_key(queue, payload.get_str("dedupeKey").ok(), job_id);
         match intent.get_str("activeKey") {
             Ok(stored) if stored == active => tally.checked("intent active keys recomputed"),
-            Ok(stored) => tally.mismatch(format!("{job_id}: activeKey {stored:?}, recomputed {active:?}")),
-            Err(_) => tally.explained("intent whose expired dedupe key a later job took over ($unset activeKey)"),
+            Ok(stored) => tally.mismatch(format!(
+                "{job_id}: activeKey {stored:?}, recomputed {active:?}"
+            )),
+            Err(_) => tally.explained(
+                "intent whose expired dedupe key a later job took over ($unset activeKey)",
+            ),
         }
     }
 

@@ -98,8 +98,8 @@ pub fn normalize(input: &TwitchNotification) -> Result<Option<JournalInput>, Con
         return Ok(None);
     }
     let raid = original == "channel.raid";
-    let outgoing = raid
-        && crate::contracts::validate_outgoing_raid(input.subscription.at("condition"));
+    let outgoing =
+        raid && crate::contracts::validate_outgoing_raid(input.subscription.at("condition"));
     let channel_value = if raid {
         if outgoing {
             event.at("from_broadcaster_user_id")

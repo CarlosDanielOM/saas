@@ -47,12 +47,19 @@ struct Recorder {
 }
 
 impl JobQueue for Recorder {
-    async fn publish(&self, queue_key: &str, automatic_key: Option<&str>, payload: &QueueItem) -> Result<bool, StoreError> {
+    async fn publish(
+        &self,
+        queue_key: &str,
+        automatic_key: Option<&str>,
+        payload: &QueueItem,
+    ) -> Result<bool, StoreError> {
         let mut keys = vec![queue_key.to_owned()];
         keys.extend(automatic_key.map(str::to_owned));
         let payload: Json = payload.parse().unwrap_or(Json::Null);
         if let Ok(mut calls) = self.calls.lock() {
-            calls.push(json!({ "script": "PUBLISH_DURABLE_CRON_JOB", "keys": keys, "payload": payload }));
+            calls.push(
+                json!({ "script": "PUBLISH_DURABLE_CRON_JOB", "keys": keys, "payload": payload }),
+            );
         }
         Ok(self.reply.lock().map(|r| *r).unwrap_or(true))
     }
@@ -109,11 +116,21 @@ impl Run {
         match result.map(Into::into) {
             Err(error) => json!({ "error": { "message": error.to_string() } }),
             Ok(Answer::Bool(flag)) => json!(flag),
-            Ok(Answer::Prepared(p)) => json!({ "job": Self::job_json(&p.job), "created": p.created, "accepted": p.accepted, "status": p.status }),
-            Ok(Answer::Recovered(r)) => json!({ "examined": r.examined, "published": r.published, "uncertain": r.uncertain }),
-            Ok(Answer::Claim(ClaimResult::Claimed { job, claim })) => json!({ "status": "claimed", "job": Self::job_json(&job), "claim": self.claim_json(&claim) }),
-            Ok(Answer::Claim(ClaimResult::Busy { job })) => json!({ "status": "busy", "job": Self::job_json(&job) }),
-            Ok(Answer::Claim(ClaimResult::Terminal { job })) => json!({ "status": "terminal", "job": Self::job_json(&job) }),
+            Ok(Answer::Prepared(p)) => {
+                json!({ "job": Self::job_json(&p.job), "created": p.created, "accepted": p.accepted, "status": p.status })
+            }
+            Ok(Answer::Recovered(r)) => {
+                json!({ "examined": r.examined, "published": r.published, "uncertain": r.uncertain })
+            }
+            Ok(Answer::Claim(ClaimResult::Claimed { job, claim })) => {
+                json!({ "status": "claimed", "job": Self::job_json(&job), "claim": self.claim_json(&claim) })
+            }
+            Ok(Answer::Claim(ClaimResult::Busy { job })) => {
+                json!({ "status": "busy", "job": Self::job_json(&job) })
+            }
+            Ok(Answer::Claim(ClaimResult::Terminal { job })) => {
+                json!({ "status": "terminal", "job": Self::job_json(&job) })
+            }
         }
     }
 }

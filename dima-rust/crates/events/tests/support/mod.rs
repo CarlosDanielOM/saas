@@ -318,7 +318,9 @@ pub async fn store_through(proxy: &Proxy, database: &str) -> Result<Option<Mongo
         Some((credentials, after)) => (format!("{credentials}@"), after),
         None => (String::new(), rest),
     };
-    let tail = after.find(['/', '?']).map_or("", |at| after.get(at..).unwrap_or(""));
+    let tail = after
+        .find(['/', '?'])
+        .map_or("", |at| after.get(at..).unwrap_or(""));
     let mut config = MongoConfig::new(format!("{scheme}://{credentials}{}{tail}", proxy.address));
     config.database = Some(database.to_owned());
     config.server_selection_timeout = Some(std::time::Duration::from_secs(2));

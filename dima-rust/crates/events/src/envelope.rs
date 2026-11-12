@@ -68,7 +68,10 @@ fn text(document: &Document, field: &'static str) -> Result<String, EnvelopeErro
     }
 }
 
-fn optional_text(document: &Document, field: &'static str) -> Result<Option<String>, EnvelopeError> {
+fn optional_text(
+    document: &Document,
+    field: &'static str,
+) -> Result<Option<String>, EnvelopeError> {
     match document.get(field) {
         None | Some(Bson::Null) => Ok(None),
         Some(Bson::String(text)) => Ok(Some(text.clone())),
@@ -92,15 +95,22 @@ impl Envelope {
         };
         let schema_version = match document.get("schemaVersion") {
             None => 1.0,
-            Some(value) => dima_store::mongo::number::read_number(value)
-                .ok_or(EnvelopeError { field: "schemaVersion" })?,
+            Some(value) => dima_store::mongo::number::read_number(value).ok_or(EnvelopeError {
+                field: "schemaVersion",
+            })?,
         };
         let subject = match document.get("subject") {
             None | Some(Bson::Null) => None,
             Some(Bson::Document(subject)) => Some(Subject {
-                provider: text(subject, "provider").map_err(|_| EnvelopeError { field: "subject.provider" })?,
-                kind: text(subject, "kind").map_err(|_| EnvelopeError { field: "subject.kind" })?,
-                id: text(subject, "id").map_err(|_| EnvelopeError { field: "subject.id" })?,
+                provider: text(subject, "provider").map_err(|_| EnvelopeError {
+                    field: "subject.provider",
+                })?,
+                kind: text(subject, "kind").map_err(|_| EnvelopeError {
+                    field: "subject.kind",
+                })?,
+                id: text(subject, "id").map_err(|_| EnvelopeError {
+                    field: "subject.id",
+                })?,
             }),
             Some(_) => return Err(EnvelopeError { field: "subject" }),
         };

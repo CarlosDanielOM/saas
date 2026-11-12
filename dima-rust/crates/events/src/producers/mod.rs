@@ -260,7 +260,12 @@ impl Journal {
         let key = event_key(&event.source, &event.source_event_id, &event.kind)
             .map_err(|error| IngestError::Invalid(error.to_string()))?;
         check
-            .check(&contribution.channel_id, &key, &contribution.item_key, contribution.quantity)
+            .check(
+                &contribution.channel_id,
+                &key,
+                &contribution.item_key,
+                contribution.quantity,
+            )
             .await?;
         self.check_producer("goals-custom", &event)?;
         event.validate(Check::ingest(self.clock.now_ms()))?;
@@ -279,7 +284,11 @@ impl Journal {
     }
 
     fn check_producer(&self, provider: &str, event: &JournalInput) -> Result<(), IngestError> {
-        if event.subject.as_ref().is_none_or(|s| s.provider != provider) {
+        if event
+            .subject
+            .as_ref()
+            .is_none_or(|s| s.provider != provider)
+        {
             return Err(ContractError(format!(
                 "Producer {provider} must supply its own provider subject"
             ))
@@ -323,7 +332,12 @@ impl Journal {
             .store
             .writes(COLLECTION)
             .write_concern(journal_write_concern());
-        let insert = bounded_write("journal the event", self.deadline, writes.insert_one(&prepared.insert)).await;
+        let insert = bounded_write(
+            "journal the event",
+            self.deadline,
+            writes.insert_one(&prepared.insert),
+        )
+        .await;
         let (document, inserted) = match insert {
             Ok(()) => (prepared.insert.document, true),
             Err(error) if duplicate_key(&error).is_some() => {
@@ -362,7 +376,9 @@ impl Journal {
         let required = |value: &str, field: &str| {
             let value = trim(value);
             if value.is_empty() {
-                Err(IngestError::Invalid(format!("Domain event {field} is required")))
+                Err(IngestError::Invalid(format!(
+                    "Domain event {field} is required"
+                )))
             } else {
                 Ok(value.to_owned())
             }
@@ -371,7 +387,10 @@ impl Journal {
         let source_event_id = required(&input.source_event_id, "sourceEventId")?;
         let kind = required(&input.kind, "type")?;
         let channel_id = if input.topic == Topic::Channel {
-            Some(required(input.channel_id.as_deref().unwrap_or(""), "channelID")?)
+            Some(required(
+                input.channel_id.as_deref().unwrap_or(""),
+                "channelID",
+            )?)
         } else {
             input
                 .channel_id
@@ -398,7 +417,9 @@ impl Journal {
                 let provider = required(&subject.provider, "subject.provider")?;
                 let id = required(&subject.id, "subject.id")?;
                 if dima_model::domain_events::SubjectKind::parse(&subject.kind).is_none() {
-                    return Err(IngestError::Invalid("Domain event subject.kind is invalid".into()));
+                    return Err(IngestError::Invalid(
+                        "Domain event subject.kind is invalid".into(),
+                    ));
                 }
                 Some(doc! { "provider": provider, "kind": subject.kind.as_str(), "id": id })
             }

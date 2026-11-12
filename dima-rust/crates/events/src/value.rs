@@ -491,7 +491,9 @@ mod tests {
         let json = Value::Object(object).to_json();
         assert_eq!(
             json,
-            Some(json!({"date": "2023-11-14T22:13:20.123Z", "negative_zero": 0, "items": [null, null]}))
+            Some(
+                json!({"date": "2023-11-14T22:13:20.123Z", "negative_zero": 0, "items": [null, null]})
+            )
         );
     }
 
@@ -503,7 +505,10 @@ mod tests {
             Value::Number(3_000_000_000.0).to_bson()?,
             Bson::Double(3_000_000_000.0)
         );
-        assert_eq!(Value::Date(f64::NAN).to_bson(), Err(ValueError::InvalidDate));
+        assert_eq!(
+            Value::Date(f64::NAN).to_bson(),
+            Err(ValueError::InvalidDate)
+        );
         Ok(())
     }
 
@@ -516,6 +521,9 @@ mod tests {
             Value::Array(vec![Value::from("a"), Value::Null, Value::Number(1.0)]).to_js_string(),
             "a,,1"
         );
-        assert_eq!(Value::Object(Object::new()).to_js_string(), "[object Object]");
+        assert_eq!(
+            Value::Object(Object::new()).to_js_string(),
+            "[object Object]"
+        );
     }
 }

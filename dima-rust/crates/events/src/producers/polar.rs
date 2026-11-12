@@ -14,8 +14,7 @@
 //! SDK from signed bodies.
 
 use crate::contracts::{
-    ContractError, JournalInput, OccurredAt, SubjectInput, Topic,
-    serialize_provider_data, sources,
+    ContractError, JournalInput, OccurredAt, SubjectInput, Topic, serialize_provider_data, sources,
 };
 use crate::value::{Object, Value};
 use dima_model::StrEnum;
@@ -66,7 +65,9 @@ fn serialize_date(value: &Value, field: &str) -> Result<Option<Value>> {
         Value::Null => Ok(Some(Value::Null)),
         Value::Date(ms) if ms.is_finite() => dima_text::to_iso_string(ms.trunc() as i64)
             .map(|iso| Some(Value::String(iso)))
-            .ok_or_else(|| ContractError(format!("Polar webhook requires a finite Date for {field}"))),
+            .ok_or_else(|| {
+                ContractError(format!("Polar webhook requires a finite Date for {field}"))
+            }),
         _ => Err(ContractError(format!(
             "Polar webhook requires a finite Date for {field}"
         ))),
@@ -93,14 +94,20 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
     let source_event_id = required_string(&Value::from(input.webhook_id.as_str()), "webhookId")?;
     let original = required_string(&Value::from(input.event_type.as_str()), "event.type")?;
     let Value::Date(timestamp) = input.timestamp else {
-        return Err(ContractError::new("Polar webhook requires a finite event.timestamp"));
+        return Err(ContractError::new(
+            "Polar webhook requires a finite event.timestamp",
+        ));
     };
     if !timestamp.is_finite() {
-        return Err(ContractError::new("Polar webhook requires a finite event.timestamp"));
+        return Err(ContractError::new(
+            "Polar webhook requires a finite event.timestamp",
+        ));
     }
     let data = &input.data;
     if !is_record(data) {
-        return Err(ContractError::new("Polar webhook requires record event.data"));
+        return Err(ContractError::new(
+            "Polar webhook requires record event.data",
+        ));
     }
     let resource_id = required_string(data.at("id"), "data.id")?;
     let customer_event = original.starts_with("customer.");
@@ -160,7 +167,10 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
         let id = required_string(data.at("customerId"), "customerId")?;
         customer_id = Some(id.clone());
         payload.insert("customerId", Value::from(id));
-        payload.insert("status", Value::from(required_string(data.at("status"), "status")?));
+        payload.insert(
+            "status",
+            Value::from(required_string(data.at("status"), "status")?),
+        );
         if original == "order.paid" {
             if !matches!(data.at("paid"), Value::Bool(true)) {
                 return Err(ContractError::new("Polar order.paid requires paid=true"));
@@ -189,13 +199,17 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
             let subscription = data.at("subscription");
             if !subscription.is_nullish() {
                 if !is_record(subscription) {
-                    return Err(ContractError::new("Polar webhook requires record subscription"));
+                    return Err(ContractError::new(
+                        "Polar webhook requires record subscription",
+                    ));
                 }
                 if let Some(expected) = &subscription_id
                     && !subscription.at("id").is_nullish()
                     && subscription.at("id").as_str() != Some(expected.as_str())
                 {
-                    return Err(ContractError::new("Polar subscriptionId/subscription.id mismatch"));
+                    return Err(ContractError::new(
+                        "Polar subscriptionId/subscription.id mismatch",
+                    ));
                 }
                 payload.insert(
                     "cadence",
@@ -219,9 +233,15 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
                 "productId",
                 Value::from(required_string(data.at("productId"), "productId")?),
             );
-            payload.insert("cadence", Value::from(cadence(data.at("recurringInterval"))?));
+            payload.insert(
+                "cadence",
+                Value::from(cadence(data.at("recurringInterval"))?),
+            );
             let end = if is_str(data.at("status"), "canceled") {
-                or(or(data.at("endsAt"), data.at("endedAt")), data.at("currentPeriodEnd"))
+                or(
+                    or(data.at("endsAt"), data.at("endedAt")),
+                    data.at("currentPeriodEnd"),
+                )
             } else {
                 data.at("currentPeriodEnd")
             };
@@ -243,7 +263,10 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
                 ));
             }
             let mut normalized = Object::new();
-            normalized.insert("meter_id", Value::from(required_string(meter.at("meterId"), "meterId")?));
+            normalized.insert(
+                "meter_id",
+                Value::from(required_string(meter.at("meterId"), "meterId")?),
+            );
             for (sdk_field, field) in [
                 ("consumedUnits", "consumed_units"),
                 ("creditedUnits", "credited_units"),
@@ -267,7 +290,8 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
         let subscriptions = data.at("activeSubscriptions");
         let grants = data.at("grantedBenefits");
         if !subscriptions.is_undefined() || !grants.is_undefined() {
-            let (Value::Array(subscriptions), Value::Array(grants)) = (subscriptions, grants) else {
+            let (Value::Array(subscriptions), Value::Array(grants)) = (subscriptions, grants)
+            else {
                 return Err(ContractError::new(
                     "Polar customer state requires both entitlement arrays",
                 ));
@@ -280,17 +304,25 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
                     ));
                 }
                 let mut subscription = Object::new();
-                subscription.insert("id", Value::from(required_string(value.at("id"), "subscription.id")?));
+                subscription.insert(
+                    "id",
+                    Value::from(required_string(value.at("id"), "subscription.id")?),
+                );
                 subscription.insert(
                     "productId",
-                    Value::from(required_string(value.at("productId"), "subscription.productId")?),
+                    Value::from(required_string(
+                        value.at("productId"),
+                        "subscription.productId",
+                    )?),
                 );
                 subscription.insert(
                     "status",
                     Value::from(required_string(value.at("status"), "subscription.status")?),
                 );
                 for field in ["currentPeriodEnd", "endsAt", "trialStart", "trialEnd"] {
-                    if let Some(date) = serialize_date(value.at(field), &format!("subscription.{field}"))? {
+                    if let Some(date) =
+                        serialize_date(value.at(field), &format!("subscription.{field}"))?
+                    {
                         subscription.insert(field, date);
                     }
                 }
@@ -299,10 +331,15 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
             let mut granted = Vec::with_capacity(grants.len());
             for value in grants {
                 if !is_record(value) {
-                    return Err(ContractError::new("Polar customer state requires record grant"));
+                    return Err(ContractError::new(
+                        "Polar customer state requires record grant",
+                    ));
                 }
                 let mut grant = Object::new();
-                grant.insert("id", Value::from(required_string(value.at("id"), "grant.id")?));
+                grant.insert(
+                    "id",
+                    Value::from(required_string(value.at("id"), "grant.id")?),
+                );
                 grant.insert(
                     "benefitId",
                     Value::from(required_string(value.at("benefitId"), "grant.benefitId")?),
@@ -316,11 +353,16 @@ pub fn normalize(input: &PolarWebhook, now_ms: i64) -> Result<JournalInput> {
         kind = format!("provider.polar.{original}");
         metadata.insert("unmapped", Value::Bool(true));
         // Keep validated SDK data JSON-safe without promoting it to a billing mutation.
-        payload.insert("providerData", Value::Object(serialize_provider_data(data)?));
+        payload.insert(
+            "providerData",
+            Value::Object(serialize_provider_data(data)?),
+        );
     }
 
     let subject = match &customer_id {
-        Some(id) if !id.is_empty() => SubjectInput::new("polar", SubjectKind::Customer, id.as_str()),
+        Some(id) if !id.is_empty() => {
+            SubjectInput::new("polar", SubjectKind::Customer, id.as_str())
+        }
         Some(id) => SubjectInput::new("polar", SubjectKind::Resource, id.as_str()),
         None => SubjectInput::new("polar", SubjectKind::Resource, resource_id.as_str()),
     };
