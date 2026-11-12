@@ -12,7 +12,11 @@
 //! The pass also bounds the record: strings are cut at [`MAX_STRING_CHARS`] characters (on a
 //! character boundary), arrays at [`MAX_ARRAY_ITEMS`] items, objects at [`MAX_OBJECT_FIELDS`]
 //! fields and nesting at [`MAX_DEPTH`]; it returns an estimate of the record's size in bytes.
+//! A log call's data never reaches this pass unbounded: the logger serialises it under the same
+//! limits (plus a total of [`MAX_RECORD_VALUES`] values and about [`MAX_RECORD_BYTES`] bytes)
+//! while the value is walked, so these cuts only matter for a [`Value`] built elsewhere.
 
+pub use crate::bounded::{MAX_RECORD_BYTES, MAX_RECORD_VALUES};
 use regex::Regex;
 use serde_json::Value;
 use std::borrow::Cow;

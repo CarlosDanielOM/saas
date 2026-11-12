@@ -2,16 +2,18 @@
 //!
 //! **Metrics** are counted per series (kind, name, channel, outcome) and 10-second bucket. Series
 //! live in a few shards, each behind its own mutex; a thread always uses the same shard, so in
-//! practice a lock is uncontended. A series keeps its key across flushes and is only forgotten
-//! after [`IDLE_FLUSHES`] flushes without data, so a steady observation never allocates. At most
-//! [`MAX_SERIES`] series exist at once (the reference's 2000 keys); beyond that new series are
-//! dropped and counted. A series holds two bucket slots: the exporter flushes one second after each
+//! practice a lock is uncontended. A flush swaps each shard's map for an empty one under the lock
+//! and does everything else outside it, so recording waits at most for that swap; the price is
+//! that the first observation of a series after a flush allocates its key again (once per series
+//! per 10 seconds). At most [`MAX_SERIES`] series exist at once (the reference's 2000 keys),
+//! counting those a running flush still holds; beyond that new series are dropped and counted. A series holds two bucket slots: the exporter flushes one second after each
 //! 10-second boundary, so between two flushes at most two buckets receive data.
 //!
 //! **Spans** (at most 300 per flush) and **telemetry logs** (at most 100) are kept as rows.
 //!
 //! **Payloads** are the reference's version-1 envelope, split into batches of 100 metrics, 50
-//! spans and 25 logs; a batch over 256,000 bytes is dropped and counted.
+//! spans and 25 logs; a batch over 256,000 bytes is not sent: every observation, span and log in
+//! it is counted as lost, and the batch in `Stats::oversized_batches`.
 
 use crate::label::{self, CHANNEL_MAX, Channel, KIND_MAX, Label, MetricKey, NAME_MAX, OUTCOME_MAX};
 use crate::trace::{SpanId, TraceId};
@@ -42,8 +44,6 @@ pub const BATCH_LOGS: usize = 25;
 pub const MAX_PAYLOAD_BYTES: usize = 256_000;
 /// The bucket width in milliseconds.
 pub const BUCKET_MS: u64 = 10_000;
-/// Flushes without data after which a series is forgotten.
-pub const IDLE_FLUSHES: u8 = 3;
 /// The consumer's numeric ceiling (`number(v)`: at most 1e15).
 pub const MAX_NUMBER: f64 = 1e15;
 /// The consumer's count ceiling per row.
@@ -77,6 +77,11 @@ impl Slot {
         true
     }
 
+    /// Whether `other` can be merged in and the row stays within the consumer's limits.
+    fn fits(&self, other: &Slot) -> bool {
+        self.count + other.count <= MAX_COUNT && self.sum + other.sum <= MAX_NUMBER
+    }
+
     fn merge(&mut self, other: &Slot) {
         self.count += other.count;
         self.sum += other.sum;
@@ -90,12 +95,34 @@ impl Slot {
 #[derive(Default)]
 struct Series {
     slots: [Slot; 2],
-    idle: u8,
 }
 
 #[derive(Default)]
 struct Shard {
     map: HashMap<Box<[u8]>, Series>,
+}
+
+/// One series' bucket merged across shards. Each shard's slot is valid for the consumer on its
+/// own (at most [`MAX_COUNT`] observations and a sum of [`MAX_NUMBER`]); merged, they could
+/// exceed both, and the consumer rejects a whole batch for one row over its limits. Slots are
+/// merged while the result fits and start a further row of the same series and bucket otherwise:
+/// every row is valid, nothing is lost (the consumer adds rows of the same series up).
+#[derive(Default)]
+struct Merged {
+    first: Slot,
+    more: Vec<Slot>,
+}
+
+impl Merged {
+    fn add(&mut self, slot: &Slot) {
+        if self.first.count == 0 || self.first.fits(slot) {
+            self.first.merge(slot);
+        } else if let Some(last) = self.more.last_mut().filter(|last| last.fits(slot)) {
+            last.merge(slot);
+        } else {
+            self.more.push(*slot);
+        }
+    }
 }
 
 /// Why an observation was not counted.
@@ -110,7 +137,13 @@ pub(crate) enum Rejected {
 /// The metric store.
 pub(crate) struct Metrics {
     shards: Box<[Mutex<Shard>]>,
+    /// Per shard, how many series the last flush took: the next map is allocated with that
+    /// capacity before the lock is taken, so refilling does not regrow it under the lock.
+    capacity: Box<[AtomicUsize]>,
     series: AtomicUsize,
+    /// The longest time a flush held one shard's lock, in nanoseconds (tests).
+    #[cfg(test)]
+    longest_hold_ns: std::sync::atomic::AtomicU64,
 }
 
 thread_local! {
@@ -150,7 +183,10 @@ impl Metrics {
     pub(crate) fn new() -> Self {
         Self {
             shards: (0..SHARDS).map(|_| Mutex::new(Shard::default())).collect(),
+            capacity: (0..SHARDS).map(|_| AtomicUsize::new(0)).collect(),
             series: AtomicUsize::new(0),
+            #[cfg(test)]
+            longest_hold_ns: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
@@ -204,35 +240,48 @@ impl Metrics {
         }
     }
 
-    /// Takes every counted bucket, merged across shards, and forgets idle series.
+    /// Takes every counted bucket, merged across shards. Each shard's lock is held only to swap
+    /// its map for an empty one allocated beforehand: copying, merging and freeing happen outside it,
+    /// so a recording thread never waits for more than that swap. The taken series stay counted
+    /// against [`MAX_SERIES`] until they are merged and freed, so the bound on resident series
+    /// holds while a flush runs.
     pub(crate) fn take(&self) -> Vec<MetricRow> {
-        let mut merged: HashMap<(Box<[u8]>, u64), Slot> = HashMap::new();
-        for shard in self.shards.iter() {
-            let mut shard = shard.lock().unwrap_or_else(PoisonError::into_inner);
-            let before = shard.map.len();
-            shard.map.retain(|key, series| {
-                let mut had_data = false;
-                for slot in &mut series.slots {
-                    if slot.count > 0 {
-                        had_data = true;
-                        merged
-                            .entry((key.clone(), slot.at))
-                            .or_default()
-                            .merge(slot);
-                        *slot = Slot::default();
-                    }
-                }
-                series.idle = if had_data { 0 } else { series.idle + 1 };
-                series.idle < IDLE_FLUSHES
-            });
-            let removed = before - shard.map.len();
-            self.series.fetch_sub(removed, Ordering::Relaxed);
+        let mut taken = Vec::with_capacity(SHARDS);
+        for (shard, capacity) in self.shards.iter().zip(self.capacity.iter()) {
+            let mut map = HashMap::with_capacity(capacity.load(Ordering::Relaxed));
+            let mut guard = shard.lock().unwrap_or_else(PoisonError::into_inner);
+            #[cfg(test)]
+            let held = std::time::Instant::now();
+            std::mem::swap(&mut guard.map, &mut map);
+            drop(guard);
+            #[cfg(test)]
+            self.held(held);
+            capacity.store(map.len(), Ordering::Relaxed);
+            taken.push(map);
         }
-        let mut rows: Vec<MetricRow> = merged
-            .into_iter()
-            .map(|((key, at), slot)| {
-                let (kind, name, channel, outcome) = label::split_key(&key);
-                MetricRow {
+        let held: usize = taken.iter().map(HashMap::len).sum();
+        let mut merged: HashMap<(Box<[u8]>, u64), Merged> = HashMap::new();
+        for map in taken {
+            for (key, series) in map {
+                // The key moves into the merged row; it is copied only for a second bucket.
+                let [first, second] = series.slots;
+                if second.count > 0 {
+                    merged
+                        .entry((key.clone(), second.at))
+                        .or_default()
+                        .add(&second);
+                }
+                if first.count > 0 {
+                    merged.entry((key, first.at)).or_default().add(&first);
+                }
+            }
+        }
+        self.series.fetch_sub(held, Ordering::Relaxed);
+        let mut rows: Vec<MetricRow> = Vec::with_capacity(merged.len());
+        for ((key, at), slots) in merged {
+            let (kind, name, channel, outcome) = label::split_key(&key);
+            for slot in std::iter::once(slots.first).chain(slots.more) {
+                rows.push(MetricRow {
                     at,
                     kind: kind.to_owned(),
                     name: name.to_owned(),
@@ -242,11 +291,17 @@ impl Metrics {
                     sum: slot.sum,
                     max: slot.max,
                     histogram: slot.histogram,
-                }
-            })
-            .collect();
+                });
+            }
+        }
         rows.sort_by(|a, b| (a.at, &a.kind, &a.name).cmp(&(b.at, &b.kind, &b.name)));
         rows
+    }
+
+    #[cfg(test)]
+    fn held(&self, since: std::time::Instant) {
+        let nanos = u64::try_from(since.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        self.longest_hold_ns.fetch_max(nanos, Ordering::Relaxed);
     }
 
     /// Series currently held.
@@ -286,7 +341,7 @@ pub struct SpanRow {
 }
 
 /// What a finished span contributes when it is kept.
-pub(crate) struct FinishedSpan<'a> {
+pub(crate) struct FinishedSpan {
     pub(crate) trace_id: TraceId,
     pub(crate) span_id: SpanId,
     pub(crate) parent: Option<SpanId>,
@@ -295,13 +350,13 @@ pub(crate) struct FinishedSpan<'a> {
     /// The start, when known; otherwise computed from the end only if the span is kept.
     pub(crate) at: Option<u64>,
     pub(crate) duration_ms: f64,
-    pub(crate) kind: &'a str,
-    pub(crate) name: &'a str,
-    pub(crate) outcome: &'a str,
+    pub(crate) kind: &'static str,
+    pub(crate) name: &'static str,
+    pub(crate) outcome: &'static str,
 }
 
 impl SpanRow {
-    pub(crate) fn from_finished(span: &FinishedSpan<'_>, at: u64) -> Self {
+    pub(crate) fn from_finished(span: &FinishedSpan, at: u64) -> Self {
         Self {
             trace_id: span.trace_id.hex().as_str().to_owned(),
             span_id: span.span_id.hex().as_str().to_owned(),
@@ -462,6 +517,15 @@ pub(crate) struct Payload {
     pub(crate) items: u64,
 }
 
+/// Batches over [`MAX_PAYLOAD_BYTES`], which are not sent.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Oversized {
+    /// Batches.
+    pub(crate) batches: u64,
+    /// Observations, spans and logs they held: what is lost.
+    pub(crate) items: u64,
+}
+
 /// Everything one flush exports.
 #[derive(Default)]
 pub(crate) struct Taken {
@@ -476,20 +540,20 @@ impl Taken {
     }
 
     /// Splits into payloads. Oversized batches are skipped and returned as the second value
-    /// (how many batches and the items they held).
+    /// (how many batches, and the observations, spans and logs they held).
     pub(crate) fn encode(
         &self,
         service: &str,
         instance: &str,
         at: u64,
         mut id: impl FnMut() -> String,
-    ) -> (Vec<Payload>, u64) {
+    ) -> (Vec<Payload>, Oversized) {
         let batches = 1
             .max(self.metrics.len().div_ceil(BATCH_METRICS))
             .max(self.spans.len().div_ceil(BATCH_SPANS))
             .max(self.logs.len().div_ceil(BATCH_LOGS));
         let mut payloads = Vec::with_capacity(batches);
-        let mut oversized = 0;
+        let mut oversized = Oversized::default();
         for index in 0..batches {
             let metrics = chunk(&self.metrics, index, BATCH_METRICS);
             let spans = chunk(&self.spans, index, BATCH_SPANS);
@@ -512,7 +576,10 @@ impl Taken {
                 Ok(json) if json.len() <= MAX_PAYLOAD_BYTES => {
                     payloads.push(Payload { json, items })
                 }
-                _ => oversized += 1,
+                _ => {
+                    oversized.batches += 1;
+                    oversized.items += items;
+                }
             }
         }
         (payloads, oversized)
@@ -573,7 +640,7 @@ mod tests {
     }
 
     #[test]
-    fn series_bound_drops_and_idle_series_are_forgotten() {
+    fn series_bound_drops_and_a_flush_frees_the_series() {
         let metrics = Metrics::new();
         let mut dropped = 0;
         for index in 0..2500 {
@@ -587,14 +654,10 @@ mod tests {
         assert_eq!(dropped, 500);
         assert_eq!(metrics.series(), MAX_SERIES);
         assert_eq!(metrics.take().len(), MAX_SERIES);
-        // Kept (no allocation) for IDLE_FLUSHES flushes, then forgotten.
-        assert_eq!(metrics.series(), MAX_SERIES);
-        for _ in 1..IDLE_FLUSHES {
-            assert!(metrics.take().is_empty());
-            assert_eq!(metrics.series(), MAX_SERIES);
-        }
-        assert!(metrics.take().is_empty());
         assert_eq!(metrics.series(), 0);
+        assert!(metrics.take().is_empty());
+        assert!(metrics.record(0, &key("name2400"), 1.0).is_ok());
+        assert_eq!(metrics.series(), 1);
     }
 
     #[test]
@@ -636,6 +699,89 @@ mod tests {
     }
 
     #[test]
+    fn a_flush_holds_a_shard_lock_only_for_a_swap() {
+        let metrics = Metrics::new();
+        let names: Vec<String> = (0..MAX_SERIES)
+            .map(|index| format!("{index:0>90}"))
+            .collect();
+        let mut holds = Vec::new();
+        for _ in 0..40 {
+            // Every series lands in this thread's shard: the worst case for one lock.
+            for name in &names {
+                metrics.record(0, &key(name), 1.0).ok();
+            }
+            metrics.longest_hold_ns.store(0, Ordering::Relaxed);
+            assert_eq!(metrics.take().len(), MAX_SERIES);
+            holds.push(metrics.longest_hold_ns.load(Ordering::Relaxed));
+        }
+        holds.sort_unstable();
+        let median = holds[holds.len() / 2];
+        eprintln!(
+            "longest shard-lock hold per flush of {MAX_SERIES} series: median {median} ns, worst {} ns",
+            holds[holds.len() - 1]
+        );
+        // A swap is a few pointer moves; copying and merging 2000 series takes hundreds of µs.
+        assert!(median < 20_000, "median hold {median} ns");
+    }
+
+    /// The consumer's per-row checks (`dima-analytics/src/store.mjs`, `validateBatch`).
+    fn valid_for_consumer(row: &MetricRow) -> bool {
+        let number = |v: f64| v.is_finite() && (0.0..=MAX_NUMBER).contains(&v);
+        row.count >= 1
+            && row.count <= MAX_COUNT
+            && number(row.sum)
+            && number(row.max)
+            && row.histogram.iter().map(|n| u64::from(*n)).sum::<u64>() == row.count
+    }
+
+    /// A slot as full as one shard allows.
+    fn near_full(count: u64, sum: f64) -> Slot {
+        let mut slot = Slot {
+            at: 0,
+            count,
+            sum,
+            max: 10.0,
+            histogram: [0; 16],
+        };
+        slot.histogram[2] = u32::try_from(count).unwrap();
+        slot
+    }
+
+    #[test]
+    fn merged_shards_never_exceed_the_consumers_row_limits() {
+        let metrics = Metrics::new();
+        let k = key("busy");
+        // Every shard holds a valid slot for the same series; together they exceed both the
+        // count (1e8) and the sum (1e15) a row may carry.
+        for (index, shard) in metrics.shards.iter().enumerate() {
+            let slot = if index % 2 == 0 {
+                near_full(60_000_000, 1000.0)
+            } else {
+                near_full(10, 6e14)
+            };
+            let mut series = Series::default();
+            series.slots[0] = slot;
+            shard
+                .lock()
+                .unwrap()
+                .map
+                .insert(Box::from(k.bytes()), series);
+            metrics.series.fetch_add(1, Ordering::Relaxed);
+        }
+        let rows = metrics.take();
+        assert!(rows.iter().all(valid_for_consumer), "{rows:?}");
+        // Nothing is lost: the pieces add up to the shards' totals.
+        assert_eq!(
+            rows.iter().map(|row| row.count).sum::<u64>(),
+            4 * 60_000_000 + 4 * 10
+        );
+        assert!((rows.iter().map(|row| row.sum).sum::<f64>() - (4000.0 + 4.0 * 6e14)).abs() < 1.0);
+        assert!(rows.len() >= 3, "{}", rows.len());
+        assert!(rows.iter().all(|row| row.name == "busy" && row.at == 0));
+        assert_eq!(metrics.series(), 0);
+    }
+
+    #[test]
     fn telemetry_logs_keep_only_allow_listed_metadata() {
         let data = serde_json::json!({"function":"test","code":"E_TEST","message":"private chat",
             "token":"secret","error":"password secret","attempt":2,"step":"a\nb"});
@@ -655,6 +801,40 @@ mod tests {
             None,
         );
         assert_eq!(row.name, "op");
+    }
+
+    #[test]
+    fn an_oversized_batch_counts_the_observations_it_held() {
+        let row = |index: usize| MetricRow {
+            at: 0,
+            kind: "k".into(),
+            name: format!("{index}{}", "n".repeat(3000)),
+            channel: String::new(),
+            outcome: "ok".into(),
+            count: 7,
+            sum: 7.0,
+            max: 1.0,
+            histogram: [7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        };
+        let taken = Taken {
+            // The first batch of 100 rows is over 256,000 bytes; the second, of 10, is not.
+            metrics: (0..110).map(row).collect(),
+            spans: Vec::new(),
+            logs: (0..30)
+                .map(|_| LogRow::from_data(0, "warn", &Value::Null, Channel::EMPTY, None))
+                .collect(),
+        };
+        let (payloads, oversized) = taken.encode("cron", "i", 1, || "id".into());
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0].items, 10 * 7 + 5);
+        // 100 rows of 7 observations and 25 logs: 725 items lost in one batch.
+        assert_eq!(
+            oversized,
+            Oversized {
+                batches: 1,
+                items: 100 * 7 + 25
+            }
+        );
     }
 
     #[test]
@@ -679,7 +859,7 @@ mod tests {
                 .collect(),
         };
         let (payloads, oversized) = taken.encode("cron", "i", 1, || "id".into());
-        assert_eq!((payloads.len(), oversized), (3, 0));
+        assert_eq!((payloads.len(), oversized), (3, Oversized::default()));
         let first: Value = serde_json::from_str(&payloads[0].json).unwrap_or_default();
         assert_eq!(first["metrics"].as_array().map(Vec::len), Some(100));
         assert_eq!(first["logs"].as_array().map(Vec::len), Some(25));

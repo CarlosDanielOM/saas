@@ -3,7 +3,9 @@
 //! A [`Span`] is a guard: it records its metric (`observe(kind, name, duration, outcome)`) when it
 //! ends, and a span row when the trace is sampled, the span took at least one second, or it
 //! failed. A span that is dropped without [`Span::end`] (its future was cancelled) ends
-//! `aborted`. Starting and ending a span that is not kept does not allocate.
+//! `aborted`. Starting and ending a span that is not kept does not allocate. Kinds, names and
+//! outcomes are `&'static str`: fixed in the source, so the series a process creates are fixed
+//! when it is compiled (see [`crate::names`]).
 //!
 //! Deviation: the metric goes into the 10-second bucket in which the span **ended** (the reference
 //! uses the bucket it started in). The page shows completed operations, and this keeps every
@@ -19,8 +21,8 @@ use tokio::time::Instant;
 /// One span in progress.
 pub struct Span<'a> {
     telemetry: &'a Telemetry,
-    kind: &'a str,
-    name: &'a str,
+    kind: &'static str,
+    name: &'static str,
     context: TraceContext,
     parent: Option<SpanId>,
     started: Instant,
@@ -40,8 +42,8 @@ impl std::fmt::Debug for Span<'_> {
 impl<'a> Span<'a> {
     pub(crate) fn start(
         telemetry: &'a Telemetry,
-        kind: &'a str,
-        name: &'a str,
+        kind: &'static str,
+        name: &'static str,
         channel: Option<Channel>,
     ) -> Self {
         let parent = trace::current();
@@ -85,22 +87,21 @@ impl<'a> Span<'a> {
     }
 
     /// Ends the span with `outcome`, unless an outcome was set from inside.
-    pub fn end(mut self, outcome: &str) {
+    pub fn end(mut self, outcome: &'static str) {
         self.finish(outcome, None);
     }
 
     /// Ends the span under a final name (`span.end(outcome, finalName)`).
-    pub fn end_as(mut self, outcome: &str, name: &str) {
+    pub fn end_as(mut self, outcome: &'static str, name: &'static str) {
         self.finish(outcome, Some(name));
     }
 
-    fn finish(&mut self, outcome: &str, name: Option<&str>) {
+    fn finish(&mut self, outcome: &'static str, name: Option<&'static str>) {
         if self.ended {
             return;
         }
         self.ended = true;
-        let set = self.context.outcome();
-        let outcome = set.as_ref().map_or(outcome, |label| label.as_str());
+        let outcome = self.context.outcome().unwrap_or(outcome);
         let ids = self.context.ids();
         self.telemetry.finish_span(&FinishedSpan {
             trace_id: ids.trace_id,

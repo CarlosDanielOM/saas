@@ -46,6 +46,10 @@ pub struct PosthogConfig {
     pub token: SecretString,
     /// Resource `service.name`.
     pub service_name: String,
+    /// Entries below this level are not exported (counted as
+    /// [`crate::Stats::posthog_below_level`]). `None`, the default: every entry the logger's own
+    /// minimum level lets through, as the reference exports every log call whatever its level.
+    pub min_level: Option<Level>,
 }
 
 impl PosthogConfig {
@@ -55,6 +59,7 @@ impl PosthogConfig {
             base_url: POSTHOG_BASE_URL.to_owned(),
             token: SecretString::new(POSTHOG_PROJECT_KEY.to_owned()),
             service_name: SERVICE_NAME.to_owned(),
+            min_level: None,
         }
     }
 }
@@ -121,10 +126,10 @@ fn record_json(record: &LogRecord) -> LogRecordJson {
     // The reference passes the call's options as attributes.
     let mut attributes = vec![
         attribute("destination", record.destination.as_str()),
-        attribute("platform", &record.platform),
+        attribute("platform", record.platform.as_str()),
     ];
     if let Some(channel) = &record.channel_id {
-        attributes.push(attribute("channelId", channel));
+        attributes.push(attribute("channelId", channel.as_str()));
     }
     LogRecordJson {
         time: nanos.clone(),
@@ -226,11 +231,13 @@ impl Exporter {
 /// closes or `stop` fires; then whatever is queued is exported once more.
 pub(crate) async fn run(
     exporter: Exporter,
-    mut rx: tokio::sync::mpsc::Receiver<Arc<LogRecord>>,
+    rx: tokio::sync::mpsc::Receiver<Arc<LogRecord>>,
     stop: dima_core::Shutdown,
     telemetry: crate::Telemetry,
 ) {
-    let mut batch: Vec<Arc<LogRecord>> = Vec::with_capacity(MAX_BATCH);
+    // A batch in flight and the queue are counted as dropped if this task is aborted.
+    let mut drain = crate::telemetry::Drain::new(&telemetry, rx, MAX_BATCH, |drops| &drops.posthog);
+    let crate::telemetry::Drain { rx, batch, .. } = &mut drain;
     let mut stopping = false;
     loop {
         if !stopping {
@@ -257,7 +264,7 @@ pub(crate) async fn run(
             }
         }
         if !batch.is_empty() {
-            if exporter.export(&batch).await.is_err() {
+            if exporter.export(batch).await.is_err() {
                 telemetry
                     .0
                     .sinks

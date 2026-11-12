@@ -61,101 +61,114 @@ async fn warn_and_above_become_metadata_rows() {
 }
 
 #[tokio::test]
-async fn cache_entries_are_written_with_their_expiry_in_one_command() {
+async fn cache_entries_are_written_with_their_expiry() {
     let Some(store) = support::config(12) else {
         return;
     };
     let platform = support::unique("tlog");
     let (config, _console) = support::memory_config("api", Some(store.clone()));
-    let telemetry = Telemetry::new(config).unwrap();
-    let running = telemetry.start();
-    let options = LogOptions::new().platform(&platform);
-    telemetry.info(
-        &json!({"step": "both", "secret": "hunter2"}),
-        options.channel("777"),
-    );
-    telemetry.warn(
-        &json!({"step": "cache"}),
-        LogOptions::cache().platform(&platform),
-    );
-    telemetry.error(
-        &json!({"step": "console"}),
-        LogOptions::console().platform(&platform),
-    );
-    // Inside a trace the entry names it.
-    let mut span = telemetry.span("command", "test");
-    span.run(async {
+    // The entries, and the inbox the exporter's final flush writes to (unique to this test).
+    let inbox = support::inbox_pattern(&config);
+    let patterns = [format!("logger:{platform}:*"), inbox.clone()];
+    support::with_cleanup(&store, &patterns, async {
+        let telemetry = Telemetry::new(config).unwrap();
+        let running = telemetry.start();
+        let options = LogOptions::new().platform(&platform);
         telemetry.info(
-            &json!({"step": "traced"}),
+            &json!({"step": "both", "secret": "hunter2"}),
+            options.channel("777"),
+        );
+        telemetry.warn(
+            &json!({"step": "cache"}),
             LogOptions::cache().platform(&platform),
         );
+        telemetry.error(
+            &json!({"step": "console"}),
+            LogOptions::console().platform(&platform),
+        );
+        // Inside a trace the entry names it.
+        let mut span = telemetry.span("command", "test");
+        span.run(async {
+            telemetry.info(
+                &json!({"step": "traced"}),
+                LogOptions::cache().platform(&platform),
+            );
+        })
+        .await;
+        let trace_id = span.ids().trace_id;
+        span.end("ok");
+        let report = running.shutdown(Duration::from_secs(3)).await;
+        assert!(report.clean);
+        assert_eq!(report.stats.cache_written, 3);
+
+        let dragonfly = support::connect(&store).await;
+        let pattern = format!("logger:{platform}:*");
+        let mut scan = dragonfly.scan(&pattern, Some(1000));
+        let mut keys = Vec::new();
+        while let Some(page) = scan.next_page().await.unwrap() {
+            keys.extend(page.into_iter().map(|key| String::from_utf8(key).unwrap()));
+        }
+        keys.sort();
+        assert_eq!(keys.len(), 3, "{keys:?}");
+        let mut seen = Vec::new();
+        for key in &keys {
+            let parts: Vec<&str> = key.split(':').collect();
+            assert_eq!(parts.len(), 5, "{key}");
+            let (channel, level, id) = (parts[2], parts[3], parts[4]);
+            let (ms, suffix) = id.split_once('-').unwrap();
+            assert!(ms.parse::<u64>().is_ok() && suffix.len() == 8, "{key}");
+            let ttl: i64 = dragonfly.query(redis::cmd("TTL").arg(key)).await.unwrap();
+            assert!((604_700..=604_800).contains(&ttl), "{key} ttl {ttl}");
+            let raw = dragonfly.get_text(key).await.unwrap().unwrap();
+            let value: Value = serde_json::from_str(&raw).unwrap();
+            let fields: Vec<&str> = value
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect();
+            assert_eq!(
+                &fields[..4],
+                ["data", "timestamp", "level", "platform"],
+                "{raw}"
+            );
+            assert_eq!(value["level"], level);
+            assert_eq!(value["platform"], platform.as_str());
+            assert!(value["timestamp"].as_str().unwrap().contains(", "));
+            seen.push((channel.to_owned(), level.to_owned(), value));
+        }
+        let both = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "both")
+            .unwrap();
+        assert_eq!(both.0, "777");
+        assert_eq!(both.2["channelId"], "777");
+        assert_eq!(both.2["data"]["secret"], "[REDACTED]");
+        let cache = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "cache")
+            .unwrap();
+        assert_eq!((cache.0.as_str(), cache.1.as_str()), ("global", "warn"));
+        assert!(cache.2.get("channelId").is_none());
+        let traced = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "traced")
+            .unwrap();
+        assert_eq!(traced.2["traceId"], trace_id.hex().as_str());
+        assert!(!seen.iter().any(|(_, _, v)| v["data"]["step"] == "console"));
+        assert_eq!(
+            support::keys_and_cleanup(&dragonfly, &pattern).await.len(),
+            3
+        );
+
+        let own_inbox = inbox.replace('*', "inbox");
+        let exists: i64 = dragonfly
+            .query(redis::cmd("EXISTS").arg(&own_inbox))
+            .await
+            .unwrap();
+        assert_eq!(exists, 1, "the final flush goes to this test's own inbox");
     })
     .await;
-    let trace_id = span.ids().trace_id;
-    span.end("ok");
-    let report = running.shutdown(Duration::from_secs(3)).await;
-    assert!(report.clean);
-    assert_eq!(report.stats.cache_written, 3);
-
-    let dragonfly = support::connect(&store).await;
-    let pattern = format!("logger:{platform}:*");
-    let mut scan = dragonfly.scan(&pattern, Some(1000));
-    let mut keys = Vec::new();
-    while let Some(page) = scan.next_page().await.unwrap() {
-        keys.extend(page.into_iter().map(|key| String::from_utf8(key).unwrap()));
-    }
-    keys.sort();
-    assert_eq!(keys.len(), 3, "{keys:?}");
-    let mut seen = Vec::new();
-    for key in &keys {
-        let parts: Vec<&str> = key.split(':').collect();
-        assert_eq!(parts.len(), 5, "{key}");
-        let (channel, level, id) = (parts[2], parts[3], parts[4]);
-        let (ms, suffix) = id.split_once('-').unwrap();
-        assert!(ms.parse::<u64>().is_ok() && suffix.len() == 8, "{key}");
-        let ttl: i64 = dragonfly.query(redis::cmd("TTL").arg(key)).await.unwrap();
-        assert!((604_700..=604_800).contains(&ttl), "{key} ttl {ttl}");
-        let raw = dragonfly.get_text(key).await.unwrap().unwrap();
-        let value: Value = serde_json::from_str(&raw).unwrap();
-        let fields: Vec<&str> = value
-            .as_object()
-            .unwrap()
-            .keys()
-            .map(String::as_str)
-            .collect();
-        assert_eq!(
-            &fields[..4],
-            ["data", "timestamp", "level", "platform"],
-            "{raw}"
-        );
-        assert_eq!(value["level"], level);
-        assert_eq!(value["platform"], platform.as_str());
-        assert!(value["timestamp"].as_str().unwrap().contains(", "));
-        seen.push((channel.to_owned(), level.to_owned(), value));
-    }
-    let both = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "both")
-        .unwrap();
-    assert_eq!(both.0, "777");
-    assert_eq!(both.2["channelId"], "777");
-    assert_eq!(both.2["data"]["secret"], "[REDACTED]");
-    let cache = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "cache")
-        .unwrap();
-    assert_eq!((cache.0.as_str(), cache.1.as_str()), ("global", "warn"));
-    assert!(cache.2.get("channelId").is_none());
-    let traced = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "traced")
-        .unwrap();
-    assert_eq!(traced.2["traceId"], trace_id.hex().as_str());
-    assert!(!seen.iter().any(|(_, _, v)| v["data"]["step"] == "console"));
-    assert_eq!(
-        support::keys_and_cleanup(&dragonfly, &pattern).await.len(),
-        3
-    );
 }
 
 #[tokio::test]
@@ -208,13 +221,83 @@ async fn caller_never_waits(store: dima_store::dragonfly::DragonflyConfig) {
 }
 
 #[tokio::test]
-async fn an_unreachable_store_is_not_noticed() {
+async fn an_unreachable_store_does_not_slow_the_caller() {
     caller_never_waits(support::local_store(support::closed_port())).await;
 }
 
 #[tokio::test]
-async fn a_hung_store_is_not_noticed() {
+async fn a_hung_store_does_not_slow_the_caller() {
     let (port, server) = support::black_hole().await;
     caller_never_waits(support::local_store(port)).await;
+    server.abort();
+}
+
+/// Counts how many items a log call pulls from it, up to a million.
+struct Endless(std::sync::Arc<std::sync::atomic::AtomicU64>);
+
+impl serde::Serialize for Endless {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(None)?;
+        for index in 0..1_000_000_u64 {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            seq.serialize_element(&index)?;
+        }
+        seq.end()
+    }
+}
+
+struct Panics;
+
+impl serde::Serialize for Panics {
+    fn serialize<S: serde::Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
+        panic!("a caller's Serialize panicked")
+    }
+}
+
+#[tokio::test]
+async fn log_limits_apply_while_the_value_is_walked_and_panics_are_contained() {
+    let (config, console) = support::memory_config("api", None);
+    let telemetry = Telemetry::new(config).unwrap();
+    let running = telemetry.start();
+    let pulled = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    telemetry.info(&Endless(pulled.clone()), LogOptions::console());
+    // The walk stops at the array limit instead of building a million values first.
+    assert!(pulled.load(std::sync::atomic::Ordering::Relaxed) <= 101);
+    telemetry.error(&Panics, LogOptions::console());
+    assert_eq!(telemetry.stats().unserializable, 1);
+    assert_eq!(
+        telemetry.stats().total_dropped(),
+        1,
+        "{:?}",
+        telemetry.stats()
+    );
+    running.shutdown(Duration::from_secs(2)).await;
+    let lines = support::lines(&console);
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[0]["data"].as_array().map(Vec::len), Some(100));
+    assert_eq!(lines[1]["data"], "[unserializable]");
+}
+
+/// A writer stuck on a hung store at shutdown is aborted; the entries it held are counted.
+#[tokio::test]
+async fn entries_an_aborted_cache_writer_abandoned_are_counted() {
+    let (port, server) = support::black_hole().await;
+    let (config, _console) = support::memory_config("api", Some(support::local_store(port)));
+    let telemetry = Telemetry::new(config).unwrap();
+    for index in 0..10 {
+        telemetry.info(&json!({ "index": index }), LogOptions::cache());
+    }
+    let running = telemetry.start();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let report = running.shutdown(Duration::from_millis(300)).await;
+    assert!(!report.clean);
+    assert_eq!(report.stats.cache_written, 0);
+    assert_eq!(report.stats.cache_dropped, 10, "{:?}", report.stats);
+    // The exporter's final flush was aborted too: its metrics are counted, not lost silently.
+    assert!(report.stats.pipeline_dropped > 0, "{:?}", report.stats);
+    // Entries logged after the writer is gone are refused and counted too.
+    telemetry.info(&"late", LogOptions::cache());
+    assert_eq!(telemetry.stats().cache_dropped, 11);
     server.abort();
 }
