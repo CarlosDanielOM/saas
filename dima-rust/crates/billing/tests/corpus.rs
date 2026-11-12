@@ -996,6 +996,7 @@ fn polar_ingest_events_match_the_sdk_wire() {
     assert_eq!(drawn, 4, "grant cases whose id the reference drew");
 
     let mut tally = Tally::new("ingest_answer");
+    let mut unknown = 0;
     for case in cases("ingest_answer") {
         let answer = &case["input"]["answer"];
         let complete = answer["status"] == 200 && {
@@ -1003,6 +1004,13 @@ fn polar_ingest_events_match_the_sdk_wire() {
                 serde_json::from_value(answer["body"].clone()).unwrap();
             result.is_complete(1)
         };
+        // Intended difference (item 4 of P2-BILLING-01c, re-check finding N5): a 200 whose
+        // counts fall short is still `{error: true}` with the reference's message, but it is
+        // `IngestOutcome::OutcomeUnknown`, not `Failed`: Polar may have stored the event, so
+        // the caller retries with the same external id instead of giving up.
+        if answer["status"] == 200 && !complete {
+            unknown += 1;
+        }
         tally.check(
             (case["expected"]["error"] == false) == complete,
             &case,
@@ -1010,4 +1018,8 @@ fn polar_ingest_events_match_the_sdk_wire() {
         );
     }
     tally.finish();
+    assert_eq!(
+        unknown, 1,
+        "incomplete successes now reported as unknown outcomes"
+    );
 }

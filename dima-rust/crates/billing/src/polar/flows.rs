@@ -88,8 +88,9 @@ pub enum IngestOutcome {
     },
     /// `{error: true, message}` in the reference too, but Polar may have applied it: the
     /// request was sent and no usable answer came (a lost reply, a 5xx, a success answer that
-    /// cannot be read). Retry only with the same external id, which Polar deduplicates; never
-    /// with a new one (item 7 of P2-BILLING-01b).
+    /// cannot be read, or one whose counts are missing or too low: item 4 of P2-BILLING-01c).
+    /// Retry only with the same external id, which Polar deduplicates; never with a new one
+    /// (item 7 of P2-BILLING-01b).
     OutcomeUnknown {
         /// The message.
         message: String,
@@ -242,7 +243,11 @@ impl Ingest<'_> {
                     self.project(&event, &context, channel).await;
                     IngestOutcome::Done { message: None }
                 }
-                Ok(_) => failed("PolarSH ingest incomplete"),
+                // Item 4 of P2-BILLING-01c (re-check finding N5): a success whose counts are
+                // missing or unusable may hide a stored event, as for a batch.
+                Ok(_) => IngestOutcome::OutcomeUnknown {
+                    message: "PolarSH ingest incomplete".into(),
+                },
                 Err(error) => polar_failure(&error),
             };
         }
@@ -318,7 +323,17 @@ impl Ingest<'_> {
         };
         match self.polar.ingest_events(std::slice::from_ref(&event)).await {
             Ok(result) if result.is_complete(1) => {}
-            Ok(_) => return failed("PolarSH grant credits ingest incomplete"),
+            // Item 4 of P2-BILLING-01c (re-check finding N5): Polar may have stored the grant;
+            // the caller retries with the same operation id, never with a new one.
+            Ok(_) => {
+                self.observer.error(
+                    "grantPolarAiCredits",
+                    "PolarSH grant credits ingest incomplete; outcome unknown",
+                );
+                return IngestOutcome::OutcomeUnknown {
+                    message: "PolarSH grant credits ingest incomplete".into(),
+                };
+            }
             Err(error) => {
                 self.observer
                     .error("grantPolarAiCredits", &polar_message(&error));

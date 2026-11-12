@@ -349,3 +349,81 @@ async fn an_ambiguous_answer_reaches_the_caller_as_an_unknown_outcome() {
     assert!(sink.receipts.lock().unwrap().is_empty());
     support::cleanup(&dragonfly, &channel).await.unwrap();
 }
+
+// Item 4 of P2-BILLING-01c (re-check finding N5): Polar answered 200 to a grant or an immediate
+// ingest, but the answer is empty or its counts cannot be used. Polar may have stored the event,
+// so the caller gets the same distinct result as for a batch: `OutcomeUnknown`, to be retried
+// with the same external id; nothing is projected or receipted on the strength of it.
+#[tokio::test]
+async fn an_incomplete_success_is_an_unknown_outcome_for_grants_and_immediate_ingest() {
+    let Some(dragonfly) = support::dragonfly(9).await.unwrap() else {
+        return;
+    };
+    let server = MockServer::start().await.unwrap();
+    let polar = PolarClient::new(
+        HttpClient::builder().build().unwrap(),
+        server
+            .provider(PolarClient::provider(&Default::default()))
+            .unwrap(),
+        Some(SecretString::from("t")),
+    );
+    let clock = Arc::new(ManualClock::new(1_793_000_000_000));
+    let credits = CreditsCache::new(dragonfly.clone(), clock.clone(), Arc::new(NoopObserver));
+    let sink = Sink::default();
+    let random = support::ZeroRandom;
+    let ingest = Ingest {
+        polar: &polar,
+        dragonfly: &dragonfly,
+        credits: &credits,
+        sink: &sink,
+        random: &random,
+        clock: clock.as_ref(),
+        observer: &NoopObserver,
+    };
+    let channel = support::channel_id();
+    let grant = GrantInput {
+        customer_id: "cus_1".into(),
+        channel_id: Some(channel.clone()),
+        credits: 500.0,
+        reason: "support".into(),
+        admin_login: None,
+        operation_id: OperationId::new("grant-incomplete").unwrap(),
+        source: None,
+    };
+    let answers = [
+        "{}",
+        r#"{"inserted":0,"duplicates":0}"#,
+        r#"{"inserted":"one","duplicates":null}"#,
+        r#"{"inserted":-1}"#,
+    ];
+    for answer in answers {
+        server.push(MockResponse::json(200, answer));
+        assert_eq!(
+            ingest.grant_ai_credits(&grant).await,
+            IngestOutcome::OutcomeUnknown {
+                message: "PolarSH grant credits ingest incomplete".into()
+            },
+            "grant answered {answer}"
+        );
+        server.push(MockResponse::json(200, answer));
+        assert_eq!(
+            ingest
+                .ingest_usage(&usage(&channel, "aiu_incomplete"), IngestMode::Immediate)
+                .await,
+            IngestOutcome::OutcomeUnknown {
+                message: "PolarSH ingest incomplete".into()
+            },
+            "immediate ingest answered {answer}"
+        );
+    }
+    assert!(sink.receipts.lock().unwrap().is_empty());
+    assert_eq!(*sink.tracked.lock().unwrap(), 0);
+    assert!(
+        support::keys_with(&dragonfly, &channel)
+            .await
+            .unwrap()
+            .is_empty(),
+        "nothing projected"
+    );
+    support::cleanup(&dragonfly, &channel).await.unwrap();
+}
