@@ -1,0 +1,6073 @@
+{
+ "sha256": {
+  "src/server/server.ts": "6ef449266e9ca30e05071f461a0c35d40678a5071be239a5e4dcacfa45e9c7ad",
+  "src/server/oauth/routes.ts": "4208dc2387f41f688202bb8087a0bda05589acaf93a73ceb808c0886a8bd965d",
+  "src/server/oauth/service.ts": "525e04c8b7b78b849165ffb07233fefe1f3f4421a379d14a049386dbc2405726",
+  "src/server/oauth/catalog.ts": "efb366bc14897053d171061675c1c15364f01153e4b52b55c8123b450918bebf",
+  "src/server/routes/observability.route.ts": "94a812dd2af8ec942a1750b1d454dcf8394d46c47535c73a5cb43aa4421a3406"
+ },
+ "captured": [
+  "CLIP_ETAG",
+  "REQUEST",
+  "REQUEST2",
+  "CODE",
+  "AT",
+  "RT",
+  "SESSION",
+  "USER",
+  "GRANT",
+  "AT2",
+  "RT2"
+ ],
+ "rows": [
+  {
+   "name": "unknown GET /nope",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "143"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /nope</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /users/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "146"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /commands/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "149"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /commands/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /overlay-studio/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "155"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /overlay-studio/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /roulettes/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "150"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /roulettes/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /docs-assistant/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "155"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /docs-assistant/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /polar/webhook",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "152"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /polar/webhook</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /video/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "146"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /video/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /speech/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /speech/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /admin-site/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "151"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /admin-site/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /extensions/dimafx/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "158"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /extensions/dimafx/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /config/x",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /config/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /USERS/x/",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /USERS/x/</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown GET /v2",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "141"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /v2</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown HEAD",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "wrong method on an inline route",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "163"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot DELETE /config/site/analytics</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "unknown with origin",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "146"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "preflight under cors",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET,HEAD,PUT,PATCH,POST,DELETE"
+    ],
+    [
+     "vary",
+     "Access-Control-Request-Headers"
+    ],
+    [
+     "access-control-allow-headers",
+     "authorization, content-type"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "preflight without request headers",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET,HEAD,PUT,PATCH,POST,DELETE"
+    ],
+    [
+     "vary",
+     "Access-Control-Request-Headers"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "options without origin",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET,HEAD,PUT,PATCH,POST,DELETE"
+    ],
+    [
+     "vary",
+     "Access-Control-Request-Headers"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "preflight of the metadata route",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET,HEAD,PUT,PATCH,POST,DELETE"
+    ],
+    [
+     "vary",
+     "Access-Control-Request-Headers"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "json at the limit /overlay-studio",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "156"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /overlay-studio/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json over the limit /overlay-studio",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json at the limit /commands",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "150"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /commands/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json over the limit /commands",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json at the limit /roulettes",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "151"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /roulettes/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json over the limit /roulettes",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json at the limit /users",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json over the limit /users",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json under the limit",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "malformed json",
+   "status": 400,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "138"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Bad Request</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json not an object",
+   "status": 400,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "138"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Bad Request</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json with an unsupported charset",
+   "status": 415,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "149"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Unsupported Media Type</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "wrong content type",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "urlencoded at the limit",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /users/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "urlencoded over the limit",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "urlencoded with too many parameters",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "urlencoded too deep",
+   "status": 400,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "138"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Bad Request</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json body on the 5 MiB prefix is not limited by the global parser",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "156"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /overlay-studio/x</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "json over 100 KiB to an OAuth route",
+   "status": 413,
+   "headers": [
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "144"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "content-length beyond the limit, nothing sent",
+   "status": 400,
+   "headers": [],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "static file",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static file HEAD",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "static css",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "W/\"22-19b7ca98c88\""
+    ],
+    [
+     "content-type",
+     "text/css; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "34"
+    ]
+   ],
+   "body": "body { background: transparent; }\n",
+   "body_base64": null
+  },
+  {
+   "name": "static js",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "W/\"19-19b7ca98c88\""
+    ],
+    [
+     "content-type",
+     "application/javascript; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ]
+   ],
+   "body": "export const player = 1;\n",
+   "body_base64": null
+  },
+  {
+   "name": "static with a query",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static conditional etag",
+   "status": 304,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "static conditional date",
+   "status": 304,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "static conditional older date",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static range",
+   "status": 206,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-range",
+     "bytes 0-9/54"
+    ],
+    [
+     "content-length",
+     "10"
+    ]
+   ],
+   "body": "<!doctype ",
+   "body_base64": null
+  },
+  {
+   "name": "static open range",
+   "status": 206,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-range",
+     "bytes 20-53/54"
+    ],
+    [
+     "content-length",
+     "34"
+    ]
+   ],
+   "body": "e>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static range not satisfiable",
+   "status": 416,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-range",
+     "bytes */54"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-length",
+     "148"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Range Not Satisfiable</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static if-range mismatch",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static directory without slash",
+   "status": 301,
+   "headers": [
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "160"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "location",
+     "/speech/123/"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Redirecting</title>\n</head>\n<body>\n<pre>Redirecting to /speech/123/</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static directory without slash and a query",
+   "status": 301,
+   "headers": [
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "164"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "location",
+     "/speech/123/?x=1"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Redirecting</title>\n</head>\n<body>\n<pre>Redirecting to /speech/123/?x=1</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static directory with slash",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "150"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /speech/123/</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static nested file",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "W/\"13-19b7ca98c88\""
+    ],
+    [
+     "content-type",
+     "audio/mpeg"
+    ],
+    [
+     "content-length",
+     "19"
+    ]
+   ],
+   "body": "ID3fake-audio-bytes",
+   "body_base64": null
+  },
+  {
+   "name": "static dotfile",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "146"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /.hidden</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static traversal",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "156"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /..%2fpackage.json</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static malformed escape",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "147"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /%E0%A4%A</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static POST falls through",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-security-policy",
+     "default-src 'none'"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "149"
+    ]
+   ],
+   "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /clip.html</pre>\n</body>\n</html>\n",
+   "body_base64": null
+  },
+  {
+   "name": "static with origin has no cors",
+   "status": 200,
+   "headers": [
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "cache-control",
+     "public, max-age=0"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "$CLIP_ETAG"
+    ],
+    [
+     "content-type",
+     "text/html; charset=UTF-8"
+    ],
+    [
+     "content-length",
+     "54"
+    ]
+   ],
+   "body": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "body_base64": null
+  },
+  {
+   "name": "reserved commands",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "127"
+    ],
+    [
+     "etag",
+     "W/\"7f-RorXujEm98+GXEZwV68AoZ808mI\""
+    ]
+   ],
+   "body": "{\"error\":false,\"message\":\"Commands fetched successfully\",\"status\":200,\"data\":{\"language\":null,\"commands\":[{\"name\":\"!uptime\"}]}}",
+   "body_base64": null
+  },
+  {
+   "name": "reserved commands es",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "127"
+    ],
+    [
+     "etag",
+     "W/\"7f-WVF78QGiZBe8NFLuDfHYAHOrfFg\""
+    ]
+   ],
+   "body": "{\"error\":false,\"message\":\"Commands fetched successfully\",\"status\":200,\"data\":{\"language\":\"es\",\"commands\":[{\"name\":\"!uptime\"}]}}",
+   "body_base64": null
+  },
+  {
+   "name": "reserved commands array language",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "127"
+    ],
+    [
+     "etag",
+     "W/\"7f-RorXujEm98+GXEZwV68AoZ808mI\""
+    ]
+   ],
+   "body": "{\"error\":false,\"message\":\"Commands fetched successfully\",\"status\":200,\"data\":{\"language\":null,\"commands\":[{\"name\":\"!uptime\"}]}}",
+   "body_base64": null
+  },
+  {
+   "name": "site analytics",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "258"
+    ],
+    [
+     "etag",
+     "W/\"102-GrYzBZxe8iYCzbVIQYHaE2hhn+w\""
+    ]
+   ],
+   "body": "{\"error\":false,\"message\":\"Site analytics fetched successfully\",\"status\":200,\"data\":{\"registeredUsers\":12,\"liveUsers\":1,\"totalLiveViewers\":3,\"authorizedAccounts\":4,\"totalMessages\":1000,\"totalCommands\":25,\"liveChannels\":[{\"id\":\"1\",\"name\":\"chan\",\"viewers\":3}]}}",
+   "body_base64": null
+  },
+  {
+   "name": "site analytics HEAD",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "258"
+    ],
+    [
+     "etag",
+     "W/\"102-GrYzBZxe8iYCzbVIQYHaE2hhn+w\""
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "site analytics failing",
+   "status": 500,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "61"
+    ],
+    [
+     "etag",
+     "W/\"3d-IBhY/+jIh47hAIa2piPMwcQcEOg\""
+    ]
+   ],
+   "body": "{\"error\":true,\"message\":\"Internal server error\",\"status\":500}",
+   "body_base64": null
+  },
+  {
+   "name": "site analytics stream",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "text/event-stream"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ]
+   ],
+   "body": "data: {\"registeredUsers\":12,\"liveUsers\":1,\"totalLiveViewers\":3,\"authorizedAccounts\":4,\"totalMessages\":1000,\"totalCommands\":25,\"liveChannels\":[{\"id\":\"1\",\"name\":\"chan\",\"viewers\":3}]}\n\n",
+   "body_base64": null
+  },
+  {
+   "name": "site analytics stream failing first",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "text/event-stream"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "proxy GET with query",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-Xl5NzjZiALSGGFdStDAuywxwZXE\""
+    ]
+   ],
+   "body": "{\"logs\":[]}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/logs?limit=5&level=error",
+     "authorization": "Bearer analytics-token",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy GET without authorization",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-Xl5NzjZiALSGGFdStDAuywxwZXE\""
+    ]
+   ],
+   "body": "{\"logs\":[]}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/logs",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy PUT json",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-Ai2R8hgEarLmHKwesT1qcY913ys\""
+    ]
+   ],
+   "body": "{\"ok\":true}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "PUT",
+     "target": "/api/grants/12",
+     "authorization": "Bearer t",
+     "content_type": "application/json",
+     "body": "{\"role\":\"viewer\",\"n\":1,\"list\":[1,2]}",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy PUT without json",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-Ai2R8hgEarLmHKwesT1qcY913ys\""
+    ]
+   ],
+   "body": "{\"ok\":true}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "PUT",
+     "target": "/api/grants/12",
+     "authorization": "Bearer t",
+     "content_type": "application/json",
+     "body": "{}",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy DELETE",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "etag",
+     "W/\"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk\""
+    ]
+   ],
+   "body": "",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "DELETE",
+     "target": "/api/grants/7",
+     "authorization": "Bearer t",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy trace id",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-RK/Q7V2JPJUe0hHue6Vo338F4dE\""
+    ]
+   ],
+   "body": "{\"trace\":1}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/traces/0123456789abcdef0123456789abcdef",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy upstream refuses",
+   "status": 401,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-pljHtlo127JYJR4E/RYOPb6ucbw\""
+    ]
+   ],
+   "body": "{\"message\":\"Unauthorized\"}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/session",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy upstream error text",
+   "status": 500,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "17"
+    ],
+    [
+     "etag",
+     "W/\"11-mdFZVSiXOvdF/stc+xbewNwK33s\""
+    ]
+   ],
+   "body": "upstream exploded",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/overview",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy upstream with BOM",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "7"
+    ],
+    [
+     "etag",
+     "W/\"7-MLu32SfEZtmbxK+cfwugdK1InLY\""
+    ]
+   ],
+   "body": "{\"t\":1}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/traces",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy upstream down",
+   "status": 503,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "50"
+    ],
+    [
+     "etag",
+     "W/\"32-bFYZDvQNb5n2ceHGpuOFnagvuCs\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics is temporarily unavailable\"}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/resources",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy HEAD",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy POST",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy unknown endpoint",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy trailing slash",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy upper-case trace",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy long grant id",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy mount prefix case",
+   "status": 200,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "11"
+    ],
+    [
+     "etag",
+     "W/\"b-Xl5NzjZiALSGGFdStDAuywxwZXE\""
+    ]
+   ],
+   "body": "{\"logs\":[]}",
+   "body_base64": null,
+   "upstream": [
+    {
+     "method": "GET",
+     "target": "/api/logs",
+     "authorization": "",
+     "content_type": "application/json",
+     "body": "",
+     "cookie": null,
+     "forwarded_for": null
+    }
+   ]
+  },
+  {
+   "name": "proxy root",
+   "status": 404,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "42"
+    ],
+    [
+     "etag",
+     "W/\"2a-1TSN7Os/dIYDkKnA87iXp7oUGcI\""
+    ]
+   ],
+   "body": "{\"message\":\"Analytics endpoint not found\"}",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "proxy preflight",
+   "status": 204,
+   "headers": [
+    [
+     "access-control-allow-origin",
+     "*"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET,HEAD,PUT,PATCH,POST,DELETE"
+    ],
+    [
+     "vary",
+     "Access-Control-Request-Headers"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "body": "",
+   "body_base64": null,
+   "upstream": []
+  },
+  {
+   "name": "well-known metadata",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "985"
+    ],
+    [
+     "etag",
+     "W/\"3d9-KZ7wkzoDlPrn8ToplqzasKCyuy8\""
+    ]
+   ],
+   "body": "{\"issuer\":\"http://127.0.0.1:3000\",\"authorization_endpoint\":\"http://127.0.0.1:3000/oauth/authorize\",\"token_endpoint\":\"http://127.0.0.1:3000/oauth/token\",\"revocation_endpoint\":\"http://127.0.0.1:3000/oauth/revoke\",\"scopes_supported\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:receive\",\"pet:interact\",\"pet:control\",\"pet:playback:select\"],\"response_types_supported\":[\"code\"],\"grant_types_supported\":[\"authorization_code\",\"refresh_token\"],\"code_challenge_methods_supported\":[\"S256\"],\"token_endpoint_auth_methods_supported\":[\"none\"],\"authorization_response_iss_parameter_supported\":true,\"beta\":{\"client_id\":\"dima-desktop\",\"protocol_version\":1,\"access_token_lifetime\":600,\"websocket_endpoint\":\"ws://127.0.0.1:3000/v1/desktop/ws\",\"socket_io\":{\"path\":\"/socket.io/\",\"namespace\":\"/desktop\",\"protocol_version\":1},\"ai_capabilities_endpoint\":\"http://127.0.0.1:3000/v1/me/ai/capabilities\",\"permission_profile_version\":2,\"planned_scopes\":[\"usage:read\",\"pet:write\"]}}",
+   "body_base64": null
+  },
+  {
+   "name": "well-known metadata with a foreign origin",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "985"
+    ],
+    [
+     "etag",
+     "W/\"3d9-KZ7wkzoDlPrn8ToplqzasKCyuy8\""
+    ]
+   ],
+   "body": "{\"issuer\":\"http://127.0.0.1:3000\",\"authorization_endpoint\":\"http://127.0.0.1:3000/oauth/authorize\",\"token_endpoint\":\"http://127.0.0.1:3000/oauth/token\",\"revocation_endpoint\":\"http://127.0.0.1:3000/oauth/revoke\",\"scopes_supported\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:receive\",\"pet:interact\",\"pet:control\",\"pet:playback:select\"],\"response_types_supported\":[\"code\"],\"grant_types_supported\":[\"authorization_code\",\"refresh_token\"],\"code_challenge_methods_supported\":[\"S256\"],\"token_endpoint_auth_methods_supported\":[\"none\"],\"authorization_response_iss_parameter_supported\":true,\"beta\":{\"client_id\":\"dima-desktop\",\"protocol_version\":1,\"access_token_lifetime\":600,\"websocket_endpoint\":\"ws://127.0.0.1:3000/v1/desktop/ws\",\"socket_io\":{\"path\":\"/socket.io/\",\"namespace\":\"/desktop\",\"protocol_version\":1},\"ai_capabilities_endpoint\":\"http://127.0.0.1:3000/v1/me/ai/capabilities\",\"permission_profile_version\":2,\"planned_scopes\":[\"usage:read\",\"pet:write\"]}}",
+   "body_base64": null
+  },
+  {
+   "name": "oauth metadata",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "985"
+    ],
+    [
+     "etag",
+     "W/\"3d9-KZ7wkzoDlPrn8ToplqzasKCyuy8\""
+    ]
+   ],
+   "body": "{\"issuer\":\"http://127.0.0.1:3000\",\"authorization_endpoint\":\"http://127.0.0.1:3000/oauth/authorize\",\"token_endpoint\":\"http://127.0.0.1:3000/oauth/token\",\"revocation_endpoint\":\"http://127.0.0.1:3000/oauth/revoke\",\"scopes_supported\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:receive\",\"pet:interact\",\"pet:control\",\"pet:playback:select\"],\"response_types_supported\":[\"code\"],\"grant_types_supported\":[\"authorization_code\",\"refresh_token\"],\"code_challenge_methods_supported\":[\"S256\"],\"token_endpoint_auth_methods_supported\":[\"none\"],\"authorization_response_iss_parameter_supported\":true,\"beta\":{\"client_id\":\"dima-desktop\",\"protocol_version\":1,\"access_token_lifetime\":600,\"websocket_endpoint\":\"ws://127.0.0.1:3000/v1/desktop/ws\",\"socket_io\":{\"path\":\"/socket.io/\",\"namespace\":\"/desktop\",\"protocol_version\":1},\"ai_capabilities_endpoint\":\"http://127.0.0.1:3000/v1/me/ai/capabilities\",\"permission_profile_version\":2,\"planned_scopes\":[\"usage:read\",\"pet:write\"]}}",
+   "body_base64": null
+  },
+  {
+   "name": "oauth metadata from the website",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "access-control-allow-origin",
+     "http://127.0.0.1:4200"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "access-control-allow-headers",
+     "Authorization, Content-Type, X-Dima-Audio-Ticket"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET, PUT, POST, DELETE, OPTIONS"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "985"
+    ],
+    [
+     "etag",
+     "W/\"3d9-KZ7wkzoDlPrn8ToplqzasKCyuy8\""
+    ]
+   ],
+   "body": "{\"issuer\":\"http://127.0.0.1:3000\",\"authorization_endpoint\":\"http://127.0.0.1:3000/oauth/authorize\",\"token_endpoint\":\"http://127.0.0.1:3000/oauth/token\",\"revocation_endpoint\":\"http://127.0.0.1:3000/oauth/revoke\",\"scopes_supported\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:receive\",\"pet:interact\",\"pet:control\",\"pet:playback:select\"],\"response_types_supported\":[\"code\"],\"grant_types_supported\":[\"authorization_code\",\"refresh_token\"],\"code_challenge_methods_supported\":[\"S256\"],\"token_endpoint_auth_methods_supported\":[\"none\"],\"authorization_response_iss_parameter_supported\":true,\"beta\":{\"client_id\":\"dima-desktop\",\"protocol_version\":1,\"access_token_lifetime\":600,\"websocket_endpoint\":\"ws://127.0.0.1:3000/v1/desktop/ws\",\"socket_io\":{\"path\":\"/socket.io/\",\"namespace\":\"/desktop\",\"protocol_version\":1},\"ai_capabilities_endpoint\":\"http://127.0.0.1:3000/v1/me/ai/capabilities\",\"permission_profile_version\":2,\"planned_scopes\":[\"usage:read\",\"pet:write\"]}}",
+   "body_base64": null
+  },
+  {
+   "name": "oauth metadata from a foreign origin",
+   "status": 403,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-c6sTLYDYzGAj8CJZ6SCMDSdcsT0\""
+    ]
+   ],
+   "body": "{\"error\":\"access_denied\"}",
+   "body_base64": null
+  },
+  {
+   "name": "oauth preflight from the website",
+   "status": 204,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "access-control-allow-origin",
+     "http://127.0.0.1:4200"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "access-control-allow-headers",
+     "Authorization, Content-Type, X-Dima-Audio-Ticket"
+    ],
+    [
+     "access-control-allow-methods",
+     "GET, PUT, POST, DELETE, OPTIONS"
+    ],
+    [
+     "etag",
+     "W/\"a-bAsFyilMr4Ra1hIU5PyoyFRunpI\""
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "oauth preflight without origin",
+   "status": 204,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "etag",
+     "W/\"a-bAsFyilMr4Ra1hIU5PyoyFRunpI\""
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "oauth unknown path",
+   "status": 404,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-IapEsyUJs++crm3elUM5fZoGyC4\""
+    ]
+   ],
+   "body": "{\"error\":\"not_found\"}",
+   "body_base64": null
+  },
+  {
+   "name": "oauth wrong method",
+   "status": 404,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-IapEsyUJs++crm3elUM5fZoGyC4\""
+    ]
+   ],
+   "body": "{\"error\":\"not_found\"}",
+   "body_base64": null
+  },
+  {
+   "name": "v1 unknown path",
+   "status": 404,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-IapEsyUJs++crm3elUM5fZoGyC4\""
+    ]
+   ],
+   "body": "{\"error\":\"not_found\"}",
+   "body_base64": null
+  },
+  {
+   "name": "authorize missing fields",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "authorize",
+   "status": 302,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "location",
+     "http://127.0.0.1:4200/oauth/authorize?request=$REQUEST"
+    ],
+    [
+     "vary",
+     "Accept"
+    ],
+    [
+     "content-type",
+     "text/plain; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "111"
+    ]
+   ],
+   "body": "Found. Redirecting to http://127.0.0.1:4200/oauth/authorize?request=$REQUEST",
+   "body_base64": null
+  },
+  {
+   "name": "authorize with an html accept",
+   "status": 302,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "location",
+     "http://127.0.0.1:4200/oauth/authorize?request=$REQUEST2"
+    ],
+    [
+     "vary",
+     "Accept"
+    ],
+    [
+     "content-type",
+     "text/html; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "118"
+    ]
+   ],
+   "body": "<p>Found. Redirecting to http://127.0.0.1:4200/oauth/authorize?request=$REQUEST2</p>",
+   "body_base64": null
+  },
+  {
+   "name": "request",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "263"
+    ],
+    [
+     "etag",
+     "W/\"107-t+1NAsro3FgIm/RNWCce/O6XFw0\""
+    ]
+   ],
+   "body": "{\"client_id\":\"dima-desktop\",\"client_name\":\"Dima Desktop Beta\",\"device_name\":\"Studio PC\",\"scopes\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:control\",\"pet:playback:select\"],\"redirect_uri\":\"http://127.0.0.1:53682/oauth/callback\"}",
+   "body_base64": null
+  },
+  {
+   "name": "request unknown",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "request malformed",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision approve not a boolean",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision form string",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision without browser token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-kyKhcBIE90ROJ/QhU/jxupoT1aY\""
+    ]
+   ],
+   "body": "{\"error\":\"login_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision with a refused token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-kyKhcBIE90ROJ/QhU/jxupoT1aY\""
+    ]
+   ],
+   "body": "{\"error\":\"login_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision with a dima token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-kyKhcBIE90ROJ/QhU/jxupoT1aY\""
+    ]
+   ],
+   "body": "{\"error\":\"login_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision from an account without site user",
+   "status": 403,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "28"
+    ],
+    [
+     "etag",
+     "W/\"1c-gDKf+oam+a2Bx+kedNxqLekS/Xk\""
+    ]
+   ],
+   "body": "{\"error\":\"account_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision approved",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "189"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"redirect_uri\":\"http://127.0.0.1:53682/oauth/callback?state=StateForTheRoutesRecorder000000000000000000&iss=http%3A%2F%2F127.0.0.1%3A3000&code=$CODE\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision again",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "decision denied",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "160"
+    ],
+    [
+     "etag",
+     "W/\"a0-C/s+Qna4KOrUxl6/uTSLimnA5rk\""
+    ]
+   ],
+   "body": "{\"redirect_uri\":\"http://127.0.0.1:53682/oauth/callback?state=StateForTheRoutesRecorder000000000000000000&iss=http%3A%2F%2F127.0.0.1%3A3000&error=access_denied\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token with a client secret",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-DwC5sWPR16SCcfiZTK4dXm2iapk\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_client\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token with an authorization header",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-DwC5sWPR16SCcfiZTK4dXm2iapk\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_client\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token unsupported grant",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "34"
+    ],
+    [
+     "etag",
+     "W/\"22-5vb2w9zavwO5URRtktsR5HwIgzI\""
+    ]
+   ],
+   "body": "{\"error\":\"unsupported_grant_type\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token repeated field",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token json with a number",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token without body",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "34"
+    ],
+    [
+     "etag",
+     "W/\"22-5vb2w9zavwO5URRtktsR5HwIgzI\""
+    ]
+   ],
+   "body": "{\"error\":\"unsupported_grant_type\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token json array",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "token exchange",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "353"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"access_token\":\"$AT\",\"token_type\":\"Bearer\",\"expires_in\":600,\"refresh_token\":\"$RT\",\"scope\":\"profile:read credits:read desktop:connect ai:interact pet:read pet:control pet:playback:select\",\"session_id\":\"$SESSION\",\"refresh_expires_in\":$SECONDS}",
+   "body_base64": null
+  },
+  {
+   "name": "token exchange again",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-gBHDYdPZ+dgnTnuQWpgKgUe2fZM\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_grant\"}",
+   "body_base64": null
+  },
+  {
+   "name": "me",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "128"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"user_id\":\"$USER\",\"name\":\"Viewer One\",\"channel\":{\"platform\":\"twitch\",\"id\":\"9100000001\",\"name\":\"viewer_one\"}}",
+   "body_base64": null
+  },
+  {
+   "name": "me without token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null
+  },
+  {
+   "name": "me with a bad token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null
+  },
+  {
+   "name": "me with lower-case scheme",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null
+  },
+  {
+   "name": "me with a query",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "me HEAD",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "128"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "",
+   "body_base64": null
+  },
+  {
+   "name": "capabilities",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "334"
+    ],
+    [
+     "etag",
+     "W/\"14e-w/V3p/McyJaCve3dqnd5DKNDZgM\""
+    ]
+   ],
+   "body": "{\"version\":1,\"permission_profile_version\":2,\"available\":true,\"features\":[\"turn-status-v1\"],\"supported_scopes\":[\"ai:interact\",\"pet:interact\"],\"required_scopes\":{\"bot\":[\"ai:interact\"],\"pet\":[\"pet:interact\"]},\"granted_scopes\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:control\",\"pet:playback:select\"]}",
+   "body_base64": null
+  },
+  {
+   "name": "desktop session",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "439"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"session_id\":\"$SESSION\",\"user_id\":\"$USER\",\"client_id\":\"dima-desktop\",\"channel_id\":\"9100000001\",\"scopes\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:control\",\"pet:playback:select\"],\"device_name\":\"Studio PC\",\"expires_at\":\"$DATE\",\"protocol_version\":1,\"pet_available\":false,\"socket_io\":{\"path\":\"/socket.io/\",\"namespace\":\"/desktop\",\"protocol_version\":1}}",
+   "body_base64": null
+  },
+  {
+   "name": "credits",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "59"
+    ],
+    [
+     "etag",
+     "W/\"3b-Z4e4wMpjLk5bGCgX0zd57b/f8Yw\""
+    ]
+   ],
+   "body": "{\"balance\":5,\"plan\":\"free\",\"display\":{\"label\":\"5 credits\"}}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "credits",
+     "user": "$USER",
+     "channel": "9100000001"
+    }
+   ]
+  },
+  {
+   "name": "pet configuration",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "73"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"enabled\":true,\"user\":\"$USER\",\"channel\":\"9100000001\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_configuration",
+     "user": "$USER",
+     "channel": "9100000001"
+    }
+   ]
+  },
+  {
+   "name": "pet runtime",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "73"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"state\":\"idle\",\"user\":\"$USER\",\"channel\":\"9100000001\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_runtime",
+     "user": "$USER",
+     "channel": "9100000001"
+    }
+   ]
+  },
+  {
+   "name": "pet playback",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "32"
+    ],
+    [
+     "etag",
+     "W/\"20-ox/xRWnfhz6yW2sJXCYDWjGhD0E\""
+    ]
+   ],
+   "body": "{\"selected\":{\"roles\":[\"audio\"]}}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_playback",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "input": {
+      "roles": [
+       "audio"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "pet playback missing scope is checked first",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null,
+   "calls": []
+  },
+  {
+   "name": "pet cancel",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "35"
+    ],
+    [
+     "etag",
+     "W/\"23-kLNwP97A6sy+Duk+043xHDs13Z0\""
+    ]
+   ],
+   "body": "{\"cancelled\":\"r1\",\"commandId\":\"c1\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_configuration",
+     "user": "$USER",
+     "channel": "9100000001"
+    },
+    {
+     "fn": "pet_cancel",
+     "user": "$USER",
+     "request": "r1",
+     "command": "c1"
+    }
+   ]
+  },
+  {
+   "name": "pet cancel with another key",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-XrKaXkGOi6i+9cACQZSvQ/sTaCM\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_command\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_configuration",
+     "user": "$USER",
+     "channel": "9100000001"
+    }
+   ]
+  },
+  {
+   "name": "pet cancel with an empty array",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "35"
+    ],
+    [
+     "etag",
+     "W/\"23-wsi159QGzIcqVQboFMd5U71eeMk\""
+    ]
+   ],
+   "body": "{\"cancelled\":\"r1\",\"commandId\":null}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "pet_configuration",
+     "user": "$USER",
+     "channel": "9100000001"
+    },
+    {
+     "fn": "pet_cancel",
+     "user": "$USER",
+     "request": "r1",
+     "command": null
+    }
+   ]
+  },
+  {
+   "name": "turn submit",
+   "status": 202,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "56"
+    ],
+    [
+     "etag",
+     "W/\"38-7bXRtpFDKK0qFsodqJBgJjMRNu4\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"t1\",\"status\":\"queued\",\"input\":{\"text\":\"hi\"}}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "submit",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "input": {
+      "text": "hi"
+     }
+    }
+   ]
+  },
+  {
+   "name": "turn submit refused by the service",
+   "status": 429,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "retry-after",
+     "60"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-NJ1k/ykxdyIb/cGe77cLxDRO3tA\""
+    ]
+   ],
+   "body": "{\"error\":\"slow_down\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "submit",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "input": {
+      "fail_code": "slow_down",
+      "fail_status": 429
+     }
+    }
+   ]
+  },
+  {
+   "name": "turn submit unauthorised by the service",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "submit",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "input": {
+      "fail_code": "invalid_token",
+      "fail_status": 401
+     }
+    }
+   ]
+  },
+  {
+   "name": "turn submit failing unexpectedly",
+   "status": 503,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "35"
+    ],
+    [
+     "etag",
+     "W/\"23-YC8IiqFEU6yjij0NvQY76mSWLzg\""
+    ]
+   ],
+   "body": "{\"error\":\"temporarily_unavailable\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "submit",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "input": {
+      "crash": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "turn",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "35"
+    ],
+    [
+     "etag",
+     "W/\"23-eDzrGBdglCFXCaJwI5imUoCT9sE\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"t1\",\"by_request\":false}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "get",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1",
+     "by_request": false
+    }
+   ]
+  },
+  {
+   "name": "turn by request",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "34"
+    ],
+    [
+     "etag",
+     "W/\"22-OJM5fuEwSD37DZea3jUOdlcrjw4\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"r9\",\"by_request\":true}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "get",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "r9",
+     "by_request": true
+    }
+   ]
+  },
+  {
+   "name": "turn cancel body checked before the token",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null,
+   "calls": []
+  },
+  {
+   "name": "turn cancel",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "33"
+    ],
+    [
+     "etag",
+     "W/\"21-Jz6RHrmjdw2cHVwljcmKH8Txd4k\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"t1\",\"cancelled\":true}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "cancel",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1"
+    }
+   ]
+  },
+  {
+   "name": "speech cancel",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "63"
+    ],
+    [
+     "etag",
+     "W/\"3f-MEPNncl60WUF8BnXwmdChZpyVBo\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"t1\",\"speech\":\"cancelled\",\"input\":{\"reason\":\"user\"}}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "cancel_speech",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1",
+     "input": {
+      "reason": "user"
+     }
+    }
+   ]
+  },
+  {
+   "name": "speech event",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "43"
+    ],
+    [
+     "etag",
+     "W/\"2b-ulXHA1S/uYHANjz1wCyj3zbjlUA\""
+    ]
+   ],
+   "body": "{\"turn_id\":\"t1\",\"event\":{\"type\":\"started\"}}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "speech_event",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1",
+     "input": {
+      "type": "started"
+     }
+    }
+   ]
+  },
+  {
+   "name": "speech audio",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "audio/mpeg"
+    ],
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "W/\"13-19b7ca98c88\""
+    ],
+    [
+     "content-length",
+     "19"
+    ]
+   ],
+   "body": "ID3fake-audio-bytes",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "claim_audio",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1",
+     "ticket": "ticket-1"
+    }
+   ]
+  },
+  {
+   "name": "speech audio range",
+   "status": 206,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "audio/mpeg"
+    ],
+    [
+     "accept-ranges",
+     "bytes"
+    ],
+    [
+     "last-modified",
+     "Fri, 02 Jan 2026 03:04:05 GMT"
+    ],
+    [
+     "etag",
+     "W/\"13-19b7ca98c88\""
+    ],
+    [
+     "content-range",
+     "bytes 0-1/19"
+    ],
+    [
+     "content-length",
+     "2"
+    ]
+   ],
+   "body": "ID",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "claim_audio",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t1",
+     "ticket": "ticket-1"
+    }
+   ]
+  },
+  {
+   "name": "speech audio missing file",
+   "status": 503,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "audio/mpeg; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "35"
+    ],
+    [
+     "etag",
+     "W/\"23-YC8IiqFEU6yjij0NvQY76mSWLzg\""
+    ]
+   ],
+   "body": "{\"error\":\"temporarily_unavailable\"}",
+   "body_base64": null,
+   "calls": [
+    {
+     "fn": "claim_audio",
+     "who": {
+      "session_id": "$SESSION",
+      "user_id": "$USER",
+      "client_id": "dima-desktop",
+      "channel_id": "9100000001",
+      "scopes": [
+       "profile:read",
+       "credits:read",
+       "desktop:connect",
+       "ai:interact",
+       "pet:read",
+       "pet:control",
+       "pet:playback:select"
+      ]
+     },
+     "id": "t2",
+     "ticket": "ticket-1"
+    }
+   ]
+  },
+  {
+   "name": "browser session",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "84"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"user_id\":\"$USER\",\"channel_id\":\"9100000001\",\"name\":\"viewer_one\"}",
+   "body_base64": null
+  },
+  {
+   "name": "browser session without token",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-kyKhcBIE90ROJ/QhU/jxupoT1aY\""
+    ]
+   ],
+   "body": "{\"error\":\"login_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "connections",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "381"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"sessions\":[{\"_id\":\"$SESSION\",\"grant_id\":\"$GRANT\",\"client_id\":\"dima-desktop\",\"device_name\":\"Studio PC\",\"scopes\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:control\",\"pet:playback:select\"],\"last_used_at\":\"$DATE\",\"expires_at\":\"$DATE\",\"createdAt\":\"$DATE\"}]}",
+   "body_base64": null
+  },
+  {
+   "name": "connections from an account without site user",
+   "status": 403,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "28"
+    ],
+    [
+     "etag",
+     "W/\"1c-gDKf+oam+a2Bx+kedNxqLekS/Xk\""
+    ]
+   ],
+   "body": "{\"error\":\"account_required\"}",
+   "body_base64": null
+  },
+  {
+   "name": "drop connection not an id",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "drop connection twelve characters",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "drop connection unknown",
+   "status": 404,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-IapEsyUJs++crm3elUM5fZoGyC4\""
+    ]
+   ],
+   "body": "{\"error\":\"not_found\"}",
+   "body_base64": null
+  },
+  {
+   "name": "drop grant unknown",
+   "status": 404,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-IapEsyUJs++crm3elUM5fZoGyC4\""
+    ]
+   ],
+   "body": "{\"error\":\"not_found\"}",
+   "body_base64": null
+  },
+  {
+   "name": "drop grant not an id",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "refresh",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "353"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"access_token\":\"$AT2\",\"token_type\":\"Bearer\",\"expires_in\":600,\"refresh_token\":\"$RT2\",\"scope\":\"profile:read credits:read desktop:connect ai:interact pet:read pet:control pet:playback:select\",\"session_id\":\"$SESSION\",\"refresh_expires_in\":$SECONDS}",
+   "body_base64": null
+  },
+  {
+   "name": "old access token after refresh",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "128"
+    ],
+    [
+     "etag",
+     "$ETAG"
+    ]
+   ],
+   "body": "{\"user_id\":\"$USER\",\"name\":\"Viewer One\",\"channel\":{\"platform\":\"twitch\",\"id\":\"9100000001\",\"name\":\"viewer_one\"}}",
+   "body_base64": null
+  },
+  {
+   "name": "new access token",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "334"
+    ],
+    [
+     "etag",
+     "W/\"14e-w/V3p/McyJaCve3dqnd5DKNDZgM\""
+    ]
+   ],
+   "body": "{\"version\":1,\"permission_profile_version\":2,\"available\":true,\"features\":[\"turn-status-v1\"],\"supported_scopes\":[\"ai:interact\",\"pet:interact\"],\"required_scopes\":{\"bot\":[\"ai:interact\"],\"pet\":[\"pet:interact\"]},\"granted_scopes\":[\"profile:read\",\"credits:read\",\"desktop:connect\",\"ai:interact\",\"pet:read\",\"pet:control\",\"pet:playback:select\"]}",
+   "body_base64": null
+  },
+  {
+   "name": "sign out",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "16"
+    ],
+    [
+     "etag",
+     "W/\"10-60vePUJC1et2ZGzsr6KYEg0zmdc\""
+    ]
+   ],
+   "body": "{\"revoked\":true}",
+   "body_base64": null
+  },
+  {
+   "name": "access after sign out",
+   "status": 401,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "www-authenticate",
+     "Bearer error=\"invalid_token\""
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-7NeW2GhUeWasqAWORjhe9JmFh3w\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_token\"}",
+   "body_base64": null
+  },
+  {
+   "name": "refresh after sign out",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "25"
+    ],
+    [
+     "etag",
+     "W/\"19-gBHDYdPZ+dgnTnuQWpgKgUe2fZM\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_grant\"}",
+   "body_base64": null
+  },
+  {
+   "name": "revoke unknown token",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "2"
+    ],
+    [
+     "etag",
+     "W/\"2-vyGp6PvFo4RvsFtPoIWeCReyIC8\""
+    ]
+   ],
+   "body": "{}",
+   "body_base64": null
+  },
+  {
+   "name": "revoke without client",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "26"
+    ],
+    [
+     "etag",
+     "W/\"1a-DwC5sWPR16SCcfiZTK4dXm2iapk\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_client\"}",
+   "body_base64": null
+  },
+  {
+   "name": "revoke with a number",
+   "status": 400,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "27"
+    ],
+    [
+     "etag",
+     "W/\"1b-WJVp2bnCdBNm40JHvp3t41llPJs\""
+    ]
+   ],
+   "body": "{\"error\":\"invalid_request\"}",
+   "body_base64": null
+  },
+  {
+   "name": "connections after sign out",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "15"
+    ],
+    [
+     "etag",
+     "W/\"f-B4CJ7xPoUVqbtHp+E2r8zsgEV7k\""
+    ]
+   ],
+   "body": "{\"sessions\":[]}",
+   "body_base64": null
+  },
+  {
+   "name": "drop grant",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "16"
+    ],
+    [
+     "etag",
+     "W/\"10-60vePUJC1et2ZGzsr6KYEg0zmdc\""
+    ]
+   ],
+   "body": "{\"revoked\":true}",
+   "body_base64": null
+  },
+  {
+   "name": "drop grant again",
+   "status": 200,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "16"
+    ],
+    [
+     "etag",
+     "W/\"10-60vePUJC1et2ZGzsr6KYEg0zmdc\""
+    ]
+   ],
+   "body": "{\"revoked\":true}",
+   "body_base64": null
+  },
+  {
+   "name": "rate limit burst of one client",
+   "status": 429,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "retry-after",
+     "60"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-NJ1k/ykxdyIb/cGe77cLxDRO3tA\""
+    ]
+   ],
+   "body": "{\"error\":\"slow_down\"}",
+   "body_base64": null,
+   "burst": {
+    "statuses": {
+     "200": 555,
+     "429": 46
+    },
+    "first_refused": 555
+   }
+  },
+  {
+   "name": "rate limit another client",
+   "status": 429,
+   "headers": [
+    [
+     "cache-control",
+     "no-store"
+    ],
+    [
+     "pragma",
+     "no-cache"
+    ],
+    [
+     "referrer-policy",
+     "no-referrer"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "retry-after",
+     "60"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "21"
+    ],
+    [
+     "etag",
+     "W/\"15-NJ1k/ykxdyIb/cGe77cLxDRO3tA\""
+    ]
+   ],
+   "body": "{\"error\":\"slow_down\"}",
+   "body_base64": null
+  }
+ ]
+}

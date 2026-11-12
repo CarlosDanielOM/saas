@@ -47,5 +47,7 @@ dima-http = { workspace = true, features = ["test-util"] }
 dima-platform = { workspace = true, features = ["test-util"] }
 dima-twitch = { workspace = true, features = ["test-util"] }
 http-body-util = { workspace = true }
+regex = { workspace = true }
+base64 = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 tokio-util = { workspace = true }

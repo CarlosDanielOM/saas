@@ -30,6 +30,13 @@ pub struct AreaError {
 }
 
 impl AreaError {
+    /// A failure the service did not expect (a store or a dependency failed): the reference's
+    /// answer for any error it does not know, `503 temporarily_unavailable`.
+    pub const UNAVAILABLE: Self = Self {
+        code: Cow::Borrowed("temporarily_unavailable"),
+        status: 503,
+    };
+
     /// `new PetError(code)`: status 400.
     pub fn new(code: impl Into<Cow<'static, str>>) -> Self {
         Self::with_status(code, 400)

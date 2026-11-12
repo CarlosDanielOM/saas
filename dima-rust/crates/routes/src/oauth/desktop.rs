@@ -269,8 +269,8 @@ async fn pet<S: RouteState>(req: &mut Req<S>) -> Result<Response, Error> {
     let pets: Arc<dyn PetControl> = service(req)?;
     let who = OAuthAccess::of(req)?.identity().clone();
     let mut configuration = pets.configuration(&who.user_id, &who.channel_id).await?;
-    configuration.remove("profiles");
-    configuration.remove("voices");
+    configuration.shift_remove("profiles");
+    configuration.shift_remove("voices");
     Ok(Response::new().json(&configuration))
 }
 
