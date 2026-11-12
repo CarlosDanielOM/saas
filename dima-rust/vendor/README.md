@@ -88,9 +88,11 @@ git diff <that commit> -- dima-rust/vendor
    `close`/`setCloseTimer`) and the session is untouched. The probe loop follows socket.js
    220-247: repeated probe pings are answered, control frames are skipped, an upgrade packet is
    accepted without a probe. Polls are answered with noops only once the probe has been
-   answered (`check` starts on the probe, socket.js 225-226), and then after 100 ms, the
-   interval of that check (socket.js 249-254), not at once: a client that missed the probe
-   answer polled in a tight loop until the upgrade timeout.
+   answered (`check` starts on the probe, socket.js 225-226). The first such poll gets its noop
+   at once (a client that got the probe answer waits for it before it sends the upgrade packet;
+   `engine.io` answers it at once with the data it has); later ones come from a client that
+   missed the probe answer and get theirs after 100 ms, the interval of that check (socket.js
+   249-254), instead of a tight loop until the upgrade timeout.
    Tests: `tests/upgrade.rs` (six cases: timeout before and after the probe, client closing the
    probe WebSocket, wrong packet, polls carry data before the probe, noop pacing); upstream's
    `ws_upgrade_abandoned_timeout` and `ws_upgrade_abandoned_parked_heartbeat_timeout`

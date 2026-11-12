@@ -96,12 +96,17 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(?sid, "socket is upgrading, sending NOOP packet");
 
-        // [dima-rust patch 1] engine.io answers a poll during an upgrade with the noop of a
-        // check that runs every 100 ms (socket.js 225-226, 249-254), not at once: a client that
-        // missed the probe answer would poll in a tight loop until the upgrade timeout.
-        tokio::time::sleep(std::time::Duration::from_millis(100))
-            .with_cancellation_token(&socket.cancellation_token)
-            .await;
+        // [dima-rust patch 1] The first poll of the upgrade gets its noop at once: a client
+        // that got the probe answer waits for this poll before it sends the upgrade packet
+        // (engine.io would answer it at once, with the data it has). A client that polls again
+        // missed the probe answer; it gets the noop of engine.io's check, which runs every
+        // 100 ms (socket.js 225-226, 249-254), instead of a tight loop until the upgrade
+        // timeout.
+        if socket.upgrade_noop_sent() {
+            tokio::time::sleep(std::time::Duration::from_millis(100))
+                .with_cancellation_token(&socket.cancellation_token)
+                .await;
+        }
 
         let data = payload::packet_encoder(Packet::Noop, socket.protocol, socket.supports_binary);
 

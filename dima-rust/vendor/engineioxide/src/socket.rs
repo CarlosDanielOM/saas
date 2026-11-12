@@ -204,6 +204,9 @@ where
     /// fails, or for good once it succeeded. Claimed with a single compare-and-set.
     upgrade_owned: AtomicBool,
 
+    /// [dima-rust patch 1] A poll of the current upgrade was answered with a noop already.
+    upgrade_noop_sent: AtomicBool,
+
     /// Channel to send [`PacketBuf`] to the connection
     ///
     /// It is used and managed by the [`EngineIo`](crate::engine) struct depending on the transport type
@@ -269,6 +272,7 @@ where
             transport: AtomicU8::new(transport as u8),
             upgrading: AtomicBool::new(false),
             upgrade_owned: AtomicBool::new(false),
+            upgrade_noop_sent: AtomicBool::new(false),
 
             internal_rx: Mutex::new(InternalRx::new(internal_rx, volatile_rx)),
             internal_tx,
@@ -305,7 +309,13 @@ where
         self.upgrading.load(Ordering::Relaxed)
     }
     pub(crate) fn start_upgrade(&self) {
+        self.upgrade_noop_sent.store(false, Ordering::Relaxed);
         self.upgrading.store(true, Ordering::Relaxed);
+    }
+    /// [dima-rust patch 1] Whether a poll of this upgrade was answered with a noop already
+    /// (and from now on, one has).
+    pub(crate) fn upgrade_noop_sent(&self) -> bool {
+        self.upgrade_noop_sent.swap(true, Ordering::Relaxed)
     }
     /// [dima-rust patch 1] The upgrade failed: polls are answered as usual again.
     pub(crate) fn cancel_upgrade(&self) {
@@ -634,6 +644,7 @@ where
             transport: AtomicU8::new(TransportType::Websocket as u8),
             upgrading: AtomicBool::new(false),
             upgrade_owned: AtomicBool::new(false),
+            upgrade_noop_sent: AtomicBool::new(false),
 
             internal_rx: Mutex::new(InternalRx::new(internal_rx, volatile_rx)),
             internal_tx,

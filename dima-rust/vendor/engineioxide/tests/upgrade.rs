@@ -196,8 +196,9 @@ async fn polls_carry_data_until_the_probe_is_answered() {
 }
 
 /// `engine.io` socket.js 249-254: during the upgrade a poll gets a noop from the check that runs
-/// every 100 ms, not at once (a client that missed the probe answer would otherwise poll in a
-/// tight loop until the upgrade timeout).
+/// every 100 ms. The first one comes at once (the client that got the probe answer waits for it
+/// before it upgrades); polls after it come from a client that missed the probe answer and are
+/// paced, not answered in a tight loop until the upgrade timeout.
 #[tokio::test]
 async fn polls_during_the_upgrade_get_a_noop_at_the_check_interval() {
     let (mut svc, _rx) = server(Duration::from_secs(5));
@@ -205,10 +206,9 @@ async fn polls_during_the_upgrade_get_a_noop_at_the_check_interval() {
     let mut ws = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
     ws.send(Message::Text("2probe".into())).await.unwrap();
     ws.next().await.unwrap().unwrap();
-    // The noop pushed for a pending poll, then the paced ones.
     let mut payloads = Vec::new();
     let start = tokio::time::Instant::now();
-    for _ in 0..3 {
+    for i in 0..3 {
         payloads.push(
             send_req_raw(
                 &mut svc,
@@ -218,6 +218,12 @@ async fn polls_during_the_upgrade_get_a_noop_at_the_check_interval() {
             )
             .await,
         );
+        if i == 0 {
+            assert!(
+                start.elapsed() < Duration::from_millis(50),
+                "the first noop was held back"
+            );
+        }
     }
     assert!(
         payloads.iter().all(|p| p.split('\x1e').any(|p| p == "6")),
