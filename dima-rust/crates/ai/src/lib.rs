@@ -51,6 +51,7 @@ pub mod batcher;
 pub mod embeddings;
 pub mod language;
 pub mod memory;
+pub mod memory_store;
 pub mod minimax;
 pub mod prompts;
 pub mod qdrant;
