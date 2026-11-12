@@ -45,6 +45,9 @@ Decisions behind the map:
   with a host trait, and an actions crate that implements the host.
 - **Reference captures.** The rig records the frozen reference once and stores the captures; candidates
   are verified against them. The captures remain the regression suite after the TypeScript is deleted.
+- **One cutover.** Rust never runs beside TypeScript. Dragonfly encodings are Rust's own; each key
+  family is drained, rebuilt or carried at cutover (the porting package says which). MongoDB writes stay
+  compatible through the store helpers.
 - **Time is epoch milliseconds** (JavaScript `Date` semantics) end to end; calendar and time-zone maths
   use a library only where the reference does such maths.
 
@@ -62,7 +65,7 @@ Decisions behind the map:
 | F-STORE-MONGO | `dima-store::mongo`: client, BSON number and date rules, Mongoose-equivalent write helpers, JSON for HTTP (134 operations recorded from Mongoose 8.24.3) | xhigh | F-TEXT | merged; review done, fixes in F-STORE-MONGO-b |
 | F-STORE-MONGO-b | Review fixes: every number in an outgoing write is typed as the Node BSON writer would type it (not only values wrapped by the caller); a filter-casting helper driven by the schema (string to ObjectId, Date, Number, through `$in`, logical operators and `arrayFilters`), because a Rust caller passing the same string Mongoose casts would silently match nothing; `prepare_save` enforces immutable paths; Maps get a value schema (the reference has a Map of sub-documents); save accepts extra compare-and-set predicates; `dropped_paths` reported even when nothing is left to write; `as_safe_int` at the i64 minimum; depth and work bounds; the golden order exemption narrowed to copied equality fields | high | F-STORE-MONGO | planned |
 | F-STORE-DF | `dima-store::dragonfly`: client, subscriber, Lua wrapper, opaque queues, plan-cache fence, cron queue (bytes proven against node-redis 5, including interleaved Node and Rust writers) | high | F-TEXT | merged; review done, fixes in F-STORE-DF-b |
-| F-STORE-DF-b | Review fixes: subscription overflow policy chosen per channel (dropping a `widget-feed` message can lose a chat deletion or a terminal state, so that channel reports a gap and resynchronises instead of dropping silently); a deadline on every subscribe/unsubscribe control operation so a silent connection cannot stall the subscriber or shutdown; caps on the number of subscriptions and on the socket-to-dispatch stage; the generic queue item constructors apply JavaScript key order; the "replay after a lost reply is safe" claim removed from the cron queue docs (a TypeScript worker may already have consumed the job); processing-list helpers documented as unfenced, with each consumer package porting its own fenced Lua transition; delay-queue reads take a batch limit; typed pub/sub parse errors log a class and position, never payload text | high | F-STORE-DF | planned |
+| F-STORE-DF-b | Review fixes: subscription overflow policy chosen per channel (dropping a `widget-feed` message can lose a chat deletion or a terminal state, so that channel reports a gap and resynchronises instead of dropping silently); a deadline on every subscribe/unsubscribe control operation so a silent connection cannot stall the subscriber or shutdown; caps on the number of subscriptions and on the socket-to-dispatch stage; the cron queue docs state the duplicate-on-retry behaviour honestly; processing-list helpers documented as unfenced, with each consumer package porting its own fenced Lua transition; delay-queue reads take a batch limit; typed pub/sub parse errors log a class and position, never payload text. Dropped after the one-cutover decision: making generic queue items byte-identical to Node's | high | F-STORE-DF | planned |
 | F-HTTP | `dima-http` | high | F-CORE | planned |
 | F-TELEMETRY | `dima-telemetry` (from the old `logger`, supervisor telemetry; TS `telemetry.ts`) | high | F-STORE | planned |
 | F-WEB-02 | `dima-web`: the twelve review fixes first (bounded qs arrays, compressed-input budget, linear header parsing, 16 KiB head limit, connection cap, date parsing through `dima-text`, integers above 2^53, panic path, tighter golden exceptions), then static files, `sendFile` ranges, multipart uploads, SSE, telemetry hook, Node-like listen address and 5 s keep-alive, one surrogate helper | xhigh | F-WEB-01 | merged (419 golden cases); re-review done, fixes in F-WEB-03 |
@@ -75,17 +78,19 @@ Decisions behind the map:
 ## Later phases
 
 Feature packages follow `modules.md` (124 proposed packages), re-homed to the crate map above. They are
-added to this table, with status, when their phase starts. Order of work is by crate layer; the cron
-binary links nearly every library crate, so most of the shared code lands during Phase 3.
+added to this table, with status, when their phase starts. Order of work is by crate layer. Since the
+owner's one-cutover decision nothing ships until everything is verified together, so the phases are a
+build order only, and no package has to interoperate with a running TypeScript process.
 
 | Phase | Packages | Status |
 |---|---|---|
 | 2 | Old crate drained into the workspace: engine (UTF-8 conversion, brought up to the current reference: `effects.ts` has drifted), permissions, keywords, policies, the seven workers, supervisor replaced | planned |
-| 3 | Cron: three end-to-end slices first, then the remaining shared crates and all workers | planned |
+| 3 | Shared crates and cron: three end-to-end slices first, then the remaining shared crates and all workers | planned |
 | 4 | Bot: `dima-chat`, EventSub ingress, bot binary | planned |
 | 5 | API: services, routes, site agent, Socket.IO namespaces, API binary | planned |
 | 6 | `dimafx-server`, `dima-hoststats`, `dima-analytics` | planned |
-| 7 | Retire TypeScript, images, ops tooling (`saas-ops` checker container), docs | planned |
+| 7 | Whole-system check with all binaries together, images, cutover and rollback procedure (stop producers, drain queues, start Rust; which Dragonfly key families are drained, rebuilt or carried), ops tooling (`saas-ops` checker container), resource report | planned |
+| 8 | After the cutover holds: TypeScript source removed, docs | planned |
 
 ## Pace
 

@@ -14,6 +14,12 @@ production: less memory, less CPU, more throughput, tighter security. Done means
 processes and the four small services run from Rust binaries, pass the side-by-side rig against the
 reference, and the TypeScript backend source is removed.
 
+**One cutover, all or nothing** (owner's decision, 2026-11-11). Nothing is deployed piece by piece.
+When the whole Rust backend is verified here, the images are built on the production server, the
+TypeScript containers are stopped and the Rust ones started in one window. Rust never runs beside
+TypeScript in production. The goal is performance and safety, not imitation of Node: reproduce what
+clients, outside services and existing data depend on, and nothing else.
+
 ## 2. Scope
 
 | In (ported to Rust) | Out (stays as is) |
@@ -39,23 +45,39 @@ AI usage receipts, raid sessions, dashboard activity). Their reference is the ex
 
 ## 3. Drop-in contract
 
-These may not change. A difference here is a bug unless section 4 or the decision log allows it.
+The contract is what something **outside the Rust backend** depends on. A difference there is a bug
+unless section 4 or the decision log allows it.
 
-- **HTTP**: paths, methods, status codes, response JSON (field names, nesting, value types), headers
-  clients rely on, CORS behaviour, body limits, SSE formats.
-- **Socket.IO and WebSocket**: namespaces, handshake rules, event names, payloads, rooms, reconnect behaviour.
-- **MongoDB**: collection names, field names and BSON types, defaults, indexes, TTLs. No data migration.
-- **Dragonfly**: key names, value encodings, TTLs, streams, queues, pub/sub channels, Lua scripts.
-- **Outside services**: the same calls to Twitch, OpenRouter, Polar, Resend, S3 and the rest.
+- **Clients** (the Angular sites, overlays in OBS, the Twitch extension, the desktop app): HTTP paths,
+  methods, status codes, response JSON (field names, nesting, value types), the headers they read,
+  CORS behaviour, body limits, SSE formats; Socket.IO and WebSocket namespaces, handshake rules, event
+  names, payloads and reconnect behaviour. Not contract: the exact text of error pages for malformed
+  requests, ETag values, header noise.
+- **Outside services**: the same calls to Twitch, OpenRouter, Polar, Resend, S3 and the rest, and the
+  same handling of what they send (webhooks, signatures).
+- **Existing data in MongoDB**: every existing document must be read correctly, with no data migration.
+  New writes keep the same collections, field names, BSON types, defaults, indexes and TTLs, so old and
+  new documents look alike. The write helpers in `dima_store::mongo` already do this.
+- **Stored identities**: hashes, fingerprints and ids derived from text (Qdrant point ids, hashed
+  `_id`s, dedupe fingerprints) keep producing the same value for the same input.
 - **Operations**: environment variable names and defaults, ports (3000 API, 3333 EventSub), container
   names, networks, volumes, files on disk.
 
-**Compatibility rule.** Roles are switched one at a time (cron, then bot, then API). A Rust process
-must interoperate with every process that can run beside it **and** with the release it would be
-rolled back to: it writes only data those readers handle, in MongoDB and Dragonfly, and it handles
-everything they write. This holds until the lead closes the rollback window for that role in the
-decision log, which happens only once the TypeScript for that role is retired. Switching a role
-includes its handoff: queues drained or safely shared, leases expired or honoured, one owner per job.
+**Dragonfly is internal.** After the cutover only Rust reads and writes it, so a value's encoding is
+Rust's choice: it does not have to match the bytes Node wrote. What matters is the moment of cutover.
+Each key family in `ledger/dragonfly.md` is one of: *drained* (queues of work, emptied by the
+TypeScript processes before they stop), *rebuilt* (caches and derived state, deleted at cutover and
+recomputed), or *carried* (sessions, counters and anything users would notice losing: Rust must read
+what TypeScript left). The package that ports a key family says which, and only *carried* families
+need a fixture of the TypeScript format.
+
+**Rollback.** Going back to TypeScript after the cutover stays possible because MongoDB writes stay
+compatible; it requires clearing the Dragonfly families Rust rewrote, which logs users out and drops
+queued work. That is the accepted price of one cutover.
+
+**Queues and handoff.** The cutover procedure stops the TypeScript producers first, lets the
+TypeScript workers drain their queues (money-bearing queues such as AI usage receipts must be empty),
+then starts Rust. No job is owned by both sides.
 
 **Behaviour-preserving port.** Port what the reference does, including odd behaviour users may depend on.
 Do not fix bugs silently: record them under "quirks" in the package report. Exceptions: the text rules
@@ -162,13 +184,12 @@ for everything you touch. These rules apply everywhere:
    prose rules in `ledger/mongo.md` disagree, the recording is right. A field the helpers report as
    dropped (unknown to the schema) is a mistake in the caller: tests fail on it, production logs it.
 5. Indexes are created only where the reference creates them, with the same definitions.
-6. **Byte-compared values are opaque.** A queue item removed by value, JSON compared inside Lua, or a
-   payload that was hashed is carried as the bytes received through claim, completion and requeue; never
-   parse and re-serialise it. A value Rust creates that TypeScript or Lua will compare byte-wise is
-   written with the shared canonical JSON writer (`dima_text::to_js_json`), from a value shaped as the
-   TypeScript producer's object looks after JavaScript's own conversion: absent properties omitted (not
-   `null`), keys in the producer's order, dates as the producer serialises them. Each such producer gets
-   a fixture recorded from the reference in the package that ports it.
+6. **A value that is matched by its bytes is carried, not rebuilt.** A queue item acknowledged by
+   value (`LREM`), or JSON that a Lua script compares as text, is kept as the bytes that were read
+   through claim, completion and requeue; never parse and re-serialise it on the way. Which bytes a
+   producer writes is Rust's own choice (see "Dragonfly is internal" in section 3). The JavaScript-exact
+   JSON writer (`dima_text::to_js_json`) is required only where the output feeds a stored identity or
+   an outside service's signature, and for *carried* key families.
 7. Lua scripts are reused verbatim from one shared source file per script. Any new or test script
    must be bounded by an iteration count: Dragonfly has no `SCRIPT KILL` and no Lua time limit, and
    `TIME` is frozen inside a script, so a loop that never ends hangs its shard until the server is
@@ -202,8 +223,11 @@ allow-list with a reason.
 - Every outside service is a local, stateful mock (pagination, retries, injected failures). Rig
   processes have no route to the internet, and a request the mock does not expect fails the scenario.
 - Money, authentication, moderation and data-integrity packages add fault scenarios: duplicate delivery,
-  restart in the middle of an operation, timeout after commit, lost lease, and a TypeScript writer racing
-  a Rust writer on the same data.
+  restart in the middle of an operation, timeout after commit, lost lease, and two Rust processes racing
+  on the same data (the bot, the API and the cron share it).
+- What the rig compares follows section 3: responses and MongoDB state are compared with the reference;
+  Dragonfly state is compared by meaning (which keys exist, their parsed content and TTLs), not by
+  bytes, and only for *carried* families is the reference's format itself checked.
 
 Rigour by risk: money (billing, credits), authentication and tokens, moderation actions, and data
 integrity (journals, queues, account deletion) get the highest effort and always a second review.
@@ -230,14 +254,16 @@ integrity (journals, queues, account deletion) get the highest effort and always
 | 0 | Charter and ledger | Inventories written, packages cut, second view from the reviewer taken |
 | 1 | Foundation: workspace, text, config, logging, data layer, clients, rig, one small service as pilot | Pilot passes the rig end to end |
 | 2 | Existing Rust converted to UTF-8 and moved into the workspace | Existing tests pass; only emoji/surrogate expectations changed; moved code passes integration checks |
-| 3 | Cron: all workers in one `dima-cron` binary; shared command engine complete. Starts with three thin end-to-end slices (timer to engine to chat delivery; journal to consumer to effect; usage to receipt to dashboard) before the rest fans out | Rig green; release-ready |
-| 4 | Bot | Rig green; release-ready |
-| 5 | API | Rig green; release-ready |
+| 3 | Shared crates and the cron binary: all workers in one `dima-cron`; command engine complete. Starts with three thin end-to-end slices (timer to engine to chat delivery; journal to consumer to effect; usage to receipt to dashboard) before the rest fans out | Rig green |
+| 4 | Bot | Rig green |
+| 5 | API | Rig green |
 | 6 | Remaining small services | Each rig green |
-| 7 | TypeScript backend removed, images slimmed, docs updated, resource report | Done |
+| 7 | Whole-system check: the three Rust binaries and the small services running together here against the local stores and the mocks, driven end to end; images; the cutover and rollback procedure written and rehearsed; resource report | Owner's go for the cutover |
+| 8 | After the cutover holds in production: TypeScript backend source removed, docs updated | Done |
 
-Deployment happens on the production server through `scripts/saas-ops`, one process at a time, and is
-not part of any package.
+Phases 3 to 6 are a build order, not a release order: nothing ships until phase 7 ends. The cutover
+itself happens on the production server (images built there through `scripts/saas-ops`), all processes
+in one window, and is the owner's to trigger.
 
 ## 11. Machine limits (development laptop)
 
@@ -273,6 +299,13 @@ not part of any package.
   secret because no asymmetric keys exist in this system.
 - 2026-11-11: `parseInt` is offered for no radix, 2, 8, 10 and 16 only (the reference uses none, 10
   and 8); other radices are implementation-dependent above 2^53 by specification.
+- 2026-11-11 (later the same day, supersedes "staged cutover" above and the mixed-runtime parts of the
+  entry below): **one cutover, all or nothing.** The owner does not want Node imitated beyond what
+  clients, outside services and existing data need, and will switch every process at once. Rust never
+  runs beside TypeScript in production, so Dragonfly encodings are Rust's own (key families are drained,
+  rebuilt or carried at cutover), byte-for-byte agreement with node-redis writers is no longer required,
+  and reviews stop looking for TypeScript/Rust interleavings. MongoDB writes stay compatible (the helpers
+  exist and it keeps rollback possible). Rollback needs a Dragonfly clear.
 - 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
   rollback release; the reference is named per responsibility; text rules gained the purpose table so
   that money counts, identity inputs, mirrored outside limits and stored positions keep today's values;
