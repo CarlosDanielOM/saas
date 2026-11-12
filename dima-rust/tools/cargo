@@ -15,9 +15,9 @@
 #   run that waits on the network no longer blocks everyone's compile.
 # - One systemd slice holds every cargo process: soft cap 6 GB (the kernel
 #   throttles and reclaims above it), hard cap 8 GB (processes are killed above
-#   it), 8 CPUs, no swap. Each run gets an equal share of the caps and is also
-#   sized to the memory that is free right now, minus a reserve; it waits when
-#   there is too little.
+#   it), 8 CPUs, no swap, for all runs together. Each run is also sized to the
+#   memory that is free right now, minus a reserve; it waits when there is too
+#   little.
 #
 # `run` holds the lock for as long as the program runs: for anything long-lived,
 # build it, then start the binary from `dima-rust/target/` yourself.
@@ -96,9 +96,11 @@ while :; do
     sleep 10
     waited=$(( waited + 10 ))
 done
-# An equal share of the caps for each slot.
-run_hard=$(( hard_mb / slots ))
-run_soft=$(( soft_mb / slots ))
+# Memory is not split between the slots: the slice's own caps bound the total, and an equal
+# share (4 GB with two slots) made the kernel throttle a single large crate to a crawl (the
+# model crate needs two compilers of 1.7 GB each). CPUs are shared out.
+run_hard=$hard_mb
+run_soft=$soft_mb
 run_cpus=$(( cpus / slots ))
 (( run_cpus < 2 )) && run_cpus=2
 (( scope_hard > run_hard )) && scope_hard=$run_hard
