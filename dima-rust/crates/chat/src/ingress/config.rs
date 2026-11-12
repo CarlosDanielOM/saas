@@ -78,8 +78,8 @@ pub struct IngressConfig {
     pub admission_wait: Duration,
     /// Time allowed for the body after the request head. Twitch sends a few kilobytes at once.
     pub body_deadline: Duration,
-    /// Time allowed for the work before a journaled notification is answered: the raid filter,
-    /// the owner lookup and the journal write. Twitch counts a delivery as failed after a few
+    /// Time allowed, in all, for the work before a notification is answered: the raid filter,
+    /// the owner lookup and the journal write (and, for a revocation, its handler). Twitch counts a delivery as failed after a few
     /// seconds and redelivers it; a write that completes after this is found by the
     /// redelivery (the unique event key), so nothing is lost or doubled.
     pub durable_deadline: Duration,

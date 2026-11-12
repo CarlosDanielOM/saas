@@ -450,6 +450,9 @@ async fn notification_step(
         .await;
     }
 
+    // Steps 7 and 8 share one deadline: Twitch's answer must not wait for both in turn.
+    let deadline = tokio::time::Instant::now() + config.durable_deadline;
+
     // 7. Raids: the direction's current settings decide.
     if event_type == "channel.raid" {
         let raid = RaidSubscription {
@@ -466,7 +469,7 @@ async fn notification_step(
         };
         let event_object = event.as_object().cloned().unwrap_or_default();
         let check = deps.raids.accepts_raid_notification(&raid, &event_object);
-        match tokio::time::timeout(config.durable_deadline, check).await {
+        match tokio::time::timeout_at(deadline, check).await {
             Ok(Ok(true)) => {}
             Ok(Ok(false)) => return status(204),
             Ok(Err(error)) => {
@@ -537,7 +540,7 @@ async fn notification_step(
     if durable.is_some() {
         let observed = observability();
         let ingest = deps.journal.ingest_twitch(&producer, observed.as_ref());
-        match tokio::time::timeout(config.durable_deadline, ingest).await {
+        match tokio::time::timeout_at(deadline, ingest).await {
             Ok(Ok(Some(journaled))) => {
                 if !journaled.inserted {
                     bump(&inner.counters.notifications);

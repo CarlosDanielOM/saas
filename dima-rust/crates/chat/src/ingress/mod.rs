@@ -18,7 +18,7 @@
 //! | 4. Signature: HMAC-SHA256 over id, timestamp and the raw body with the secret, compared in constant time | 403 | nothing: not Twitch |
 //! | 5. JSON (`JSON.parse` exactly), then the timestamp ([`timestamp`]): within 10 minutes either way, or a retry of a journaled type up to 24 h old | 403 when stale | (Twitch's own retries stop) |
 //! | 6. By message type: the challenge is echoed (`200 text/plain`); a revocation goes to the handler before the answer; a notification goes on | 400 for a challenge that is not text | marks the subscription failed |
-//! | 7. Raids: the direction's settings (`acceptsRaidNotification`), within the 4 s deadline | 204 when the direction is off; 503 on a store failure | redelivers on 503 |
+//! | 7. Raids: the direction's settings (`acceptsRaidNotification`); steps 7 and 8 share one 4 s deadline | 204 when the direction is off; 503 on a store failure | redelivers on 503 |
 //! | 8. Journaled types: the journal write (`domain_events`, unique `eventKey`), within 4 s | 503 when it fails or times out | redelivers; a write that did land is found then |
 //! | 9. Answer 204 | | done |
 //! | 10. After the answer is written, on a tracked task: the message-id claim for types that are not journaled ([`dedupe`]), then the inline handler ([`handover`]) | | |
