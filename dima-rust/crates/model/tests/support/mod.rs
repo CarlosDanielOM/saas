@@ -1,5 +1,6 @@
 //! Shared harness of the live tests: the local MongoDB from `tools/test-env`, the read-only
-//! `domdimabot` copy, and throwaway databases that are dropped even when a test fails.
+//! `domdimabot` copy, and throwaway databases that are dropped even when a test fails. Without
+//! the stores a test skips with a notice, unless `DIMA_TEST_REQUIRE_STORES=1` (then it fails).
 #![allow(dead_code)]
 
 use anyhow::{Context, Result, bail};
@@ -14,48 +15,74 @@ use std::panic::AssertUnwindSafe;
 /// The read-only production copy.
 pub const REAL_DATABASE: &str = "domdimabot";
 
-/// The local MongoDB URI, or `None` (with a message) when the tests must be skipped.
-pub fn mongo_uri() -> Option<String> {
+/// `DIMA_TEST_REQUIRE_STORES=1` (set by `tools/test-env`, `MIGRATION.md` section 8): a missing
+/// store, database or expected collection fails the test instead of skipping it.
+pub fn stores_required() -> bool {
+    std::env::var("DIMA_TEST_REQUIRE_STORES").is_ok_and(|v| v == "1")
+}
+
+/// A store the test needs is not there: an error when stores are required, else a skip notice
+/// (`Ok(None)`).
+fn missing<T>(what: &str) -> Result<Option<T>> {
+    if stores_required() {
+        bail!("{what} (DIMA_TEST_REQUIRE_STORES=1: a missing store fails the test)");
+    }
+    eprintln!("skipped: {what}");
+    Ok(None)
+}
+
+/// The local MongoDB URI, or `None` (with a skip notice) when it is not set and stores are not
+/// required.
+pub fn mongo_uri() -> Result<Option<String>> {
     match std::env::var("DIMA_TEST_MONGO_URI") {
-        Ok(uri) => Some(uri),
-        Err(_) => {
-            eprintln!(
-                "skipped: DIMA_TEST_MONGO_URI is not set (eval \"$(dima-rust/tools/test-env)\")"
-            );
-            None
-        }
+        Ok(uri) => Ok(Some(uri)),
+        Err(_) => missing("DIMA_TEST_MONGO_URI is not set (eval \"$(dima-rust/tools/test-env)\")"),
     }
 }
 
-/// A store on the read-only `domdimabot` copy, or `None` when it is not available.
+/// A connected store on `database`, after a ping: `None` when the server cannot be reached and
+/// stores are not required.
+async fn connect(uri: String, database: String) -> Result<Option<MongoStore>> {
+    let mut config = MongoConfig::new(uri);
+    config.database = Some(database);
+    let store = MongoStore::connect(&config, None).await?;
+    match store.ping().await {
+        Ok(()) => Ok(Some(store)),
+        Err(error) => missing(&format!("the local MongoDB cannot be reached: {error}")),
+    }
+}
+
+/// A store on the read-only `domdimabot` copy, or `None` when it is not available (and stores
+/// are not required).
 pub async fn real_store() -> Result<Option<MongoStore>> {
-    let Some(uri) = mongo_uri() else {
+    let Some(uri) = mongo_uri()? else {
         return Ok(None);
     };
-    let mut config = MongoConfig::new(uri);
-    config.database = Some(REAL_DATABASE.to_owned());
-    let store = MongoStore::connect(&config, None).await?;
+    let Some(store) = connect(uri, REAL_DATABASE.to_owned()).await? else {
+        return Ok(None);
+    };
     let names = store.client().list_database_names().await?;
     if !names.iter().any(|name| name == REAL_DATABASE) {
-        eprintln!("skipped: the local {REAL_DATABASE} copy is not present");
-        return Ok(None);
+        return missing(&format!("the local {REAL_DATABASE} copy is not present"));
     }
     Ok(Some(store))
 }
 
 /// Runs `test` against a fresh `dima_test_model_<random>` database and drops it afterwards,
-/// whatever the outcome (a failed assertion is re-raised after the drop).
+/// whatever the outcome (a failed assertion is re-raised after the drop). Skips (with a notice)
+/// when MongoDB is not available and stores are not required.
 pub async fn with_store<F, Fut>(test: F) -> Result<()>
 where
     F: FnOnce(MongoStore) -> Fut,
     Fut: Future<Output = Result<()>>,
 {
-    let Some(uri) = mongo_uri() else {
+    let Some(uri) = mongo_uri()? else {
         return Ok(());
     };
-    let mut config = MongoConfig::new(uri);
-    config.database = Some(format!("dima_test_model_{}", ObjectId::new().to_hex()));
-    let store = MongoStore::connect(&config, None).await?;
+    let name = format!("dima_test_model_{}", ObjectId::new().to_hex());
+    let Some(store) = connect(uri, name).await? else {
+        return Ok(());
+    };
     let database = store.database().clone();
     let outcome = AssertUnwindSafe(test(store)).catch_unwind().await;
     database.drop().await?;

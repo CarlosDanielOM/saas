@@ -1,10 +1,12 @@
 //! Every registered collection decoded from the local `domdimabot` copy (a stale production
-//! copy, read only) with its read type: every document of a collection under 50,000 documents,
-//! an even spread of 50,000 above that (every n-th document in `_id` order), or every document
-//! with `DIMA_MODEL_FULL_SCAN=1`. Documents are read without a projection, so the `select: false`
+//! copy, read only) with its read type. With `DIMA_TEST_REQUIRE_STORES=1` (the gate) or
+//! `DIMA_MODEL_FULL_SCAN=1`, every document of every collection; otherwise every document of a
+//! collection under 50,000 documents and an even spread of 50,000 above that (every n-th
+//! document in `_id` order). Documents are read without a projection, so the `select: false`
 //! paths are decoded too. A failure names the collection, the `_id` and the field.
 //!
-//! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set or the copy is absent.
+//! Without the copy the tests skip with a notice; with `DIMA_TEST_REQUIRE_STORES=1` a missing
+//! server, copy or registered collection fails them.
 
 mod support;
 
@@ -15,12 +17,32 @@ use futures_util::TryStreamExt;
 
 const SAMPLE: u64 = 50_000;
 
+/// Every registered collection exists in the copy (an empty one included).
+async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<()> {
+    let names = store.database().list_collection_names().await?;
+    let absent: Vec<&str> = REGISTRY
+        .iter()
+        .map(|info| info.name)
+        .filter(|name| !names.iter().any(|n| n == name))
+        .collect();
+    if !absent.is_empty() {
+        let message = format!("collections missing from the copy: {}", absent.join(", "));
+        if support::stores_required() {
+            bail!("{message} (DIMA_TEST_REQUIRE_STORES=1)");
+        }
+        eprintln!("{message}");
+    }
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn every_real_document_decodes() -> Result<()> {
     let Some(store) = support::real_store().await? else {
         return Ok(());
     };
-    let full = std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
+    expected_collections(&store).await?;
+    let full =
+        support::stores_required() || std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
     let mut failures = Vec::new();
     let mut total = 0_u64;
     for info in REGISTRY {
@@ -67,7 +89,14 @@ async fn every_real_document_decodes() -> Result<()> {
             decoding.as_secs_f64() * 1e6 / decoded.max(1) as f64
         );
     }
-    eprintln!("{total} documents decoded");
+    eprintln!(
+        "{total} documents decoded{}",
+        if full {
+            " (every document)"
+        } else {
+            " (sampled)"
+        }
+    );
     if !failures.is_empty() {
         bail!(
             "{} documents failed to decode:\n{}",
@@ -85,6 +114,7 @@ async fn real_indexes_match_declarations() -> Result<()> {
     let Some(store) = support::real_store().await? else {
         return Ok(());
     };
+    expected_collections(&store).await?;
     let differences =
         dima_model::preflight_indexes(&store, REGISTRY, std::time::Duration::from_secs(60)).await?;
     // A collection the copy does not have (none today) has no indexes to compare.
