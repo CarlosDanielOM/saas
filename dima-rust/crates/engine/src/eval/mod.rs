@@ -16,8 +16,9 @@
 //! - text functions count characters, not UTF-16 units (`length`, `slice`, `capitalize`, the
 //!   per-character spread of text event data into a command reference);
 //! - text ordering (`<`, `>`, …) is by code point;
-//! - resource limits ([`EvalLimits`]): when one is hit inside an expression, that expression's
-//!   output is `[Parse error: …]` and rendering goes on (once the work, call or text budget is
+//! - resource limits ([`EvalLimits`]; the work and host-call limits are by plan, calibrated
+//!   against the supported workload of [`SUPPORTED_STATEMENTS`]): when one is hit inside an
+//!   expression, that expression's output is `[Parse error: …]` and rendering goes on (once the work, call or text budget is
 //!   spent, every later expression hits it too); [`Engine::evaluate`] returns
 //!   [`EvalError::Limit`]. Nothing is allocated past a limit first: a builtin sizes its
 //!   result before building it, the values one step gathers (a call's arguments, a list
@@ -51,7 +52,10 @@ mod run;
 mod stack;
 mod storage;
 
-pub use limits::{EvalLimits, LimitKind, MAX_EVAL_NESTING};
+pub use limits::{
+    EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, PerPlan,
+    STEPS_PER_STATEMENT, SUPPORTED_STATEMENTS,
+};
 
 use crate::context::{Context, State, TimerSnapshot};
 use crate::host::{Host, HostError};

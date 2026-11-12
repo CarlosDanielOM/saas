@@ -2,15 +2,82 @@
 //! iteration counts, the five-deep, fifty-reference command reference rules and the five-deep
 //! timer rule (all kept); these are this port's, so that no command text can make the
 //! evaluator run or allocate without bound.
+//!
+//! The work and host-call limits follow the plan, as the reference's loop bounds do. They are
+//! calibrated against the **supported workload**: two nested loops of the plan's iteration
+//! count (Free 25, Premium 50, Pro 100) with [`SUPPORTED_STATEMENTS`] statements in the inner
+//! body, each a read or a write of a variable of any storage (memory, `#`, `##`, `*`, `**`).
+//! It completes; ten times that (ten times the statements) does not (`tests/workload.rs`).
+
+use crate::context::Plan;
+
+/// Statements in the inner body of the supported workload.
+pub const SUPPORTED_STATEMENTS: u64 = 50;
+
+/// A limit for each plan.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PerPlan {
+    /// Free.
+    pub free: u64,
+    /// Premium.
+    pub premium: u64,
+    /// Pro.
+    pub pro: u64,
+}
+
+impl PerPlan {
+    /// The same limit for every plan.
+    pub const fn all(limit: u64) -> Self {
+        Self {
+            free: limit,
+            premium: limit,
+            pro: limit,
+        }
+    }
+
+    /// The limit of `plan`.
+    pub fn of(self, plan: Plan) -> u64 {
+        match plan {
+            Plan::Free => self.free,
+            Plan::Premium => self.premium,
+            Plan::Pro => self.pro,
+        }
+    }
+
+    /// `per_statement` for every statement the supported workload of each plan runs.
+    fn supported(per_statement: u64) -> Self {
+        let workload = |plan: Plan| {
+            let iterations = u64::from(plan.max_loop_iterations());
+            iterations * iterations * SUPPORTED_STATEMENTS * per_statement
+        };
+        Self {
+            free: workload(Plan::Free),
+            premium: workload(Plan::Premium),
+            pro: workload(Plan::Pro),
+        }
+    }
+}
+
+/// Work units allowed per statement of the supported workload. Measured, loops included: viewer
+/// cache variables (`##`, the costliest) take 4.1 a statement, memory variables (the cheapest)
+/// 1.6. Six leaves the costliest half again as much, and stays below ten times the cheapest,
+/// so ten times the workload stops whatever its storage.
+pub const STEPS_PER_STATEMENT: u64 = 6;
+
+/// Host calls allowed per statement of the supported workload. Measured: viewer cache
+/// variables (the costliest) make 2.5 a statement (a write sets and expires two keys, a read
+/// finds the first); three leaves room.
+pub const HOST_CALLS_PER_STATEMENT: u64 = 3;
 
 /// Limits for one run (one rendered template, or one evaluated program).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct EvalLimits {
-    /// Work units: one per evaluated node, plus one per 256 bytes of JSON read or written.
-    /// Four nested pro loops could otherwise run a body 100 million times.
-    pub steps: u64,
-    /// Calls into the host (functions, variable reads and writes, timers).
-    pub host_calls: u64,
+    /// Work units, by plan: one per evaluated node and per host call, plus one per 256 bytes
+    /// of JSON read or written. Four nested Pro loops could otherwise run a body 100 million
+    /// times.
+    pub steps: PerPlan,
+    /// Calls into the host (functions, variable reads and writes, timers), by plan.
+    pub host_calls: PerPlan,
     /// The longest text any value, stored variable or the output may become, in bytes. Text
     /// that doubles in a loop would otherwise grow without bound. It is also the budget for
     /// what one step gathers: the arguments of one call together, the items of one list
@@ -37,8 +104,8 @@ pub const MAX_EVAL_NESTING: usize = 32;
 impl Default for EvalLimits {
     fn default() -> Self {
         Self {
-            steps: 200_000,
-            host_calls: 2_000,
+            steps: PerPlan::supported(STEPS_PER_STATEMENT),
+            host_calls: PerPlan::supported(HOST_CALLS_PER_STATEMENT),
             text_bytes: 256 * 1024,
             memory_bytes: 4 * 1024 * 1024,
             nesting: MAX_EVAL_NESTING,

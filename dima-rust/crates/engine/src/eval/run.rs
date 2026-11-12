@@ -248,7 +248,7 @@ impl<'a> Run<'a> {
 
     fn charge(&mut self, units: u64) -> Result<(), EvalError> {
         self.stats.steps = self.stats.steps.saturating_add(units);
-        if self.stats.steps > self.engine.limits.steps {
+        if self.stats.steps > self.engine.limits.steps.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::Steps));
         }
         Ok(())
@@ -261,7 +261,7 @@ impl<'a> Run<'a> {
 
     pub(super) fn host_op(&mut self) -> Result<(), EvalError> {
         self.stats.host_calls = self.stats.host_calls.saturating_add(1);
-        if self.stats.host_calls > self.engine.limits.host_calls {
+        if self.stats.host_calls > self.engine.limits.host_calls.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
         self.step()

@@ -186,8 +186,8 @@ fn context(rng: &mut Rng) -> Context {
 
 fn small_limits() -> EvalLimits {
     EvalLimits {
-        steps: 20_000,
-        host_calls: 300,
+        steps: dima_engine::eval::PerPlan::all(20_000),
+        host_calls: dima_engine::eval::PerPlan::all(300),
         text_bytes: 16 * 1024,
         ..EvalLimits::default()
     }
@@ -217,9 +217,12 @@ fn arbitrary_text_and_stored_values_never_panic_or_exceed_limits_and_are_determi
             let outcome = outcome.unwrap_or_else(|_| panic!("panic on round {round}: {source:?}"));
             match outcome {
                 Ok(Ok(rendered)) => {
-                    assert!(rendered.stats.steps <= limits.steps + 1, "{source:?}");
                     assert!(
-                        rendered.stats.host_calls <= limits.host_calls + 1,
+                        rendered.stats.steps <= limits.steps.of(context.user_plan) + 1,
+                        "{source:?}"
+                    );
+                    assert!(
+                        rendered.stats.host_calls <= limits.host_calls.of(context.user_plan) + 1,
                         "{source:?}"
                     );
                     assert!(rendered.text.len() <= limits.text_bytes + 64, "{source:?}");
