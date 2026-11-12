@@ -6,8 +6,11 @@
 //! - [`patterns`]: streamer-written moderation patterns (RE2 syntax) on the `regex` crate.
 //! - [`cooldown`]: plan minimums, cooldown gates, and the serialized zero-cooldown write.
 //! - [`timer_policy`]: timer interval rules per plan.
+//! - [`runtime`]: the store-backed part: the command lookup and its shared cache, the
+//!   availability service, chat history, the role cache loads of a stream going online or
+//!   offline, and small helpers of the command language's host.
 //!
-//! Everything here is pure logic. Reads and writes of a store go through a small trait defined
+//! Everything but [`runtime`] is pure logic. Reads and writes of a store go through a small trait defined
 //! next to the logic that needs it ([`permissions::RoleCache`], [`keywords::KeywordStorage`],
 //! [`keywords::KeywordLoader`], [`cooldown::CooldownStore`]); the MongoDB and Dragonfly
 //! implementations belong to the packages that call them.
@@ -28,5 +31,6 @@ pub mod cooldown;
 pub mod keywords;
 pub mod patterns;
 pub mod permissions;
+pub mod runtime;
 pub mod timer_policy;
 pub mod value;
