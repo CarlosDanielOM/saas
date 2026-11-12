@@ -1,6 +1,12 @@
-//! Small Twitch functions, preserving the reference's per-call response envelopes.
+//! Small Twitch functions, one module per folder of the reference's `functions/`, preserving
+//! its per-call response envelopes.
+pub mod channels;
 pub mod chats;
 pub mod clips;
+pub mod moderation;
+pub mod polls;
+pub mod predictions;
+pub mod redemptions;
 pub mod search;
 pub mod triggers;
 pub mod users;
