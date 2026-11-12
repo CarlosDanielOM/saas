@@ -1,0 +1,179 @@
+{
+ "nowMs": 1893490200123,
+ "channel": "1001",
+ "cases": [
+  {
+   "name": "plain",
+   "text": "now $(timer 30 later)",
+   "seed": 1000,
+   "scheduled": [
+    "now"
+   ],
+   "jobs": [
+    {
+     "id": "410b3d0c-505f-44bc-b024-effc268374a1",
+     "payload": "{\"version\":1,\"id\":\"410b3d0c-505f-44bc-b024-effc268374a1\",\"dueAt\":1893490230123,\"expiresAt\":1893490830123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"later\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490230123,
+     "byChannel": 1893490830123
+    }
+   ],
+   "channelExpiry": 1893490830123,
+   "fired": [
+    [
+     "later"
+    ]
+   ],
+   "nested": []
+  },
+  {
+   "name": "variables and the argument",
+   "text": "%(who Ana)$(timer 5 hola %(who) &p1 y &t)",
+   "seed": 1001,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "81cabfeb-f434-45ab-b05d-c51d993d4fb9",
+     "payload": "{\"version\":1,\"id\":\"81cabfeb-f434-45ab-b05d-c51d993d4fb9\",\"dueAt\":1893490205123,\"expiresAt\":1893490805123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"hola\"},{\"type\":\"getVar\",\"name\":\"who\",\"storage\":\"memory\"},{\"type\":\"getVar\",\"name\":\"cmd_arg_533e00f7f3c646d4bac55a494710ce58_0\",\"storage\":\"memory\"},{\"type\":\"literal\",\"value\":\"y\"},{\"type\":\"getVar\",\"name\":\"cmd_arg_533e00f7f3c646d4bac55a494710ce58_1\",\"storage\":\"memory\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[[\"cmd_arg_533e00f7f3c646d4bac55a494710ce58_0\",\"uno\"],[\"cmd_arg_533e00f7f3c646d4bac55a494710ce58_1\",\"dos tres\"],[\"who\",\"Ana\"]],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490205123,
+     "byChannel": 1893490805123
+    }
+   ],
+   "channelExpiry": 1893490805123,
+   "fired": [
+    [
+     "hola Ana uno y dos tres"
+    ]
+   ],
+   "nested": []
+  },
+  {
+   "name": "a list and a count",
+   "text": "%(l %[1, \"dos\", \"😀 tres\"])$(scount)$(timer 61.4 items: %(l.length) count $(count))",
+   "seed": 1002,
+   "scheduled": [
+    "1"
+   ],
+   "jobs": [
+    {
+     "id": "0ecbb336-f4e3-4ec0-b541-2093192e4bcb",
+     "payload": "{\"version\":1,\"id\":\"0ecbb336-f4e3-4ec0-b541-2093192e4bcb\",\"dueAt\":1893490261523,\"expiresAt\":1893490861523,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"items\"},{\"type\":\"literal\",\"value\":\":\"},{\"type\":\"getVar\",\"name\":\"l\",\"storage\":\"memory\",\"accessor\":{\"type\":\"length\"}},{\"type\":\"literal\",\"value\":\"count\"},{\"type\":\"function\",\"name\":\"count\",\"args\":[]}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":1,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[[\"l\",\"1,dos,😀 tres\"]],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490261523,
+     "byChannel": 1893490861523
+    }
+   ],
+   "channelExpiry": 1893490861523,
+   "fired": [
+    [
+     "items : 0 count 1"
+    ]
+   ],
+   "nested": []
+  },
+  {
+   "name": "a reference in the body",
+   "text": "$(timer 2 #(ref) pong)",
+   "seed": 1003,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "88d00556-829f-45ec-ad1b-6beab0e9f770",
+     "payload": "{\"version\":1,\"id\":\"88d00556-829f-45ec-ad1b-6beab0e9f770\",\"dueAt\":1893490202123,\"expiresAt\":1893490802123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"commandRef\",\"commandName\":\"ref\",\"args\":[]},{\"type\":\"literal\",\"value\":\"pong\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490202123,
+     "byChannel": 1893490802123
+    }
+   ],
+   "channelExpiry": 1893490802123,
+   "fired": [
+    [
+     "pong",
+     "from ref"
+    ]
+   ],
+   "nested": []
+  },
+  {
+   "name": "nested timers",
+   "text": "$(timer 1 one $(timer 1 two))",
+   "seed": 1004,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "f8f50f27-d9f2-4603-950a-02062720e756",
+     "payload": "{\"version\":1,\"id\":\"f8f50f27-d9f2-4603-950a-02062720e756\",\"dueAt\":1893490201123,\"expiresAt\":1893490801123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"one\"},{\"type\":\"function\",\"name\":\"timer\",\"args\":[{\"type\":\"literal\",\"value\":\"1\"},{\"type\":\"literal\",\"value\":\"two\"}]}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490201123,
+     "byChannel": 1893490801123
+    }
+   ],
+   "channelExpiry": 1893490801123,
+   "fired": [
+    [
+     "one"
+    ]
+   ],
+   "nested": [
+    "{\"version\":1,\"id\":\"adc3814d-bab9-4697-a301-1d70db6fe85f\",\"dueAt\":1893490202123,\"expiresAt\":1893490802123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"two\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":2}}"
+   ]
+  },
+  {
+   "name": "user and event",
+   "text": "$(timer 10 $(user) / $(touser))",
+   "seed": 1005,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "732ef356-d4e7-45a0-8af2-df5b4d9b342c",
+     "payload": "{\"version\":1,\"id\":\"732ef356-d4e7-45a0-8af2-df5b4d9b342c\",\"dueAt\":1893490210123,\"expiresAt\":1893490810123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"function\",\"name\":\"user\",\"args\":[]},{\"type\":\"literal\",\"value\":\"/\"},{\"type\":\"function\",\"name\":\"touser\",\"args\":[]}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490210123,
+     "byChannel": 1893490810123
+    }
+   ],
+   "channelExpiry": 1893490810123,
+   "fired": [
+    [
+     "ViewerOne / uno dos tres"
+    ]
+   ],
+   "nested": []
+  },
+  {
+   "name": "a failing body",
+   "text": "$(timer 3 before $(ban x) after)",
+   "seed": 1006,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "418b4de1-07df-4745-80bc-1e891af2a09e",
+     "payload": "{\"version\":1,\"id\":\"418b4de1-07df-4745-80bc-1e891af2a09e\",\"dueAt\":1893490203123,\"expiresAt\":1893490803123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"before\"},{\"type\":\"function\",\"name\":\"ban\",\"args\":[{\"type\":\"literal\",\"value\":\"x\"}]},{\"type\":\"literal\",\"value\":\"after\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490203123,
+     "byChannel": 1893490803123
+    }
+   ],
+   "channelExpiry": 1893490803123,
+   "fired": [
+    []
+   ],
+   "nested": []
+  },
+  {
+   "name": "emoji and rtl",
+   "text": "$(timer 4 ¡Hola 👋 مرحبا ✋🏽!)",
+   "seed": 1007,
+   "scheduled": [],
+   "jobs": [
+    {
+     "id": "87ea454f-8f4b-4937-aa2a-bf9e4f7c60fa",
+     "payload": "{\"version\":1,\"id\":\"87ea454f-8f4b-4937-aa2a-bf9e4f7c60fa\",\"dueAt\":1893490204123,\"expiresAt\":1893490804123,\"body\":{\"type\":\"root\",\"children\":[{\"type\":\"literal\",\"value\":\"¡Hola\"},{\"type\":\"literal\",\"value\":\"👋\"},{\"type\":\"literal\",\"value\":\"مرحبا\"},{\"type\":\"literal\",\"value\":\"✋🏽!\"}]},\"context\":{\"broadcasterId\":\"1001\",\"userId\":\"5001\",\"userLogin\":\"viewerone\",\"userDisplayName\":\"ViewerOne\",\"userPlan\":\"premium\",\"userLevel\":1,\"enforceFunctionPermissions\":false,\"authorization\":{\"origin\":\"authored\",\"identity\":{\"level\":1,\"tags\":[]}},\"argument\":\"uno dos tres\",\"count\":0,\"eventData\":{\"broadcaster_user_id\":\"1001\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"5001\",\"chatter_user_login\":\"viewerone\",\"chatter_user_name\":\"ViewerOne\",\"message_id\":\"chat-1\",\"badges\":[],\"message\":{\"text\":\"!x uno dos tres\",\"fragments\":[]}},\"eventsubData\":{},\"extraContext\":{\"userName\":\"ViewerOne\",\"userLogin\":\"viewerone\",\"userID\":\"5001\",\"broadcasterName\":\"Streamer\",\"broadcasterLogin\":\"streamer\",\"broadcasterID\":\"1001\"},\"platform\":\"twitch\",\"scopeType\":\"command\",\"scopeName\":\"default\",\"scopeAliases\":[],\"commandName\":\"default\",\"commandId\":\"\",\"commandRefBudget\":{\"remaining\":50},\"visitedCommands\":[],\"commandResponses\":[],\"variables\":[],\"arrays\":[],\"loopVars\":[],\"timerDepth\":1}}",
+     "pending": 1893490204123,
+     "byChannel": 1893490804123
+    }
+   ],
+   "channelExpiry": 1893490804123,
+   "fired": [
+    [
+     "¡Hola 👋 مرحبا ✋🏽!"
+    ]
+   ],
+   "nested": []
+  }
+ ]
+}

@@ -488,3 +488,61 @@ where
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }
+
+/// `dima_core::SeededRandom` that a test reseeds between cases (the recorders reseed the
+/// reference's sequence the same way).
+#[derive(Debug)]
+pub struct Reseedable(Mutex<SeededRandom>);
+
+impl Reseedable {
+    pub fn new(seed: u64) -> Arc<Self> {
+        Arc::new(Self(Mutex::new(SeededRandom::new(seed))))
+    }
+
+    pub fn reseed(&self, seed: u64) {
+        *self.0.lock().expect("random") = SeededRandom::new(seed);
+    }
+}
+
+impl Random for Reseedable {
+    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
+        self.0.lock().expect("random").fill(buf)
+    }
+}
+
+/// Every key under `prefix` matching `pattern` (the part after the prefix), unprefixed, sorted.
+pub async fn keys_matching(stores: &Stores, pattern: &str) -> Result<Vec<String>> {
+    let mut found = Vec::new();
+    let mut scan = stores
+        .dragonfly
+        .scan(&format!("{}{pattern}", stores.prefix), Some(500));
+    while let Some(page) = scan.next_page().await? {
+        for key in page {
+            let key = String::from_utf8(key)?;
+            if let Some(bare) = key.strip_prefix(&stores.prefix) {
+                found.push(bare.to_owned());
+            }
+        }
+    }
+    found.sort();
+    found.dedup();
+    Ok(found)
+}
+
+/// JSON with object keys sorted, recursively (the recorders' `sorted`).
+pub fn sorted(value: Value) -> Value {
+    match value {
+        Value::Array(items) => Value::Array(items.into_iter().map(sorted).collect()),
+        Value::Object(map) => {
+            let mut entries: Vec<(String, Value)> = map.into_iter().collect();
+            entries.sort_by(|a, b| dima_text::cmp_utf16(&a.0, &b.0));
+            Value::Object(entries.into_iter().map(|(k, v)| (k, sorted(v))).collect())
+        }
+        other => other,
+    }
+}
+
+/// `sha256(JSON.stringify(value))`.
+pub fn hash(value: &Value) -> String {
+    dima_core::crypto::sha256(dima_text::to_js_json(value)).hex()
+}
