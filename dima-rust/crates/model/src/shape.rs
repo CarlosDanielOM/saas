@@ -122,11 +122,14 @@ fn is_position(segment: &str) -> bool {
         || (segment.starts_with("$[") && segment.ends_with(']'))
 }
 
-/// The paths Mongoose adds to a schema itself.
+/// The paths Mongoose adds to a schema itself. The `_id` Mongoose adds (`IdField::Auto`) is an
+/// ObjectId, at the root and in every sub-document; a declared `_id` (a string one) is a field
+/// and never reaches here. `tests/write_read.rs` checks that every collection's
+/// [`CollectionInfo::id_type`] agrees with its schema.
 fn implicit(schema: &Schema, name: &str) -> Option<Node> {
     let timestamps = schema.timestamps;
-    if name == "_id" && !matches!(schema.id, IdField::None) {
-        return Some(Node::Free);
+    if name == "_id" && matches!(schema.id, IdField::Auto) {
+        return Some(Node::Value(ValueType::ObjectId));
     }
     if timestamps.is_some_and(|t| t.created_at == Some(name) || t.updated_at == Some(name)) {
         return Some(Node::Value(ValueType::Date));
@@ -214,6 +217,11 @@ impl<'i> Checker<'i> {
     }
 
     fn need(&self, pattern: &str) -> Option<&ReadNeed> {
+        // Mongoose's own root `_id` is read as an `ObjectId`: never `null`, never missing.
+        static ROOT_ID: ReadNeed = ReadNeed::value("_id");
+        if pattern == "_id" && matches!(self.info.schema.id, IdField::Auto) {
+            return Some(&ROOT_ID);
+        }
         self.info.read_needs.iter().find(|n| n.path == pattern)
     }
 
@@ -882,6 +890,48 @@ mod tests {
             info.check_update(&numeric, Against::Loaded(&doc! { "_id": 1 }))
                 .is_err()
         );
+    }
+
+    /// Mongoose's implicit `_id` is an ObjectId, at the root and in sub-documents.
+    #[test]
+    fn implicit_ids_are_typed() {
+        let users = &crate::users::INFO;
+        let by_id = doc! { "_id": 1 };
+        let plain = Against::Filter {
+            filter: &by_id,
+            upsert: false,
+        };
+        let bad_push = UpdateDoc::Document(
+            doc! { "$push": { "accounts": { "_id": "bad", "type": "twitch", "id": "1" } } },
+        );
+        let Err(error) = users.check_update(&bad_push, plain) else {
+            panic!("a string sub-document `_id` must be refused");
+        };
+        assert_eq!(
+            (error.errors[0].path.as_str(), error.errors[0].kind),
+            ("accounts.0._id", ValidatorKind::Type)
+        );
+        let good_push = UpdateDoc::Document(
+            doc! { "$push": { "accounts": { "_id": bson::oid::ObjectId::new(), "type": "twitch", "id": "1" } } },
+        );
+        assert_eq!(users.check_update(&good_push, plain), Ok(()));
+        let Err(error) = users.check_insert(&doc! { "_id": "bad" }) else {
+            panic!("a string root `_id` must be refused where the id is an ObjectId");
+        };
+        assert!(
+            error
+                .errors
+                .iter()
+                .any(|e| e.path == "_id" && e.kind == ValidatorKind::Type)
+        );
+        // A declared string `_id` stays a string.
+        let gifts = &crate::credit_gifts::INFO;
+        let typed = gifts.check_insert(&doc! { "_id": bson::oid::ObjectId::new() });
+        assert!(typed.is_err_and(|e| {
+            e.errors
+                .iter()
+                .any(|e| e.path == "_id" && e.kind == ValidatorKind::Type)
+        }));
     }
 
     /// A numeric Map key or a numeric key below `Mixed` is no array position: the reference

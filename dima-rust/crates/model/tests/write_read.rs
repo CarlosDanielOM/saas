@@ -2,11 +2,12 @@
 //! section 8), for every registered collection.
 //!
 //! For each collection the test builds a base document (the recorded `create` and `journal`
-//! cases of the collection, merged), then, for every schema path (array element `0`, Map keys
-//! `k` and `123`, keys `x` and `123` below `Mixed`, and a key below Map values included) and every probe value (`null`, each
-//! scalar type, empty and filled objects and arrays), it tries each write the helpers offer:
-//! create, `$set`, `$unset`, `$push`, upsert, and save `set`/`unset` (through the module's
-//! adapter for a collection with hooks). Every write a helper prepares is run against a throwaway
+//! cases of the collection, merged), then, for every schema path (the implicit `_id` of the root
+//! and of each sub-document, array element `0`, Map keys `k` and `123`, keys `x` and `123` below
+//! `Mixed`, and a key below Map values included) and every probe value (`null`, each scalar
+//! type, empty and filled objects and arrays, objects with a string `_id`), it tries each write
+//! the helpers offer: create, `$set`, `$unset`, `$push`, upsert, and save `set`/`unset` (through
+//! the module's adapter for a collection with hooks). Every write a helper prepares is run against a throwaway
 //! database and every document left there is decoded with the read type. A refused write (a
 //! validation error, the write guard, a cast error) is fine; a written document that does not
 //! decode is a failure naming the collection, the write, the path and the value.
@@ -21,7 +22,7 @@ use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocumentBuf, doc};
 use dima_model::availability::Writer;
 use dima_model::{CollectionInfo, REGISTRY};
-use dima_store::mongo::schema::{Field, Kind, MapOf, Schema};
+use dima_store::mongo::schema::{Field, IdField, Kind, MapOf, Schema};
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
@@ -46,11 +47,21 @@ fn probes() -> Vec<Bson> {
         Bson::Array(vec![Bson::String("x".into())]),
         Bson::Array(vec![Bson::Document(doc! { "k": "v" })]),
         Bson::Array(vec![Bson::Null]),
+        // A sub-document's implicit `_id` must be an ObjectId (`$push: {items: {_id: 'bad'}}`).
+        Bson::Document(doc! { "_id": "bad" }),
+        Bson::Array(vec![Bson::Document(doc! { "_id": "bad" })]),
     ]
 }
 
-/// Every path of the schema to probe, parents before children.
+/// Every path of the schema to probe, parents before children: the implicit `_id` of the root
+/// and of every sub-document included.
 fn paths(schema: &Schema) -> Vec<String> {
+    fn walk_schema(schema: &Schema, prefix: &str, out: &mut Vec<String>) {
+        if schema.id == IdField::Auto {
+            out.push(format!("{prefix}_id"));
+        }
+        walk(schema.fields, prefix, out);
+    }
     fn walk(fields: &[Field], prefix: &str, out: &mut Vec<String>) {
         for field in fields {
             let path = format!("{prefix}{}", field.name);
@@ -63,10 +74,10 @@ fn paths(schema: &Schema) -> Vec<String> {
                     out.push(format!("{path}.123"));
                 }
                 Kind::Nested(children) => walk(children, &format!("{path}."), out),
-                Kind::Subdocument(schema) => walk(schema.fields, &format!("{path}."), out),
+                Kind::Subdocument(schema) => walk_schema(schema, &format!("{path}."), out),
                 Kind::DocumentArray(schema) => {
                     out.push(format!("{path}.0"));
-                    walk(schema.fields, &format!("{path}.0."), out);
+                    walk_schema(schema, &format!("{path}.0."), out);
                 }
                 Kind::Array(_) | Kind::MixedArray => out.push(format!("{path}.0")),
                 // Map keys, a numeric one too (`variables.123`: a key, not a position).
@@ -77,15 +88,15 @@ fn paths(schema: &Schema) -> Vec<String> {
                 }
                 Kind::Map(MapOf::Subdocuments(schema)) => {
                     out.push(format!("{path}.k"));
-                    walk(schema.fields, &format!("{path}.k."), out);
+                    walk_schema(schema, &format!("{path}.k."), out);
                     out.push(format!("{path}.123"));
-                    walk(schema.fields, &format!("{path}.123."), out);
+                    walk_schema(schema, &format!("{path}.123."), out);
                 }
             }
         }
     }
     let mut out = Vec::new();
-    walk(schema.fields, "", &mut out);
+    walk_schema(schema, "", &mut out);
     if let Some(timestamps) = schema.timestamps {
         out.extend(timestamps.updated_at.map(str::to_owned));
     }
@@ -293,6 +304,41 @@ impl Probe<'_> {
         }
         self.check("create", path, value).await
     }
+}
+
+/// The `_id` the guard checks a root `_id` against: Mongoose's own (`IdField::Auto`) is an
+/// ObjectId, a declared one has its declared type; [`CollectionInfo::id_type`] must agree.
+#[test]
+fn id_types_agree_with_schemas() -> Result<()> {
+    use dima_store::mongo::id::IdType;
+    use dima_store::mongo::schema::ValueType;
+    for info in REGISTRY {
+        let schema_type = match info.schema.id {
+            IdField::Auto => Some(ValueType::ObjectId),
+            IdField::Declared => info
+                .schema
+                .fields
+                .iter()
+                .find(|f| f.name == "_id")
+                .and_then(|f| match f.kind {
+                    Kind::Value(ty) => Some(ty),
+                    _ => None,
+                }),
+            IdField::None => None,
+        };
+        let declared = match info.id_type {
+            IdType::ObjectId => ValueType::ObjectId,
+            IdType::String => ValueType::String,
+        };
+        if schema_type != Some(declared) {
+            bail!(
+                "{}: id_type {:?}, schema `_id` {schema_type:?}",
+                info.name,
+                info.id_type
+            );
+        }
+    }
+    Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
