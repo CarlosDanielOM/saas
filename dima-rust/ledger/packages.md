@@ -119,6 +119,15 @@ behaviour is written as code in the test, never by editing a recorded expectatio
 | P2-CRON-02 | The other three native workers: AI usage receipts (money), raid sessions, dashboard activity with insights and the emote catalog; the old supervisor, worker binaries and `ops/rust_build.sh` profiles retired | xhigh | P2-CRON-01, P2-BILLING-01, P2-TWITCH-01 | planned |
 | P2-SMALL | Thin clients and helpers the old crate holds, each on `dima-http`: Qdrant over REST (the old one uses gRPC), S3 with request signing, Resend email, audio durations; the old logger, queue, fence, crypto, JWT, CORS and Socket.IO modules are deleted (the foundation replaced them) | high | F-HTTP-b | planned |
 
+## Small services and other self-contained packages (implemented by GPT-6.1 Sol)
+
+| Package | Scope | Effort | Depends on | Status |
+|---|---|---|---|---|
+| S-HOSTSTATS | `services/hoststats`: the host and container stats sidecar (`dima-hoststats/`, inventory in `satellites.md` section 2) with its Docker client limited to an allowlist of GET paths, rig target and scenarios against the Node service, resource comparison | Sol high | PILOT | running |
+| P-EMAIL | `dima-email`: the Resend client on `dima-http` and the four email templates, HTML equal to what React Email renders for the same input (golden files from the real templates) | Sol high | F-HTTP-b, F-TEXT-b | running |
+| S-DIMAFX | `services/dimafx-server`: the Twitch Extension backend (`dimafx/server`, `satellites.md` section 1) | Sol high | PILOT | planned (night) |
+| S-ANALYTICS | `services/analytics`: the observability API, telemetry ingestion and collectors (`dima-analytics/`, `satellites.md` section 3), PostgreSQL | Sol high | PILOT, F-TELEMETRY-b | planned (night) |
+
 ## Later phases
 
 Feature packages follow `modules.md` (124 proposed packages), re-homed to the crate map above. They are
@@ -148,8 +157,10 @@ Owner's rules (2026-11-11, 22:15 MST):
 - Full speed until the weekly figure reaches 75%, then slow down until 95%, then stop until the reset.
 - The five-hour window must never reach 100% (workers die in the middle of a task, as happened once):
   the lead reads the figures before every launch and keeps it under about 90%.
-- Night, 23:00 to 07:00 MST: four GPT-6.1 Sol implementers and two Opus. Day: about six Opus
-  implementers, Sol reviews. Sol gets well-specified or self-contained packages (the small services,
+- Night, 23:00 to 07:00 MST: four GPT-6.1 Sol implementers and two Opus. Day, full throttle: six Opus
+  and two Sol implementers; day, slower: three and three. Sol as a daytime implementer is on trial
+  until about 2026-11-12 22:30 MST (the owner pulls it back to nights if it slows progress); Sol
+  also keeps reviewing. Sol gets well-specified or self-contained packages (the small services,
   thin API wrappers, email, model batches); Opus keeps money, tokens, the engine and data integrity.
   Every result, whoever wrote it, is merged, gated and reviewed the same way.
 
