@@ -121,7 +121,7 @@ impl JsNumber {
 
     /// The value as an `i64` when it is integral and a safe JavaScript integer.
     pub fn as_safe_int(self) -> Option<i64> {
-        float_to_i64(self.0).filter(|v| v.abs() <= JS_MAX_SAFE_INTEGER)
+        float_to_i64(self.0).filter(|v| (-JS_MAX_SAFE_INTEGER..=JS_MAX_SAFE_INTEGER).contains(v))
     }
 }
 
@@ -295,6 +295,25 @@ mod tests {
             Some(9_007_199_254_740_992)
         );
         assert_eq!(read_int(&Bson::Null), None);
+    }
+
+    #[test]
+    fn safe_int_bounds() {
+        assert_eq!(
+            JsNumber(9_007_199_254_740_991.0).as_safe_int(),
+            Some(JS_MAX_SAFE_INTEGER)
+        );
+        assert_eq!(
+            JsNumber(-9_007_199_254_740_991.0).as_safe_int(),
+            Some(-JS_MAX_SAFE_INTEGER)
+        );
+        assert_eq!(JsNumber(9_007_199_254_740_992.0).as_safe_int(), None);
+        assert_eq!(JsNumber(-9_007_199_254_740_992.0).as_safe_int(), None);
+        // -2^63 converts to i64::MIN, whose absolute value does not exist.
+        assert_eq!(JsNumber(-9_223_372_036_854_775_808.0).as_safe_int(), None);
+        assert_eq!(JsNumber(9_223_372_036_854_775_808.0).as_safe_int(), None);
+        assert_eq!(JsNumber(1.5).as_safe_int(), None);
+        assert_eq!(JsNumber(-0.0).as_safe_int(), Some(0));
     }
 
     #[test]

@@ -3,9 +3,11 @@
 //!
 //! 1. the case's seed documents are inserted exactly as the server stored them;
 //! 2. the intent (what the TypeScript asked Mongoose to do) is translated into the matching
-//!    helper call; its numbers are JavaScript numbers, so they are first rewritten as Node
-//!    would store them (`normalize_js_value`), and string ids in filters are cast as a Rust
-//!    caller must (`parse_object_id`);
+//!    helper call, with its values as given: the helpers type numbers as Node does. Every case
+//!    runs three times, with the intent's numbers as recorded (int32, int64 for large integers,
+//!    double), as int64 wherever they are integral, and as doubles everywhere: the commands and
+//!    stored documents must equal Mongoose's in all three. Filters are passed as the
+//!    TypeScript passed them (string ids, date text): the helpers cast them;
 //! 3. the helper output is put in the shape of the command Mongoose sent and compared with the
 //!    recorded command, **key order included**;
 //! 4. the write is executed with the Rust driver and the whole collection (and the
@@ -25,16 +27,15 @@
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document, doc};
-use dima_store::mongo::WriteContext;
-use dima_store::mongo::id::parse_object_id;
+use dima_store::mongo::filter::prepare_filter;
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
-use dima_store::mongo::number::normalize_js_value;
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     BulkUpdate, Returned, Update, UpdateDoc, UpdateOptions, prepare_bulk_update,
     prepare_find_one_and_update, prepare_update,
 };
+use dima_store::mongo::{PrepareError, WriteContext};
 use mongodb::{Collection, Database};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -42,19 +43,19 @@ use std::collections::{HashMap, HashSet};
 // ---------------------------------------------------------------- the recorder's schemas
 
 static ITEM: Schema = Schema::subdocument(&[
-    Field::value("label").trim(),
-    Field::value("n").default(D::Int(1)),
-    Field::value("at"),
+    Field::string("label").trim(),
+    Field::number("n").default(D::Int(1)),
+    Field::date("at"),
 ]);
 static PLAIN_SUB: Schema = Schema::subdocument(&[
-    Field::value("label"),
-    Field::value("on").default(D::Bool(false)),
+    Field::string("label"),
+    Field::boolean("on").default(D::Bool(false)),
 ])
 .no_id();
 static OPTS: Schema = Schema::subdocument(&[
-    Field::value("enabled").default(D::Bool(true)),
-    Field::value("mode").default(D::Str("start")),
-    Field::array("list").default_fn(D::Strings(&["a", "b"])),
+    Field::boolean("enabled").default(D::Bool(true)),
+    Field::string("mode").default(D::Str("start")),
+    Field::array("list", ValueType::String).default_fn(D::Strings(&["a", "b"])),
 ])
 .no_id();
 
@@ -63,109 +64,158 @@ fn opts_default(_now: i64) -> Bson {
 }
 
 static CAMEL: Schema = Schema::new(&[
-    Field::value("name").trim(),
-    Field::value("key").immutable(),
-    Field::value("count").default(D::Int(0)),
-    Field::value("score"),
-    Field::array("tags"),
+    Field::string("name").trim(),
+    Field::string("key").immutable(),
+    Field::number("count").default(D::Int(0)),
+    Field::number("score"),
+    Field::array("tags", ValueType::String),
     Field::document_array("items", &ITEM),
     Field::document_array("plain", &PLAIN_SUB),
     Field::nested(
         "nested",
         &[
-            Field::value("a").default(D::Str("x")),
-            Field::value("b"),
-            Field::nested("deep", &[Field::value("c").default(D::Bool(false))]),
+            Field::string("a").default(D::Str("x")),
+            Field::number("b"),
+            Field::nested("deep", &[Field::boolean("c").default(D::Bool(false))]),
         ],
     ),
     Field::subdocument("opts", &OPTS).default_fn(D::With(opts_default)),
     Field::mixed("meta").default_fn(D::EmptyDocument),
     Field::mixed("blob"),
-    Field::map("vars"),
-    Field::value("leaseUntil").default_fn(D::DateMs(0)),
-    Field::value("seenAt").default_fn(D::Now),
-    Field::value("flag").default(D::Null),
-    Field::value("rank").default(D::Int(5)),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::date("leaseUntil").default_fn(D::DateMs(0)),
+    Field::date("seenAt").default_fn(D::Now),
+    Field::boolean("flag").default(D::Null),
+    Field::number("rank").default(D::Int(5)),
 ])
 .timestamps(Timestamps::CAMEL);
 
 static ACCOUNT: Schema = Schema::subdocument(&[
-    Field::value("type").default(D::Str("twitch")),
-    Field::value("id").default(D::Null),
+    Field::string("type").default(D::Str("twitch")),
+    Field::string("id").default(D::Null),
     Field::nested(
         "token",
         &[
-            Field::value("iv").default(D::Null),
-            Field::value("content").default(D::Null),
+            Field::string("iv").default(D::Null),
+            Field::string("content").default(D::Null),
         ],
     ),
-    Field::value("active").default(D::Bool(true)),
+    Field::boolean("active").default(D::Bool(true)),
 ]);
-static HISTORY: Schema = Schema::subdocument(&[Field::value("at"), Field::value("v")]).no_id();
+static HISTORY: Schema = Schema::subdocument(&[Field::date("at"), Field::number("v")]).no_id();
 static SNAKE: Schema = Schema::new(&[
-    Field::value("channelID"),
-    Field::value("status").default(D::Str("active")),
-    Field::value("total").default(D::Int(0)),
-    Field::value("ended_at").default(D::Null),
+    Field::string("channelID"),
+    Field::string("status").default(D::Str("active")),
+    Field::number("total").default(D::Int(0)),
+    Field::date("ended_at").default(D::Null),
     Field::nested(
         "settings",
         &[
-            Field::value("enabled").default(D::Bool(true)),
-            Field::value("mode").default(D::Str("auto")),
+            Field::boolean("enabled").default(D::Bool(true)),
+            Field::string("mode").default(D::Str("auto")),
         ],
     ),
     Field::document_array("history", &HISTORY),
     Field::document_array("accounts", &ACCOUNT),
     Field::mixed_array("responses").default(D::EmptyArray),
-    Field::map("variables").default(D::EmptyDocument),
+    Field::map("variables", MapOf::Values(ValueType::String)).default(D::EmptyDocument),
 ])
 .timestamps(Timestamps::SNAKE);
 
 static PLAIN: Schema = Schema::new(&[
-    Field::value("_id"),
-    Field::value("channelID").immutable(),
-    Field::value("dueAt").default(D::Int(0)),
+    Field::string("_id"),
+    Field::string("channelID").immutable(),
+    Field::number("dueAt").default(D::Int(0)),
     Field::mixed("payload"),
     Field::nested(
         "state",
-        &[Field::value("seq").default(D::Int(0)), Field::array("ids")],
+        &[
+            Field::number("seq").default(D::Int(0)),
+            Field::array("ids", ValueType::String),
+        ],
     ),
-    Field::value("expiresAt"),
-    Field::value("label").trim().default(D::Str("")),
+    Field::date("expiresAt"),
+    Field::string("label").trim().default(D::Str("")),
 ])
 .declared_id()
 .no_version_key();
 
 static NOMIN: Schema = Schema::new(&[
-    Field::value("_id"),
+    Field::string("_id"),
     Field::mixed("config").default_fn(D::EmptyDocument),
     Field::mixed("extra").default(D::EmptyDocument),
     Field::nested(
         "meta",
-        &[Field::value("a"), Field::nested("b", &[Field::value("c")])],
+        &[
+            Field::string("a"),
+            Field::nested("b", &[Field::string("c")]),
+        ],
     ),
-    Field::array("list"),
+    Field::array("list", ValueType::String),
 ])
 .declared_id()
 .no_version_key()
 .no_minimize()
 .timestamps(Timestamps::CAMEL);
 
+static TYPED_ONE: Schema = Schema::subdocument(&[
+    Field::date("when"),
+    Field::number("k").default(D::Int(1)),
+    Field::string("code").immutable(),
+])
+.no_id();
+static TYPED_ENTRY: Schema = Schema::subdocument(&[
+    Field::object_id("who"),
+    Field::date("at"),
+    Field::number("n"),
+    Field::string("code").immutable(),
+]);
+static TYPED: Schema = Schema::new(&[
+    Field::object_id("owner"),
+    Field::string("label").trim(),
+    Field::number("n"),
+    Field::date("at"),
+    Field::boolean("on"),
+    Field::string("key").immutable(),
+    Field::nested(
+        "info",
+        &[Field::date("since"), Field::string("tag").immutable()],
+    ),
+    Field::subdocument("one", &TYPED_ONE),
+    Field::document_array("entries", &TYPED_ENTRY),
+    Field::map("steps", MapOf::Subdocuments(&TYPED_STEP)).default(D::EmptyDocument),
+    Field::map("marks", MapOf::Subdocuments(&TYPED_MARK)),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::map("counts", MapOf::Values(ValueType::Number)),
+    Field::array("refs", ValueType::ObjectId),
+    Field::array("nums", ValueType::Number),
+    Field::mixed("free"),
+])
+.timestamps(Timestamps::CAMEL);
+static TYPED_STEP: Schema = Schema::subdocument(&[
+    Field::string("status"),
+    Field::string("reason"),
+    Field::date("at"),
+])
+.no_id();
+static TYPED_MARK: Schema =
+    Schema::subdocument(&[Field::number("v"), Field::number("d").default(D::Int(0))]);
+
 static HAND: Schema = Schema::new(&[
-    Field::value("name"),
-    Field::value("enabled").default(D::Bool(true)),
-    Field::value("createdAt").default_fn(D::Now),
-    Field::value("updatedAt").default_fn(D::Now),
+    Field::string("name"),
+    Field::boolean("enabled").default(D::Bool(true)),
+    Field::date("createdAt").default_fn(D::Now),
+    Field::date("updatedAt").default_fn(D::Now),
 ]);
 
-fn schema_for(name: &str) -> Result<(&'static Schema, bool)> {
-    // (schema, `_id` is an ObjectId)
+fn schema_for(name: &str) -> Result<&'static Schema> {
     Ok(match name {
-        "camel" => (&CAMEL, true),
-        "snake" => (&SNAKE, true),
-        "plain" => (&PLAIN, false),
-        "nomin" => (&NOMIN, false),
-        "hand" => (&HAND, true),
+        "camel" => &CAMEL,
+        "snake" => &SNAKE,
+        "plain" => &PLAIN,
+        "nomin" => &NOMIN,
+        "hand" => &HAND,
+        "typed" => &TYPED,
         other => bail!("unknown schema {other}"),
     })
 }
@@ -200,17 +250,40 @@ fn to_docs(value: &Value) -> Result<Vec<Document>> {
         .collect()
 }
 
-/// A JavaScript value from the intent, as Node would write it.
-fn js(value: &Bson) -> Bson {
-    let mut value = value.clone();
-    normalize_js_value(&mut value);
-    value
+/// How the replay types the intent's numbers before handing them to the helpers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Numbers {
+    /// As the recording has them: int32, int64 for integers beyond int32, double.
+    AsRecorded,
+    /// Every integral number (except `-0`) as an int64.
+    Int64,
+    /// Every number as a double.
+    Double,
 }
 
-fn js_doc(document: &Document) -> Document {
-    match js(&Bson::Document(document.clone())) {
-        Bson::Document(doc) => doc,
-        _ => Document::new(),
+const NUMBER_MODES: [Numbers; 3] = [Numbers::AsRecorded, Numbers::Int64, Numbers::Double];
+
+fn retype(value: &Bson, mode: Numbers) -> Bson {
+    const I64_LIMIT: f64 = 9_223_372_036_854_775_808.0;
+    match (value, mode) {
+        (_, Numbers::AsRecorded) => value.clone(),
+        (Bson::Int32(v), Numbers::Int64) => Bson::Int64(i64::from(*v)),
+        (Bson::Double(v), Numbers::Int64)
+            if v.fract() == 0.0
+                && (-I64_LIMIT..I64_LIMIT).contains(v)
+                && !(*v == 0.0 && v.is_sign_negative()) =>
+        {
+            Bson::Int64(*v as i64)
+        }
+        (Bson::Int32(v), Numbers::Double) => Bson::Double(f64::from(*v)),
+        (Bson::Int64(v), Numbers::Double) => Bson::Double(*v as f64),
+        (Bson::Document(doc), _) => Bson::Document(
+            doc.iter()
+                .map(|(k, v)| (k.clone(), retype(v, mode)))
+                .collect(),
+        ),
+        (Bson::Array(items), _) => Bson::Array(items.iter().map(|v| retype(v, mode)).collect()),
+        _ => value.clone(),
     }
 }
 
@@ -299,18 +372,25 @@ impl Normaliser {
 
 /// The server copies an upsert filter's equality fields into the new document right after `_id`
 /// in an order of its own choosing, which varies from run to run (seen with the Node driver
-/// too: 48 against 32 in 80 identical upserts with other writes in between). That run of
-/// fields is put in a fixed order on both sides; everything else keeps its stored order.
-fn canonical_upsert_fields(value: Bson, filter_keys: &[String]) -> Bson {
+/// too: 48 against 32 in 80 identical upserts with other writes in between). Only that run is
+/// put in a fixed order, on both sides: the leading fields of a document that are exactly the
+/// equality fields of the one upsert that inserted it. Values, types and every other position
+/// stay strict.
+fn canonical_upsert_fields(value: Bson, upserts: &[Upsert]) -> Bson {
     let canonical = |doc: Document| -> Document {
+        let Some(copied) = upserts.iter().find(|u| u.inserted(&doc)).map(|u| &u.copied) else {
+            return doc;
+        };
         let mut entries: Vec<(String, Bson)> = doc.into_iter().collect();
         let start = usize::from(entries.first().is_some_and(|(k, _)| k == "_id"));
         let run = entries
             .iter()
             .skip(start)
-            .take_while(|(k, _)| filter_keys.contains(k))
+            .take_while(|(k, _)| copied.contains(k))
             .count();
-        if let Some(slice) = entries.get_mut(start..start + run) {
+        if run == copied.len()
+            && let Some(slice) = entries.get_mut(start..start + run)
+        {
             slice.sort_by(|a, b| a.0.cmp(&b.0));
         }
         entries.into_iter().collect()
@@ -330,42 +410,75 @@ fn canonical_upsert_fields(value: Bson, filter_keys: &[String]) -> Bson {
     }
 }
 
-/// Top-level keys an upsert in this case could copy from its filter.
-fn upsert_filter_keys(intent: &Document) -> Vec<String> {
-    let mut filters: Vec<&Document> = Vec::new();
-    let upsert = intent
-        .get_document("options")
-        .ok()
-        .and_then(|o| o.get_bool("upsert").ok())
-        .unwrap_or(false);
-    if upsert {
-        filters.extend(intent.get_document("filter").ok());
+/// One upsert of the case: the top-level fields the server copies from its filter (equality
+/// conditions only; `{$gt: …}` and other operator conditions are not copied), and the scalar
+/// equality values that identify the document it inserted.
+struct Upsert {
+    copied: Vec<String>,
+    equalities: Vec<(String, Bson)>,
+}
+
+impl Upsert {
+    fn new(filter: &Document) -> Self {
+        let mut copied = Vec::new();
+        let mut equalities = Vec::new();
+        for (path, condition) in filter {
+            if path.starts_with('$') {
+                continue;
+            }
+            let is_operator = matches!(condition, Bson::Document(inner) if inner.keys().any(|k| k.starts_with('$')));
+            if is_operator {
+                continue;
+            }
+            let top = path.split('.').next().unwrap_or_default().to_owned();
+            if top != "_id" && !copied.contains(&top) {
+                copied.push(top);
+            }
+            if !matches!(condition, Bson::Document(_) | Bson::Array(_)) {
+                equalities.push((path.clone(), condition.clone()));
+            }
+        }
+        Self { copied, equalities }
     }
-    for op in intent
-        .get_array("ops")
-        .map(|ops| ops.as_slice())
-        .unwrap_or(&[])
-    {
-        if let Some(body) = op
-            .as_document()
-            .and_then(|o| o.values().next())
-            .and_then(Bson::as_document)
-            && body.get_bool("upsert").unwrap_or(false)
+
+    /// Whether `doc` holds this upsert's equality values (and so may have been inserted by it).
+    fn inserted(&self, doc: &Document) -> bool {
+        !self.copied.is_empty()
+            && self.equalities.iter().all(|(path, value)| {
+                let mut current = doc.get(path.split('.').next().unwrap_or_default());
+                for piece in path.split('.').skip(1) {
+                    current = current
+                        .and_then(Bson::as_document)
+                        .and_then(|d| d.get(piece));
+                }
+                current.is_some_and(|found| same(found, value))
+            })
+    }
+}
+
+/// Every upsert Mongoose sent in the case (`update` statements and `findAndModify` commands
+/// with `upsert: true`), with the filter as sent: those are the fields the server copied.
+fn upserts_of(commands: &Bson) -> Vec<Upsert> {
+    let mut out = Vec::new();
+    for command in commands.as_array().map(Vec::as_slice).unwrap_or(&[]) {
+        let Some(command) = command.as_document() else {
+            continue;
+        };
+        if let Ok(statements) = command.get_array("updates") {
+            for statement in statements.iter().filter_map(Bson::as_document) {
+                if statement.get_bool("upsert").unwrap_or(false)
+                    && let Ok(filter) = statement.get_document("q")
+                {
+                    out.push(Upsert::new(filter));
+                }
+            }
+        } else if command.get_bool("upsert").unwrap_or(false)
+            && let Ok(filter) = command.get_document("query")
         {
-            filters.extend(body.get_document("filter").ok());
+            out.push(Upsert::new(filter));
         }
     }
-    let mut keys: Vec<String> = filters
-        .into_iter()
-        .flat_map(|f| {
-            f.keys()
-                .map(|k| k.split('.').next().unwrap_or_default().to_owned())
-                .collect::<Vec<_>>()
-        })
-        .filter(|k| k != "_id")
-        .collect();
-    keys.dedup();
-    keys
+    out
 }
 
 fn sort_by_id(stored: Bson) -> Bson {
@@ -385,43 +498,57 @@ fn sort_by_id(stored: Bson) -> Bson {
 struct Outcome {
     commands: Vec<Document>,
     result: Option<Document>,
-    error_code: Option<i32>,
+    failure: Option<Failure>,
+}
+
+/// How an operation failed, in terms both sides share.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Failure {
+    /// A server error, by code (`-1`: a driver error without one).
+    Code(i32),
+    /// A save matched nothing (Mongoose: `VersionError` or `DocumentNotFoundError`; Rust:
+    /// `SaveOutcome::Conflict`).
+    Conflict,
+    /// A Mongoose error raised before anything was sent, by name (`CastError`, ...).
+    Mongoose(String),
+}
+
+fn expected_failure(case: &Value) -> Option<Failure> {
+    let error = case.get("error")?;
+    if let Some(code) = error["code"].as_i64().and_then(|c| i32::try_from(c).ok()) {
+        return Some(Failure::Code(code));
+    }
+    let message = error["message"].as_str().unwrap_or_default();
+    Some(match error["name"].as_str()? {
+        "VersionError" | "DocumentNotFoundError" => Failure::Conflict,
+        // A Map key with `.` or a leading `$`: an `Error` where the Map is cast, a
+        // `ValidationError` ("Cast to Map failed") where a document is validated.
+        _ if message.starts_with("Mongoose maps do not support keys")
+            || message.contains("Cast to Map failed") =>
+        {
+            Failure::Mongoose("InvalidMapKey".into())
+        }
+        other => Failure::Mongoose(other.to_owned()),
+    })
+}
+
+/// The Mongoose failure a helper's refusal stands for, if the replay knows it.
+fn prepare_failure(error: &anyhow::Error) -> Option<Failure> {
+    match error.downcast_ref::<PrepareError>()? {
+        PrepareError::InvalidMapKey { .. } => Some(Failure::Mongoose("InvalidMapKey".into())),
+        PrepareError::Cast { .. } => Some(Failure::Mongoose("CastError".into())),
+        PrepareError::StrictFilter { .. } => Some(Failure::Mongoose("StrictModeError".into())),
+        PrepareError::QueryOperator { .. } => Some(Failure::Mongoose("Error".into())),
+        _ => None,
+    }
 }
 
 fn now_ms() -> i64 {
     DateTime::now().timestamp_millis()
 }
 
-fn cast_filter(filter: &Document, object_ids: bool) -> Result<Document> {
-    let mut out = js_doc(filter);
-    if !object_ids {
-        return Ok(out);
-    }
-    match out.get("_id").cloned() {
-        Some(Bson::String(text)) => {
-            out.insert("_id", parse_object_id(&text)?);
-        }
-        Some(Bson::Document(cond)) => {
-            if let Some(Bson::Array(items)) = cond.get("$in") {
-                let ids = items
-                    .iter()
-                    .map(|item| match item {
-                        Bson::String(text) => parse_object_id(text)
-                            .map(Bson::ObjectId)
-                            .map_err(anyhow::Error::from),
-                        other => Ok(other.clone()),
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                out.insert("_id", doc! { "$in": ids });
-            }
-        }
-        _ => {}
-    }
-    Ok(out)
-}
-
 fn update_of(value: &Bson) -> Result<Update> {
-    Ok(match js(value) {
+    Ok(match value.clone() {
         Bson::Document(doc) => Update::Document(doc),
         Bson::Array(items) => Update::Pipeline(
             items
@@ -441,6 +568,14 @@ fn update_options(options: Option<&Document>) -> UpdateOptions {
     UpdateOptions {
         upsert: flag("upsert").unwrap_or(false),
         set_defaults_on_insert: flag("setDefaultsOnInsert").unwrap_or(true),
+        array_filters: options
+            .and_then(|o| o.get_array("arrayFilters").ok())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_document().cloned())
+                    .collect()
+            }),
     }
 }
 
@@ -449,7 +584,7 @@ fn statement(
     update: UpdateDoc,
     upsert: bool,
     multi: bool,
-    array_filters: Option<&Bson>,
+    array_filters: Option<Vec<Document>>,
 ) -> Document {
     let mut statement = Document::new();
     statement.insert("q", filter);
@@ -464,7 +599,7 @@ fn statement(
         statement.insert("multi", true);
     }
     if let Some(filters) = array_filters {
-        statement.insert("arrayFilters", filters.clone());
+        statement.insert("arrayFilters", filters);
     }
     statement
 }
@@ -477,10 +612,11 @@ fn insert_command(collection: &str, documents: Vec<Document>) -> Document {
     doc! { "insert": collection, "documents": documents, "ordered": true }
 }
 
+/// Runs one update statement; the matched count.
 async fn execute_update(
     coll: &Collection<Document>,
     statement: &Document,
-) -> mongodb::error::Result<()> {
+) -> mongodb::error::Result<u64> {
     let filter = statement.get_document("q").cloned().unwrap_or_default();
     let update: mongodb::options::UpdateModifications = match statement.get("u") {
         Some(Bson::Array(stages)) => mongodb::options::UpdateModifications::Pipeline(
@@ -504,13 +640,13 @@ async fn execute_update(
         if let Some(filters) = filters {
             action = action.array_filters(filters);
         }
-        action.await.map(|_| ())
+        action.await.map(|r| r.matched_count)
     } else {
         let mut action = coll.update_one(filter, update).upsert(upsert);
         if let Some(filters) = filters {
             action = action.array_filters(filters);
         }
-        action.await.map(|_| ())
+        action.await.map(|r| r.matched_count)
     }
 }
 
@@ -523,18 +659,20 @@ fn error_code(error: &mongodb::error::Error) -> Option<i32> {
     }
 }
 
-async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
-    let (schema, object_ids) = schema_for(case["schema"].as_str().context("schema")?)?;
+async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Result<Outcome> {
+    let schema = schema_for(case["schema"].as_str().context("schema")?)?;
     let collection = case["collection"].as_str().context("collection")?;
     let coll: Collection<Document> = db.collection(collection);
-    let intent = to_doc(&case["intent"])?;
+    let intent = match retype(&to_bson(&case["intent"])?, numbers) {
+        Bson::Document(intent) => intent,
+        other => bail!("intent {other:?}"),
+    };
     let op = intent.get_str("op")?;
     let mut ctx = WriteContext::new(now);
     let mut commands = Vec::new();
     let mut result = None;
-    let mut error_code = None;
+    let mut failure = None;
     let options = intent.get_document("options").ok();
-    let array_filters = options.and_then(|o| o.get("arrayFilters"));
 
     match op {
         "create" | "newSave" | "insertMany" => {
@@ -555,36 +693,39 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
             };
             let prepared = docs
                 .iter()
-                .map(|d| prepare_insert(schema, &js_doc(d), style, &mut ctx).map(|p| p.document))
+                .map(|d| prepare_insert(schema, d, style, &mut ctx).map(|p| p.document))
                 .collect::<Result<Vec<_>, _>>()?;
             commands.push(insert_command(collection, prepared.clone()));
             if let Err(e) = coll.insert_many(prepared).await {
-                error_code = error_code_of(&e);
+                failure = failure_of(&e);
             }
         }
         "updateOne" | "updateMany" => {
-            let filter = cast_filter(intent.get_document("filter")?, object_ids)?;
+            let filter = intent.get_document("filter")?.clone();
             let update = update_of(intent.get("update").context("update")?)?;
             let opts = update_options(options);
-            if let Some(prepared) = prepare_update(schema, &filter, update, opts, &mut ctx)? {
+            let upsert = opts.upsert;
+            let prepared = prepare_update(schema, &filter, update, opts, &mut ctx)?;
+            if let Some(update) = prepared.update {
                 let statement = statement(
-                    filter,
-                    prepared.update,
-                    opts.upsert,
+                    prepared.filter,
+                    update,
+                    upsert,
                     op == "updateMany",
-                    array_filters,
+                    prepared.array_filters,
                 );
                 if let Err(e) = execute_update(&coll, &statement).await {
-                    error_code = error_code_of(&e);
+                    failure = failure_of(&e);
                 }
                 commands.push(update_command(collection, vec![statement]));
             }
         }
         "findOneAndUpdate" | "findByIdAndUpdate" => {
+            // `findByIdAndUpdate(id)` is `findOneAndUpdate({_id: id})`: the helper casts it.
             let filter = if op == "findByIdAndUpdate" {
-                doc! { "_id": parse_object_id(intent.get_str("id")?)? }
+                doc! { "_id": intent.get("id").context("id")?.clone() }
             } else {
-                cast_filter(intent.get_document("filter")?, object_ids)?
+                intent.get_document("filter")?.clone()
             };
             let update = update_of(intent.get("update").context("update")?)?;
             let opts = update_options(options);
@@ -597,6 +738,7 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
             };
             let prepared =
                 prepare_find_one_and_update(schema, &filter, update, opts, returned, &mut ctx)?;
+            let filter = prepared.filter.clone();
             match prepared.update.clone() {
                 Some(update) => {
                     let mut command = doc! {
@@ -620,7 +762,7 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
                         .await
                     {
                         Ok(found) => result = found,
-                        Err(e) => error_code = error_code_of(&e),
+                        Err(e) => failure = failure_of(&e),
                     }
                 }
                 None => result = coll.find_one(filter).await?,
@@ -639,7 +781,7 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
                     }
                     let prepared = prepare_insert(
                         schema,
-                        &js_doc(body.get_document("document")?),
+                        body.get_document("document")?,
                         InsertStyle::BulkInsertOne,
                         &mut ctx,
                     )?;
@@ -649,7 +791,7 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
                 if !inserts.is_empty() {
                     commands.push(insert_command(collection, std::mem::take(&mut inserts)));
                 }
-                let filter = cast_filter(body.get_document("filter")?, object_ids)?;
+                let filter = body.get_document("filter")?.clone();
                 let upsert = body.get_bool("upsert").unwrap_or(false);
                 let bulk = if kind == "updateMany" {
                     BulkUpdate::UpdateMany
@@ -658,7 +800,7 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
                 };
                 let opts = UpdateOptions {
                     upsert,
-                    set_defaults_on_insert: true,
+                    ..UpdateOptions::default()
                 };
                 let prepared = prepare_bulk_update(
                     schema,
@@ -668,9 +810,12 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
                     opts,
                     &mut ctx,
                 )?;
+                let Some(update) = prepared.update else {
+                    bail!("bulkWrite always sends its update");
+                };
                 updates.push(statement(
-                    filter,
-                    prepared.update,
+                    prepared.filter,
+                    update,
                     upsert,
                     kind == "updateMany",
                     None,
@@ -694,40 +839,57 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
             }
         }
         "save" => {
-            let id = js(intent.get("id").context("id")?);
+            let id = intent.get("id").context("id")?.clone();
             let loaded = coll
-                .find_one(doc! { "_id": id })
+                .find_one(doc! { "_id": id.clone() })
                 .await?
                 .context("loaded document")?;
+            if intent.get_bool("deleteBeforeSave").unwrap_or(false) {
+                coll.delete_one(doc! { "_id": id }).await?;
+            }
             let changes = intent
                 .get_array("changes")?
                 .iter()
                 .map(|change| {
                     let change = change.as_document().context("change")?;
                     Ok(if let Ok(path) = change.get_str("set") {
-                        Change::set(path, js(change.get("value").unwrap_or(&Bson::Null)))
+                        Change::set(path, change.get("value").unwrap_or(&Bson::Null).clone())
                     } else if let Ok(path) = change.get_str("unset") {
                         Change::unset(path)
                     } else {
                         Change::push(
                             change.get_str("push")?,
-                            change.get_array("values")?.iter().map(js),
+                            change.get_array("values")?.iter().cloned(),
                         )
                     })
                 })
                 .collect::<Result<Vec<_>>>()?;
-            if let Some(prepared) = prepare_save(schema, &loaded, &changes, &mut ctx)? {
-                let statement = statement(
-                    prepared.filter,
-                    UpdateDoc::Document(prepared.update),
-                    false,
-                    false,
-                    None,
-                );
-                if let Err(e) = execute_update(&coll, &statement).await {
-                    error_code = error_code_of(&e);
+            let mut prepared = prepare_save(schema, &loaded, &changes, &mut ctx)?;
+            if let Ok(predicates) = intent.get_document("where") {
+                prepared = prepared.with_predicates(predicates)?;
+            }
+            match prepared.update {
+                Some(update) => {
+                    let statement = statement(
+                        prepared.filter,
+                        UpdateDoc::Document(update),
+                        false,
+                        false,
+                        None,
+                    );
+                    match execute_update(&coll, &statement).await {
+                        Ok(0) => failure = Some(Failure::Conflict),
+                        Ok(_) => {}
+                        Err(e) => failure = failure_of(&e),
+                    }
+                    commands.push(update_command(collection, vec![statement]));
                 }
-                commands.push(update_command(collection, vec![statement]));
+                // What `Writes::save` does with nothing to write: the document must still exist.
+                None => {
+                    if coll.find_one(prepared.filter).await?.is_none() {
+                        failure = Some(Failure::Conflict);
+                    }
+                }
             }
         }
         other => bail!("unknown op {other}"),
@@ -735,12 +897,12 @@ async fn run_case(db: &Database, case: &Value, now: i64) -> Result<Outcome> {
     Ok(Outcome {
         commands,
         result,
-        error_code,
+        failure,
     })
 }
 
-fn error_code_of(error: &mongodb::error::Error) -> Option<i32> {
-    error_code(error).or(Some(-1))
+fn failure_of(error: &mongodb::error::Error) -> Option<Failure> {
+    Some(Failure::Code(error_code(error).unwrap_or(-1)))
 }
 
 /// The statements the Rust driver really sent must be the prepared ones, byte for byte (key
@@ -781,9 +943,10 @@ async fn check_case(
     db: &Database,
     case: &Value,
     now: i64,
+    numbers: Numbers,
     sent: &Sent,
 ) -> Result<(Vec<String>, Vec<Document>)> {
-    let name = case["name"].as_str().context("name")?;
+    let name = &format!("{} ({numbers:?})", case["name"].as_str().context("name")?);
     let collection: Collection<Document> =
         db.collection(case["collection"].as_str().context("collection")?);
     collection.delete_many(doc! {}).await?;
@@ -795,9 +958,16 @@ async fn check_case(
         sent.clear();
     }
     let t0 = now_ms() - 1;
-    let outcome = run_case(db, case, now)
-        .await
-        .with_context(|| format!("case {name}"))?;
+    let outcome = match run_case(db, case, now, numbers).await {
+        Ok(outcome) => outcome,
+        // The helper refused the write before anything was sent, as Mongoose did.
+        Err(error) if prepare_failure(&error).is_some() => Outcome {
+            commands: Vec::new(),
+            result: None,
+            failure: prepare_failure(&error),
+        },
+        Err(error) => return Err(error.context(format!("case {name}"))),
+    };
     let t1 = now_ms() + 1;
     let stored: Vec<Document> = {
         use futures_util::TryStreamExt;
@@ -823,17 +993,22 @@ async fn check_case(
     let prepared = outcome.commands.clone();
     let commands = Bson::Array(outcome.commands.into_iter().map(Bson::Document).collect());
     let commands = normaliser.walk(&commands)?;
+    // The recorder re-serialises the `.lean()` result from JavaScript values, which retypes
+    // its numbers as the Node writer does; the same is done to the driver's result here.
     let result = match outcome.result {
-        Some(doc) => normaliser.walk(&Bson::Document(doc))?,
+        Some(mut doc) => {
+            dima_store::mongo::number::normalize_js_numbers(&mut doc);
+            normaliser.walk(&Bson::Document(doc))?
+        }
         None => Bson::Null,
     };
     let stored = sort_by_id(normaliser.walk(&Bson::Array(
         stored.into_iter().map(Bson::Document).collect(),
     ))?);
 
-    let filter_keys = upsert_filter_keys(&to_doc(&case["intent"])?);
-    let result = canonical_upsert_fields(result, &filter_keys);
-    let stored = canonical_upsert_fields(stored, &filter_keys);
+    let upserts = upserts_of(&to_bson(&case["commands"])?);
+    let result = canonical_upsert_fields(result, &upserts);
+    let stored = canonical_upsert_fields(stored, &upserts);
     let mut problems = Vec::new();
     let expected_commands = to_bson(&case["commands"])?;
     if !same(&commands, &expected_commands) {
@@ -848,7 +1023,7 @@ async fn check_case(
     } else {
         to_bson(&case["result"])?
     };
-    let expected_result = canonical_upsert_fields(expected_result, &filter_keys);
+    let expected_result = canonical_upsert_fields(expected_result, &upserts);
     if !same(&result, &expected_result) {
         problems.push(format!(
             "{name}: result\n  rust:     {}\n  mongoose: {}",
@@ -858,8 +1033,7 @@ async fn check_case(
     }
     // Sorted by normalised `_id`: a client-generated id and a server-generated upsert id compare
     // arbitrarily (their process bytes differ), so the raw `_id` order is not comparable.
-    let expected_stored =
-        canonical_upsert_fields(sort_by_id(to_bson(&case["stored"])?), &filter_keys);
+    let expected_stored = canonical_upsert_fields(sort_by_id(to_bson(&case["stored"])?), &upserts);
     if !same(&stored, &expected_stored) {
         problems.push(format!(
             "{name}: stored\n  rust:     {}\n  mongoose: {}",
@@ -867,14 +1041,11 @@ async fn check_case(
             show(&expected_stored)
         ));
     }
-    let expected_error = case
-        .get("error")
-        .and_then(|e| e["code"].as_i64())
-        .and_then(|c| i32::try_from(c).ok());
-    if outcome.error_code != expected_error {
+    let expected = expected_failure(case);
+    if outcome.failure != expected {
         problems.push(format!(
-            "{name}: error {:?}, mongoose {:?}",
-            outcome.error_code, expected_error
+            "{name}: failure {:?}, mongoose {:?}",
+            outcome.failure, expected
         ));
     }
     Ok((problems, prepared))
@@ -907,32 +1078,161 @@ async fn mongoose_write_cases_match() -> Result<()> {
     let cases = golden["cases"].as_array().context("cases")?;
     let mut problems = Vec::new();
     let mut compared = 0;
-    for case in cases {
-        match check_case(&db, case, now, &sent).await {
-            Ok((found, prepared)) => {
-                problems.extend(found);
-                compared += 1;
-                let captured: Vec<Document> = sent.lock().map(|s| s.clone()).unwrap_or_default();
-                problems.extend(compare_sent(
-                    case["name"].as_str().unwrap_or("?"),
-                    &prepared,
-                    &captured,
-                ));
+    for numbers in NUMBER_MODES {
+        for case in cases {
+            match check_case(&db, case, now, numbers, &sent).await {
+                Ok((found, prepared)) => {
+                    problems.extend(found);
+                    compared += 1;
+                    let captured: Vec<Document> =
+                        sent.lock().map(|s| s.clone()).unwrap_or_default();
+                    problems.extend(compare_sent(
+                        case["name"].as_str().unwrap_or("?"),
+                        &prepared,
+                        &captured,
+                    ));
+                }
+                Err(e) => problems.push(format!("{:#}", e)),
             }
-            Err(e) => problems.push(format!("{:#}", e)),
         }
     }
     db.drop().await?;
     assert!(
         problems.is_empty(),
-        "{} of {} cases differ:\n{}",
+        "{} of {} replays differ:\n{}",
         problems.len(),
-        cases.len(),
+        cases.len() * NUMBER_MODES.len(),
         problems.join("\n")
     );
-    assert_eq!(compared, cases.len());
+    assert_eq!(compared, cases.len() * NUMBER_MODES.len());
     eprintln!(
-        "{compared} Mongoose cases compared: commands, results and stored documents identical"
+        "{} Mongoose cases compared, {compared} replays (numbers as recorded, as int64, as \
+         doubles): commands, results and stored documents identical",
+        cases.len()
     );
     Ok(())
+}
+
+/// Every recorded filter (`golden.json`, `filters`) through `prepare_filter`, in the three
+/// number modes: the cast filter must equal what Mongoose sent (key order and BSON types
+/// included; ObjectIds generated for a sub-document compared by position), or fail as Mongoose
+/// failed. No database needed.
+#[test]
+fn mongoose_filter_casts_match() -> Result<()> {
+    let golden = golden()?;
+    let rows = golden["filters"].as_array().context("filters")?;
+    let mut problems = Vec::new();
+    for numbers in NUMBER_MODES {
+        for row in rows {
+            let name = format!("{} ({numbers:?})", row["name"].as_str().context("name")?);
+            let schema = schema_for(row["schema"].as_str().context("schema")?)?;
+            let filter = match retype(&to_bson(&row["filter"])?, numbers) {
+                Bson::Document(filter) => filter,
+                other => bail!("{name}: filter {other:?}"),
+            };
+            let mut ctx = WriteContext::with_sequential_ids(0, 1);
+            let outcome = prepare_filter(schema, &filter, &mut ctx);
+            let expected = if row.get("error").is_some() {
+                Err(expected_failure(row))
+            } else {
+                Ok(to_bson(&row["cast"])?)
+            };
+            let mut inputs = HashSet::new();
+            collect_ids(&Bson::Document(filter.clone()), &mut inputs);
+            let normalise = |value: &Bson| -> Result<Bson> {
+                Normaliser {
+                    inputs: inputs.clone(),
+                    generated: HashMap::new(),
+                    window: (i64::MAX, i64::MAX),
+                    now: 0,
+                }
+                .walk(value)
+            };
+            match (outcome, expected) {
+                (Ok(cast), Ok(expected)) => {
+                    let (cast, expected) =
+                        (normalise(&Bson::Document(cast))?, normalise(&expected)?);
+                    if !same(&cast, &expected) {
+                        problems.push(format!(
+                            "{name}\n  rust:     {}\n  mongoose: {}",
+                            show(&cast),
+                            show(&expected)
+                        ));
+                    }
+                }
+                (Err(error), Err(expected)) => {
+                    let found = prepare_failure(&anyhow::Error::new(error.clone()));
+                    if found != expected {
+                        problems.push(format!(
+                            "{name}: failed with {error} ({found:?}), mongoose {expected:?}"
+                        ));
+                    }
+                }
+                (Ok(cast), Err(expected)) => problems.push(format!(
+                    "{name}: cast to {}, mongoose failed with {expected:?}",
+                    show(&Bson::Document(cast))
+                )),
+                (Err(error), Ok(expected)) => problems.push(format!(
+                    "{name}: failed with {error}, mongoose sent {}",
+                    show(&expected)
+                )),
+            }
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "{} of {} filter casts differ:\n{}",
+        problems.len(),
+        rows.len() * NUMBER_MODES.len(),
+        problems.join("\n")
+    );
+    eprintln!(
+        "{} Mongoose filters compared in {} number modes: identical",
+        rows.len(),
+        NUMBER_MODES.len()
+    );
+    Ok(())
+}
+
+#[test]
+fn order_exemption_covers_only_the_copied_equality_fields() {
+    let keys = |value: &Bson| -> Vec<String> {
+        value
+            .as_document()
+            .map(|d| d.keys().cloned().collect())
+            .unwrap_or_default()
+    };
+    let upserts = [Upsert::new(
+        &doc! { "b": 1, "a": "x", "count": { "$gt": 1 }, "nested.c": true },
+    )];
+    // The copied run (a, b, nested) is put in a fixed order.
+    let inserted = Bson::Document(
+        doc! { "_id": 1, "nested": { "c": true }, "b": 1, "a": "x", "count": 2, "z": 0 },
+    );
+    assert_eq!(
+        keys(&canonical_upsert_fields(inserted, &upserts)),
+        ["_id", "a", "b", "nested", "count", "z"]
+    );
+    // An operator condition is not copied by the server, so it is not exempt.
+    let operator_first =
+        Bson::Document(doc! { "_id": 1, "count": 2, "b": 1, "a": "x", "nested": { "c": true } });
+    assert_eq!(
+        keys(&canonical_upsert_fields(operator_first, &upserts)),
+        ["_id", "count", "b", "a", "nested"]
+    );
+    // A document the upsert did not insert (other values) keeps its order.
+    let other = Bson::Document(doc! { "_id": 2, "b": 2, "a": "x", "nested": { "c": true } });
+    assert_eq!(
+        keys(&canonical_upsert_fields(other, &upserts)),
+        ["_id", "b", "a", "nested"]
+    );
+    // A run that is not exactly the copied fields is left alone.
+    let partial = Bson::Document(doc! { "_id": 1, "b": 1, "a": "x", "count": 2 });
+    assert_eq!(
+        keys(&canonical_upsert_fields(
+            partial,
+            &[Upsert::new(&doc! { "a": "x", "b": 1, "q": 3 })]
+        )),
+        ["_id", "b", "a", "count"]
+    );
 }

@@ -317,6 +317,14 @@ Notable specifics:
 
 ## Rules a Rust data layer must follow to stay compatible
 
+> **Superseded where they differ.** These rules were written from reading Mongoose's source. The
+> `dima_store::mongo` helpers were later derived from recordings of Mongoose itself (209 write cases and
+> 105 filters in `crates/store/tests/mongo_golden`), which corrected several of them: every update on a
+> timestamped schema carries `$setOnInsert.createdAt`; `create`, `insertMany` and bulk inserts treat
+> `updatedAt` and `__v` differently; immutable paths have their own rules; filters are cast (use
+> `prepare_filter` / `prepare_id_filter` instead of parsing ObjectIds by hand, rule 3). Where a rule
+> below and the helpers disagree, the helpers are right.
+
 Mongoose version in use: 8.24.3 with driver 6.21.0 (`dimabot/node_modules`). The connection is opened once in `dimabot/src/utils/databases/mongodb.database.ts:30` as `mongoose.connect(MONGO_URI, { monitorCommands: true })` with no global `mongoose.set(...)` and no plugins, so every Mongoose default applies (`autoIndex: true`, `autoCreate: true`, `strictQuery: false`, `setDefaultsOnInsert: true`, `bufferCommands: true`). Only `src/scripts/reconcile_stream_offline.script.ts:37-38` turns `autoIndex`/`autoCreate` off.
 
 ### Collection names and ids

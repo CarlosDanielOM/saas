@@ -7,7 +7,7 @@ use bson::{Bson, DateTime, Document, doc};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::number::JsNumber;
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     Returned, UpdateDoc, UpdateOptions, prepare_find_one_and_update, prepare_update,
 };
@@ -19,15 +19,15 @@ const RTL: &str = "مرحبا שלום";
 const NOW: i64 = 1_794_391_200_123;
 
 static ITEM: Schema = Schema::subdocument(&[
-    Field::value("label").trim(),
-    Field::value("n").default(D::Int(1)),
+    Field::string("label").trim(),
+    Field::number("n").default(D::Int(1)),
 ]);
 static S: Schema = Schema::new(&[
-    Field::value("name").trim(),
-    Field::value("count").default(D::Int(0)),
+    Field::string("name").trim(),
+    Field::number("count").default(D::Int(0)),
     Field::mixed("meta"),
-    Field::map("vars"),
-    Field::array("tags").trim(),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::array("tags", ValueType::String).trim(),
     Field::document_array("items", &ITEM),
 ])
 .timestamps(Timestamps::CAMEL);
@@ -72,10 +72,9 @@ fn unicode_keys_in_mixed_and_maps_are_kept_and_never_trimmed() -> Result<(), Pre
     set.insert(format!("vars.{key}"), format!(" {RTL} "));
     set.insert(RTL.to_string(), 1);
     let update = doc! { "$set": set };
-    let prepared = prepare_update(&S, &doc! {}, update, UpdateOptions::default(), &mut ctx)?
-        .ok_or(PrepareError::MissingId)?;
+    let prepared = prepare_update(&S, &doc! {}, update, UpdateOptions::default(), &mut ctx)?;
     assert_eq!(prepared.dropped_paths, vec![RTL.to_owned()]);
-    let UpdateDoc::Document(update) = prepared.update else {
+    let Some(UpdateDoc::Document(update)) = prepared.update else {
         return Err(PrepareError::MissingId);
     };
     let set = update
@@ -145,7 +144,8 @@ fn empty_objects_and_arrays() -> Result<(), PrepareError> {
         &mut ctx,
     )?;
     let set = prepared
-        .and_then(|p| p.update.as_document().cloned())
+        .update
+        .and_then(|u| u.as_document().cloned())
         .and_then(|u| u.get_document("$set").ok().cloned());
     assert_eq!(
         set.and_then(|s| s.get("meta").cloned()),
@@ -203,15 +203,15 @@ fn save_with_unicode_values_and_pushes() -> Result<(), PrepareError> {
         ),
         Change::set(format!("meta.{RTL}"), EMOJI),
     ];
-    let saved = prepare_save(&S, &loaded, &changes, &mut ctx)?.ok_or(PrepareError::MissingId)?;
+    let prepared = prepare_save(&S, &loaded, &changes, &mut ctx)?;
+    assert_eq!(prepared.filter, doc! { "_id": "id-👋" });
+    let saved = prepared.update.ok_or(PrepareError::MissingId)?;
     let set = saved
-        .update
         .get_document("$set")
         .map_err(|_| PrepareError::MissingId)?;
     assert_eq!(set.get_str("name").ok(), Some(COMBINING));
     assert_eq!(set.get_str(format!("meta.{RTL}")).ok(), Some(EMOJI));
     let push = saved
-        .update
         .get_document("$push")
         .map_err(|_| PrepareError::MissingId)?;
     assert_eq!(
@@ -227,13 +227,12 @@ fn save_with_unicode_values_and_pushes() -> Result<(), PrepareError> {
         .ok_or(PrepareError::MissingId)?;
     assert_eq!(item.get_str("label").ok(), Some(EMOJI));
     assert_eq!(item.get("n"), Some(&Bson::Int32(1)));
-    assert_eq!(saved.filter, doc! { "_id": "id-👋" });
     Ok(())
 }
 
 #[test]
 fn find_one_and_update_defaults() -> Result<(), PrepareError> {
-    static PLAIN: Schema = Schema::new(&[Field::value("_id"), Field::value("n")])
+    static PLAIN: Schema = Schema::new(&[Field::string("_id"), Field::number("n")])
         .declared_id()
         .no_version_key();
     let mut ctx = WriteContext::new(NOW);

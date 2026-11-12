@@ -149,6 +149,29 @@ const schemas = {
         list: [String],
     }, { minimize: false, timestamps: true, versionKey: false }),
 
+    // typed paths of every kind, immutable paths at every level (top, nested object, single
+    // nested sub-document, document array element).
+    typed: new Schema({
+        owner: Schema.Types.ObjectId,
+        label: { type: String, trim: true },
+        n: Number,
+        at: Date,
+        on: Boolean,
+        key: { type: String, immutable: true },
+        info: { since: Date, tag: { type: String, immutable: true } },
+        one: new Schema({ when: Date, k: { type: Number, default: 1 }, code: { type: String, immutable: true } }, { _id: false }),
+        entries: [new Schema({ who: Schema.Types.ObjectId, at: Date, n: Number, code: { type: String, immutable: true } })],
+        // Maps: of `_id: false` sub-documents (stream_operations_receipts.steps), of
+        // sub-documents with an auto `_id`, of strings (astvariables.variables), of numbers.
+        steps: { type: Map, of: new Schema({ status: String, reason: String, at: Date }, { _id: false }), default: {} },
+        marks: { type: Map, of: new Schema({ v: Number, d: { type: Number, default: 0 } }) },
+        vars: { type: Map, of: String },
+        counts: { type: Map, of: Number },
+        refs: [Schema.Types.ObjectId],
+        nums: [Number],
+        free: Schema.Types.Mixed,
+    }, { timestamps: true }),
+
     // no timestamps option, hand-written createdAt/updatedAt with Date.now defaults (admins, events).
     hand: new Schema({
         name: String,
@@ -160,6 +183,7 @@ const schemas = {
 
 const collections = {
     camel: 'golden_camels', snake: 'golden_snakes', plain: 'golden_plains', nomin: 'golden_nomins', hand: 'golden_hands',
+    typed: 'golden_typeds',
 };
 const models = {};
 
@@ -203,6 +227,18 @@ const snakeSeed = () => ({
 });
 const plainSeed = () => ({ _id: 'p1', channelID: 'c1', dueAt: 1700000000000, payload: { deep: [1, { two: 2 }] }, state: { seq: 4, ids: ['a'] }, expiresAt: T2, label: 'l' });
 const nominSeed = () => ({ _id: 'n1', config: { theme: {} }, extra: {}, meta: { a: 'x', b: {} }, list: [], createdAt: T1, updatedAt: T1 });
+const typedSeed = () => ({
+    _id: oid1, owner: OID(0x50), label: 'l', n: 1, at: T1, on: true, key: 'k1', info: { since: T1, tag: 't1' },
+    one: { when: T1, k: 2, code: 'c1' }, entries: [{ _id: sub1, who: OID(0x51), at: T1, n: 1, code: 'e1' }],
+    createdAt: T1, updatedAt: T1, __v: 0,
+});
+const typedMapSeed = () => ({
+    ...typedSeed(), _id: oid3,
+    steps: { k1: { status: 'completed', at: T1 }, 'clé 👋': { status: 'skipped', reason: 'r', at: T1 } },
+    marks: { m1: { v: 1, d: 0, _id: sub2 } }, vars: { a: 'x' }, counts: { c: 1 },
+});
+// Immutable paths that were never written.
+const typedSparseSeed = () => ({ _id: oid2, label: 's', entries: [{ _id: sub1, n: 1 }], createdAt: T1, updatedAt: T1, __v: 0 });
 const handSeed = () => ({ _id: oid1, name: 'h', enabled: true, createdAt: T1, updatedAt: T1, __v: 0 });
 
 // Text that must survive untouched: emoji, combining marks, right-to-left, zero-width joiner.
@@ -347,6 +383,25 @@ const cases = [
         { updateMany: { filter: { _id: 'pb2' }, update: { $set: { dueAt: 2 } }, upsert: true } },
     ] },
 
+    // ---- numbers: every JavaScript number is written by the Node BSON writer (int32 when integral
+    // and in range, double otherwise), whatever BSON type the Rust caller starts from.
+    { name: 'numbers_create_boundaries', schema: 'camel', op: 'create', doc: {
+        count: 2147483647, score: 2147483648, rank: -2147483649, nested: { b: Number.MAX_SAFE_INTEGER },
+        blob: { a: 2 ** 53, b: 2 ** 53 + 2, c: -0, d: 0.5, e: 1, f: -2147483648, g: 1e21, h: -(2 ** 53), arr: [1, 2.5, 2 ** 31, [0, -1]] },
+        items: [{ n: 2 ** 32 }], tags: ['1'],
+    } },
+    { name: 'numbers_update_boundaries', schema: 'camel', seed: [camelSeed()], op: 'updateOne', filter: { _id: oid1, count: 5 },
+        update: { $set: { score: 2 ** 53, 'nested.b': -0, blob: { x: 4294967296, y: [2147483648, -0.5] } }, $inc: { count: 2147483648 }, $max: { rank: 7 }, $mul: { 'items.0.n': 1.5 } } },
+    { name: 'numbers_upsert_filter', schema: 'plain', op: 'updateOne', filter: { _id: 'pn', dueAt: 1700000000000 }, update: { $set: { 'state.seq': 2147483648, payload: { n: 3, m: 2 ** 53 } } }, options: { upsert: true } },
+    { name: 'numbers_upsert_empty_update_filter', schema: 'plain', op: 'updateOne', filter: { _id: 'pq', dueAt: 2147483647, label: 'x' }, update: {}, options: { upsert: true } },
+    { name: 'numbers_find_one_and_update', schema: 'plain', seed: [plainSeed()], op: 'findOneAndUpdate', filter: { _id: 'p1', dueAt: 1700000000000 }, update: { $inc: { dueAt: 1, 'state.seq': -2147483649 } }, options: { new: true } },
+    { name: 'numbers_bulk', schema: 'plain', op: 'bulkWrite', ops: [
+        { updateOne: { filter: { _id: 'pk1', dueAt: 1 }, update: { $set: { 'state.seq': 2 ** 40 } }, upsert: true } },
+        { insertOne: { document: { _id: 'pk2', dueAt: 1700000000000, payload: [1, 1.5, -0] } } },
+    ] },
+    { name: 'numbers_insert_many', schema: 'plain', op: 'insertMany', docs: [{ _id: 'pm3', dueAt: 2147483648, state: { seq: 1 } }] },
+    { name: 'numbers_save', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'score', value: 2147483648 }, { set: 'blob', value: { n: 1, m: 2 ** 53 + 2, z: -0 } }, { push: 'items', values: [{ n: 4294967296 }] }] },
+
     // ---- save of a loaded document
     { name: 'save_no_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [] },
     { name: 'save_scalar', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'score', value: 7 }, { set: 'name', value: '  renamed ' }] },
@@ -376,6 +431,83 @@ const cases = [
     { name: 'save_hand_written_timestamps', schema: 'hand', seed: [handSeed()], op: 'save', id: oid1, changes: [{ set: 'name', value: 'x' }] },
     { name: 'save_push_then_set_element', schema: 'camel', seed: [camelSubdocSparseSeed()], op: 'save', id: oid3, changes: [{ push: 'items', values: [{ label: 'p' }] }, { set: 'items.0.label', value: 'q' }] },
     { name: 'save_set_default_path_to_default', schema: 'camel', seed: [camelSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'count', value: 0 }, { set: 'flag', value: null }] },
+    // ---- save of immutable paths: Mongoose keeps the stored value unless the (sub)document is new
+    { name: 'create_typed', schema: 'typed', op: 'create', doc: { label: ' t ', key: 'k', info: { tag: 'g', since: T1 }, one: { code: 'c' }, entries: [{ code: 'e', n: 1 }] } },
+    { name: 'save_immutable_top', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'key', value: 'changed' }, { set: 'label', value: 'x' }] },
+    { name: 'save_immutable_created_at', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'createdAt', value: T2 }] },
+    { name: 'save_immutable_created_at_with_change', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'createdAt', value: T2 }, { set: 'n', value: 2 }] },
+    { name: 'save_immutable_unset', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ unset: 'key' }, { unset: 'createdAt' }] },
+    { name: 'save_immutable_nested_path', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info.tag', value: 'x' }, { set: 'info.since', value: T2 }] },
+    { name: 'save_immutable_nested_object', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info', value: { since: T2, tag: 'x' } }] },
+    { name: 'save_immutable_nested_object_without_it', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'info', value: { since: T2 } }] },
+    { name: 'save_immutable_single_nested_path', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'one.code', value: 'x' }, { set: 'one.k', value: 3 }] },
+    { name: 'save_immutable_single_nested_whole', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'one', value: { code: 'x', when: T2 } }] },
+    { name: 'save_immutable_array_element', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries.0.code', value: 'x' }, { set: 'entries.0.n', value: 5 }] },
+    { name: 'save_immutable_pushed_element', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ push: 'entries', values: [{ code: 'p', n: 2 }] }, { set: 'entries.1.code', value: 'q' }] },
+    { name: 'save_immutable_replaced_array', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries', value: [{ code: 'r' }] }, { set: 'entries.0.code', value: 's' }] },
+    { name: 'save_immutable_never_set', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'key', value: 'k' }, { set: 'info.tag', value: 'x' }, { set: 'entries.0.code', value: 'y' }] },
+    { name: 'save_immutable_missing_single_nested', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one.code', value: 'z' }] },
+    { name: 'save_immutable_array_element_same', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'entries.0.code', value: 'e1' }] },
+    { name: 'save_immutable_push_only', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ push: 'entries', values: [{ code: 'p', n: 2 }] }] },
+    { name: 'save_missing_single_nested_path', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one.when', value: T2 }] },
+    { name: 'save_single_nested_whole_on_sparse', schema: 'typed', seed: [typedSparseSeed()], op: 'save', id: oid2, changes: [{ set: 'one', value: { code: 'x', when: T2 } }] },
+    { name: 'update_push_subdoc_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $push: { entries: { code: 'u', n: 3 } } } },
+    { name: 'update_set_subdoc_array_immutable', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { entries: [{ code: 'v' }], one: { code: 'w' }, 'entries.0.code': 'x' } } },
+    { name: 'save_immutable_same_value', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'key', value: 'k1' }] },
+
+    // ---- Maps: values cast to the map's type, keys validated (no '.', no leading '$')
+    { name: 'create_typed_maps', schema: 'typed', op: 'create', doc: { steps: { k1: { at: T1, status: 'completed', junk: 1 } }, marks: { m: { v: 1 } }, vars: { a: 'x', [TEXT]: TEXT }, counts: { c: 2 } } },
+    { name: 'create_typed_map_key_dot', schema: 'typed', op: 'create', doc: { vars: { 'a.b': 'x' } } },
+    { name: 'create_typed_map_key_dollar', schema: 'typed', op: 'create', doc: { vars: { $x: 'y' } } },
+    { name: 'create_typed_map_key_inner_dollar', schema: 'typed', op: 'create', doc: { vars: { 'a$': 'y', '': 'empty' } } },
+    { name: 'update_map_entry_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'steps.k2': { status: 'skipped', at: T2, junk: 1 }, 'marks.m2': { v: 2 } } } },
+    { name: 'update_map_entry_dotted', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'steps.k1.status': 'failed', 'steps.k1.junk': 1, 'vars.b': 'y', 'marks.m1.v': 5 } } },
+    { name: 'update_map_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { steps: { k: { status: 'completed', at: T1 } }, vars: { z: 'w' }, marks: { q: {} } } } },
+    { name: 'update_map_unset_entry', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $unset: { 'steps.k1': 1, 'vars.a': '' } } },
+    { name: 'update_map_key_dot_path', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'vars.a.b': 'x' } } },
+    { name: 'update_map_key_dot_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { vars: { 'a.b': 'x' } } } },
+    { name: 'update_map_key_dollar_path', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { 'vars.$x': 'y' } } },
+    { name: 'update_map_key_dollar_whole', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $set: { steps: { $k: { status: 'completed' } } } } },
+    { name: 'upsert_map_entry', schema: 'typed', op: 'updateOne', filter: { _id: oid9 }, update: { $setOnInsert: { key: 'c', at: T2 }, $set: { 'steps.s1': { status: 'completed', at: T1 } } }, options: { upsert: true } },
+    { name: 'upsert_map_entry_existing', schema: 'typed', seed: [typedMapSeed()], op: 'updateOne', filter: { _id: oid3 }, update: { $setOnInsert: { key: 'c' }, $set: { [`steps.${'clé 👋'}`]: { status: 'failed', reason: 'again', at: T2 } } }, options: { upsert: true } },
+    { name: 'save_map_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps.k3', value: { status: 'completed', at: T2, junk: 1 } }, { set: 'vars.z', value: 'w' }, { set: 'marks.m9', value: { v: 9 } }] },
+    { name: 'save_map_entry_field', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps.k1.reason', value: 'why' }, { set: 'marks.m1.v', value: 7 }] },
+    { name: 'save_map_whole', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'steps', value: { n: { status: 'skipped', at: T2 } } }, { set: 'vars', value: { q: 'r' } }] },
+    { name: 'save_map_unset_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ unset: 'steps.k1' }, { unset: 'vars.a' }] },
+    { name: 'save_map_same_entry', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars.a', value: 'x' }, { set: 'steps.k1', value: { status: 'completed', at: T1 } }] },
+    { name: 'save_map_key_dot', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars', value: { 'a.b': 'x' } }] },
+    { name: 'save_map_key_dollar', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars.$x', value: 'x' }] },
+    { name: 'save_map_on_doc_without_maps', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'vars.a', value: 'x' }] },
+
+    // ---- filters cast to the schema types inside write operations
+    { name: 'update_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1.toHexString(), owner: OID(0x50).toHexString(), n: '1', at: T1.toISOString(), on: 'true', label: ' l ' }, update: { $inc: { n: 1 } } },
+    { name: 'upsert_filter_cast_copied', schema: 'typed', op: 'updateOne', filter: { owner: OID(0x52).toHexString(), n: '5', at: T2.toISOString(), on: 'yes', label: '  pad ', 'info.since': T1.toISOString() }, update: { $set: { key: 'k' } }, options: { upsert: true } },
+    { name: 'upsert_unknown_filter_path', schema: 'typed', op: 'updateOne', filter: { zz: 1 }, update: { $set: { n: 1 } }, options: { upsert: true } },
+    { name: 'upsert_unknown_filter_path_in_or', schema: 'typed', op: 'updateOne', filter: { $or: [{ n: 1 }, { 'info.zz': 1 }] }, update: { $set: { n: 1 } }, options: { upsert: true } },
+    { name: 'update_unknown_filter_path_without_upsert', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { zz: 1, _id: oid1.toHexString() }, update: { $set: { n: 3 } } },
+    { name: 'update_filter_cast_error', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: 'not-an-id' }, update: { $set: { n: 3 } } },
+    { name: 'update_many_filter_in_cast', schema: 'typed', seed: [typedSeed(), typedSparseSeed()], op: 'updateMany', filter: { _id: { $in: [oid1.toHexString(), oid2] }, at: { $not: { $gt: T2.toISOString() } } }, update: { $set: { on: false } } },
+    { name: 'update_array_filters_cast', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'entries.$[e].n': 2, 'entries.$[f].at': T2 } }, options: { arrayFilters: [{ 'e.who': OID(0x51).toHexString() }, { 'f.at': { $lt: T2.toISOString() }, 'f.n': '1' }] } },
+    { name: 'update_array_filters_unknown', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'entries.$[e].n': 4 } }, options: { arrayFilters: [{ 'e.zz': '1' }, { 'g.n': '1' }] } },
+    { name: 'update_array_filters_values', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'nums.$[x]': 9 } }, options: { arrayFilters: [{ x: { $gte: '2' } }] } },
+    { name: 'find_one_and_update_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'findOneAndUpdate', filter: { _id: oid1.toHexString(), 'entries.who': OID(0x51).toHexString() }, update: { $set: { 'entries.$.n': 8 } }, options: { new: true } },
+    { name: 'find_by_id_and_update_invalid', schema: 'typed', seed: [typedSeed()], op: 'findByIdAndUpdate', id: 'zzzzzzzzzzzzzzzzzzzzzzzz', update: { $set: { n: 9 } } },
+    { name: 'bulk_write_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'bulkWrite', ops: [
+        { updateOne: { filter: { _id: oid1.toHexString() }, update: { $set: { n: 5 } } } },
+        { updateMany: { filter: { owner: OID(0x53).toHexString(), n: '7' }, update: { $set: { label: 'b' } }, upsert: true } },
+    ] },
+
+    // ---- save with compare-and-set predicates (`doc.$where`) and a document that went away
+    { name: 'save_where_match', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T1, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_where_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_where_overrides_version', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { __v: 2 }, changes: [{ set: 'tags', value: ['v'] }] },
+    { name: 'save_where_after_version', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { count: 5, updatedAt: T1 }, changes: [{ set: 'tags', value: ['w'] }] },
+    { name: 'save_where_null_matches_missing', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { blob: null, flag: null }, changes: [{ set: 'name', value: 'n' }] },
+    { name: 'save_where_no_change_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2 }, changes: [] },
+    { name: 'save_where_no_version_key', schema: 'plain', seed: [plainSeed()], op: 'save', id: 'p1', where: { dueAt: 1700000000000 }, changes: [{ set: 'label', value: 'x' }] },
+    { name: 'save_deleted_no_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [] },
+    { name: 'save_deleted_with_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [{ set: 'score', value: 2 }] },
+    { name: 'save_deleted_versioned_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, deleteBeforeSave: true, changes: [{ push: 'tags', values: ['p'] }] },
     { name: 'save_snake_push_account', schema: 'snake', seed: [snakeSeed()], op: 'save', id: oid1, changes: [{ push: 'accounts', values: [{ id: '9', type: 'kick' }] }] },
 ];
 
@@ -384,6 +516,8 @@ const cases = [
 const WRITE_COMMANDS = new Set(['insert', 'update', 'findAndModify', 'delete']);
 const ENVELOPE = new Set(['lsid', '$db', '$clusterTime', 'txnNumber', '$readPreference', 'writeConcern', 'startTransaction', 'autocommit', 'apiVersion', 'readConcern']);
 let capturing = null;
+// `find` commands of the filter cases (kept apart: the write cases record write commands only).
+let findCapture = null;
 
 const exact = (value) => BSON.deserialize(BSON.serialize({ v: value }), { promoteValues: false, promoteLongs: false, promoteBuffers: false }).v;
 
@@ -458,7 +592,11 @@ async function runCase(spec) {
             case 'save': {
                 capturing = null;
                 const doc = await Model.findById(a.id);
+                // Another writer removes the document between the read and the save.
+                if (a.deleteBeforeSave) await collection.deleteOne({ _id: doc._id });
                 capturing = commands;
+                // Compare-and-set predicates added to the save's filter (ai_personality.service.ts:414).
+                if (a.where) doc.$where = a.where;
                 for (const change of a.changes) {
                     if ('set' in change) doc.set(change.set, change.value);
                     else if ('unset' in change) doc.set(change.unset, undefined);
@@ -471,9 +609,11 @@ async function runCase(spec) {
             default: throw new Error(`unknown op ${spec.op}`);
         }
     } catch (caught) {
-        // A failing operation is recorded too: the Rust side must fail the same way.
-        if (!(caught instanceof mongoose.mongo.MongoServerError)) throw caught;
-        error = { code: caught.code };
+        // A failing operation is recorded too: the Rust side must fail the same way. Server
+        // errors by code; Mongoose's own errors (cast, strict mode, version, not found) by name.
+        if (caught instanceof mongoose.mongo.MongoServerError) error = { code: caught.code };
+        else if (caught instanceof mongoose.Error || caught?.name === 'MongooseError' || caught?.name === 'Error') error = { name: caught.name, message: caught.message };
+        else throw caught;
     } finally {
         capturing = null;
     }
@@ -494,6 +634,158 @@ async function runCase(spec) {
         stored: ejson(normalised.stored),
         ...(error ? { error } : {}),
     };
+}
+
+// ---------------------------------------------------------------- filter casting
+//
+// What `Model.find(filter)` sends after Mongoose casts the filter to the schema types (the `find`
+// command's `filter`), or the error it raises instead. All on the `typed` schema.
+
+const HEX = oid1.toHexString();
+const HEX2 = oid2.toHexString();
+const ISO = '2026-11-11T10:00:00.123Z';
+const F = (name, filter) => ({ name, schema: 'typed', filter });
+const filterCases = [
+    // ObjectId
+    F('id_string', { _id: HEX }),
+    F('id_upper_case', { owner: '0123456789ABCDEF01234567' }),
+    F('id_object_id', { _id: oid1 }),
+    F('id_invalid', { _id: 'nope' }),
+    F('id_twelve_chars', { _id: 'aaaaaaaaaaaa' }),
+    F('id_number', { _id: 5 }),
+    F('id_boolean', { owner: true }),
+    F('id_in', { _id: { $in: [HEX, oid2] } }),
+    F('id_in_invalid', { _id: { $in: [HEX, 'bad'] } }),
+    F('id_in_not_array', { _id: { $in: HEX } }),
+    F('id_nin_ne', { owner: { $nin: [HEX] }, _id: { $ne: HEX2 } }),
+    F('id_array_equality', { _id: [HEX, HEX2] }),
+    F('id_document_with_id', { owner: { _id: HEX } }),
+    F('id_null', { owner: null }),
+    F('id_comparisons', { _id: { $gt: HEX, $lte: HEX2 } }),
+    F('id_exists', { owner: { $exists: 'true' }, _id: { $exists: 1 } }),
+    F('id_exists_invalid', { owner: { $exists: 'maybe' } }),
+    F('id_eq', { owner: { $eq: HEX } }),
+    F('id_all', { owner: { $all: [HEX] } }),
+    F('id_unknown_operator', { owner: { $regex: 'a' } }),
+    // String
+    F('string_trim', { label: '  x ' }),
+    F('string_from_number', { label: 5, key: 1.5, 'info.tag': -0 }),
+    F('string_from_boolean', { label: true }),
+    F('string_from_object_id', { label: oid1 }),
+    F('string_from_object', { label: { a: 1 } }),
+    F('string_document_with_id', { label: { _id: 'x' } }),
+    F('string_in_trim', { label: { $in: [' a ', 7, null] } }),
+    F('string_regex', { label: { $regex: '^ a', $options: 'i' } }),
+    F('string_regex_literal', { label: /^x\s/i }),
+    F('string_comparisons', { label: { $gt: 5, $lte: ' z ' } }),
+    F('string_not_regex', { label: { $not: /x/ } }),
+    F('string_not_operators', { label: { $not: { $in: [' a ', 1] } } }),
+    F('string_unknown_operator', { label: { $foo: 1 } }),
+    F('string_text', { label: TEXT }),
+    // Number
+    F('number_from_strings', { n: '5', 'one.k': ' 7 ', 'entries.n': '0x10' }),
+    F('number_empty_string', { n: '' }),
+    F('number_invalid', { n: 'abc' }),
+    F('number_boolean', { n: true }),
+    F('number_date', { n: T1 }),
+    F('number_nan', { n: NaN }),
+    F('number_infinity', { n: 'Infinity' }),
+    F('number_operators', { n: { $gte: '1', $lt: '10.5', $ne: null } }),
+    F('number_in', { n: { $in: ['1', 2, '3e2', []] } }),
+    F('number_mod', { n: { $mod: ['4', 0] } }),
+    F('number_bits', { n: { $bitsAllSet: ['1', 2] } }),
+    F('number_object', { n: { a: 1 } }),
+    // Date
+    F('date_iso', { at: ISO }),
+    F('date_operators', { at: { $lt: '2026-11-11', $gte: ISO } }),
+    F('date_number', { at: 1700000000000, 'one.when': 1.7 }),
+    F('date_numeric_string', { at: '1700000000000' }),
+    F('date_small_numeric_string', { at: '2026' }),
+    F('date_invalid', { at: 'not a date' }),
+    F('date_empty', { at: '' }),
+    F('date_boolean', { at: true }),
+    F('date_out_of_range', { at: 8.64e15 + 1 }),
+    F('date_in', { at: { $in: [ISO, 0] } }),
+    F('date_http', { at: 'Sun, 06 Nov 1994 08:49:37 GMT' }),
+    // Boolean
+    F('boolean_strings', { on: 'true' }),
+    F('boolean_no', { on: 'no' }),
+    F('boolean_numbers', { on: 1, 'info.since': { $exists: 0 } }),
+    F('boolean_zero', { on: 0 }),
+    F('boolean_invalid', { on: 'maybe' }),
+    F('boolean_comparison', { on: { $gt: true } }),
+    F('boolean_in', { on: { $in: ['true', 0, 'yes'] } }),
+    // Logical operators
+    F('logical', { $or: [{ _id: HEX }, { n: '2' }], $and: [{ at: { $gt: ISO } }], $nor: [{ on: 'false' }] }),
+    F('logical_not_array', { $or: { n: 1 } }),
+    F('logical_empty_array', { $or: [], n: '1' }),
+    F('logical_empty_element', { $and: [{}, { n: '1' }] }),
+    F('logical_element_not_object', { $or: [1] }),
+    F('logical_unknown_paths', { $and: [{ zz: '1' }, { n: '1' }] }),
+    F('logical_nested', { $or: [{ $and: [{ n: '1' }, { on: 'no' }] }, { 'entries.who': HEX }] }),
+    // Nested objects, sub-documents, arrays
+    F('nested_dotted', { 'info.since': ISO }),
+    F('nested_whole', { info: { since: ISO } }),
+    F('nested_unknown', { 'info.zz': '1' }),
+    F('subdocument_dotted', { 'one.when': ISO, 'one.k': '3' }),
+    F('subdocument_whole', { one: { k: '2' } }),
+    F('subdocument_null', { one: null }),
+    F('document_array_dotted', { 'entries.who': HEX, 'entries.n': { $gt: '1' } }),
+    F('document_array_positional', { 'entries.0.at': ISO, 'entries.$.n': '2' }),
+    F('document_array_elem_match', { entries: { $elemMatch: { who: HEX, at: { $gte: ISO }, zz: '1' } } }),
+    F('document_array_elem_match_logical', { entries: { $elemMatch: { $or: [{ n: '1' }, { code: 5 }] } } }),
+    F('document_array_size', { entries: { $size: '0' } }),
+    F('document_array_unknown', { 'entries.zz': 1 }),
+    F('document_array_equality', { entries: { n: '1' } }),
+    F('document_array_exists', { entries: { $exists: true, $ne: [] } }),
+    F('value_array_element', { refs: HEX, nums: '3' }),
+    F('value_array_whole', { refs: [HEX], nums: ['1', 2] }),
+    F('value_array_all', { refs: { $all: [HEX, HEX2] } }),
+    F('value_array_in', { refs: { $in: [HEX] }, nums: { $nin: ['1', ['2']] } }),
+    F('value_array_elem_match', { nums: { $elemMatch: { $gt: '1', $lt: 5 } }, refs: { $elemMatch: { $eq: HEX } } }),
+    F('value_array_comparison', { nums: { $gt: '1' } }),
+    F('value_array_positional', { 'refs.0': HEX, 'nums.1': '2' }),
+    F('value_array_size', { nums: { $size: '1' } }),
+    // Maps
+    F('map_values', { 'vars.a': 5, 'counts.c': '3' }),
+    F('map_subdocuments', { 'steps.k1.at': ISO, 'steps.k1.status': 7 }),
+    F('map_deeper_than_value', { 'vars.a.b': 1 }),
+    F('map_whole', { vars: { a: 'x' } }),
+    // Unknown paths, Mixed, timestamps, special operators
+    F('unknown_paths', { zz: '1', 'free.x': '2', free: { y: '3' } }),
+    F('timestamps_and_version', { createdAt: ISO, __v: '0', updatedAt: { $gt: 0 } }),
+    F('where_and_comment', { $where: 'this.n > 1', $comment: 5 }),
+    F('expr', { $expr: { $lt: ['$n', '5'] } }),
+    F('exists_and_type', { at: { $exists: 0 }, n: { $type: 'number' }, on: { $type: [1, 'bool'] } }),
+    F('type_invalid', { n: { $type: true } }),
+    F('empty', {}),
+    F('regex_on_number', { n: /1/ }),
+];
+
+async function recordFilters() {
+    const rows = [];
+    for (const spec of filterCases) {
+        const sent = [];
+        let error = null;
+        // Recorded before Mongoose casts (and mutates) it. Not cloned through Extended JSON,
+        // which would turn `{$regex, $options}` into a regular expression.
+        const filter = ejson(spec.filter);
+        findCapture = sent;
+        try {
+            await models[spec.schema].find(spec.filter).lean();
+        } catch (caught) {
+            if (caught instanceof mongoose.mongo.MongoServerError) error = { code: caught.code };
+            else if (caught instanceof mongoose.Error || caught?.name === 'Error' || caught?.name === 'MongooseError') error = { name: caught.name, message: caught.message };
+            else throw caught;
+        } finally {
+            findCapture = null;
+        }
+        const row = { name: spec.name, schema: spec.schema, filter };
+        if (error) row.error = error;
+        else row.cast = ejson(sent[0].filter);
+        rows.push(row);
+    }
+    return rows;
 }
 
 // ---------------------------------------------------------------- ObjectId casting (rule 3)
@@ -750,6 +1042,7 @@ await mongoose.connect(uri, { monitorCommands: true, dbName, autoIndex: false })
 const client = mongoose.connection.getClient();
 client.on('commandStarted', (event) => {
     if (capturing && WRITE_COMMANDS.has(event.commandName)) capturing.push(strip(exact(event.command)));
+    if (findCapture && event.commandName === 'find') findCapture.push(strip(exact(event.command)));
 });
 for (const [name, schema] of Object.entries(schemas)) models[name] = mongoose.model(`Golden_${name}`, schema, collections[name]);
 
@@ -766,6 +1059,7 @@ try {
         generatedPrefix: GENERATED_PREFIX,
     };
     for (const spec of cases) output.cases.push(await runCase(spec));
+    output.filters = await recordFilters();
     output.objectIdCasts = await recordCasts();
     output.numbers = await recordNumbers();
     output.json = await recordJson();
@@ -780,4 +1074,4 @@ const lines = Object.entries(output).map(([key, value]) => {
     return ` ${JSON.stringify(key)}: ${body}`;
 });
 writeFileSync(join(here, 'golden.json'), `{\n${lines.join(',\n')}\n}\n`);
-console.log(`recorded ${output.cases.length} cases, ${output.cases.reduce((n, c) => n + c.commands.length, 0)} commands`);
+console.log(`recorded ${output.cases.length} cases, ${output.cases.reduce((n, c) => n + c.commands.length, 0)} commands, ${output.filters.length} filters`);

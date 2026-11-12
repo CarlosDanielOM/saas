@@ -21,14 +21,25 @@
 //!   sub-documents get their defaults and `_id`; an array pushed onto an array of values becomes
 //!   `$each`;
 //! - an operator left empty is removed; an update left empty is not sent at all
-//!   (`Ok(None)`), except an upsert with a filter, which becomes `{$setOnInsert: <filter>}`;
-//! - a pipeline update only gets a trailing `{$set: {<updatedAt>: now}}` stage.
+//!   (`update: None`), except an upsert with a filter, which becomes `{$setOnInsert: <filter>}`;
+//! - a pipeline update only gets a trailing `{$set: {<updatedAt>: now}}` stage;
+//! - every number in the filter, the update and the array filters is typed as the Node BSON
+//!   writer types a JavaScript number ([`crate::mongo::number::js_number`]), whatever BSON type
+//!   the caller used: an int64 `5` or a double `5.0` goes out as int32 `5`.
+//!
+//! The filter and the `arrayFilters` are cast to the schema types first, as Mongoose casts them
+//! ([`crate::mongo::filter`]): the prepared write carries them as they are sent, and a value
+//! that cannot be cast fails the whole write before anything is sent, as in the reference.
 //!
 //! Not covered: `overwrite`/`replaceOne` (no Mongoose call site), `timestamps: false` per query
-//! (none in the reference), dotted timestamp names, and casting of filter values (callers build
-//! filters with the right BSON types; see [`crate::mongo::id`]).
+//! (none in the reference), dotted timestamp names, and casting of the update's own values to
+//! the schema types (a Rust caller passes the right types; numbers are retyped as above).
 
-use crate::mongo::cast::{Caster, PrepareError, WriteContext, get_path, truthy};
+use crate::mongo::cast::{
+    Caster, PrepareError, WriteContext, check_document_depth, get_path, truthy,
+};
+use crate::mongo::filter::{FilterStyle, cast_array_filters, cast_write_filter};
+use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Leaf, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
 use mongodb::options::{ReturnDocument, UpdateModifications};
@@ -86,6 +97,15 @@ pub enum UpdateDoc {
 }
 
 impl UpdateDoc {
+    /// Every number typed as the Node BSON writer types a JavaScript number.
+    fn node_numbers(mut self) -> Self {
+        match &mut self {
+            Self::Document(document) => normalize_js_numbers(document),
+            Self::Pipeline(stages) => stages.iter_mut().for_each(normalize_js_numbers),
+        }
+        self
+    }
+
     /// The operator document, if this is one.
     pub fn as_document(&self) -> Option<&Document> {
         match self {
@@ -104,13 +124,16 @@ impl From<UpdateDoc> for UpdateModifications {
     }
 }
 
-/// The options that change the update document.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The options that change what is sent.
+#[derive(Clone, Debug, PartialEq)]
 pub struct UpdateOptions {
     /// `upsert: true`.
     pub upsert: bool,
     /// Mongoose's `setDefaultsOnInsert` (on unless a call turns it off).
     pub set_defaults_on_insert: bool,
+    /// `arrayFilters`, as the caller writes them; the prepared update carries them as they
+    /// are sent.
+    pub array_filters: Option<Vec<Document>>,
 }
 
 impl Default for UpdateOptions {
@@ -118,6 +141,7 @@ impl Default for UpdateOptions {
         Self {
             upsert: false,
             set_defaults_on_insert: true,
+            array_filters: None,
         }
     }
 }
@@ -130,53 +154,84 @@ impl UpdateOptions {
             ..Self::default()
         }
     }
+
+    /// The same options with `arrayFilters`.
+    pub fn array_filters(mut self, filters: Vec<Document>) -> Self {
+        self.array_filters = Some(filters);
+        self
+    }
 }
 
-/// A prepared update.
+/// A prepared update. Run it with [`crate::mongo::write::Writes`], which also enforces
+/// [`PreparedUpdate::dropped_paths`].
+#[must_use = "a prepared update does nothing until it is executed, and its dropped paths must be checked"]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedUpdate {
-    /// What to send.
-    pub update: UpdateDoc,
+    /// The filter to send (numbers typed as Node types them).
+    pub filter: Document,
+    /// What to send, or `None` when Mongoose sends nothing (the update is empty after casting;
+    /// the operation then reports nothing matched or modified).
+    pub update: Option<UpdateDoc>,
+    /// Pass to the driver's `upsert`.
+    pub upsert: bool,
+    /// The `arrayFilters` to send, when the caller gave some.
+    pub array_filters: Option<Vec<Document>>,
     /// Paths strict mode dropped (unknown to the schema). Empty when the caller's update only
     /// names schema paths, which is what a Rust caller should always do.
     pub dropped_paths: Vec<String>,
 }
 
-/// `Model.updateOne` / `Model.updateMany`. `Ok(None)` when Mongoose would send nothing (the
-/// update is empty after casting); the operation then reports nothing matched or modified.
+/// `Model.updateOne` / `Model.updateMany`. The result's `update` is `None` when Mongoose would
+/// send nothing (the update is empty after casting); its `dropped_paths` are always reported.
 pub fn prepare_update(
     schema: &Schema,
     filter: &Document,
     update: impl Into<Update>,
     options: UpdateOptions,
     ctx: &mut WriteContext,
-) -> Result<Option<PreparedUpdate>, PrepareError> {
+) -> Result<PreparedUpdate, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Query,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
+    let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
-            if stages.is_empty() {
-                return Ok(None);
-            }
-            UpdateDoc::Pipeline(stages)
+            (!stages.is_empty()).then_some(UpdateDoc::Pipeline(stages))
         }
         Update::Document(mut doc) => {
             decorate_version_key(schema, &mut doc, options.upsert);
             apply_timestamps(schema, &mut doc, caster.ctx.now());
             let mut cast = cast_update(schema, doc, options.upsert, filter, &[], &mut caster)?;
             if cast.is_empty() {
-                return Ok(None);
+                None
+            } else {
+                if options.upsert && options.set_defaults_on_insert {
+                    set_defaults_on_insert(schema, filter, &mut cast, &mut caster)?;
+                }
+                Some(UpdateDoc::Document(cast))
             }
-            if options.upsert && options.set_defaults_on_insert {
-                set_defaults_on_insert(schema, filter, &mut cast, &mut caster)?;
-            }
-            UpdateDoc::Document(cast)
         }
     };
-    Ok(Some(PreparedUpdate {
-        update: prepared,
+    Ok(PreparedUpdate {
+        filter: filter.clone(),
+        update: prepared.map(UpdateDoc::node_numbers),
+        upsert: options.upsert,
+        array_filters,
         dropped_paths: caster.dropped,
-    }))
+    })
 }
 
 /// Which document `findOneAndUpdate` returns. Mongoose's default is the document **before**
@@ -200,12 +255,17 @@ impl From<Returned> for ReturnDocument {
     }
 }
 
-/// A prepared `findOneAndUpdate`.
+/// A prepared `findOneAndUpdate`. Run it with [`crate::mongo::write::Writes`].
+#[must_use = "a prepared update does nothing until it is executed, and its dropped paths must be checked"]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedFindAndModify {
+    /// The filter to send.
+    pub filter: Document,
     /// What to send, or `None` when Mongoose runs a plain `findOne` instead (empty update
     /// without upsert).
     pub update: Option<UpdateDoc>,
+    /// The `arrayFilters` to send, when the caller gave some.
+    pub array_filters: Option<Vec<Document>>,
     /// Which document the call returns; pass [`PreparedFindAndModify::return_document`] to the
     /// driver (rule 29).
     pub returned: Returned,
@@ -231,8 +291,23 @@ pub fn prepare_find_one_and_update(
     returned: Returned,
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Query,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
+    let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
             (!stages.is_empty()).then_some(UpdateDoc::Pipeline(stages))
@@ -259,7 +334,9 @@ pub fn prepare_find_one_and_update(
         }
     };
     Ok(PreparedFindAndModify {
-        update: prepared,
+        filter: filter.clone(),
+        update: prepared.map(UpdateDoc::node_numbers),
+        array_filters,
         returned,
         upsert: options.upsert,
         dropped_paths: caster.dropped,
@@ -286,8 +363,23 @@ pub fn prepare_bulk_update(
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Bulk,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
+    let prepared = match update {
         Update::Pipeline(stages) => {
             UpdateDoc::Pipeline(timestamps_on_pipeline(schema, stages, caster.ctx.now()))
         }
@@ -320,9 +412,42 @@ pub fn prepare_bulk_update(
         }
     };
     Ok(PreparedUpdate {
-        update: prepared,
+        filter: filter.clone(),
+        update: Some(prepared.node_numbers()),
+        upsert: options.upsert,
+        array_filters,
         dropped_paths: caster.dropped,
     })
+}
+
+/// Bounds the nesting of everything the caller passed ([`crate::mongo::cast::MAX_DEPTH`]).
+fn check_inputs(
+    filter: &Document,
+    update: &Update,
+    options: &UpdateOptions,
+) -> Result<(), PrepareError> {
+    check_document_depth(filter)?;
+    match update {
+        Update::Document(doc) => check_document_depth(doc)?,
+        Update::Pipeline(stages) => stages.iter().try_for_each(check_document_depth)?,
+    }
+    options
+        .array_filters
+        .iter()
+        .flatten()
+        .try_for_each(check_document_depth)
+}
+
+fn node_array_filters(filters: Option<Vec<Document>>) -> Option<Vec<Document>> {
+    filters.map(|filters| filters.iter().map(node_filter).collect())
+}
+
+/// The filter with its numbers typed as Node sends them (an upsert copies its equality fields
+/// into the new document, so their types are stored).
+fn node_filter(filter: &Document) -> Document {
+    let mut filter = filter.clone();
+    normalize_js_numbers(&mut filter);
+    filter
 }
 
 /// `decorateUpdateWithVersionKey`: an upsert that does not set the version key gets
@@ -533,7 +658,7 @@ fn walk_update_path(
             let caster_type = target.filter(|t| {
                 matches!(
                     t.kind,
-                    TargetKind::Array
+                    TargetKind::Array(_)
                         | TargetKind::MixedArray
                         | TargetKind::DocumentArray(_)
                         | TargetKind::Subdocument(_)
@@ -613,7 +738,7 @@ fn walk_update_path(
             && key != "$each"
             && matches!(
                 target.kind,
-                TargetKind::Array | TargetKind::DocumentArray(_)
+                TargetKind::Array(_) | TargetKind::DocumentArray(_)
             );
         if wrap {
             let mut each = Document::new();
@@ -701,7 +826,7 @@ fn cast_update_value(
         },
         "$set" | "$setOnInsert" => caster.cast_value(target, value, path)?,
         _ => match (target.kind, value) {
-            (TargetKind::Value, Bson::String(text)) if target.trim => {
+            (TargetKind::Value(_), Bson::String(text)) if target.trim => {
                 Bson::String(dima_text::trim(&text).to_owned())
             }
             (_, other) => other,
@@ -791,18 +916,18 @@ fn path_exists_in_update(update: &Document, path: &str, pieces: &[&str]) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps};
+    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps, ValueType};
     use bson::doc;
 
     static SUB: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(D::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(D::Int(1)),
     ]);
     static S: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("key").immutable(),
-        Field::value("count").default(D::Int(0)),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::string("key").immutable(),
+        Field::number("count").default(D::Int(0)),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &SUB),
     ])
     .timestamps(Timestamps::CAMEL);
@@ -828,7 +953,7 @@ mod tests {
             "$set": { "updatedAt": now(), "count": 4, "name": "yo" },
             "$inc": { "count": 1 },
         };
-        assert_eq!(out.map(|p| p.update), Some(UpdateDoc::Document(expected)));
+        assert_eq!(out.update, Some(UpdateDoc::Document(expected)));
         Ok(())
     }
 
@@ -846,24 +971,22 @@ mod tests {
             "$setOnInsert": { "__v": 0, "createdAt": now(), "key": "k", "count": 0, "tags": [], "items": [] },
             "$set": { "updatedAt": now() },
         };
-        assert_eq!(out.map(|p| p.update), Some(UpdateDoc::Document(expected)));
+        assert_eq!(out.update, Some(UpdateDoc::Document(expected)));
         Ok(())
     }
 
     #[test]
     fn empty_update_without_timestamps_is_not_sent() -> Result<(), PrepareError> {
-        static PLAIN: Schema = Schema::new(&[Field::value("a")]).no_version_key();
+        static PLAIN: Schema = Schema::new(&[Field::string("a")]).no_version_key();
         let mut ctx = WriteContext::new(NOW);
-        assert_eq!(
-            prepare_update(
-                &PLAIN,
-                &doc! {},
-                doc! { "$set": {} },
-                UpdateOptions::default(),
-                &mut ctx
-            )?,
-            None
-        );
+        let empty = prepare_update(
+            &PLAIN,
+            &doc! {},
+            doc! { "$set": {} },
+            UpdateOptions::default(),
+            &mut ctx,
+        )?;
+        assert_eq!((empty.update, empty.dropped_paths), (None, Vec::new()));
         let unknown = prepare_update(
             &PLAIN,
             &doc! {},
@@ -871,10 +994,17 @@ mod tests {
             UpdateOptions::default(),
             &mut ctx,
         )?;
-        assert_eq!(
-            unknown.map(|p| p.dropped_paths),
-            Some(vec!["zz".to_owned()])
-        );
+        assert_eq!(unknown.dropped_paths, ["zz"]);
+        // Only unknown paths: nothing is sent, and the caller still learns what was dropped.
+        let only_unknown = prepare_update(
+            &PLAIN,
+            &doc! {},
+            doc! { "$set": { "zz": 1 }, "yy": 2, "$inc": { "xx": 1 } },
+            UpdateOptions::default(),
+            &mut ctx,
+        )?;
+        assert_eq!(only_unknown.update, None);
+        assert_eq!(only_unknown.dropped_paths, ["xx", "yy", "zz"]);
         Ok(())
     }
 
@@ -888,11 +1018,7 @@ mod tests {
             UpdateOptions::default(),
             &mut ctx,
         )?;
-        let Some(PreparedUpdate {
-            update: UpdateDoc::Document(update),
-            ..
-        }) = out
-        else {
+        let Some(UpdateDoc::Document(update)) = out.update else {
             panic!("expected an update");
         };
         let push = update

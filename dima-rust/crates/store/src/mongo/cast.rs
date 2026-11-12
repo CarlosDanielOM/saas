@@ -19,7 +19,7 @@
 //! (top level and single nested ones as their own paths; array elements only when the whole
 //! array is `$set`).
 
-use crate::mongo::schema::{Field, Kind, Leaf, Schema, Target, TargetKind};
+use crate::mongo::schema::{Field, Kind, Leaf, MapOf, Schema, Target, TargetKind};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document};
 
@@ -111,15 +111,98 @@ pub enum PrepareError {
         /// Why.
         reason: &'static str,
     },
+    /// A `Map` key Mongoose refuses: one that contains `.` or starts with `$` (checked where
+    /// Mongoose checks it: whole Map values in inserts, updates and saves, and keys a save sets;
+    /// a dotted update path such as `vars.$x` is sent as it is).
+    #[error("{path}: Mongoose maps do not support keys that {rule}, got \"{key}\"")]
+    InvalidMapKey {
+        /// The Map path.
+        path: String,
+        /// The key.
+        key: String,
+        /// `contain "."` or `start with "$"`.
+        rule: &'static str,
+    },
+    /// A filter value Mongoose cannot cast to its path's type (its `CastError`; the reference's
+    /// HTTP layer usually turns it into a 400 or a 500). `kind` is Mongoose's name for the cast
+    /// (`ObjectId`, `Number`, `date`, `string`, `Boolean`, `boolean` for `$exists`, `Array`,
+    /// `Object`). The value is not kept: it may be a secret.
+    #[error("Cast to {kind} failed at path \"{path}\"")]
+    Cast {
+        /// The cast.
+        kind: &'static str,
+        /// The path.
+        path: String,
+    },
+    /// A path the schema does not know in the filter of an upsert (Mongoose's
+    /// `StrictModeError`: it would be copied into the new document).
+    #[error("Path \"{path}\" is not in schema, strict mode is `true`, and upsert is `true`.")]
+    StrictFilter {
+        /// The path.
+        path: String,
+    },
+    /// A query operator Mongoose refuses for the path (its plain `Error`, such as `Can't use
+    /// $foo with String.`).
+    #[error("{message}")]
+    QueryOperator {
+        /// The operator.
+        operator: String,
+        /// Mongoose's message.
+        message: String,
+    },
     /// The loaded document of a save has no `_id`.
     #[error("the loaded document has no _id")]
     MissingId,
+    /// An input nests documents and arrays deeper than [`MAX_DEPTH`] levels (MongoDB stores at
+    /// most 100), or a schema refers to itself through defaults deeper than that.
+    #[error("nested deeper than {limit} levels")]
+    TooDeep {
+        /// The limit.
+        limit: usize,
+    },
+}
+
+/// The deepest nesting of documents and arrays the write helpers accept in any input (the
+/// top-level document is level 1). MongoDB refuses to store documents nested more than 100
+/// levels, so no valid write comes close; the limit bounds the helpers' recursion.
+pub const MAX_DEPTH: usize = 128;
+
+/// Fails when `value`, placed at nesting level `level` (a value directly in the top-level
+/// document is at level 2), nests documents and arrays deeper than [`MAX_DEPTH`]. Iterative, so
+/// the check itself cannot overflow the stack.
+pub(crate) fn check_depth_at(value: &Bson, level: usize) -> Result<(), PrepareError> {
+    depth_within(vec![(value, level)])
+}
+
+/// [`check_depth`] for a document (level 1).
+pub(crate) fn check_document_depth(doc: &Document) -> Result<(), PrepareError> {
+    depth_within(doc.values().map(|v| (v, 2)).collect())
+}
+
+fn depth_within(mut stack: Vec<(&Bson, usize)>) -> Result<(), PrepareError> {
+    while let Some((value, depth)) = stack.pop() {
+        let (Bson::Document(_) | Bson::Array(_)) = value else {
+            continue;
+        };
+        if depth > MAX_DEPTH {
+            return Err(PrepareError::TooDeep { limit: MAX_DEPTH });
+        }
+        match value {
+            Bson::Document(inner) => stack.extend(inner.values().map(|v| (v, depth + 1))),
+            Bson::Array(items) => stack.extend(items.iter().map(|v| (v, depth + 1))),
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Collects what strict mode dropped while casting.
 pub(crate) struct Caster<'c> {
     pub ctx: &'c mut WriteContext,
     pub dropped: Vec<String>,
+    /// How many documents deep the caster is building (bounds schemas that refer to themselves
+    /// through their defaults).
+    depth: usize,
 }
 
 impl<'c> Caster<'c> {
@@ -127,7 +210,22 @@ impl<'c> Caster<'c> {
         Self {
             ctx,
             dropped: Vec::new(),
+            depth: 0,
         }
+    }
+
+    /// Runs `build` one document level deeper, failing past [`MAX_DEPTH`].
+    fn deeper<T>(
+        &mut self,
+        build: impl FnOnce(&mut Self) -> Result<T, PrepareError>,
+    ) -> Result<T, PrepareError> {
+        if self.depth >= MAX_DEPTH {
+            return Err(PrepareError::TooDeep { limit: MAX_DEPTH });
+        }
+        self.depth += 1;
+        let out = build(self);
+        self.depth -= 1;
+        out
     }
 
     pub fn drop_path(&mut self, path: String) {
@@ -186,6 +284,15 @@ impl<'c> Caster<'c> {
     /// A new document built from `input` as Mongoose's `Document` constructor builds it (see
     /// the module notes). Unknown keys are dropped and recorded.
     pub fn construct(
+        &mut self,
+        schema: &Schema,
+        input: Option<&Document>,
+        prefix: &str,
+    ) -> Result<Document, PrepareError> {
+        self.deeper(|caster| caster.construct_here(schema, input, prefix))
+    }
+
+    fn construct_here(
         &mut self,
         schema: &Schema,
         input: Option<&Document>,
@@ -310,6 +417,15 @@ impl<'c> Caster<'c> {
         given: &Document,
         prefix: &str,
     ) -> Result<Document, PrepareError> {
+        self.deeper(|caster| caster.set_nested_here(fields, given, prefix))
+    }
+
+    fn set_nested_here(
+        &mut self,
+        fields: &'static [Field],
+        given: &Document,
+        prefix: &str,
+    ) -> Result<Document, PrepareError> {
         let mut out = Document::new();
         for key in keys_in_order(fields.iter().map(|f| f.name), given) {
             let Some(value) = given.get(&key) else {
@@ -338,6 +454,15 @@ impl<'c> Caster<'c> {
     /// `$applyDefaultsToNested`: every default under a given nested object, in path order,
     /// creating missing (or null) intermediate objects on the way.
     fn apply_defaults_to_nested(
+        &mut self,
+        nested: &mut Document,
+        fields: &'static [Field],
+        prefix: &str,
+    ) -> Result<(), PrepareError> {
+        self.deeper(|caster| caster.apply_defaults_to_nested_here(nested, fields, prefix))
+    }
+
+    fn apply_defaults_to_nested_here(
         &mut self,
         nested: &mut Document,
         fields: &'static [Field],
@@ -391,6 +516,14 @@ impl<'c> Caster<'c> {
         schema: &Schema,
         given: &Document,
     ) -> Result<(Document, Vec<String>), PrepareError> {
+        self.deeper(|caster| caster.init_subdocument_here(schema, given))
+    }
+
+    fn init_subdocument_here(
+        &mut self,
+        schema: &Schema,
+        given: &Document,
+    ) -> Result<(Document, Vec<String>), PrepareError> {
         let mut doc = skeleton(schema);
         merge_init(&mut doc, given);
         let mut added = Vec::new();
@@ -415,6 +548,14 @@ impl<'c> Caster<'c> {
     /// document and the default paths in the order Mongoose marks them (paths inside single
     /// nested sub-documents included).
     pub fn hydrate(
+        &mut self,
+        schema: &Schema,
+        stored: &Document,
+    ) -> Result<(Document, Vec<String>), PrepareError> {
+        self.deeper(|caster| caster.hydrate_here(schema, stored))
+    }
+
+    fn hydrate_here(
         &mut self,
         schema: &Schema,
         stored: &Document,
@@ -510,11 +651,14 @@ impl<'c> Caster<'c> {
     ) -> Result<Bson, PrepareError> {
         Ok(match (target.kind, value) {
             (_, Bson::Null) => Bson::Null,
-            (TargetKind::Value, Bson::String(text)) if target.trim => {
+            (TargetKind::Value(_), Bson::String(text)) if target.trim => {
                 Bson::String(dima_text::trim(&text).to_owned())
             }
             (TargetKind::Subdocument(schema), Bson::Document(given)) => {
-                Bson::Document(self.construct(schema, Some(&given), "")?)
+                Bson::Document(self.construct(schema, Some(&given), &format!("{path}."))?)
+            }
+            (TargetKind::Map(of), Bson::Document(given)) => {
+                Bson::Document(self.cast_map(of, given, path)?)
             }
             (TargetKind::Subdocument(_), _) => {
                 return Err(PrepareError::ObjectExpected {
@@ -534,17 +678,46 @@ impl<'c> Caster<'c> {
                     "",
                 )?)])
             }
-            (TargetKind::Array, Bson::Array(items)) => Bson::Array(
+            (TargetKind::Array(_), Bson::Array(items)) => Bson::Array(
                 items
                     .into_iter()
                     .map(|item| trim_if(item, target.trim))
                     .collect(),
             ),
-            (TargetKind::Array, other) if !matches!(other, Bson::Document(_)) => {
+            (TargetKind::Array(_), other) if !matches!(other, Bson::Document(_)) => {
                 Bson::Array(vec![trim_if(other, target.trim)])
             }
             (_, other) => other,
         })
+    }
+
+    /// A whole `Map` value: every key checked ([`check_map_key`]), every value cast to the
+    /// Map's kind, in the given order.
+    pub fn cast_map(
+        &mut self,
+        of: MapOf,
+        given: Document,
+        path: &str,
+    ) -> Result<Document, PrepareError> {
+        let mut out = Document::new();
+        for (key, value) in given {
+            check_map_key(path, &key)?;
+            let cast = match (of, value) {
+                (_, Bson::Undefined) => continue,
+                (MapOf::Subdocuments(schema), Bson::Document(inner)) => Bson::Document(
+                    self.construct(schema, Some(&inner), &format!("{path}.{key}."))?,
+                ),
+                (MapOf::Subdocuments(_), Bson::Null) => Bson::Null,
+                (MapOf::Subdocuments(_), _) => {
+                    return Err(PrepareError::ObjectExpected {
+                        path: format!("{path}.{key}"),
+                    });
+                }
+                (_, other) => other,
+            };
+            out.insert(key, cast);
+        }
+        Ok(out)
     }
 
     /// One element pushed onto an array path (`$push`, `$addToSet`, save `push`).
@@ -558,10 +731,26 @@ impl<'c> Caster<'c> {
             (TargetKind::DocumentArray(schema), Bson::Document(given)) => {
                 Bson::Document(self.construct(schema, Some(&given), "")?)
             }
-            (TargetKind::Array, other) => trim_if(other, target.trim),
+            (TargetKind::Array(_), other) => trim_if(other, target.trim),
             (_, other) => other,
         })
     }
+}
+
+/// Mongoose's Map key rule: no `.` anywhere, no `$` first.
+pub(crate) fn check_map_key(path: &str, key: &str) -> Result<(), PrepareError> {
+    let rule = if key.contains('.') {
+        "contain \".\""
+    } else if key.starts_with('$') {
+        "start with \"$\""
+    } else {
+        return Ok(());
+    };
+    Err(PrepareError::InvalidMapKey {
+        path: path.to_owned(),
+        key: key.to_owned(),
+        rule,
+    })
 }
 
 fn trim_if(value: Bson, trim: bool) -> Bson {
@@ -679,6 +868,21 @@ pub(crate) fn get_path<'a>(doc: &'a Document, path: &str) -> Option<&'a Bson> {
     Some(current)
 }
 
+/// [`get_path`], mutably.
+pub(crate) fn get_path_mut<'a>(doc: &'a mut Document, path: &str) -> Option<&'a mut Bson> {
+    let mut pieces = path.split('.');
+    let first = pieces.next()?;
+    let mut current = doc.get_mut(first)?;
+    for piece in pieces {
+        current = match current {
+            Bson::Document(inner) => inner.get_mut(piece)?,
+            Bson::Array(items) => items.get_mut(piece.parse::<usize>().ok()?)?,
+            _ => return None,
+        };
+    }
+    Some(current)
+}
+
 pub(crate) fn has_path(doc: &Document, path: &str) -> bool {
     get_path(doc, path).is_some()
 }
@@ -769,7 +973,7 @@ fn minimize_with_fields(fields: Option<&'static [Field]>, doc: &mut Document) {
     let keys: Vec<String> = doc.keys().cloned().collect();
     for key in keys {
         let field = fields.and_then(|fs| fs.iter().find(|f| f.name == key));
-        if field.is_some_and(|f| matches!(f.kind, Kind::Map)) {
+        if field.is_some_and(|f| matches!(f.kind, Kind::Map(_))) {
             continue;
         }
         let child_fields = field.and_then(|f| match f.kind {

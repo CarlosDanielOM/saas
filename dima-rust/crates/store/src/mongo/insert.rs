@@ -2,7 +2,7 @@
 //! `bulkWrite` `insertOne` (ledger `mongo.md`, rules 4, 5, 9, 12, 14, 16).
 //!
 //! The document is built as Mongoose's `Document` constructor builds it (see
-//! [`crate::mongo::cast`]): every default, sub-document `_id` only where the sub-schema has one,
+//! the crate's casting notes): every default, sub-document `_id` only where the sub-schema has one,
 //! `trim`, unknown keys dropped, keys in the order Mongoose would store them. Then, per style:
 //!
 //! | style | timestamps | version key | key position |
@@ -11,10 +11,14 @@
 //! | [`InsertStyle::InsertMany`] | each = now unless given | always `0` | `__v`, then timestamps |
 //! | [`InsertStyle::BulkInsertOne`] | each = now unless given | `0` unless given | timestamps, then `__v` |
 //!
-//! `minimize` removes empty objects (not arrays, not Maps, and not an object inside an array,
+//! Every number is typed as the Node BSON writer types a JavaScript number, whatever BSON type
+//! the caller used. `minimize` removes empty objects (not arrays, not Maps, and not an object inside an array,
 //! which is kept even when emptied).
 
-use crate::mongo::cast::{Caster, PrepareError, WriteContext, minimize, truthy};
+use crate::mongo::cast::{
+    Caster, PrepareError, WriteContext, check_document_depth, minimize, truthy,
+};
+use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::Schema;
 use bson::{Bson, Document};
 
@@ -29,7 +33,9 @@ pub enum InsertStyle {
     BulkInsertOne,
 }
 
-/// A prepared insert.
+/// A prepared insert. Run it with [`crate::mongo::write::Writes`], which also enforces
+/// [`PreparedInsert::dropped_paths`].
+#[must_use = "a prepared insert does nothing until it is executed, and its dropped paths must be checked"]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedInsert {
     /// The document to insert.
@@ -45,6 +51,7 @@ pub fn prepare_insert(
     style: InsertStyle,
     ctx: &mut WriteContext,
 ) -> Result<PreparedInsert, PrepareError> {
+    check_document_depth(document)?;
     let mut caster = Caster::new(ctx);
     let mut doc = caster.construct(schema, Some(document), "")?;
     let now = Bson::DateTime(caster.ctx.now());
@@ -90,6 +97,7 @@ pub fn prepare_insert(
             minimize(schema, &mut doc);
         }
     }
+    normalize_js_numbers(&mut doc);
     Ok(PreparedInsert {
         document: doc,
         dropped_paths: caster.dropped,
@@ -99,27 +107,27 @@ pub fn prepare_insert(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps};
+    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps, ValueType};
     use bson::{DateTime, doc};
 
     static SUB: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(D::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(D::Int(1)),
     ]);
     static S: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("count").default(D::Int(0)),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::number("count").default(D::Int(0)),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &SUB),
         Field::nested(
             "nested",
             &[
-                Field::value("a").default(D::Str("x")),
-                Field::nested("deep", &[Field::value("c").default(D::Bool(false))]),
+                Field::string("a").default(D::Str("x")),
+                Field::nested("deep", &[Field::boolean("c").default(D::Bool(false))]),
             ],
         ),
         Field::mixed("meta").default_fn(D::EmptyDocument),
-        Field::value("seenAt").default_fn(D::Now),
+        Field::date("seenAt").default_fn(D::Now),
     ])
     .timestamps(Timestamps::CAMEL);
 

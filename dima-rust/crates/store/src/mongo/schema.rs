@@ -3,7 +3,8 @@
 //!
 //! Declare one [`Schema`] per collection as a `static`, listing the fields **in the order the
 //! TypeScript schema declares them** (the order decides where defaults land in a new document).
-//! Only what changes the bytes Mongoose sends is described: field shape, defaults, `trim`,
+//! Only what changes the bytes Mongoose sends is described: field shape and value type (the
+//! type decides how filter values are cast, see [`crate::mongo::filter`]), defaults, `trim`,
 //! `immutable`, `_id`, timestamps, version key and `minimize`. Validators, enums, `required`
 //! and indexes are the model's business. The production schemas use no other setters
 //! (`lowercase`, custom `set:`) and no sub-schema timestamps; those are not supported.
@@ -12,14 +13,14 @@
 //! use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
 //!
 //! static ACCOUNT: Schema = Schema::subdocument(&[
-//!     Field::value("type").default(D::Str("twitch")),
-//!     Field::value("id").default(D::Null),
+//!     Field::string("type").default(D::Str("twitch")),
+//!     Field::string("id").default(D::Null),
 //! ]);
 //! static USERS: Schema = Schema::new(&[
-//!     Field::value("name").trim(),
-//!     Field::value("plan_tier").default(D::Str("free")),
+//!     Field::string("name").trim(),
+//!     Field::string("plan_tier").default(D::Str("free")),
 //!     Field::document_array("accounts", &ACCOUNT),
-//!     Field::value("lastSeen").default_fn(D::Now),
+//!     Field::date("lastSeen").default_fn(D::Now),
 //! ])
 //! .timestamps(Timestamps::SNAKE);
 //! ```
@@ -225,9 +226,35 @@ impl Field {
         }
     }
 
-    /// A single value: String, Number, Boolean, Date, ObjectId.
-    pub const fn value(name: &'static str) -> Self {
-        Self::with_kind(name, Kind::Value)
+    /// A single value of type `ty`. The type decides how filter values are cast
+    /// ([`crate::mongo::filter`]); the shorthands below say the same thing.
+    pub const fn value(name: &'static str, ty: ValueType) -> Self {
+        Self::with_kind(name, Kind::Value(ty))
+    }
+
+    /// `String`.
+    pub const fn string(name: &'static str) -> Self {
+        Self::value(name, ValueType::String)
+    }
+
+    /// `Number`.
+    pub const fn number(name: &'static str) -> Self {
+        Self::value(name, ValueType::Number)
+    }
+
+    /// `Date`.
+    pub const fn date(name: &'static str) -> Self {
+        Self::value(name, ValueType::Date)
+    }
+
+    /// `Boolean`.
+    pub const fn boolean(name: &'static str) -> Self {
+        Self::value(name, ValueType::Boolean)
+    }
+
+    /// `Schema.Types.ObjectId`.
+    pub const fn object_id(name: &'static str) -> Self {
+        Self::value(name, ValueType::ObjectId)
     }
 
     /// `Schema.Types.Mixed`: anything, stored as given.
@@ -240,9 +267,9 @@ impl Field {
         Self::with_kind(name, Kind::Nested(fields))
     }
 
-    /// An array of values (`[String]`), with Mongoose's implicit `[]` default.
-    pub const fn array(name: &'static str) -> Self {
-        Self::with_kind(name, Kind::Array).default(DefaultValue::EmptyArray)
+    /// An array of values of type `ty` (`[String]`), with Mongoose's implicit `[]` default.
+    pub const fn array(name: &'static str, ty: ValueType) -> Self {
+        Self::with_kind(name, Kind::Array(ty)).default(DefaultValue::EmptyArray)
     }
 
     /// An array of anything (`{ type: Array }`, `[Mixed]`), with the implicit `[]` default.
@@ -260,9 +287,11 @@ impl Field {
         Self::with_kind(name, Kind::Subdocument(schema))
     }
 
-    /// A `Map` of values (`{ type: Map, of: String }`).
-    pub const fn map(name: &'static str) -> Self {
-        Self::with_kind(name, Kind::Map)
+    /// A `Map` (`{ type: Map, of: String }`, `{ type: Map, of: SubSchema }`): a document whose
+    /// keys the caller chooses, each value of the kind `of` says. Keys may not contain `.` or
+    /// start with `$` ([`crate::mongo::PrepareError::InvalidMapKey`]).
+    pub const fn map(name: &'static str, of: MapOf) -> Self {
+        Self::with_kind(name, Kind::Map(of))
     }
 
     /// A literal default (`default: 'x'`, `default: null`, `default: []`).
@@ -317,17 +346,32 @@ impl Field {
     }
 }
 
+/// The type of a single value path (Mongoose's schema type).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValueType {
+    /// `String`.
+    String,
+    /// `Number`.
+    Number,
+    /// `Date`.
+    Date,
+    /// `Boolean`.
+    Boolean,
+    /// `Schema.Types.ObjectId`.
+    ObjectId,
+}
+
 /// A field's shape.
 #[derive(Clone, Copy, Debug)]
 pub enum Kind {
     /// A single value.
-    Value,
+    Value(ValueType),
     /// `Mixed`: no casting below it.
     Mixed,
     /// A plain nested object.
     Nested(&'static [Field]),
     /// An array of values.
-    Array,
+    Array(ValueType),
     /// An array of `Mixed` values (an array pushed onto it is one element, not `$each`).
     MixedArray,
     /// An array of sub-documents.
@@ -335,7 +379,19 @@ pub enum Kind {
     /// A single nested sub-document.
     Subdocument(&'static Schema),
     /// A `Map` (stored as a document; never minimized).
-    Map,
+    Map(MapOf),
+}
+
+/// What the values of a `Map` are.
+#[derive(Clone, Copy, Debug)]
+pub enum MapOf {
+    /// Single values of one type (`of: String`, `of: Number`).
+    Values(ValueType),
+    /// Anything (`of: Mixed`, or no `of`).
+    Mixed,
+    /// Sub-documents (`of: new Schema({...})`): each value is built like a sub-document, with
+    /// its defaults, its `_id` unless the sub-schema has `{ _id: false }`, unknown keys dropped.
+    Subdocuments(&'static Schema),
 }
 
 /// A default and whether it is a function in the TypeScript schema.
@@ -414,13 +470,13 @@ pub(crate) struct Target {
 pub(crate) enum TargetKind {
     /// A single value (also one element of an array of values, a map value, `_id`, the
     /// timestamps and the version key).
-    Value,
+    Value(ValueType),
     /// Mixed, or anything below it: no casting.
     Free,
     /// A plain nested object.
     Nested(&'static [Field]),
     /// An array of values.
-    Array,
+    Array(ValueType),
     /// An array of Mixed values.
     MixedArray,
     /// An array of sub-documents.
@@ -428,26 +484,31 @@ pub(crate) enum TargetKind {
     /// A single nested sub-document, or one element of a document array.
     Subdocument(&'static Schema),
     /// A Map.
-    Map,
+    Map(MapOf),
 }
 
 impl Target {
     pub(crate) fn of_field(field: &Field) -> Self {
         let kind = match field.kind {
-            Kind::Value => TargetKind::Value,
+            Kind::Value(ty) => TargetKind::Value(ty),
             Kind::Mixed => TargetKind::Free,
             Kind::Nested(fields) => TargetKind::Nested(fields),
-            Kind::Array => TargetKind::Array,
+            Kind::Array(ty) => TargetKind::Array(ty),
             Kind::MixedArray => TargetKind::MixedArray,
             Kind::DocumentArray(schema) => TargetKind::DocumentArray(schema),
             Kind::Subdocument(schema) => TargetKind::Subdocument(schema),
-            Kind::Map => TargetKind::Map,
+            Kind::Map(of) => TargetKind::Map(of),
         };
         Self {
             kind,
             trim: field.trim,
             immutable: field.immutable,
         }
+    }
+
+    /// A target of `kind` with no setters.
+    pub(crate) fn of_kind(kind: TargetKind) -> Self {
+        Self::plain(kind)
     }
 
     fn plain(kind: TargetKind) -> Self {
@@ -481,15 +542,18 @@ fn resolve_in_schema(schema: &Schema, segments: &[&str]) -> Option<Target> {
     if !rest.is_empty() {
         return None;
     }
-    let special = (*first == "_id" && schema.has_auto_id())
-        || schema.updated_at() == Some(*first)
-        || schema.version_key == Some(*first);
-    if special {
-        return Some(Target::plain(TargetKind::Value));
+    if *first == "_id" && schema.has_auto_id() {
+        return Some(Target::plain(TargetKind::Value(ValueType::ObjectId)));
+    }
+    if schema.updated_at() == Some(*first) {
+        return Some(Target::plain(TargetKind::Value(ValueType::Date)));
+    }
+    if schema.version_key == Some(*first) {
+        return Some(Target::plain(TargetKind::Value(ValueType::Number)));
     }
     if schema.created_at() == Some(*first) {
         return Some(Target {
-            kind: TargetKind::Value,
+            kind: TargetKind::Value(ValueType::Date),
             trim: false,
             immutable: true,
         });
@@ -508,7 +572,7 @@ fn resolve_field(field: &'static Field, rest: &[&str]) -> Option<Target> {
         return Some(Target::of_field(field));
     }
     match field.kind {
-        Kind::Value => None,
+        Kind::Value(_) => None,
         Kind::Mixed => Some(Target::plain(TargetKind::Free)),
         Kind::Nested(children) => resolve_in_fields(children, rest),
         Kind::Subdocument(schema) => resolve_in_schema(schema, rest),
@@ -519,17 +583,23 @@ fn resolve_field(field: &'static Field, rest: &[&str]) -> Option<Target> {
             Some((segment, deeper)) if is_position(segment) => resolve_in_schema(schema, deeper),
             _ => resolve_in_schema(schema, rest),
         },
-        Kind::Array => match rest {
+        Kind::Array(ty) => match rest {
             [segment] if is_position(segment) => Some(Target {
-                kind: TargetKind::Value,
+                kind: TargetKind::Value(ty),
                 trim: field.trim,
                 immutable: false,
             }),
             _ => None,
         },
         Kind::MixedArray => Some(Target::plain(TargetKind::Free)),
-        Kind::Map => match rest {
-            [_] => Some(Target::plain(TargetKind::Value)),
+        // `map.<key>` is one value; below it, a sub-document's paths, or anything (Mongoose
+        // sends `vars.a.b` as it is for a map of strings).
+        Kind::Map(of) => match (of, rest) {
+            (MapOf::Values(ty), [_]) => Some(Target::plain(TargetKind::Value(ty))),
+            (MapOf::Subdocuments(schema), [_]) => {
+                Some(Target::plain(TargetKind::Subdocument(schema)))
+            }
+            (MapOf::Subdocuments(schema), [_, deeper @ ..]) => resolve_in_schema(schema, deeper),
             _ => Some(Target::plain(TargetKind::Free)),
         },
     }
@@ -540,34 +610,32 @@ mod tests {
     use super::*;
 
     static ITEM: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(DefaultValue::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(DefaultValue::Int(1)),
     ]);
     static TEST: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("key").immutable(),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::string("key").immutable(),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &ITEM),
         Field::nested(
             "nested",
             &[
-                Field::value("a"),
-                Field::nested("deep", &[Field::value("c")]),
+                Field::string("a"),
+                Field::nested("deep", &[Field::boolean("c")]),
             ],
         ),
         Field::subdocument("opts", &ITEM),
         Field::mixed("meta"),
-        Field::map("vars"),
+        Field::map("vars", MapOf::Values(ValueType::String)),
     ])
     .timestamps(Timestamps::CAMEL);
 
     fn kind(path: &str) -> Option<String> {
         resolve(&TEST, path).map(|t| {
-            format!("{:?}/{}/{}", t.kind, t.trim, t.immutable)
-                .split('(')
-                .next()
-                .map(str::to_owned)
-                .unwrap_or_default()
+            let debug = format!("{:?}", t.kind);
+            let name = debug.split('(').next().unwrap_or_default().to_owned();
+            format!("{name}/{}/{}", t.trim, t.immutable)
         })
     }
 
@@ -579,7 +647,7 @@ mod tests {
         assert!(resolve(&TEST, "updatedAt").is_some_and(|t| !t.immutable));
         assert!(resolve(&TEST, "__v").is_some());
         assert!(resolve(&TEST, "_id").is_some());
-        assert_eq!(kind("nested").as_deref(), Some("Nested"));
+        assert_eq!(kind("nested").as_deref(), Some("Nested/false/false"));
         assert_eq!(kind("nested.deep.c").as_deref(), Some("Value/false/false"));
         assert!(resolve(&TEST, "nested.zz").is_none());
         assert!(resolve(&TEST, "name.x").is_none());
@@ -587,7 +655,7 @@ mod tests {
         assert!(resolve(&TEST, "items.$[el].label").is_some_and(|t| t.trim));
         assert!(resolve(&TEST, "items.$.label").is_some_and(|t| t.trim));
         assert!(resolve(&TEST, "items.label").is_some_and(|t| t.trim));
-        assert_eq!(kind("items.0").as_deref(), Some("Subdocument"));
+        assert_eq!(kind("items.0").as_deref(), Some("Subdocument/false/false"));
         assert_eq!(kind("opts.n").as_deref(), Some("Value/false/false"));
         assert_eq!(kind("tags.0").as_deref(), Some("Value/false/false"));
         assert!(resolve(&TEST, "tags.0.x").is_none());
@@ -643,7 +711,7 @@ mod tests {
 
     #[test]
     fn default_timing() {
-        assert!(!Field::array("a").default_after_setters());
+        assert!(!Field::array("a", ValueType::String).default_after_setters());
         assert!(Field::document_array("d", &ITEM).default_after_setters());
         assert!(
             Field::mixed("m")
@@ -656,17 +724,17 @@ mod tests {
                 .default_after_setters()
         );
         assert!(
-            Field::value("t")
+            Field::date("t")
                 .default(DefaultValue::Now)
                 .default_after_setters()
         );
         assert!(
-            !Field::value("s")
+            !Field::string("s")
                 .default(DefaultValue::Str("x"))
                 .default_after_setters()
         );
         assert!(
-            Field::value("s")
+            Field::string("s")
                 .default_fn(DefaultValue::DateMs(0))
                 .default_after_setters()
         );
