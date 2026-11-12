@@ -1,0 +1,32 @@
+{
+  "elapsed_seconds": 300.00886965200334,
+  "clock_ticks_per_second": 100,
+  "results": {
+    "node": {
+      "startup": {
+        "rss_kib": 65580,
+        "cpu_seconds": 0.13
+      },
+      "startup_seconds": 0.19897690499783494,
+      "after_300s": {
+        "rss_kib": 15416,
+        "cpu_seconds": 0.24
+      },
+      "sampling_cpu_seconds": 0.10999999999999999
+    },
+    "rust": {
+      "startup": {
+        "rss_kib": 6964,
+        "cpu_seconds": 0.0
+      },
+      "startup_seconds": 0.011928549996810034,
+      "after_300s": {
+        "rss_kib": 4812,
+        "cpu_seconds": 0.06
+      },
+      "sampling_cpu_seconds": 0.06
+    }
+  },
+  "release_binary_sha256": "83cc29f7479f607cf7705390141c80c854fa5d4c86eeac95a32cecf6c4c7e120",
+  "note": "Measured release before final equivalent filesystem projection/configuration refactor and header limit check. Socket-absent workload unaffected. RSS includes resident shared/file pages and is sensitive to laptop memory pressure."
+}

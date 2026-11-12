@@ -127,21 +127,18 @@ impl State {
         if let Ok(Ok(fs)) =
             tokio::task::spawn_blocking(move || nix::sys::statfs::statfs(&disk)).await
         {
-            for (k, v) in [
-                ("diskTotal", fs.blocks() as f64 * fs.block_size() as f64),
-                (
-                    "diskFree",
-                    fs.blocks_available() as f64 * fs.block_size() as f64,
-                ),
-                (
-                    "diskUsed",
-                    fs.blocks() as f64 * fs.block_size() as f64
-                        - fs.blocks_free() as f64 * fs.block_size() as f64,
-                ),
-                ("inodesTotal", fs.files() as f64),
-                ("inodesUsed", fs.files() as f64 - fs.files_free() as f64),
-            ] {
-                host[k] = json!(v);
+            let disk = p::filesystem(
+                fs.blocks() as f64,
+                fs.block_size() as f64,
+                fs.blocks_free() as f64,
+                fs.blocks_available() as f64,
+                fs.files() as f64,
+                fs.files_free() as f64,
+            );
+            if let Some(fields) = disk.as_object() {
+                for (k, v) in fields {
+                    host[k] = v.clone();
+                }
             }
         }
         for (k, a, b) in [
@@ -175,7 +172,7 @@ impl State {
                     }
                     _ => format!("docker: {e}"),
                 };
-                errors.push(msg.chars().take(120).collect::<String>());
+                errors.push(dima_text::truncate_chars(&msg, 120).to_owned());
             }
             Ok(list) => {
                 reachable = true;
@@ -285,7 +282,7 @@ impl State {
         drop(latest);
         if reachable {
             let df = self.df.lock().await;
-            let due = df.value.is_null() || at - df.at > self.config.df_ms as i64;
+            let due = df.value.is_null() || (at - df.at) as f64 > self.config.df_ms;
             drop(df);
             if due
                 && let Ok(mut task) = self.df_task.lock()
@@ -314,11 +311,12 @@ async fn handle(req: &mut dima_web::Req<State>) -> dima_web::Response {
     } else {
         match req.original_url() {
             "/health" => {
-                let fresh = state.clock.now_ms()
+                let fresh = ((state.clock.now_ms()
                     - state
                         .last_attempt
-                        .load(std::sync::atomic::Ordering::Relaxed)
-                    < state.config.sample_ms as i64 * 4;
+                        .load(std::sync::atomic::Ordering::Relaxed))
+                    as f64)
+                    < state.config.sample_ms * 4.;
                 (
                     if fresh { 200 } else { 503 },
                     json!({"status":if fresh{"ok"}else{"stale"},"sampledAt":latest["at"],"dockerReachable":latest["docker"]["reachable"].as_bool().unwrap_or(false)}),

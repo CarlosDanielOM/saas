@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
     let token = shutdown.cancellation_token();
     let sampler = tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(
-            sampling.state().config.sample_ms,
+            sampling.state().config.sample_ms as u64,
         ));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         interval.tick().await;

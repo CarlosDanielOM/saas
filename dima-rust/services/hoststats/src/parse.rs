@@ -2,19 +2,7 @@
 use serde_json::{Value as V, json};
 use std::collections::HashSet;
 pub fn number(v: &V) -> f64 {
-    match v {
-        V::Null => 0.,
-        V::Bool(b) => {
-            if *b {
-                1.
-            } else {
-                0.
-            }
-        }
-        V::Number(n) => n.as_f64().unwrap_or(f64::NAN),
-        V::String(s) => dima_text::parse_number(s),
-        _ => dima_text::parse_number(&dima_text::string_of(v)),
-    }
+    dima_text::js_number(v)
 }
 pub fn n(v: Option<&V>) -> V {
     v.map(number)
@@ -218,7 +206,7 @@ pub fn counters(s: &V) -> V {
 }
 fn text(v: &V, max: usize) -> V {
     v.as_str()
-        .map(|s| json!(s.chars().take(max).collect::<String>()))
+        .map(|s| json!(dima_text::truncate_chars(s, max)))
         .unwrap_or(V::Null)
 }
 fn date(v: &V) -> V {
@@ -288,7 +276,7 @@ pub fn df(d: &V, at: i64) -> V {
             bv[id] = json!(pos(&v["UsageData"]["Size"]));
         }
     }
-    json!({"at":dima_text::to_iso_string(at),"imagesCount":images.len(),"imagesBytes":if pos(&d["LayersSize"])>0.{pos(&d["LayersSize"])}else{images.iter().map(|i|pos(&i["Size"])).sum::<f64>()},"imagesUnusedBytes":images.iter().filter(|i|!containers.iter().any(|c|c["ImageID"]==i["Id"])&&number(&i["Containers"]).partial_cmp(&0.)!=Some(std::cmp::Ordering::Greater)).map(|i|(number(&i["Size"])-pos(&i["SharedSize"])).max(0.)).sum::<f64>(),"buildCacheBytes":cache.iter().map(|c|pos(&c["Size"])).sum::<f64>(),"buildCacheReclaimable":cache.iter().filter(|c|c["InUse"]!=true&&c["Shared"]!=true).map(|c|pos(&c["Size"])).sum::<f64>(),"volumesCount":volumes.len(),"volumesBytes":volumes.iter().map(|v|pos(&v["UsageData"]["Size"])).sum::<f64>(),"containersBytes":containers.iter().map(|c|pos(&c["SizeRw"])).sum::<f64>(),"byImage":bi,"byContainer":bc,"byVolume":bv})
+    json!({"at":dima_text::to_iso_string(at),"imagesCount":images.len(),"imagesBytes":if pos(&d["LayersSize"])>0.{pos(&d["LayersSize"])}else{images.iter().map(|i|pos(&i["Size"])).sum::<f64>()},"imagesUnusedBytes":images.iter().filter(|i|!containers.iter().any(|c|c["ImageID"]==i["Id"])&&number(&i["Containers"]).partial_cmp(&0.)!=Some(std::cmp::Ordering::Greater)).map(|i|(number(&i["Size"])-pos(&i["SharedSize"])).max(0.)).sum::<f64>(),"buildCacheBytes":cache.iter().map(|c|pos(&c["Size"])).sum::<f64>(),"buildCacheReclaimable":cache.iter().filter(|c|!dima_text::js_truthy(&c["InUse"])&&!dima_text::js_truthy(&c["Shared"])).map(|c|pos(&c["Size"])).sum::<f64>(),"volumesCount":volumes.len(),"volumesBytes":volumes.iter().map(|v|pos(&v["UsageData"]["Size"])).sum::<f64>(),"containersBytes":containers.iter().map(|c|pos(&c["SizeRw"])).sum::<f64>(),"byImage":bi,"byContainer":bc,"byVolume":bv})
 }
 
 fn zero_nan(n: f64) -> f64 {
@@ -297,4 +285,10 @@ fn zero_nan(n: f64) -> f64 {
 
 fn nonnegative(n: f64) -> f64 {
     if n.is_nan() { n } else { n.max(0.) }
+}
+
+/// Filesystem snapshot projection; f64 arithmetic in the reference's evaluation order.
+pub fn filesystem(blocks: f64, bsize: f64, bfree: f64, bavail: f64, files: f64, ffree: f64) -> V {
+    let total = blocks * bsize;
+    json!({"diskTotal":total,"diskFree":bavail*bsize,"diskUsed":total-bfree*bsize,"inodesTotal":files,"inodesUsed":files-ffree})
 }

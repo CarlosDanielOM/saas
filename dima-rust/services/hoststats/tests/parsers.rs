@@ -2,10 +2,9 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 use dima_hoststats::parse as p;
 use serde_json::{Value as V, json};
-#[test]
-fn reference_four_parser_tests_same_fixtures() -> anyhow::Result<()> {
+fn vectors(range: std::ops::Range<usize>) -> anyhow::Result<()> {
     let vectors: V = serde_json::from_str(include_str!("vectors.json"))?;
-    for v in p::array(&vectors) {
+    for v in &p::array(&vectors)[range] {
         let a = &v["args"];
         let s = || a[0].as_str().unwrap();
         let got = match v["fn"].as_str().unwrap() {
@@ -54,4 +53,28 @@ fn coercion_resets_unicode_and_nonfinite() {
         0.,
     );
     assert_eq!(v["image"].as_str().unwrap().chars().count(), 200);
+}
+
+#[test]
+fn host_proc_parsers() -> anyhow::Result<()> {
+    vectors(0..9)
+}
+#[test]
+fn only_allowlisted_compose_projects_are_reported() -> anyhow::Result<()> {
+    vectors(9..10)
+}
+#[test]
+fn container_view_rates_limits_stopped_and_cache_excluded_memory() -> anyhow::Result<()> {
+    vectors(10..13)
+}
+#[test]
+fn df_summary_shared_layers_and_reclaimable_cache() -> anyhow::Result<()> {
+    vectors(13..14)
+}
+#[test]
+fn reference_filesystem_fixture() {
+    assert_eq!(
+        p::filesystem(100., 10., 40., 30., 10., 4.),
+        json!({"diskTotal":1000.,"diskFree":300.,"diskUsed":600.,"inodesTotal":10.,"inodesUsed":6.})
+    );
 }

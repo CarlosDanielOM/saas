@@ -26,6 +26,8 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
     let listener = tokio::net::UnixListener::bind(&socket)?;
     let present = Arc::new(AtomicBool::new(true));
     let version_calls = Arc::new(AtomicUsize::new(0));
+    let gone = Arc::new(AtomicBool::new(false));
+    let gi = gone.clone();
     let calls = Arc::new(std::sync::Mutex::new(Vec::new()));
     let (pr, vc, ca) = (present.clone(), version_calls.clone(), calls.clone());
     let server = tokio::spawn(async move {
@@ -36,6 +38,7 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
             let pr = pr.clone();
             let vc = vc.clone();
             let ca = ca.clone();
+            let gi = gi.clone();
             tokio::spawn(async move {
                 let mut buf = [0; 4096];
                 let n = stream.read(&mut buf).await.unwrap();
@@ -64,9 +67,14 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
                         json!({"cpu_stats":{"cpu_usage":{"total_usage":1}},"memory_stats":{"usage":10}})
                     }
                 };
+                let status = if gi.load(Ordering::Relaxed) && path.ends_with("/json") {
+                    404
+                } else {
+                    200
+                };
                 let body = value.to_string();
                 let out = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                    "HTTP/1.1 {status} Result\r\nContent-Length: {}\r\n\r\n{}",
                     body.len(),
                     body
                 );
@@ -80,6 +88,14 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
     config.socket = socket;
     let clock = Arc::new(ManualClock::new(1000));
     let app = build(config, clock.clone(), Arc::new(SystemRandom))?;
+    let empty = app
+        .handle(
+            http::Request::builder()
+                .uri("/v1/snapshot")
+                .body(dima_web::Body::empty())?,
+        )
+        .await;
+    assert_eq!(empty.status(), 503);
     app.state().sample().await;
     let first = app.state().latest.read().await.clone();
     assert_eq!(first["containers"].as_array().unwrap().len(), 1);
@@ -124,6 +140,15 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
         assert_eq!(response.headers()["cache-control"], "no-store");
         let _ = response.into_body().collect().await?;
     }
+    gone.store(true, Ordering::Relaxed);
+    clock.advance(15000);
+    app.state().sample().await;
+    assert_eq!(app.state().latest.read().await["containers"], json!([]));
+    assert_eq!(
+        app.state().latest.read().await["errors"],
+        json!(["docker: 1 container reads failed"])
+    );
+    gone.store(false, Ordering::Relaxed);
     present.store(false, Ordering::Relaxed);
     clock.advance(15000);
     app.state().sample().await;
@@ -141,6 +166,7 @@ async fn sampler_server_fake_docker_project_filter_disappearance_and_cache() -> 
         )
         .await;
     assert_eq!(response.status(), 503);
+    app.state().stop().await;
     server.abort();
     let _ = server.await;
     drop(app);
@@ -158,7 +184,7 @@ fn serialization_and_configuration() {
         "HOSTSTATS_DF_MS" => Some("0".into()),
         _ => None,
     });
-    assert_eq!(c.sample_ms, 15000);
-    assert_eq!(c.df_ms, 60000);
+    assert_eq!(c.sample_ms, 15000.);
+    assert_eq!(c.df_ms, 60000.);
     assert_eq!(parse::cpu("cpu  1 broken 3 4"), V::Null);
 }

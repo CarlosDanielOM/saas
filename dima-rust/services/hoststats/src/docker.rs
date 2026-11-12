@@ -70,6 +70,9 @@ impl Docker {
                 return Err(Error::TooLarge);
             }
         };
+        if header_end > 65536 {
+            return Err(Error::TooLarge);
+        }
         let headers = String::from_utf8_lossy(&raw[..header_end]);
         let status = headers
             .split_whitespace()
