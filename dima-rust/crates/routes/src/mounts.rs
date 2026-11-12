@@ -1,7 +1,8 @@
 //! The mount table: every `app.use` and `app.get` of the reference's `server/server.ts`, in its
 //! order, with the package that fills each router and the guards its routes mount (plan
-//! section 4). Written once by P4-SKEL; P4-API-APP owns it afterwards and fills the middleware
-//! and the four `GET` entries in [`build`]. A route package only fills its module's router.
+//! section 4). Written once by P4-SKEL; P4-API-APP owns it and filled the middleware and the
+//! four `GET` entries in [`build`]. A route package only fills its module's router; its guards
+//! are listed here, and `tests/app_mounts.rs` checks them against the inventory of routes.
 //!
 //! Order matters exactly as in Express: the Polar webhook comes before every body parser (it
 //! needs the raw body), the per-prefix JSON limits before the global one, the docs assistant and
@@ -24,8 +25,9 @@ pub enum Method {
 pub enum Middleware {
     /// `httpTelemetry`: `dima_telemetry`'s web observer and traced service.
     Telemetry,
-    /// `express.json(…)`: `dima_web::body::json` with this limit (`None`: the default 100 kB).
-    Json(Option<&'static str>),
+    /// `express.json(…)`: `dima_web::body::json` with this limit in bytes (`None`: the default
+    /// 100 KiB).
+    Json(Option<usize>),
     /// `express.urlencoded({ extended: true })`.
     Urlencoded,
     /// `express.static(routes/public)`: `dima_web::serve_static`.
@@ -151,9 +153,9 @@ impl RouterFile {
         match self {
             R::PolarWebhook => crate::billing::polar_webhook_router(),
             R::DocsAssistant => crate::agent::docs_assistant_router(),
-            R::OAuth => crate::app::oauth_router(),
-            R::OAuthApi => crate::app::oauth_api_router(),
-            R::Observability => crate::app::observability_router(),
+            R::OAuth => crate::oauth::oauth_router(),
+            R::OAuthApi => crate::oauth::oauth_api_router(),
+            R::Observability => crate::observability::router(),
             R::File => crate::media::file_router(),
             R::Media => crate::media::media_router(),
             R::Clip => crate::media::clip_router(),
@@ -243,6 +245,9 @@ pub enum Guard {
     ServiceToken(&'static str),
     /// The router's own access resolution (the site agent's `resolveAccess`, rate limit first).
     OwnAccess,
+    /// No guard here: the service the router forwards to checks the caller's forwarded
+    /// credentials (the analytics proxy).
+    Upstream,
     /// A guard waiting for the owner's decision (the plan's question in the text); until then
     /// the routes keep the reference's behaviour.
     Undecided(&'static str),
@@ -333,13 +338,13 @@ pub static MOUNTS: [Mount; 54] = [
         60,
         Some("/overlay-studio"),
         "express.json({ limit: '5mb' })",
-        Middleware::Json(Some("5mb")),
+        Middleware::Json(Some(dima_web::body::mb(5))),
     ),
     use_mw(
         62,
         Some("/commands"),
         "express.json({ limit: '1mb' })",
-        Middleware::Json(Some("1mb")),
+        Middleware::Json(Some(dima_web::body::mb(1))),
     ),
     use_router(
         64,
@@ -353,7 +358,7 @@ pub static MOUNTS: [Mount; 54] = [
         66,
         Some("/roulettes"),
         "express.json({ limit: '4mb' })",
-        Middleware::Json(Some("4mb")),
+        Middleware::Json(Some(dima_web::body::mb(4))),
     ),
     use_mw(67, None, "express.json()", Middleware::Json(None)),
     use_mw(
@@ -376,7 +381,8 @@ pub static MOUNTS: [Mount; 54] = [
         "oauthApiRoute",
         F::OAuthApi,
         "P4-API-APP",
-        &[G::OAuthToken],
+        // `Public`: the JSON 404 of every other path.
+        &[G::OAuthToken, G::Public],
     ),
     get(
         72,
@@ -397,7 +403,7 @@ pub static MOUNTS: [Mount; 54] = [
         "observabilityRoute",
         F::Observability,
         "P4-API-APP",
-        &[G::Public],
+        &[G::Upstream],
     ),
     use_router(
         78,
@@ -586,7 +592,6 @@ pub static MOUNTS: [Mount; 54] = [
         &[
             G::User,
             G::ChannelPermission(&["triggers:view", "triggers:edit", "triggers:delete"]),
-            G::Public,
         ],
     ),
     use_router(
@@ -765,20 +770,48 @@ pub static MOUNTS: [Mount; 54] = [
     ),
 ];
 
-/// Builds the API's router from [`MOUNTS`], in order: every router file is mounted at its prefix
-/// with the router of the package module that ports it (empty until that package lands). The
-/// middleware lines and the routes of `server.ts` itself are P4-API-APP's: until it fills them
-/// here, nothing is parsed, served statically or answered with CORS headers, and those four
-/// paths answer 404 like every other.
+/// Builds the API's router from [`MOUNTS`], in order: the middleware of `server.ts` with its
+/// coverage, every router file at its prefix with the router of the package module that ports it
+/// (empty until that package lands), and the routes `server.ts` declares itself. The shell's
+/// configuration (the static directory, the client address policy) is read from the state at
+/// request time, so the table needs no argument.
 pub fn build<S: RouteState>() -> Router<S> {
     let mut root = Router::new();
     for mount in &MOUNTS {
+        let path = mount.path.unwrap_or("/");
         match mount.what {
             What::Router(file) => {
-                root.mount(mount.path.unwrap_or("/"), file.router::<S>());
+                root.mount(path, file.router::<S>());
             }
-            // Not ported yet: P4-API-APP.
-            What::Middleware(_) | What::Route(_) => {}
+            // `httpTelemetry` watches every request from outside the layers:
+            // `crate::app::application` installs it with `App::observe`.
+            What::Middleware(Middleware::Telemetry) => {}
+            What::Middleware(Middleware::Json(limit)) => {
+                let parser =
+                    dima_web::body::json().limit(limit.unwrap_or(dima_web::body::DEFAULT_LIMIT));
+                root.middleware_at(path, parser);
+            }
+            What::Middleware(Middleware::Urlencoded) => {
+                root.middleware_at(path, dima_web::body::urlencoded());
+            }
+            What::Middleware(Middleware::Static) => {
+                root.middleware_at(path, crate::app::PublicFiles);
+            }
+            What::Middleware(Middleware::Cors) => {
+                root.middleware_at(path, dima_web::cors::cors());
+            }
+            What::Route(Route::OAuthMetadata) => {
+                root.get(path, crate::oauth::metadata::<S>);
+            }
+            What::Route(Route::ReservedCommands) => {
+                root.get(path, crate::app::reserved_commands::<S>);
+            }
+            What::Route(Route::SiteAnalytics) => {
+                root.get(path, crate::app::site_analytics::<S>);
+            }
+            What::Route(Route::SiteAnalyticsStream) => {
+                root.get(path, crate::app::site_analytics_stream::<S>);
+            }
         }
     }
     root

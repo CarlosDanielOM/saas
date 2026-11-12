@@ -30,6 +30,9 @@ redis.workspace = true
 # edge, the telemetry channel binding, and JSON inputs.
 dima-web.workspace = true
 dima-telemetry.workspace = true
+# The two calls with a user's own token (`src/auth/twitch.rs`): token validation and the Helix
+# user lookup.
+dima-twitch.workspace = true
 serde_json.workspace = true
 # Clips and thumbnails (src/process.rs): killing a child's process group without `unsafe`.
 nix.workspace = true

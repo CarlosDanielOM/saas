@@ -1247,4 +1247,5 @@ Kept by the lead; a package not listed has not started.
 | P4-ACT-AI-A | running (Opus xhigh) |
 | P4-FEAT-WIDGETS | running (Sol) |
 | P4-FEAT-GAMES | merged (36 tests). Traits for later packages: `ChannelOwners`, `WinnerActionRunner`, `OverlayPresence`, `DuelEvents`, `DuelModeration`, `EditorCheck`, `LegacyTiers`; the cron calls `RouletteService::run_due_actions` every second and `DuelCompletion::tick` every 500 ms (P4-CRON-FEATURES), and the roulette completion worker moves in with P2-CRON-02. Not yet run against the Twitch mock: `TwitchDuelModeration` itself (compared at the wrapper level) |
-| P4-API-APP | running (Opus) |
+| P4-API-APP | merged (18 tests in the crate; 175 recorded rows, 8 differ on purpose). The rule for a route package is at the top of `crates/routes/src/state.rs`. For P4-BIN-API: build `AppState`, call `oauth.initialize()`, register services and check `Services::missing`, serve `app::application(...)`; settings `TRUSTED_PROXIES` (address ranges of the reverse proxy; without it the peer address is used and every client behind the proxy shares a rate-limit bucket), `CLIENT_IP_HEADER` (default `x-forwarded-for`), `PUBLIC_DIR`. `browserUser` keeps the reference's fresh validation and OAuth error answers. Wanted in `dima-web`: stop draining a refused body (up to 64 MiB today) |
+| P4-SVC-COMMANDS | running (Opus) |

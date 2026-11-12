@@ -1,0 +1,1499 @@
+{
+ "note": "Requests replayed against the reference app (record-app.mts) and the Rust app (app_recordings.rs). $NAME is a value captured from an earlier answer.",
+ "website": "http://127.0.0.1:4200",
+ "issuer": "http://127.0.0.1:3000",
+ "client_id": "fixture-client",
+ "public": {
+  "mtime": "2026-01-02T03:04:05.000Z",
+  "files": {
+   "clip.html": "<!doctype html><title>clip</title><p>clip overlay</p>\n",
+   "assets/css/clip.css": "body { background: transparent; }\n",
+   "dimafx-player.js": "export const player = 1;\n",
+   ".hidden": "secret\n",
+   "speech/123/a.mp3": "ID3fake-audio-bytes"
+  }
+ },
+ "users": [
+  {
+   "kind": "valid",
+   "twitch_id": "9100000001",
+   "login": "viewer_one",
+   "name": "Viewer One"
+  }
+ ],
+ "browser_tokens": {
+  "browsergood0001": "9100000001",
+  "browserstranger": "9100000099"
+ },
+ "snapshot": {
+  "registeredUsers": 12,
+  "liveUsers": 1,
+  "totalLiveViewers": 3,
+  "authorizedAccounts": 4,
+  "totalMessages": 1000,
+  "totalCommands": 25,
+  "liveChannels": [
+   {
+    "id": "1",
+    "name": "chan",
+    "viewers": 3
+   }
+  ]
+ },
+ "reserved": {
+  "commands": [
+   {
+    "name": "!uptime"
+   }
+  ]
+ },
+ "analytics": {
+  "/api/logs": {
+   "status": 200,
+   "body": "{\"logs\":[]}"
+  },
+  "/api/grants/12": {
+   "status": 200,
+   "body": "{\"ok\":true}"
+  },
+  "/api/grants/7": {
+   "status": 204,
+   "body": ""
+  },
+  "/api/traces/0123456789abcdef0123456789abcdef": {
+   "status": 200,
+   "body": "{\"trace\":1}"
+  },
+  "/api/session": {
+   "status": 401,
+   "body": "{\"message\":\"Unauthorized\"}"
+  },
+  "/api/overview": {
+   "status": 500,
+   "body": "upstream exploded"
+  },
+  "/api/traces": {
+   "status": 200,
+   "body": "﻿{\"t\":1}"
+  },
+  "/api/resources": {
+   "drop": true
+  }
+ },
+ "audio": {
+  "t1": "speech/123/a.mp3"
+ },
+ "cases": [
+  {
+   "name": "unknown GET /nope",
+   "method": "GET",
+   "path": "/nope"
+  },
+  {
+   "name": "unknown GET /users/x",
+   "method": "GET",
+   "path": "/users/x"
+  },
+  {
+   "name": "unknown GET /commands/x",
+   "method": "GET",
+   "path": "/commands/x"
+  },
+  {
+   "name": "unknown GET /overlay-studio/x",
+   "method": "GET",
+   "path": "/overlay-studio/x"
+  },
+  {
+   "name": "unknown GET /roulettes/x",
+   "method": "GET",
+   "path": "/roulettes/x"
+  },
+  {
+   "name": "unknown GET /docs-assistant/x",
+   "method": "GET",
+   "path": "/docs-assistant/x"
+  },
+  {
+   "name": "unknown GET /polar/webhook",
+   "method": "GET",
+   "path": "/polar/webhook"
+  },
+  {
+   "name": "unknown GET /video/x",
+   "method": "GET",
+   "path": "/video/x"
+  },
+  {
+   "name": "unknown GET /speech/x",
+   "method": "GET",
+   "path": "/speech/x"
+  },
+  {
+   "name": "unknown GET /admin-site/x",
+   "method": "GET",
+   "path": "/admin-site/x"
+  },
+  {
+   "name": "unknown GET /extensions/dimafx/x",
+   "method": "GET",
+   "path": "/extensions/dimafx/x"
+  },
+  {
+   "name": "unknown GET /config/x",
+   "method": "GET",
+   "path": "/config/x"
+  },
+  {
+   "name": "unknown GET /USERS/x/",
+   "method": "GET",
+   "path": "/USERS/x/"
+  },
+  {
+   "name": "unknown GET /v2",
+   "method": "GET",
+   "path": "/v2"
+  },
+  {
+   "name": "unknown HEAD",
+   "method": "HEAD",
+   "path": "/users/x"
+  },
+  {
+   "name": "wrong method on an inline route",
+   "method": "DELETE",
+   "path": "/config/site/analytics"
+  },
+  {
+   "name": "unknown with origin",
+   "method": "GET",
+   "path": "/users/x",
+   "headers": {
+    "origin": "http://evil.example"
+   }
+  },
+  {
+   "name": "preflight under cors",
+   "method": "OPTIONS",
+   "path": "/users/x",
+   "headers": {
+    "origin": "http://evil.example",
+    "access-control-request-method": "PATCH",
+    "access-control-request-headers": "authorization, content-type"
+   }
+  },
+  {
+   "name": "preflight without request headers",
+   "method": "OPTIONS",
+   "path": "/commands/1",
+   "headers": {
+    "origin": "http://127.0.0.1:4200",
+    "access-control-request-method": "POST"
+   }
+  },
+  {
+   "name": "options without origin",
+   "method": "OPTIONS",
+   "path": "/nope"
+  },
+  {
+   "name": "preflight of the metadata route",
+   "method": "OPTIONS",
+   "path": "/.well-known/oauth-authorization-server",
+   "headers": {
+    "origin": "http://evil.example",
+    "access-control-request-method": "GET"
+   }
+  },
+  {
+   "name": "json at the limit /overlay-studio",
+   "method": "POST",
+   "path": "/overlay-studio/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 5242880
+  },
+  {
+   "name": "json over the limit /overlay-studio",
+   "method": "POST",
+   "path": "/overlay-studio/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 5242881
+  },
+  {
+   "name": "json at the limit /commands",
+   "method": "POST",
+   "path": "/commands/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 1048576
+  },
+  {
+   "name": "json over the limit /commands",
+   "method": "POST",
+   "path": "/commands/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 1048577
+  },
+  {
+   "name": "json at the limit /roulettes",
+   "method": "POST",
+   "path": "/roulettes/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 4194304
+  },
+  {
+   "name": "json over the limit /roulettes",
+   "method": "POST",
+   "path": "/roulettes/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 4194305
+  },
+  {
+   "name": "json at the limit /users",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 102400
+  },
+  {
+   "name": "json over the limit /users",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 102401
+  },
+  {
+   "name": "json under the limit",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"a\":1}"
+  },
+  {
+   "name": "malformed json",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"a\":"
+  },
+  {
+   "name": "json not an object",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "\"text\""
+  },
+  {
+   "name": "json with an unsupported charset",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json; charset=latin1"
+   },
+   "body": "{}"
+  },
+  {
+   "name": "wrong content type",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "text/plain"
+   },
+   "body": "{\"a\":"
+  },
+  {
+   "name": "urlencoded at the limit",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "form_of_size": 102400
+  },
+  {
+   "name": "urlencoded over the limit",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "form_of_size": 102401
+  },
+  {
+   "name": "urlencoded with too many parameters",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "form_params": 1001
+  },
+  {
+   "name": "urlencoded too deep",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "a[b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b][b]=1"
+  },
+  {
+   "name": "json body on the 5 MiB prefix is not limited by the global parser",
+   "method": "POST",
+   "path": "/overlay-studio/x",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 204800
+  },
+  {
+   "name": "json over 100 KiB to an OAuth route",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "json_of_size": 102401
+  },
+  {
+   "name": "content-length beyond the limit, nothing sent",
+   "method": "POST",
+   "path": "/users/x",
+   "headers": {
+    "content-type": "application/json",
+    "content-length": "200000"
+   },
+   "body": "",
+   "half_close": true
+  },
+  {
+   "name": "static file",
+   "method": "GET",
+   "path": "/clip.html",
+   "capture": [
+    {
+     "as": "CLIP_ETAG",
+     "from": "header:etag"
+    }
+   ]
+  },
+  {
+   "name": "static file HEAD",
+   "method": "HEAD",
+   "path": "/clip.html"
+  },
+  {
+   "name": "static css",
+   "method": "GET",
+   "path": "/assets/css/clip.css"
+  },
+  {
+   "name": "static js",
+   "method": "GET",
+   "path": "/dimafx-player.js"
+  },
+  {
+   "name": "static with a query",
+   "method": "GET",
+   "path": "/clip.html?v=2"
+  },
+  {
+   "name": "static conditional etag",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "if-none-match": "$CLIP_ETAG"
+   }
+  },
+  {
+   "name": "static conditional date",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "if-modified-since": "Fri, 02 Jan 2026 03:04:05 GMT"
+   }
+  },
+  {
+   "name": "static conditional older date",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "if-modified-since": "Thu, 01 Jan 2026 00:00:00 GMT"
+   }
+  },
+  {
+   "name": "static range",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "range": "bytes=0-9"
+   }
+  },
+  {
+   "name": "static open range",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "range": "bytes=20-"
+   }
+  },
+  {
+   "name": "static range not satisfiable",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "range": "bytes=100000-"
+   }
+  },
+  {
+   "name": "static if-range mismatch",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "range": "bytes=0-9",
+    "if-range": "W/\"nope\""
+   }
+  },
+  {
+   "name": "static directory without slash",
+   "method": "GET",
+   "path": "/speech/123"
+  },
+  {
+   "name": "static directory without slash and a query",
+   "method": "GET",
+   "path": "/speech/123?x=1"
+  },
+  {
+   "name": "static directory with slash",
+   "method": "GET",
+   "path": "/speech/123/"
+  },
+  {
+   "name": "static nested file",
+   "method": "GET",
+   "path": "/speech/123/a.mp3"
+  },
+  {
+   "name": "static dotfile",
+   "method": "GET",
+   "path": "/.hidden"
+  },
+  {
+   "name": "static traversal",
+   "method": "GET",
+   "path": "/..%2fpackage.json"
+  },
+  {
+   "name": "static malformed escape",
+   "method": "GET",
+   "path": "/%E0%A4%A"
+  },
+  {
+   "name": "static POST falls through",
+   "method": "POST",
+   "path": "/clip.html"
+  },
+  {
+   "name": "static with origin has no cors",
+   "method": "GET",
+   "path": "/clip.html",
+   "headers": {
+    "origin": "http://evil.example"
+   }
+  },
+  {
+   "name": "reserved commands",
+   "method": "GET",
+   "path": "/config/commands/reserved"
+  },
+  {
+   "name": "reserved commands es",
+   "method": "GET",
+   "path": "/config/commands/reserved?language=es"
+  },
+  {
+   "name": "reserved commands array language",
+   "method": "GET",
+   "path": "/config/commands/reserved?language=es&language=en"
+  },
+  {
+   "name": "site analytics",
+   "method": "GET",
+   "path": "/config/site/analytics"
+  },
+  {
+   "name": "site analytics HEAD",
+   "method": "HEAD",
+   "path": "/config/site/analytics"
+  },
+  {
+   "name": "site analytics failing",
+   "method": "GET",
+   "path": "/config/site/analytics",
+   "snapshot": "fail"
+  },
+  {
+   "name": "site analytics stream",
+   "method": "GET",
+   "path": "/config/site/analytics/stream",
+   "stream": true
+  },
+  {
+   "name": "site analytics stream failing first",
+   "method": "GET",
+   "path": "/config/site/analytics/stream",
+   "stream": true,
+   "snapshot": "fail"
+  },
+  {
+   "name": "proxy GET with query",
+   "method": "GET",
+   "path": "/observability/api/logs?limit=5&level=error",
+   "headers": {
+    "authorization": "Bearer analytics-token",
+    "cookie": "a=b",
+    "x-forwarded-for": "1.2.3.4"
+   },
+   "upstream": true
+  },
+  {
+   "name": "proxy GET without authorization",
+   "method": "GET",
+   "path": "/observability/api/logs",
+   "upstream": true
+  },
+  {
+   "name": "proxy PUT json",
+   "method": "PUT",
+   "path": "/observability/api/grants/12",
+   "headers": {
+    "authorization": "Bearer t",
+    "content-type": "application/json"
+   },
+   "body": "{\"role\":\"viewer\",\"n\":1.0,\"list\":[1,2]}",
+   "upstream": true
+  },
+  {
+   "name": "proxy PUT without json",
+   "method": "PUT",
+   "path": "/observability/api/grants/12",
+   "headers": {
+    "authorization": "Bearer t",
+    "content-type": "text/plain"
+   },
+   "body": "hello",
+   "upstream": true
+  },
+  {
+   "name": "proxy DELETE",
+   "method": "DELETE",
+   "path": "/observability/api/grants/7",
+   "headers": {
+    "authorization": "Bearer t"
+   },
+   "upstream": true
+  },
+  {
+   "name": "proxy trace id",
+   "method": "GET",
+   "path": "/observability/api/traces/0123456789abcdef0123456789abcdef",
+   "upstream": true
+  },
+  {
+   "name": "proxy upstream refuses",
+   "method": "GET",
+   "path": "/observability/api/session",
+   "upstream": true
+  },
+  {
+   "name": "proxy upstream error text",
+   "method": "GET",
+   "path": "/observability/api/overview",
+   "upstream": true
+  },
+  {
+   "name": "proxy upstream with BOM",
+   "method": "GET",
+   "path": "/observability/api/traces",
+   "upstream": true
+  },
+  {
+   "name": "proxy upstream down",
+   "method": "GET",
+   "path": "/observability/api/resources",
+   "upstream": true
+  },
+  {
+   "name": "proxy HEAD",
+   "method": "HEAD",
+   "path": "/observability/api/logs",
+   "upstream": true
+  },
+  {
+   "name": "proxy POST",
+   "method": "POST",
+   "path": "/observability/api/logs",
+   "upstream": true
+  },
+  {
+   "name": "proxy unknown endpoint",
+   "method": "GET",
+   "path": "/observability/api/other",
+   "upstream": true
+  },
+  {
+   "name": "proxy trailing slash",
+   "method": "GET",
+   "path": "/observability/api/logs/",
+   "upstream": true
+  },
+  {
+   "name": "proxy upper-case trace",
+   "method": "GET",
+   "path": "/observability/api/traces/0123456789ABCDEF0123456789abcdef",
+   "upstream": true
+  },
+  {
+   "name": "proxy long grant id",
+   "method": "GET",
+   "path": "/observability/api/grants/1234567890123456789012345678901",
+   "upstream": true
+  },
+  {
+   "name": "proxy mount prefix case",
+   "method": "GET",
+   "path": "/OBSERVABILITY/api/logs",
+   "upstream": true
+  },
+  {
+   "name": "proxy root",
+   "method": "GET",
+   "path": "/observability",
+   "upstream": true
+  },
+  {
+   "name": "proxy preflight",
+   "method": "OPTIONS",
+   "path": "/observability/api/logs",
+   "headers": {
+    "origin": "http://x.example",
+    "access-control-request-method": "PUT"
+   },
+   "upstream": true
+  },
+  {
+   "name": "well-known metadata",
+   "method": "GET",
+   "path": "/.well-known/oauth-authorization-server"
+  },
+  {
+   "name": "well-known metadata with a foreign origin",
+   "method": "GET",
+   "path": "/.well-known/oauth-authorization-server",
+   "headers": {
+    "origin": "http://evil.example"
+   }
+  },
+  {
+   "name": "oauth metadata",
+   "method": "GET",
+   "path": "/oauth/metadata"
+  },
+  {
+   "name": "oauth metadata from the website",
+   "method": "GET",
+   "path": "/oauth/metadata",
+   "headers": {
+    "origin": "http://127.0.0.1:4200"
+   }
+  },
+  {
+   "name": "oauth metadata from a foreign origin",
+   "method": "GET",
+   "path": "/oauth/metadata",
+   "headers": {
+    "origin": "http://evil.example"
+   }
+  },
+  {
+   "name": "oauth preflight from the website",
+   "method": "OPTIONS",
+   "path": "/oauth/token",
+   "headers": {
+    "origin": "http://127.0.0.1:4200",
+    "access-control-request-method": "POST"
+   }
+  },
+  {
+   "name": "oauth preflight without origin",
+   "method": "OPTIONS",
+   "path": "/v1/me"
+  },
+  {
+   "name": "oauth unknown path",
+   "method": "GET",
+   "path": "/oauth/nothing"
+  },
+  {
+   "name": "oauth wrong method",
+   "method": "POST",
+   "path": "/oauth/metadata"
+  },
+  {
+   "name": "v1 unknown path",
+   "method": "GET",
+   "path": "/v1/nothing"
+  },
+  {
+   "name": "authorize missing fields",
+   "method": "GET",
+   "path": "/oauth/authorize?response_type=code"
+  },
+  {
+   "name": "authorize",
+   "method": "GET",
+   "path": "/oauth/authorize?response_type=code&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&scope=profile%3Aread%20credits%3Aread%20desktop%3Aconnect%20ai%3Ainteract%20pet%3Aread%20pet%3Acontrol%20pet%3Aplayback%3Aselect&state=StateForTheRoutesRecorder000000000000000000&code_challenge=tP5hByMyJsAV05W5MMmHrwTf6kkbre4W-27eaxUkXpM&code_challenge_method=S256&device_name=Studio%20PC",
+   "capture": [
+    {
+     "as": "REQUEST",
+     "from": "header:location",
+     "pattern": "request=([A-Za-z0-9_-]{43})"
+    }
+   ]
+  },
+  {
+   "name": "authorize with an html accept",
+   "method": "GET",
+   "path": "/oauth/authorize?response_type=code&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&scope=profile%3Aread%20credits%3Aread%20desktop%3Aconnect%20ai%3Ainteract%20pet%3Aread%20pet%3Acontrol%20pet%3Aplayback%3Aselect&state=StateForTheRoutesRecorder000000000000000000&code_challenge=tP5hByMyJsAV05W5MMmHrwTf6kkbre4W-27eaxUkXpM&code_challenge_method=S256&device_name=Studio%20PC",
+   "headers": {
+    "accept": "text/html"
+   },
+   "capture": [
+    {
+     "as": "REQUEST2",
+     "from": "header:location",
+     "pattern": "request=([A-Za-z0-9_-]{43})"
+    }
+   ]
+  },
+  {
+   "name": "request",
+   "method": "GET",
+   "path": "/oauth/requests/$REQUEST"
+  },
+  {
+   "name": "request unknown",
+   "method": "GET",
+   "path": "/oauth/requests/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "name": "request malformed",
+   "method": "GET",
+   "path": "/oauth/requests/short"
+  },
+  {
+   "name": "decision approve not a boolean",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"approve\":\"yes\"}"
+  },
+  {
+   "name": "decision form string",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "approve=true"
+  },
+  {
+   "name": "decision without browser token",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"approve\":true}"
+  },
+  {
+   "name": "decision with a refused token",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer browserbadtoken0"
+   },
+   "body": "{\"approve\":true}"
+  },
+  {
+   "name": "decision with a dima token",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer dima_at_whatever00"
+   },
+   "body": "{\"approve\":true}"
+  },
+  {
+   "name": "decision from an account without site user",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer browserstranger"
+   },
+   "body": "{\"approve\":true}"
+  },
+  {
+   "name": "decision approved",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer browsergood0001"
+   },
+   "body": "{\"approve\":true}",
+   "capture": [
+    {
+     "as": "CODE",
+     "from": "body",
+     "pointer": "/redirect_uri",
+     "pattern": "code=([A-Za-z0-9_-]{43})"
+    }
+   ]
+  },
+  {
+   "name": "decision again",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer browsergood0001"
+   },
+   "body": "{\"approve\":true}"
+  },
+  {
+   "name": "decision denied",
+   "method": "POST",
+   "path": "/oauth/requests/$REQUEST2/decision",
+   "headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer browsergood0001"
+   },
+   "body": "{\"approve\":false}"
+  },
+  {
+   "name": "token with a client secret",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=authorization_code&code=$CODE&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&code_verifier=dimaRoutesRecorderVerifier0123456789abcdefghijk&client_secret=x"
+  },
+  {
+   "name": "token with an authorization header",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded",
+    "authorization": "Basic eDp5"
+   },
+   "body": "grant_type=authorization_code&code=$CODE&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&code_verifier=dimaRoutesRecorderVerifier0123456789abcdefghijk"
+  },
+  {
+   "name": "token unsupported grant",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=password"
+  },
+  {
+   "name": "token repeated field",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=refresh_token&grant_type=x"
+  },
+  {
+   "name": "token json with a number",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"grant_type\":\"refresh_token\",\"n\":1}"
+  },
+  {
+   "name": "token without body",
+   "method": "POST",
+   "path": "/oauth/token"
+  },
+  {
+   "name": "token json array",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "[]"
+  },
+  {
+   "name": "token exchange",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=authorization_code&code=$CODE&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&code_verifier=dimaRoutesRecorderVerifier0123456789abcdefghijk",
+   "capture": [
+    {
+     "as": "AT",
+     "from": "body",
+     "pointer": "/access_token"
+    },
+    {
+     "as": "RT",
+     "from": "body",
+     "pointer": "/refresh_token"
+    },
+    {
+     "as": "SESSION",
+     "from": "body",
+     "pointer": "/session_id"
+    }
+   ]
+  },
+  {
+   "name": "token exchange again",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=authorization_code&code=$CODE&client_id=dima-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A53682%2Foauth%2Fcallback&code_verifier=dimaRoutesRecorderVerifier0123456789abcdefghijk"
+  },
+  {
+   "name": "me",
+   "method": "GET",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "capture": [
+    {
+     "as": "USER",
+     "from": "body",
+     "pointer": "/user_id"
+    }
+   ]
+  },
+  {
+   "name": "me without token",
+   "method": "GET",
+   "path": "/v1/me"
+  },
+  {
+   "name": "me with a bad token",
+   "method": "GET",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "Bearer dima_at_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "name": "me with lower-case scheme",
+   "method": "GET",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "bearer $AT"
+   }
+  },
+  {
+   "name": "me with a query",
+   "method": "GET",
+   "path": "/v1/me?channel=1",
+   "headers": {
+    "authorization": "Bearer $AT"
+   }
+  },
+  {
+   "name": "me HEAD",
+   "method": "HEAD",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "volatile_etag": true
+  },
+  {
+   "name": "capabilities",
+   "method": "GET",
+   "path": "/v1/me/ai/capabilities",
+   "headers": {
+    "authorization": "Bearer $AT"
+   }
+  },
+  {
+   "name": "desktop session",
+   "method": "GET",
+   "path": "/v1/desktop/session",
+   "headers": {
+    "authorization": "Bearer $AT"
+   }
+  },
+  {
+   "name": "credits",
+   "method": "GET",
+   "path": "/v1/me/credits",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "area": true
+  },
+  {
+   "name": "pet configuration",
+   "method": "GET",
+   "path": "/v1/me/pet",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "area": true
+  },
+  {
+   "name": "pet runtime",
+   "method": "GET",
+   "path": "/v1/me/pet/runtime",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "area": true
+  },
+  {
+   "name": "pet playback",
+   "method": "PUT",
+   "path": "/v1/me/pet/playback",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"roles\":[\"audio\"]}",
+   "area": true
+  },
+  {
+   "name": "pet playback missing scope is checked first",
+   "method": "PUT",
+   "path": "/v1/me/pet/playback",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{}",
+   "area": true
+  },
+  {
+   "name": "pet cancel",
+   "method": "POST",
+   "path": "/v1/me/pet/requests/r1/cancel",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"commandId\":\"c1\"}",
+   "area": true
+  },
+  {
+   "name": "pet cancel with another key",
+   "method": "POST",
+   "path": "/v1/me/pet/requests/r1/cancel",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"commandId\":\"c1\",\"x\":1}",
+   "area": true
+  },
+  {
+   "name": "pet cancel with an empty array",
+   "method": "POST",
+   "path": "/v1/me/pet/requests/r1/cancel",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "[]",
+   "area": true
+  },
+  {
+   "name": "turn submit",
+   "method": "POST",
+   "path": "/v1/me/ai/turns",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"text\":\"hi\"}",
+   "area": true
+  },
+  {
+   "name": "turn submit refused by the service",
+   "method": "POST",
+   "path": "/v1/me/ai/turns",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"fail_code\":\"slow_down\",\"fail_status\":429}",
+   "area": true
+  },
+  {
+   "name": "turn submit unauthorised by the service",
+   "method": "POST",
+   "path": "/v1/me/ai/turns",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"fail_code\":\"invalid_token\",\"fail_status\":401}",
+   "area": true
+  },
+  {
+   "name": "turn submit failing unexpectedly",
+   "method": "POST",
+   "path": "/v1/me/ai/turns",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"crash\":true}",
+   "area": true
+  },
+  {
+   "name": "turn",
+   "method": "GET",
+   "path": "/v1/me/ai/turns/t1",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "area": true
+  },
+  {
+   "name": "turn by request",
+   "method": "GET",
+   "path": "/v1/me/ai/turns/by-request/r9",
+   "headers": {
+    "authorization": "Bearer $AT"
+   },
+   "area": true
+  },
+  {
+   "name": "turn cancel body checked before the token",
+   "method": "POST",
+   "path": "/v1/me/ai/turns/t1/cancel",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"x\":1}",
+   "area": true
+  },
+  {
+   "name": "turn cancel",
+   "method": "POST",
+   "path": "/v1/me/ai/turns/t1/cancel",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{}",
+   "area": true
+  },
+  {
+   "name": "speech cancel",
+   "method": "POST",
+   "path": "/v1/me/ai/turns/t1/speech/cancel",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"reason\":\"user\"}",
+   "area": true
+  },
+  {
+   "name": "speech event",
+   "method": "POST",
+   "path": "/v1/me/ai/turns/t1/speech/events",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "content-type": "application/json"
+   },
+   "body": "{\"type\":\"started\"}",
+   "area": true
+  },
+  {
+   "name": "speech audio",
+   "method": "GET",
+   "path": "/v1/me/ai/turns/t1/speech/audio",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "x-dima-audio-ticket": "ticket-1"
+   },
+   "area": true
+  },
+  {
+   "name": "speech audio range",
+   "method": "GET",
+   "path": "/v1/me/ai/turns/t1/speech/audio",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "x-dima-audio-ticket": "ticket-1",
+    "range": "bytes=0-1"
+   },
+   "area": true
+  },
+  {
+   "name": "speech audio missing file",
+   "method": "GET",
+   "path": "/v1/me/ai/turns/t2/speech/audio",
+   "headers": {
+    "authorization": "Bearer $AT",
+    "x-dima-audio-ticket": "ticket-1"
+   },
+   "area": true
+  },
+  {
+   "name": "browser session",
+   "method": "GET",
+   "path": "/oauth/browser-session",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "browser session without token",
+   "method": "GET",
+   "path": "/oauth/browser-session"
+  },
+  {
+   "name": "connections",
+   "method": "GET",
+   "path": "/oauth/connections",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   },
+   "capture": [
+    {
+     "as": "GRANT",
+     "from": "body",
+     "pointer": "/sessions/0/grant_id"
+    }
+   ]
+  },
+  {
+   "name": "connections from an account without site user",
+   "method": "GET",
+   "path": "/oauth/connections",
+   "headers": {
+    "authorization": "Bearer browserstranger"
+   }
+  },
+  {
+   "name": "drop connection not an id",
+   "method": "DELETE",
+   "path": "/oauth/connections/notanid",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop connection twelve characters",
+   "method": "DELETE",
+   "path": "/oauth/connections/aaaaaaaaaaaa",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop connection unknown",
+   "method": "DELETE",
+   "path": "/oauth/connections/000000000000000000000000",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop grant unknown",
+   "method": "DELETE",
+   "path": "/oauth/grants/000000000000000000000000",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop grant not an id",
+   "method": "DELETE",
+   "path": "/oauth/grants/x",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "refresh",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=refresh_token&refresh_token=$RT&client_id=dima-desktop",
+   "capture": [
+    {
+     "as": "AT2",
+     "from": "body",
+     "pointer": "/access_token"
+    },
+    {
+     "as": "RT2",
+     "from": "body",
+     "pointer": "/refresh_token"
+    }
+   ]
+  },
+  {
+   "name": "old access token after refresh",
+   "method": "GET",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "Bearer $AT"
+   }
+  },
+  {
+   "name": "new access token",
+   "method": "GET",
+   "path": "/v1/me/ai/capabilities",
+   "headers": {
+    "authorization": "Bearer $AT2"
+   }
+  },
+  {
+   "name": "sign out",
+   "method": "DELETE",
+   "path": "/v1/desktop/session",
+   "headers": {
+    "authorization": "Bearer $AT2"
+   }
+  },
+  {
+   "name": "access after sign out",
+   "method": "GET",
+   "path": "/v1/me",
+   "headers": {
+    "authorization": "Bearer $AT2"
+   }
+  },
+  {
+   "name": "refresh after sign out",
+   "method": "POST",
+   "path": "/oauth/token",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "grant_type=refresh_token&refresh_token=$RT2&client_id=dima-desktop"
+  },
+  {
+   "name": "revoke unknown token",
+   "method": "POST",
+   "path": "/oauth/revoke",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "token=dima_rt_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&client_id=dima-desktop"
+  },
+  {
+   "name": "revoke without client",
+   "method": "POST",
+   "path": "/oauth/revoke",
+   "headers": {
+    "content-type": "application/x-www-form-urlencoded"
+   },
+   "body": "token=x"
+  },
+  {
+   "name": "revoke with a number",
+   "method": "POST",
+   "path": "/oauth/revoke",
+   "headers": {
+    "content-type": "application/json"
+   },
+   "body": "{\"token\":1}"
+  },
+  {
+   "name": "connections after sign out",
+   "method": "GET",
+   "path": "/oauth/connections",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop grant",
+   "method": "DELETE",
+   "path": "/oauth/grants/$GRANT",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "drop grant again",
+   "method": "DELETE",
+   "path": "/oauth/grants/$GRANT",
+   "headers": {
+    "authorization": "Bearer browsergood0001"
+   }
+  },
+  {
+   "name": "rate limit burst of one client",
+   "method": "GET",
+   "path": "/oauth/metadata",
+   "headers": {
+    "x-forwarded-for": "198.51.100.1"
+   },
+   "repeat": 601
+  },
+  {
+   "name": "rate limit another client",
+   "method": "GET",
+   "path": "/oauth/metadata",
+   "headers": {
+    "x-forwarded-for": "198.51.100.2"
+   }
+  }
+ ]
+}

@@ -9,21 +9,18 @@ mod guard_support;
 
 use anyhow::{Context, Result};
 use dima_core::SystemClock;
-use dima_http::HttpClient;
 use dima_http::testing::{MockResponse, MockServer};
 use dima_platform::auth::cache::{
     activity_touch_key, token_cache_key, token_fence_key, user_fence_key,
 };
-use dima_platform::auth::twitch::{
-    HttpTwitchUserApi, Scheme, TwitchAnswer, TwitchUserApi, Unreachable,
-};
+use dima_platform::auth::twitch::{TwitchUser, TwitchUserApi, UserTokenError, ValidatedToken};
 use dima_platform::auth::{
     AuthConfig, AuthDeps, AuthenticatedUser, Authenticator, BoundChannel, HasAuthenticator,
     NoReport, optional_user, require_user, require_workspace_owner,
 };
 use dima_store::dragonfly::{SetOptions, Ttl};
 use dima_web::{App, Body, Req, Response, Router};
-use guard_support::{Stores, endpoint, id_of, script_twitch, token_of, with_stores};
+use guard_support::{Stores, endpoint, id_of, script_twitch, token_of, user_api, with_stores};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -93,13 +90,12 @@ fn authenticator(
     client_id: &str,
     config: Option<AuthConfig>,
 ) -> Result<Authenticator> {
-    let http = HttpClient::builder().build()?;
     let oauth = server.provider(dima_twitch::oauth_provider())?;
     let helix = server.provider(dima_twitch::helix_provider(client_id))?;
     Ok(Authenticator::new(
         config.unwrap_or(AuthConfig::new(client_id)?),
         AuthDeps {
-            twitch: Arc::new(HttpTwitchUserApi::new(http, oauth, helix)),
+            twitch: user_api(stores, oauth, helix, client_id)?,
             cache: stores.cache.clone(),
             mongo: stores.mongo.clone(),
             clock: Arc::new(SystemClock),
@@ -163,6 +159,30 @@ fn intended(name: &str, reference: &Value, observed: &Observed) -> Option<&'stat
                 json!({"next": true, "user": null, "bound": null})
             );
             Some("optional authentication answers through the handler instead of a lost 401")
+        }
+        "validate_json_null" => {
+            // `/validate` answering 200 with the JSON `null`: the reference read it as
+            // "Invalid token"; `Twitch::validate_user_token` reports a 200 that is not a
+            // validation, which is "Failed to validate token". Same status and type; Twitch
+            // never sends it.
+            assert_eq!(reference["status"], 401);
+            assert_eq!(observed.status, 401);
+            assert_eq!(
+                observed.body,
+                r#"{"error":true,"message":"Failed to validate token","status":401,"type":"invalid_token"}"#
+            );
+            Some("a 200 validation that is not one fails as unreadable (typed Twitch answer)")
+        }
+        "users_without_data" => {
+            // Helix answering 200 with `{}`: "User not found" in the reference; a Helix answer
+            // that is not a list of users is "Failed to fetch user data" with the typed lookup.
+            assert_eq!(reference["status"], 401);
+            assert_eq!(observed.status, 401);
+            assert_eq!(
+                observed.body,
+                r#"{"error":true,"message":"Failed to fetch user data","status":401,"type":"user_fetch_failed"}"#
+            );
+            Some("a Helix answer without a list of users fails as unreadable (typed Twitch answer)")
         }
         _ => None,
     }
@@ -354,7 +374,7 @@ async fn decision_table_matches_the_reference() -> Result<()> {
             same += 1;
         }
         assert_eq!(same + changed.len(), rows.len());
-        assert_eq!(changed.len(), 2, "rows changed on purpose: {changed:?}");
+        assert_eq!(changed.len(), 4, "rows changed on purpose: {changed:?}");
         // No key holds a token.
         for kind in &kinds {
             let token = token_of(kind, &run);
@@ -421,15 +441,15 @@ async fn unreachable_cache_falls_back_to_twitch() -> Result<()> {
         let silent = silent_dragonfly().await?;
         let mut config = AuthConfig::new(client_id)?;
         config.store_deadline = Duration::from_millis(200);
-        let http = HttpClient::builder().build()?;
         let auth = Authenticator::new(
             config,
             AuthDeps {
-                twitch: Arc::new(HttpTwitchUserApi::new(
-                    http,
+                twitch: user_api(
+                    &stores,
                     server.provider(dima_twitch::oauth_provider())?,
                     server.provider(dima_twitch::helix_provider(client_id))?,
-                )),
+                    client_id,
+                )?,
                 cache: silent,
                 mongo: stores.mongo.clone(),
                 clock: Arc::new(SystemClock),
@@ -548,7 +568,7 @@ fn keys_and_debug_never_show_the_token() -> Result<()> {
 /// The Twitch of the tests, whose `/users` answer is held until the test releases it.
 #[derive(Debug)]
 struct Held {
-    inner: HttpTwitchUserApi,
+    inner: Arc<dima_twitch::Twitch>,
     gate: Arc<tokio::sync::Semaphore>,
 }
 
@@ -556,19 +576,16 @@ impl TwitchUserApi for Held {
     fn validate<'a>(
         &'a self,
         token: &'a dima_core::SecretString,
-        scheme: Scheme,
-        timeout: Duration,
-    ) -> futures_util::future::BoxFuture<'a, Result<TwitchAnswer, Unreachable>> {
-        self.inner.validate(token, scheme, timeout)
+    ) -> futures_util::future::BoxFuture<'a, Result<ValidatedToken, UserTokenError>> {
+        self.inner.validate(token)
     }
 
-    fn users<'a>(
+    fn user<'a>(
         &'a self,
         token: &'a dima_core::SecretString,
-        timeout: Duration,
-    ) -> futures_util::future::BoxFuture<'a, Result<TwitchAnswer, Unreachable>> {
+    ) -> futures_util::future::BoxFuture<'a, Result<TwitchUser, UserTokenError>> {
         Box::pin(async move {
-            let answer = self.inner.users(token, timeout).await;
+            let answer = self.inner.user(token).await;
             let _permit = self.gate.acquire().await;
             answer
         })
@@ -582,12 +599,12 @@ async fn held_authenticator(
     client_id: &str,
     gate: Arc<tokio::sync::Semaphore>,
 ) -> Result<Authenticator> {
-    let http = HttpClient::builder().build()?;
-    let inner = HttpTwitchUserApi::new(
-        http,
+    let inner = user_api(
+        stores,
         server.provider(dima_twitch::oauth_provider())?,
         server.provider(dima_twitch::helix_provider(client_id))?,
-    );
+        client_id,
+    )?;
     let own = stores.second().await?;
     Ok(Authenticator::new(
         AuthConfig::new(client_id)?,
@@ -725,15 +742,15 @@ async fn a_forget_that_fails_is_returned() -> Result<()> {
         let mut config = AuthConfig::new("client")?;
         config.store_deadline = Duration::from_millis(200);
         let server = MockServer::start().await?;
-        let http = HttpClient::builder().build()?;
         let auth = Authenticator::new(
             config,
             AuthDeps {
-                twitch: Arc::new(HttpTwitchUserApi::new(
-                    http,
+                twitch: user_api(
+                    &stores,
                     server.provider(dima_twitch::oauth_provider())?,
                     server.provider(dima_twitch::helix_provider("client"))?,
-                )),
+                    "client",
+                )?,
                 cache: silent_dragonfly().await?,
                 mongo: stores.mongo.clone(),
                 clock: Arc::new(SystemClock),
@@ -760,10 +777,14 @@ async fn a_token_without_life_left_is_not_cached() -> Result<()> {
         let rows: [(&str, Option<&str>, u16, bool); 8] = [
             // Zero with a 200: accepted, never cached (Twitch reports never-expiring tokens so).
             ("life_zero", Some("0"), 200, false),
+            // A 200 without a non-negative number of seconds is not a validation Twitch sends
+            // (`Twitch::validate_user_token` refuses it): "Failed to validate token", without
+            // the `/users` call. Before the seam switch the absent, `null` and text forms were
+            // accepted uncached and the negative one was "Invalid token".
             ("life_negative", Some("-30"), 401, false),
-            ("life_absent", None, 200, false),
-            ("life_null", Some("null"), 200, false),
-            ("life_text", Some("\"3600\""), 200, false),
+            ("life_absent", None, 401, false),
+            ("life_null", Some("null"), 401, false),
+            ("life_text", Some("\"3600\""), 401, false),
             ("life_fraction", Some("0.5"), 200, false),
             ("life_three", Some("3"), 200, false),
             ("life_hundred", Some("100"), 200, true),
@@ -794,7 +815,7 @@ async fn a_token_without_life_left_is_not_cached() -> Result<()> {
             } else {
                 MockResponse::json(
                     200,
-                    &format!(r#"{{"data":[{{"id":"{user_id}","login":"l","display_name":"L"}}]}}"#),
+                    &format!(r#"{{"data":[{{"id":"{user_id}","login":"l","display_name":"L","type":"","broadcaster_type":"","description":"","profile_image_url":"","offline_image_url":"","view_count":0,"created_at":"2020-01-01T00:00:00Z"}}]}}"#),
                 )
             }
         });
@@ -810,7 +831,7 @@ async fn a_token_without_life_left_is_not_cached() -> Result<()> {
             if status == 401 {
                 assert_eq!(
                     body,
-                    r#"{"error":true,"message":"Invalid token","status":401,"type":"invalid_token"}"#
+                    r#"{"error":true,"message":"Failed to validate token","status":401,"type":"invalid_token"}"#
                 );
                 assert_eq!(calls, ["validate"], "{kind}");
             }
@@ -902,7 +923,7 @@ async fn helix_decides_only_when_validate_fails_without_a_401() -> Result<()> {
             } else if *users == 200 {
                 MockResponse::json(
                     200,
-                    &format!(r#"{{"data":[{{"id":"{mock_id}","login":"h","display_name":"H"}}]}}"#),
+                    &format!(r#"{{"data":[{{"id":"{mock_id}","login":"h","display_name":"H","type":"","broadcaster_type":"","description":"","profile_image_url":"","offline_image_url":"","view_count":0,"created_at":"2020-01-01T00:00:00Z"}}]}}"#),
                 )
             } else {
                 MockResponse::json(*users, r#"{"status":401,"message":"Invalid OAuth token"}"#)

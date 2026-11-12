@@ -9,12 +9,13 @@
 //!    accepts a bare token). No cookie, no query parameter: the reference reads neither.
 //!    Missing, empty or `Bearer` with nothing after it: `401 no_token`.
 //! 2. The validation cache ([`cache`]) answers when it holds the token.
-//! 3. Otherwise Twitch: `/oauth2/validate` (401 → `invalid_token` "Invalid token"; unreachable,
-//!    timed out or not JSON → `invalid_token` "Failed to validate token"; JSON `null`/`false`/`0`
-//!    → "Invalid token"; any other status with a JSON body counts as valid and the user lookup
-//!    decides), then `/helix/users` with the app's `Client-Id` (not 2xx → `user_fetch_failed`
-//!    "Invalid token or user not found"; empty → "User not found"; unreachable or not JSON →
-//!    "Failed to fetch user data").
+//! 3. Otherwise Twitch, through [`dima_twitch::Twitch::validate_user_token`] and
+//!    [`dima_twitch::Twitch::user_by_token`] ([`twitch`]): the validation (401 → `invalid_token`
+//!    "Invalid token"; unreachable, timed out, or a 200 that is not a validation →
+//!    `invalid_token` "Failed to validate token"; any other status counts as valid and the user
+//!    lookup decides), then the Helix user lookup with the app's `Client-Id` (not 2xx →
+//!    `user_fetch_failed` "Invalid token or user not found"; no user → "User not found";
+//!    unreachable, or a 2xx that is not a list of users → "Failed to fetch user data").
 //! 4. The identity is cached, [`AuthenticatedUser`] is attached to the request, the telemetry
 //!    channel is bound to the `channelID` path parameter or else the user's id
 //!    ([`BoundChannel`]), and `users.last_app_activity_at` is touched at most once a day.
@@ -62,14 +63,19 @@
 //!   for a sign-out, [`Authenticator::forget_user`] for an account deletion or a ban. Roles are
 //!   never cached here: every access decision reads MongoDB ([`crate::access`]), so losing a
 //!   role takes effect on the next request.
-//! - `/validate`'s `expires_in` (the reference ignores it): a negative one is refused as
-//!   "Invalid token" without the `/users` call. Zero, absent, `null` or not a number, the
-//!   token's life is unknown (Twitch reports its old never-expiring tokens as zero): the request
-//!   is accepted (Twitch answered 200) but the validation is not cached, so the next request
-//!   asks Twitch again. Twitch documents `expires_in` as part
-//!   of every successful validation and says nothing of its absence; not caching is the reading
-//!   that can never keep an expired token alive. A positive one bounds the cache lifetime, less
-//!   the time the user lookup took, and an entry shorter than [`MIN_CACHE_TTL`] is not written.
+//! - `/validate`'s `expires_in` (the reference ignores it): zero means the token's life is
+//!   unknown (Twitch reports its old never-expiring tokens as zero): the request is accepted
+//!   (Twitch answered 200) but the validation is not cached, so the next request asks Twitch
+//!   again. A positive one bounds the cache lifetime, less the time the user lookup took, and an
+//!   entry shorter than [`MIN_CACHE_TTL`] is not written. A 200 without the documented fields
+//!   (`client_id`, `user_id` with `login`, a non-negative `expires_in`), or with a JSON `null`,
+//!   is "Failed to validate token": Twitch never sends one, and the reference took a `null` as
+//!   "Invalid token" and a missing or negative `expires_in` as valid.
+//! - A Helix answer that is not a list of complete users (`{}`, a user without its documented
+//!   fields) is "Failed to fetch user data"; the reference took `{}` as "User not found".
+//! - A validation that fails with a status other than 200 and 401 lets the user lookup decide
+//!   whatever its body (A5); the reference refused it as "Failed to validate token" when that
+//!   body was not JSON.
 //! - A token that is longer than [`MAX_TOKEN_CHARS`] or holds characters no OAuth token has
 //!   (outside RFC 6750's `token68` set) is refused as "Invalid token" without asking Twitch, which
 //!   would have refused it the same way.
@@ -96,7 +102,7 @@ use serde_json::{Value, json};
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
-use twitch::{Scheme, TwitchAnswer, TwitchUserApi};
+use twitch::{TwitchUserApi, UserTokenError};
 
 /// The bot creator's Twitch id (`CREATOR_TWITCH_USER_ID`, and the workspace owner).
 pub const CREATOR_TWITCH_USER_ID: &str = "533538623";
@@ -432,17 +438,6 @@ fn plausible_token(token: &str) -> bool {
         })
 }
 
-/// JavaScript truthiness of a parsed JSON value.
-pub(crate) fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0 && !f.is_nan()),
-        Value::String(s) => !s.is_empty(),
-        Value::Array(_) | Value::Object(_) => true,
-    }
-}
-
 impl Authenticator {
     /// A new authenticator.
     pub fn new(config: AuthConfig, deps: AuthDeps) -> Self {
@@ -516,76 +511,56 @@ impl Authenticator {
 
     /// `validateTwitchToken`, and what the answer says about the token's remaining life.
     async fn validate(&self, token: &SecretString) -> Result<Lifetime, AuthFailure> {
-        let answer = self
-            .deps
-            .twitch
-            .validate(token, Scheme::Bearer, self.config.twitch_timeout)
-            .await
-            .map_err(|_| AuthFailure::InvalidToken(InvalidReason::Unreachable))?;
-        if answer.status == 401 {
-            return Err(AuthFailure::InvalidToken(InvalidReason::Refused));
-        }
-        let Some(body) = answer.body else {
-            return Err(AuthFailure::InvalidToken(InvalidReason::Unreachable));
-        };
-        if !truthy(&body) {
-            return Err(AuthFailure::InvalidToken(InvalidReason::Refused));
-        }
-        if answer.status != 200 {
-            return Ok(Lifetime::HelixDecides);
-        }
-        // Defence in depth: Helix refuses another application's token too (same answer).
-        if body.get("client_id").and_then(Value::as_str) != Some(self.config.client_id.as_str()) {
-            return Err(AuthFailure::UserFetch(UserFetchReason::Refused));
-        }
-        match body.get("expires_in").and_then(Value::as_f64) {
-            // Twitch never sends a negative life with a 200; one is not a token to accept.
-            Some(seconds) if seconds < 0.0 => {
-                Err(AuthFailure::InvalidToken(InvalidReason::Refused))
+        let unreachable = AuthFailure::InvalidToken(InvalidReason::Unreachable);
+        let answer =
+            tokio::time::timeout(self.config.twitch_timeout, self.deps.twitch.validate(token))
+                .await
+                .map_err(|_| unreachable)?;
+        match answer {
+            // Zero is either the token's last second or one of Twitch's old tokens that never
+            // expire (it reports those as 0). Twitch accepted it now, so the request is
+            // accepted, and nothing is cached: the next request asks Twitch again.
+            Ok(valid) if valid.expires_in > 0 => Ok(Lifetime::Seconds(valid.expires_in as f64)),
+            Ok(_) => Ok(Lifetime::Unknown),
+            Err(UserTokenError::Invalid) => Err(AuthFailure::InvalidToken(InvalidReason::Refused)),
+            // Defence in depth: Helix refuses another application's token too (same answer).
+            Err(UserTokenError::OtherClient) => {
+                Err(AuthFailure::UserFetch(UserFetchReason::Refused))
             }
-            // Zero with a 200 is either the token's last second or one of Twitch's old tokens
-            // that never expire (it reports those as 0). Twitch accepted it now, so the request
-            // is accepted, and nothing is cached: the next request asks Twitch again.
-            Some(seconds) if seconds > 0.0 => Ok(Lifetime::Seconds(seconds)),
-            Some(_) | None => Ok(Lifetime::Unknown),
+            // A valid token with no user behind it, and a status other than 200 or 401: the
+            // Helix user lookup decides, as in the reference (A5).
+            Err(UserTokenError::NotAUserToken) => Ok(Lifetime::HelixDecides),
+            Err(UserTokenError::Unexpected { status }) if status != 200 => {
+                Ok(Lifetime::HelixDecides)
+            }
+            // Twitch did not answer, or answered a 200 that is not a validation.
+            Err(_) => Err(unreachable),
         }
     }
 
     /// `getUserFromToken`.
     async fn user(&self, token: &SecretString) -> Result<AuthenticatedUser, AuthFailure> {
         let unreachable = AuthFailure::UserFetch(UserFetchReason::Unreachable);
-        let answer: TwitchAnswer = self
-            .deps
-            .twitch
-            .users(token, self.config.twitch_timeout)
+        let refused = AuthFailure::UserFetch(UserFetchReason::Refused);
+        let answer = tokio::time::timeout(self.config.twitch_timeout, self.deps.twitch.user(token))
             .await
             .map_err(|_| unreachable)?;
-        if !answer.ok() {
-            return Err(AuthFailure::UserFetch(UserFetchReason::Refused));
+        match answer {
+            Ok(user) if user.id.is_empty() => Err(unreachable),
+            Ok(user) => Ok(AuthenticatedUser::new(
+                user.id,
+                user.login,
+                user.display_name,
+                // Twitch sends `""` for a user without a picture.
+                Some(user.profile_image_url).filter(|url| !url.is_empty()),
+            )),
+            Err(UserTokenError::NotFound) => Err(AuthFailure::UserFetch(UserFetchReason::NotFound)),
+            Err(UserTokenError::Unexpected { status }) if (200..300).contains(&status) => {
+                Err(unreachable)
+            }
+            Err(UserTokenError::Unreachable { .. }) => Err(unreachable),
+            Err(_) => Err(refused),
         }
-        let body = answer.body.ok_or(unreachable)?;
-        if body.is_null() {
-            // `data.data` of `null` throws.
-            return Err(unreachable);
-        }
-        let first = match body.get("data") {
-            Some(Value::Array(items)) => match items.first() {
-                Some(first) => first,
-                None => return Err(AuthFailure::UserFetch(UserFetchReason::NotFound)),
-            },
-            Some(value) if truthy(value) => return Err(unreachable),
-            _ => return Err(AuthFailure::UserFetch(UserFetchReason::NotFound)),
-        };
-        let text = |name: &str| first.get(name).and_then(Value::as_str).map(str::to_owned);
-        let Some(id) = text("id").filter(|id| !id.is_empty()) else {
-            return Err(unreachable);
-        };
-        Ok(AuthenticatedUser::new(
-            id,
-            text("login").unwrap_or_default(),
-            text("display_name").unwrap_or_default(),
-            text("profile_image_url"),
-        ))
     }
 
     /// `touchLastAppActivity`: once a day per user, `users.last_app_activity_at = now` for the

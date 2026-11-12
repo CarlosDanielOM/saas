@@ -52,8 +52,7 @@
 
 pub mod catalog;
 
-use crate::auth::truthy;
-use crate::auth::twitch::{Scheme, TwitchUserApi};
+use crate::auth::twitch::{TwitchUserApi, UserTokenError};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document, RawDocumentBuf, doc};
 use catalog::{
@@ -1214,7 +1213,9 @@ impl OAuthService {
     /// connection-management routes. `Authorization: Bearer <10..512 base64url characters>`
     /// that is not a Dima token, which Twitch confirms belongs to this application and has not
     /// expired, and whose account has a site user. Twitch unreachable or answering something
-    /// that is not JSON: 503, as in the reference.
+    /// that is not a validation: 503, as in the reference. The proof is asked with
+    /// [`dima_twitch::Twitch::validate_user_token`], which sends `Authorization: Bearer`; the
+    /// reference sent `OAuth`, which Twitch treats the same.
     pub async fn browser_user(
         &self,
         authorization: Option<&str>,
@@ -1225,37 +1226,32 @@ impl OAuthService {
         let Some(token) = token.filter(|token| !token.starts_with("dima_")) else {
             return Err(OAuthError::LOGIN_REQUIRED);
         };
-        let answer = self
-            .deps
-            .twitch
-            .validate(
-                &SecretString::new(token.to_owned()),
-                Scheme::OAuth,
-                self.config.browser_proof_timeout,
-            )
-            .await
-            .map_err(unavailable)?;
-        if !answer.ok() {
-            return Err(OAuthError::LOGIN_REQUIRED);
-        }
-        let proof = answer.body.ok_or(OAuthError::UNAVAILABLE)?;
-        if proof.is_null() {
-            return Err(OAuthError::UNAVAILABLE);
-        }
-        let client_ok = proof.get("client_id").and_then(Value::as_str)
-            == Some(self.config.twitch_client_id.as_str());
-        let user_id = proof
-            .get("user_id")
-            .and_then(Value::as_str)
-            .filter(|id| !id.is_empty());
-        let expires_ok = proof
-            .get("expires_in")
-            .filter(|value| truthy(value))
-            .and_then(Value::as_f64)
-            .is_some_and(|seconds| seconds > 0.0);
-        let (true, Some(user_id), true) = (client_ok, user_id, expires_ok) else {
-            return Err(OAuthError::LOGIN_REQUIRED);
+        let secret = SecretString::new(token.to_owned());
+        let answer = tokio::time::timeout(
+            self.config.browser_proof_timeout,
+            self.deps.twitch.validate(&secret),
+        )
+        .await
+        .map_err(unavailable)?;
+        let proof = match answer {
+            Ok(proof) => proof,
+            // Twitch unreachable, or a 2xx that is not a validation: the reference's 503.
+            Err(UserTokenError::Unreachable { .. }) => return Err(OAuthError::UNAVAILABLE),
+            Err(UserTokenError::Unexpected { status }) if (200..300).contains(&status) => {
+                return Err(OAuthError::UNAVAILABLE);
+            }
+            // Refused, issued to another application, not a user's token, another status.
+            Err(_) => return Err(OAuthError::LOGIN_REQUIRED),
         };
+        // The Twitch handle refuses another application's token; checked here again against
+        // this service's own configuration.
+        if proof.client_id != self.config.twitch_client_id
+            || proof.user_id.is_empty()
+            || proof.expires_in == 0
+        {
+            return Err(OAuthError::LOGIN_REQUIRED);
+        }
+        let user_id = proof.user_id.as_str();
         let user: Option<User> = self
             .find_decoded(
                 users::COLLECTION,
