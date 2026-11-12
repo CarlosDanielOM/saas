@@ -600,4 +600,39 @@ const parsed = unique(parseTexts).map((input) => ({ input, ...held(input) }));
 
 write('json_parse.json', { parse: parsed });
 
-console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json dates.json order.json text.json');
+// ---------------------------------------------------------------- Date text (toString, toUTCString, toISOString)
+
+// The services run with TZ=UTC (pinned at the top of this script), so toString() is UTC.
+const dateTimes = [0, -1, 1, MAX_TIME, -MAX_TIME, MAX_TIME + 1, -MAX_TIME - 1, MAX_TIME - 1, -MAX_TIME + 1, 1794409445123, 951782400000,
+    86399999, 86400000, -86400000, -86400001];
+// Year boundaries: the last and first millisecond of each year where the year text changes shape.
+for (const year of [-271821, -271820, -100000, -10000, -9999, -1000, -999, -100, -99, -10, -9, -2, -1, 0, 1, 9, 10, 99, 100, 999, 1000,
+    1969, 1970, 1999, 2000, 2026, 9999, 10000, 99999, 100000, 275759, 275760]) {
+    const first = new Date(0); first.setUTCFullYear(year, 0, 1); first.setUTCHours(0, 0, 0, 0);
+    if (Number.isFinite(first.getTime())) dateTimes.push(first.getTime(), first.getTime() - 1);
+    const last = new Date(0); last.setUTCFullYear(year, 11, 31); last.setUTCHours(23, 59, 59, 999);
+    if (Number.isFinite(last.getTime())) dateTimes.push(last.getTime());
+}
+// Every month and weekday: the 1st, the 15th and the last day of each month of a few years.
+for (const year of [2024, 2026, 1900, -1, 12345]) {
+    for (let month = 0; month < 12; month++) {
+        for (const day of [1, 15, 0]) {
+            const d = new Date(0);
+            d.setUTCFullYear(year, day === 0 ? month + 1 : month, day);
+            d.setUTCHours(randInt(24), randInt(60), randInt(60), randInt(1000));
+            dateTimes.push(d.getTime());
+        }
+    }
+}
+for (let i = 0; i < 7; i++) dateTimes.push(1794355200000 + i * 86400000 + randInt(86400000));
+for (let i = 0; i < 80; i++) dateTimes.push((randInt(2 ** 31) * 4096 + randInt(4096)) * (randInt(2) ? 1 : -1));
+const dateText = unique(dateTimes).map((ms) => {
+    const d = new Date(ms);
+    const valid = Number.isFinite(d.getTime());
+    // Invalid dates print `Invalid Date` (toISOString throws): null, which the Rust functions give as None.
+    return [ms, valid ? d.toString() : null, valid ? d.toUTCString() : null, valid ? d.toISOString() : null];
+});
+
+write('date_text.json', { date_text: dateText });
+
+console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json date_text.json dates.json order.json text.json');

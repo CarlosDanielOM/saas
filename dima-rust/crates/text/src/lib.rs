@@ -48,7 +48,7 @@ pub use chars::{
 };
 pub use date::{
     MAX_TIME_MS, MS_PER_DAY, UtcFields, date_utc, parse_date, to_date_string_utc, to_iso_string,
-    to_locale_string_en_us_utc, utc_day_start, utc_fields,
+    to_locale_string_en_us_utc, to_string_utc, to_utc_string, utc_day_start, utc_fields,
 };
 pub use json::{
     JsonIndent, SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,

@@ -781,3 +781,24 @@ fn json_parse_matches_node() {
     }
     check.finish();
 }
+
+// ------------------------------------------------------------------ Date text
+
+#[test]
+fn date_text_matches_node() {
+    let file = load("date_text.json");
+    let mut check = Check::new("toString/toUTCString/toISOString");
+    for row in rows(&file, "date_text") {
+        let ms = int(&row[0]);
+        for (name, actual, expected) in [
+            ("toString", to_string_utc(ms), &row[1]),
+            ("toUTCString", to_utc_string(ms), &row[2]),
+            ("toISOString", to_iso_string(ms), &row[3]),
+        ] {
+            check.expect(actual.as_deref() == expected.as_str(), || {
+                format!("{ms} {name}: {actual:?} != {expected}")
+            });
+        }
+    }
+    check.finish();
+}

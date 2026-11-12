@@ -57,23 +57,58 @@ pub fn utc_day_start(ms: i64) -> Option<i64> {
     Some(ms.div_euclid(MS_PER_DAY) * MS_PER_DAY)
 }
 
+const DAY_NAMES: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// The parts V8's date text is made of: weekday and month names, and the year as V8 writes it
+/// outside ISO text (at least four digits, a minus sign before year 0: `0001`, `-0001`, `275760`).
+fn text_parts(f: &UtcFields) -> Option<(&'static str, &'static str, String)> {
+    let weekday = DAY_NAMES.get(f.weekday as usize)?;
+    let month = MONTH_NAMES.get(f.month as usize)?;
+    let sign = if f.year < 0 { "-" } else { "" };
+    Some((
+        weekday,
+        month,
+        format!("{sign}{:04}", f.year.unsigned_abs()),
+    ))
+}
+
 /// `new Date(ms).toDateString()` in UTC (the services run in UTC): `Wed Nov 11 2026`.
 ///
 /// Years print with at least four digits and a minus sign before year 0 (`0001`, `-0001`,
 /// `275760`). `None` where JavaScript prints `Invalid Date` (outside the `Date` range).
 pub fn to_date_string_utc(ms: i64) -> Option<String> {
-    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const NAMES: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
     let f = utc_fields(ms)?;
-    let weekday = DAYS.get(f.weekday as usize)?;
-    let month = NAMES.get(f.month as usize)?;
-    let sign = if f.year < 0 { "-" } else { "" };
+    let (weekday, month, year) = text_parts(&f)?;
+    Some(format!("{weekday} {month} {:02} {year}", f.day))
+}
+
+/// `new Date(ms).toString()` with the process time zone set to UTC, as the services run:
+/// `Wed Nov 11 2026 15:04:05 GMT+0000 (Coordinated Universal Time)`.
+///
+/// Only UTC is supported: in another zone the offset and the zone's ICU display name would
+/// change, and no service runs in one. Years as in [`to_date_string_utc`]. `None` where
+/// JavaScript prints `Invalid Date`.
+pub fn to_string_utc(ms: i64) -> Option<String> {
+    let f = utc_fields(ms)?;
+    let (weekday, month, year) = text_parts(&f)?;
     Some(format!(
-        "{weekday} {month} {:02} {sign}{:04}",
-        f.day,
-        f.year.unsigned_abs()
+        "{weekday} {month} {:02} {year} {:02}:{:02}:{:02} GMT+0000 (Coordinated Universal Time)",
+        f.day, f.hour, f.minute, f.second
+    ))
+}
+
+/// `new Date(ms).toUTCString()` (the HTTP date form for years 0 to 9999):
+/// `Wed, 11 Nov 2026 15:04:05 GMT`. Years as in [`to_date_string_utc`] (`-0001`, not
+/// `-000001`). `None` where JavaScript prints `Invalid Date`.
+pub fn to_utc_string(ms: i64) -> Option<String> {
+    let f = utc_fields(ms)?;
+    let (weekday, month, year) = text_parts(&f)?;
+    Some(format!(
+        "{weekday}, {:02} {month} {year} {:02}:{:02}:{:02} GMT",
+        f.day, f.hour, f.minute, f.second
     ))
 }
 
