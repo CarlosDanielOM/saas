@@ -39,6 +39,8 @@ pub struct Hooks {
 }
 
 pub struct Runner<'a> {
+    pub observe_times: bool,
+    pub started_at: Option<i64>,
     pub scan_pages: BTreeMap<usize, Vec<RawStep>>,
     pub step_ends: Vec<i64>,
     pub mongo_selection: &'a scenario::Selection,
@@ -825,10 +827,32 @@ impl Runner<'_> {
     }
 
     pub async fn run(&mut self, steps: &[Step]) -> Result<Vec<RawStep>, StepError> {
+        let mut observer = match &self.stores.postgres {
+            Some(pg) if self.observe_times => Some(
+                pg.time_observer()
+                    .await
+                    .map_err(|e| err(0, e.to_string()))?,
+            ),
+            _ => None,
+        };
         let mut socketio = None;
-        let result = self.run_inner(steps, &mut socketio).await;
+        let result = self.run_inner(steps, &mut socketio, &mut observer).await;
         if let Some(client) = socketio {
             client.stop().await;
+        }
+        if let Some(observer) = observer
+            && let Err(error) = observer.finish().await
+        {
+            return Err(err(
+                steps.len().saturating_sub(1),
+                format!(
+                    "PostgreSQL time observer close: {error}; step result: {}",
+                    result
+                        .as_ref()
+                        .err()
+                        .map_or("success".to_string(), |e| e.message.clone())
+                ),
+            ));
         }
         result
     }
@@ -837,13 +861,17 @@ impl Runner<'_> {
         &mut self,
         steps: &[Step],
         socketio: &mut Option<crate::socketio::Client>,
+        observer: &mut Option<crate::postgres::TimeObserver>,
     ) -> Result<Vec<RawStep>, StepError> {
+        let patterns = crate::detect::Patterns::new().map_err(|e| err(0, e.to_string()))?;
         let mut out = Vec::with_capacity(steps.len());
         let mut producer = (0, timefmt::now_ms());
+        let mut dragonfly_times = crate::stores::DragonflyTimeCache::default();
 
         for (i, s) in steps.iter().enumerate() {
             self.alive(i, "before the step")?;
             let request_at = timefmt::now_ms();
+            self.started_at.get_or_insert(request_at);
             if !matches!(
                 s.kind,
                 StepKind::Pause(_)
@@ -945,15 +973,18 @@ impl Runner<'_> {
                     RawStep::Done("wait_call".into())
                 }
             };
-            self.step_ends.push(timefmt::now_ms());
             self.alive(i, "during the step")?;
+            if !self.observe_times {
+                out.push(r);
+                continue;
+            }
+            self.step_ends.push(timefmt::now_ms());
             // Observe values after each operation so later latency cannot move earlier writes.
             let mongo = self
                 .stores
                 .capture_mongo(self.mongo_selection)
                 .await
                 .map_err(|e| err(i, format!("timestamp provenance: {e}")))?;
-            let patterns = crate::detect::Patterns::new().map_err(|e| err(i, e.to_string()))?;
             let mut known = crate::detect::Known::default();
             for coll in mongo.values() {
                 for doc in &coll.docs {
@@ -994,27 +1025,32 @@ impl Runner<'_> {
             }
             let df = self
                 .stores
-                .capture_dragonfly(self.dragonfly_selection)
+                .dragonfly_time_changes(self.dragonfly_selection, &mut dragonfly_times)
                 .await
                 .map_err(|e| err(i, format!("timestamp provenance Dragonfly: {e}")))?;
             for entry in df {
-                crate::detect::collect_known_json(
-                    &patterns,
-                    &crate::capture::enc_value(&entry.value),
-                    &mut known,
-                );
-                if entry.pttl >= 0 {
-                    let expiry = entry.pttl_at + entry.pttl;
+                if let Some(value) = &entry.value {
+                    // Unchanged keys were already observed with their first value.
+                    if let Ok(key) = std::str::from_utf8(&entry.key) {
+                        patterns.collect_known(key, &mut known);
+                    }
+                    crate::detect::collect_known_json(
+                        &patterns,
+                        &crate::capture::enc_value(value),
+                        &mut known,
+                    );
+                }
+                if let Some(expiry) = entry.expiry {
                     let origin = match self.ttl_origins.get(&entry.key) {
-                        Some((old, origin)) if (old - expiry).abs() <= 1000 => *origin,
+                        Some((old, origin)) if *old == expiry => *origin,
                         _ => producer,
                     };
                     self.ttl_origins.insert(entry.key, (expiry, origin));
                 }
             }
-            if let Some(pg) = &self.stores.postgres {
+            if let Some(pg) = observer {
                 let snapshot = pg
-                    .snapshot()
+                    .rows()
                     .await
                     .map_err(|e| err(i, format!("timestamp provenance PostgreSQL: {e}")))?;
                 crate::detect::collect_known_json(&patterns, &snapshot, &mut known);

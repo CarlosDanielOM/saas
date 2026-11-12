@@ -279,6 +279,12 @@ fn main() -> ExitCode {
     }
     let result = result.map(|r| {
         r.map(|mut report| {
+            report.warnings.extend(
+                cleanup
+                    .forced_postgres
+                    .iter()
+                    .map(|name| format!("PostgreSQL cleanup required FORCE for database {name}")),
+            );
             report
                 .errors
                 .extend(cleanup.errors.iter().map(|e| format!("cleanup: {e}")));
@@ -287,7 +293,13 @@ fn main() -> ExitCode {
         })
     });
     match result {
-        Ok(None) => ExitCode::SUCCESS,
+        Ok(None) => {
+            if cleanup.errors.is_empty() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(2)
+            }
+        }
         Ok(Some(report)) => {
             print!("{}", report.to_text());
             let path = cli.report.clone().unwrap_or_else(|| {

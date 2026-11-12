@@ -450,6 +450,48 @@ fn self_test_end_to_end() {
         );
     }
 
+    // Format 5 keeps its original run-relative checks and still catches timing defects.
+    let legacy = work.join("legacy-captures");
+    copy_dir(&work.join("captures"), &legacy);
+    let lease_path = legacy.join("selftest/items/lease.json");
+    let mut lease: Value = serde_json::from_slice(&std::fs::read(&lease_path).unwrap()).unwrap();
+    let fields = lease.as_object_mut().unwrap();
+    fields.insert("rig_capture".into(), json!(5));
+    for name in ["step_ends", "time_anchors", "ttl_origins", "scan_pages"] {
+        fields.remove(name);
+    }
+    std::fs::write(&lease_path, serde_json::to_vec(&lease).unwrap()).unwrap();
+    for (variant, path, message) in [
+        ("good", "", ""),
+        ("no-bump", "mongo.items[0].updatedAt", "time relation"),
+        (
+            "lease-length",
+            "mongo.items[0].leaseUntil",
+            "a fixed duration",
+        ),
+    ] {
+        let run = rig_with(
+            &work,
+            &rd,
+            &legacy,
+            variant,
+            &["verify", "selftest", "items/lease"],
+        );
+        pids.push(run.pid);
+        if variant == "good" {
+            assert_eq!(run.code, 0, "legacy reference must match: {}", run.text);
+        } else {
+            assert_eq!(run.code, 1, "legacy defect {variant}: {}", run.text);
+            assert!(
+                run.differences("items/lease")
+                    .iter()
+                    .any(|(p, w)| p == path && w.contains(message)),
+                "legacy defect {variant} lacks actionable path: {}",
+                run.text
+            );
+        }
+    }
+
     // One process per scenario: a scenario verified alone gives what it gave after the others.
     let alone = rig(
         &work,

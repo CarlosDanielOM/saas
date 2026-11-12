@@ -591,7 +591,7 @@ impl<'s> SideRunner<'s> {
         Ok(())
     }
 
-    async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
+    async fn run_scenario(&mut self, sc: &Scenario, observe_times: bool) -> SideOutcome {
         let seeded_at = timefmt::now_ms();
         let start = seeded_at;
         let own_process = !(self.target.share_process || sc.share_process) || sc.restart;
@@ -652,6 +652,8 @@ impl<'s> SideRunner<'s> {
         // to start (which varies between runs) does not move them.
         let start = timefmt::now_ms().max(start);
         let mut runner = Runner {
+            observe_times,
+            started_at: None,
             scan_pages: BTreeMap::new(),
             step_ends: Vec::new(),
             mongo_selection: &sc.mongo,
@@ -668,6 +670,7 @@ impl<'s> SideRunner<'s> {
             side_values: self.side_values.clone(),
         };
         let result = runner.run(&sc.steps).await;
+        let start = runner.started_at.unwrap_or(start);
         let scan_pages = std::mem::take(&mut runner.scan_pages);
         let step_ends = std::mem::take(&mut runner.step_ends);
         let time_anchors = std::mem::take(&mut runner.time_anchors);
@@ -843,7 +846,7 @@ async fn run_side(
     let mut r = SideRunner::new(settings, reg, target, which, label, existing).await?;
     let mut out = Vec::with_capacity(scenarios.len());
     for sc in scenarios {
-        out.push(r.run_scenario(sc).await);
+        out.push(r.run_scenario(sc, true).await);
     }
     r.finish().await;
     Ok(out)
@@ -1163,16 +1166,16 @@ pub async fn verify(
         }
     }
     if !runnable.is_empty() {
-        let cands = run_side(
-            settings,
-            reg,
-            &target,
-            Which::Candidate,
-            "cand",
-            &runnable,
-            None,
-        )
-        .await?;
+        let mut runner =
+            SideRunner::new(settings, reg, &target, Which::Candidate, "cand", None).await?;
+        let mut cands = Vec::with_capacity(runnable.len());
+        for (sc, reference) in runnable.iter().zip(&recorded) {
+            // Legacy references have no producing-step metadata. Keep their original
+            // run-relative checks without adding observations that cannot be compared.
+            let observe_times = !reference.raw.step_ends.is_empty();
+            cands.push(runner.run_scenario(sc, observe_times).await);
+        }
+        runner.finish().await;
         for ((sc, r), c) in runnable.iter().zip(recorded).zip(cands) {
             let mut rep = ScenarioReport::new(&sc.name, &sc.description);
             match c {

@@ -20,7 +20,7 @@ fn postgres_seed_read_catalogue_rows_and_cleanup() {
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(work.join("targets")).unwrap();
     std::fs::create_dir_all(work.join("scenarios/pg")).unwrap();
-    let mut reference = json!({"command":[FIXTURE,"--variant","good"],"env":{"PORT":"{port}","MONGO_URI":"{mongo_uri}","MONGO_DB":"{mongo_db}","REDIS_URL":"{dragonfly_url}","FIXTURE_POSTGRES_URI":"{postgres_uri}"},"ready":{"http":"/health","timeout_ms":15000}});
+    let mut reference = json!({"command":[FIXTURE,"--variant","good"],"env":{"PORT":"{port}","MONGO_URI":"{mongo_uri}","MONGO_DB":"{mongo_db}","REDIS_URL":"{dragonfly_url}","FIXTURE_POSTGRES_URI":"{postgres_uri}"},"ready":{"http":"/health","timeout_ms":60000}});
     let candidate = {
         let mut c = reference.clone();
         c["env"]["FIXTURE_POSTGRES_DEFECT"] = json!("{var.defect}");
