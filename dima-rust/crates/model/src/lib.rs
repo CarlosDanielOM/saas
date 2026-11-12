@@ -371,8 +371,11 @@ pub mod stream_activities;
 pub mod stream_activity_aggregates;
 pub mod stream_activity_states;
 pub mod stream_markers;
+pub mod stream_operations_receipts;
+pub mod stream_operations_reconciliations;
 pub mod stream_participants;
 pub mod stream_sessions;
+pub mod stream_subscription_ledgers;
 pub mod stream_viewer_snapshots;
 pub mod temporary_moderators;
 pub mod timer_commands;
@@ -401,6 +404,9 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &stream_operations_receipts::INFO,
+    &stream_operations_reconciliations::INFO,
+    &stream_subscription_ledgers::INFO,
     &channel_stream_summaries::INFO,
     &dashboard_activity_dailies::INFO,
     &dashboard_activity_summaries::INFO,

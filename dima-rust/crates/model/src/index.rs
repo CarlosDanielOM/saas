@@ -224,6 +224,7 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
         | crate::channel_stream_summaries::COLLECTION
         | crate::stream_markers::COLLECTION
         | crate::stream_participants::COLLECTION
+        | crate::stream_subscription_ledgers::COLLECTION
         | crate::pet_settings::COLLECTION
         | crate::user_extension_inventories::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION

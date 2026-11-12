@@ -844,6 +844,10 @@
    "sha256": "d45de640b797491417845f1918b2ef7cb3d67ddb3836e1c8685f87322a9fb287"
   },
   {
+   "path": "src/schemas/stream_operations_receipt.schema.ts",
+   "sha256": "54c646abccf4cafea2552840f6799102e9cd411e94c9cc20fbd55fdc9b7ed93f"
+  },
+  {
    "path": "src/schemas/stream_session.schema.ts",
    "sha256": "8c084a4cec26ac0a2ba98085ab020166c01f2064185a6b2ff6b811478a80c965"
   },
@@ -1645,6 +1649,574 @@
   }
  ],
  "models": {
+  "stream_operations_receipts": {
+   "model": "stream_operations_receipt",
+   "file": "src/schemas/stream_operations_receipt.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date",
+      "immutable": true
+     },
+     {
+      "name": "steps",
+      "kind": "map",
+      "of": {
+       "kind": "subdocuments",
+       "schema": {
+        "id": "none",
+        "timestamps": null,
+        "versionKey": null,
+        "minimize": true,
+        "fields": [
+         {
+          "name": "status",
+          "kind": "value",
+          "type": "String"
+         },
+         {
+          "name": "reason",
+          "kind": "value",
+          "type": "String"
+         },
+         {
+          "name": "at",
+          "kind": "value",
+          "type": "Date"
+         }
+        ]
+       }
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {}
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "stream_operations_reconciliations": {
+   "model": "stream_operations_reconciliation",
+   "file": "src/schemas/stream_operations_receipt.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "pending",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "nextAttemptAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "leaseToken",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "lastError",
+      "kind": "value",
+      "type": "String"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "revision",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "pending",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "nextAttemptAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "pending",
+       1
+      ],
+      [
+       "nextAttemptAt",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "stream_subscription_ledgers": {
+   "model": "stream_subscription_ledger",
+   "file": "src/schemas/stream_subscription_ledger.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "platform",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "twitch"
+      }
+     },
+     {
+      "name": "streamer_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "streamer_login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "streamer_name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "user_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "user_login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "user_name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "sub_tier_raw",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "sub_tier_normalized",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "unknown"
+      }
+     },
+     {
+      "name": "is_gift",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "active"
+      }
+     },
+     {
+      "name": "subbed_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "ended_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "last_event_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "event_key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "applied_event_keys",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "applied_event_keys"
+   ],
+   "validators": [
+    {
+     "path": "platform",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "platform",
+     "type": "enum",
+     "values": [
+      "twitch"
+     ]
+    },
+    {
+     "path": "streamer_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "user_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sub_tier_normalized",
+     "type": "enum",
+     "values": [
+      "tier1",
+      "tier2",
+      "tier3",
+      "unknown"
+     ]
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "active",
+      "ended"
+     ]
+    },
+    {
+     "path": "subbed_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "last_event_at",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "platform",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "streamer_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "user_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "sub_tier_normalized",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "last_event_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "streamer_id",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "platform",
+       1
+      ],
+      [
+       "streamer_id",
+       1
+      ],
+      [
+       "user_id",
+       1
+      ],
+      [
+       "last_event_at",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "event_key",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "sparse": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "platform",
+       1
+      ],
+      [
+       "streamer_id",
+       1
+      ],
+      [
+       "user_id",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "partialFilterExpression": {
+       "status": "active"
+      },
+      "background": true
+     }
+    }
+   ]
+  },
   "channelstreamsummaries": {
    "model": "ChannelStreamSummary",
    "file": "src/schemas/channel_stream_summary.schema.ts",
@@ -19760,7 +20332,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ef3cc1d98223b320e"
+          "value": "6af4416ebc0d598578f30399"
          }
         },
         {
