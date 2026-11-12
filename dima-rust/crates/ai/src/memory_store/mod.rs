@@ -40,18 +40,33 @@
 //!
 //! # Differences from the reference, on purpose
 //!
-//! - **Ownership.** Every Qdrant delete of this module names the memory and its channel, so the
-//!   owner check of `deleteChannelMemoryEmbedding` always runs; the reference's id-less form
-//!   (which deletes whatever point has that 32-bit id, any channel's) is never used. A point of
-//!   another memory at our id (a 32-bit collision) is "not ours": deleting our memory succeeds
-//!   instead of failing forever with the collision message.
-//! - **Limits under races.** The pending and confirmed limits (`learningConfig`, per channel)
-//!   are checked before the insert, as the reference does, and counted again after it: when two
-//!   creates raced past the limit, the insert that finds the count above it removes itself. The
-//!   limit can then be undershot by a race, never exceeded once both finish.
+//! - **Ownership.** Every delete takes the channel it may act on, and every Qdrant delete of
+//!   this module names the memory and its channel, so the owner check always runs. The
+//!   reference's `deleteChannelMemoryEmbedding(pointId, channelID)` without a memory id
+//!   (`sync_memory.qdrant.ts:162`, `if (memoryID && …)`) skips it and deletes whatever point has
+//!   that 32-bit id, another channel's included (recorded: channel 1001's call removed channel
+//!   2002's point). No caller of the reference reaches that form today (every call passes the
+//!   id of a document already matched by `{_id, channelID}`), so a dashboard user of one channel
+//!   cannot use it; the form itself is not offered here. The lower `qdrant` module keeps it for
+//!   its own callers. A point of another memory at our id (a 32-bit collision) is not ours:
+//!   deleting our memory succeeds instead of failing forever with the collision message.
+//! - **Limits under races.** The pending and confirmed limits (`learningConfig`, per channel,
+//!   1 to 10,000 and 1 to 100,000 as the personality form sanitises them; not per plan) are
+//!   checked before the insert, as the reference does, and counted again after it: an insert
+//!   that finds the count above the limit removes itself, and tries again after a pause drawn
+//!   from its id (at most three times). The count can never stay above the limit; a heavy race
+//!   can undershoot it. The reference's other paths around the limits are kept: a dedupe update
+//!   or a manual confirmation may move a memory to `confirmed` beyond the limit.
 //! - **A duplicate fingerprint on insert** (two identical creates racing) is retried once as
 //!   the dedupe update instead of failing.
 //! - **Size bounds** ([`Config`]) refuse oversized text before any read, write or embedding.
+//!   A viewer's chat reaches memories only through the AI's `create_memory` tool, whose memories
+//!   have `createdBy.source: chat`: their content is bounded by
+//!   [`Config::max_chat_content_chars`], evidence messages by
+//!   [`Config::max_evidence_message_chars`], and a channel's pending memories by its limit.
+//! - **The summary cut** never splits a character: the reference cuts 177 UTF-16 units, which
+//!   can split an emoji; Qdrant then refuses the lone surrogate and the create fails (recorded).
+//! - **Usage counts** skip ids that are not ObjectIds instead of failing the whole update.
 //! - **Input types are closed.** Types, risks, statuses and sources are the stored enums; the
 //!   stream worker's unchecked strings are parsed by its caller.
 //! - Mongo `_id` strings: 24 hexadecimal digits, as Mongoose casts them.
