@@ -88,6 +88,26 @@ Decisions behind the map:
 | F-SOCKETIO | `dima-socketio` as designed in `socketio.md`: Engine.IO from `engineioxide` with every limit set explicitly; packet codec (text only); static and pattern namespaces with ASCII matching and admission before allocation; typed handshake checks with the structured connect error; events and acknowledgements in both directions with deadlines; bounded per-socket queues and a slow-consumer policy; recovery (sessions and replay buffers with hard bounds, only the events the reference would have stored); the vendored `/socket.io/socket.io.js`; shutdown through the upgrade contract of `dima-web`; verified with `socket.io-client` 4.8.3 and 4.7.5 over polling, WebSocket and the upgrade | xhigh | F-WEB-03 | running |
 | F-TEXT-b | From the pilot: `JSON.stringify(value, null, 2)`, `encodeURIComponent` / `decodeURIComponent`, a `JSON.parse` wrapper (key order, numbers as JavaScript holds them) shared with `dima-web`, `Date.prototype.toString` | high | F-TEXT | planned |
 
+## Phase 2: the old crate drained into the workspace
+
+The old single crate (`dima-rust/src`, 36,000 lines without tests; inventory in `existing-rust.md`) is
+moved module by module onto the foundation, converted to native UTF-8 and brought up to today's
+reference. A module is deleted from the old crate by the package that replaces it. Corpora are
+regenerated from the TypeScript with Node 24; an intended difference from recorded JavaScript
+behaviour is written as code in the test, never by editing a recorded expectation.
+
+| Package | Scope | Effort | Depends on | Status |
+|---|---|---|---|---|
+| E-ENGINE-01 | `dima-engine`: command language syntax (tokenizer, parser, template scanner, diagnostics) and block model, from `ast_syntax` and `ast_blocks`; positions in bytes inside, UTF-16 units only where the Angular editor indexes a JavaScript string; limits count characters | high | F-TEXT | running |
+| E-ENGINE-02 | `dima-engine`: evaluator, value model, storage, registry, host trait and the pure functions, from `ast_evaluator` (the bulk of the UTF-16 emulation: `JsString` becomes `String`), brought up to `evaluator.ts`, `registry.ts`, `timer.ts` and the drifted `effects.ts`; the old AST modules, corpora and tests leave the old crate | xhigh | E-ENGINE-01 | planned |
+| P2-COMMANDS | `dima-commands`: permissions and roles (3,681 corpus cases), keywords and their cache, RE2 pattern translation, cooldown decisions, timer policy; `chat_events` and `chat_message` to `dima-twitch` | high | F-MODEL-c | planned |
+| P2-BILLING-01 | `dima-billing`: credit policy and packs, free-credit reset rules, AI usage context and classification, the Polar client as a thin client on `dima-http` (the old one pulls its own HTTP stack) | high | F-MODEL-c | planned |
+| P2-EVENTS | `dima-events`: domain event contracts, identity, envelope and keys, producers, the journal store, wakeups, durable cron-job intents on the store's cron queue | xhigh | F-MODEL-c | planned |
+| P2-TWITCH-01 | `dima-twitch`: Helix and OAuth transport on `dima-http`, token lifecycle with the compare-and-set rules on MongoDB and Dragonfly, EventSub condition keys, the streamer directory | xhigh | F-MODEL-c | planned |
+| P2-CRON-01 | `cron/` binary with the in-process supervisor of `dima-core` (per-task restart, abort and join with a deadline, typed telemetry), and the first native workers on it: stream activity, raid analytics, follow defense baseline, roulette completion | xhigh | F-MODEL-04, F-TELEMETRY-b, F-STORE-DF-b | planned |
+| P2-CRON-02 | The other three native workers: AI usage receipts (money), raid sessions, dashboard activity with insights and the emote catalog; the old supervisor, worker binaries and `ops/rust_build.sh` profiles retired | xhigh | P2-CRON-01, P2-BILLING-01, P2-TWITCH-01 | planned |
+| P2-SMALL | Thin clients and helpers the old crate holds, each on `dima-http`: Qdrant over REST (the old one uses gRPC), S3 with request signing, Resend email, audio durations; the old logger, queue, fence, crypto, JWT, CORS and Socket.IO modules are deleted (the foundation replaced them) | high | F-HTTP-b | planned |
+
 ## Later phases
 
 Feature packages follow `modules.md` (124 proposed packages), re-homed to the crate map above. They are
@@ -97,7 +117,7 @@ build order only, and no package has to interoperate with a running TypeScript p
 
 | Phase | Packages | Status |
 |---|---|---|
-| 2 | Old crate drained into the workspace: engine (UTF-8 conversion, brought up to the current reference: `effects.ts` has drifted), permissions, keywords, policies, the seven workers, supervisor replaced | planned |
+| 2 | Old crate drained into the workspace (table above) | started |
 | 3 | Shared crates and cron: three end-to-end slices first, then the remaining shared crates and all workers | planned |
 | 4 | Bot: `dima-chat`, EventSub ingress, bot binary | planned |
 | 5 | API: services, routes, site agent, Socket.IO namespaces, API binary | planned |
