@@ -349,6 +349,89 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("channel_goals", "typed") => {
+            use dima_model::channel_goals::*;
+            let input = NewChannelGoals {
+                id: String::from("seed"),
+                revision: Some(JsNumber(1.0)),
+                goals: Some(Private::new(vec![Some(ChannelGoalsGoalsContent(
+                    bson::Bson::Document(
+                        bson::doc! {"id":String::from("goal"),"name":String::from("héllo 👋 مرحبا é"),"target":1_i64,"createdAt":1794392430456_i64,"startsAt":1794392430456_i64},
+                    ),
+                ))])),
+                outcomes: Some(Private::new(ChannelGoalsOutcomesContent(
+                    bson::Bson::Document(
+                        bson::doc! {"goal":bson::doc!{"phase":String::from("completed"),"sequence":1_i64,"at":1794392430456_i64}},
+                    ),
+                ))),
+                monthly_cursors: Some(Private::new(ChannelGoalsMonthlyCursorsContent(
+                    bson::Bson::Document(bson::doc! {"goal":String::from("2026-11")}),
+                ))),
+                twitch_actions: Some(Private::new(vec![Some(ChannelGoalsTwitchActionsContent(
+                    bson::Bson::Document(
+                        bson::doc! {"type":String::from("subscription"),"completion":bson::doc!{"type":String::from("message"),"text":String::from("héllo 👋 مرحبا é")}},
+                    ),
+                ))])),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("goal_contributions", "typed") => {
+            use dima_model::goal_contributions::*;
+            let input = NewGoalContribution {
+                id: String::from("seed"),
+                channel: String::from("111"),
+                goal: String::from("goal"),
+                occurred_at: JsNumber(1794392430456.0),
+                amount: JsNumber(1.0),
+                expires_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("goal_custom_receipts", "typed") => {
+            use dima_model::goal_custom_receipts::*;
+            let input = NewGoalCustomReceipt {
+                id: String::from("seed"),
+                channel: String::from("111"),
+                fingerprint: String::from("fingerprint"),
+                item_key: String::from("item"),
+                quantity: JsNumber(1.0),
+                occurred_at: JsNumber(1794392430456.0),
+                journaled_at: JsNumber(1794392430456.0),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("widget_channels", "typed") => {
+            use dima_model::widget_channels::*;
+            let input = NewWidgetChannel {
+                id: String::from("seed"),
+                revision: JsNumber(1.0),
+                state: Private::new(WidgetChannelStateContent(bson::Bson::Document(
+                    bson::doc! {"phase":String::from("idle"),"nextAt":bson::Bson::Null,"config":bson::doc!{"label":String::from("héllo 👋 مرحبا é")}},
+                ))),
+                receipts: Some(vec![Some(WidgetChannelReceiptsEntry {
+                    key: Some(String::from("key")),
+                    fingerprint: Some(String::from("fingerprint")),
+                    at: Some(JsNumber(1794392430456.0)),
+                })]),
+                event_receipts: Some(vec![Some(WidgetChannelEventReceiptsEntry {
+                    key: Some(String::from("event")),
+                    at: Some(JsNumber(1794392430456.0)),
+                })]),
+                event_settings: Some(Private::new(WidgetChannelEventSettingsContent(
+                    bson::Bson::Document(
+                        bson::doc! {"enabled":true,"rules":bson::Bson::Array(vec![])},
+                    ),
+                ))),
+                overlay_token: Some(Private::new(WidgetChannelOverlayTokenContent(
+                    bson::Bson::Document(
+                        bson::doc! {"iv":String::from("iv"),"content":String::from("secret")},
+                    ),
+                ))),
+                token_hash: None,
+                due_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("clipdesigns", "typed") => {
             use dima_model::clipdesigns::*;
             let input = NewClipDesign {

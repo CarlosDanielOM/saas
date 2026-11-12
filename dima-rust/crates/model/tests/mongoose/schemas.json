@@ -1669,6 +1669,361 @@
   }
  ],
  "models": {
+  "channel_goals": {
+   "model": "ChannelGoals",
+   "file": "src/goals/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "goals",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "outcomes",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {}
+      }
+     },
+     {
+      "name": "monthlyCursors",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {}
+      }
+     },
+     {
+      "name": "twitchActions",
+      "kind": "mixedArray"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "goal_contributions": {
+   "model": "GoalContribution",
+   "file": "src/goals/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "goal",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "amount",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channel",
+       1
+      ],
+      [
+       "goal",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "goal_custom_receipts": {
+   "model": "GoalCustomReceipt",
+   "file": "src/goals/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fingerprint",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "itemKey",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "quantity",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "journaledAt",
+      "kind": "value",
+      "type": "Number"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fingerprint",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "itemKey",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "quantity",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "journaledAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "widget_channels": {
+   "model": "WidgetChannel",
+   "file": "src/widgets/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "state",
+      "kind": "mixed"
+     },
+     {
+      "name": "tokenHash",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "overlayToken",
+      "kind": "mixed"
+     },
+     {
+      "name": "dueAt",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "receipts",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "key",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "fingerprint",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "at",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "eventSettings",
+      "kind": "mixed"
+     },
+     {
+      "name": "eventReceipts",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "key",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "at",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "overlayToken"
+   ],
+   "validators": [
+    {
+     "path": "revision",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "state",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "dueAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
   "clipdesigns": {
    "model": "ClipDesign",
    "file": "src/schemas/clip_design.schema.ts",
@@ -21409,7 +21764,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ef8840fb9793d8101"
+          "value": "6af4416ef47a15ede798622f"
          }
         },
         {

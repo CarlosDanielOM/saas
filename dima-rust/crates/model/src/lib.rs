@@ -295,6 +295,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod channel_goals;
 pub mod chat_logs;
 pub mod clipdesigns;
 pub mod cliprecommendationconfigs;
@@ -304,6 +305,8 @@ pub mod decode;
 mod defaults;
 pub mod enums;
 pub mod error;
+pub mod goal_contributions;
+pub mod goal_custom_receipts;
 mod hooks;
 pub mod index;
 pub mod loaded;
@@ -312,6 +315,7 @@ pub mod shape;
 pub mod update_validation;
 pub mod validation;
 pub mod values;
+pub mod widget_channels;
 mod writes;
 
 pub mod accounts;
@@ -414,6 +418,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &widget_channels::INFO,
+    &goal_custom_receipts::INFO,
+    &goal_contributions::INFO,
+    &channel_goals::INFO,
     &clipdesigns::INFO,
     &cliprecommendations::INFO,
     &cliprecommendationconfigs::INFO,
