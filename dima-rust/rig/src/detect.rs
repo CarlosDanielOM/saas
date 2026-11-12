@@ -3,7 +3,8 @@
 //! Generated identifiers (ObjectIds whose timestamp falls in the side's lifetime, random UUIDs,
 //! values named by a `generated` allowance) become `Id::Raw` atoms; canonicalisation numbers them.
 //! Times within the horizon of the run (BSON dates, ISO strings, `YYYY-MM-DD` days, epoch
-//! milliseconds) become relative to the scenario start. Values that appear in the scenario's
+//! milliseconds, HTTP dates) become relative to the run start (just before the first step), and
+//! values the seed wrote with `$rigNow` are recognised by their offset. Values in the scenario's
 //! inputs (seed, request bodies, paths, commands) are known and stay exact.
 
 use std::collections::HashSet;

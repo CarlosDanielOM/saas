@@ -7,7 +7,7 @@
 //! | Value | Encoding |
 //! |---|---|
 //! | generated ObjectId / UUID / allowance-generated token | `{"$oid": "<oid:1>"}`, `{"$uuid": "<uuid:2>"}`, inside text `<gen:3>` |
-//! | BSON date relative to the scenario start | `{"$date": "<t+153ms>"}`; outside the run window also the absolute time: `<t+60153ms@2026-11-11T10:01:00.153Z>` |
+//! | BSON date relative to the run start | `{"$date": "<t+153ms>"}`; outside the run window also the absolute time (for reading, not compared): `<t+60153ms@2026-11-11T10:01:00.153Z>`; a seeded `$rigNow` value: `<seed+60000ms>` |
 //! | epoch-millisecond number in the time horizon | `{"$numberLong": "<t+...>"}`, `{"$numberDouble": "<t+...>"}`, JSON: `{"$rigNumber": "<t+...>"}` |
 //! | string containing any of the above | `{"$rigText": "item:<oid:1>:lock"}` (`<<` is a literal `<`); times keep their shape: `<t+5ms|dddd-dd-ddTdd:dd:dd.dddZ>`, days: `<day+0>`, run-time names: `<run:port.http>` |
 //! | object key containing any of the above | the key `"$rigText:item:<oid:1>"`; a literal key starting with `$` is written `"$rigLiteral:$key"` |
@@ -82,7 +82,7 @@ pub enum Seg {
         at: Moment,
         shape: String,
     },
-    /// A `YYYY-MM-DD` day relative to the scenario start's UTC day.
+    /// A `YYYY-MM-DD` day relative to the run start's UTC day.
     Day {
         off: i64,
         abs: Option<String>,
