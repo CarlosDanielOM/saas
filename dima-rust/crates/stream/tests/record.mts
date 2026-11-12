@@ -1,3 +1,4 @@
+if (process.argv[2] === '--timeline') { process.argv.splice(2,1); await import('./record-timeline.mts'); process.exit(0); }
 if (process.argv[2] === '--activity') { await import('./record-activity.mts'); process.exit(0); }
 // Run from the main checkout with its installed dependencies. Never changes main-checkout files.
 // All database writes are scratch-only; domdimabot is queried only in record-real.ts.
