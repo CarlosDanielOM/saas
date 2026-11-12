@@ -314,6 +314,137 @@ async function main() {
   const part1 = { reference, sources, table, conditions, extraTemplates, bitsTypes, raidConditions, bitsCases, breaker, catalog: catalogCases, bodies, adminRows, accessCases };
   writeFileSync(`${outDir}/part1.json`, `${JSON.stringify(part1, null, 1)}\n`);
   console.log(`part 1: ${conditions.length} conditions, ${bodies.length} bodies, ${accessCases.length} access cases`);
+
+  // ================================================================ part 2
+  // Each scenario: the channels (users and directory), stored documents, environment, the call,
+  // and how the mock Twitch answers. `threw` is set where the reference throws.
+  const C1: Channel = { id: 'c1', name: 'chan_one' };
+  const followCondition = { broadcaster_user_id: 'c1', moderator_user_id: '698614112' };
+  const doc = (id: string, over: any) => ({
+    _id: { $oid: id }, id: over.id ?? `stored-${id.slice(-4)}`, status: 'enabled', type: 'channel.follow', version: '2',
+    condition: followCondition, created_at: '2026-11-10T00:00:00.000000000Z',
+    transport: { method: 'webhook', callback: 'https://subscriptions.domdimabot.com/eventsub' }, cost: { $numberInt: '1' },
+    channel: 'chan_one', channelID: 'c1', enabled: true, message: '', endMessage: '', endEnabled: false,
+    minViewers: { $numberInt: '2' }, temporalBanMessage: '', clipEnabled: false, delay: { $numberInt: '0' }, cheerTiers: [],
+    todayFollows: false, __v: { $numberInt: '0' }, ...over,
+  });
+  const scripted = (...answers: Array<Resp | undefined>) => (request: Rec, n: number) => answers[n];
+  type Scenario = { name: string; channels?: Channel[]; eventsubs?: any[]; env?: Partial<Env>; call: any; twitch?: (fake: FakeTwitch) => void };
+  const conflict = { status: 409, body: '{"error":"Conflict","status":409,"message":"subscription already exists"}' };
+  const scenarios: Scenario[] = [
+    { name: 'create', call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: { message: '$(user) followed 🙂' } } },
+    { name: 'create-without-settings', call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'create-settings-of-every-type', call: { fn: 'subscribe', channel: 'c1', type: 'channel.bits.use', version: '1', condition: { broadcaster_user_id: 'c1' },
+      config: { enabled: false, message: null, minViewers: { $numberDouble: '2.5' }, delay: { $numberInt: '10' }, cheerTiers: [{ id: 'large', name: 'Large', message: 'Big 🎉', minAmount: { $numberInt: '100' }, maxAmount: { $numberInt: '999' } }], clipEnabled: true, endEnabled: true, endMessage: 'end', todayFollows: true } } },
+    { name: 'existing-returned', eventsubs: [doc('00000000000000000000e001', { condition: { moderator_user_id: '698614112', broadcaster_user_id: 'c1', extra: '' }, message: 'kept' })],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: { message: 'ignored' } } },
+    { name: 'existing-without-id-creates', eventsubs: [doc('00000000000000000000e002', { id: '' })],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null } },
+    { name: 'existing-other-condition-creates', eventsubs: [doc('00000000000000000000e003', { condition: { broadcaster_user_id: 'c1', moderator_user_id: 'someone' } })],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null } },
+    { name: 'ignore-existing', eventsubs: [doc('00000000000000000000e004', {})],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null, ignoreExisting: true } },
+    { name: 'twitch-id-already-stored', eventsubs: [doc('00000000000000000000e005', { id: 'sub-0001', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, message: 'old', minViewers: { $numberDouble: '3.5' } })],
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: { message: 'new' }, ignoreExisting: true } },
+    { name: 'raid-outgoing', call: { fn: 'subscribe', channel: 'c1', type: 'channel.raid', version: '1', condition: { from_broadcaster_user_id: 'c1' }, config: { message: '', minViewers: { $numberInt: '0' }, clipEnabled: false } } },
+    { name: 'raid-existing-with-empty-direction', eventsubs: [doc('00000000000000000000e006', { type: 'channel.raid', version: '1', condition: { from_broadcaster_user_id: '', to_broadcaster_user_id: 'c1' } })],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'app-auth-only-without-permissions', channels: [{ ...C1, has_permissions: false, token: false }],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.chat.message', version: '1', condition: { broadcaster_user_id: 'c1', user_id: '698614112' }, config: null, appAuthOnly: true } },
+    { name: 'header-without-permissions', channels: [{ ...C1, has_permissions: false }],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null } },
+    { name: 'header-without-token', channels: [{ ...C1, token: false }],
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null } },
+    { name: 'no-secret', env: { secret: null }, call: { fn: 'subscribe', channel: 'c1', type: 'channel.follow', version: '2', condition: followCondition, config: null } },
+    { name: 'streamer-not-found', call: { fn: 'subscribe', channel: 'nobody', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'nobody' }, config: null } },
+    { name: 'no-app-token', env: { appToken: null }, call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'conflict-409', twitch: (t) => { t.override = scripted(conflict); }, call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'forbidden-403', twitch: (t) => { t.override = scripted({ status: 403, body: '{"error":"Forbidden","status":403,"message":"subscription missing proper authorization"}' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'rate-limited-429', twitch: (t) => { t.override = scripted({ status: 429, headers: { 'content-type': 'application/json', 'ratelimit-limit': '800', 'ratelimit-remaining': '0', 'ratelimit-reset': '1794355260' }, body: '{"error":"Too Many Requests","status":429,"message":"websocket transports limit exceeded"}' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'server-error-500', twitch: (t) => { t.override = scripted({ status: 500, body: '{"error":"Internal Server Error","status":500,"message":""}' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'server-error-503-not-json', twitch: (t) => { t.override = scripted({ status: 503, headers: { 'content-type': 'text/html' }, body: '<html>unavailable</html>' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'accepted-without-data', twitch: (t) => { t.override = scripted({ status: 202, body: '{"data":[],"total":0}' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+    { name: 'ok-with-error-field', twitch: (t) => { t.override = scripted({ status: 200, body: '{"error":"Odd","data":[{"id":"x"}]}' }); },
+      call: { fn: 'subscribe', channel: 'c1', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'c1' }, config: null } },
+
+    { name: 'list-one-page', twitch: (t) => { for (const type of ['stream.online', 'stream.offline', 'channel.update']) t.create({ type, version: '1', condition: { broadcaster_user_id: 'c1' }, transport: { method: 'webhook', callback: 'https://subscriptions.domdimabot.com/eventsub' } }, 'enabled'); },
+      call: { fn: 'list', userId: null } },
+    { name: 'list-pages-for-user', twitch: (t) => { t.pageSize = 2; for (let i = 0; i < 5; i++) t.create({ type: `type.${i}`, version: '1', condition: { broadcaster_user_id: 'c1' }, transport: { method: 'webhook', callback: 'https://subscriptions.domdimabot.com/eventsub' } }, 'enabled'); t.create({ type: 'other', version: '1', condition: { broadcaster_user_id: 'c2' }, transport: { method: 'webhook', callback: 'x' } }); },
+      call: { fn: 'list', userId: 'c1' } },
+    { name: 'list-fails-on-page-two', twitch: (t) => { t.pageSize = 2; for (let i = 0; i < 4; i++) t.create({ type: `type.${i}`, version: '1', condition: { broadcaster_user_id: 'c1' } }); t.override = (request, n) => n === 1 ? { status: 500, body: '{"error":"Internal Server Error","status":500,"message":"try again"}' } : undefined; },
+      call: { fn: 'list', userId: null } },
+    { name: 'list-repeated-cursor', twitch: (t) => { t.pageSize = 1; for (let i = 0; i < 3; i++) t.create({ type: `type.${i}`, version: '1', condition: { broadcaster_user_id: 'c1' } }); t.override = (request, n) => n === 1 ? { status: 200, body: JSON.stringify({ data: [t.subs[1]], pagination: { cursor: 'cursor-1' } }) } : undefined; },
+      call: { fn: 'list', userId: null } },
+    { name: 'list-ok-with-error-field', twitch: (t) => { t.override = scripted({ status: 200, body: '{"error":"Odd","message":"odd page","data":[]}' }); }, call: { fn: 'list', userId: null } },
+    { name: 'list-page-two-not-json', twitch: (t) => { t.pageSize = 1; for (let i = 0; i < 2; i++) t.create({ type: `type.${i}`, version: '1', condition: { broadcaster_user_id: 'c1' } }); t.override = (request, n) => n === 1 ? { status: 200, headers: { 'content-type': 'text/plain' }, body: 'oops' } : undefined; },
+      call: { fn: 'list', userId: null } },
+    { name: 'list-page-two-null', twitch: (t) => { t.pageSize = 1; for (let i = 0; i < 3; i++) t.create({ type: `type.${i}`, version: '1', condition: { broadcaster_user_id: 'c1' } }); t.override = (request, n) => n === 1 ? { status: 200, body: 'null' } : undefined; },
+      call: { fn: 'list', userId: null } },
+    { name: 'list-no-app-token', env: { appToken: null }, call: { fn: 'list', userId: 'c1' } },
+
+    { name: 'unsubscribe-204', eventsubs: [doc('00000000000000000000e007', { id: 'sub-0001' })], twitch: (t) => { t.create({ type: 'channel.follow', version: '2', condition: followCondition }); },
+      call: { fn: 'unsubscribe', id: 'sub-0001' } },
+    { name: 'unsubscribe-404', eventsubs: [doc('00000000000000000000e008', { id: 'gone' })], call: { fn: 'unsubscribe', id: 'gone' } },
+    { name: 'unsubscribe-500', eventsubs: [doc('00000000000000000000e009', { id: 'kept' })], twitch: (t) => { t.override = scripted({ status: 500, body: '{"error":"Internal Server Error","status":500,"message":"try later"}' }); },
+      call: { fn: 'unsubscribe', id: 'kept' } },
+    { name: 'unsubscribe-400-error-only', twitch: (t) => { t.override = scripted({ status: 400, body: '{"error":"Bad Request"}' }); }, call: { fn: 'unsubscribe', id: 'bad' } },
+    { name: 'unsubscribe-502-not-json', eventsubs: [doc('00000000000000000000e010', { id: 'kept' })], twitch: (t) => { t.override = scripted({ status: 502, headers: { 'content-type': 'text/html' }, body: 'bad gateway' }); },
+      call: { fn: 'unsubscribe', id: 'kept' } },
+    { name: 'unsubscribe-no-app-token', env: { appToken: null }, call: { fn: 'unsubscribe', id: 'x' } },
+    { name: 'unsubscribe-reserved-characters', call: { fn: 'unsubscribe', id: 'a b&c=d' } },
+
+    { name: 'migrate-nothing-legacy', eventsubs: [doc('00000000000000000000e011', { type: 'channel.bits.use', version: '1', condition: { broadcaster_user_id: 'c1' } })],
+      call: { fn: 'migrate', channel: 'c1' } },
+    { name: 'migrate-legacy-only', eventsubs: [
+        doc('00000000000000000000e012', { id: 'legacy-cheer', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' }, message: 'Thanks $(user)', delay: { $numberInt: '5' } }),
+        doc('00000000000000000000e013', { id: 'legacy-bit-use', type: 'channel.bit.use', version: 'beta', condition: { broadcaster_user_id: 'c1' }, enabled: false, cheerTiers: [{ id: 't', name: 'T', message: 'tier', minAmount: { $numberInt: '1' }, maxAmount: { $numberInt: '10' } }] })],
+      twitch: (t) => { t.subs.push({ id: 'legacy-cheer', status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' }, created_at: 'x', transport: {}, cost: 0 }, { id: 'legacy-bit-use', status: 'enabled', type: 'channel.bit.use', version: 'beta', condition: { broadcaster_user_id: 'c1' }, created_at: 'x', transport: {}, cost: 0 }); },
+      call: { fn: 'migrate', channel: 'c1' } },
+    { name: 'migrate-with-canonical', eventsubs: [
+        doc('00000000000000000000e014', { id: 'canonical', type: 'channel.bits.use', version: '1', condition: { broadcaster_user_id: 'c1' }, message: '' }),
+        doc('00000000000000000000e015', { id: 'legacy-cheer', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' }, message: 'Legacy message', clipEnabled: true })],
+      twitch: (t) => { t.subs.push({ id: 'legacy-cheer', status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' }, created_at: 'x', transport: {}, cost: 0 }); },
+      call: { fn: 'migrate', channel: 'c1' } },
+    { name: 'migrate-create-fails', eventsubs: [doc('00000000000000000000e016', { id: 'legacy-cheer', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' } })],
+      twitch: (t) => { t.override = scripted({ status: 403, body: '{"error":"Forbidden","status":403,"message":"subscription missing proper authorization"}' }); },
+      call: { fn: 'migrate', channel: 'c1' } },
+    { name: 'migrate-delete-fails-half-way', eventsubs: [
+        doc('00000000000000000000e017', { id: 'legacy-cheer', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' } }),
+        doc('00000000000000000000e018', { id: 'legacy-bit-use', type: 'channel.bit.use', version: '1', condition: { broadcaster_user_id: 'c1' } })],
+      twitch: (t) => { t.subs.push({ id: 'legacy-cheer', status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'c1' }, created_at: 'x', transport: {}, cost: 0 }); t.override = (request, n) => n === 2 ? { status: 500, body: '{"error":"Internal Server Error","status":500,"message":"later"}' } : undefined; },
+      call: { fn: 'migrate', channel: 'c1' } },
+  ];
+  const part2: any[] = [];
+  for (const scenario of scenarios) {
+    const channels = scenario.channels ?? [C1];
+    const env = { ...DEFAULT_ENV, ...(scenario.env ?? {}) };
+    await seed(channels, scenario.eventsubs ?? [], [], [], env);
+    const twitch = new FakeTwitch();
+    scenario.twitch?.(twitch);
+    const call = scenario.call;
+    const before = await documents();
+    const recorded = await capture(twitch, async () => {
+      switch (call.fn) {
+        case 'subscribe': {
+          const config = call.config === null ? undefined : fromEjson(call.config);
+          const options = call.ignoreExisting || call.appAuthOnly ? { ignoreExisting: call.ignoreExisting, appAuthOnly: call.appAuthOnly } : undefined;
+          return eventsub.subscribeTwitchEvent(call.channel, call.type, call.version, call.condition, config, options);
+        }
+        case 'list': return eventsub.getEventsubs(call.userId ?? undefined);
+        case 'unsubscribe': return eventsub.unsubscribeTwitchEvent(call.id);
+        case 'migrate': return eventsub.migrateLegacyBitsEventsubs(call.channel);
+        default: throw new Error(`unknown call ${call.fn}`);
+      }
+    });
+    part2.push({ name: scenario.name, now, channels, env, before, call, ...recorded });
+  }
+  writeFileSync(`${outDir}/part2.json`, `${JSON.stringify({ reference, sources, scenarios: part2 }, null, 1)}\n`);
+  console.log(`part 2: ${part2.length} scenarios`);
 }
 
 // ------------------------------------------------------------------ cleanup

@@ -1,0 +1,4390 @@
+{
+ "reference": "0c71108ee6e5d537104ad26b10db9d558fac22ab",
+ "sources": {
+  "src/utils/eventsub.ts": "8298bfe4d0a496db00a060674dc7e60ce5c8e7f27783ad29bcc1bda53285ca4c",
+  "src/utils/eventsub_condition.ts": "9cc168f1d91143e8da3e74f06271845247f6ac460618d9134fb433b3925d8d03",
+  "src/utils/eventsub_access.ts": "e7ef47140a89b2070ebb5ff11850234e28a8a273212d985462ec68306d7648c6",
+  "src/utils/eventsub_bits_config.ts": "9d3d64942102c1826bf0b6fbe7b92cc0c4d5cb34d31cc200c6f73a7d6104218c",
+  "src/utils/chat_event_catalog.ts": "0e8d9223b8f965775b6dcf65e6954bebd261b9be0b21ac31ffafbf8aee926033",
+  "src/utils/eventsub_reconciliation.ts": "79e3a58bfa127527689e8b06db749821a29663b7fa952994c1387adb03fa9314",
+  "src/utils/eventsub_reconciliation_policy.ts": "01f9711b9be29933b031fe794ed5613ce200ddc515b82f094db87ac7c1edf7fe",
+  "src/utils/header.ts": "f11909781a298675cb26b31c79cc50565e9fa76ff798c919d150896a04897b9f",
+  "src/utils/links.ts": "145c49f639eda2b36bff73d30d8f2b4558f51eab7f56ee7804d88aef8834756a",
+  "src/utils/raid_direction.ts": "4dd1222da4f496fcd3f047537be318be4681bb5515849392ee2c628045d0e2c8",
+  "src/utils/raid_subscriptions.ts": "2eb1bcbb7b1ce25d989c0159213abe42522907ddf0710a068c2eecabc35cdf75",
+  "src/utils/chat_notification_defaults.ts": "3cdb922eceba753fa133398443b15e6ceca283254dd649f70603e046b5e7d209",
+  "src/utils/notifications.ts": "c056e285e16d685b23cda5f2af23772e17293a131ce254068b364f93252052a1",
+  "src/overlays/interaction-model.ts": "fcd77451d18702a7d55b061a7a1e61633770f2749b6de3a1226755a4e06a3be9",
+  "src/schemas/eventsub.schema.ts": "9d641eb036d2dba0907ab5b70bfb58265bbd7174915ddfd8f87b676319d75bf3",
+  "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13",
+  "src/schemas/raid_subscription_preference.schema.ts": "dfbb334ed17ac9557d9c90e648dd69eebd558f89b08547098919c1030848a27f",
+  "src/schemas/admin.schema.ts": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+  "src/middleware/admin.middleware.ts": "f0a4fc3f23d3ba8b355f701b3fc5189ffb31498317205ca06bee90d02a764a49"
+ },
+ "scenarios": [
+  {
+   "name": "create",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": {
+     "message": "$(user) followed 🙂"
+    }
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655d5",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "$(user) followed 🙂",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655d5"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "$(user) followed 🙂",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.follow",
+     "version": "2",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "create-without-settings",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655d6",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655d6"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "stream.online",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "create-settings-of-every-type",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.bits.use",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": {
+     "enabled": false,
+     "message": null,
+     "minViewers": {
+      "$numberDouble": "2.5"
+     },
+     "delay": {
+      "$numberInt": "10"
+     },
+     "cheerTiers": [
+      {
+       "id": "large",
+       "name": "Large",
+       "message": "Big 🎉",
+       "minAmount": {
+        "$numberInt": "100"
+       },
+       "maxAmount": {
+        "$numberInt": "999"
+       }
+      }
+     ],
+     "clipEnabled": true,
+     "endEnabled": true,
+     "endMessage": "end",
+     "todayFollows": true
+    }
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655d7",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.bits.use",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": false,
+    "message": "",
+    "endMessage": "end",
+    "endEnabled": true,
+    "minViewers": 2.5,
+    "temporalBanMessage": "",
+    "clipEnabled": true,
+    "delay": 10,
+    "cheerTiers": [
+     {
+      "id": "large",
+      "name": "Large",
+      "message": "Big 🎉",
+      "minAmount": 100,
+      "maxAmount": 999
+     }
+    ],
+    "todayFollows": true
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655d7"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [
+      {
+       "id": "large",
+       "name": "Large",
+       "message": "Big 🎉",
+       "minAmount": {
+        "$numberInt": "100"
+       },
+       "maxAmount": {
+        "$numberInt": "999"
+       }
+      }
+     ],
+     "clipEnabled": true,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "10"
+     },
+     "enabled": false,
+     "endEnabled": true,
+     "endMessage": "end",
+     "message": null,
+     "minViewers": {
+      "$numberDouble": "2.5"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": true,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.bits.use",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "existing-returned",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e001"
+     },
+     "id": "stored-e001",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "moderator_user_id": "698614112",
+      "broadcaster_user_id": "c1",
+      "extra": ""
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "kept",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": {
+     "message": "ignored"
+    }
+   },
+   "exchanges": [],
+   "result": {
+    "_id": "00000000000000000000e001",
+    "id": "stored-e001",
+    "status": "enabled",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "moderator_user_id": "698614112",
+     "broadcaster_user_id": "c1",
+     "extra": ""
+    },
+    "created_at": "2026-11-10T00:00:00.000000000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "kept",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e001"
+     },
+     "id": "stored-e001",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "moderator_user_id": "698614112",
+      "broadcaster_user_id": "c1",
+      "extra": ""
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "kept",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "existing-without-id-creates",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e002"
+     },
+     "id": "",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655d8",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e002"
+     },
+     "id": "",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655d8"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.follow",
+     "version": "2",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "existing-other-condition-creates",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e003"
+     },
+     "id": "stored-e003",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "someone"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655d9",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e003"
+     },
+     "id": "stored-e003",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "someone"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655d9"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.follow",
+     "version": "2",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "ignore-existing",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e004"
+     },
+     "id": "stored-e004",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null,
+    "ignoreExisting": true
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.follow\",\"version\":\"2\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"moderator_user_id\":\"698614112\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655da",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e004"
+     },
+     "id": "stored-e004",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655da"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.follow",
+     "version": "2",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "twitch-id-already-stored",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e005"
+     },
+     "id": "sub-0001",
+     "status": "enabled",
+     "type": "stream.online",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "old",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberDouble": "3.5"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": {
+     "message": "new"
+    },
+    "ignoreExisting": true
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "00000000000000000000e005",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "new",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 3.5,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e005"
+     },
+     "id": "sub-0001",
+     "status": "webhook_callback_verification_pending",
+     "type": "stream.online",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "new",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberDouble": "3.5"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "raid-outgoing",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.raid",
+    "version": "1",
+    "condition": {
+     "from_broadcaster_user_id": "c1"
+    },
+    "config": {
+     "message": "",
+     "minViewers": {
+      "$numberInt": "0"
+     },
+     "clipEnabled": false
+    }
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.raid\",\"version\":\"1\",\"condition\":{\"from_broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.raid\",\"version\":\"1\",\"condition\":{\"from_broadcaster_user_id\":\"c1\",\"to_broadcaster_user_id\":\"\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655db",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.raid.outgoing",
+    "version": "1",
+    "condition": {
+     "from_broadcaster_user_id": "c1",
+     "to_broadcaster_user_id": ""
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 0,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655db"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "from_broadcaster_user_id": "c1",
+      "to_broadcaster_user_id": ""
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "0"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.raid",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "raid-existing-with-empty-direction",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e006"
+     },
+     "id": "stored-e006",
+     "status": "enabled",
+     "type": "channel.raid",
+     "version": "1",
+     "condition": {
+      "from_broadcaster_user_id": "",
+      "to_broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.raid",
+    "version": "1",
+    "condition": {
+     "to_broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "_id": "00000000000000000000e006",
+    "id": "stored-e006",
+    "status": "enabled",
+    "type": "channel.raid",
+    "version": "1",
+    "condition": {
+     "from_broadcaster_user_id": "",
+     "to_broadcaster_user_id": "c1"
+    },
+    "created_at": "2026-11-10T00:00:00.000000000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e006"
+     },
+     "id": "stored-e006",
+     "status": "enabled",
+     "type": "channel.raid",
+     "version": "1",
+     "condition": {
+      "from_broadcaster_user_id": "",
+      "to_broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "app-auth-only-without-permissions",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one",
+     "has_permissions": false,
+     "token": false
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.chat.message",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "user_id": "698614112"
+    },
+    "config": null,
+    "appAuthOnly": true
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.chat.message\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"user_id\":\"698614112\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.chat.message\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\",\"user_id\":\"698614112\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":1,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    }
+   ],
+   "result": {
+    "_id": "6af5b34e28f76edd05d655dc",
+    "id": "sub-0001",
+    "status": "webhook_callback_verification_pending",
+    "type": "channel.chat.message",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "user_id": "698614112"
+    },
+    "created_at": "2026-11-11T00:00:00.000001000Z",
+    "transport": {
+     "method": "webhook",
+     "callback": "https://subscriptions.domdimabot.com/eventsub"
+    },
+    "cost": 1,
+    "channel": "chan_one",
+    "channelID": "c1",
+    "enabled": true,
+    "message": "",
+    "endMessage": "",
+    "endEnabled": false,
+    "minViewers": 2,
+    "temporalBanMessage": "",
+    "clipEnabled": false,
+    "delay": 0,
+    "cheerTiers": [],
+    "todayFollows": false
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655dc"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "user_id": "698614112"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.chat.message",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "header-without-permissions",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one",
+     "has_permissions": false
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Failed to get streamer header",
+    "message": "[⚠️] Streamer does not have valid permissions to access this feature, please reauthorize streamer again in https://domdimabot.com [/⚠️]",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "header-without-token",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one",
+     "token": false
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Failed to get streamer header",
+    "message": "[⚠️] Streamer does not have valid permissions token to access this feature, please reauthorize streamer again in https://domdimabot.com [/⚠️]",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "no-secret",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": null,
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.follow",
+    "version": "2",
+    "condition": {
+     "broadcaster_user_id": "c1",
+     "moderator_user_id": "698614112"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "error": "EventSub secret is not configured",
+    "message": "TWITCH_EVENTSUB_SECRET is not set",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "streamer-not-found",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "nobody",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "nobody"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Streamer not found",
+    "message": "Streamer not found",
+    "status": 404
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "no-app-token",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": null
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Error getting Twitch app credentials",
+    "message": "An app access token and client ID are required",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "conflict-409",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 409,
+      "body": "{\"error\":\"Conflict\",\"status\":409,\"message\":\"subscription already exists\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Conflict",
+    "message": "subscription already exists",
+    "status": 409
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "forbidden-403",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "channel.subscribe",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.subscribe\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 403,
+      "body": "{\"error\":\"Forbidden\",\"status\":403,\"message\":\"subscription missing proper authorization\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Forbidden",
+    "message": "subscription missing proper authorization",
+    "status": 403
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "rate-limited-429",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 429,
+      "headers": {
+       "content-type": "application/json",
+       "ratelimit-limit": "800",
+       "ratelimit-remaining": "0",
+       "ratelimit-reset": "1794355260"
+      },
+      "body": "{\"error\":\"Too Many Requests\",\"status\":429,\"message\":\"websocket transports limit exceeded\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Too Many Requests",
+    "message": "websocket transports limit exceeded",
+    "status": 429
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "server-error-500",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 500,
+      "body": "{\"error\":\"Internal Server Error\",\"status\":500,\"message\":\"\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Internal Server Error",
+    "message": "Internal Server Error",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "server-error-503-not-json",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 503,
+      "headers": {
+       "content-type": "text/html"
+      },
+      "body": "<html>unavailable</html>"
+     }
+    }
+   ],
+   "result": null,
+   "threw": "Unexpected token '<', \"<html>unav\"... is not valid JSON",
+   "documents": []
+  },
+  {
+   "name": "accepted-without-data",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[],\"total\":0}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Twitch returned HTTP 202",
+    "message": "Twitch returned HTTP 202",
+    "status": 202
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "ok-with-error-field",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "subscribe",
+    "channel": "c1",
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+     "broadcaster_user_id": "c1"
+    },
+    "config": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"error\":\"Odd\",\"data\":[{\"id\":\"x\"}]}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Odd",
+    "message": "Odd",
+    "status": 200
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-one-page",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"enabled\",\"type\":\"stream.online\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1},{\"id\":\"sub-0002\",\"status\":\"enabled\",\"type\":\"stream.offline\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000002000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1},{\"id\":\"sub-0003\",\"status\":\"enabled\",\"type\":\"channel.update\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000003000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":3,\"total_cost\":3,\"max_total_cost\":10000,\"pagination\":{}}"
+     }
+    }
+   ],
+   "result": {
+    "data": [
+     {
+      "id": "sub-0001",
+      "status": "enabled",
+      "type": "stream.online",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000001000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0002",
+      "status": "enabled",
+      "type": "stream.offline",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000002000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0003",
+      "status": "enabled",
+      "type": "channel.update",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000003000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     }
+    ],
+    "total": 3,
+    "total_cost": 3,
+    "max_total_cost": 10000,
+    "pagination": {},
+    "complete": true
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-pages-for-user",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": "c1"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&user_id=c1",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"enabled\",\"type\":\"type.0\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1},{\"id\":\"sub-0002\",\"status\":\"enabled\",\"type\":\"type.1\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000002000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":6,\"total_cost\":6,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-2\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&user_id=c1&after=cursor-2",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0003\",\"status\":\"enabled\",\"type\":\"type.2\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000003000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1},{\"id\":\"sub-0004\",\"status\":\"enabled\",\"type\":\"type.3\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000004000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":6,\"total_cost\":6,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-4\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&user_id=c1&after=cursor-4",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0005\",\"status\":\"enabled\",\"type\":\"type.4\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000005000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":6,\"total_cost\":6,\"max_total_cost\":10000,\"pagination\":{}}"
+     }
+    }
+   ],
+   "result": {
+    "data": [
+     {
+      "id": "sub-0001",
+      "status": "enabled",
+      "type": "type.0",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000001000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0002",
+      "status": "enabled",
+      "type": "type.1",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000002000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0003",
+      "status": "enabled",
+      "type": "type.2",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000003000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0004",
+      "status": "enabled",
+      "type": "type.3",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000004000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     },
+     {
+      "id": "sub-0005",
+      "status": "enabled",
+      "type": "type.4",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000005000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": "https://subscriptions.domdimabot.com/eventsub"
+      },
+      "cost": 1
+     }
+    ],
+    "total": 5,
+    "total_cost": 6,
+    "max_total_cost": 10000,
+    "pagination": {},
+    "complete": true
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-fails-on-page-two",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.0\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1},{\"id\":\"sub-0002\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.1\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000002000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1}],\"total\":4,\"total_cost\":4,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-2\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&after=cursor-2",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 500,
+      "body": "{\"error\":\"Internal Server Error\",\"status\":500,\"message\":\"try again\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Internal Server Error",
+    "status": 500,
+    "message": "try again"
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-repeated-cursor",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.0\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1}],\"total\":3,\"total_cost\":3,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-1\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&after=cursor-1",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0002\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.1\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000002000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1}],\"pagination\":{\"cursor\":\"cursor-1\"}}"
+     }
+    }
+   ],
+   "result": {
+    "error": "EventSub pagination returned a repeated cursor",
+    "status": 502
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-ok-with-error-field",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"error\":\"Odd\",\"message\":\"odd page\",\"data\":[]}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Odd",
+    "message": "odd page",
+    "data": []
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-page-two-not-json",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.0\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1}],\"total\":2,\"total_cost\":2,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-1\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&after=cursor-1",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "content-type": "text/plain"
+      },
+      "body": "oops"
+     }
+    }
+   ],
+   "result": null,
+   "threw": "Unexpected token 'o', \"oops\" is not valid JSON",
+   "documents": []
+  },
+  {
+   "name": "list-page-two-null",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": null
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"type.0\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"\"},\"cost\":1}],\"total\":3,\"total_cost\":3,\"max_total_cost\":10000,\"pagination\":{\"cursor\":\"cursor-1\"}}"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "target": "/helix/eventsub/subscriptions?first=100&after=cursor-1",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 200,
+      "body": "null"
+     }
+    }
+   ],
+   "result": {
+    "data": [
+     {
+      "id": "sub-0001",
+      "status": "webhook_callback_verification_pending",
+      "type": "type.0",
+      "version": "1",
+      "condition": {
+       "broadcaster_user_id": "c1"
+      },
+      "created_at": "2026-11-11T00:00:00.000001000Z",
+      "transport": {
+       "method": "webhook",
+       "callback": ""
+      },
+      "cost": 1
+     }
+    ],
+    "total": 1,
+    "pagination": {},
+    "complete": true
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "list-no-app-token",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": null
+   },
+   "before": [],
+   "call": {
+    "fn": "list",
+    "userId": "c1"
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Twitch app credentials are not configured",
+    "message": "Unable to list EventSub subscriptions without an app token and client ID",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "unsubscribe-204",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e007"
+     },
+     "id": "sub-0001",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "sub-0001"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=sub-0001",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 204
+     }
+    }
+   ],
+   "result": {
+    "response": 204
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "unsubscribe-404",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e008"
+     },
+     "id": "gone",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "gone"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=gone",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 404,
+      "body": "{\"error\":\"Not Found\",\"status\":404,\"message\":\"subscription not found\"}"
+     }
+    }
+   ],
+   "result": {
+    "response": 404
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "unsubscribe-500",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e009"
+     },
+     "id": "kept",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "kept"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=kept",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 500,
+      "body": "{\"error\":\"Internal Server Error\",\"status\":500,\"message\":\"try later\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Internal Server Error",
+    "message": "try later",
+    "status": 500
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e009"
+     },
+     "id": "kept",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "unsubscribe-400-error-only",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "bad"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=bad",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 400,
+      "body": "{\"error\":\"Bad Request\"}"
+     }
+    }
+   ],
+   "result": {
+    "error": "Bad Request",
+    "message": "Bad Request",
+    "status": 400
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "unsubscribe-502-not-json",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e010"
+     },
+     "id": "kept",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "kept"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=kept",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 502,
+      "headers": {
+       "content-type": "text/html"
+      },
+      "body": "bad gateway"
+     }
+    }
+   ],
+   "result": null,
+   "threw": "Unexpected token 'b', \"bad gateway\" is not valid JSON",
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e010"
+     },
+     "id": "kept",
+     "status": "enabled",
+     "type": "channel.follow",
+     "version": "2",
+     "condition": {
+      "broadcaster_user_id": "c1",
+      "moderator_user_id": "698614112"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "unsubscribe-no-app-token",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": null
+   },
+   "before": [],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "x"
+   },
+   "exchanges": [],
+   "result": {
+    "error": "Error getting Twitch app credentials",
+    "message": "An app access token and client ID are required",
+    "status": 500
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "unsubscribe-reserved-characters",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [],
+   "call": {
+    "fn": "unsubscribe",
+    "id": "a b&c=d"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=a%20b&c=d",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 404,
+      "body": "{\"error\":\"Not Found\",\"status\":404,\"message\":\"subscription not found\"}"
+     }
+    }
+   ],
+   "result": {
+    "response": 404
+   },
+   "threw": null,
+   "documents": []
+  },
+  {
+   "name": "migrate-nothing-legacy",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e011"
+     },
+     "id": "stored-e011",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "migrate",
+    "channel": "c1"
+   },
+   "exchanges": [],
+   "result": {
+    "canonicalEventsub": {
+     "_id": "00000000000000000000e011",
+     "id": "stored-e011",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": 1,
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": 2,
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": 0,
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": 0
+    },
+    "hadCanonicalBeforeMigration": true,
+    "hadLegacyBeforeMigration": false,
+    "createdCanonical": false,
+    "removedLegacyCount": 0,
+    "errors": []
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e011"
+     },
+     "id": "stored-e011",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "migrate-legacy-only",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e012"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "Thanks $(user)",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "5"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "00000000000000000000e013"
+     },
+     "id": "legacy-bit-use",
+     "status": "enabled",
+     "type": "channel.bit.use",
+     "version": "beta",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": false,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [
+      {
+       "id": "t",
+       "name": "T",
+       "message": "tier",
+       "minAmount": {
+        "$numberInt": "1"
+       },
+       "maxAmount": {
+        "$numberInt": "10"
+       }
+      }
+     ],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "migrate",
+    "channel": "c1"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":3,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=legacy-bit-use",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 204
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=legacy-cheer",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 204
+     }
+    }
+   ],
+   "result": {
+    "canonicalEventsub": {
+     "_id": "6af5b34e28f76edd05d655dd",
+     "id": "sub-0001",
+     "__v": 0,
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [
+      {
+       "id": "t",
+       "name": "T",
+       "message": "tier",
+       "minAmount": 1,
+       "maxAmount": 10
+      }
+     ],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": 1,
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": 5,
+     "enabled": false,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "Thanks $(user)",
+     "minViewers": 2,
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.bits.use",
+     "version": "1",
+     "watchStreakEnabled": true
+    },
+    "hadCanonicalBeforeMigration": false,
+    "hadLegacyBeforeMigration": true,
+    "createdCanonical": true,
+    "removedLegacyCount": 2,
+    "errors": []
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655dd"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [
+      {
+       "id": "t",
+       "name": "T",
+       "message": "tier",
+       "minAmount": {
+        "$numberInt": "1"
+       },
+       "maxAmount": {
+        "$numberInt": "10"
+       }
+      }
+     ],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "5"
+     },
+     "enabled": false,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "Thanks $(user)",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.bits.use",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  },
+  {
+   "name": "migrate-with-canonical",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e014"
+     },
+     "id": "canonical",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "00000000000000000000e015"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "Legacy message",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": true,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "migrate",
+    "channel": "c1"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=legacy-cheer",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 204
+     }
+    }
+   ],
+   "result": {
+    "canonicalEventsub": {
+     "_id": "00000000000000000000e014",
+     "id": "canonical",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": 1,
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "Legacy message",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": 2,
+     "temporalBanMessage": "",
+     "clipEnabled": true,
+     "delay": 0,
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": 0
+    },
+    "hadCanonicalBeforeMigration": true,
+    "hadLegacyBeforeMigration": true,
+    "createdCanonical": false,
+    "removedLegacyCount": 1,
+    "errors": []
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e014"
+     },
+     "id": "canonical",
+     "status": "enabled",
+     "type": "channel.bits.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "Legacy message",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": true,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "migrate-create-fails",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e016"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "migrate",
+    "channel": "c1"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 403,
+      "body": "{\"error\":\"Forbidden\",\"status\":403,\"message\":\"subscription missing proper authorization\"}"
+     }
+    }
+   ],
+   "result": {
+    "canonicalEventsub": null,
+    "hadCanonicalBeforeMigration": false,
+    "hadLegacyBeforeMigration": true,
+    "createdCanonical": false,
+    "removedLegacyCount": 0,
+    "errors": [
+     "subscription missing proper authorization"
+    ]
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e016"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  },
+  {
+   "name": "migrate-delete-fails-half-way",
+   "now": 1794355200000,
+   "channels": [
+    {
+     "id": "c1",
+     "name": "chan_one"
+    }
+   ],
+   "env": {
+    "secret": "test-eventsub-secret-0123456789",
+    "clientId": "test-client-id",
+    "appToken": "app-token-1"
+   },
+   "before": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e017"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "00000000000000000000e018"
+     },
+     "id": "legacy-bit-use",
+     "status": "enabled",
+     "type": "channel.bit.use",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "call": {
+    "fn": "migrate",
+    "channel": "c1"
+   },
+   "exchanges": [
+    {
+     "request": {
+      "method": "POST",
+      "target": "/helix/eventsub/subscriptions",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": "{\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\",\"secret\":\"test-eventsub-secret-0123456789\"}}"
+     },
+     "response": {
+      "status": 202,
+      "body": "{\"data\":[{\"id\":\"sub-0001\",\"status\":\"webhook_callback_verification_pending\",\"type\":\"channel.bits.use\",\"version\":\"1\",\"condition\":{\"broadcaster_user_id\":\"c1\"},\"created_at\":\"2026-11-11T00:00:00.000001000Z\",\"transport\":{\"method\":\"webhook\",\"callback\":\"https://subscriptions.domdimabot.com/eventsub\"},\"cost\":1}],\"total\":2,\"total_cost\":1,\"max_total_cost\":10000}"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=legacy-bit-use",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 404,
+      "body": "{\"error\":\"Not Found\",\"status\":404,\"message\":\"subscription not found\"}"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "target": "/helix/eventsub/subscriptions?id=legacy-cheer",
+      "headers": {
+       "client-id": "test-client-id",
+       "authorization": "Bearer app-token-1",
+       "content-type": "application/json"
+      },
+      "body": ""
+     },
+     "response": {
+      "status": 500,
+      "body": "{\"error\":\"Internal Server Error\",\"status\":500,\"message\":\"later\"}"
+     }
+    }
+   ],
+   "result": {
+    "canonicalEventsub": {
+     "_id": "6af5b34e28f76edd05d655de",
+     "id": "sub-0001",
+     "__v": 0,
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": 1,
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": 0,
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": 2,
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.bits.use",
+     "version": "1",
+     "watchStreakEnabled": true
+    },
+    "hadCanonicalBeforeMigration": false,
+    "hadLegacyBeforeMigration": true,
+    "createdCanonical": true,
+    "removedLegacyCount": 1,
+    "errors": [
+     "Failed to remove channel.cheer"
+    ]
+   },
+   "threw": null,
+   "documents": [
+    {
+     "_id": {
+      "$oid": "00000000000000000000e017"
+     },
+     "id": "legacy-cheer",
+     "status": "enabled",
+     "type": "channel.cheer",
+     "version": "1",
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "created_at": "2026-11-10T00:00:00.000000000Z",
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "enabled": true,
+     "message": "",
+     "endMessage": "",
+     "endEnabled": false,
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "temporalBanMessage": "",
+     "clipEnabled": false,
+     "delay": {
+      "$numberInt": "0"
+     },
+     "cheerTiers": [],
+     "todayFollows": false,
+     "__v": {
+      "$numberInt": "0"
+     }
+    },
+    {
+     "_id": {
+      "$oid": "6af5b34e28f76edd05d655de"
+     },
+     "id": "sub-0001",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "channel": "chan_one",
+     "channelID": "c1",
+     "cheerTiers": [],
+     "clipEnabled": false,
+     "condition": {
+      "broadcaster_user_id": "c1"
+     },
+     "cost": {
+      "$numberInt": "1"
+     },
+     "created_at": "2026-11-11T00:00:00.000001000Z",
+     "delay": {
+      "$numberInt": "0"
+     },
+     "enabled": true,
+     "endEnabled": false,
+     "endMessage": "",
+     "message": "",
+     "minViewers": {
+      "$numberInt": "2"
+     },
+     "modiversaryEnabled": true,
+     "modiversaryMessage": "",
+     "remote_missing_since": null,
+     "status": "webhook_callback_verification_pending",
+     "temporalBanMessage": "",
+     "todayFollows": false,
+     "transport": {
+      "method": "webhook",
+      "callback": "https://subscriptions.domdimabot.com/eventsub"
+     },
+     "type": "channel.bits.use",
+     "version": "1",
+     "watchStreakEnabled": true
+    }
+   ]
+  }
+ ]
+}

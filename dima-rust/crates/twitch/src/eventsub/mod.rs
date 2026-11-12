@@ -12,6 +12,7 @@
 //! - `buildBitsEventsubConfig` is in [`bits`], `getEventsubAccess` in [`access`], the built-in
 //!   chat events in [`catalog`], the circuit breaker in [`policy`].
 //! - The configuration (callback, secret, deadlines) is [`EventsubSettings`].
+//! - Create, list, delete and the bits migration are [`EventsubManager`]'s ([`manage`]).
 #![allow(clippy::module_name_repetitions)]
 
 pub mod access;
@@ -19,8 +20,10 @@ pub mod bits;
 pub mod catalog;
 pub mod condition;
 mod js;
+pub mod manage;
 pub mod policy;
 mod settings;
+mod store;
 pub mod types;
 
 pub use access::{EventsubAccess, EventsubPermission, GlobalOwnerAccess, eventsub_access};
@@ -29,6 +32,10 @@ pub use catalog::{builtin_chat_event, builtin_chat_events, with_builtin_chat_eve
 pub use condition::{
     Condition, OUTGOING_RAID_EVENT, RaidDirection, build_expected_condition, raid_condition,
     raid_config_type, raid_direction, subscription_key,
+};
+pub use manage::{
+    BitsMigration, EventsubList, EventsubManager, EventsubRecord, Failure, ListError,
+    RemoteEventsub, SubscribeError, SubscribeRequest, UnsubscribeError, Unsubscribed,
 };
 pub use policy::should_trip_circuit_breaker;
 pub use settings::{EventsubSettings, REFERENCE_CALLBACK, SettingsError};

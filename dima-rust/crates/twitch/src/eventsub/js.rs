@@ -1,4 +1,3 @@
-#![allow(dead_code)] // The rest is used by the create and reconcile paths (part 2).
 //! Stored BSON as a `.lean()` read shows it to JavaScript (`String(x || '')`, `Number(x || 0)`,
 //! `Boolean(x)`), through `dima-text`'s readings.
 
