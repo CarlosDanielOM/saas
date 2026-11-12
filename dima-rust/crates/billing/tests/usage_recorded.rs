@@ -680,6 +680,7 @@ async fn record_the_native_worker() -> Result<()> {
         for key in ["cron:ai-usage-receipts:queue", "cron:ai-usage-receipts:processing", "cron:ai-usage-receipts:queue:dead", "worker:ai-usage-receipts:lock", "ai-usage:queue-health:receipts", "ai-usage:queue-health:backfills", "ai-usage:queue-health:receipts:snapshot", "ai-usage:queue-health:backfills:snapshot", "ai-usage:queue-health:receipts:alert", "ai-usage:queue-health:backfills:alert"] {
             let _: i64 = redis::cmd("DEL").arg(key).query_async(&mut cache).await?;
         }
+        let _: i64 = redis::cmd("DEL").arg(format!("twitch:{NATIVE_CHANNEL}:ai:usage-receipts:generation")).query_async(&mut cache).await?;
         let _: i64 = redis::cmd("DEL").arg(dima_billing::usage_ledger::lock::lock_key(NATIVE_CHANNEL, NATIVE_CUSTOMER)).query_async(&mut cache).await?;
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/usage_recorded/native.json");
         std::fs::write(path, serde_json::to_string_pretty(&json!({"recorded": "dima-rust/src/workers/ai_usage_receipts at 0c71108e, unchanged", "now": now, "steps": steps, "dead": dead}))? + "\n")?;
