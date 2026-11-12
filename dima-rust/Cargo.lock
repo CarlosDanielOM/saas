@@ -1535,10 +1535,13 @@ dependencies = [
 name = "dima-engine"
 version = "0.1.0"
 dependencies = [
+ "dima-core",
  "dima-text",
  "regex",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

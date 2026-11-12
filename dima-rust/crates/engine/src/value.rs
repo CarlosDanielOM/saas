@@ -56,11 +56,14 @@ impl Value {
     /// its last value (as assigning the key again does), and array-index keys move to the front.
     pub fn object(entries: Vec<(String, Value)>) -> Self {
         let mut unique: Vec<(String, Value)> = Vec::with_capacity(entries.len());
+        let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
         for (key, value) in entries {
-            if let Some(slot) = unique.iter_mut().find(|(existing, _)| *existing == key) {
-                slot.1 = value;
-            } else {
-                unique.push((key, value));
+            match index.get(&key).and_then(|at| unique.get_mut(*at)) {
+                Some(slot) => slot.1 = value,
+                None => {
+                    index.insert(key.clone(), unique.len());
+                    unique.push((key, value));
+                }
             }
         }
         js_key_order(&mut unique);
