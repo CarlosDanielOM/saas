@@ -1243,7 +1243,8 @@ Kept by the lead; a package not listed has not started.
 | P4-CHAT-MESSAGE | running (Opus xhigh) |
 | P4-AI-MEMORY | merged. `MemoryStore::repair` restores a point missing after a failure: the cron calls it per channel with the stream-memory work (P4-CRON-RECAP), the operator CLI offers it (P4-OPS-CLI). Seen in the production copy: 769 confirmed `known_user_fact` memories about the channel itself, which current code would refuse to create; no confirmed viewer fact carries a user id, so viewer-fact recall is always empty |
 | P2-CRON-01 | merged (see `packages.md`) |
-| P4-MOD-RULES | running (Opus) |
+| P4-MOD-RULES | merged (58 tests; 106,510 recorded verdicts, all 47,955 over the stored settings match). For P4-MOD-RUN: compile through `CompiledSettingsCache::get_or_compile` on the blocking pool (the largest settings take about 6 s in a debug build), implement `SettingsCacheHook`, add the model call `generateMuseVariations`, and decide a limit on what one settings document may compile to (worst case 20 × 32 MiB today; over it, the rule is refused at save time and skipped with telemetry at run time). `parseAdvancedRule` (save-time validation) goes with the settings service. Kept from the reference: the links rule is bypassed by a spaced or bracketed dot, an IP address or a full-width dot |
+| P4-ACT-AI-A | running (Opus xhigh) |
 | P4-FEAT-WIDGETS | running (Sol) |
 | P4-FEAT-GAMES | merged (36 tests). Traits for later packages: `ChannelOwners`, `WinnerActionRunner`, `OverlayPresence`, `DuelEvents`, `DuelModeration`, `EditorCheck`, `LegacyTiers`; the cron calls `RouletteService::run_due_actions` every second and `DuelCompletion::tick` every 500 ms (P4-CRON-FEATURES), and the roulette completion worker moves in with P2-CRON-02. Not yet run against the Twitch mock: `TwitchDuelModeration` itself (compared at the wrapper level) |
 | P4-API-APP | running (Opus) |

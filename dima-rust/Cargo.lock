@@ -1882,12 +1882,29 @@ dependencies = [
 name = "dima-moderation"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bson",
  "dima-ai",
  "dima-billing",
  "dima-commands",
+ "dima-core",
  "dima-model",
  "dima-store",
+ "dima-text",
  "dima-twitch",
+ "flate2",
+ "futures-util",
+ "hex",
+ "mongodb",
+ "redis",
+ "regex",
+ "regex-syntax",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "tokio",
+ "unicode-normalization",
 ]
 
 [[package]]

@@ -23,7 +23,7 @@
 //!
 //! # Modules and the packages that fill them
 //!
-//! - [`rules`], by P4-MOD-RULES (wave 1).
+//! - [`rules`]: P4-MOD-RULES (the rules, their state, variations, spam protection).
 //! - [`handler`], [`actions`], [`semantic`]: P4-MOD-RUN (wave 2).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]

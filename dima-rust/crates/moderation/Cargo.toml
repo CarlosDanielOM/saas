@@ -16,3 +16,25 @@ dima-twitch = { workspace = true }
 dima-billing = { workspace = true }
 dima-model = { workspace = true }
 dima-store = { workspace = true }
+# P4-MOD-RULES (src/rules).
+dima-core = { workspace = true }
+dima-text = { workspace = true }
+bson = { workspace = true }
+hex = { workspace = true }
+mongodb = { workspace = true }
+regex = { workspace = true }
+regex-syntax = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+unicode-normalization = { workspace = true }
+
+[dev-dependencies]
+dima-core = { workspace = true, features = ["test-util"] }
+anyhow = { workspace = true }
+flate2 = { workspace = true }
+futures-util = { workspace = true }
+redis = { workspace = true }
+tokio = { workspace = true }
