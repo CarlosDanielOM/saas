@@ -40,6 +40,10 @@ serde_json = { workspace = true }
 flate2 = { workspace = true }
 
 [dev-dependencies]
+dima-twitch = { workspace = true, features = ["test-util"] }
+futures-util = { workspace = true }
+bson = { workspace = true }
+dima-model = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 dima-core = { workspace = true, features = ["test-util"] }
 dima-billing = { workspace = true }

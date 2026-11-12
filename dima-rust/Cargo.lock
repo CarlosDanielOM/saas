@@ -1530,6 +1530,7 @@ dependencies = [
  "dima-tts",
  "dima-twitch",
  "flate2",
+ "futures-util",
  "mongodb",
  "redis",
  "serde",
