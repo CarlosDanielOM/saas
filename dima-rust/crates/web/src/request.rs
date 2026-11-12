@@ -159,6 +159,8 @@ pub struct Req<S = ()> {
     pub(crate) route_slot: RouteSlot,
     /// The mount patterns stripped so far (the pattern form of `base_url`).
     pub(crate) pattern_base: String,
+    /// The app's observer, for reports that are not about the exchange (upload cleanup).
+    pub(crate) observer: Option<Arc<crate::exchange::ObserverHub>>,
 }
 
 impl<S> Req<S> {
@@ -191,6 +193,7 @@ impl<S> Req<S> {
             route: None,
             route_slot: RouteSlot::default(),
             pattern_base: String::new(),
+            observer: None,
         }
     }
 
@@ -417,6 +420,13 @@ impl<S> Req<S> {
     /// asked for no upgrade.
     pub fn take_upgrade_guard(&mut self) -> Option<crate::UpgradeGuard> {
         self.extensions.remove::<crate::UpgradeGuard>()
+    }
+
+    /// The stream quota as this request sees it: reserve a slot before creating the session or
+    /// subscription behind an upgrade or an event stream (see [`crate::StreamAdmission`]).
+    /// `None` when the request was not served by [`crate::serve`].
+    pub fn stream_admission(&self) -> Option<&crate::StreamAdmission> {
+        self.extensions.get::<crate::StreamAdmission>()
     }
 
     /// `typeis.hasBody(req)`: a `Transfer-Encoding` or a numeric `Content-Length` header.

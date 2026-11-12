@@ -104,6 +104,23 @@
 //! - **Headers after next()**: middleware that sets headers and continues uses
 //!   [`Req::set_header`]; a [`Response`] merges with those headers when it is sent.
 //!
+//! Where serving knowingly differs from Express and Node (each module's documentation has the
+//! rest):
+//!
+//! - **Forced close at shutdown**: after [`ServeOptions::drain_timeout`] an upgraded socket
+//!   fails its reads and writes, but the server does not hold it: the close takes effect when
+//!   its owner next reads or writes it (or drops it). An owner that never polls the socket again
+//!   keeps the descriptor until the process exits, which it does right after [`serve`] returns.
+//!   Node destroyed the sockets itself.
+//! - **HEAD for a file that cannot be opened**: [`serve_static`] and [`Response::send_file`]
+//!   open the file before setting any header, so `HEAD` for a file that exists but cannot be
+//!   opened (no read permission) answers `500` like `GET`. Express answered `HEAD` from `stat`
+//!   alone.
+//! - **Slow readers and long-lived streams**: a write pending without progress for
+//!   [`ServeOptions::write_stall_timeout`] closes the connection; event streams and upgrades
+//!   have their own quota ([`ServeOptions::max_streams`], [`StreamAdmission`]), and a
+//!   connection that served an event stream closes when it ends (`Connection: close`).
+//!
 //! Beyond routing and bodies:
 //!
 //! - **Files**: [`serve_static`] is `express.static(dir)` and [`Response::send_file`] is
@@ -114,7 +131,10 @@
 //!   Server-Sent Events with heartbeats; [`Req::closed`] tells spawned work when the exchange is
 //!   over, including when the client goes away.
 //! - **Uploads**: [`multipart`] is multer 1.4.5-lts.2 over busboy 1.6 (`single(field)`, disk and
-//!   streaming storage, limits with multer's codes, file filter, cleanup, deadline).
+//!   streaming storage, limits with multer's codes, file filter, cleanup, deadline). When porting,
+//!   every upload route states its [`multipart::Limits`] (at least `file_size`, the
+//!   reference's `fileSize`): without a file size the whole body may be only 32 MiB
+//!   ([`multipart::DEFAULT_WIRE_BUDGET`]), and a route that takes more says so explicitly.
 //! - **Telemetry**: [`App::observe`] installs an [`Observer`] that sees every request start and
 //!   end (route, status, duration, bytes, aborts) and may attach a [`TraceContext`].
 #![forbid(unsafe_code)]
@@ -161,6 +181,7 @@ pub use request::{BodyState, PeerAddr, Req, ResponseState};
 pub use response::Response;
 pub use router::Router;
 pub use server::{
-    MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, UpgradeGuard, bind, bind_to, serve,
+    MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, StreamAdmission, StreamsFull, UpgradeGuard,
+    bind, bind_to, serve,
 };
 pub use static_files::{ServeStatic, serve_static};
