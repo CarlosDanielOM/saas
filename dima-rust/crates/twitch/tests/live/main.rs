@@ -16,3 +16,4 @@ mod helix;
 mod parity;
 mod recovery;
 mod tokens;
+mod user_token;

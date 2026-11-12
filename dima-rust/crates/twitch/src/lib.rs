@@ -13,6 +13,8 @@
 //!   [`Auth`], and [`Twitch::helix`] with [`HelixRequest`], which the Helix wrapper packages call.
 //! - [`oauth`]: the token endpoint and the classification of refused refreshes.
 //! - [`badges`], [`emotes`]: `formatBadges` and `getChannelEmoteCatalog`.
+//! - A user's own token (`user_token.rs`): [`Twitch::validate_user_token`] and
+//!   [`Twitch::user_by_token`] for the authentication layer.
 //! - Recovery of answers MongoDB has not taken (`recovery.rs`): [`Twitch::start_recovery`] once
 //!   per process, [`Twitch::reconcile_recovery`] on a tick and before a rollback,
 //!   [`Twitch::recovery_records`] and [`Twitch::settle_recovery_record`] for an operator
@@ -84,6 +86,7 @@ mod refresh;
 mod secret;
 pub mod streamers;
 pub mod tokens;
+mod user_token;
 
 #[cfg(any(test, feature = "test-util"))]
 pub use base::{FaultAction, FaultPoint};
@@ -103,3 +106,4 @@ pub use recovery::RecoveryReport;
 pub use secret::{AccessToken, RefreshToken};
 pub use streamers::StreamerAccount;
 pub use tokens::{RefreshOutcome, SignIn, SignInStored, TokenError};
+pub use user_token::{UserTokenError, ValidatedToken};

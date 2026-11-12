@@ -125,6 +125,9 @@ pub struct Timings {
     /// How long a 401 for a token a refresh just produced (or could not replace) does not
     /// refresh the app or bot token again.
     pub unhelpful_refresh_window: Duration,
+    /// Deadline of a call with a user's own token ([`crate::Twitch::validate_user_token`],
+    /// [`crate::Twitch::user_by_token`]): 10 s, the authentication layer's.
+    pub user_token_timeout: Duration,
 }
 
 impl Timings {
@@ -152,6 +155,7 @@ impl Timings {
             permission_recheck: Duration::from_secs(30),
             directory_read: Duration::from_millis(500),
             unhelpful_refresh_window: Duration::from_secs(60),
+            user_token_timeout: Duration::from_secs(10),
         }
     }
 
