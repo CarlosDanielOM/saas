@@ -88,6 +88,9 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
         dragonfly,
         calls: Vec::new(),
         startup_ignored: BTreeMap::new(),
+        step_ends: Vec::new(),
+        time_anchors: Default::default(),
+        ttl_origins: Default::default(),
         startup_keys: Vec::new(),
     }
 }
@@ -2254,5 +2257,45 @@ fn times_written_during_start_up_compare_as_such() {
         &o,
         r#"dragonfly["app:token"].ttl"#,
         "TTLs set during start-up differ",
+    );
+}
+
+#[test]
+fn step_provenance_survives_latency_and_preserves_defects() {
+    let anchored = |delay: i64, bump: bool, extra_lease: i64| {
+        let updated = if bump { 250 + delay } else { 100 };
+        let lease = 250 + delay + MIN + extra_lease;
+        let mut raw = timed_doc(100, updated, lease);
+        raw.time_anchors.insert(START + 100, (0, START));
+        raw.time_anchors
+            .insert(START + lease, (2, START + delay + 200));
+        if bump {
+            raw.time_anchors
+                .insert(START + updated, (2, START + delay + 200));
+        }
+        raw
+    };
+    let reference = anchored(0, true, 0);
+    // A store round-trip can also stall inside the request. Its interval is measured,
+    // while the lease still has to be exactly 60 seconds after updatedAt.
+    let mut slow_request = anchored(11_000, true, 0);
+    slow_request.step_ends = vec![START + 150, START + 200, START + 11_300];
+    slow_request
+        .time_anchors
+        .insert(START + 11_250, (2, START + 200));
+    slow_request
+        .time_anchors
+        .insert(START + 11_250 + MIN, (2, START + 200));
+    assert_match(&diff(&reference, &slow_request));
+    assert_match(&diff(&reference, &anchored(15_000, true, 0)));
+    assert_one(
+        &diff(&reference, &anchored(15_000, true, 1000)),
+        "mongo.t[0].leaseUntil",
+        "a fixed duration",
+    );
+    assert_one(
+        &diff(&reference, &anchored(15_000, false, 0)),
+        "mongo.t[0].updatedAt",
+        "time produced by different steps",
     );
 }

@@ -20,6 +20,7 @@ use tokio::net::{TcpListener, TcpStream};
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Variant {
     Good,
+    Delayed,
     Equivalent,
     Int64,
     NullField,
@@ -53,6 +54,7 @@ impl Variant {
     fn parse(s: &str) -> Result<Variant> {
         Ok(match s {
             "good" => Variant::Good,
+            "delayed" => Variant::Delayed,
             "equivalent" => Variant::Equivalent,
             "int64" => Variant::Int64,
             "null-field" => Variant::NullField,
@@ -363,6 +365,9 @@ impl App {
         };
         if let Some(c) = cookie {
             r.headers.push(("set-cookie", c));
+        }
+        if self.v == Variant::Delayed && name == "leased" {
+            tokio::time::sleep(Duration::from_secs(15)).await;
         }
         Ok(r)
     }

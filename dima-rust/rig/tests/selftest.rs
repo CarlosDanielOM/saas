@@ -184,7 +184,7 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
     let run = rig(work, &rd, variant, &["verify", "selftest"]);
     let all = ALL;
     match variant {
-        "equivalent" => {
+        "equivalent" | "delayed" => {
             assert_eq!(run.code, 0, "equivalent must match\n{}", run.text);
             for name in all {
                 assert_eq!(run.status(name), "match", "{name}\n{}", run.text);
@@ -194,7 +194,11 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 .as_array()
                 .unwrap()
                 .len();
-            assert!(notes > 0, "key order notes expected\n{}", run.text);
+            assert!(
+                variant == "delayed" || notes > 0,
+                "key order notes expected\n{}",
+                run.text
+            );
         }
         "int64" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("mongo.items[")
@@ -244,7 +248,7 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         // A lease deadline replayed from the reference's recording (an absolute time).
         "lease-replay" => assert_only(&run, variant, &["items/lease"], |p, w| {
             p == "mongo.items[0].leaseUntil"
-                && (w.contains("run-relative times differ")
+                && (w.contains("run-relative times differ") || w.contains("step-relative times differ") || w.contains("time produced by different steps")
                     || w.contains("time relation")
                     // Under load the recorded deadline can precede candidate startup.
                     || w == "candidate wrote this time during start-up, reference during the run or another time")
@@ -252,7 +256,8 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         // updatedAt not bumped by the second operation: only the relation sees it.
         "no-bump" => assert_only(&run, variant, &["items/lease"], |p, w| {
             p == "mongo.items[0].updatedAt"
-                && w.contains("time relation to mongo.items[0].createdAt differs")
+                && (w.contains("time relation to mongo.items[0].createdAt differs")
+                    || w.contains("time produced by different steps"))
         }),
         // A lease of 61 s instead of 60 s: within the window tolerance, a fixed duration broken.
         "lease-length" => assert_only(&run, variant, &["items/lease"], |p, w| {
@@ -458,6 +463,7 @@ fn self_test_end_to_end() {
     // Verify every candidate variant, a few at a time.
     let variants = [
         "equivalent",
+        "delayed",
         "int64",
         "null-field",
         "no-ttl",

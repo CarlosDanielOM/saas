@@ -201,7 +201,7 @@ expected keys.
 }
 ```
 
-Top level: `rig_scenario` (3; versions 1 and 2 remain readable), `description` (required), `seed`, `steps` (required), `compare`,
+Top level: `rig_scenario` (4; versions 1–3 remain readable), `description` (required), `time_inputs`, `seed`, `steps` (required), `compare`,
 `allow`, `mock` (see the mock section), `restart` (only with shared processes),
 `share_process` (default `false`), `allow_scripts` (default `false`), `tolerance_ms` (default
 2000), `relation_tolerance_ms` (default 50).
@@ -370,8 +370,13 @@ Applied to both sides every time they are compared, never stored.
 - **Times.** BSON dates, ISO strings (inside any string; the format is kept as a shape such as
   `dddd-dd-ddTdd:dd:dd.dddZ`), `YYYY-MM-DD` days, epoch-millisecond numbers (int64, double, JSON,
   13-digit runs in strings), HTTP dates in headers and TTLs within 400 days of the run become
-  **relative to the side's own run start** (just before the first step: the time a process takes
-  to start does not move them) and compare within `tolerance_ms`, never by absolute equality
+  **relative to the measured request interval of the step that first observed the value**. The rig snapshots
+  stores after each step and records that provenance; a slow earlier request no longer shifts
+  every later timestamp. Each step records its start and end: offsets are compared as
+  intervals, so a slow store round-trip inside a request also cannot create a false shift.
+  The producing step must agree too. Original times are retained for
+  document ordering and lease-duration checks. Legacy captures without provenance retain their
+  run-start comparison until re-recorded and compare within `tolerance_ms`, never by absolute equality
   with the other side (a replayed timestamp is a difference; declare a constant date near the
   run with `exact`). Values the seed wrote with `$rigNow` are recognised exactly and compare by
   their seed offset (`seed+60000ms`). Times in the inputs, and times farther away, compare
@@ -830,3 +835,37 @@ The SQL observer currently does not compare roles, grants, triggers, function bo
 counters. PostgreSQL values are captured through `to_jsonb`; the catalogue retains column types. Numeric
 values retain arbitrary precision and compare exactly unless classified as times; approximate numeric
 tolerance is not implemented for SQL numeric cells.
+
+## Step time provenance (formats 6 / 4)
+
+Capture format **6** adds `time_anchors`: triples `[epoch_ms, step_index, request_start_ms]`, `step_ends` (epoch milliseconds
+indexed by step), and `ttl_origins` entries
+`[key, observed_expiry_ms, step_index, request_start_ms]` (binary keys use `$rigBytes`).
+TTL origins follow a key while its measured expiry stays within one second, matching the
+existing startup-expiry measurement tolerance. At most 200,000 timestamp anchors are allowed;
+exceeding the bound fails the scenario.
+Formats 2–5 remain readable, with their original run-relative checks. Re-record to obtain
+step timing checks; no historical step timing is invented. The observer snapshots MongoDB,
+Dragonfly and PostgreSQL between operations; allow for this cost in timeout budgets.
+
+Scenario format **4** adds `time_inputs`, an array of supplied fixed timestamps (ISO strings
+or epoch numbers), e.g. `"time_inputs": ["2026-11-12T12:00:00.000Z", 1794484800000]`.
+These values compare exactly wherever observed, including derived representations; list a
+rounded bucket value as well when the application rounds an input time. Use a fixed timestamp
+in the request body when testing bucketing, rather than the wall clock. Versions 1–3 still load.
+An `exact` allowance can additionally keep a time-looking constant literal at a selected path.
+
+Provenance records the first step observing an epoch value, not a database write trace.
+Multiple writes of the identical millisecond share an anchor. Wait and pause steps retain the preceding request anchor, so asynchronous writes first
+observed during a wait belong to the request that preceded it. Separate independent operations with a pause
+when their equality would otherwise be accidental. Within a document, fixed durations are
+checked for times from the same step; across steps ordering is checked, because the elapsed
+time between requests may vary. The self-test includes a side that waits 15 seconds after
+creating the leased item, before the next request; lease-length and missing-update defects must
+still fail with a field path.
+
+The self-test allows 60 seconds for fixture startup and 30 seconds for background jobs
+under compilation load; comparison tolerances are unchanged. Three consecutive end-to-end
+runs alongside repeated capped `tools/cargo build -p dima-model` builds passed in
+222.30 s, 249.37 s and 106.24 s. The tested matrix includes the 15-second delayed side,
+a missing `updatedAt` bump and a lease one second too long.

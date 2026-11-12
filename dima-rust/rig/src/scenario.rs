@@ -22,7 +22,7 @@ use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
 use crate::timefmt;
 
-pub const SCENARIO_VERSION: u64 = 3;
+pub const SCENARIO_VERSION: u64 = 4;
 pub const SEED_VERSION: u64 = 1;
 const MAX_TIMEOUT_MS: u64 = 600_000;
 
@@ -37,6 +37,8 @@ fn present<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<Option<Value>
 #[serde(deny_unknown_fields)]
 struct ScenarioFile {
     rig_scenario: u64,
+    #[serde(default)]
+    time_inputs: Vec<Value>,
     description: String,
     #[serde(default)]
     restart: bool,
@@ -1729,7 +1731,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     let v = read_json(&file)?;
     let f: ScenarioFile = parse(&file, &v)?;
     let at = file.display().to_string();
-    if ![1, 2, SCENARIO_VERSION].contains(&f.rig_scenario) {
+    if ![1, 2, 3, SCENARIO_VERSION].contains(&f.rig_scenario) {
         return Err(config(format!(
             "{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}",
             f.rig_scenario
@@ -1942,6 +1944,18 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     if let Some(h) = &compare.call_headers {
         call_rules.include_headers = h.include.iter().map(|n| n.to_ascii_lowercase()).collect();
     }
+    for input in &f.time_inputs {
+        if !(input.as_i64().is_some()
+            || input.as_str().is_some_and(|s| {
+                timefmt::parse_iso(s).is_some() || timefmt::parse_day(s).is_some()
+            }))
+        {
+            return Err(config(format!(
+                "{at}: time_inputs entries must be ISO dates or integer epoch timestamps"
+            )));
+        }
+        crate::detect::collect_known_json(patterns, input, &mut loader.known);
+    }
     Ok(Scenario {
         name: name.to_string(),
         file,
@@ -2046,6 +2060,40 @@ pub(crate) fn tests_command_err(args: &[Value]) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn declared_time_inputs_are_exact_and_validated() {
+        let root = std::env::temp_dir().join(format!("rig-time-inputs-{}", std::process::id()));
+        let dir = root.join("scenarios/test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("inputs.json");
+        let write = |input: Value| {
+            std::fs::write(
+                &path,
+                json!({
+                    "rig_scenario": 4, "description": "A supplied clock input.",
+                    "time_inputs": [input], "steps": []
+                })
+                .to_string(),
+            )
+            .unwrap()
+        };
+        let patterns = Patterns::new().unwrap();
+        write(json!("2026-11-12T12:00:00.000Z"));
+        let scenario = load(&root, "test", "inputs", &patterns).unwrap();
+        assert!(
+            scenario
+                .known
+                .times
+                .contains(&timefmt::parse_iso("2026-11-12T12:00:00.000Z").unwrap())
+        );
+        write(json!({"typo": 123}));
+        let error = load(&root, "test", "inputs", &patterns)
+            .unwrap_err()
+            .to_string();
+        std::fs::remove_dir_all(&root).unwrap();
+        assert!(error.contains("time_inputs entries must"), "{error}");
+    }
 
     #[test]
     fn seeds_must_name_the_bson_type() {

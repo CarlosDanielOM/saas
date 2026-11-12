@@ -10,7 +10,7 @@
       "MONGO_DB": "{mongo_db}",
       "REDIS_URL": "{dragonfly_url}"
     },
-    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "ready": { "http": "/health", "timeout_ms": 60000 },
     "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
   },
   "candidate": {
@@ -22,7 +22,7 @@
       "REDIS_URL": "{dragonfly_url}",
       "FIXTURE_CAPTURES": "{var.captures}"
     },
-    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "ready": { "http": "/health", "timeout_ms": 60000 },
     "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
   }
 }

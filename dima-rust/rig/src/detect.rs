@@ -292,6 +292,9 @@ pub struct DetectCtx<'a> {
 
 struct Detector<'a, 'b> {
     ctx: &'b DetectCtx<'a>,
+    step_ends: Vec<i64>,
+    anchors: std::collections::BTreeMap<i64, (usize, i64)>,
+    ttl_origins: std::collections::BTreeMap<Vec<u8>, (i64, (usize, i64))>,
     extra: Option<Regex>,
     found: Vec<String>,
     /// Inside the value of a byte-sensitive key (or the reply to a command on one).
@@ -334,6 +337,17 @@ impl Detector<'_, '_> {
                     off: ms - w.start,
                 };
             }
+        }
+        if matches!(w.moment(ms), Moment::Startup { .. }) {
+            return w.moment(ms);
+        }
+        if let Some((step, at)) = self.anchors.get(&ms) {
+            return Moment::Step {
+                step: *step,
+                off: ms - at,
+                span: (self.step_ends.get(*step).copied().unwrap_or(*at) - at).max(0),
+                run: ms - w.start,
+            };
         }
         w.moment(ms)
     }
@@ -1126,7 +1140,17 @@ impl Detector<'_, '_> {
                         hi: expiry - w.proc_start,
                     }
                 }
-                _ => self.moment(expiry),
+                _ => match self.ttl_origins.get(&e.key) {
+                    Some((observed, (step, at))) if (expiry - observed).abs() <= 1000 => {
+                        Moment::Step {
+                            step: *step,
+                            off: expiry - at,
+                            span: (self.step_ends.get(*step).copied().unwrap_or(*at) - at).max(0),
+                            run: expiry - w.start,
+                        }
+                    }
+                    _ => self.moment(expiry),
+                },
             }
         });
         EntryCap {
@@ -1278,6 +1302,9 @@ impl Detector<'_, '_> {
     }
 
     fn run(&mut self, raw: &RawCapture) -> Capture {
+        self.step_ends = raw.step_ends.clone();
+        self.anchors = raw.time_anchors.clone();
+        self.ttl_origins = raw.ttl_origins.clone();
         self.startup_keys = raw.startup_keys.iter().cloned().collect();
         let steps = raw
             .steps
@@ -1313,6 +1340,9 @@ fn first_known(ctx: &DetectCtx<'_>, v: &str) -> bool {
 pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
     let mut first = Detector {
         ctx,
+        step_ends: Vec::new(),
+        anchors: Default::default(),
+        ttl_origins: Default::default(),
         extra: None,
         found: Vec::new(),
         exact_text: false,
@@ -1344,6 +1374,9 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
     };
     let mut second = Detector {
         ctx,
+        step_ends: Vec::new(),
+        anchors: Default::default(),
+        ttl_origins: Default::default(),
         extra: Some(extra),
         found: Vec::new(),
         exact_text: false,
@@ -1456,6 +1489,9 @@ pub(crate) mod tests {
         let c = ctx(&p, known, &allow);
         let mut d = Detector {
             ctx: &c,
+            step_ends: Vec::new(),
+            anchors: Default::default(),
+            ttl_origins: Default::default(),
             extra: None,
             found: Vec::new(),
             exact_text: false,

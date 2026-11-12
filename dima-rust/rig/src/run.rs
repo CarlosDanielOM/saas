@@ -652,6 +652,11 @@ impl<'s> SideRunner<'s> {
         // to start (which varies between runs) does not move them.
         let start = timefmt::now_ms().max(start);
         let mut runner = Runner {
+            step_ends: Vec::new(),
+            mongo_selection: &sc.mongo,
+            dragonfly_selection: &sc.dragonfly,
+            time_anchors: BTreeMap::new(),
+            ttl_origins: BTreeMap::new(),
             stores: &mut self.stores,
             proc,
             http: &self.http,
@@ -662,6 +667,9 @@ impl<'s> SideRunner<'s> {
             side_values: self.side_values.clone(),
         };
         let result = runner.run(&sc.steps).await;
+        let step_ends = std::mem::take(&mut runner.step_ends);
+        let time_anchors = std::mem::take(&mut runner.time_anchors);
+        let ttl_origins = std::mem::take(&mut runner.ttl_origins);
         let end = timefmt::now_ms();
         let problems = self.mock.problems();
         let problem_text = problems
@@ -755,6 +763,9 @@ impl<'s> SideRunner<'s> {
             None => None,
         };
         let mut raw = RawCapture {
+            step_ends,
+            time_anchors,
+            ttl_origins,
             postgres,
             steps,
             mongo,

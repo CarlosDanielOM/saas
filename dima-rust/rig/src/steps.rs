@@ -39,6 +39,11 @@ pub struct Hooks {
 }
 
 pub struct Runner<'a> {
+    pub step_ends: Vec<i64>,
+    pub mongo_selection: &'a scenario::Selection,
+    pub dragonfly_selection: &'a scenario::Selection,
+    pub time_anchors: BTreeMap<i64, (usize, i64)>,
+    pub ttl_origins: BTreeMap<Vec<u8>, (i64, (usize, i64))>,
     pub stores: &'a mut SideStores,
     pub proc: &'a mut SideProcess,
     pub http: &'a reqwest::Client,
@@ -704,8 +709,20 @@ impl Runner<'_> {
         socketio: &mut Option<crate::socketio::Client>,
     ) -> Result<Vec<RawStep>, StepError> {
         let mut out = Vec::with_capacity(steps.len());
+        let mut producer = (0, timefmt::now_ms());
+
         for (i, s) in steps.iter().enumerate() {
             self.alive(i, "before the step")?;
+            let request_at = timefmt::now_ms();
+            if !matches!(
+                s.kind,
+                StepKind::Pause(_)
+                    | StepKind::WaitFor { .. }
+                    | StepKind::WaitQuiet(_)
+                    | StepKind::WaitCall { .. }
+            ) {
+                producer = (i, request_at);
+            }
             let r = match &s.kind {
                 StepKind::Sql(sql) => {
                     let pg = self
@@ -798,7 +815,99 @@ impl Runner<'_> {
                     RawStep::Done("wait_call".into())
                 }
             };
+            self.step_ends.push(timefmt::now_ms());
             self.alive(i, "during the step")?;
+            // Observe values after each operation so later latency cannot move earlier writes.
+            let mongo = self
+                .stores
+                .capture_mongo(self.mongo_selection)
+                .await
+                .map_err(|e| err(i, format!("timestamp provenance: {e}")))?;
+            let patterns = crate::detect::Patterns::new().map_err(|e| err(i, e.to_string()))?;
+            let mut known = crate::detect::Known::default();
+            for coll in mongo.values() {
+                for doc in &coll.docs {
+                    crate::detect::collect_known_bson(
+                        &patterns,
+                        &bson::Bson::Document(doc.clone()),
+                        &mut known,
+                    );
+                }
+            }
+            if let RawStep::Http(h) = &r
+                && let Ok(v) = serde_json::from_slice::<Value>(&h.body)
+            {
+                crate::detect::collect_known_json(&patterns, &v, &mut known);
+            }
+            if let RawStep::Http(h) = &r {
+                for (_, bytes) in &h.headers {
+                    if let Ok(text) = std::str::from_utf8(bytes) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+            }
+            match &r {
+                RawStep::Sql { value, .. } | RawStep::Socketio { value, .. } => {
+                    crate::detect::collect_known_json(&patterns, value, &mut known);
+                }
+                RawStep::Reply(reply) => crate::detect::collect_known_json(
+                    &patterns,
+                    &crate::capture::enc_reply(&reply.reply),
+                    &mut known,
+                ),
+                RawStep::Http(h) => {
+                    if let Ok(text) = std::str::from_utf8(&h.body) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+                RawStep::Done(_) => {}
+            }
+            let df = self
+                .stores
+                .capture_dragonfly(self.dragonfly_selection)
+                .await
+                .map_err(|e| err(i, format!("timestamp provenance Dragonfly: {e}")))?;
+            for entry in df {
+                crate::detect::collect_known_json(
+                    &patterns,
+                    &crate::capture::enc_value(&entry.value),
+                    &mut known,
+                );
+                if entry.pttl >= 0 {
+                    let expiry = entry.pttl_at + entry.pttl;
+                    let origin = match self.ttl_origins.get(&entry.key) {
+                        Some((old, origin)) if (old - expiry).abs() <= 1000 => *origin,
+                        _ => producer,
+                    };
+                    self.ttl_origins.insert(entry.key, (expiry, origin));
+                }
+            }
+            if let Some(pg) = &self.stores.postgres {
+                let snapshot = pg
+                    .snapshot()
+                    .await
+                    .map_err(|e| err(i, format!("timestamp provenance PostgreSQL: {e}")))?;
+                crate::detect::collect_known_json(&patterns, &snapshot, &mut known);
+            }
+            for call in self.mock.calls() {
+                patterns.collect_known(&call.path, &mut known);
+                patterns.collect_known(&call.query, &mut known);
+                for (_, bytes) in &call.headers {
+                    if let Ok(text) = std::str::from_utf8(bytes) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+                let (_, body) = crate::mock::decode_body(&call.headers, &call.body);
+                if let Some(body) = body {
+                    crate::detect::collect_known_json(&patterns, &body, &mut known);
+                }
+            }
+            for ms in known.times {
+                self.time_anchors.entry(ms).or_insert(producer);
+            }
+            if self.time_anchors.len() > 200_000 || self.ttl_origins.len() > 200_000 {
+                return Err(err(i, "timestamp provenance exceeded 200000 values"));
+            }
             out.push(r);
         }
         Ok(out)

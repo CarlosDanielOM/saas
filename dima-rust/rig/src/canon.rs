@@ -62,6 +62,10 @@ fn render_text(t: &Text, ctx: &Ctx<'_>) -> String {
             Seg::Lit(l) => s.push_str(l),
             Seg::Id(id) => s.push_str(&id_label(id, ctx)),
             Seg::Time {
+                at: Moment::Step { step, .. },
+                shape,
+            } => s.push_str(&format!("<Tstep{step}|{shape}>")),
+            Seg::Time {
                 at: Moment::Abs(ms),
                 shape,
             } => s.push_str(&format!("<T@{ms}|{shape}>")),
@@ -104,6 +108,7 @@ fn render(v: &Val, path: &mut Path, ctx: &Ctx<'_>, top_is_set: bool) -> String {
         Val::Int64(i) => format!("l{i}"),
         Val::Double(f) => format!("d{f:?}"),
         Val::Dec(s) => format!("m{s}"),
+        Val::Time(r, Moment::Step { step, .. }) => format!("T{r:?}step{step}"),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}@{ms}"),
         Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, Moment::Startup { .. }) => format!("T{r:?}startup"),
