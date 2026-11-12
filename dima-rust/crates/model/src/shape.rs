@@ -11,15 +11,17 @@
 //!   of stored. A plain nested object, a sub-document and the elements of a document array must be
 //!   documents; an array path must hold an array; the values of a Map of values its type;
 //! - it is `null` where the read type has no null state (kind `null`): a [`ReadNeed`] of the
-//!   collection says so, and the elements of arrays, the values of a Map of values and plain
-//!   nested objects are never `null`;
+//!   collection says so (plain nested objects and sub-documents included), and the elements of
+//!   arrays and the values of a Map of values are never `null`;
 //! - it removes or leaves out a path the read type needs (kind `missing`): `$unset`, a whole
 //!   object written without it, an upsert or a new document without it, an array element unset.
 //!
 //! `Mixed` paths and everything below them are free: their read types are raw BSON. Operators no
-//! reference call uses (`$rename`, `$currentDate`, `$bit`, pipeline stages other than `$set`,
-//! `$addFields` and `$unset`) are refused; a pipeline value that is an expression (`'$field'`, an
-//! operator document) cannot be checked and is the caller's responsibility.
+//! reference call uses (`$rename`, `$currentDate`, `$bit`) are refused. An update pipeline cannot
+//! be checked (its values are expressions: `{$literal: 'bad'}` stores a string anywhere), so the
+//! ordinary entry points refuse one ([`crate::ModelError::Pipeline`]); a caller that needs one
+//! uses [`CollectionInfo::prepare_pipeline_update_unchecked`] and brings its own write-then-read
+//! test.
 
 use crate::collection::CollectionInfo;
 use crate::validation::{ValidationError, ValidatorError, ValidatorKind};
@@ -122,11 +124,14 @@ fn is_position(segment: &str) -> bool {
         || (segment.starts_with("$[") && segment.ends_with(']'))
 }
 
-/// The paths Mongoose adds to a schema itself.
+/// The paths Mongoose adds to a schema itself. The `_id` Mongoose adds (`IdField::Auto`) is an
+/// ObjectId, at the root and in every sub-document; a declared `_id` (a string one) is a field
+/// and never reaches here. `tests/write_read.rs` checks that every collection's
+/// [`CollectionInfo::id_type`] agrees with its schema.
 fn implicit(schema: &Schema, name: &str) -> Option<Node> {
     let timestamps = schema.timestamps;
-    if name == "_id" && !matches!(schema.id, IdField::None) {
-        return Some(Node::Free);
+    if name == "_id" && matches!(schema.id, IdField::Auto) {
+        return Some(Node::Value(ValueType::ObjectId));
     }
     if timestamps.is_some_and(|t| t.created_at == Some(name) || t.updated_at == Some(name)) {
         return Some(Node::Value(ValueType::Date));
@@ -214,6 +219,11 @@ impl<'i> Checker<'i> {
     }
 
     fn need(&self, pattern: &str) -> Option<&ReadNeed> {
+        // Mongoose's own root `_id` is read as an `ObjectId`: never `null`, never missing.
+        static ROOT_ID: ReadNeed = ReadNeed::value("_id");
+        if pattern == "_id" && matches!(self.info.schema.id, IdField::Auto) {
+            return Some(&ROOT_ID);
+        }
         self.info.read_needs.iter().find(|n| n.path == pattern)
     }
 
@@ -256,8 +266,9 @@ impl<'i> Checker<'i> {
     /// A value written at `path` (`pattern` its schema path).
     fn value(&mut self, node: Node, place: Place, path: &str, pattern: &str, value: &Bson) {
         if matches!(value, Bson::Null | Bson::Undefined) {
-            let structural = place != Place::Field && !matches!(node, Node::Free)
-                || matches!(node, Node::Nested(_));
+            // An array element or a Map value is never `null`; a plain nested object is when its
+            // read type is an `Option` (no `ReadNeed` refuses it), like any other path.
+            let structural = place != Place::Field && !matches!(node, Node::Free);
             if structural || self.need(pattern).is_some_and(|n| n.refuse_null) {
                 self.null_error(path);
             }
@@ -385,9 +396,12 @@ impl<'i> Checker<'i> {
             let Some(Resolved::At(node, place, pattern)) = resolve(schema, &prefix) else {
                 return;
             };
-            let numeric = segments
-                .get(end - 1)
-                .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
+            // Only a real array position: a numeric Map key (`variables.123`) or a numeric key of
+            // a plain object below `Mixed` is a key like any other, and the server creates it.
+            let numeric = place == Place::ArrayElement
+                && segments
+                    .get(end - 1)
+                    .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
             let object = end < segments.len()
                 && matches!(node, Node::Subdocument(_) | Node::Nested(_))
                 && place != Place::ArrayElement;
@@ -503,6 +517,7 @@ impl<'i> Checker<'i> {
         } else {
             Err(ValidationError {
                 model: self.info.model,
+                on_update: false,
                 errors: self.errors,
             })
         }
@@ -555,36 +570,10 @@ impl CollectionInfo {
                     );
                 }
             }
-            UpdateDoc::Pipeline(stages) => {
-                for stage in stages {
-                    for (name, body) in stage {
-                        match (name.as_str(), body) {
-                            ("$set" | "$addFields", Bson::Document(paths)) => {
-                                let literal: Document = paths
-                                    .iter()
-                                    .filter(|(_, v)| !is_expression(v))
-                                    .map(|(k, v)| (k.clone(), v.clone()))
-                                    .collect();
-                                checker.operator(self.schema, "$set", &literal, against);
-                            }
-                            ("$unset", Bson::String(path)) => {
-                                let mut one = Document::new();
-                                one.insert(path.clone(), 1);
-                                checker.operator(self.schema, "$unset", &one, against);
-                            }
-                            ("$unset", Bson::Array(paths)) => {
-                                let one: Document = paths
-                                    .iter()
-                                    .filter_map(Bson::as_str)
-                                    .map(|p| (p.to_owned(), Bson::Int32(1)))
-                                    .collect();
-                                checker.operator(self.schema, "$unset", &one, against);
-                            }
-                            (other, _) => checker.unsupported(other, other),
-                        }
-                    }
-                }
-            }
+            // An expression (`{$literal: …}`, `'$field'`) cannot be checked without running it:
+            // the ordinary entry points refuse a pipeline before it gets here, and
+            // `prepare_pipeline_update_unchecked` does not call the guard.
+            UpdateDoc::Pipeline(_) => checker.unsupported("", "an update pipeline"),
         }
         checker.finish()
     }
@@ -664,15 +653,6 @@ fn upserted(filter: &Document, update: &Document) -> Document {
         }
     }
     document
-}
-
-/// A pipeline value that is computed (`'$path'`, `{$concat: …}`), not literal.
-fn is_expression(value: &Bson) -> bool {
-    match value {
-        Bson::String(text) => text.starts_with('$'),
-        Bson::Document(document) => document.keys().any(|k| k.starts_with('$')),
-        _ => false,
-    }
 }
 
 fn has_type(ty: ValueType, value: &Bson) -> bool {
@@ -760,7 +740,7 @@ mod tests {
     fn refusals_name_the_path() {
         let info = &crate::commands::INFO;
         let update = UpdateDoc::Document(doc! {
-            "$set": { "enabled": Bson::Null, "cooldown": "5", "responses": 3, "variables.k": 1 },
+            "$set": { "paused": Bson::Null, "cooldown": "5", "responses": 3, "variables.k": 1 },
             "$unset": { "channelID": 1 },
         });
         let Err(error) = info.check_update(&update, Against::Loaded(&doc! {})) else {
@@ -774,7 +754,7 @@ mod tests {
         assert_eq!(
             found,
             [
-                ("enabled", ValidatorKind::Null),
+                ("paused", ValidatorKind::Null),
                 ("cooldown", ValidatorKind::Type),
                 ("responses", ValidatorKind::Type),
                 ("variables.k", ValidatorKind::Type),
@@ -879,5 +859,74 @@ mod tests {
             info.check_update(&numeric, Against::Loaded(&doc! { "_id": 1 }))
                 .is_err()
         );
+    }
+
+    /// Mongoose's implicit `_id` is an ObjectId, at the root and in sub-documents.
+    #[test]
+    fn implicit_ids_are_typed() {
+        let users = &crate::users::INFO;
+        let by_id = doc! { "_id": 1 };
+        let plain = Against::Filter {
+            filter: &by_id,
+            upsert: false,
+        };
+        let bad_push = UpdateDoc::Document(
+            doc! { "$push": { "accounts": { "_id": "bad", "type": "twitch", "id": "1" } } },
+        );
+        let Err(error) = users.check_update(&bad_push, plain) else {
+            panic!("a string sub-document `_id` must be refused");
+        };
+        assert_eq!(
+            (error.errors[0].path.as_str(), error.errors[0].kind),
+            ("accounts.0._id", ValidatorKind::Type)
+        );
+        let good_push = UpdateDoc::Document(
+            doc! { "$push": { "accounts": { "_id": bson::oid::ObjectId::new(), "type": "twitch", "id": "1" } } },
+        );
+        assert_eq!(users.check_update(&good_push, plain), Ok(()));
+        let Err(error) = users.check_insert(&doc! { "_id": "bad" }) else {
+            panic!("a string root `_id` must be refused where the id is an ObjectId");
+        };
+        assert!(
+            error
+                .errors
+                .iter()
+                .any(|e| e.path == "_id" && e.kind == ValidatorKind::Type)
+        );
+        // A declared string `_id` stays a string.
+        let gifts = &crate::credit_gifts::INFO;
+        let typed = gifts.check_insert(&doc! { "_id": bson::oid::ObjectId::new() });
+        assert!(typed.is_err_and(|e| {
+            e.errors
+                .iter()
+                .any(|e| e.path == "_id" && e.kind == ValidatorKind::Type)
+        }));
+    }
+
+    /// A numeric Map key or a numeric key below `Mixed` is no array position: the reference
+    /// upserts `variables.123` (`handlers/special_parser.handler.ts:288`), and Mongoose takes it.
+    #[test]
+    fn numeric_keys_are_not_positions() {
+        let filter = doc! { "channelID": "1", "scopeType": "channel", "scopeName": "s" };
+        let upsert = Against::Filter {
+            filter: &filter,
+            upsert: true,
+        };
+        let ast = &crate::ast_variables::INFO;
+        let numeric_key = UpdateDoc::Document(doc! {
+            "$set": { "variables.123": "v" },
+            "$setOnInsert": { "channelID": "1", "scopeType": "channel", "scopeName": "s" },
+        });
+        assert_eq!(ast.check_update(&numeric_key, upsert), Ok(()));
+        let by_id = doc! { "_id": 1 };
+        let plain = Against::Filter {
+            filter: &by_id,
+            upsert: false,
+        };
+        let commands = &crate::commands::INFO;
+        let map_key = UpdateDoc::Document(doc! { "$set": { "variables.7": "v" } });
+        assert_eq!(commands.check_update(&map_key, plain), Ok(()));
+        let mixed_key = UpdateDoc::Document(doc! { "$set": { "permissions.0": "v" } });
+        assert_eq!(commands.check_update(&mixed_key, plain), Ok(()));
     }
 }

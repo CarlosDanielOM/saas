@@ -14,11 +14,15 @@
 //! `streamsessions`); types are named after one document (`StreamSession`, `NewStreamSession`).
 //! Take the collection name, options, fields, hooks and data census from `ledger/mongo.json` and
 //! the TypeScript schema, never from guesses, and read every call site of the model in
-//! `dimabot/src` (creates, updates, saves, the filters they use). A module declares, in order:
+//! `dimabot/src` (creates, updates, saves, the filters they use; `ledger/mongo.json` lists the
+//! static calls, but not `doc.save()`: grep for the saves too). A module declares, in order:
 //!
 //! 1. A header naming the reference file and the options that matter (timestamps, `__v`, hooks,
-//!    indexes, `select: false` paths), and the intended differences: the write helpers refuse
-//!    what [`shape`] refuses (say which `null`s the census never shows, see `READ_NEEDS`).
+//!    indexes, `select: false` paths); the **client-fed writes** with their call sites and the
+//!    paths they can set to `null` (or "none" and why: see "Client-fed writes" below); the calls
+//!    that pass `runValidators`; and the intended differences: the write helpers refuse what
+//!    [`shape`] refuses (say which `null`s only the server could write and the census never
+//!    shows, see `READ_NEEDS`).
 //! 2. `COLLECTION`, and each enumeration with `str_enum!` (closed, the schema's values in its
 //!    order).
 //! 3. `SCHEMA`: the store's [`dima_store::mongo::schema::Schema`], field by field in declaration
@@ -33,11 +37,16 @@
 //!    log). Their fields are [`Private`] in the read and input types.
 //! 6. `READ_NEEDS`: a [`ReadNeed`] for every read type field that is neither an `Option` nor raw
 //!    `Bson` (`not_null` when a serde default reads a missing path, `value` when nothing does,
-//!    `present` for a raw `Bson` field without a default). The write helpers refuse to store what
-//!    the read type cannot read, so the declaration must match the read type exactly;
-//!    `tests/write_read.rs` finds a missing one.
+//!    `present` for a raw `Bson` field without a default), plain nested objects and
+//!    sub-documents included. The write helpers refuse to store what the read type cannot read,
+//!    so the declaration must match the read type exactly; `tests/write_read.rs` finds a missing
+//!    one. A client-fed path never has one that refuses `null`.
 //! 7. `INFO`, a [`CollectionInfo`] (`read_needs: READ_NEEDS`, `private: PRIVATE`,
-//!    `decode: decode_boxed::<X>`), added to [`REGISTRY`].
+//!    `decode: decode_boxed::<X>`, `client_nulls` (the [`ClientNulls`] of the header: `None`,
+//!    `Paths(&[…])` with `$` for array elements, or `Every` when a body is written as given), and
+//!    `initialised_at_startup`: `true` when a running process (bot, API or cron) imports the
+//!    schema, from `processes` of its file in `ledger/modules.json`; `false` keeps start-up from
+//!    creating a collection production never had), added to [`REGISTRY`].
 //! 8. The read type: `#[derive(Clone, Debug, Deserialize)]`, never `Serialize` (a whole document
 //!    is never written back: unknown fields must survive, `MIGRATION.md` data rule 1). `Debug`
 //!    may be derived only because every private value is a [`Private`] field, whose `Debug`
@@ -75,12 +84,12 @@
 //! assert_eq!(insert.document.get_str("name").ok(), Some("promo"));
 //! let stored = bson::RawDocumentBuf::try_from(&insert.document)?;
 //! let read: CustomTimer = dima_model::decode(&stored)?;
-//! assert!(read.active && read.frequency.0 == 30.0 && INFO.name == "custom_timers");
+//! assert!(read.is_active() && read.frequency.0 == 30.0 && INFO.name == "custom_timers");
 //!
-//! // What the read type could not read back is refused: `active` is a `bool`, values are not
-//! // cast.
+//! // What the read type could not read back is refused: `channel` needs a value (only the
+//! // server writes it; `active` takes `null`, a client may send it), values are not cast.
 //! let filter = doc! { "_id": ObjectId::new() };
-//! let update = doc! { "$set": { "active": Bson::Null, "frequency": "15" } };
+//! let update = doc! { "$set": { "channel": Bson::Null, "frequency": "15" } };
 //! let Err(ModelError::Validation(refused)) =
 //!     INFO.prepare_update(&filter, update, UpdateOptions::default(), &mut ctx)
 //! else {
@@ -101,7 +110,8 @@
 //! |---|---|
 //! | literal default (`default: 'x'`, `0`, `true`) | the type, `#[serde(default = "…")]`, `ReadNeed::not_null` |
 //! | required, no default | the type, `ReadNeed::value` |
-//! | default whose real data also holds `null` | `Option<T>`, default `Some(…)` (`commands.description`) |
+//! | default whose real data also holds `null`, or a client-fed path with a default | `Option<T>`, default `Some(…)` (`commands.description`, `commands.enabled`) and an accessor |
+//! | client-fed path without a default (required ones too) | `Option<T>`, `#[serde(default)]` |
 //! | `default: null`, or no default | `Option<T>` |
 //! | `Date.now` and other time-dependent defaults | `Option<T>`: a read never invents the read time |
 //! | `Number` | [`dima_store::mongo::number::JsNumber`] (any width; `JsInt` only for integer-only epoch fields) |
@@ -113,12 +123,38 @@
 //! | e-mail, token, personal payload | [`Private<T>`] (inside the `Option`) |
 //! | `Mixed`, `Object`, `[Object]` (content of another domain) | a named newtype over `Bson` (`Vec<Bson>` for an array); a `Default` of `{}` where the schema defaults to it |
 //!
-//! **Null.** For a typed path the schema allows `null` on, decide from the census
-//! (`ledger/mongo.json`, `null` counts per path) and the reference code: where `null` is really
-//! stored or written, the field is an `Option` and a consumer sees what JavaScript saw; where it
-//! is not, the field keeps its type, `READ_NEEDS` lists it, the write helpers refuse `null` with
-//! a [`ValidationError`] (kind `null`), and the module header says so. Never read `null` as the
-//! default: JavaScript sees `null`, not the default.
+//! **Null.** For a typed path the schema allows `null` on, decide from the reference code first,
+//! then the census (`ledger/mongo.json`, `null` counts per path): where `null` can be written
+//! (a client-fed write reaches the path, or server code writes it) or is stored, the field is an
+//! `Option` and a consumer sees what JavaScript saw; where only the server writes the path, never
+//! `null`, and the census shows none, the field keeps its type, `READ_NEEDS` lists it, the write
+//! helpers refuse `null` with a [`ValidationError`] (kind `null`), and the module header says so.
+//! Never read `null` as the default: JavaScript sees `null`, not the default. A path with a
+//! default reads the default when it is missing (`#[serde(default = "…")]` returning
+//! `Some(…)`) and `None` when it is `null`. Where callers branch on such a field, add an
+//! accessor that gives what the reference's expression gave: truthiness (`if (!x.enabled)`:
+//! `enabled.unwrap_or(false)`), an `||` default (`x.message || ''`), `Number(null)` (0) in
+//! arithmetic and comparisons (`crate::defaults::js_number`).
+//!
+//! **Client-fed writes.** After the cutover the site's forms and the site assistant keep sending
+//! what they send today, and a form sends `null` for an empty field: a write the guard refuses is
+//! a form that no longer saves. For every collection, find the reference writes whose values
+//! come from a client: search the API (`dimabot/src/server/routes`, `server/services`,
+//! `server/oauth`), the site assistant (`dimabot/src/site_agent`) and every helper they call
+//! (`commands/`, `utils/`; follow the imports of the routes) for writes to the model, and in each
+//! look at where the values come from. A value is client-fed when the request body or query (or
+//! a tool call's arguments) reaches the write without a type check: the body passed as the
+//! update (`findOneAndUpdate(filter, body)`), spread into it (`{...req.body}`), or copied field by
+//! field (`if ('x' in body) update.x = body.x`, `x !== undefined ? x : …`). It is not when the
+//! value is checked (`typeof x === 'boolean'`, a list, a pattern), normalised (a sanitiser that
+//! returns a typed value), defaulted (`body.x ?? 'd'`, `body.x || 0`) or built by the server, or
+//! when a hook overwrites it before the write (the personality's `pre('save')`). A body passed as
+//! a whole reaches every path (dotted keys too: `{"config.0.id": null}`), so every field is an
+//! `Option` there (`eventsubs`, `events`, `redemptionrewards`). Where a client-fed write can
+//! remove a path (`delete doc.x`, an `undefined` that reaches a save), the read type must also
+//! read it missing. MongoDB operators inside a body (`{"$unset": …}`) are not part of this: the
+//! Rust API accepts fields only. Declare the paths in `client_nulls`; `tests/write_read.rs`
+//! checks that each takes a `$set` of `null` and decodes.
 //!
 //! **Typed or raw.** Type what this collection's schema defines. Keep raw, behind a newtype named
 //! for what it is (`CommandBlocks`, `PermissionExpression`, `DomainEventPayload`), what the schema
@@ -135,10 +171,22 @@
 //! - Create: `NewX::prepare(ctx)` (through [`CollectionInfo::prepare_create`]: defaults, `trim`,
 //!   validation, the write guard) gives the store's `PreparedInsert` (its `_id` included); run it
 //!   with `store.writes(COLLECTION)`.
+//! - Update options: every update entry point takes `impl Into<`[`UpdateOptions`]`>`: the
+//!   store's options alone, or [`UpdateOptions::run_validators`] on top.
 //! - Update, `findOneAndUpdate`: [`CollectionInfo::prepare_update`],
 //!   [`CollectionInfo::prepare_find_one_and_update`] (paths below an immutable `Mixed` path are
-//!   immutable too, which the store does not do). Updates do not validate (no reference call
-//!   sets `runValidators`), but they pass the write guard.
+//!   immutable too, which the store does not do). An update validates only when the reference
+//!   call passes `runValidators: true` (find them with `grep -rn runValidators dimabot/src`, and
+//!   check for a `mongoose.set('runValidators')` or a schema option too): pass
+//!   [`UpdateOptions::run_validators`], and name the call site in the module header. Mongoose's
+//!   update validators look at the paths the update names only, with `this` the query; their
+//!   scope is in [`update_validation`]. Every update passes the write guard after them.
+//! - Update pipelines: the checked entry points refuse one ([`ModelError::Pipeline`]): its values
+//!   are expressions the guard cannot check (`{$literal: 'bad'}` would store anything). A caller
+//!   that needs one uses [`CollectionInfo::prepare_pipeline_update_unchecked`] and brings its own
+//!   write-then-read test that runs the pipeline on a throwaway database and decodes what it left
+//!   (`tests/writes.rs` does it for the `ai_usage_ledger.ts:424` and `:430` retention pipelines,
+//!   the only ones the reference sends to these collections).
 //! - Save: [`CollectionInfo::prepare_save`] takes a [`LoadedForSave`], which only
 //!   [`CollectionInfo::load_for_save`] creates (the whole document, `select: false` paths
 //!   included: a save writes the defaults of the paths the loaded document lacks, so a projected
@@ -151,17 +199,20 @@
 //!   sub-documents). A refused save sends nothing.
 //! - The write guard ([`shape`]): every prepared create, update, upsert and save delta is
 //!   refused, naming the path, when it holds a value of the wrong BSON type (the store sends
-//!   scalars uncast where Mongoose casts them; pass typed values), `null` or a removal where
-//!   `READ_NEEDS` says the read type has none, or a dotted write that could create a partial
-//!   object (into a sub-document or nested object whose read type needs fields, or at a numeric
-//!   array position) without a filter that proves the object exists (a condition on it or a path
-//!   inside it, as `free_credit_reset.worker.ts` does); positional `$`, `$[]` need no proof, and a
-//!   save checks the loaded document instead. An upsert's inserted document is checked whole.
+//!   scalars uncast where Mongoose casts them; pass typed values; the `_id` Mongoose adds is an
+//!   ObjectId at the root, never `null` there, and in every sub-document), `null` or a removal
+//!   where `READ_NEEDS` says the read type has none, or a dotted write that could create a
+//!   partial object (into a sub-document or nested object whose read type needs fields, or at a
+//!   numeric position of a real array) without a filter that proves the object exists (a
+//!   condition on it or a path inside it, as `free_credit_reset.worker.ts` does); a numeric key
+//!   of a Map or of an object below `Mixed` (`variables.123`) is a key, positional `$`, `$[]`
+//!   need no proof, and a save checks the loaded document instead. An upsert's inserted document
+//!   is checked whole.
 //! - Hooks: a collection with Mongoose middleware sets [`Hooks`], and the generic entry points
 //!   refuse it; its module offers the adapters instead (`commands::prepare_update` with an
 //!   [`availability::Writer`], `admins::prepare_save`...). An update adapter applies its hook to
-//!   the update, then calls `writes::update_unchecked(&INFO, …)` (or
-//!   `find_and_update_unchecked`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
+//!   the update, then calls `writes::update_after_hooks(&INFO, …)` (or
+//!   `find_and_update_after_hooks`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
 //!   changes, hook, ctx)`, where `hook` returns the changes the middleware makes (`hooks.rs` has
 //!   the `updatedAt`-on-save one). Both run validation and the guard; never call the store's
 //!   helpers directly. A create with document middleware uses `writes::create_with_hooks`
@@ -170,12 +221,14 @@
 //!   plan), and a hook that throws is [`ModelError::Refused`] with the reference's message.
 //! - Filters: `dima_store::mongo::filter::prepare_filter(INFO.schema, …)`; responses:
 //!   [`CollectionInfo::find_json`] and friends leave out the hidden paths.
-//! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry with
-//!   [`startup_policy`] and a deadline (Mongoose's `Model.init()`: collection, then each index
-//!   with `background: true`), log each [`IndexReport`] (every index: exists, created, or failed
-//!   and why), and write to a collection only once [`IndexReport::require`] passed for it (the
-//!   journal's unique indexes); best-effort collections never wait. The cutover rehearsal runs
-//!   [`preflight_indexes`] (read only) against production first.
+//! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry whose
+//!   [`startup_policy`] is `Some` (a collection no process of the reference initialises gets
+//!   `None` and is not created), with a deadline (Mongoose's `Model.init()`: collection, then each
+//!   index with `background: true`), log each [`IndexReport`] (every index: exists, created, or
+//!   failed and why), and write to a collection only once [`IndexReport::require`] passed for it
+//!   (the journal's unique indexes); best-effort collections never wait. The cutover rehearsal
+//!   runs [`preflight_indexes`] (read only) against production first; its [`Preflight`] lists the
+//!   differences, and the collections start-up does not initialise apart.
 //!
 //! # Tests every collection gets
 //!
@@ -202,25 +255,29 @@
 //!    schema files and what they import); a file that changed fails the test.
 //! 2. **Real data** (`tests/real_data.rs`, read only on `domdimabot`): automatic through
 //!    `INFO.decode`; with `DIMA_TEST_REQUIRE_STORES=1` (the gate) every document of every
-//!    collection, otherwise a sample above 50,000. It also runs [`preflight_indexes`] on the copy.
+//!    collection, otherwise a sample above 50,000, and a collection the census shows with
+//!    documents must not be empty in the copy. It also runs [`preflight_indexes`] on the copy.
 //! 3. **Writes** (`tests/writes.rs`, throwaway database): add the model to `FILES` and cases to
 //!    `CASES` in `record.mts`: a `create` naming a `rust` builder (and one per create path that
 //!    passes a `null` through), `validate` cases, updates, upserts, saves, saves Mongoose refuses
 //!    (an invalid change, an invalid untouched value, a missing required path, several errors to
-//!    pin the order), a duplicate key, every hook path. Add the builder to `typed_create`. The
+//!    pin the order), a duplicate key, every hook path, the reference's `runValidators` calls
+//!    (`options: { runValidators: true }`, valid and invalid). Add the builder to `typed_create`. The
 //!    write commands and the stored documents are compared exactly (types, key order, missing
 //!    versus null). A case Rust refuses on purpose (the write guard) is marked `refused` with the
 //!    reason; one it accepts on purpose, `differs`. Fixture keys are left out, never
 //!    `undefined`; a dotted update carries a filter that proves what it writes into. Like the
 //!    schema snapshot, the recording names the reference commit and the SHA-256 of every source
 //!    file it loaded, and a file that changed fails the test.
-//! 4. **Write then read** (`tests/write_read.rs`, throwaway database): automatic; every path and
-//!    probe value through every write the helpers offer, every written document decoded. Its
-//!    base document merges the collection's recorded create cases, so they should fill every
-//!    array and sub-document.
+//! 4. **Write then read** (`tests/write_read.rs`, throwaway database): automatic; every path
+//!    (implicit `_id`s, array element `0`, numeric and other Map keys, keys below `Mixed`) and
+//!    probe value through every write the helpers offer, every written document decoded, and a
+//!    `$set` of `null` accepted at every `client_nulls` path. Its base document merges the
+//!    collection's recorded create cases, so they should fill every array and sub-document.
 //! 5. **Private values** (`tests/private.rs`, offline): automatic; markers at every `PRIVATE`
-//!    path must not appear in `Debug`, every `select: false` path and every e-mail, secret or
-//!    OAuth token path must be private.
+//!    path must not appear in `Debug`, nor in the decode error of a malformed value there (a
+//!    [`Private`] error names the path and the expected type only), every `select: false` path
+//!    and every e-mail, secret or OAuth token path must be private.
 //!
 //! What Mongoose really does, learned from the recordings (the helpers and validators here follow
 //! it): validation runs before `minimize`, so a required path given `{}` passes and is then not
@@ -242,6 +299,7 @@ pub mod index;
 pub mod loaded;
 pub mod private;
 pub mod shape;
+pub mod update_validation;
 pub mod validation;
 pub mod values;
 mod writes;
@@ -289,17 +347,19 @@ pub mod user_extension_inventories;
 pub mod user_media_library_items;
 pub mod users;
 
-pub use collection::{CollectionInfo, Hooks, ReadError};
+pub use collection::{ClientNulls, CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;
 pub use index::{
-    IndexPolicy, IndexReport, IndexSpec, ensure_indexes, preflight_indexes, startup_policy,
+    IndexPolicy, IndexReport, IndexSpec, Preflight, ensure_indexes, preflight_indexes,
+    startup_policy,
 };
 pub use loaded::LoadedForSave;
 pub use private::Private;
 pub use shape::ReadNeed;
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
+pub use writes::UpdateOptions;
 
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).

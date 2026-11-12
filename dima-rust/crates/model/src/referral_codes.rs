@@ -13,11 +13,14 @@
 //! go through [`NewReferralCode::prepare`] and saves through [`prepare_save`]; updates have no
 //! hook (`active: false`, `$inc` of `stats.conversions`).
 //!
+//! Client-fed writes (`null` from a request body): none. `utils/referral.ts:80` checks the code
+//! against a pattern and calls `label.substring`, which fails for anything but a string.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
@@ -113,6 +116,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
+    client_nulls: ClientNulls::None,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<ReferralCode>,
 };

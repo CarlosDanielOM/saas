@@ -1,7 +1,7 @@
 //! Mongoose's document validation, for new documents and saves.
 //!
-//! Mongoose validates on `create` and `save` only (no call site sets `runValidators`), so read
-//! types never validate. Each collection module lists its validators as [`Rule`]s in schema path
+//! Mongoose validates on `create` and `save`, and on an update only when the call asks for it
+//! (`runValidators`, [`crate::update_validation`]); read types never validate. Each collection module lists its validators as [`Rule`]s in schema path
 //! order, the way `schema.path(p).validators` lists them; the input type runs them on the document
 //! it is about to insert ([`validate`]), after defaults and `trim` were applied, exactly where
 //! Mongoose runs them, and every save runs them on the whole document after the caller's changes
@@ -206,8 +206,11 @@ pub struct ValidatorError {
 /// A document Mongoose would refuse to insert (`ValidationError`).
 #[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub struct ValidationError {
-    /// The Mongoose model name (the message starts with it).
+    /// The Mongoose model name (the message of a document's validation starts with it).
     pub model: &'static str,
+    /// Raised by update validators (`runValidators`): Mongoose's message then names no model
+    /// (`Validation failed: …`, `ValidationError(null)`).
+    pub on_update: bool,
     /// The failed validators, in the order Mongoose reports them.
     pub errors: Vec<ValidatorError>,
 }
@@ -215,7 +218,11 @@ pub struct ValidationError {
 impl fmt::Display for ValidationError {
     /// `Commands validation failed: channelID: Path \`channelID\` is required.`
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{} validation failed: ", self.model)?;
+        if self.on_update {
+            formatter.write_str("Validation failed: ")?;
+        } else {
+            write!(formatter, "{} validation failed: ", self.model)?;
+        }
         for (i, error) in self.errors.iter().enumerate() {
             if i > 0 {
                 formatter.write_str(", ")?;
@@ -300,15 +307,19 @@ pub(crate) fn validate_ordered(
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(ValidationError { model, errors })
+        Err(ValidationError {
+            model,
+            on_update: false,
+            errors,
+        })
     }
 }
 
 /// A rule, relative to the (sub-)document being validated.
 #[derive(Clone, Copy)]
-struct LevelRule<'r> {
-    segments: &'r [&'static str],
-    check: Check,
+pub(crate) struct LevelRule<'r> {
+    pub(crate) segments: &'r [&'static str],
+    pub(crate) check: Check,
 }
 
 /// Where a rule path lands inside one level.
@@ -419,7 +430,7 @@ struct ChildRules<'r> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn validate_level(
+pub(crate) fn validate_level(
     fields: &'static [Field],
     document: &Document,
     given: Option<&Document>,
@@ -588,7 +599,7 @@ fn validate_level(
     }
 }
 
-fn check(
+pub(crate) fn check(
     rule: Check,
     path: &str,
     value: Option<&Bson>,

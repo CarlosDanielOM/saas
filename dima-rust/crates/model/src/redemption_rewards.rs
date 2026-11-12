@@ -6,21 +6,30 @@
 //! `__v`. Writes go through this module ([`prepare_update`], [`prepare_find_one_and_update`],
 //! [`prepare_save`], [`NewRedemptionReward::prepare`]).
 //!
-//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
-//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
-//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! Client-fed writes: `server/routes/reward.route.ts:363` (`PATCH /rewards/:channelID/:id`) and
+//! the site assistant's reward edit (`site_agent/tools/stream.ts:335`) pass the request body to
+//! `findOneAndUpdate` as given (only the cooldown and limits are range-checked, and `null` passes
+//! them); `server/routes/trigger.route.ts:1448` copies ten fields `!== undefined`, `null`
+//! included. Any path, the identity fields included, can therefore be `null`: every field of the
+//! read type is an `Option` (a path with a default reads the default when missing and `None`
+//! when `null`), [`READ_NEEDS`] is empty, and the accessors give what the reference's checks saw.
+//! The create path (`server/services/reward_creation.service.ts:222`) builds every value from
+//! Twitch's reply or with `||` defaults. No client write removes a path.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type
+//! (Mongoose would cast it; the API casts before it writes).
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
-use crate::defaults::{empty, yes, zero};
+
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
 use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::validation::Rule;
-use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
+use crate::writes::{find_and_update_after_hooks, save_with_hooks, update_after_hooks};
 use bson::Document;
 use bson::oid::ObjectId;
 use dima_core::Random;
@@ -30,7 +39,7 @@ use dima_store::mongo::insert::PreparedInsert;
 use dima_store::mongo::number::JsNumber;
 use dima_store::mongo::save::{Change, PreparedSave};
 use dima_store::mongo::schema::{DefaultValue as D, Field, Schema};
-use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned, UpdateOptions};
+use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned};
 use serde::{Deserialize, Serialize};
 
 /// The collection name.
@@ -80,25 +89,7 @@ pub const RULES: &[Rule] = &[
 pub const PRIVATE: &[&str] = &["availability", "availabilityLease"];
 
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
-pub const READ_NEEDS: &[ReadNeed] = &[
-    ReadNeed::value("eventsubID"),
-    ReadNeed::value("channelID"),
-    ReadNeed::value("channel"),
-    ReadNeed::value("rewardID"),
-    ReadNeed::value("title"),
-    ReadNeed::not_null("type"),
-    ReadNeed::not_null("prompt"),
-    ReadNeed::value("originalCost"),
-    ReadNeed::value("cost"),
-    ReadNeed::not_null("isEnabled"),
-    ReadNeed::not_null("message"),
-    ReadNeed::not_null("costChange"),
-    ReadNeed::not_null("returnToOriginalCost"),
-    ReadNeed::not_null("duration"),
-    ReadNeed::not_null("cooldown"),
-    ReadNeed::not_null("createdFrom"),
-    ReadNeed::not_null("createdFor"),
-];
+pub const READ_NEEDS: &[ReadNeed] = &[];
 
 /// The registry entry. Every write goes through this module (the availability hook).
 pub static INFO: CollectionInfo = CollectionInfo {
@@ -112,6 +103,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
+    client_nulls: ClientNulls::Every,
+    initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<RedemptionReward>,
 };
@@ -123,56 +116,59 @@ pub struct RedemptionReward {
     #[serde(rename = "_id")]
     pub id: ObjectId,
     /// The EventSub subscription that delivers its redemptions.
-    #[serde(rename = "eventsubID")]
-    pub eventsub_id: String,
+    #[serde(default, rename = "eventsubID")]
+    pub eventsub_id: Option<String>,
     /// The channel id.
-    #[serde(rename = "channelID")]
-    pub channel_id: String,
+    #[serde(default, rename = "channelID")]
+    pub channel_id: Option<String>,
     /// The channel login.
-    pub channel: String,
+    #[serde(default)]
+    pub channel: Option<String>,
     /// Twitch's reward id.
-    #[serde(rename = "rewardID")]
-    pub reward_id: String,
+    #[serde(default, rename = "rewardID")]
+    pub reward_id: Option<String>,
     /// The title.
-    pub title: String,
-    /// The bot's reward kind.
+    #[serde(default)]
+    pub title: Option<String>,
+    /// The bot's reward kind (default `custom`).
     #[serde(default = "custom", rename = "type")]
-    pub kind: String,
-    /// The prompt shown to viewers.
-    #[serde(default = "empty")]
-    pub prompt: String,
+    pub kind: Option<String>,
+    /// The prompt shown to viewers (default empty).
+    #[serde(default = "crate::defaults::some_empty")]
+    pub prompt: Option<String>,
     /// The cost it returns to.
-    #[serde(rename = "originalCost")]
-    pub original_cost: JsNumber,
+    #[serde(default, rename = "originalCost")]
+    pub original_cost: Option<JsNumber>,
     /// The current cost.
-    pub cost: JsNumber,
-    /// Enabled on Twitch.
-    #[serde(default = "yes", rename = "isEnabled")]
-    pub is_enabled: bool,
-    /// The chat message on redemption.
-    #[serde(default = "empty")]
-    pub message: String,
-    /// Cost change per redemption.
-    #[serde(default = "zero", rename = "costChange")]
-    pub cost_change: JsNumber,
-    /// Return to the original cost afterwards.
-    #[serde(default, rename = "returnToOriginalCost")]
-    pub return_to_original_cost: bool,
-    /// Effect duration.
-    #[serde(default = "zero")]
-    pub duration: JsNumber,
-    /// Cooldown.
-    #[serde(default = "zero")]
-    pub cooldown: JsNumber,
+    #[serde(default)]
+    pub cost: Option<JsNumber>,
+    /// Enabled on Twitch (default `true`).
+    #[serde(default = "crate::defaults::some_yes", rename = "isEnabled")]
+    pub is_enabled: Option<bool>,
+    /// The chat message on redemption (default empty).
+    #[serde(default = "crate::defaults::some_empty")]
+    pub message: Option<String>,
+    /// Cost change per redemption (default 0).
+    #[serde(default = "crate::defaults::some_zero", rename = "costChange")]
+    pub cost_change: Option<JsNumber>,
+    /// Return to the original cost afterwards (default `false`).
+    #[serde(default = "crate::defaults::some_no", rename = "returnToOriginalCost")]
+    pub return_to_original_cost: Option<bool>,
+    /// Effect duration (default 0).
+    #[serde(default = "crate::defaults::some_zero")]
+    pub duration: Option<JsNumber>,
+    /// Cooldown (default 0).
+    #[serde(default = "crate::defaults::some_zero")]
+    pub cooldown: Option<JsNumber>,
     /// Background colour.
     #[serde(default, rename = "backgroundColor")]
     pub background_color: Option<String>,
     /// Who created it on Twitch (missing on older documents: `domdimabot`).
     #[serde(default = "domdimabot", rename = "createdFrom")]
-    pub created_from: String,
+    pub created_from: Option<String>,
     /// The platform (missing on older documents: `twitch`).
     #[serde(default = "twitch", rename = "createdFor")]
-    pub created_for: String,
+    pub created_for: Option<String>,
     /// Scheduled availability (`select: false`).
     #[serde(default)]
     pub availability: Option<Private<AvailabilityState>>,
@@ -181,16 +177,59 @@ pub struct RedemptionReward {
     pub availability_lease: Option<Private<AvailabilityLease>>,
 }
 
-fn custom() -> String {
-    "custom".to_owned()
+fn custom() -> Option<String> {
+    Some("custom".to_owned())
 }
 
-fn domdimabot() -> String {
-    "domdimabot".to_owned()
+fn domdimabot() -> Option<String> {
+    Some("domdimabot".to_owned())
 }
 
-fn twitch() -> String {
-    "twitch".to_owned()
+fn twitch() -> Option<String> {
+    Some("twitch".to_owned())
+}
+
+/// What the reference's checks see (`null` is falsy, `Number(null)` is 0).
+impl RedemptionReward {
+    /// `reward.isEnabled` as a condition.
+    pub fn is_enabled_now(&self) -> bool {
+        self.is_enabled.unwrap_or(false)
+    }
+
+    /// `reward.message || ''`.
+    pub fn message_text(&self) -> &str {
+        self.message.as_deref().unwrap_or("")
+    }
+
+    /// `reward.returnToOriginalCost` as a condition.
+    pub fn returns_to_original_cost(&self) -> bool {
+        self.return_to_original_cost.unwrap_or(false)
+    }
+
+    /// `reward.cost` in arithmetic.
+    pub fn cost_number(&self) -> f64 {
+        crate::defaults::js_number(self.cost.as_ref())
+    }
+
+    /// `reward.originalCost` in arithmetic.
+    pub fn original_cost_number(&self) -> f64 {
+        crate::defaults::js_number(self.original_cost.as_ref())
+    }
+
+    /// `reward.costChange` in arithmetic.
+    pub fn cost_change_number(&self) -> f64 {
+        crate::defaults::js_number(self.cost_change.as_ref())
+    }
+
+    /// `reward.duration` in arithmetic.
+    pub fn duration_number(&self) -> f64 {
+        crate::defaults::js_number(self.duration.as_ref())
+    }
+
+    /// `reward.cooldown` in arithmetic.
+    pub fn cooldown_number(&self) -> f64 {
+        crate::defaults::js_number(self.cooldown.as_ref())
+    }
 }
 
 /// A new reward record.
@@ -241,7 +280,7 @@ impl NewRedemptionReward {
 pub fn prepare_update(
     filter: &Document,
     mut update: Document,
-    options: UpdateOptions,
+    options: impl Into<crate::UpdateOptions>,
     writer: Writer,
     ctx: &mut WriteContext,
     random: &dyn Random,
@@ -249,14 +288,14 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&INFO, filter, update.into(), options, ctx)
+    update_after_hooks(&INFO, filter, update.into(), options.into(), ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
 pub fn prepare_find_one_and_update(
     filter: &Document,
     mut update: Document,
-    options: UpdateOptions,
+    options: impl Into<crate::UpdateOptions>,
     returned: Returned,
     writer: Writer,
     ctx: &mut WriteContext,
@@ -265,7 +304,7 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
+    find_and_update_after_hooks(&INFO, filter, update.into(), options.into(), returned, ctx)
 }
 
 /// `doc.save()` of a loaded reward (read without projection) after `changes`, with the save hook.

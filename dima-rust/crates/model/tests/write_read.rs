@@ -2,14 +2,19 @@
 //! section 8), for every registered collection.
 //!
 //! For each collection the test builds a base document (the recorded `create` and `journal`
-//! cases of the collection, merged), then, for every schema path (array element `0`, Map key
-//! `k`, and a key below `Mixed` and Map values included) and every probe value (`null`, each
-//! scalar type, empty and filled objects and arrays), it tries each write the helpers offer:
-//! create, `$set`, `$unset`, `$push`, upsert, and save `set`/`unset` (through the module's
-//! adapter for a collection with hooks). Every write a helper prepares is run against a throwaway
+//! cases of the collection, merged), then, for every schema path (the implicit `_id` of the root
+//! and of each sub-document, array element `0`, Map keys `k` and `123`, keys `x` and `123` below
+//! `Mixed`, and a key below Map values included) and every probe value (`null`, each scalar
+//! type, empty and filled objects and arrays, objects with a string `_id`), it tries each write
+//! the helpers offer: create, `$set`, `$unset`, `$push`, upsert, and save `set`/`unset` (through
+//! the module's adapter for a collection with hooks). Every write a helper prepares is run against a throwaway
 //! database and every document left there is decoded with the read type. A refused write (a
 //! validation error, the write guard, a cast error) is fine; a written document that does not
 //! decode is a failure naming the collection, the write, the path and the value.
+//!
+//! Every path a client-fed write of the reference can set to `null`
+//! ([`dima_model::CollectionInfo::client_nulls`]) must take a `$set` of `null` (`MIGRATION.md`
+//! data rule 4: the reference stores what a form sends).
 //!
 //! Dotted writes get a filter that proves the objects on their way exist (the write guard asks
 //! for one, `src/shape.rs`); when the base document lacks them, the write matches nothing.
@@ -20,8 +25,8 @@ use anyhow::{Context, Result, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocumentBuf, doc};
 use dima_model::availability::Writer;
-use dima_model::{CollectionInfo, REGISTRY};
-use dima_store::mongo::schema::{Field, Kind, MapOf, Schema};
+use dima_model::{ClientNulls, CollectionInfo, REGISTRY};
+use dima_store::mongo::schema::{Field, IdField, Kind, MapOf, Schema};
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
@@ -46,43 +51,87 @@ fn probes() -> Vec<Bson> {
         Bson::Array(vec![Bson::String("x".into())]),
         Bson::Array(vec![Bson::Document(doc! { "k": "v" })]),
         Bson::Array(vec![Bson::Null]),
+        // A sub-document's implicit `_id` must be an ObjectId (`$push: {items: {_id: 'bad'}}`).
+        Bson::Document(doc! { "_id": "bad" }),
+        Bson::Array(vec![Bson::Document(doc! { "_id": "bad" })]),
     ]
 }
 
-/// Every path of the schema to probe, parents before children.
+/// Every path of the schema to probe, parents before children: the implicit `_id` of the root
+/// and of every sub-document included.
 fn paths(schema: &Schema) -> Vec<String> {
+    fn walk_schema(schema: &Schema, prefix: &str, out: &mut Vec<String>) {
+        if schema.id == IdField::Auto {
+            out.push(format!("{prefix}_id"));
+        }
+        walk(schema.fields, prefix, out);
+    }
     fn walk(fields: &[Field], prefix: &str, out: &mut Vec<String>) {
         for field in fields {
             let path = format!("{prefix}{}", field.name);
             out.push(path.clone());
             match field.kind {
                 Kind::Value(_) => {}
-                Kind::Mixed => out.push(format!("{path}.x")),
+                // A key below `Mixed`, a numeric one too (a plain object's key, not a position).
+                Kind::Mixed => {
+                    out.push(format!("{path}.x"));
+                    out.push(format!("{path}.123"));
+                }
                 Kind::Nested(children) => walk(children, &format!("{path}."), out),
-                Kind::Subdocument(schema) => walk(schema.fields, &format!("{path}."), out),
+                Kind::Subdocument(schema) => walk_schema(schema, &format!("{path}."), out),
                 Kind::DocumentArray(schema) => {
                     out.push(format!("{path}.0"));
-                    walk(schema.fields, &format!("{path}.0."), out);
+                    walk_schema(schema, &format!("{path}.0."), out);
                 }
                 Kind::Array(_) | Kind::MixedArray => out.push(format!("{path}.0")),
+                // Map keys, a numeric one too (`variables.123`: a key, not a position).
                 Kind::Map(MapOf::Values(_) | MapOf::Mixed) => {
                     out.push(format!("{path}.k"));
                     out.push(format!("{path}.k.x"));
+                    out.push(format!("{path}.123"));
                 }
                 Kind::Map(MapOf::Subdocuments(schema)) => {
                     out.push(format!("{path}.k"));
-                    walk(schema.fields, &format!("{path}.k."), out);
+                    walk_schema(schema, &format!("{path}.k."), out);
+                    out.push(format!("{path}.123"));
+                    walk_schema(schema, &format!("{path}.123."), out);
                 }
             }
         }
     }
     let mut out = Vec::new();
-    walk(schema.fields, "", &mut out);
+    walk_schema(schema, "", &mut out);
     if let Some(timestamps) = schema.timestamps {
         out.extend(timestamps.updated_at.map(str::to_owned));
     }
     out.extend(schema.version_key.map(str::to_owned));
     out
+}
+
+/// The schema paths a client-fed write can set to `null` ([`ClientNulls`]), as probe paths
+/// (element `0` for `$`).
+fn client_null_paths(info: &CollectionInfo) -> Vec<String> {
+    fn every(fields: &[Field], prefix: &str, out: &mut Vec<String>) {
+        for field in fields {
+            let path = format!("{prefix}{}", field.name);
+            out.push(path.clone());
+            match field.kind {
+                Kind::Nested(children) => every(children, &format!("{path}."), out),
+                Kind::Subdocument(schema) => every(schema.fields, &format!("{path}."), out),
+                Kind::DocumentArray(schema) => every(schema.fields, &format!("{path}.0."), out),
+                _ => {}
+            }
+        }
+    }
+    match info.client_nulls {
+        ClientNulls::None => Vec::new(),
+        ClientNulls::Paths(paths) => paths.iter().map(|p| p.replace('$', "0")).collect(),
+        ClientNulls::Every => {
+            let mut out = Vec::new();
+            every(info.schema.fields, "", &mut out);
+            out
+        }
+    }
 }
 
 /// `$set` of a dotted path into a document, following array positions; `false` when an
@@ -138,6 +187,7 @@ async fn decode_all(store: &MongoStore, info: &CollectionInfo) -> Result<Vec<Str
 struct Counts {
     written: u64,
     refused: u64,
+    client_nulls: u64,
 }
 
 struct Probe<'a> {
@@ -150,6 +200,29 @@ struct Probe<'a> {
 }
 
 impl Probe<'_> {
+    /// A client-fed path takes `null`: the write helpers accept `$set: {path: null}` (the
+    /// stored document is decoded by the probe loop like every other write).
+    fn client_null(&mut self, path: &str) {
+        let mut ctx = WriteContext::with_sequential_ids(NOW_MS, 4_000);
+        let random = support::entry::CountingRandom::default();
+        let prepared = support::entry::update(
+            self.info,
+            &self.filter(path),
+            doc! { "$set": { path: Bson::Null } },
+            UpdateOptions::default(),
+            Writer::Client,
+            &mut ctx,
+            &random,
+        );
+        if let Err(error) = prepared {
+            self.failures.push(format!(
+                "{}: the client-fed path {path} refuses null: {error}",
+                self.info.name
+            ));
+        }
+        self.counts.client_nulls += 1;
+    }
+
     /// Back to the base document alone.
     async fn reset(&self) -> Result<()> {
         let collection = self.store.documents(self.info.name);
@@ -287,6 +360,41 @@ impl Probe<'_> {
     }
 }
 
+/// The `_id` the guard checks a root `_id` against: Mongoose's own (`IdField::Auto`) is an
+/// ObjectId, a declared one has its declared type; [`CollectionInfo::id_type`] must agree.
+#[test]
+fn id_types_agree_with_schemas() -> Result<()> {
+    use dima_store::mongo::id::IdType;
+    use dima_store::mongo::schema::ValueType;
+    for info in REGISTRY {
+        let schema_type = match info.schema.id {
+            IdField::Auto => Some(ValueType::ObjectId),
+            IdField::Declared => info
+                .schema
+                .fields
+                .iter()
+                .find(|f| f.name == "_id")
+                .and_then(|f| match f.kind {
+                    Kind::Value(ty) => Some(ty),
+                    _ => None,
+                }),
+            IdField::None => None,
+        };
+        let declared = match info.id_type {
+            IdType::ObjectId => ValueType::ObjectId,
+            IdType::String => ValueType::String,
+        };
+        if schema_type != Some(declared) {
+            bail!(
+                "{}: id_type {:?}, schema `_id` {schema_type:?}",
+                info.name,
+                info.id_type
+            );
+        }
+    }
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn every_accepted_write_decodes() -> Result<()> {
     let cases = support::recorded_cases()?;
@@ -315,6 +423,9 @@ async fn every_accepted_write_decodes() -> Result<()> {
                 failures: Vec::new(),
                 counts: Counts::default(),
             };
+            for path in client_null_paths(info) {
+                probe.client_null(&path);
+            }
             for path in paths(info.schema) {
                 let unset = Bson::Undefined;
                 probe
@@ -358,11 +469,20 @@ async fn every_accepted_write_decodes() -> Result<()> {
                     }
                 }
             }
-            summary.insert(info.name, (probe.counts.written, probe.counts.refused));
+            summary.insert(
+                info.name,
+                (
+                    probe.counts.written,
+                    probe.counts.refused,
+                    probe.counts.client_nulls,
+                ),
+            );
             failures.extend(probe.failures);
         }
-        for (name, (written, refused)) in &summary {
-            eprintln!("{name:<28} {written:>6} writes decoded, {refused:>6} refused");
+        for (name, (written, refused, client)) in &summary {
+            eprintln!(
+                "{name:<28} {written:>6} writes decoded, {refused:>6} refused, {client:>3} client-fed nulls accepted"
+            );
         }
         if !failures.is_empty() {
             let shown: Vec<&String> = failures.iter().take(80).collect();

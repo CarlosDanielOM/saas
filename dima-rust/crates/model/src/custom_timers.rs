@@ -5,11 +5,23 @@
 //! a whole frequency of 1 to 1440 minutes) are the only ones in this package with ranges, so the
 //! input type checks them in its constructor.
 //!
+//! Client-fed writes: `PATCH /timers/:channelID/:timerName/toggle`
+//! (`server/routes/timer.route.ts:217`) passes the body's `active` to `toggleTimer` unchecked (`commands/timer_manager.command.ts:299`,
+//! `active !== undefined ? active : !timer.active`), which saves it: `active` may be `null`, so it
+//! is an `Option` here ([`CustomTimer::is_active`] gives the reference's truthiness). The other
+//! timer writes check their values (`validateName`, `validateMessage`, the plan's interval) or
+//! build them; none removes a path.
+//!
+//! Update validators: the dashboard's timer edit (`commands/timer_manager.command.ts:511`,
+//! `findOneAndUpdate` of `message`, `frequency`, `frequencyUnit`, `active`) passes
+//! `runValidators: true`; its port passes [`crate::UpdateOptions::run_validators`]. No other
+//! reference write to this collection does, and no schema or global option sets it.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
@@ -93,7 +105,6 @@ pub const READ_NEEDS: &[ReadNeed] = &[
     ReadNeed::value("frequency"),
     ReadNeed::value("channel"),
     ReadNeed::value("channelID"),
-    ReadNeed::not_null("active"),
 ];
 
 /// The registry entry.
@@ -108,6 +119,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::Paths(&["active"]),
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<CustomTimer>,
 };
@@ -132,15 +145,22 @@ pub struct CustomTimer {
     /// The channel id.
     #[serde(rename = "channelID")]
     pub channel_id: String,
-    /// The timer runs.
-    #[serde(default = "crate::defaults::yes")]
-    pub active: bool,
+    /// The timer runs (default `true`; `null` when a client stored it, see the module header).
+    #[serde(default = "crate::defaults::some_yes")]
+    pub active: Option<bool>,
     /// Creation time.
     #[serde(default)]
     pub created_at: Option<JsDate>,
     /// Last update time.
     #[serde(default)]
     pub updated_at: Option<JsDate>,
+}
+
+impl CustomTimer {
+    /// `timer.active` as a condition (`null` is falsy).
+    pub fn is_active(&self) -> bool {
+        self.active.unwrap_or(false)
+    }
 }
 
 /// A new timer (`CustomTimerSchema.create` in `timer_manager.command.ts`). Built with

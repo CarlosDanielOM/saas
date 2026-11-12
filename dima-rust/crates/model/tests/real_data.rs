@@ -6,7 +6,10 @@
 //! paths are decoded too. A failure names the collection, the `_id` and the field.
 //!
 //! Without the copy the tests skip with a notice; with `DIMA_TEST_REQUIRE_STORES=1` a missing
-//! server, copy or registered collection fails them.
+//! server, copy or registered collection fails them, and so does an empty collection that the
+//! census (`ledger/mongo.json`) shows with documents: the copy has expiring collections, so the
+//! counts are not compared, but one emptied by accident would otherwise pass with nothing
+//! decoded.
 
 mod support;
 
@@ -17,18 +20,34 @@ use futures_util::TryStreamExt;
 
 const SAMPLE: u64 = 50_000;
 
-/// Registered collections production never created: their schema is ported, but no code of the
-/// reference imports the model (`channelconfigs`, ledger status `schema-without-collection`).
-const NEVER_CREATED: &[&str] = &["channelconfigs"];
+/// The document count of each collection in the census of the production copy
+/// (`ledger/mongo.json`, `collections.<name>.db.count`).
+fn census_counts() -> Result<std::collections::HashMap<String, u64>> {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ledger/mongo.json");
+    let ledger: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+    let collections = ledger
+        .get("collections")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| anyhow::anyhow!("{path}: no collections"))?;
+    Ok(collections
+        .iter()
+        .filter_map(|(name, entry)| {
+            let count = entry.pointer("/db/count")?.as_u64()?;
+            Some((name.clone(), count))
+        })
+        .collect())
+}
 
-/// Every registered collection exists in the copy (an empty one included), except
-/// [`NEVER_CREATED`].
+/// Every registered collection that start-up initialises exists in the copy (an empty one
+/// included). The others (`initialised_at_startup: false`, schemas no process imports) may or
+/// may not: `channelconfigs` never existed, `accounts` and `app_configs` are left from older code.
 async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<()> {
     let names = store.database().list_collection_names().await?;
     let absent: Vec<&str> = REGISTRY
         .iter()
+        .filter(|info| info.initialised_at_startup)
         .map(|info| info.name)
-        .filter(|name| !names.iter().any(|n| n == name) && !NEVER_CREATED.contains(name))
+        .filter(|name| !names.iter().any(|n| n == name))
         .collect();
     if !absent.is_empty() {
         let message = format!("collections missing from the copy: {}", absent.join(", "));
@@ -67,10 +86,16 @@ async fn every_real_document_decodes() -> Result<()> {
     let full =
         support::stores_required() || std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
     let mut failures = Vec::new();
+    let mut emptied = Vec::new();
+    let census = census_counts()?;
     let mut total = 0_u64;
     for info in REGISTRY {
         let collection = store.database().collection::<RawDocumentBuf>(info.name);
         let count = collection.count_documents(doc! {}).await?;
+        let counted = census.get(info.name).copied().unwrap_or(0);
+        if count == 0 && counted > 0 {
+            emptied.push(format!("{} (the census counted {counted})", info.name));
+        }
         let stride = if full || count <= SAMPLE {
             1
         } else {
@@ -120,6 +145,16 @@ async fn every_real_document_decodes() -> Result<()> {
             " (sampled)"
         }
     );
+    if !emptied.is_empty() {
+        let message = format!(
+            "collections the census shows with documents are empty in the copy: {}",
+            emptied.join(", ")
+        );
+        if support::stores_required() {
+            bail!("{message} (DIMA_TEST_REQUIRE_STORES=1)");
+        }
+        eprintln!("{message}");
+    }
     if !failures.is_empty() {
         bail!(
             "{} documents failed to decode:\n{}",
@@ -138,19 +173,17 @@ async fn real_indexes_match_declarations() -> Result<()> {
         return Ok(());
     };
     expected_collections(&store).await?;
-    let differences =
+    let preflight =
         dima_model::preflight_indexes(&store, REGISTRY, std::time::Duration::from_secs(60)).await?;
-    // A collection the copy does not have (`NEVER_CREATED`) has no indexes to compare, and the
-    // differences production is known to have are reported, not failed.
+    // The collections start-up does not initialise are reported apart, and the differences
+    // production is known to have are reported, not failed.
+    for skipped in &preflight.not_initialised {
+        eprintln!("{skipped}");
+    }
     let mut known = Vec::new();
-    let real: Vec<String> = differences
+    let real: Vec<String> = preflight
+        .differences
         .iter()
-        .filter(|d| {
-            !matches!(
-                d,
-                dima_model::index::IndexDifference::MissingCollection { .. }
-            )
-        })
         .filter(
             |d| match KNOWN_DIFFERENCES.iter().find(|k| is_known(d, k)) {
                 Some((collection, index, why)) => {

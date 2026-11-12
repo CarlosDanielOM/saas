@@ -11,12 +11,15 @@
 //! minimizes, so a day without itemized usage is stored without `categories` (66 documents of
 //! the copy); it reads as `{}`. Numbers keep their stored width ([`JsNumber`]).
 //!
+//! Client-fed writes (`null` from a request body): none: its writers (`ledger/mongo.json`) store
+//! values the server builds or checks, and no request body reaches them unchecked.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::ai_usage_receipts::RetentionTier;
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::zero;
 use crate::enums::{Open, StrEnum};
@@ -106,6 +109,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
+    initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<AiUsageDaily>,
 };

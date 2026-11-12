@@ -40,6 +40,16 @@ pub struct CollectionInfo {
     pub read_needs: &'static [ReadNeed],
     /// The Mongoose middleware the module's adapters reproduce.
     pub hooks: Hooks,
+    /// The paths a client-fed write of the reference can set to `null` (a request body passed
+    /// through or copied without a type check; the module header names the call sites): the
+    /// read type keeps `null` there and the write guard accepts it (`tests/write_read.rs`
+    /// checks both).
+    pub client_nulls: ClientNulls,
+    /// A process of the reference (bot, API or cron) imports the model, so Mongoose's
+    /// `Model.init()` creates the collection and its indexes at start-up. `false` for a schema
+    /// no running process imports (`ledger/modules.json`, `processes: []`): its collection may
+    /// not exist in production, and start-up must not create it ([`crate::startup_policy`]).
+    pub initialised_at_startup: bool,
     /// The private paths of the read type (`$` for each array element): every `select: false`
     /// path, e-mail addresses, tokens, payloads with personal data. Their read type fields are
     /// [`crate::Private`], so `Debug` never shows them (`tests/private.rs`).
@@ -60,6 +70,18 @@ pub enum Hooks {
     /// Query middleware on updates and `pre('save')`: every update, create and save goes through
     /// the module.
     UpdatesAndSave,
+}
+
+/// Where a client-fed write of the reference can store `null` ([`CollectionInfo::client_nulls`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClientNulls {
+    /// Nowhere: every value a write stores is built or checked by the server.
+    None,
+    /// These schema paths (`$` for each document array element: `config.$.id`).
+    Paths(&'static [&'static str]),
+    /// Every schema path, inside sub-documents and document array elements too: a request body
+    /// is written as given.
+    Every,
 }
 
 /// A read for an HTTP response that failed.
@@ -199,6 +221,8 @@ mod tests {
         rules: &[],
         read_needs: &[],
         hooks: Hooks::None,
+        client_nulls: ClientNulls::None,
+        initialised_at_startup: true,
         private: &[],
         decode: |_| Ok(Box::new(())),
     };

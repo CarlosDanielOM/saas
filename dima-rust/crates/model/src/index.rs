@@ -19,10 +19,13 @@
 //! index is not there, and the caller must not write to that collection before it passes.
 //! [`startup_policy`] is the reference's: the journal's unique indexes are required, every other
 //! index is best effort and must never stop a process from starting (run it in the background
-//! and log the report).
+//! and log the report). A collection no process of the reference initialises has no start-up
+//! policy at all (`None`): its schema is ported, but nothing creates it.
 //!
 //! [`preflight_indexes`] compares the declarations with a database's indexes without changing
 //! anything, and lists every difference: the cutover rehearsal runs it against production first.
+//! The collections start-up does not initialise are reported apart
+//! ([`Preflight::not_initialised`]): their absence is not a difference.
 
 use crate::collection::CollectionInfo;
 use bson::{Bson, Document, doc};
@@ -187,8 +190,16 @@ impl IndexPolicy {
 /// `extensionwallettransactions.twitchTransactionID` guards money too, but production holds a
 /// conflicting plain index of that name, so it cannot be built there; it stays best effort (see
 /// that module).
-pub fn startup_policy(info: &CollectionInfo) -> IndexPolicy {
-    match info.name {
+///
+/// `None` for a collection no process of the reference initialises
+/// ([`CollectionInfo::initialised_at_startup`]: `accounts`, `app_configs`, `channelconfigs`,
+/// whose schemas nothing imports): start-up must not call [`ensure_indexes`] for it, which would
+/// create a collection production never had.
+pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
+    if !info.initialised_at_startup {
+        return None;
+    }
+    Some(match info.name {
         crate::domain_events::COLLECTION
         | crate::cron_job_intents::COLLECTION
         | crate::credit_transactions::COLLECTION
@@ -199,7 +210,7 @@ pub fn startup_policy(info: &CollectionInfo) -> IndexPolicy {
         | crate::oauth_refresh_tokens::COLLECTION
         | crate::oauth_sessions::COLLECTION => IndexPolicy::RequireAll,
         _ => IndexPolicy::BestEffort,
-    }
+    })
 }
 
 /// Why an index is not there.
@@ -531,18 +542,64 @@ impl fmt::Display for IndexDifference {
     }
 }
 
+/// What [`preflight_indexes`] found.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Preflight {
+    /// Every difference of the collections start-up initialises, in registry and declaration
+    /// order.
+    pub differences: Vec<IndexDifference>,
+    /// The collections start-up does not initialise
+    /// ([`CollectionInfo::initialised_at_startup`] is `false`), and whether each exists: not
+    /// compared, and their absence is no difference.
+    pub not_initialised: Vec<NotInitialised>,
+}
+
+/// A registered collection start-up does not initialise.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NotInitialised {
+    /// The collection.
+    pub collection: &'static str,
+    /// It exists in the database (created by older code or by hand).
+    pub exists: bool,
+}
+
+impl fmt::Display for NotInitialised {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let state = if self.exists {
+            "exists"
+        } else {
+            "does not exist"
+        };
+        write!(
+            formatter,
+            "{}: not initialised at start-up (no process imports it); {state}",
+            self.collection
+        )
+    }
+}
+
 /// The declared indexes of `infos` against the database's, read only (`listCollections` and
-/// `listIndexes`), within `deadline`: every difference, in registry and declaration order.
+/// `listIndexes`), within `deadline`: every difference of the collections start-up initialises,
+/// and the others apart.
 pub async fn preflight_indexes(
     store: &MongoStore,
     infos: &[&CollectionInfo],
     deadline: Duration,
-) -> Result<Vec<IndexDifference>, IndexError> {
+) -> Result<Preflight, IndexError> {
     let end = Instant::now() + deadline;
     let existing = before(end, deadline, store.database().list_collection_names()).await?;
     let mut differences = Vec::new();
+    let mut not_initialised = Vec::new();
     for info in infos {
-        if !existing.iter().any(|name| name == info.name) {
+        let exists = existing.iter().any(|name| name == info.name);
+        if !info.initialised_at_startup {
+            not_initialised.push(NotInitialised {
+                collection: info.name,
+                exists,
+            });
+            continue;
+        }
+        if !exists {
             differences.push(IndexDifference::MissingCollection {
                 collection: info.name,
             });
@@ -580,7 +637,10 @@ pub async fn preflight_indexes(
             }
         }
     }
-    Ok(differences)
+    Ok(Preflight {
+        differences,
+        not_initialised,
+    })
 }
 
 #[cfg(test)]
@@ -609,9 +669,61 @@ mod tests {
         assert!(!same_index(&not_unique, &declared));
         assert_eq!(
             startup_policy(&crate::domain_events::INFO),
-            IndexPolicy::RequireUnique
+            Some(IndexPolicy::RequireUnique)
         );
-        assert_eq!(startup_policy(&crate::users::INFO), IndexPolicy::BestEffort);
+        assert_eq!(
+            startup_policy(&crate::users::INFO),
+            Some(IndexPolicy::BestEffort)
+        );
+    }
+
+    /// Start-up initialises what a process of the reference imports, and nothing else: the
+    /// schemas no process imports (`ledger/modules.json`) get no policy.
+    #[test]
+    fn startup_skips_what_no_process_imports() {
+        let skipped: Vec<&str> = crate::REGISTRY
+            .iter()
+            .filter(|info| startup_policy(info).is_none())
+            .map(|info| info.name)
+            .collect();
+        assert_eq!(skipped, ["app_configs", "accounts", "channelconfigs"]);
+        // Each flag is what `ledger/modules.json` says about the schema file: a running process
+        // (bot, API, cron; not a one-off script) reaches it by value imports.
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ledger/modules.json");
+        let ledger: serde_json::Value = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default();
+        let modules = ledger
+            .get("modules")
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        assert!(!modules.is_empty(), "{path}");
+        for info in crate::REGISTRY {
+            let module = modules
+                .iter()
+                .find(|m| m.get("path").and_then(serde_json::Value::as_str) == Some(info.source));
+            let processes: Vec<&str> = module
+                .and_then(|m| m.get("processes"))
+                .and_then(serde_json::Value::as_array)
+                .map(|p| p.iter().filter_map(serde_json::Value::as_str).collect())
+                .unwrap_or_default();
+            assert!(
+                module.is_some(),
+                "{}: {} is not in the ledger",
+                info.name,
+                info.source
+            );
+            let running = processes
+                .iter()
+                .any(|p| matches!(*p, "api" | "bot" | "cron"));
+            assert_eq!(
+                info.initialised_at_startup, running,
+                "{}: processes {processes:?}",
+                info.name
+            );
+        }
     }
 
     #[test]

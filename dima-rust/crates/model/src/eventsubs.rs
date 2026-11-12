@@ -4,13 +4,20 @@
 //! Reference: `dimabot/src/schemas/eventsub.schema.ts`. No timestamps (`created_at` is Twitch's
 //! text), `__v`, no hooks. Indexes `{channelID, type}` and `{id}`.
 //!
-//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
-//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
-//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! Client-fed writes: `server/services/eventsub_config.service.ts:477` (`PATCH
+//! /eventsubs/:channelID/:id` and the site assistant's event tools) passes the request body to
+//! `findOneAndUpdate` as given (only `type` and the cheer tiers are normalised): any path, the
+//! identity fields included, can be set to `null` (also through a dotted key). Every field of
+//! the read type is therefore an `Option` (a path with a default reads the default when missing
+//! and `None` when `null`), [`READ_NEEDS`] is empty, and the accessors give what the reference's
+//! truthiness checks saw (`if (!eventsub.enabled)`). No client write removes a path.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type
+//! (Mongoose would cast it; the API casts before it writes).
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
-use crate::defaults::{empty, yes, zero};
+use crate::defaults::{js_number, some_empty, some_no, some_yes, some_zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::shape::ReadNeed;
@@ -80,31 +87,7 @@ pub const RULES: &[Rule] = &[
 ];
 
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
-pub const READ_NEEDS: &[ReadNeed] = &[
-    ReadNeed::value("id"),
-    ReadNeed::value("status"),
-    ReadNeed::value("type"),
-    ReadNeed::value("version"),
-    ReadNeed::present("condition"),
-    ReadNeed::value("created_at"),
-    ReadNeed::present("transport"),
-    ReadNeed::value("cost"),
-    ReadNeed::value("channel"),
-    ReadNeed::value("channelID"),
-    ReadNeed::not_null("enabled"),
-    ReadNeed::not_null("message"),
-    ReadNeed::not_null("watchStreakEnabled"),
-    ReadNeed::not_null("modiversaryMessage"),
-    ReadNeed::not_null("modiversaryEnabled"),
-    ReadNeed::not_null("endMessage"),
-    ReadNeed::not_null("endEnabled"),
-    ReadNeed::not_null("minViewers"),
-    ReadNeed::not_null("temporalBanMessage"),
-    ReadNeed::not_null("clipEnabled"),
-    ReadNeed::not_null("delay"),
-    ReadNeed::not_null("cheerTiers"),
-    ReadNeed::not_null("todayFollows"),
-];
+pub const READ_NEEDS: &[ReadNeed] = &[];
 
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
@@ -118,6 +101,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::Every,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<Eventsub>,
 };
@@ -129,78 +114,160 @@ pub struct Eventsub {
     #[serde(rename = "_id")]
     pub object_id: ObjectId,
     /// Twitch's subscription id.
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     /// Twitch's status (`enabled`, `webhook_callback_verification_pending`...).
-    pub status: String,
+    #[serde(default)]
+    pub status: Option<String>,
     /// The subscription type (`channel.follow`...).
-    #[serde(rename = "type")]
-    pub kind: String,
+    #[serde(default, rename = "type")]
+    pub kind: Option<String>,
     /// The subscription version.
-    pub version: String,
+    #[serde(default)]
+    pub version: Option<String>,
     /// Twitch's condition object.
+    #[serde(default)]
     pub condition: EventsubCondition,
     /// Twitch's creation time, as Twitch's text.
-    pub created_at: String,
+    #[serde(default)]
+    pub created_at: Option<String>,
     /// Twitch's transport object.
+    #[serde(default)]
     pub transport: EventsubTransport,
     /// Twitch's cost.
-    pub cost: JsNumber,
+    #[serde(default)]
+    pub cost: Option<JsNumber>,
     /// The channel login.
-    pub channel: String,
+    #[serde(default)]
+    pub channel: Option<String>,
     /// The channel id.
-    #[serde(rename = "channelID")]
-    pub channel_id: String,
-    /// The bot reacts to the event.
-    #[serde(default = "yes")]
-    pub enabled: bool,
-    /// The chat message for the event.
-    #[serde(default = "empty")]
-    pub message: String,
-    /// Watch-streak messages on.
-    #[serde(default = "yes", rename = "watchStreakEnabled")]
-    pub watch_streak_enabled: bool,
-    /// The moderator-anniversary message.
-    #[serde(default = "empty", rename = "modiversaryMessage")]
-    pub modiversary_message: String,
-    /// Moderator-anniversary messages on.
-    #[serde(default = "yes", rename = "modiversaryEnabled")]
-    pub modiversary_enabled: bool,
-    /// The message when the event ends.
-    #[serde(default = "empty", rename = "endMessage")]
-    pub end_message: String,
-    /// End messages on.
-    #[serde(default, rename = "endEnabled")]
-    pub end_enabled: bool,
-    /// Minimum viewers for the event to count.
-    #[serde(default = "two", rename = "minViewers")]
-    pub min_viewers: JsNumber,
-    /// The message of a temporary ban.
-    #[serde(default = "empty", rename = "temporalBanMessage")]
-    pub temporal_ban_message: String,
-    /// Clip on the event.
-    #[serde(default, rename = "clipEnabled")]
-    pub clip_enabled: bool,
-    /// Delay before reacting.
-    #[serde(default = "zero")]
-    pub delay: JsNumber,
-    /// Cheer tiers, as the site stored them.
-    #[serde(default, rename = "cheerTiers")]
-    pub cheer_tiers: CheerTiers,
-    /// Count today's follows.
-    #[serde(default, rename = "todayFollows")]
-    pub today_follows: bool,
+    #[serde(default, rename = "channelID")]
+    pub channel_id: Option<String>,
+    /// The bot reacts to the event (default `true`).
+    #[serde(default = "some_yes")]
+    pub enabled: Option<bool>,
+    /// The chat message for the event (default empty).
+    #[serde(default = "some_empty")]
+    pub message: Option<String>,
+    /// Watch-streak messages on (default `true`).
+    #[serde(default = "some_yes", rename = "watchStreakEnabled")]
+    pub watch_streak_enabled: Option<bool>,
+    /// The moderator-anniversary message (default empty).
+    #[serde(default = "some_empty", rename = "modiversaryMessage")]
+    pub modiversary_message: Option<String>,
+    /// Moderator-anniversary messages on (default `true`).
+    #[serde(default = "some_yes", rename = "modiversaryEnabled")]
+    pub modiversary_enabled: Option<bool>,
+    /// The message when the event ends (default empty).
+    #[serde(default = "some_empty", rename = "endMessage")]
+    pub end_message: Option<String>,
+    /// End messages on (default `false`).
+    #[serde(default = "some_no", rename = "endEnabled")]
+    pub end_enabled: Option<bool>,
+    /// Minimum viewers for the event to count (default 2).
+    #[serde(default = "some_two", rename = "minViewers")]
+    pub min_viewers: Option<JsNumber>,
+    /// The message of a temporary ban (default empty).
+    #[serde(default = "some_empty", rename = "temporalBanMessage")]
+    pub temporal_ban_message: Option<String>,
+    /// Clip on the event (default `false`).
+    #[serde(default = "some_no", rename = "clipEnabled")]
+    pub clip_enabled: Option<bool>,
+    /// Delay before reacting (default 0).
+    #[serde(default = "some_zero")]
+    pub delay: Option<JsNumber>,
+    /// Cheer tiers, as the site stored them (missing: empty).
+    #[serde(default = "no_tiers", rename = "cheerTiers")]
+    pub cheer_tiers: Option<CheerTiers>,
+    /// Count today's follows (default `false`).
+    #[serde(default = "some_no", rename = "todayFollows")]
+    pub today_follows: Option<bool>,
     /// When Twitch stopped listing the subscription.
     #[serde(default)]
     pub remote_missing_since: Option<JsDate>,
 }
 
-fn two() -> JsNumber {
-    JsNumber(2.0)
+fn some_two() -> Option<JsNumber> {
+    Some(JsNumber(2.0))
+}
+
+fn no_tiers() -> Option<CheerTiers> {
+    Some(CheerTiers::default())
+}
+
+/// What the reference's truthiness checks see (`null` is falsy, `Number(null)` is 0).
+impl Eventsub {
+    /// `eventsub.enabled` as a condition.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.unwrap_or(false)
+    }
+
+    /// `eventsub.message || ''`.
+    pub fn message_text(&self) -> &str {
+        self.message.as_deref().unwrap_or("")
+    }
+
+    /// `eventsub.watchStreakEnabled` as a condition.
+    pub fn is_watch_streak_enabled(&self) -> bool {
+        self.watch_streak_enabled.unwrap_or(false)
+    }
+
+    /// `eventsub.modiversaryMessage || ''`.
+    pub fn modiversary_message_text(&self) -> &str {
+        self.modiversary_message.as_deref().unwrap_or("")
+    }
+
+    /// `eventsub.modiversaryEnabled` as a condition.
+    pub fn is_modiversary_enabled(&self) -> bool {
+        self.modiversary_enabled.unwrap_or(false)
+    }
+
+    /// `eventsub.endMessage || ''`.
+    pub fn end_message_text(&self) -> &str {
+        self.end_message.as_deref().unwrap_or("")
+    }
+
+    /// `eventsub.endEnabled` as a condition.
+    pub fn is_end_enabled(&self) -> bool {
+        self.end_enabled.unwrap_or(false)
+    }
+
+    /// `eventsub.temporalBanMessage || ''`.
+    pub fn temporal_ban_message_text(&self) -> &str {
+        self.temporal_ban_message.as_deref().unwrap_or("")
+    }
+
+    /// `eventsub.clipEnabled` as a condition.
+    pub fn is_clip_enabled(&self) -> bool {
+        self.clip_enabled.unwrap_or(false)
+    }
+
+    /// `eventsub.todayFollows` as a condition.
+    pub fn is_today_follows(&self) -> bool {
+        self.today_follows.unwrap_or(false)
+    }
+
+    /// `eventsub.minViewers` in a comparison (`null` is 0).
+    pub fn min_viewers_number(&self) -> f64 {
+        js_number(self.min_viewers.as_ref())
+    }
+
+    /// `eventsub.delay` in arithmetic (`null` is 0).
+    pub fn delay_number(&self) -> f64 {
+        js_number(self.delay.as_ref())
+    }
+
+    /// The cheer tiers (`null`: none).
+    pub fn cheer_tier_list(&self) -> &[Bson] {
+        self.cheer_tiers
+            .as_ref()
+            .map_or(&[], |tiers| tiers.0.as_slice())
+    }
 }
 
 /// Twitch's `condition` object (`broadcaster_user_id`, `reward_id`...), kept as stored until the
 /// EventSub package types it.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct EventsubCondition(pub Bson);
 
@@ -215,7 +282,7 @@ impl EventsubCondition {
 }
 
 /// Twitch's `transport` object (`{method, callback}`), kept as stored.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct EventsubTransport(pub Bson);
 

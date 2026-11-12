@@ -17,11 +17,15 @@
 //! `providerSettings`, `voices.aiDefault` stored as `null`, `voices.aiVoices`,
 //! `voices.aiVoicesByProvider`) are not in the schema and are ignored.
 //!
+//! Client-fed writes (`null` from a request body): none.
+//! `server/services/tts_settings.service.ts:101` and `:109` (the settings page and the site
+//! assistant) write what `normalizeChannelTtsSettings` returns, a typed value for every path.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -373,6 +377,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<ChannelTtsSettings>,
 };

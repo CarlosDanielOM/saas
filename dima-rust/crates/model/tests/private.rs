@@ -246,3 +246,91 @@ fn debug_never_prints_private_values() -> Result<()> {
     );
     Ok(())
 }
+
+/// A value of another type at a private path, carrying a marker the decode error would quote
+/// (`invalid type: integer 987650001`, `invalid type: string "private-marker-…"`).
+fn malformed(markers: &mut Markers, kind: Kind) -> Option<Bson> {
+    match kind {
+        Kind::Value(ValueType::String) => Some(markers.value(ValueType::Number)),
+        Kind::Value(_) | Kind::Nested(_) | Kind::Subdocument(_) | Kind::Map(_) => {
+            Some(markers.value(ValueType::String))
+        }
+        Kind::Array(_) | Kind::MixedArray | Kind::DocumentArray(_) => {
+            Some(markers.value(ValueType::String))
+        }
+        Kind::Mixed => None,
+    }
+}
+
+/// A private value that does not fit its read type fails to decode with an error naming the
+/// path and the expected type, never the value (`DecodeError` is printed in logs).
+#[test]
+fn decode_errors_never_print_private_values() -> Result<()> {
+    let cases = support::recorded_cases()?;
+    let mut problems = Vec::new();
+    let (mut refused, mut collections) = (0, 0);
+    for info in REGISTRY {
+        let given = support::base_given(&cases, info.name)?;
+        let base = info
+            .prepare_create(&given, &mut WriteContext::new(0))
+            .with_context(|| format!("{}: base document", info.name))?
+            .document;
+        let before = refused;
+        for path in info.private {
+            let field = field_at(info.schema, path).with_context(|| {
+                format!("{}: private path {path} is not in the schema", info.name)
+            })?;
+            // The whole value of the wrong type, and (for an object) its first value.
+            let mut tries = Vec::new();
+            let mut markers = Markers::default();
+            if let Some(value) = malformed(&mut markers, field.kind) {
+                tries.push((path.to_string(), value));
+            }
+            let fields = match field.kind {
+                Kind::Nested(fields) => fields,
+                Kind::Subdocument(schema) => schema.fields,
+                _ => &[],
+            };
+            if let Some(first) = fields.first()
+                && let Some(value) = malformed(&mut markers, first.kind)
+            {
+                tries.push((format!("{path}.{}", first.name), value));
+            }
+            for (at, value) in tries {
+                let mut document = base.clone();
+                if !put(&mut document, &at, value.clone()) {
+                    bail!("{}: the base document has no element for {at}", info.name);
+                }
+                let raw = RawDocumentBuf::try_from(&document)?;
+                let Err(error) = (info.decode)(&raw) else {
+                    // The read type takes any value there (a raw `Bson` payload).
+                    continue;
+                };
+                refused += 1;
+                let shown = format!("{error} {error:?}");
+                for marker in markers.shown.iter().chain(&markers.also) {
+                    if shown.contains(marker.as_str()) {
+                        problems.push(format!(
+                            "{}: {at}: the error shows {marker}: {shown}",
+                            info.name
+                        ));
+                    }
+                }
+                if !shown.contains("invalid private value: expected") {
+                    problems.push(format!("{}: {at}: not a private error: {shown}", info.name));
+                }
+            }
+        }
+        if refused > before {
+            collections += 1;
+        }
+    }
+    if !problems.is_empty() {
+        bail!("{}", problems.join("\n"));
+    }
+    if collections < 5 {
+        bail!("only {collections} collections have a private value a malformed one breaks");
+    }
+    eprintln!("{refused} malformed private values in {collections} collections, none printed");
+    Ok(())
+}

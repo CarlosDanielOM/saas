@@ -4,11 +4,14 @@
 //! timestamps (a hand-written `createdAt` with `Date.now`), `__v`, no hooks, no index. Empty in
 //! the production copy.
 //!
+//! Client-fed writes (`null` from a request body): none: its writers (`ledger/mongo.json`) store
+//! values the server builds or checks, and no request body reaches them unchecked.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{utc_day, utc_month, utc_year};
 use crate::error::ModelError;
@@ -61,6 +64,7 @@ pub const RULES: &[Rule] = &[
 
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("date"),
     ReadNeed::value("command"),
     ReadNeed::value("timer"),
     ReadNeed::value("channel"),
@@ -79,6 +83,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<TimerCommand>,
 };

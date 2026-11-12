@@ -5,11 +5,13 @@
 //! reference no longer uses the model (one legacy document exists); it is ported so the document
 //! stays readable and writable the same way.
 //!
+//! Client-fed writes (`null` from a request body): none (no process imports the schema).
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
@@ -44,7 +46,7 @@ static SCHEMA: Schema = Schema::new(&[
 pub const PRIVATE: &[&str] = &["access_token"];
 
 /// What the read type cannot decode (`crate::shape`): nothing.
-pub const READ_NEEDS: &[ReadNeed] = &[];
+pub const READ_NEEDS: &[ReadNeed] = &[ReadNeed::not_null("access_token")];
 
 /// The registry entry. Saves go through [`prepare_save`] (the `refreshed_at` hook).
 pub static INFO: CollectionInfo = CollectionInfo {
@@ -58,6 +60,9 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: &[],
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
+    client_nulls: ClientNulls::None,
+    // No process of the reference imports the schema (`ledger/modules.json`: unreachable).
+    initialised_at_startup: false,
     private: PRIVATE,
     decode: decode_boxed::<AppConfig>,
 };

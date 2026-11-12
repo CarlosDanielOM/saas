@@ -1391,7 +1391,7 @@ fn changes_of(value: &Value) -> Result<Vec<Change>> {
     Ok(out)
 }
 
-fn update_options(intent: &Value) -> Result<UpdateOptions> {
+fn update_options(intent: &Value) -> Result<dima_model::UpdateOptions> {
     let options = intent.get("options");
     let mut out = if options
         .and_then(|o| o.get("upsert"))
@@ -1413,7 +1413,16 @@ fn update_options(intent: &Value) -> Result<UpdateOptions> {
                 .collect::<Result<Vec<_>>>()?,
         );
     }
-    Ok(out)
+    let model = dima_model::UpdateOptions::from(out);
+    let run_validators = options
+        .and_then(|o| o.get("runValidators"))
+        .and_then(Value::as_bool)
+        == Some(true);
+    Ok(if run_validators {
+        model.run_validators()
+    } else {
+        model
+    })
 }
 
 // --------------------------------------------------------------------------------------- running
@@ -1550,12 +1559,14 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let options = update_options(intent)?;
             let raw_update = intent.get("update").context("update")?;
+            let pipeline = raw_update.is_array();
             let prepared = match raw_update.as_array() {
-                // A pipeline (no collection with update hooks uses one).
-                Some(stages) => info.prepare_update(
+                // A pipeline: the write guard cannot check one, so the documents it leaves are
+                // decoded below (the write-then-read test such a caller owes).
+                Some(stages) => info.prepare_pipeline_update_unchecked(
                     &filter,
                     stages.iter().map(document_of).collect::<Result<Vec<_>>>()?,
-                    options,
+                    options.store,
                     &mut ctx,
                 ),
                 None => support::entry::update(
@@ -1593,6 +1604,16 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             if let Err(error) = result {
                 outcome.error = Some(Value::String(write_error(&error)));
             }
+            if pipeline {
+                for document in stored(store, collection).await? {
+                    let raw = bson::RawDocumentBuf::try_from(&document)?;
+                    if let Err(error) = (info.decode)(&raw) {
+                        bail!(
+                            "{collection}: a pipeline left a document the read type cannot read: {error}"
+                        );
+                    }
+                }
+            }
         }
         "findOneAndUpdate" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
@@ -1604,9 +1625,16 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 Returned::Before
             };
             let options = update_options(intent)?;
-            let prepared = support::entry::find_one_and_update(
+            let prepared = match support::entry::find_one_and_update(
                 info, &filter, update, options, returned, writer, &mut ctx, &random,
-            )?;
+            ) {
+                Ok(prepared) => prepared,
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
+                }
+                Err(other) => return Err(other.into()),
+            };
             if let Some(update) = &prepared.update {
                 let mut sent = doc! {
                     "op": "findAndModify",
@@ -2242,8 +2270,22 @@ async fn index_reports_policies_and_preflight() -> Result<()> {
             )
             .await?;
         let before = list_indexes(&store, journal.name).await?;
-        let infos = [journal, sessions, &dima_model::users::INFO];
-        let differences = preflight_indexes(&store, &infos, DEADLINE).await?;
+        // `channelconfigs` is not initialised at start-up: reported apart, not as missing.
+        let infos = [
+            journal,
+            sessions,
+            &dima_model::users::INFO,
+            &dima_model::channel_configs::INFO,
+        ];
+        let preflight = preflight_indexes(&store, &infos, DEADLINE).await?;
+        let skipped = dima_model::index::NotInitialised {
+            collection: "channelconfigs",
+            exists: false,
+        };
+        if preflight.not_initialised != [skipped] {
+            bail!("not initialised: {:?}", preflight.not_initialised);
+        }
+        let differences = preflight.differences;
         let after = list_indexes(&store, journal.name).await?;
         if before != after {
             bail!("the preflight changed the indexes");
