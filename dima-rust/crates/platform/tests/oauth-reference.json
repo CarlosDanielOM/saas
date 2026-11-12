@@ -1,0 +1,2307 @@
+{
+ "sha256": {
+  "src/server/oauth/service.ts": "525e04c8b7b78b849165ffb07233fefe1f3f4421a379d14a049386dbc2405726",
+  "src/server/oauth/catalog.ts": "efb366bc14897053d171061675c1c15364f01153e4b52b55c8123b450918bebf",
+  "src/schemas/oauth_client.schema.ts": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8",
+  "src/schemas/oauth_grant.schema.ts": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1",
+  "src/schemas/oauth_session.schema.ts": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556",
+  "src/schemas/oauth_refresh_token.schema.ts": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae",
+  "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13"
+ },
+ "rows": [
+  {
+   "name": "initialize",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "initialize_again",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "desktop_client_created",
+   "outcome": {
+    "ok": {
+     "name": "Dima Desktop Beta",
+     "type": "public",
+     "enabled": true,
+     "redirect_uris": [
+      "http://127.0.0.1/oauth/callback",
+      "http://[::1]/oauth/callback"
+     ],
+     "allowed_scopes": [
+      "profile:read",
+      "credits:read",
+      "desktop:connect",
+      "ai:interact",
+      "pet:read",
+      "pet:receive",
+      "pet:interact",
+      "pet:control",
+      "pet:playback:select"
+     ],
+     "timestamps": true,
+     "version": 0
+    }
+   }
+  },
+  {
+   "name": "initialize_restores_missing_active_scopes",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "initialize_after_narrowing",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "desktop_client_after_initialize",
+   "outcome": {
+    "ok": {
+     "name": "Renamed",
+     "type": "public",
+     "enabled": true,
+     "redirect_uris": [
+      "http://127.0.0.1/oauth/callback",
+      "http://[::1]/oauth/callback"
+     ],
+     "allowed_scopes": [
+      "profile:read",
+      "credits:read",
+      "desktop:connect",
+      "ai:interact",
+      "pet:read",
+      "pet:receive",
+      "pet:interact",
+      "pet:control",
+      "pet:playback:select"
+     ],
+     "timestamps": true,
+     "version": 0
+    }
+   }
+  },
+  {
+   "name": "start_valid",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "get_valid",
+   "outcome": {
+    "ok": {
+     "client_id": "dima-desktop",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "state": "state1",
+     "code_challenge": "challenge1",
+     "device_name": "Laptop"
+    }
+   }
+  },
+  {
+   "name": "start_default_device_name",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "get_default_device_name",
+   "outcome": {
+    "ok": {
+     "client_id": "dima-desktop",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read"
+     ],
+     "state": "state9",
+     "code_challenge": "challenge9",
+     "device_name": "Desktop computer"
+    }
+   }
+  },
+  {
+   "name": "start_response_type_token",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_plain_pkce",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_short_challenge",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_missing_state",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_duplicate_state",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_unknown_client",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_disabled_client",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_client_id_not_text",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_client_id_101",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_first_check_wins",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_https",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_localhost",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_without_port",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_port_80",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_port_zero",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_port_too_large",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_other_path",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_trailing_slash",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_with_query",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_empty_query",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "redirect_with_fragment",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_empty_fragment",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "redirect_userinfo",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_port_leading_zero",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_ipv6",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "redirect_ipv6_long_form",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_ipv4_short_form",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_uppercase_scheme",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_dot_segment",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_encoded_space",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_backslash",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_301_units",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "redirect_not_text",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_unknown",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_inactive",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_double_space",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_empty",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_not_text",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_501_units",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_duplicates_removed",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "get_duplicates_removed",
+   "outcome": {
+    "ok": {
+     "client_id": "dima-desktop",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read",
+      "pet:read"
+     ],
+     "state": "state1",
+     "code_challenge": "challenge1",
+     "device_name": "Desktop computer"
+    }
+   }
+  },
+  {
+   "name": "scope_not_allowed_for_client",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "scope_allowed_for_narrow_client",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "device_empty",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_blank",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_80",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "device_81",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_bell",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_delete",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_not_text",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_null",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_40_emoji",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "device_41_emoji",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "device_rtl_and_combining",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "get_rtl_and_combining",
+   "outcome": {
+    "ok": {
+     "client_id": "dima-desktop",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "state": "state1",
+     "code_challenge": "challenge1",
+     "device_name": "جهاز é"
+    }
+   }
+  },
+  {
+   "name": "device_nbsp_trimmed",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "get_nbsp_trimmed",
+   "outcome": {
+    "ok": {
+     "client_id": "dima-desktop",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "state": "state1",
+     "code_challenge": "challenge1",
+     "device_name": "Box"
+    }
+   }
+  },
+  {
+   "name": "get_malformed_id",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "get_unknown_id",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "start_for_other_client",
+   "outcome": {
+    "ok": {
+     "id": "<id>"
+    }
+   }
+  },
+  {
+   "name": "disable_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "get_after_client_disabled",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "enable_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "get_after_client_enabled",
+   "outcome": {
+    "ok": {
+     "client_id": "other-client",
+     "redirect_uri": "http://127.0.0.1:53682/oauth/callback",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "state": "state1",
+     "code_challenge": "challenge1",
+     "device_name": "Desktop computer"
+    }
+   }
+  },
+  {
+   "name": "approve_without_site_account",
+   "outcome": {
+    "error": "account_required",
+    "status": 403
+   }
+  },
+  {
+   "name": "approve_valid",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>"
+    }
+   }
+  },
+  {
+   "name": "approve_twice",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "get_after_approval",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "deny",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state9&iss=https%3A%2F%2Fapi.domdimabot.com&error=access_denied"
+    }
+   }
+  },
+  {
+   "name": "approve_malformed_id",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "approve_empty_query_redirect",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>"
+    }
+   }
+  },
+  {
+   "name": "approve_empty_fragment_redirect",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>#"
+    }
+   }
+  },
+  {
+   "name": "approve_ipv6_redirect",
+   "outcome": {
+    "ok": {
+     "url": "http://[::1]:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>"
+    }
+   }
+  },
+  {
+   "name": "exchange_unknown_client",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_wrong_verifier",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_short_verifier",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_verifier_not_text",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_wrong_redirect",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_missing_redirect",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_other_client",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_malformed_code",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_unknown_code",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_valid",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "exchange_reused_code",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "session_after_exchange",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": false,
+     "reason": null,
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Laptop",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "grant_after_exchange",
+   "outcome": {
+    "ok": {
+     "count": 1,
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "revoked": false
+    }
+   }
+  },
+  {
+   "name": "exchange_empty_query_redirect",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "exchange_ipv6_redirect",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "exchange_expired_code_issue",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>"
+    }
+   }
+  },
+  {
+   "name": "expire_code",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "exchange_expired_code",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "exchange_account_lost_issue",
+   "outcome": {
+    "ok": {
+     "url": "http://127.0.0.1:53682/oauth/callback?state=$state1&iss=https%3A%2F%2Fapi.domdimabot.com&code=<code>"
+    }
+   }
+  },
+  {
+   "name": "lose_account",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "exchange_account_lost",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "restore_account",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "exchange_account_lost_consumed",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "authenticate_valid",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "session_id",
+      "user_id",
+      "client_id",
+      "channel_id",
+      "scopes"
+     ],
+     "session_id": "tok1",
+     "user_id": "valid",
+     "client_id": "dima-desktop",
+     "channel_id": "valid",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ]
+    }
+   }
+  },
+  {
+   "name": "authenticate_malformed",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "authenticate_refresh_token",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "authenticate_unknown",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "authenticate_missing",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "refresh_unknown_client",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_malformed",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_access_token",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_unknown",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_other_client",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_narrower_scope",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_scope_not_text",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_scope_null",
+   "outcome": {
+    "error": "invalid_scope",
+    "status": 400
+   }
+  },
+  {
+   "name": "session_untouched_by_refused_refreshes",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": false,
+     "reason": null,
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Laptop",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "refresh_valid_same_scope",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "session_after_rotation",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": false,
+     "reason": null,
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Laptop",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 2,
+     "used_tokens": 1
+    }
+   }
+  },
+  {
+   "name": "old_access_still_valid_after_rotation",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "session_id",
+      "user_id",
+      "client_id",
+      "channel_id",
+      "scopes"
+     ],
+     "session_id": "tok1",
+     "user_id": "valid",
+     "client_id": "dima-desktop",
+     "channel_id": "valid",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ]
+    }
+   }
+  },
+  {
+   "name": "new_access_valid",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "session_id",
+      "user_id",
+      "client_id",
+      "channel_id",
+      "scopes"
+     ],
+     "session_id": "tok1",
+     "user_id": "valid",
+     "client_id": "dima-desktop",
+     "channel_id": "valid",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ]
+    }
+   }
+  },
+  {
+   "name": "refresh_reuse_of_rotated_token",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "session_revoked_by_reuse",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": true,
+     "reason": "refresh_reuse",
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Laptop",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 2,
+     "used_tokens": 1
+    }
+   }
+  },
+  {
+   "name": "refresh_new_token_after_reuse",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "access_after_reuse",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "issue_tok3",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "expire_refresh_tok3",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "refresh_expired_token",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "session_not_revoked_by_expired_token",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": false,
+     "reason": null,
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "issue_tok4",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "idle_expire_tok4",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "refresh_idle_expired",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "access_idle_expired",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "issue_tok5",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "absolute_expire_tok5",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "refresh_absolute_expired",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "issue_tok6",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "revoke_session_tok6",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "refresh_revoked_session",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "access_revoked_session",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "session_revoked_by_user",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": true,
+     "reason": "user_revoked",
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "issue_tok7",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "revoke_grant_tok7",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "refresh_revoked_grant",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "access_revoked_grant",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "issue_after_grant_revoked",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "grant_unrevoked_by_new_approval",
+   "outcome": {
+    "ok": {
+     "count": 1,
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "revoked": false
+    }
+   }
+  },
+  {
+   "name": "old_session_stays_revoked_by_grant",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "session_id",
+      "user_id",
+      "client_id",
+      "channel_id",
+      "scopes"
+     ],
+     "session_id": "tok7",
+     "user_id": "valid",
+     "client_id": "dima-desktop",
+     "channel_id": "valid",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ]
+    }
+   }
+  },
+  {
+   "name": "issue_tok8_other_client",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "disable_other_client_again",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "access_client_disabled",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "refresh_client_disabled",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "enable_other_client_again",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "issue_tok9_other_client",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "narrow_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "access_scope_no_longer_allowed",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "refresh_scope_no_longer_allowed",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "widen_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "issue_tok10",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "lose_account_tok10",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "access_account_lost",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "refresh_account_lost",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "restore_account_tok10",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "issue_tok11",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "inactive_scope_in_session",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "access_inactive_scope",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "grant_scopes_accumulate_issue",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "grant_scopes_accumulate_issue_more",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "pet:read credits:read",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "grant_scopes_accumulated",
+   "outcome": {
+    "ok": {
+     "count": 1,
+     "scopes": [
+      "profile:read",
+      "pet:read",
+      "credits:read"
+     ],
+     "revoked": false
+    }
+   }
+  },
+  {
+   "name": "issue_tok12",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "revoke_refresh_token",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "session_revoked_by_refresh_revocation",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": true,
+     "reason": "user_revoked",
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "issue_tok13",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "revoke_access_token",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "access_key_gone_after_revocation",
+   "outcome": {
+    "ok": {
+     "exists": false
+    }
+   }
+  },
+  {
+   "name": "session_revoked_by_access_revocation",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": true,
+     "reason": "user_revoked",
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "issue_tok14",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "revoke_by_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "revoke_access_by_other_client",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "session_kept_after_foreign_revocation",
+   "outcome": {
+    "ok": {
+     "exists": true,
+     "revoked": false,
+     "reason": null,
+     "client_id": "dima-desktop",
+     "channel": "valid",
+     "user": "valid",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "idle_days": 30,
+     "absolute_days": 90,
+     "has_hash": true,
+     "refresh_tokens": 1,
+     "used_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "revoke_unknown_refresh",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "revoke_garbage",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "revoke_101_units",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "revoke_not_text",
+   "outcome": {
+    "error": "invalid_request",
+    "status": 400
+   }
+  },
+  {
+   "name": "revoke_unknown_client",
+   "outcome": {
+    "error": "invalid_client",
+    "status": 400
+   }
+  },
+  {
+   "name": "issue_tok15",
+   "outcome": {
+    "ok": {
+     "keys": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_token",
+      "scope",
+      "session_id",
+      "refresh_expires_in"
+     ],
+     "access_token": "dima_at_*",
+     "token_type": "Bearer",
+     "expires_in": 600,
+     "refresh_token": "dima_rt_*",
+     "scope": "profile:read desktop:connect",
+     "session_id": "<session>",
+     "refresh_expires_in_hours": 720
+    }
+   }
+  },
+  {
+   "name": "user_oauth_before_deletion",
+   "outcome": {
+    "ok": {
+     "grants": 1,
+     "sessions": 3,
+     "refresh_tokens": 1
+    }
+   }
+  },
+  {
+   "name": "revoke_user_oauth",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "user_oauth_after_deletion",
+   "outcome": {
+    "ok": {
+     "grants": 0,
+     "sessions": 0,
+     "refresh_tokens": 0
+    }
+   }
+  },
+  {
+   "name": "refresh_after_account_deletion",
+   "outcome": {
+    "error": "invalid_grant",
+    "status": 400
+   }
+  },
+  {
+   "name": "access_after_account_deletion",
+   "outcome": {
+    "error": "invalid_token",
+    "status": 401
+   }
+  },
+  {
+   "name": "revoke_user_not_an_id",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "rate_1",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "rate_2",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "rate_3",
+   "outcome": {
+    "ok": {}
+   }
+  },
+  {
+   "name": "rate_4_refused",
+   "outcome": {
+    "error": "slow_down",
+    "status": 429
+   }
+  },
+  {
+   "name": "rate_window",
+   "outcome": {
+    "ok": {
+     "window": true
+    }
+   }
+  }
+ ],
+ "tsIssued": {
+  "response": {
+   "keys": [
+    "access_token",
+    "token_type",
+    "expires_in",
+    "refresh_token",
+    "scope",
+    "session_id",
+    "refresh_expires_in"
+   ],
+   "access_token": "dima_at_*",
+   "token_type": "Bearer",
+   "expires_in": 600,
+   "refresh_token": "dima_rt_*",
+   "scope": "profile:read desktop:connect",
+   "session_id": "<session>",
+   "refresh_expires_in_hours": 720
+  },
+  "access_token": "dima_at_WiP9Pe65E0qKu1GPDgsckeOormcuIMcbosLd2MRtlnU",
+  "refresh_token": "dima_rt_V6hXGJmc-UXnGtZvtGfzaGaEPncYvWcY-uiMguTnKEg",
+  "session_id": "6af5b416cc3366bc7bb7e160",
+  "access_value": "{\"session_id\":\"6af5b416cc3366bc7bb7e160\",\"user_id\":\"6af5b416cc3366bc7bb7df78\",\"client_id\":\"dima-desktop\",\"channel_id\":\"9688401998\",\"scopes\":[\"profile:read\",\"desktop:connect\"]}",
+  "documents": {
+   "users": [
+    {
+     "_id": {
+      "$oid": "6af5b416cc3366bc7bb7df78"
+     },
+     "name": "site_cross",
+     "accounts": [
+      {
+       "type": "twitch",
+       "id": "9688401998",
+       "name": "login_cross",
+       "email": null,
+       "refresh_token": {
+        "iv": null,
+        "content": null
+       },
+       "access_token": {
+        "iv": null,
+        "content": null
+       },
+       "access_token_expires_at": null,
+       "actived": true,
+       "chat_enabled": true,
+       "has_permissions": true,
+       "up_to_date_permissions": true,
+       "_id": {
+        "$oid": "6af5b416cc3366bc7bb7df79"
+       }
+      }
+     ],
+     "language": null,
+     "polar_sh_customer_id": null,
+     "plan_tier": "free",
+     "plan_tier_until": null,
+     "last_app_activity_at": null,
+     "referrerId": null,
+     "referralCodeUsed": null,
+     "token_balance": {
+      "$numberInt": "0"
+     },
+     "reminder_sent_at": null,
+     "refreshed_at": {
+      "$date": {
+       "$numberLong": "1794487318160"
+      }
+     },
+     "created_at": {
+      "$date": {
+       "$numberLong": "1794487318161"
+      }
+     },
+     "updated_at": {
+      "$date": {
+       "$numberLong": "1794487318161"
+      }
+     },
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "oauth_clients": [
+    {
+     "_id": {
+      "$oid": "6af5b41628f76edd05d655ed"
+     },
+     "client_id": "dima-desktop",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "allowed_scopes": [
+      "profile:read",
+      "credits:read",
+      "desktop:connect",
+      "ai:interact",
+      "pet:read",
+      "pet:receive",
+      "pet:interact",
+      "pet:control",
+      "pet:playback:select"
+     ],
+     "createdAt": {
+      "$date": {
+       "$numberLong": "1794487318181"
+      }
+     },
+     "enabled": true,
+     "name": "Renamed",
+     "redirect_uris": [
+      "http://127.0.0.1/oauth/callback",
+      "http://[::1]/oauth/callback"
+     ],
+     "type": "public",
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794487318201"
+      }
+     }
+    }
+   ],
+   "oauth_grants": [
+    {
+     "_id": {
+      "$oid": "6af5b41628f76edd05d655f2"
+     },
+     "user_id": {
+      "$oid": "6af5b416cc3366bc7bb7df78"
+     },
+     "channel_id": "9688401998",
+     "client_id": "dima-desktop",
+     "__v": {
+      "$numberInt": "0"
+     },
+     "createdAt": {
+      "$date": {
+       "$numberLong": "1794487318907"
+      }
+     },
+     "revoked_at": null,
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794487318907"
+      }
+     }
+    }
+   ],
+   "oauth_sessions": [
+    {
+     "_id": {
+      "$oid": "6af5b416cc3366bc7bb7e160"
+     },
+     "grant_id": {
+      "$oid": "6af5b41628f76edd05d655f2"
+     },
+     "user_id": {
+      "$oid": "6af5b416cc3366bc7bb7df78"
+     },
+     "client_id": "dima-desktop",
+     "channel_id": "9688401998",
+     "device_name": "Issued",
+     "scopes": [
+      "profile:read",
+      "desktop:connect"
+     ],
+     "current_refresh_hash": "JDpX2QlJOrsNwB7ANP8r0INRozOAzIhK2JokYzDh1ls",
+     "last_used_at": {
+      "$date": {
+       "$numberLong": "1794487318908"
+      }
+     },
+     "idle_expires_at": {
+      "$date": {
+       "$numberLong": "1797079318908"
+      }
+     },
+     "expires_at": {
+      "$date": {
+       "$numberLong": "1802263318908"
+      }
+     },
+     "revoked_at": null,
+     "revoke_reason": null,
+     "createdAt": {
+      "$date": {
+       "$numberLong": "1794487318908"
+      }
+     },
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794487318908"
+      }
+     },
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ],
+   "oauth_refresh_tokens": [
+    {
+     "_id": {
+      "$oid": "6af5b416cc3366bc7bb7e162"
+     },
+     "token_hash": "JDpX2QlJOrsNwB7ANP8r0INRozOAzIhK2JokYzDh1ls",
+     "session_id": {
+      "$oid": "6af5b416cc3366bc7bb7e160"
+     },
+     "used_at": null,
+     "expires_at": {
+      "$date": {
+       "$numberLong": "1802263318908"
+      }
+     },
+     "createdAt": {
+      "$date": {
+       "$numberLong": "1794487318910"
+      }
+     },
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794487318910"
+      }
+     },
+     "__v": {
+      "$numberInt": "0"
+     }
+    }
+   ]
+  }
+ },
+ "rustIssued": {
+  "fixture_sha256": "cca861244d04284d03c39d25dc47dafb89984dbf43698e5e42908879968a20ef",
+  "authenticate": "ok",
+  "refresh": {
+   "keys": [
+    "access_token",
+    "token_type",
+    "expires_in",
+    "refresh_token",
+    "scope",
+    "session_id",
+    "refresh_expires_in"
+   ],
+   "access_token": "dima_at_*",
+   "token_type": "Bearer",
+   "expires_in": 600,
+   "refresh_token": "dima_rt_*",
+   "scope": "profile:read desktop:connect",
+   "session_id": "<session>",
+   "refresh_expires_in_hours": 720
+  },
+  "new_access": "ok",
+  "reuse_of_old_refresh": {
+   "error": "invalid_grant"
+  }
+ }
+}

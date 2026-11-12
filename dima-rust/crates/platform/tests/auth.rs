@@ -508,7 +508,9 @@ async fn forgetting_a_token_revalidates_it() -> Result<()> {
         // A token the cache vouches for, which Twitch now refuses.
         let token = token_of("cached_revoked", &stores.run);
         stores.track(token_cache_key(&token));
-        let value = json!({"id": "1", "login": "a", "display_name": "A", "profile_image_url": ""});
+        let id = id_of("forget", &stores.run);
+        stores.track(activity_touch_key(&id));
+        let value = json!({"id": id, "login": "a", "display_name": "A", "profile_image_url": ""});
         stores
             .cache
             .set(

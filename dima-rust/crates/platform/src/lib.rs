@@ -4,5 +4,6 @@ pub mod access;
 pub mod auth;
 pub mod extension_fulfilment;
 pub mod media_library;
+pub mod oauth;
 pub mod s3;
 pub mod tts_usage;
