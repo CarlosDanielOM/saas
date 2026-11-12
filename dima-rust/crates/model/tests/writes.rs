@@ -349,6 +349,96 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("clipdesigns", "typed") => {
+            use dima_model::clipdesigns::*;
+            let input = NewClipDesign {
+                name: dima_model::Private::new(text.into()),
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                css_url: dima_model::Private::new("https://example.com/style.css".into()),
+                is_public: None,
+                is_default: None,
+                created_at: None,
+                updated_at: None,
+            };
+            pair(
+                input.to_document()?,
+                input.prepare(ctx).map(|plan| plan.insert),
+            )
+        }
+        ("cliprecommendations", "typed") => {
+            use dima_model::cliprecommendations::*;
+            let input = NewClipRecommendation {
+                channel_id: "111".into(),
+                channel: None,
+                session_id: None,
+                stream_id: None,
+                vod_id: None,
+                vod_url: dima_model::Private::new("https://example.com/vod".into()),
+                source: SourceKind::Manual,
+                status: None,
+                requested_by: None,
+                queue_job_id: None,
+                model_id: None,
+                vod_duration_minutes: None,
+                cost_credits: None,
+                billing_status: None,
+                charge_error: None,
+                charged_at: dima_model::values::Nullable::Unset,
+                analysis_completed_at: dima_model::values::Nullable::Unset,
+                billing_attempt_count: None,
+                billing_last_attempt_at: dima_model::values::Nullable::Unset,
+                billing_next_retry_at: dima_model::values::Nullable::Unset,
+                notification_status: None,
+                notification_payload: Some(dima_model::Private::new(
+                    NewClipRecommendationNotificationPayload {
+                        from: dima_model::Private::new("bot@example.com".into()),
+                        to: dima_model::Private::new(vec![Some("viewer@example.com".into())]),
+                        subject: dima_model::Private::new(text.into()),
+                        html: dima_model::Private::new(text.into()),
+                        text: dima_model::Private::new(text.into()),
+                    },
+                )),
+                notification_error: None,
+                notification_last_attempt_at: dima_model::values::Nullable::Unset,
+                notification_next_retry_at: dima_model::values::Nullable::Unset,
+                notified_at: dima_model::values::Nullable::Unset,
+                preview_cleanup_pending: None,
+                preview_cleanup_error: None,
+                preview_cleanup_next_retry_at: dima_model::values::Nullable::Unset,
+                candidate_count: None,
+                approved_count: None,
+                error_message: None,
+                candidates: Some(vec![Some(NewClipRecommendationCandidates::new(
+                    1.0,
+                    9.0,
+                    text,
+                    Some(0.75),
+                )?)]),
+                started_at: dima_model::values::Nullable::Unset,
+                completed_at: dima_model::values::Nullable::Unset,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("cliprecommendationconfigs", "typed") => {
+            use dima_model::cliprecommendationconfigs::*;
+            let input = NewClipRecommendationConfig {
+                channel_id: "111".into(),
+                auto_analyze_enabled: None,
+                last_analyzed_at: dima_model::values::Nullable::Unset,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("chat_logs", "typed") => {
+            use dima_model::chat_logs::*;
+            let input = NewChatLog {
+                channel: Some("seed".into()),
+                message: Some(dima_model::Private::new(text.into())),
+                username: Some(dima_model::Private::new("viewer".into())),
+                timestamp: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("stream_operations_receipts", "typed") => {
             use dima_model::stream_operations_receipts::*;
             let input = NewStreamOperationsReceipt {
@@ -2564,7 +2654,7 @@ fn create(
     given: &Document,
     ctx: &mut WriteContext,
 ) -> Result<PreparedInsert, ModelError> {
-    info.prepare_create(given, ctx)
+    support::entry::create(info, given, ctx)
 }
 
 fn changes_of(value: &Value) -> Result<Vec<Change>> {
@@ -2736,6 +2826,21 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             };
             if op == "journal" {
                 writes = writes.write_concern(domain_events::journal_write_concern());
+            }
+            if collection == dima_model::clipdesigns::COLLECTION
+                && let Some(reset) =
+                    dima_model::clipdesigns::prepare_reset(&prepared.document, &mut ctx)?
+            {
+                if let Some(update) = &reset.update {
+                    outcome.sent.push(sent_update(
+                        &reset.filter,
+                        update_doc(update),
+                        false,
+                        true,
+                        None,
+                    ));
+                }
+                writes.update_many(&reset).await?;
             }
             outcome.sent.push(Bson::Document(
                 doc! { "op": "insert", "documents": [prepared.document.clone()] },
@@ -2911,6 +3016,21 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 }
                 Err(other) => return Err(other.into()),
             };
+            if collection == dima_model::clipdesigns::COLLECTION {
+                let plan = dima_model::clipdesigns::prepare_save(&loaded, &changes, &mut ctx)?;
+                if let Some(reset) = &plan.reset {
+                    if let Some(update) = &reset.update {
+                        outcome.sent.push(sent_update(
+                            &reset.filter,
+                            update_doc(update),
+                            false,
+                            true,
+                            None,
+                        ));
+                    }
+                    writes.update_many(reset).await?;
+                }
+            }
             if let Some(update) = &prepared.update {
                 outcome.sent.push(sent_update(
                     &prepared.filter,

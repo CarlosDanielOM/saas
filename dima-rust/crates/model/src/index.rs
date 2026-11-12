@@ -225,6 +225,7 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
         | crate::stream_markers::COLLECTION
         | crate::stream_participants::COLLECTION
         | crate::stream_subscription_ledgers::COLLECTION
+        | crate::cliprecommendations::COLLECTION
         | crate::pet_settings::COLLECTION
         | crate::user_extension_inventories::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION
@@ -708,7 +709,10 @@ mod tests {
             .filter(|info| startup_policy(info).is_none())
             .map(|info| info.name)
             .collect();
-        assert_eq!(skipped, ["app_configs", "accounts", "channelconfigs"]);
+        assert_eq!(
+            skipped,
+            ["chat_logs", "app_configs", "accounts", "channelconfigs"]
+        );
         // Each flag is what `ledger/modules.json` says about the schema file: a running process
         // (bot, API, cron; not a one-off script) reaches it by value imports.
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ledger/modules.json");

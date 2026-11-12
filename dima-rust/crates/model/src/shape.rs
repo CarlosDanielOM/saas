@@ -365,6 +365,19 @@ impl<'i> Checker<'i> {
             }
         }
         if let Some(schema) = schema {
+            // An auto-generated subdocument id is not in schema.fields. Honor an explicit
+            // ReadNeed for it even when minimize removed a malformed empty-object id.
+            let id_pattern = join(pattern, "_id");
+            if matches!(schema.id, IdField::Auto)
+                && !document.contains_key("_id")
+                && self
+                    .info
+                    .read_needs
+                    .iter()
+                    .any(|need| need.path == id_pattern && need.refuse_missing)
+            {
+                self.missing_error(&join(path, "_id"));
+            }
             for (key, value) in document {
                 if fields.iter().all(|f| f.name != key.as_str())
                     && let Some(node) = implicit(schema, key)
@@ -693,6 +706,33 @@ fn bson_type(value: &Bson) -> &'static str {
 mod tests {
     use super::*;
     use bson::doc;
+
+    #[test]
+    fn needed_implicit_subdocument_ids_are_checked() {
+        let info = &crate::cliprecommendations::INFO;
+        let base = |candidate: Document| {
+            doc! {
+                "_id": bson::oid::ObjectId::new(), "channelID": "111", "vodUrl": "vod",
+                "candidates": [candidate],
+            }
+        };
+        for candidate in [
+            doc! {"startSeconds": 1, "endSeconds": 2},
+            doc! {"_id": Bson::Null, "startSeconds": 1, "endSeconds": 2},
+        ] {
+            let error = info
+                .check_insert(&base(candidate))
+                .expect_err("implicit id required");
+            assert_eq!(error.errors.len(), 1);
+            assert_eq!(error.errors[0].path, "candidates.0._id");
+        }
+        assert!(
+            info.check_insert(&base(doc! {
+                "_id": bson::oid::ObjectId::new(), "startSeconds": 1, "endSeconds": 2,
+            }))
+            .is_ok()
+        );
+    }
 
     #[test]
     fn paths_resolve_to_schema_paths() {

@@ -60,6 +60,10 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/clip_design.schema.ts', 'ClipDesign'],
+    ['src/schemas/clip_recommendation.schema.ts', 'ClipRecommendation'],
+    ['src/schemas/clip_recommendation_config.schema.ts', 'ClipRecommendationConfig'],
+    ['src/schemas/chat_logs.schema.ts', 'Chat_Log'],
     ['src/schemas/stream_operations_receipt.schema.ts', 'stream_operations_receipt'],
     ['src/schemas/stream_operations_receipt.schema.ts', 'stream_operations_reconciliation'],
     ['src/schemas/stream_subscription_ledger.schema.ts', 'stream_subscription_ledger'],
@@ -418,7 +422,55 @@ const libraryItem = (extra: any = {}) => ({
 });
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
+const designSeed = (n = 1, channelID = '111', isDefault = false) => ({ _id: OID(n), name: `design-${n}`, channelID, channel: 'seed', cssUrl: 'https://example.com/style.css', isPublic: false, isDefault, createdAt: T1, updatedAt: T1, __v: 0 });
+const clipCandidate = () => ({ _id: OID(2), startSeconds: 1, endSeconds: 9, reason: TEXT, audioConfidence: 0.75, videoApproved: false, videoWhy: '', s3Key: '', previewUrl: '', status: 'pending', twitchClipID: '', created_at: T1 });
+const clipMail = () => ({ from: 'bot@example.com', to: ['viewer@example.com'], subject: TEXT, html: TEXT, text: TEXT });
+const clipSeed = () => ({ _id: OID(1), channelID: '111', vodUrl: 'https://example.com/vod', source: 'manual', status: 'pending', candidates: [clipCandidate()], __v: 0, created_at: T1, updated_at: T1 });
+
 const CASES: Record<string, any[]> = {
+    clipdesigns: [
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { name: TEXT, channelID: '111', channel: 'seed', cssUrl: 'https://example.com/style.css' } },
+        { name: 'create_default', op: 'create', seed: [designSeed(1, '111', true), designSeed(2, '222', true)], doc: { name: 'new', channelID: '111', channel: 'seed', cssUrl: 'https://example.com/style.css', isDefault: true, updatedAt: T1 } },
+        { name: 'create_nondefault', op: 'create', seed: [designSeed(1, '111', true)], doc: { name: 'other', channelID: '111', channel: 'seed', cssUrl: 'https://example.com/style.css', isDefault: false, updatedAt: T1 } },
+        { name: 'duplicate_default', op: 'create', seed: [designSeed(1, '111', true)], doc: { name: 'design-1', channelID: '111', channel: 'seed', cssUrl: 'https://example.com/style.css', isDefault: true } },
+        { name: 'update_no_hooks', op: 'updateOne', seed: [designSeed()], filter: { _id: OID(1) }, update: { $set: { isDefault: true, updatedAt: T2 } } },
+        { name: 'save_default', op: 'save', seed: [designSeed(1), designSeed(2, '111', true), designSeed(3, '222', true)], id: OID(1), changes: [{ set: 'isDefault', value: true }, { set: 'updatedAt', value: T2 }] },
+        { name: 'save_no_changes', op: 'save', seed: [designSeed(1, '111', true), designSeed(2, '111', true)], id: OID(1), changes: [] },
+        { name: 'save_nondefault', op: 'save', seed: [designSeed()], id: OID(1), changes: [{ set: 'name', value: TEXT }] },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'save_invalid', op: 'save', seed: [designSeed(1), designSeed(2, '111', true)], id: OID(1), changes: [{ set: 'isDefault', value: true }, { set: 'name', value: null }] },
+        { name: 'save_stored_invalid', op: 'save', seed: [{ ...designSeed(), name: '' }], id: OID(1), changes: [{ set: 'isPublic', value: true }] },
+        { name: 'save_missing_required', op: 'save', seed: [{ _id: OID(1), isDefault: true }], id: OID(1), changes: [{ set: 'name', value: '' }] },
+    ],
+    cliprecommendations: [
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { channelID: '111', vodUrl: 'https://example.com/vod', source: 'manual', candidates: [{ startSeconds: 1, endSeconds: 9, reason: TEXT, audioConfidence: 0.75 }], notificationPayload: clipMail() } },
+        { name: 'create_keyed', op: 'create', doc: { channelID: '111', vodUrl: 'https://example.com/vod', source: 'stream_offline', queueJobID: 'job-1', status: 'pending', billingStatus: 'pending', notificationStatus: 'pending', candidates: [] } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'validate_candidate', op: 'validate', doc: { channelID: '111', vodUrl: 'https://example.com/vod', candidates: [{ startSeconds: -1, endSeconds: -1, audioConfidence: 2 }] } },
+        { name: 'update_confirm', op: 'findOneAndUpdate', seed: [clipSeed()], filter: { _id: OID(1), channelID: '111', 'candidates._id': OID(2) }, update: { $set: { 'candidates.$.status': 'confirmed' } }, options: { new: true } },
+        { name: 'update_failure', op: 'updateOne', seed: [clipSeed()], filter: { _id: OID(1) }, update: { $set: { status: 'failed', errorMessage: TEXT, completedAt: T2 } } },
+        { name: 'update_retry', op: 'updateOne', seed: [clipSeed()], filter: { _id: OID(1), billingNextRetryAt: null }, update: { $set: { billingNextRetryAt: T2 } } },
+        { name: 'save_completed', op: 'save', seed: [clipSeed()], id: OID(1), changes: [{ set: 'status', value: 'completed' }, { set: 'analysisCompletedAt', value: T2 }, { set: 'completedAt', value: T2 }] },
+        { name: 'save_notification', op: 'save', seed: [clipSeed()], id: OID(1), changes: [{ set: 'notificationPayload', value: clipMail() }, { set: 'notificationStatus', value: 'pending' }] },
+        { name: 'save_notification_remove', op: 'save', select: '+notificationPayload', seed: [{ ...clipSeed(), notificationPayload: clipMail() }], id: OID(1), changes: [{ unset: 'notificationPayload' }, { set: 'notificationNextRetryAt', value: null }] },
+        { name: 'save_invalid', op: 'save', seed: [clipSeed()], id: OID(1), changes: [{ set: 'status', value: 'invalid' }, { set: 'candidates.0.audioConfidence', value: -1 }] },
+        { name: 'save_stored_invalid', op: 'save', seed: [{ ...clipSeed(), status: 'invalid' }], id: OID(1), changes: [{ set: 'channel', value: 'seed' }] },
+        { name: 'save_missing_required', op: 'save', seed: [{ _id: OID(1), candidates: [] }], id: OID(1), changes: [{ set: 'source', value: 'invalid' }] },
+        { name: 'duplicate_queue', op: 'create', seed: [{ ...clipSeed(), queueJobID: 'job-1' }], doc: { channelID: '222', vodUrl: 'https://example.com/vod', queueJobID: 'job-1' } },
+    ],
+    cliprecommendationconfigs: [
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { channelID: '111' } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'dashboard_upsert', op: 'findOneAndUpdate', filter: { channelID: '111' }, update: { $set: { autoAnalyzeEnabled: true } }, options: { upsert: true, new: true } },
+        { name: 'worker_upsert', op: 'updateOne', filter: { channelID: '111' }, update: { $set: { lastAnalyzedAt: T1 }, $setOnInsert: { autoAnalyzeEnabled: false } }, options: { upsert: true } },
+        { name: 'duplicate', op: 'create', seed: [{ _id: OID(1), channelID: '111' }], doc: { channelID: '111' } },
+    ],
+    chat_logs: [
+        { name: 'create_typed', op: 'create', rust: 'typed', doc: { channel: 'seed', message: TEXT, username: 'viewer' } },
+        { name: 'create_empty', op: 'create', doc: {} },
+        { name: 'update', op: 'updateOne', seed: [{ _id: OID(1), channel: 'seed', message: TEXT }], filter: { _id: OID(1) }, update: { $set: { message: null, username: null } } },
+    ],
+
     stream_operations_receipts: [
         { name: 'create_typed', op: 'create', rust: 'typed', doc: { _id: 'event:1', channelID: '111', expiresAt: T2, steps: { timers: { status: 'completed', at: T1 } } } },
         { name: 'validate_missing', op: 'validate', doc: {} },
@@ -1328,7 +1380,8 @@ async function runCase(name: string, model: any, spec: any) {
             case 'updateMany': await q(model.updateMany(a.filter, a.update, a.options ?? {})); break;
             case 'findOneAndUpdate': result = await q(model.findOneAndUpdate(a.filter, a.update, a.options ?? {})).lean(); break;
             case 'save': {
-                const doc = await model.findById(a.id);
+                const query = model.findById(a.id);
+                const doc = await (a.select ? query.select(a.select) : query);
                 for (const change of a.changes) {
                     if ('set' in change) doc.set(change.set, change.value);
                     else if ('unset' in change) doc.set(change.unset, undefined);
