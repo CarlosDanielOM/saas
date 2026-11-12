@@ -96,3 +96,61 @@ counts the skipped duplicates (`server/polar/event/repository.py` in Polar's sou
   a Dragonfly restarted empty loses what was queued.
 - A Polar outage of ten minutes: balances still cached stay usable; a cache miss is "unknown",
   and the TTS path falls back as the reference does.
+
+## Second re-check, at `6269c290`, after P2-BILLING-01c, 02a and 02b (GPT-6.1 Sol, 2026-11-12)
+
+N2, N4 (for competing plan effects), N5, N6 and N7 are closed. N1 is partly closed: publications
+are fenced, but a debit is released by time (S3 below). Five new points; the lead's decision
+follows each. The fixes are package P2-BILLING-02c.
+
+**S1, BUG, 01c. The cautious spending figure becomes a too-large reset grant.** Debit 500; Polar
+already reports those 500; the publication adds the hold on top and certifies 1,000 used; the
+monthly reset then grants 1,000 for 500 consumed. Reproduced. `credits_hold.lua:76`,
+`free_credit_reset.rs:176`.
+*Decision: taken.* A verified balance carries Polar's own figure beside the cautious one; a reset
+or a top-up computes from Polar's figure, and is deferred while a hold is unresolved if the two
+cannot be told apart.
+
+**S2, BUG, 02b. A lost answer to the admin still duplicates the grant.** Polar accepts; the
+pending identity is deleted; the process dies before the admin gets an answer; the identical
+retry draws a new identity and Polar stores a second grant. The same after the 24-hour expiry of
+an unknown outcome. Reproduced. `admin_grant.rs:226`.
+*Decision: taken.* The route passes a request id when the admin site sends one, and it is the
+operation id; the completed outcome is kept under the request's fingerprint, so an identical
+request inside a stated window answers the first outcome instead of granting again (the answer
+says so). The admin site sends no request id today: adding one is a small change to that site,
+listed for the owner.
+
+**S3, RISK, 01c. A debit is released two minutes after the flush acknowledged it,** whether or
+not Polar's meter shows it yet; with a slow meter the credit becomes spendable again, and this can
+repeat for as long as the meter lags. Reasoned.
+*Decision: kept until measured.* Polar's figure is a net number that grants, resets and sibling
+accounts move, so it cannot say that one debit was counted; the release has to be by time, and the
+time has to come from a measurement of the meter's lag in Polar's sandbox, which the system test
+does. Until then two minutes stands, and the setting is in the configuration.
+
+**S4, BUG, 02a. Usage that was dead-lettered, requeued and then billed keeps its old hold,** which
+suppresses credit the channel really has for about a day; each further refusal adds another.
+Reasoned (and noted in `usage_health.rs:495`). `dead_letter_resolve.lua:32`.
+*Decision: taken.* One event has one hold, moved between its states in the same script that moves
+the event.
+
+**S5, RISK, 02a. A receipt written with a stale tier escapes the plan guard.** The consumer reads
+Free for its batch; a Premium projection finishes its retention; the consumer inserts the next
+receipt with Free's expiry, the backfill does not repair an expiry (`$setOnInsert`), and the TTL
+later deletes history a paying channel should keep. Reasoned. `consumer.rs:237`, `record.rs:153`.
+*Decision: taken.* Writes that carry a retention expiry read the tier under the same coordination
+as a plan change, or a plan change schedules a second pass of its (repeatable) retention
+adjustment after the writers that may have raced it; whichever is simpler and provable.
+
+Found sound: flush fencing by exact item; refusal on a missing generation; fenced top-up
+publication; the reward reservation with its single-document increment; a gift's checks of
+identity, customer, product, currency and refund, and its recovery after an ambiguous create;
+atomic referral attribution. The 151 held fields are a computed bound of buckets, not a cap that
+drops debits.
+
+For the callers: webhook routes verify signature, timestamp tolerance and journal identity, and a
+reward needs a genuine paid subscription order; gift routes authenticate the buyer; code
+validation is rate-limited; start-up requires the ledger's unique indexes; the admin routes pass a
+stable request id; the cron reconciles unknown outcomes and runs the quiet flush, the backfill and
+the dead-letter report, and never treats a financial queue as cache.
