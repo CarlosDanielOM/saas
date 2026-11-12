@@ -426,7 +426,7 @@ try {
             steps.push({ op: step.op, at: now, input, result });
         }
         const finalEvents = [...events];
-        const documents = (await mongoose.connection.db.collection('channelaimemories').find({}).sort({ _id: 1 }).toArray()).map(ejson);
+        const documents = (await mongoose.connection.db.collection('channelaimemories').find({}, { promoteValues: false }).sort({ _id: 1 }).toArray()).map(ejson);
         const points = ((await qdrant('POST', '/points/scroll', { limit: 1000, with_payload: true, with_vector: true })).points as any[])
             .sort((a, b) => a.id - b.id);
         recorded.push({ name: scenario.name, seed, steps, documents, points, embeddings: [...embeddings], events: finalEvents });
@@ -442,4 +442,5 @@ fs.writeFileSync(out, JSON.stringify({
     reference: '0c71108e',
     sources: Object.fromEntries(SOURCES.map(s => [s, sha(s)])),
     t0: T0, names: NAMES, scenarios: recorded,
-}, null, 1) + '\n');
+    // Lone surrogates (the reference's summary cut inside an emoji) become U+FFFD (MIGRATION.md 4.3).
+}, (_k, v) => (typeof v === 'string' ? v.toWellFormed() : v), 1) + '\n');

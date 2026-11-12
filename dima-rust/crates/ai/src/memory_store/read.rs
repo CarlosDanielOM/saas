@@ -4,6 +4,7 @@
 //! filter object of its own.
 
 use super::rules::parse_object_id;
+use super::rules::{policy_kind, policy_risk, policy_scope};
 use super::{ErrorKind, MemoryError, MemoryStore, Private, StoredMemory};
 use crate::embeddings::Kind;
 use crate::memory::{
@@ -12,7 +13,6 @@ use crate::memory::{
 use crate::qdrant::{
     MemoryRetrievalMode, MemorySubjectScope, RetrieveMemoryContextParams, RetrievedMemoryItem,
 };
-use super::rules::{policy_kind, policy_risk, policy_scope};
 use bson::{Bson, doc, oid::ObjectId};
 use dima_model::channel_ai_memories::{ChannelAiMemory, INFO};
 use dima_store::mongo::date::JsDate;
@@ -133,7 +133,9 @@ impl MemoryStore {
             _ => Some(0),
         };
         let collection = self.mongo.documents(INFO.name);
-        let mut find = collection.find(filter.clone()).sort(doc! { "updatedAt": -1 });
+        let mut find = collection
+            .find(filter.clone())
+            .sort(doc! { "updatedAt": -1 });
         if let Some(skip) = skip.filter(|s| *s > 0) {
             find = find.skip(skip);
         }
@@ -214,7 +216,10 @@ impl MemoryStore {
         found
             .iter()
             .map(|d| KnownUserFact {
-                memory_id: d.get_object_id("_id").map(|i| i.to_hex()).unwrap_or_default(),
+                memory_id: d
+                    .get_object_id("_id")
+                    .map(|i| i.to_hex())
+                    .unwrap_or_default(),
                 memory_type: d.get_str("type").unwrap_or_default().to_owned(),
                 risk: d.get_str("risk").unwrap_or_default().to_owned(),
                 confidence: d
@@ -299,7 +304,10 @@ impl MemoryStore {
     /// memories of `channel_id` among `memory_ids`. Ids that are not ObjectIds are skipped (the
     /// reference's cast error dropped the whole update). Failures are reported, not returned.
     pub async fn record_usage(&self, channel_id: &str, memory_ids: &[String]) {
-        let ids: Vec<ObjectId> = memory_ids.iter().filter_map(|i| parse_object_id(i)).collect();
+        let ids: Vec<ObjectId> = memory_ids
+            .iter()
+            .filter_map(|i| parse_object_id(i))
+            .collect();
         if channel_id.is_empty() || ids.is_empty() {
             return;
         }
@@ -344,11 +352,16 @@ impl MemoryStore {
             mode: q.mode,
             subject_scope: q.subject_scope,
         };
-        let call = self.qdrant.retrieve_channel_memory_context(&params, &vector);
+        let call = self
+            .qdrant
+            .retrieve_channel_memory_context(&params, &vector);
         let result = tokio::time::timeout(self.config.qdrant_timeout, call)
             .await
             .map_err(|_| {
-                MemoryError::new(ErrorKind::Index, "Failed to retrieve channel memory context")
+                MemoryError::new(
+                    ErrorKind::Index,
+                    "Failed to retrieve channel memory context",
+                )
             })?;
         if result.error {
             return Err(MemoryError::new(

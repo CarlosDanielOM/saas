@@ -83,8 +83,7 @@ pub use read::{
 };
 pub use rules::LearningSettings;
 pub use write::{
-    ActorInput, CreateMemory, CreateOutcome, EvidenceInput, SetStatus, SubjectInput,
-    UpdateMemory,
+    ActorInput, CreateMemory, CreateOutcome, EvidenceInput, SetStatus, SubjectInput, UpdateMemory,
 };
 
 pub use index::RepairReport;
@@ -93,9 +92,9 @@ use crate::{embeddings, qdrant};
 use bson::{Document, doc, oid::ObjectId};
 use dima_core::Clock;
 use dima_http::{HttpClient, Provider};
+pub use dima_model::Private;
 use dima_model::channel_ai_memories::{ChannelAiMemory, INFO};
 use dima_model::channel_ai_personalities::{LearningConfig, MemoryPolicy};
-pub use dima_model::Private;
 use dima_store::mongo::{MongoStore, WriteContext};
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -473,9 +472,7 @@ impl MemoryStore {
         let found = self
             .mongo_call(
                 "memoryRead",
-                self.mongo
-                    .documents(INFO.name)
-                    .find_one(doc! { "_id": id }),
+                self.mongo.documents(INFO.name).find_one(doc! { "_id": id }),
             )
             .await?;
         found

@@ -110,10 +110,12 @@ fn expected_payload(memory: &ChannelAiMemory) -> Value {
 fn payload_matches(payload: &Value, memory: &ChannelAiMemory) -> bool {
     let expected = expected_payload(memory);
     expected.as_object().is_some_and(|fields| {
-        fields.iter().all(|(key, value)| match (key.as_str(), value) {
-            ("confidence", Value::Number(n)) => payload[key].as_f64() == n.as_f64(),
-            _ => &payload[key] == value,
-        })
+        fields
+            .iter()
+            .all(|(key, value)| match (key.as_str(), value) {
+                ("confidence", Value::Number(n)) => payload[key].as_f64() == n.as_f64(),
+                _ => &payload[key] == value,
+            })
     })
 }
 
@@ -159,7 +161,10 @@ impl MemoryStore {
             .map_err(|_| MemoryError::new(ErrorKind::Store, "Unreadable memory"))?;
         let input = build_memory_embedding_input(memory.summary.expose(), memory.content.expose());
         if input.is_empty() {
-            return Err(MemoryError::new(ErrorKind::Index, "Memory content is empty"));
+            return Err(MemoryError::new(
+                ErrorKind::Index,
+                "Memory content is empty",
+            ));
         }
         let vector = self
             .embed(&input, Kind::Document, &memory.channel_id)
@@ -187,7 +192,9 @@ impl MemoryStore {
             created_at_unix: Some(created_secs(&memory) as f64),
             updated_at_unix: Some(updated_secs(&memory) as f64),
         };
-        let call = self.qdrant.upsert_channel_memory_embedding(&params, &vector);
+        let call = self
+            .qdrant
+            .upsert_channel_memory_embedding(&params, &vector);
         match tokio::time::timeout(self.config.qdrant_timeout, call).await {
             Ok(result) if !result.error => Ok(()),
             Ok(result) => Err(MemoryError::new(
@@ -216,7 +223,10 @@ impl MemoryStore {
     ) -> Result<(), MemoryError> {
         let failed = || {
             self.observer.failed("deleteChannelMemoryEmbedding");
-            MemoryError::new(ErrorKind::Index, "Failed to delete channel memory embedding")
+            MemoryError::new(
+                ErrorKind::Index,
+                "Failed to delete channel memory embedding",
+            )
         };
         if self.fault(Step::QdrantDelete).await.is_err() {
             return Err(failed());
@@ -241,7 +251,8 @@ impl MemoryStore {
     /// Deletes every point of a channel (`deleteChannelMemoryEmbeddingsByChannel`).
     pub(crate) async fn remove_channel_points(&self, channel_id: &str) -> Result<(), MemoryError> {
         let failed = |message: Option<String>| {
-            self.observer.failed("deleteChannelMemoryEmbeddingsByChannel");
+            self.observer
+                .failed("deleteChannelMemoryEmbeddingsByChannel");
             MemoryError::new(
                 ErrorKind::Index,
                 message.unwrap_or_else(|| "Failed to delete channel memory embeddings".into()),
@@ -276,14 +287,16 @@ impl MemoryStore {
         if memory.channel_id != channel_id {
             return Err(MemoryError::not_found());
         }
-        let stored = self.assign_point_id(&memory, stored).await?;
+        // The point carries the memory as loaded (the reference's in-memory document): the
+        // `updatedAt` that the point id update moves is not part of it.
+        let assigned = self.assign_point_id(&memory, stored.clone()).await?;
         if memory.status == MemoryStatus::Confirmed {
             self.write_point(&stored).await?;
         } else {
             self.remove_point(resolve_point_id(&memory), &memory.channel_id, &memory.id)
                 .await?;
         }
-        Ok(stored)
+        Ok(assigned)
     }
 
     /// `updateOne({_id}, {$set: {qdrantPointID}})` when the stored id is missing.
@@ -411,8 +424,8 @@ impl MemoryStore {
                     {
                         continue;
                     }
-                    let written = match self.assign_point_id(&memory, stored).await {
-                        Ok(stored) => self.write_point(&stored).await,
+                    let written = match self.assign_point_id(&memory, stored.clone()).await {
+                        Ok(_) => self.write_point(&stored).await,
                         Err(e) => Err(e),
                     };
                     match written {

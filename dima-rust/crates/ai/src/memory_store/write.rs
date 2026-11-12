@@ -99,7 +99,11 @@ pub struct CreateMemory {
 
 impl CreateMemory {
     /// A memory of `kind` with every option at its default.
-    pub fn new(channel_id: impl Into<String>, kind: MemoryType, content: impl Into<String>) -> Self {
+    pub fn new(
+        channel_id: impl Into<String>,
+        kind: MemoryType,
+        content: impl Into<String>,
+    ) -> Self {
         Self {
             channel_id: channel_id.into(),
             channel_name: None,
@@ -258,8 +262,7 @@ impl MemoryStore {
         // Only the last 25 are kept: the bound applies to those.
         let kept = input.evidence.len().saturating_sub(25);
         for e in input.evidence.iter().skip(kept) {
-            if chars(e.message.as_ref().map(|m| m.expose().as_str()))
-                > c.max_evidence_message_chars
+            if chars(e.message.as_ref().map(|m| m.expose().as_str())) > c.max_evidence_message_chars
                 || chars(e.username.as_deref()) > c.max_name_chars
                 || chars(e.user_id.as_deref()) > c.max_name_chars
                 || chars(e.message_id.as_deref()) > c.max_name_chars
@@ -278,7 +281,10 @@ impl MemoryStore {
     ) -> Result<Option<(LoadedForSave, ChannelAiMemory)>, MemoryError> {
         let mut ctx = self.ctx();
         let loaded = self
-            .mongo_call(operation, INFO.load_for_save(&self.mongo, &filter, &mut ctx))
+            .mongo_call(
+                operation,
+                INFO.load_for_save(&self.mongo, &filter, &mut ctx),
+            )
             .await?;
         let Some(loaded) = loaded else {
             return Ok(None);
@@ -330,7 +336,10 @@ impl MemoryStore {
     }
 
     /// `createOrUpdateChannelMemory`.
-    pub async fn create_or_update(&self, input: CreateMemory) -> Result<CreateOutcome, MemoryError> {
+    pub async fn create_or_update(
+        &self,
+        input: CreateMemory,
+    ) -> Result<CreateOutcome, MemoryError> {
         self.check_create_bounds(&input)?;
         let channel_id = normalize_text(Some(&input.channel_id));
         let content = normalize_text(Some(input.content.expose()));
@@ -477,9 +486,10 @@ impl MemoryStore {
         changes.push(Change::set("summary", p.summary.as_str()));
         changes.push(Change::set(
             "risk",
-            input
-                .risk
-                .map_or_else(|| existing.risk.as_str().to_owned(), |r| r.as_str().to_owned()),
+            input.risk.map_or_else(
+                || existing.risk.as_str().to_owned(),
+                |r| r.as_str().to_owned(),
+            ),
         ));
         changes.push(Change::set("confidence", js_number(confidence)));
         changes.push(Change::set("type", input.kind.as_str()));
@@ -515,9 +525,12 @@ impl MemoryStore {
                     })
                 })
                 .collect();
-            all.extend(input.evidence.iter().map(|e| {
-                Bson::Document(evidence_doc(e, now_secs))
-            }));
+            all.extend(
+                input
+                    .evidence
+                    .iter()
+                    .map(|e| Bson::Document(evidence_doc(e, now_secs))),
+            );
             let keep = all.len().saturating_sub(25);
             changes.push(Change::set(
                 "sourceEvidence",
@@ -542,7 +555,11 @@ impl MemoryStore {
         Ok(CreateOutcome::Updated(stored))
     }
 
-    async fn insert_new(&self, input: &CreateMemory, p: &Prepared) -> Result<StoredMemory, Inserted> {
+    async fn insert_new(
+        &self,
+        input: &CreateMemory,
+        p: &Prepared,
+    ) -> Result<StoredMemory, Inserted> {
         let limit = match p.target {
             MemoryStatus::PendingReview => Some((
                 p.settings.max_pending_memories,
@@ -574,11 +591,8 @@ impl MemoryStore {
         let now_ms = self.clock.now_ms();
         let now_secs = now_ms.div_euclid(1000);
         let id = self.ids.object_id(now_ms);
-        let point_id = crate::qdrant::generate_qdrant_point_id(
-            &p.channel_id,
-            &id.to_hex(),
-            now_secs as f64,
-        );
+        let point_id =
+            crate::qdrant::generate_qdrant_point_id(&p.channel_id, &id.to_hex(), now_secs as f64);
         let kept = input.evidence.len().saturating_sub(25);
         let creator = input.created_by.clone().unwrap_or_default();
         let new = NewChannelAiMemory {
@@ -638,8 +652,8 @@ impl MemoryStore {
             return Err(MemoryError::new(ErrorKind::Store, CREATE_FAILED).into());
         }
         let mut writes = self.mongo.writes(INFO.name);
-        let inserted = tokio::time::timeout(self.config.store_timeout, writes.insert_one(&prepared))
-            .await;
+        let inserted =
+            tokio::time::timeout(self.config.store_timeout, writes.insert_one(&prepared)).await;
         match inserted {
             Ok(Ok(())) => {}
             Ok(Err(dima_store::mongo::write::WriteError::Driver(e)))
@@ -766,7 +780,10 @@ impl MemoryStore {
         self.save(&loaded, &changes, now_ms, "setChannelMemoryStatus")
             .await
             .map_err(|e| e.generic(STATUS_FAILED))?;
-        let stored = self.reread(id).await.map_err(|e| e.generic(STATUS_FAILED))?;
+        let stored = self
+            .reread(id)
+            .await
+            .map_err(|e| e.generic(STATUS_FAILED))?;
         if confirm {
             self.write_point(&stored)
                 .await
@@ -795,9 +812,12 @@ impl MemoryStore {
             .await
             .map_err(|e| e.generic(UPDATE_FAILED))?
             .ok_or_else(MemoryError::not_found)?;
-        let next_kind: Open<MemoryType> = params.kind.map_or_else(|| memory.kind.clone(), Open::from);
-        let next_risk: Open<MemoryRisk> = params.risk.map_or_else(|| memory.risk.clone(), Open::from);
-        let (scope, username, user_id): (Open<SubjectScope>, String, String) = match &params.subject {
+        let next_kind: Open<MemoryType> =
+            params.kind.map_or_else(|| memory.kind.clone(), Open::from);
+        let next_risk: Open<MemoryRisk> =
+            params.risk.map_or_else(|| memory.risk.clone(), Open::from);
+        let (scope, username, user_id): (Open<SubjectScope>, String, String) = match &params.subject
+        {
             Some(s) => (
                 if s.scope == Some(SubjectScope::User) {
                     SubjectScope::User
@@ -902,11 +922,20 @@ impl MemoryStore {
         // Confirmed: the point goes first and is written again after the save.
         self.remove_point(resolve_point_id(&memory), &memory.channel_id, &id)
             .await
-            .map_err(|e| if confirmed { e.generic(UPDATE_FAILED) } else { e })?;
+            .map_err(|e| {
+                if confirmed {
+                    e.generic(UPDATE_FAILED)
+                } else {
+                    e
+                }
+            })?;
         self.save(&loaded, &changes, now_ms, "updateChannelMemory")
             .await
             .map_err(|e| e.generic(UPDATE_FAILED))?;
-        let stored = self.reread(id).await.map_err(|e| e.generic(UPDATE_FAILED))?;
+        let stored = self
+            .reread(id)
+            .await
+            .map_err(|e| e.generic(UPDATE_FAILED))?;
         if confirmed {
             self.write_point(&stored)
                 .await

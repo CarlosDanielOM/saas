@@ -149,7 +149,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -321,7 +321,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -616,7 +616,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -684,7 +684,7 @@
       "$oid": "69153ec40000000000000002"
      },
      "qdrantPointID": {
-      "$numberLong": "2471843387"
+      "$numberDouble": "2471843387.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -930,7 +930,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -1199,7 +1199,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -2350,7 +2350,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "given_name",
@@ -2735,7 +2735,7 @@
    "points": [],
    "embeddings": [
     {
-     "input": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\ud83d...\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx tea",
+     "input": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀�...\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx tea",
      "model": "lfm2.5-embedding-350m",
      "kind": "document"
     }
@@ -3173,7 +3173,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -3597,7 +3597,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -3835,7 +3835,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -3969,7 +3969,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -4191,7 +4191,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -7093,7 +7093,7 @@
       "$oid": "69153ec10000000000000001"
      },
      "qdrantPointID": {
-      "$numberLong": "2994940758"
+      "$numberDouble": "2994940758.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -7187,7 +7187,7 @@
       "$oid": "69153ec30000000000000003"
      },
      "qdrantPointID": {
-      "$numberLong": "3442831061"
+      "$numberDouble": "3442831061.0"
      },
      "channelID": "1001",
      "channel": "alpha_channel",
@@ -9716,7 +9716,7 @@
       "$numberInt": "0"
      },
      "qdrantPointID": {
-      "$numberLong": "3711985857"
+      "$numberDouble": "3711985857.0"
      }
     }
    ],

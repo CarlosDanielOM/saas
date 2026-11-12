@@ -149,7 +149,9 @@ pub(crate) fn stored_policy_violation(
     scope: &Open<SubjectScope>,
     policy: &Policy,
 ) -> Option<&'static str> {
-    let kind = kind.known().map_or(memory::MemoryType::ChannelLore, policy_kind);
+    let kind = kind
+        .known()
+        .map_or(memory::MemoryType::ChannelLore, policy_kind);
     let risk = risk.known().map_or(memory::Risk::High, policy_risk);
     let scope = scope.known().map_or(memory::Scope::Channel, policy_scope);
     memory::get_memory_policy_violation(kind, risk, scope, policy)
@@ -172,7 +174,10 @@ mod tests {
     fn summary_cut_keeps_the_utf16_position_and_never_splits_a_character() {
         assert_eq!(normalize_summary("  body  ", Some("   ")), "body");
         let long = "a".repeat(181);
-        assert_eq!(normalize_summary(&long, None), format!("{}...", "a".repeat(177)));
+        assert_eq!(
+            normalize_summary(&long, None),
+            format!("{}...", "a".repeat(177))
+        );
         // 176 units, then an astral character (2 units): JavaScript cuts inside it; Rust before it.
         let astral = format!("{}😀{}", "b".repeat(176), "c".repeat(10));
         assert_eq!(
