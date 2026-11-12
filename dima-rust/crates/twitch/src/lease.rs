@@ -87,6 +87,17 @@ pub(crate) struct Lease {
     state: Arc<LeaseState>,
     /// This handle's claim on the marker (the foreground's is given up by [`Lease::share`]).
     settles_marker: bool,
+    /// Set by [`Inner::release`]; a handle dropped without it (its task was stopped) still
+    /// stops the renewal when it is the last, and the lease then expires on its own.
+    released: bool,
+}
+
+impl Drop for Lease {
+    fn drop(&mut self) {
+        if !self.released && self.state.holders.fetch_sub(1, Ordering::SeqCst) == 1 {
+            self.state.renewal.cancel();
+        }
+    }
 }
 
 struct LeaseState {
@@ -106,6 +117,7 @@ impl Lease {
         Lease {
             state: Arc::clone(&self.state),
             settles_marker: true,
+            released: false,
         }
     }
 }
@@ -174,6 +186,7 @@ impl Inner {
                 holders: AtomicUsize::new(1),
             }),
             settles_marker: true,
+            released: false,
         };
         self.renew(&lease);
         Ok(Some(lease))
@@ -328,7 +341,8 @@ impl Inner {
     /// Gives up this handle; the last holder stops the renewal and deletes the lease if it is
     /// still this process's. A marker still set is left to expire (its outcome was not
     /// settled).
-    pub(crate) async fn release(&self, lease: Lease) {
+    pub(crate) async fn release(&self, mut lease: Lease) {
+        lease.released = true;
         if lease.state.holders.fetch_sub(1, Ordering::SeqCst) != 1 {
             return;
         }

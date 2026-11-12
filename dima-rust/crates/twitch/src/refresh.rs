@@ -1100,7 +1100,13 @@ impl Inner {
                         reason,
                         status,
                     } => return Ok(failure(kind, Some(status), reason)),
-                    Exchange::Failed { outcome, .. } => return Ok(outcome),
+                    Exchange::Failed { outcome, uncertain } => {
+                        if uncertain {
+                            // The cache's token may have been consumed and its answer lost.
+                            self.abandon_marker(lease);
+                        }
+                        return Ok(outcome);
+                    }
                 }
             }
             let generation = match &stored {

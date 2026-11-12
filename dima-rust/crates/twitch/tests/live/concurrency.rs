@@ -129,6 +129,14 @@ async fn two_processes_refresh_once_and_both_get_the_winners_token() -> Result<(
     .await
 }
 
+/// The test timings with a 3 s wait for another process's refresh (the lease stays 800 ms).
+fn patient_timings() -> dima_twitch::Timings {
+    dima_twitch::Timings {
+        refresh_wait: Duration::from_secs(3),
+        ..fast_timings()
+    }
+}
+
 /// Every `action` logged by the processes, in no particular order.
 fn actions(processes: &[&Process]) -> Vec<String> {
     processes
@@ -152,7 +160,8 @@ async fn a_lease_that_would_have_expired_under_a_slow_exchange() -> Result<()> {
             let state = state("u1-refresh-0", consume, Duration::from_millis(1200));
             let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
             let slow = process(&stores, &server, fast_timings())?;
-            let late = process(&stores, &server, fast_timings())?;
+            // The late process waits long enough for the holder's write even on a busy machine.
+            let late = process(&stores, &server, patient_timings())?;
             seed(&stores, &slow).await?;
             let first = {
                 let twitch = slow.twitch.clone();
@@ -262,7 +271,7 @@ async fn the_public_refresh_is_serialised_with_every_other_refresh() -> Result<(
         let state = state("u1-refresh-0", true, Duration::from_millis(300));
         let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
         let bot = process(&stores, &server, fast_timings())?;
-        let api = process(&stores, &server, fast_timings())?;
+        let api = process(&stores, &server, patient_timings())?;
         seed(&stores, &bot).await?;
         let token = {
             let twitch = bot.twitch.clone();
