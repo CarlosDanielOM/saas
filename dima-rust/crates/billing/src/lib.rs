@@ -38,7 +38,8 @@
 //!
 //! Rebuilt (cleared, refilled from Polar and MongoDB): `twitch:{id}:ai:credits`, the exhaustion
 //! flags `twitch:{id}:ai:exhaust` and `{id}:ai:exhaust`, `twitch:{id}:ai:credits:plan-version`,
-//! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:usage-local:*`,
+//! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:credits:revision` (the generation and
+//! the debits held against Polar's figures, [`plans::balance`]), `twitch:{id}:ai:usage-local:*`,
 //! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`. Drained (money):
 //! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
 //! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
@@ -66,6 +67,9 @@
 //! - The usage queue is flushed in bounded batches under a fenced lease, acknowledged by the
 //!   items claimed; an event Polar refuses for good moves to a dead-letter list instead of
 //!   blocking its channel ([`polar::flush`]).
+//! - A balance published from Polar has every local debit its figure may not cover yet held
+//!   against it, so spent credit never comes back; a balance whose revision was lost is read
+//!   again from Polar ([`plans::balance`]).
 //! - A grant's identity is the caller's operation id ([`polar::OperationId`]), never drawn per
 //!   call; a write whose outcome is unknown is reported as such ([`polar::IngestOutcome`]).
 //! - Lists are read to the end within a bound ([`polar::MAX_LIST_PAGES`]).

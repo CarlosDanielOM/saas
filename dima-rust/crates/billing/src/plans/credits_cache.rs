@@ -10,7 +10,7 @@
 //! | `twitch:{id}:ai:exhaust`, `{id}:ai:exhaust` | both scripts, the exhaustion repair | none |
 //! | `twitch:{id}:ai:credits:plan-version` | the plan projection (read here) | none |
 //! | `twitch:{id}:ai:usage-local:{sha256(externalId)}` | [`APPLY_AI_CREDIT_USAGE`] | 31 days |
-//! | `twitch:{id}:ai:credits:revision` | every debit and publication ([`super::balance`]) | 31 days |
+//! | `twitch:{id}:ai:credits:revision` | the generation and the debits held against Polar's figures: every debit, acknowledgement, dead letter, read of Polar and publication ([`super::balance`]) | 31 days |
 //!
 //! The exhaustion flags are rebuilt lazily: after a clear, a channel reads as not exhausted until
 //! its next `getAiCredits` (which every paid AI path calls) or usage write. The cutover step
@@ -19,13 +19,14 @@
 //! Ordering is the reference's: the version is compared with the fence in Rust before the
 //! provider call (JavaScript's `<`, UTF-16 order) and again inside the script (byte order) at
 //! publication, so a plan downgrade that lands while Polar is being read wins. On top of it
-//! (item 4 of P2-BILLING-01b), a fetched balance is published under the usage revision read
-//! before Polar was asked ([`super::balance`]): a newer publication wins, and local debits made
-//! meanwhile are applied instead of being overwritten. The exhaustion flags are read and repaired
-//! in one atomic step.
+//! (item 4 of P2-BILLING-01b, item 1 of P2-BILLING-01c), a fetched balance is published within
+//! the generation read before Polar was asked, a newer publication wins, and every local debit
+//! Polar's figure may not cover yet is held against it ([`super::balance`]): spent credit never
+//! comes back. A balance found without its revision belongs to a lost generation and is read
+//! again from Polar. The exhaustion flags are read and repaired in one atomic step.
 
 use super::ai_credit_limit_for_plan;
-use super::balance::{self, Publication, Revision};
+use super::balance::{self, Hold, Publication, Start};
 use super::credits::{
     AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AiCredits, AiCreditsData,
     BalanceState, CreditStatus, VerifiedBalance, build_ai_credits_data_from_meter,
@@ -33,7 +34,7 @@ use super::credits::{
 };
 use crate::Observer;
 use crate::products::AI_CREDITS_METER_ID;
-use dima_core::Clock;
+use dima_core::{Clock, Random};
 use dima_model::Private;
 use dima_store::dragonfly::plan_cache_fence::{
     Acceptance, CreditMode, FenceError, PlanCacheFence, TtlSeconds, credits_cache_key,
@@ -213,6 +214,7 @@ pub struct CreditsCache {
     fence: PlanCacheFence,
     clock: Arc<dyn Clock>,
     observer: Arc<dyn Observer>,
+    random: Arc<dyn Random>,
 }
 
 impl std::fmt::Debug for CreditsCache {
@@ -226,28 +228,62 @@ fn exhausted_key(id: &str) -> [String; 2] {
 }
 
 impl CreditsCache {
-    /// Over one Dragonfly handle.
+    /// Over one Dragonfly handle. Generation tokens ([`super::balance`]) come from the
+    /// system's randomness; [`Self::with_random`] injects another source.
     pub fn new(dragonfly: Dragonfly, clock: Arc<dyn Clock>, observer: Arc<dyn Observer>) -> Self {
         Self {
             fence: PlanCacheFence::new(dragonfly.clone()),
             dragonfly,
             clock,
             observer,
+            random: Arc::new(dima_core::SystemRandom),
         }
+    }
+
+    /// The same cache drawing generation tokens from `random`.
+    #[must_use]
+    pub fn with_random(mut self, random: Arc<dyn Random>) -> Self {
+        self.random = random;
+        self
     }
 
     fn now_iso(&self) -> String {
         dima_text::to_iso_string(self.clock.now_ms()).unwrap_or_default()
     }
 
+    /// A fresh generation token.
+    fn generation_token(&self) -> Result<String, DragonflyError> {
+        self.random
+            .uuid_v4()
+            .map_err(|_| DragonflyError::Reply("generation token unavailable"))
+    }
+
     /// `recordAiCreditUsage(channelID, credits, externalId)`: the local projection of accepted
     /// usage. Best effort in the reference (errors are logged and Polar's webhook reconciles);
     /// the caller decides whether to log the error returned here.
+    ///
+    /// The usage is taken as acknowledged by Polar now (no queued event carries it): it is held
+    /// against the balances published from Polar for [`balance::SETTLE_AFTER_ACK_MS`]
+    /// (item 1 of P2-BILLING-01c). The ingest flows record queued usage through the queue
+    /// instead.
     pub async fn record_ai_credit_usage(
         &self,
         channel_id: &str,
         credits: f64,
         external_id: Option<&str>,
+    ) -> Result<UsageProjection, DragonflyError> {
+        self.record_usage(channel_id, credits, external_id, Hold::Acknowledged)
+            .await
+    }
+
+    /// [`Self::record_ai_credit_usage`] for usage whose event is held by the queue
+    /// ([`Hold::Queued`]) or was acknowledged now ([`Hold::Acknowledged`]).
+    pub(crate) async fn record_usage(
+        &self,
+        channel_id: &str,
+        credits: f64,
+        external_id: Option<&str>,
+        hold: Hold,
     ) -> Result<UsageProjection, DragonflyError> {
         if channel_id.is_empty() || !credits.is_finite() || credits <= 0.0 {
             return Ok(UsageProjection::Skipped);
@@ -265,12 +301,20 @@ impl CreditsCache {
             format!("twitch:{channel_id}:ai:usage-local:{marker}"),
             balance::revision_key(channel_id),
         ];
+        let now = self.clock.now_ms();
         let args = [
             dima_text::number_to_string(credits),
             self.now_iso(),
             AI_CREDITS_CACHE_SCHEMA_VERSION.to_string(),
             USAGE_MARKER_TTL_SECONDS.to_string(),
             if external_id.is_some() { "1" } else { "0" }.to_owned(),
+            self.generation_token()?,
+            match hold {
+                Hold::Queued => String::new(),
+                Hold::Acknowledged => (now + balance::SETTLE_AFTER_ACK_MS).to_string(),
+            },
+            balance::ACK_BUCKET_MS.to_string(),
+            balance::sweep_floor(now).to_string(),
         ];
         let reply = APPLY_AI_CREDIT_USAGE
             .run_value(&self.dragonfly, &keys, &args)
@@ -310,14 +354,14 @@ impl CreditsCache {
         Ok(dima_store::dragonfly::commands::reply::int(reply)? == 1)
     }
 
-    /// Publishes a fetched balance under the revision read before the fetch
-    /// ([`balance::PUBLISH`]).
+    /// Publishes a fetched balance within the generation read before the fetch, with every
+    /// uncovered debit held ([`balance::PUBLISH`]).
     async fn publish(
         &self,
         channel_id: &str,
         version: &str,
         raw: &str,
-        start: Revision,
+        start: &Start,
     ) -> Result<Publication, DragonflyError> {
         let [canonical, legacy] = exhausted_key(channel_id);
         let keys = [
@@ -326,15 +370,22 @@ impl CreditsCache {
             legacy,
             plan_cache_fence_key(channel_id),
             balance::revision_key(channel_id),
+            crate::polar::flush::queue_key(channel_id),
+            crate::polar::flush::processing_key(channel_id),
         ];
         let args = [
             version.to_owned(),
             raw.to_owned(),
             AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
-            start.rev.to_string(),
-            start.debits.to_string(),
+            start.generation.clone(),
+            start.publications.to_string(),
+            start.as_of_ms.to_string(),
+            self.clock.now_ms().to_string(),
             self.now_iso(),
             balance::REVISION_TTL_SECONDS.to_string(),
+            balance::MAX_FIGURE_AGE_MS.to_string(),
+            balance::QUEUED_HOLD_MS.to_string(),
+            balance::MOST_QUEUED.to_string(),
         ];
         balance::publication(
             balance::PUBLISH
@@ -380,8 +431,22 @@ impl CreditsCache {
     ) -> Result<AiCredits, DragonflyError> {
         let cache_key = credits_cache_key(twitch_id);
         let cached = self.dragonfly.get_text(&cache_key).await?;
+        // A balance whose revision is gone belongs to a lost generation (item 1 of
+        // P2-BILLING-01c): it is read again from Polar, whose begin step deletes it.
+        let cached = match cached.filter(|raw| !raw.is_empty()) {
+            Some(raw)
+                if self
+                    .dragonfly
+                    .exists(&[&balance::revision_key(twitch_id)])
+                    .await?
+                    == 1 =>
+            {
+                Some(raw)
+            }
+            _ => None,
+        };
         // A failed acceptance is ignored like a bad cache value.
-        if let Some(cached) = cached.filter(|raw| !raw.is_empty())
+        if let Some(cached) = cached
             && let Some(read) =
                 read_cached_credits(&cached, options.require_verified, || self.now_iso())
             && let Ok(true) = self
@@ -445,18 +510,24 @@ impl CreditsCache {
                         data: read_back(&stored).unwrap_or(payload),
                         state: read,
                     },
-                    // A newer snapshot was published meanwhile: it stands.
-                    Publication::Superseded(current) => match read_back(&current) {
-                        Some(data) => AiCredits {
-                            data,
-                            state: BalanceState::Cached,
-                        },
-                        None => AiCredits {
-                            data: payload,
-                            state: read,
-                        },
-                    },
-                    Publication::Fenced => AiCredits {
+                    // A newer snapshot was published meanwhile: it stands. Too many queued
+                    // events to count: the cached balance (which carries every local debit)
+                    // stands. Without one, nothing verified can be answered.
+                    Publication::Superseded(current) | Publication::Backlog(current) => {
+                        match read_back(&current) {
+                            Some(data) => AiCredits {
+                                data,
+                                state: BalanceState::Cached,
+                            },
+                            None => AiCredits {
+                                data: unavailable_ai_credits(self.now_iso()),
+                                state: BalanceState::Unknown,
+                            },
+                        }
+                    }
+                    // The plan fence is newer, the generation was lost while Polar was read
+                    // (the next read starts clean), or the figure is too old.
+                    Publication::Fenced | Publication::Lost | Publication::Stale => AiCredits {
                         data: unavailable_ai_credits(self.now_iso()),
                         state: BalanceState::Unknown,
                     },
@@ -567,8 +638,9 @@ impl CreditsCache {
             }
             return Ok(Fetched::NotRead(data));
         };
-        // The usage revision before Polar is asked (item 4).
-        let start = balance::read_revision(&self.dragonfly, twitch_id)
+        // The generation before Polar is asked (item 1 of P2-BILLING-01c).
+        let token = self.generation_token().map_err(|e| e.to_string())?;
+        let start = balance::begin(&self.dragonfly, twitch_id, &token, self.clock.now_ms())
             .await
             .map_err(|e| e.to_string())?;
         let state = polar
@@ -594,7 +666,7 @@ impl CreditsCache {
         }
         let raw = payload.to_cache_text(&version);
         let published = self
-            .publish(twitch_id, &version, &raw, start)
+            .publish(twitch_id, &version, &raw, &start)
             .await
             .map_err(|e| e.to_string())?;
         Ok(Fetched::Read {

@@ -566,6 +566,7 @@ async fn get_ai_credits_matches_the_reference() {
     let cache = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
     let mut report = Report::new("get_ai_credits");
     let mut published = 0;
+    let mut planted = 0;
     let mut unavailable_kept = 0;
     for case in cases("get_ai_credits") {
         let input = &case["input"];
@@ -581,6 +582,15 @@ async fn get_ai_credits_matches_the_reference() {
                 )
                 .await
                 .unwrap();
+        }
+        // Intended difference (item 1 of P2-BILLING-01c): a balance Rust caches always has its
+        // revision hash (a Rust-only key) beside it, and one found without it belongs to a lost
+        // generation and is read again from Polar. The recordings come from the reference,
+        // which has no such hash, so one is planted beside every recorded balance: the replay
+        // is the state Rust itself would be in.
+        if input["cache"].get("twitch:41245072:ai:credits").is_some() {
+            support::plant_revision(&dragonfly, &id).await.unwrap();
+            planted += 1;
         }
         let owner = Owner {
             owner: input["owner"].clone(),
@@ -606,20 +616,23 @@ async fn get_ai_credits_matches_the_reference() {
             )
             .await
             .unwrap();
-        // Intended difference (item 4 of P2-BILLING-01b): a published balance advances the
-        // usage revision, a Rust-only hash the reference does not have. It is checked here and
-        // left out of the comparison of the reference's keys.
+        // Intended difference (item 4 of P2-BILLING-01b, item 1 of P2-BILLING-01c): a read of
+        // Polar begins a generation and a published balance counts in it, in the Rust-only
+        // revision hash the reference does not have. It is checked here and left out of the
+        // comparison of the reference's keys.
         let revision_key = dima_billing::plans::balance::revision_key(&id);
         let revision: Vec<Option<String>> = dragonfly
-            .query(redis::cmd("HMGET").arg(&revision_key).arg("rev").arg("pub"))
+            .query(redis::cmd("HMGET").arg(&revision_key).arg("gen").arg("pub"))
             .await
             .unwrap();
         if revision[0].is_some() {
-            assert_eq!(revision[0], revision[1], "a publication sets pub to rev");
-            assert_eq!(revision[0].as_deref(), Some("1"));
-            published += 1;
-            dragonfly.del(&[&revision_key]).await.unwrap();
+            if revision[1].as_deref() == Some("1") {
+                published += 1;
+            } else {
+                assert_eq!(revision[1].as_deref(), Some("0"), "one publication at most");
+            }
         }
+        dragonfly.del(&[&revision_key]).await.unwrap();
         let after: Map<String, Value> = support::keys_with(&dragonfly, &id)
             .await
             .unwrap()
@@ -670,6 +683,10 @@ async fn get_ai_credits_matches_the_reference() {
     // Every case whose fetch reached Polar and was accepted: the cache value itself is the
     // reference's, byte for byte or as JSON (no debit happens during these fetches).
     assert_eq!(published, 340, "cases that published under the revision");
+    assert_eq!(
+        planted, 432,
+        "recorded balances replayed with their revision"
+    );
     assert_eq!(
         unavailable_kept, 18,
         "cached unavailable snapshots that stay unavailable"

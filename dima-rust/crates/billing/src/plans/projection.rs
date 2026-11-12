@@ -29,13 +29,14 @@ use crate::js;
 use crate::products::{AI_CREDITS_METER_ID, LEGACY_USAGE_METER_ID};
 use bson::oid::ObjectId;
 use bson::{Bson, doc};
+use dima_core::Random;
 use dima_model::users::{AccountType, User};
 use dima_model::{Private, StrEnum};
-use dima_store::dragonfly::Dragonfly;
 use dima_store::dragonfly::plan_cache_fence::{
     Acceptance, Exhaustion, FenceError, PlanCacheFence, credits_cache_key, exhaustion_cache_keys,
     plan_cache_fence_key, plan_cache_version, snapshot_version_key,
 };
+use dima_store::dragonfly::{Dragonfly, DragonflyError};
 use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::future::BoxFuture;
@@ -353,9 +354,13 @@ fn le_zero(value: &Value) -> bool {
 /// publish the credits it implies to every Twitch account, fenced by the plan and snapshot
 /// versions. `None` when the owner has no Twitch account.
 ///
-/// Local debits made after the projection began are applied to the published snapshot (item 4
-/// of P2-BILLING-01b: [`super::balance`]), and the publication advances the usage revision, so
-/// a slower fetch that started before it cannot overwrite it.
+/// Each account's publication happens within the generation read before anything else, and
+/// every local debit the snapshot (dated by its `occurredAt`) may not cover is held against it
+/// (item 1 of P2-BILLING-01c: [`super::balance`]); publishing the same snapshot again stores the
+/// same balance. An account whose generation was lost meanwhile publishes nothing
+/// ([`Acceptance::Rejected`]); its next read starts clean. `random` draws the generation token
+/// of an account that has none yet.
+#[allow(clippy::too_many_arguments)]
 pub async fn project_credit_snapshot(
     stores: ProjectionStores<'_>,
     owner_id: ObjectId,
@@ -363,10 +368,11 @@ pub async fn project_credit_snapshot(
     event_key: &str,
     meters: &[Value],
     now_ms: i64,
+    random: &dyn Random,
 ) -> Result<Option<CreditSync>, ProjectionError> {
-    // The debits of every account of the owner before anything is read (the accounts are
-    // read again from the stored document below; one missing here starts at 0).
-    let mut started: Vec<(String, super::balance::Revision)> = Vec::new();
+    // The generation of every account of the owner before anything is read (the accounts are
+    // read again from the stored document below; one missing here publishes nothing).
+    let mut started: Vec<(String, super::balance::Start)> = Vec::new();
     if let Some(stored) = stores
         .mongo
         .documents(dima_model::users::COLLECTION)
@@ -375,13 +381,17 @@ pub async fn project_credit_snapshot(
         .map_err(dima_store::mongo::write::WriteError::from)?
     {
         for id in twitch_ids(&dima_model::decode_document::<User>(&stored)?) {
-            let revision = super::balance::read_revision(stores.dragonfly, &id)
+            let redis = |source| FenceError::Redis {
+                write_outcome_unknown: true,
+                source,
+            };
+            let token = random
+                .uuid_v4()
+                .map_err(|_| redis(DragonflyError::Reply("generation token unavailable")))?;
+            let start = super::balance::begin(stores.dragonfly, &id, &token, now_ms)
                 .await
-                .map_err(|source| FenceError::Redis {
-                    write_outcome_unknown: false,
-                    source,
-                })?;
-            started.push((id, revision));
+                .map_err(redis)?;
+            started.push((id, start));
         }
     }
     let filter = doc! {
@@ -503,10 +513,11 @@ pub async fn project_credit_snapshot(
     let updated_at = dima_text::to_iso_string(now_ms).unwrap_or_default();
     let mut accepted = Vec::with_capacity(twitch.len());
     for id in &twitch {
-        let debits = started
-            .iter()
-            .find(|(known, _)| known == id)
-            .map_or(0, |(_, revision)| revision.debits);
+        let Some((_, start)) = started.iter().find(|(known, _)| known == id) else {
+            // An account added after the projection began: its generation was not read.
+            accepted.push(Acceptance::Rejected);
+            continue;
+        };
         let [canonical, legacy] = exhaustion_cache_keys(id);
         let keys = [
             credits_cache_key(id),
@@ -515,6 +526,8 @@ pub async fn project_credit_snapshot(
             snapshot_version_key(id),
             plan_cache_fence_key(id),
             super::balance::revision_key(id),
+            crate::polar::flush::queue_key(id),
+            crate::polar::flush::processing_key(id),
         ];
         let args = [
             snapshot_version.clone(),
@@ -526,9 +539,14 @@ pub async fn project_credit_snapshot(
             },
             AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
             plan_version.clone(),
-            debits.to_string(),
+            start.generation.clone(),
+            current_at.to_string(),
+            now_ms.to_string(),
             updated_at.clone(),
             super::balance::REVISION_TTL_SECONDS.to_string(),
+            super::balance::MAX_FIGURE_AGE_MS.to_string(),
+            super::balance::QUEUED_HOLD_MS.to_string(),
+            super::balance::MOST_QUEUED.to_string(),
         ];
         let reply = super::balance::SYNC
             .run_value(stores.dragonfly, &keys, &args)
@@ -542,7 +560,9 @@ pub async fn project_credit_snapshot(
                 .map_err(|_| FenceError::Protocol)?
             {
                 1 => Acceptance::Accepted,
-                0 => Acceptance::Rejected,
+                // A newer fence, a lost generation, a backlog too long to count or a snapshot
+                // too old: nothing published.
+                0 | 3 | 4 | 5 => Acceptance::Rejected,
                 _ => return Err(FenceError::Protocol.into()),
             },
         );

@@ -391,7 +391,7 @@ async fn credit_snapshot_fault_cases() -> Result<()> {
         let newer = [json!({"meter_id": AI_CREDITS_METER_ID, "consumed_units": 200_000, "balance": -200_000})];
         let older = [json!({"meter_id": AI_CREDITS_METER_ID, "consumed_units": 10, "balance": -10})];
 
-        let first = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0).await?.unwrap();
+        let first = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(first.accepted.len(), 1);
         let cached = dragonfly.get_text(&credits_cache_key(&channel)).await?.unwrap();
         assert!(cached.contains(r#""status":"exhausted""#), "{cached}");
@@ -402,19 +402,19 @@ async fn credit_snapshot_fault_cases() -> Result<()> {
         assert!(matches!(snapshot.get_array("meters")?[0].as_document().unwrap().get("consumed_units"), Some(Bson::Int32(200_000))));
 
         // Delivered twice: the same snapshot is accepted again with the same result.
-        let again = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0 + 1).await?.unwrap();
+        let again = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0 + 1, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(again.payload, first.payload);
 
         // An older snapshot arriving late is not stored; the newer one is published again.
-        let late = project_credit_snapshot(stores.clone(), id, T0, "snap-1", &older, T0 + 2).await?.unwrap();
+        let late = project_credit_snapshot(stores.clone(), id, T0, "snap-1", &older, T0 + 2, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(late.snapshot_version, first.snapshot_version);
         let stored = store.documents("users").find_one(doc! {"_id": id}).await?.unwrap();
         assert_eq!(stored.get_document("polar_credit_snapshot")?.get_str("eventKey")?, "snap-2");
 
         // Two at once: the newest wins in MongoDB and in the cache.
         let (a, b) = tokio::join!(
-            project_credit_snapshot(stores.clone(), id, T0 + 3000, "snap-4", &older, T0 + 3),
-            project_credit_snapshot(stores.clone(), id, T0 + 2000, "snap-3", &newer, T0 + 3),
+            project_credit_snapshot(stores.clone(), id, T0 + 3000, "snap-4", &older, T0 + 3, &dima_core::SystemRandom),
+            project_credit_snapshot(stores.clone(), id, T0 + 2000, "snap-3", &newer, T0 + 3, &dima_core::SystemRandom),
         );
         a?;
         b?;
@@ -445,6 +445,7 @@ async fn usage_projection_and_pack_context_fault_cases() -> Result<()> {
             dima_store::dragonfly::SetOptions::ex(300),
         )
         .await?;
+    support::plant_revision(&dragonfly, &channel).await?;
 
     // Delivered twice: one application per external id; the marker lives 31 days.
     assert_eq!(

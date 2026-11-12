@@ -102,6 +102,7 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         )
         .await
         .unwrap();
+    support::plant_revision(&dragonfly, &channel).await.unwrap();
     let llen = |q: String| {
         let dragonfly = dragonfly.clone();
         async move {

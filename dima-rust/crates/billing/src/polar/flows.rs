@@ -26,6 +26,7 @@ use super::{
 };
 use super::{IngestEvent, PolarClient, PolarError};
 use crate::Observer;
+use crate::plans::balance::Hold;
 use crate::plans::credits_cache::CreditsCache;
 use crate::usage::AiUsageContext;
 use dima_core::{Clock, Random};
@@ -182,11 +183,25 @@ fn polar_message(error: &PolarError) -> String {
 }
 
 impl Ingest<'_> {
-    async fn project(&self, event: &IngestEvent, context: &AiUsageContext, channel: Option<&str>) {
+    /// Projects accepted usage locally and receipts it. `hold` says where the debit is held
+    /// against Polar's figures (item 1 of P2-BILLING-01c): by the queue when the event was
+    /// queued, from now when Polar stored it (immediate mode).
+    async fn project(
+        &self,
+        event: &IngestEvent,
+        context: &AiUsageContext,
+        channel: Option<&str>,
+        hold: Hold,
+    ) {
         let credits = crate::js::number(event.metadata.get("credits"));
         if let Err(error) = self
             .credits
-            .record_ai_credit_usage(channel.unwrap_or(""), credits, Some(&event.external_id))
+            .record_usage(
+                channel.unwrap_or(""),
+                credits,
+                Some(&event.external_id),
+                hold,
+            )
             .await
         {
             self.observer.error(
@@ -240,7 +255,8 @@ impl Ingest<'_> {
         if mode == IngestMode::Immediate {
             return match self.polar.ingest_events(std::slice::from_ref(&event)).await {
                 Ok(result) if result.is_complete(1) => {
-                    self.project(&event, &context, channel).await;
+                    self.project(&event, &context, channel, Hold::Acknowledged)
+                        .await;
                     IngestOutcome::Done { message: None }
                 }
                 // Item 4 of P2-BILLING-01c (re-check finding N5): a success whose counts are
@@ -254,7 +270,7 @@ impl Ingest<'_> {
         let Some(channel) = channel else {
             return failed("channelID is required for batch/cache modes");
         };
-        let text = queued_text(&event);
+        let text = queued_text(&event, self.clock.now_ms());
         let flush = self.flusher();
         if let Err(error) = event.wire() {
             let message = polar_message(&error);
@@ -271,7 +287,8 @@ impl Ingest<'_> {
             if let Err(error) = self.dragonfly.rpush(&queue, &[text.as_bytes()]).await {
                 return failed(error.to_string());
             }
-            self.project(&event, &context, Some(channel)).await;
+            self.project(&event, &context, Some(channel), Hold::Queued)
+                .await;
             return IngestOutcome::Done { message: None };
         }
         let lease = match flush.acquire(channel).await {
@@ -286,7 +303,8 @@ impl Ingest<'_> {
                 );
                 return failed("Failed to queue AI event");
             }
-            self.project(&event, &context, Some(channel)).await;
+            self.project(&event, &context, Some(channel), Hold::Queued)
+                .await;
             return IngestOutcome::Done {
                 message: Some("queued (flush in progress)"),
             };
@@ -295,7 +313,8 @@ impl Ingest<'_> {
             flush.release(channel, &lease).await;
             return failed(error.to_string());
         }
-        self.project(&event, &context, Some(channel)).await;
+        self.project(&event, &context, Some(channel), Hold::Queued)
+            .await;
         let report = flush.run(channel, &lease).await;
         flush.release(channel, &lease).await;
         match report.end {
