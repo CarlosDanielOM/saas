@@ -1750,6 +1750,7 @@ dependencies = [
  "http",
  "http-body-util",
  "mongodb",
+ "nix",
  "redis",
  "regex",
  "serde",
