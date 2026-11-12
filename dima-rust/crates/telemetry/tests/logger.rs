@@ -61,101 +61,114 @@ async fn warn_and_above_become_metadata_rows() {
 }
 
 #[tokio::test]
-async fn cache_entries_are_written_with_their_expiry_in_one_command() {
+async fn cache_entries_are_written_with_their_expiry() {
     let Some(store) = support::config(12) else {
         return;
     };
     let platform = support::unique("tlog");
     let (config, _console) = support::memory_config("api", Some(store.clone()));
-    let telemetry = Telemetry::new(config).unwrap();
-    let running = telemetry.start();
-    let options = LogOptions::new().platform(&platform);
-    telemetry.info(
-        &json!({"step": "both", "secret": "hunter2"}),
-        options.channel("777"),
-    );
-    telemetry.warn(
-        &json!({"step": "cache"}),
-        LogOptions::cache().platform(&platform),
-    );
-    telemetry.error(
-        &json!({"step": "console"}),
-        LogOptions::console().platform(&platform),
-    );
-    // Inside a trace the entry names it.
-    let mut span = telemetry.span("command", "test");
-    span.run(async {
+    // The entries, and the inbox the exporter's final flush writes to (unique to this test).
+    let inbox = support::inbox_pattern(&config);
+    let patterns = [format!("logger:{platform}:*"), inbox.clone()];
+    support::with_cleanup(&store, &patterns, async {
+        let telemetry = Telemetry::new(config).unwrap();
+        let running = telemetry.start();
+        let options = LogOptions::new().platform(&platform);
         telemetry.info(
-            &json!({"step": "traced"}),
+            &json!({"step": "both", "secret": "hunter2"}),
+            options.channel("777"),
+        );
+        telemetry.warn(
+            &json!({"step": "cache"}),
             LogOptions::cache().platform(&platform),
         );
+        telemetry.error(
+            &json!({"step": "console"}),
+            LogOptions::console().platform(&platform),
+        );
+        // Inside a trace the entry names it.
+        let mut span = telemetry.span("command", "test");
+        span.run(async {
+            telemetry.info(
+                &json!({"step": "traced"}),
+                LogOptions::cache().platform(&platform),
+            );
+        })
+        .await;
+        let trace_id = span.ids().trace_id;
+        span.end("ok");
+        let report = running.shutdown(Duration::from_secs(3)).await;
+        assert!(report.clean);
+        assert_eq!(report.stats.cache_written, 3);
+
+        let dragonfly = support::connect(&store).await;
+        let pattern = format!("logger:{platform}:*");
+        let mut scan = dragonfly.scan(&pattern, Some(1000));
+        let mut keys = Vec::new();
+        while let Some(page) = scan.next_page().await.unwrap() {
+            keys.extend(page.into_iter().map(|key| String::from_utf8(key).unwrap()));
+        }
+        keys.sort();
+        assert_eq!(keys.len(), 3, "{keys:?}");
+        let mut seen = Vec::new();
+        for key in &keys {
+            let parts: Vec<&str> = key.split(':').collect();
+            assert_eq!(parts.len(), 5, "{key}");
+            let (channel, level, id) = (parts[2], parts[3], parts[4]);
+            let (ms, suffix) = id.split_once('-').unwrap();
+            assert!(ms.parse::<u64>().is_ok() && suffix.len() == 8, "{key}");
+            let ttl: i64 = dragonfly.query(redis::cmd("TTL").arg(key)).await.unwrap();
+            assert!((604_700..=604_800).contains(&ttl), "{key} ttl {ttl}");
+            let raw = dragonfly.get_text(key).await.unwrap().unwrap();
+            let value: Value = serde_json::from_str(&raw).unwrap();
+            let fields: Vec<&str> = value
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect();
+            assert_eq!(
+                &fields[..4],
+                ["data", "timestamp", "level", "platform"],
+                "{raw}"
+            );
+            assert_eq!(value["level"], level);
+            assert_eq!(value["platform"], platform.as_str());
+            assert!(value["timestamp"].as_str().unwrap().contains(", "));
+            seen.push((channel.to_owned(), level.to_owned(), value));
+        }
+        let both = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "both")
+            .unwrap();
+        assert_eq!(both.0, "777");
+        assert_eq!(both.2["channelId"], "777");
+        assert_eq!(both.2["data"]["secret"], "[REDACTED]");
+        let cache = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "cache")
+            .unwrap();
+        assert_eq!((cache.0.as_str(), cache.1.as_str()), ("global", "warn"));
+        assert!(cache.2.get("channelId").is_none());
+        let traced = seen
+            .iter()
+            .find(|(_, _, v)| v["data"]["step"] == "traced")
+            .unwrap();
+        assert_eq!(traced.2["traceId"], trace_id.hex().as_str());
+        assert!(!seen.iter().any(|(_, _, v)| v["data"]["step"] == "console"));
+        assert_eq!(
+            support::keys_and_cleanup(&dragonfly, &pattern).await.len(),
+            3
+        );
+
+        let own_inbox = inbox.replace('*', "inbox");
+        let exists: i64 = dragonfly
+            .query(redis::cmd("EXISTS").arg(&own_inbox))
+            .await
+            .unwrap();
+        assert_eq!(exists, 1, "the final flush goes to this test's own inbox");
     })
     .await;
-    let trace_id = span.ids().trace_id;
-    span.end("ok");
-    let report = running.shutdown(Duration::from_secs(3)).await;
-    assert!(report.clean);
-    assert_eq!(report.stats.cache_written, 3);
-
-    let dragonfly = support::connect(&store).await;
-    let pattern = format!("logger:{platform}:*");
-    let mut scan = dragonfly.scan(&pattern, Some(1000));
-    let mut keys = Vec::new();
-    while let Some(page) = scan.next_page().await.unwrap() {
-        keys.extend(page.into_iter().map(|key| String::from_utf8(key).unwrap()));
-    }
-    keys.sort();
-    assert_eq!(keys.len(), 3, "{keys:?}");
-    let mut seen = Vec::new();
-    for key in &keys {
-        let parts: Vec<&str> = key.split(':').collect();
-        assert_eq!(parts.len(), 5, "{key}");
-        let (channel, level, id) = (parts[2], parts[3], parts[4]);
-        let (ms, suffix) = id.split_once('-').unwrap();
-        assert!(ms.parse::<u64>().is_ok() && suffix.len() == 8, "{key}");
-        let ttl: i64 = dragonfly.query(redis::cmd("TTL").arg(key)).await.unwrap();
-        assert!((604_700..=604_800).contains(&ttl), "{key} ttl {ttl}");
-        let raw = dragonfly.get_text(key).await.unwrap().unwrap();
-        let value: Value = serde_json::from_str(&raw).unwrap();
-        let fields: Vec<&str> = value
-            .as_object()
-            .unwrap()
-            .keys()
-            .map(String::as_str)
-            .collect();
-        assert_eq!(
-            &fields[..4],
-            ["data", "timestamp", "level", "platform"],
-            "{raw}"
-        );
-        assert_eq!(value["level"], level);
-        assert_eq!(value["platform"], platform.as_str());
-        assert!(value["timestamp"].as_str().unwrap().contains(", "));
-        seen.push((channel.to_owned(), level.to_owned(), value));
-    }
-    let both = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "both")
-        .unwrap();
-    assert_eq!(both.0, "777");
-    assert_eq!(both.2["channelId"], "777");
-    assert_eq!(both.2["data"]["secret"], "[REDACTED]");
-    let cache = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "cache")
-        .unwrap();
-    assert_eq!((cache.0.as_str(), cache.1.as_str()), ("global", "warn"));
-    assert!(cache.2.get("channelId").is_none());
-    let traced = seen
-        .iter()
-        .find(|(_, _, v)| v["data"]["step"] == "traced")
-        .unwrap();
-    assert_eq!(traced.2["traceId"], trace_id.hex().as_str());
-    assert!(!seen.iter().any(|(_, _, v)| v["data"]["step"] == "console"));
-    assert_eq!(
-        support::keys_and_cleanup(&dragonfly, &pattern).await.len(),
-        3
-    );
 }
 
 #[tokio::test]
@@ -208,12 +221,12 @@ async fn caller_never_waits(store: dima_store::dragonfly::DragonflyConfig) {
 }
 
 #[tokio::test]
-async fn an_unreachable_store_is_not_noticed() {
+async fn an_unreachable_store_does_not_slow_the_caller() {
     caller_never_waits(support::local_store(support::closed_port())).await;
 }
 
 #[tokio::test]
-async fn a_hung_store_is_not_noticed() {
+async fn a_hung_store_does_not_slow_the_caller() {
     let (port, server) = support::black_hole().await;
     caller_never_waits(support::local_store(port)).await;
     server.abort();

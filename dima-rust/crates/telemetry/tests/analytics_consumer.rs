@@ -101,23 +101,27 @@ async fn workload(api: &Telemetry, cron: &Telemetry) {
         .await;
     goals.error("claim", "E_LEASE");
     goals.restarted();
-    stream
-        .instrument(async {
+    // A supervised task lives as long as its worker: it reports while it runs.
+    let task = tokio::spawn(stream.instrument({
+        let stream = stream.clone();
+        async move {
             let run = stream.run();
             stream.batch("batch_events", 25, Duration::from_millis(40), true);
             stream.health(true);
             stream.gauge("pending_work", 0.0);
             stream.gauge("last_success_age_ms", 1200.0);
             run.finish(RunOutcome::Ok);
-        })
-        .await;
+            std::future::pending::<()>().await;
+        }
+    }));
     tokio::time::sleep(Duration::from_millis(50)).await;
     api.sample();
     cron.sample();
+    task.abort();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_analytics_service_accepts_and_stores_what_the_admin_page_reads() {
+async fn the_analytics_ingestion_code_accepts_every_batch_with_its_pool_stubbed() {
     let Some(store_mjs) = store_module() else {
         return;
     };
@@ -125,53 +129,56 @@ async fn the_analytics_service_accepts_and_stores_what_the_admin_page_reads() {
         return;
     };
     let name = support::unique("dima-test-telemetry-consumer");
-    let api = Telemetry::new(config("api", store.clone(), &name)).unwrap();
-    let cron = Telemetry::new(config("cron", store.clone(), &name)).unwrap();
-    // The real background work: probe, sampler, and the final sample and flush on shutdown.
-    let (api_running, cron_running) = (api.start(), cron.start());
-    workload(&api, &cron).await;
-    assert!(api_running.shutdown(Duration::from_secs(3)).await.clean);
-    assert!(cron_running.shutdown(Duration::from_secs(3)).await.clean);
-    let dragonfly = support::connect(&store).await;
-    let raw: Vec<String> = dragonfly
-        .query(
-            redis::cmd("LRANGE")
-                .arg(format!("{name}:inbox"))
-                .arg(0)
-                .arg(-1),
-        )
-        .await
-        .unwrap();
-    support::keys_and_cleanup(&dragonfly, &format!("{name}:*")).await;
-    // One batch per process, or more if a scheduled flush fell inside the test.
-    assert!(raw.len() >= 2, "{}", raw.len());
-
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(&name);
-    std::fs::create_dir_all(&dir).unwrap();
-    let mut files = Vec::new();
-    for (index, payload) in raw.iter().rev().enumerate() {
-        let service = serde_json::from_str::<Value>(payload).unwrap()["service"]
-            .as_str()
-            .unwrap()
-            .to_owned();
-        let file = dir.join(format!("{index}-{service}.json"));
-        std::fs::write(&file, payload).unwrap();
-        files.push(file);
-    }
-    if std::env::var("DIMA_TELEMETRY_WRITE_FIXTURES").as_deref() == Ok("1") {
-        let fixtures = root().join("tests/fixtures/analytics");
-        std::fs::create_dir_all(&fixtures).unwrap();
-        for file in &files {
-            let pretty = serde_json::to_string_pretty(
-                &serde_json::from_slice::<Value>(&std::fs::read(file).unwrap()).unwrap(),
+    support::with_cleanup(&store, &[format!("{name}:*")], async {
+        let api = Telemetry::new(config("api", store.clone(), &name)).unwrap();
+        let cron = Telemetry::new(config("cron", store.clone(), &name)).unwrap();
+        // The real background work: probe, sampler, and the final sample and flush on shutdown.
+        let (api_running, cron_running) = (api.start(), cron.start());
+        workload(&api, &cron).await;
+        assert!(api_running.shutdown(Duration::from_secs(3)).await.clean);
+        assert!(cron_running.shutdown(Duration::from_secs(3)).await.clean);
+        let dragonfly = support::connect(&store).await;
+        let raw: Vec<String> = dragonfly
+            .query(
+                redis::cmd("LRANGE")
+                    .arg(format!("{name}:inbox"))
+                    .arg(0)
+                    .arg(-1),
             )
+            .await
             .unwrap();
-            std::fs::write(fixtures.join(file.file_name().unwrap()), pretty + "\n").unwrap();
+        support::keys_and_cleanup(&dragonfly, &format!("{name}:*")).await;
+        // One batch per process, or more if a scheduled flush fell inside the test.
+        assert!(raw.len() >= 2, "{}", raw.len());
+
+        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(&name);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut files = Vec::new();
+        for (index, payload) in raw.iter().rev().enumerate() {
+            let service = serde_json::from_str::<Value>(payload).unwrap()["service"]
+                .as_str()
+                .unwrap()
+                .to_owned();
+            let file = dir.join(format!("{index}-{service}.json"));
+            std::fs::write(&file, payload).unwrap();
+            files.push(file);
         }
-    }
-    let result = ingest(&store_mjs, false, &files);
-    std::fs::remove_dir_all(&dir).ok();
-    check(&result, files.len());
+        if std::env::var("DIMA_TELEMETRY_WRITE_FIXTURES").as_deref() == Ok("1") {
+            let fixtures = root().join("tests/fixtures/analytics");
+            std::fs::create_dir_all(&fixtures).unwrap();
+            for file in &files {
+                let pretty = serde_json::to_string_pretty(
+                    &serde_json::from_slice::<Value>(&std::fs::read(file).unwrap()).unwrap(),
+                )
+                .unwrap();
+                std::fs::write(fixtures.join(file.file_name().unwrap()), pretty + "\n").unwrap();
+            }
+        }
+        let result = ingest(&store_mjs, false, &files);
+        std::fs::remove_dir_all(&dir).ok();
+        check(&result, files.len());
+    })
+    .await;
 }
 
 #[test]

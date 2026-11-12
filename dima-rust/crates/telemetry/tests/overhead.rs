@@ -2,8 +2,10 @@
 //!
 //! Prints the measured figures (`cargo test --test overhead -- --nocapture`). The assertions are
 //! loose ceilings for an unoptimised test build on a loaded machine; the printed numbers are the
-//! measurement. Resident memory is read from `/proc/self/status` before and after: a hot path
-//! that allocated per call would grow it by hundreds of megabytes over these loops.
+//! measurement. Resident memory is read from `/proc/self/status` before and after. That shows
+//! that the hot paths do not retain memory (no growth over millions of calls); it does not show
+//! that they never allocate, since memory allocated and freed per call leaves the resident size
+//! unchanged. Counting allocations needs a counting global allocator, which needs `unsafe`.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod support;
@@ -40,8 +42,8 @@ fn handle() -> Telemetry {
 /// One test, so nothing else in this process allocates while resident memory is measured: the
 /// memory part runs first, on the test thread, before any runtime thread exists.
 #[test]
-fn hot_paths_cost_nanoseconds_and_memory_stays_bounded() {
-    memory_at_the_reference_bounds_is_bounded();
+fn hot_paths_cost_nanoseconds_and_resident_memory_does_not_grow() {
+    resident_memory_at_the_reference_bounds_settles();
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -92,7 +94,7 @@ async fn hot_paths() {
     // 1.2 µs per clock read; a span reads the monotonic clock twice).
     assert!(filtered < 100.0, "{filtered}");
     assert!(counter < 5_000.0 && observe < 5_000.0 && span < 15_000.0);
-    // 8 million calls that each allocated even 16 bytes would add over 100 MiB.
+    // 8 million calls that each retained even 16 bytes would add over 100 MiB.
     assert!(grown < 8 * 1024 * 1024, "{grown}");
     running.shutdown(std::time::Duration::from_secs(2)).await;
 }
@@ -119,7 +121,7 @@ fn fill(telemetry: &Telemetry) {
     }
 }
 
-fn memory_at_the_reference_bounds_is_bounded() {
+fn resident_memory_at_the_reference_bounds_settles() {
     let telemetry = handle();
     // Names are made once, before the measurement (in a binary they are in the source).
     fill(&support::in_memory(0.0));

@@ -15,8 +15,9 @@
 //! existing series; the bucket comes from a coarse clock the probe task refreshes on each wake,
 //! normally every 20 ms);
 //! a span that is not kept about 230 ns plus two monotonic clock reads. On an existing series
-//! none of them allocates (eight million such calls leave the resident size unchanged; that
-//! bounds the growth, it is not an allocation count); the first observation of a series after a
+//! none of them allocates, by construction (a stack key, an existing map entry); what
+//! `tests/overhead.rs` measures is that eight million such calls retain no memory, which is not
+//! an allocation count. The first observation of a series after a
 //! flush allocates its key. At the reference's bounds (2000 series, 300 spans, 100 logs) about
 //! 1.2 MB stays live; with a flush's merge on top the resident size settles about 5 MB above the
 //! empty process in a test build and does not grow over repeated flushes. A flush holds each shard's
