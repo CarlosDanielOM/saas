@@ -96,6 +96,13 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(?sid, "socket is upgrading, sending NOOP packet");
 
+        // [dima-rust patch 1] engine.io answers a poll during an upgrade with the noop of a
+        // check that runs every 100 ms (socket.js 225-226, 249-254), not at once: a client that
+        // missed the probe answer would poll in a tight loop until the upgrade timeout.
+        tokio::time::sleep(std::time::Duration::from_millis(100))
+            .with_cancellation_token(&socket.cancellation_token)
+            .await;
+
         let data = payload::packet_encoder(Packet::Noop, socket.protocol, socket.supports_binary);
 
         let is_binary = false; // The noop packet is guaranteed to be serialized as text

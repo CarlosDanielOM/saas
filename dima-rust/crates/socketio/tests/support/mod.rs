@@ -576,6 +576,7 @@ pub fn short_options() -> Options {
     Options {
         connect_timeout: Duration::from_secs(1),
         recovery_max_disconnection: Duration::from_millis(1500),
+        upgrade_timeout: Duration::from_secs(1),
         ..Options::default()
     }
 }

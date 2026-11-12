@@ -9,6 +9,7 @@
 // each socket's observations are kept apart, so the output depends only on the server's
 // behaviour. Progress goes to stderr.
 import http from 'node:http';
+import net from 'node:net';
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
@@ -163,6 +164,62 @@ async function connected(run, socket, label) {
 // Leaves the transport without a goodbye (a network blip), then lets the client reconnect.
 function blip(socket) {
   socket.io.engine.close();
+}
+
+// A TCP proxy to `port` for a network that breaks WebSockets after their handshake: HTTP
+// requests pass, and so does a WebSocket handshake, but on an upgraded connection the frames
+// going `drop` ('up': client to server, 'down': server to client) are lost.
+function brokenWebSocketProxy(port, drop) {
+  const sockets = new Set();
+  const server = net.createServer((client) => {
+    const upstream = net.connect(port, '127.0.0.1');
+    sockets.add(client).add(upstream);
+    let head = Buffer.alloc(0);
+    let upgrade = null; // known once the request head is complete
+    let answered = false; // the 101 went down
+    client.on('data', (chunk) => {
+      if (upgrade === true && answered && drop === 'up') return;
+      if (upgrade === null) {
+        head = Buffer.concat([head, chunk]);
+        const end = head.indexOf('\r\n\r\n');
+        if (end < 0) return;
+        upgrade = /^upgrade:\s*websocket/im.test(head.subarray(0, end).toString('latin1'));
+        upstream.write(head);
+        return;
+      }
+      upstream.write(chunk);
+    });
+    upstream.on('data', (chunk) => {
+      if (upgrade === true && answered && drop === 'down') return;
+      if (upgrade === true && !answered) {
+        // The handshake answer passes; anything after it in the same chunk is a frame.
+        const end = chunk.indexOf('\r\n\r\n');
+        answered = end >= 0;
+        client.write(drop === 'down' && answered ? chunk.subarray(0, end + 4) : chunk);
+        return;
+      }
+      client.write(chunk);
+    });
+    const close = () => {
+      client.destroy();
+      upstream.destroy();
+    };
+    for (const side of [client, upstream]) {
+      side.on('error', close);
+      side.on('close', close);
+    }
+  });
+  return new Promise((done) =>
+    server.listen(0, '127.0.0.1', () =>
+      done({
+        port: server.address().port,
+        close() {
+          server.close();
+          for (const socket of sockets) socket.destroy();
+        },
+      }),
+    ),
+  );
 }
 
 const cases = {
@@ -449,6 +506,18 @@ const cases = {
     blip(s);
     await run.until('a', 'event', 'welcome', 2, 6000);
   },
+  // The WebSocket handshake succeeds but no frame gets through, so the probe is never
+  // answered: the server gives up after its upgrade timeout (1 s on the short servers) and the
+  // client stays connected over polling (engine.io socket.js 211-218). The proxy would also
+  // starve a WebSocket-only client, so that variant does not run.
+  async 'short: upgrade probe lost on the way up'(run) {
+    await lostProbe(run, 'up');
+  },
+  // The probe reaches the server but its answer does not reach the client: the server's polls
+  // turn to noops until it gives the upgrade up, then carry data again.
+  async 'short: upgrade probe answer lost on the way down'(run) {
+    await lostProbe(run, 'down');
+  },
   async 'short: connect timeout'(run) {
     const m = run.manager({ reconnection: false });
     m.on('close', (reason) => run.log('manager', 'close', reason));
@@ -457,6 +526,31 @@ const cases = {
     await run.until('manager', 'close', undefined, 1, 4000);
   },
 };
+
+async function lostProbe(run, drop) {
+  if (run.transport === 'websocket') {
+    run.log('a', 'not run over WebSocket only');
+    return;
+  }
+  const proxy = await brokenWebSocketProxy(new URL(run.base).port, drop);
+  try {
+    const s = run.client.io(`http://127.0.0.1:${proxy.port}/norec`, run.options());
+    run.sockets.push(s);
+    run.watch(s, 'a', '/norec');
+    s.io.on('open', () => s.io.engine.on('upgrade', () => run.log('a', 'upgraded')));
+    await run.until('a', 'event', 'welcome');
+    // Longer than the upgrade timeout, with traffic during it.
+    for (let i = 0; i < 4; i++) {
+      await run.ack('a', s, 'echo', `during ${i}`);
+      await sleep(400);
+    }
+    run.log('a', 'transport', s.io.engine.transport.name);
+    await run.ack('a', s, 'echo', 'after');
+    run.log('a', 'connected', s.connected);
+  } finally {
+    proxy.close();
+  }
+}
 
 // ----- HTTP cases ---------------------------------------------------------------------------
 

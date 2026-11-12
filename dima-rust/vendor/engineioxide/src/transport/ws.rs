@@ -79,6 +79,8 @@ pub fn new_req<R: Send + 'static, B, H: EngineIoHandler>(
             }
         };
 
+        // [dima-rust patch 1] An error here is a failed upgrade (or a new WebSocket session
+        // that never started): it ends the new transport only, never the polling session.
         match res {
             Ok(_) => {
                 #[cfg(feature = "tracing")]
@@ -88,9 +90,6 @@ pub fn new_req<R: Send + 'static, B, H: EngineIoHandler>(
             Err(_e) => {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(?sid, "ws closed with error: {_e}");
-                if let Some(sid) = sid {
-                    engine.close_session(sid, DisconnectReason::TransportError);
-                }
             }
         }
     });
@@ -131,22 +130,31 @@ where
                 let mut ws = ws_init().await;
 
                 let upgrade_fut = upgrade_handshake::<H, S>(&socket, &mut ws);
-                match tokio::time::timeout(engine.config.upgrade_timeout, upgrade_fut)
+                // [dima-rust patch 1] A failed upgrade (timeout, the new WebSocket closing or
+                // sending anything but the probe and the upgrade packet, the session closing)
+                // closes the new WebSocket only; the session carries on over polling
+                // (engine.io socket.js 211-218, 243-246, 264-275).
+                let failure = match tokio::time::timeout(engine.config.upgrade_timeout, upgrade_fut)
                     .with_cancellation_token(&socket.cancellation_token)
                     .await
                 {
-                    Some(Ok(res)) => res?,
+                    Some(Ok(Ok(()))) => None,
+                    Some(Ok(Err(e))) => Some(e),
                     Some(Err(_)) => {
                         #[cfg(feature = "tracing")]
-                        tracing::debug!(?sid, "ws upgrade timed out, closing session");
-                        engine.close_session(socket.id, DisconnectReason::TransportError);
-                        return Err(Error::Upgrade);
+                        tracing::debug!(?sid, "ws upgrade timed out, closing the new transport");
+                        Some(Error::Upgrade)
                     }
                     None => {
                         #[cfg(feature = "tracing")]
                         tracing::debug!(?sid, "socket is being closed");
-                        return Err(Error::Upgrade);
+                        Some(Error::Upgrade)
                     }
+                };
+                if let Some(e) = failure {
+                    socket.cancel_upgrade();
+                    close_unused_ws(&mut ws).await;
+                    return Err(e);
                 }
                 (socket, ws)
             }
@@ -391,61 +399,86 @@ where
     #[cfg(feature = "tracing")]
     tracing::debug!("starting websocket connection upgrade");
 
-    // The socket is upgrading, from now on all polling
-    // request will return a `Packet::Noop`
-    socket.start_upgrade();
+    // [dima-rust patch 1] Probe pings, then the upgrade packet (engine.io socket.js 220-247).
+    // Polls go on as usual until the probe is answered; from then on they get noops and the
+    // packet buffer is held for the WebSocket.
+    let mut paused = None;
+    loop {
+        let msg = match ws.next().await {
+            Some(Ok(Message::Text(d))) => d,
+            // Control frames are not packets (`ws` answers them itself).
+            Some(Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_))) => continue,
+            Some(Ok(Message::Close(_))) => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!("ws stream closed before upgrade");
+                Err(Error::Upgrade)?
+            }
+            _ => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!("unexpected ws message before upgrade");
+                Err(Error::Upgrade)?
+            }
+        };
+        match Packet::parse(socket.protocol, ws_bytes_to_str(msg))? {
+            Packet::PingUpgrade => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!("received ping upgrade");
+                // Respond with a PongUpgrade packet
+                ws.send(Message::Text(String::from(Packet::PongUpgrade).into()))
+                    .await?;
+                if paused.is_none() {
+                    paused = Some(pause_polling(socket).await?);
+                }
+            }
+            Packet::Upgrade => break,
+            p => Err(Error::BadPacket(p))?,
+        };
+    }
+    // An upgrade packet without a probe before it is accepted too (socket.js 228).
+    let _paused = match paused {
+        Some(paused) => paused,
+        None => pause_polling(socket).await?,
+    };
 
+    #[cfg(feature = "tracing")]
+    tracing::debug!("ws upgraded successfully");
+    socket.upgrade_to_websocket();
+    Ok(())
+}
+
+/// [dima-rust patch 1] From now on the socket is upgrading: polls are answered with noops. A
+/// poll waiting for data gets one at once; once it has returned, the packet buffer's lock is
+/// returned, so the WebSocket takes over the buffered packets.
+async fn pause_polling<D>(
+    socket: &Socket<D>,
+) -> Result<tokio::sync::MutexGuard<'_, InternalRx>, Error>
+where
+    D: Default + Send + Sync + 'static,
+{
+    socket.start_upgrade();
     // We send a last Noop request to close a potential waiting polling request.
     socket
         .internal_tx
         .send(smallvec![Packet::Noop])
         .await
         .map_err(|_| Error::Upgrade)?;
-
     // wait for any current polling connection to finish by waiting for the socket to be unlocked
-    // All other polling connection will be immediately closed with a NOOP packet.
-    let _lock = socket.internal_rx.lock().await;
+    Ok(socket.internal_rx.lock().await)
+}
 
-    // Fetch the next packet from the ws stream, it should be a PingUpgrade packet
-    let msg = match ws.next().await {
-        Some(Ok(Message::Text(d))) => d,
-        _ => Err(Error::Upgrade)?,
-    };
-    match Packet::parse(socket.protocol, ws_bytes_to_str(msg))? {
-        Packet::PingUpgrade => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("received first ping upgrade");
-            // Respond with a PongUpgrade packet
-            ws.send(Message::Text(String::from(Packet::PongUpgrade).into()))
-                .await?;
-        }
-        p => Err(Error::BadPacket(p))?,
-    };
+/// [dima-rust patch 1] How long closing a WebSocket may take: `ws`'s close timeout, after which
+/// it destroys the socket (ws 8.21.3, lib/websocket.js `close` and `setCloseTimer`).
+const WS_CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
-    // Fetch the next packet from the ws stream, it should be an Upgrade packet
-    let msg = match ws.next().await {
-        Some(Ok(Message::Text(d))) => d,
-        Some(Ok(Message::Close(_))) => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("ws stream closed before upgrade");
-            Err(Error::Upgrade)?
-        }
-        _ => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("unexpected ws message before upgrade");
-            Err(Error::Upgrade)?
-        }
-    };
-    match Packet::parse(socket.protocol, ws_bytes_to_str(msg))? {
-        Packet::Upgrade => {
-            #[cfg(feature = "tracing")]
-            tracing::debug!("ws upgraded successfully")
-        }
-        p => Err(Error::BadPacket(p))?,
-    };
-
-    socket.upgrade_to_websocket();
-    Ok(())
+/// [dima-rust patch 1] Closes a WebSocket that did not become the session's transport, as
+/// `engine.io` does with `transport.close()`: a close frame, within the close timeout.
+async fn close_unused_ws<S>(ws: &mut WebSocketStream<S>)
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    tokio::time::timeout(WS_CLOSE_TIMEOUT, ws.close(None))
+        .await
+        .ok();
 }
 
 fn ws_bytes_to_str(bytes: tungstenite::Utf8Bytes) -> Str {

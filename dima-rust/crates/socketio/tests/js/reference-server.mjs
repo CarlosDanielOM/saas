@@ -6,7 +6,8 @@
 //
 // Prints one JSON line {"reference": <port>, "short": <port>} once both servers listen on
 // 127.0.0.1: "reference" has the reference's own timings, "short" a 1 s connect timeout and a
-// 1.5 s recovery window for the expiry cases. Runs until stdin closes.
+// 1.5 s recovery window for the expiry cases, and a 1 s upgrade timeout. Runs until stdin
+// closes.
 import http from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
@@ -204,6 +205,7 @@ const ports = {
   short: await start({
     connectTimeout: 1000,
     connectionStateRecovery: { maxDisconnectionDuration: 1500 },
+    upgradeTimeout: 1000,
   }),
 };
 process.stdout.write(`${JSON.stringify(ports)}\n`);

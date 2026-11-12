@@ -302,6 +302,10 @@ where
     pub(crate) fn start_upgrade(&self) {
         self.upgrading.store(true, Ordering::Relaxed);
     }
+    /// [dima-rust patch 1] The upgrade failed: polls are answered as usual again.
+    pub(crate) fn cancel_upgrade(&self) {
+        self.upgrading.store(false, Ordering::Relaxed);
+    }
 
     /// Spawn the heartbeat job
     ///

@@ -155,14 +155,15 @@ pub async fn ws_heartbeat_timeout() {
     assert_eq!(data, DisconnectReason::HeartbeatTimeout);
 }
 
+// [dima-rust patch 1] An abandoned upgrade no longer ends the session (it stays on polling, as
+// in engine.io; tests/upgrade.rs): the session is not leaked because the heartbeat runs again,
+// and a client that went away is reclaimed by it.
 #[tokio::test]
 pub async fn ws_upgrade_abandoned_timeout() {
     let (disconnect_tx, mut rx) = mpsc::channel(10);
-    // Long heartbeat so it cannot mask the leak during the test window, and a short upgrade
-    // timeout so an abandoned upgrade is reclaimed quickly.
     let config = EngineIoConfig::builder()
-        .ping_interval(Duration::from_secs(60))
-        .ping_timeout(Duration::from_secs(60))
+        .ping_interval(Duration::from_millis(300))
+        .ping_timeout(Duration::from_millis(200))
         .upgrade_timeout(Duration::from_millis(200))
         .build();
     let mut svc = EngineIoService::with_config(Arc::new(MyHandler { disconnect_tx }), config);
@@ -179,17 +180,16 @@ pub async fn ws_upgrade_abandoned_timeout() {
         .expect("session was not reclaimed after an abandoned ws upgrade (leak)")
         .unwrap();
 
-    assert_eq!(data, DisconnectReason::TransportError);
+    assert_eq!(data, DisconnectReason::HeartbeatTimeout);
 }
 
+// [dima-rust patch 1] As above, with the heartbeat parked between pings when the upgrade starts.
 #[tokio::test]
 pub async fn ws_upgrade_abandoned_parked_heartbeat_timeout() {
     let (disconnect_tx, mut rx) = mpsc::channel(10);
-    // Long heartbeat so that, once parked between pings, it cannot reclaim the session on its own
-    // within the test window; short upgrade timeout so the fix reclaims quickly.
     let config = EngineIoConfig::builder()
-        .ping_interval(Duration::from_secs(30))
-        .ping_timeout(Duration::from_secs(30))
+        .ping_interval(Duration::from_millis(300))
+        .ping_timeout(Duration::from_millis(200))
         .upgrade_timeout(Duration::from_millis(200))
         .build();
     let mut svc = EngineIoService::with_config(Arc::new(MyHandler { disconnect_tx }), config);
@@ -216,7 +216,7 @@ pub async fn ws_upgrade_abandoned_parked_heartbeat_timeout() {
         .expect("parked-heartbeat abandoned ws upgrade was not reclaimed (permanent leak)")
         .unwrap();
 
-    assert_eq!(data, DisconnectReason::TransportError);
+    assert_eq!(data, DisconnectReason::HeartbeatTimeout);
 }
 
 #[tokio::test]

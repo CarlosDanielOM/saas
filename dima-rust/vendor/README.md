@@ -75,3 +75,26 @@ git diff <that commit> -- dima-rust/vendor
    `criterion` (`codspeed-criterion-compat`) dev-dependency are removed. Cargo resolves every
    dev-dependency to run any test, and that one is not in the local registry (it would pull a
    large tree for benchmarks nobody runs here). The bench sources stay in `benches/`.
+
+1. **A failed upgrade leaves the session on polling.** `transport/ws.rs` (`new_req`, `on_init`,
+   `upgrade_handshake`, new `pause_polling` and `close_unused_ws`), `socket.rs`
+   (`cancel_upgrade`), `transport/polling.rs` (`polling_req`).
+   Upstream ended the whole session when an upgrade failed after the WebSocket handshake (the
+   probe never completed, the new WebSocket closed or sent something else): a client behind a
+   network that breaks WebSockets reconnected every upgrade timeout, for ever. `engine.io`
+   closes only the new transport and the session carries on over polling (socket.js 211-218
+   timeout, 243-246 other packet, 264-275 transport closed or error, socket closed). Now the
+   new WebSocket gets a close frame (bounded by `ws`'s 30 s close timeout, ws/lib/websocket.js
+   `close`/`setCloseTimer`) and the session is untouched. The probe loop follows socket.js
+   220-247: repeated probe pings are answered, control frames are skipped, an upgrade packet is
+   accepted without a probe. Polls are answered with noops only once the probe has been
+   answered (`check` starts on the probe, socket.js 225-226), and then after 100 ms, the
+   interval of that check (socket.js 249-254), not at once: a client that missed the probe
+   answer polled in a tight loop until the upgrade timeout.
+   Tests: `tests/upgrade.rs` (six cases: timeout before and after the probe, client closing the
+   probe WebSocket, wrong packet, polls carry data before the probe, noop pacing); upstream's
+   `ws_upgrade_abandoned_timeout` and `ws_upgrade_abandoned_parked_heartbeat_timeout`
+   (`tests/disconnect_reason.rs`) asserted the old behaviour and now assert that such a session
+   is still reclaimed by the heartbeat (the leak they guard against, upstream issue 731);
+   `dima-socketio`'s differential cases `short: upgrade probe lost on the way up` and `… answer
+   lost on the way down`. `tests/upgrade.rs` is declared in `Cargo.toml` (`autotests = false`).

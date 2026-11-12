@@ -75,6 +75,10 @@ path = "tests/peek_packet.rs"
 name = "volatile"
 path = "tests/volatile.rs"
 
+[[test]]
+name = "upgrade"
+path = "tests/upgrade.rs"
+
 [dependencies.bytes]
 version = "1.11"
 features = ["serde"]
