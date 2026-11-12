@@ -318,6 +318,7 @@ pub mod channel_ai_personalities;
 pub mod channel_configs;
 pub mod channel_extension_items;
 pub mod channel_fish_voice_favorites;
+pub mod channel_moderation_settings;
 pub mod channel_tts_settings;
 pub mod command_user_variables;
 pub mod commands;
@@ -342,12 +343,16 @@ pub mod follow_relationship_ledgers;
 pub mod media_assets;
 pub mod moderation_action_logs;
 pub mod moderation_chatters;
+pub mod moderation_decisions;
 pub mod moderation_variation_caches;
 pub mod moderation_variation_jobs;
 pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
 pub mod oauth_sessions;
+pub mod pet_requests;
+pub mod pet_runtimes;
+pub mod pet_settings;
 pub mod raid_analytics_histories;
 pub mod raid_analytics_summaries;
 pub mod raid_followers;
@@ -362,6 +367,8 @@ pub mod stream_sessions;
 pub mod temporary_moderators;
 pub mod timer_commands;
 pub mod titleconfigs;
+pub mod triggerfiles;
+pub mod triggers;
 pub mod user_extension_inventories;
 pub mod user_media_library_items;
 pub mod users;
@@ -384,6 +391,13 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &channel_moderation_settings::INFO,
+    &moderation_decisions::INFO,
+    &pet_requests::INFO,
+    &pet_runtimes::INFO,
+    &pet_settings::INFO,
+    &triggers::INFO,
+    &triggerfiles::INFO,
     &temporary_moderators::INFO,
     &vips::INFO,
     &random_user_settings::INFO,
