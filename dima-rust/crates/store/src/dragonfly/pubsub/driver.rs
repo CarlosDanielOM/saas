@@ -8,10 +8,11 @@
 //! ([`super::super::DragonflyConfig::response_timeout`]) discards the connection, and the
 //! subscriber reconnects and subscribes again.
 //!
-//! Bytes go from the socket into one buffer, are parsed into frames ([`super::resp`], every
-//! bulk string bounded by `subscription_max_message_bytes`) and handed to the subscriptions at
-//! once, which
-//! never wait ([`super::Inbox`]). So the stage between the socket and the subscriptions holds at
+//! Bytes go from the socket into one buffer, are cut into frames ([`super::resp::Framer`], which
+//! keeps its progress through an incomplete frame between reads, so a frame arriving in many
+//! reads is not parsed again each time; every bulk string bounded by
+//! `subscription_max_message_bytes`, the whole frame by that plus a small overhead) and handed
+//! to the subscriptions at once, which never wait ([`super::Inbox`]). So the stage between the socket and the subscriptions holds at
 //! most one frame being received plus one read; the socket is read only as fast as frames are
 //! dispatched, and a frame over the limit discards the connection instead of growing the buffer.
 //!
@@ -102,6 +103,8 @@ struct Connection {
     reader: OwnedReadHalf,
     writer: OwnedWriteHalf,
     input: Vec<u8>,
+    /// Progress through the incomplete frame at the start of `input`.
+    framer: resp::Framer,
     output: Vec<u8>,
     pending: VecDeque<Pending>,
     ping_pending: bool,
@@ -448,7 +451,7 @@ impl Connection {
         let mut consumed = 0;
         loop {
             let rest = self.input.get(consumed..).unwrap_or_default();
-            match resp::parse_with(rest, limits.frame()) {
+            match self.framer.next(rest, limits.frame()) {
                 Ok(Some((frame, used))) => {
                     consumed += used;
                     self.handle(frame, entries, state, limits)?;
@@ -692,6 +695,7 @@ async fn connect(shared: &Shared) -> Result<Connection, ConnectError> {
                 reader,
                 writer,
                 input: Vec::with_capacity(READ_CHUNK),
+                framer: resp::Framer::default(),
                 output: Vec::new(),
                 pending: VecDeque::new(),
                 ping_pending: false,
