@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import ts from '../../../dimabot/node_modules/typescript/lib/typescript.js';
+import ts from 'typescript';
 import {
   buildSourceBundle, createPreparedSourceOracle, preparedSourceLoaderTransport,
-  normalizeObservation
+  normalizeObservation, withTwin
 } from './ast_evaluator_reference.mjs';
 export { normalizeObservation };
 
@@ -23,17 +23,17 @@ const extraSources = ['string.test','user.functions.test','eventsub.test'].map(n
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const EXPECTED_EXTRA_HASHES = {
   [`${base}string.functions.ts`]:'b5aee3e3d2bbfb4722d25591f1ee8a33304bcfe8451b26cc54add036c7bed78d',
-  [`${base}user.functions.ts`]:'a92299968379dd8e88cb940b65d7c6b30f7ad539fc333316a06d1f09e59782d7',
+  [`${base}user.functions.ts`]:'26c418cdb27ea8c3e2113138822bb35fed6ca150773286967d0dce36f7c9e665',
   [`${base}random.functions.ts`]:'f5c0e911e9edea325554120cf428accb375096d0e13a4fcbddd8762a512f767b',
-  [`${base}eventsub.functions.ts`]:'708d87c8250bdfd7fe2a6c8c2bdb2c991097854f2a7254d27fd66819ed1bde32',
+  [`${base}eventsub.functions.ts`]:'4de1a28fc22b345d742842bd21fdcefd0cfd84153628ec1acd1f6832b5b84344',
   [`${base}string.test.ts`]:'da657d5f3fe1d835cd7c1f330d627925c9482466dadecd222e072e48b5a1e35e',
-  [`${base}user.functions.test.ts`]:'a209bb9844b4403961b08f270f2a88c3d8b1003f5163053be073f9b6399fac4b',
-  [`${base}eventsub.test.ts`]:'0b5e5643f8d56f90ebb9280082972f329ecf622a02854583da71eb4139f42b6c'
+  [`${base}user.functions.test.ts`]:'9091167fd44d94d3ea372b8f228d5b881ac1fa89042fea44c77b8ec446c75eec',
+  [`${base}eventsub.test.ts`]:'fe822cf8b67b382688d5d2b261e75c5de3ff3cb494d6884316d1b3dbed798c93'
 };
 const STRING_NAMES = ['upper','lower','title','capitalize','trim','length','slice','replace'];
-const EVENT_NAMES = ['twitch.modiversary','twitch.streak','raid.channel','raid.login','raid.viewers','cheer.amount','cheer.message','sub.tier','sub.months','gifted.user','hypetrain.progress','hypetrain.level','hypetrain.end','shoutout.channel','reward.input','redemption.input'];
+const EVENT_NAMES = ['ban.time','twitch.modiversary','twitch.streak','raid.channel','raid.login','raid.viewers','cheer.amount','cheer.message','sub.tier','sub.months','gifted.user','hypetrain.progress','hypetrain.level','hypetrain.end','shoutout.channel','reward.input','redemption.input'];
 export const PURE_NAMES = [...STRING_NAMES,'user','touser','random',...EVENT_NAMES];
-assert.equal(PURE_NAMES.length,27);
+assert.equal(PURE_NAMES.length,28);
 
 // AST selection preserves every pure helper, constant, type, metadata object and
 // registration in user.ts. Only the ChatFunctions import, randomuserHandler and
@@ -47,6 +47,10 @@ function selectPureUserSource(path,text) {
     if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === '../../../functions/chats/index.js') {
       assert.equal(statement.importClause?.namedBindings?.name?.text,'ChatFunctions');
       removed.push('ChatFunctions import'); continue;
+    }
+    if (ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === '../randomuser_settings.js') {
+      // Only randomuserHandler (dropped below) reads the channel blacklist.
+      removed.push('randomuser settings import'); continue;
     }
     if (ts.isVariableStatement(statement) && statement.declarationList.declarations.some(d=>d.name.getText(ast)==='randomuserHandler')) {
       assert.equal(statement.declarationList.declarations.length,1);
@@ -66,9 +70,9 @@ function selectPureUserSource(path,text) {
       statements.push(ts.factory.updateFunctionDeclaration(statement,statement.modifiers,statement.asteriskToken,statement.name,statement.typeParameters,statement.parameters,statement.type,ts.factory.updateBlock(statement.body,kept)));
     } else statements.push(statement);
   }
-  assert.deepEqual(removed,['ChatFunctions import','randomuserHandler','randomuser registration']);
+  assert.deepEqual(removed,['ChatFunctions import','randomuser settings import','randomuserHandler','randomuser registration']);
   const selected = ts.createPrinter().printFile(ts.factory.updateSourceFile(ast,statements));
-  assert(!/ChatFunctions|randomuserHandler|registerFunction\('randomuser'/.test(selected));
+  assert(!/ChatFunctions|randomuserHandler|getRandomUserBlacklist|registerFunction\('randomuser'/.test(selected));
   return selected;
 }
 async function sourceBundle() {
@@ -239,7 +243,15 @@ function caseDefinitions() {
     {message:' plain ',user_input:units(0xD800),reward_input:'x'},
     {watch_streak:[],modiversary:[],streak_months:999,cumulative_months:888},
     {watch_streak:'8',modiversary:true},{watch_streak:{streak_count:-0},modiversary:{months:-0}},
-    {$object:[[{utf16:[0xD800]},'key'],['user_input',' exact whitespace \t ']]}
+    {$object:[[{utf16:[0xD800]},'key'],['user_input',' exact whitespace \t ']]},
+    // ban.time (added to the reference after the first corpus): real Date.parse in the sandbox.
+    ...[['2026-01-01T00:00:00Z','2026-01-01T00:10:00Z'],['2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.499Z'],
+      ['2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.500Z'],['2026-01-01T00:10:00Z','2026-01-01T00:00:00Z'],
+      ['2026-01-01T00:00:00+01:00','2026-01-01T00:00:00Z'],['Thu, 01 Jan 2026 00:00:00 GMT','Thu, 01 Jan 2026 01:00:00 GMT'],
+      ['2026-01-01','2026-01-02'],['not a date','2026-01-01T00:00:00Z'],['   ','2026-01-01T00:00:00Z'],
+      ['-271821-04-20T00:00:00Z','+275760-09-13T00:00:00Z']
+    ].flatMap(([banned_at,ends_at])=>[false,true,'false',null].map(is_permanent=>({is_permanent,banned_at,ends_at}))),
+    {is_permanent:false,banned_at:42,ends_at:'2026-01-01T00:00:00Z'},{banned_at:'2026-01-01T00:00:00Z',ends_at:'2026-01-02T00:00:00Z'}
   ];
   for (const name of EVENT_NAMES) {
     for (const eventData of payloads) call(`event-${name}`,name,[],eventData===undefined?{}:{eventData});
@@ -274,7 +286,7 @@ async function appendActualTestCases(definitions) {
   }
   for (const source of ['$(slice - 2 - 1 abc)','$(slice - -2 abc)','$(upper \"hello world\")','$(user \"ignore symbols numbers\")','$(replace \"a a\" \"$&$$\" \"a a a a\")']) parse(source,{},'quoted-folding');
   for (const path of extraSources) {
-    const text = await readFile(new URL(`../../../${path}`,import.meta.url),'utf8');
+    const text = await readFile(new URL(`../../../../../${path}`,import.meta.url),'utf8');
     const ast = ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true);
     const unavailable=Symbol('not a statically known test value');
     const staticValue=(node,seen=new Set())=>{
@@ -341,8 +353,9 @@ async function appendActualTestCases(definitions) {
         const callee = node.expression.getText(ast);
         if (['evaluateInput','render','renderAsChatter'].includes(callee)) {
           const source = node.arguments[0].text;
-          // A nested TTS test is outside the explicitly selected pure modules.
-          if (!source.includes('$(tts')) {
+          // Nested TTS and randomuser tests are outside the selected pure modules (both read
+          // outside services: the TTS queue, the chatter list and the channel blacklist).
+          if (!source.includes('$(tts') && !source.includes('$(randomuser')) {
             let context={};
             let supported=true;
             if (callee==='renderAsChatter') {
@@ -446,7 +459,7 @@ async function registryEvidence(bundle) {
   const withPure=createPreparedSourceOracle(bundle.code,{registrations,pureBuiltins:true});
   // Metadata is plain source data; copy its realm only, without projections.
   const entries=JSON.parse(JSON.stringify(withPure.getRegistryMetadata().filter(entry=>!before.some(old=>old.name===entry.name))));
-  assert.deepEqual(entries.map(entry=>entry.name),PURE_NAMES,'all and only 27 actual names in source registration order');
+  assert.deepEqual(entries.map(entry=>entry.name),PURE_NAMES,'all and only 28 actual names in source registration order');
   assert(!withPure.getRegistryMetadata().some(entry=>['randomuser','count','scount','bits'].includes(entry.name)));
   for (const {name,metadata} of entries) {
     assert(metadata && metadata.description && metadata.syntax && metadata.category && metadata.examples.length,`actual metadata for ${name}`);
@@ -472,7 +485,7 @@ async function registryEvidence(bundle) {
 }
 
 export async function buildCorpus() {
-  assert.equal(sha256(await readFile(oldOutput)),'bd740c545bb9d220bab003130f4955dc58d9db1cce2832b45bc503fd0b569bf5','old evaluator corpus must remain byte-identical');
+  assert.equal(sha256(await readFile(oldOutput)),'a8bebad938d3107052391ba631f0315dd9054059dae2ce7c3e1b04d56a540e74','evaluator corpus (regenerated from today\'s TypeScript) must remain byte-identical');
   const bundle=await sourceBundle();
   const registryMetadata=await registryEvidence(bundle);
   const oracle=createPreparedSourceOracle(bundle.code,{registrations});
@@ -480,7 +493,7 @@ export async function buildCorpus() {
   await appendActualTestCases(definitions);
   assert(definitions.cases.length>=1000 && definitions.cases.length<=6000,`bounded source corpus: ${definitions.cases.length}`);
   const cases=[];
-  for (const definition of definitions.cases) cases.push({...definition,source:await oracle.execute(definition.input)});
+  for (const definition of definitions.cases) cases.push(await withTwin(oracle,definition,await oracle.execute(definition.input)));
   assertSourceFacts(cases);
   const benchmarks=[];
   for (const definition of benchmarkDefinitions()) {

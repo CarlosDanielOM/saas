@@ -5,9 +5,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
-import ts from '../../../dimabot/node_modules/typescript/lib/typescript.js';
+import ts from 'typescript';
 
-const repo = new URL('../../../', import.meta.url);
+const repo = new URL('../../../../../', import.meta.url);
 const output = new URL('ast_evaluator_cases.json', import.meta.url);
 const base = 'dimabot/src/utils/ast_parser/';
 const modules = ['types', 'evaluator', 'parser', 'tokenizer', 'registry', 'render', 'timer', 'effects'].map(n => `${base}${n}.ts`);
@@ -18,15 +18,15 @@ const usedTests = testNames.map(n => `${base}${n}.test.ts`);
 const sha256 = text => createHash('sha256').update(text).digest('hex');
 // Populated from the reviewed TypeScript sources, never from Rust results.
 const EXPECTED_SOURCE_HASHES = {
-  "dimabot/src/utils/ast_parser/types.ts": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f",
-  "dimabot/src/utils/ast_parser/evaluator.ts": "495aa21379c8b3db36cd4e1c7ce262d1f071014aba1ad6328a66b1de6fd7b4c0",
+  "dimabot/src/utils/ast_parser/types.ts": "f39f2bbb8da1b4dd02ffa3c37c7ed720bf3b9cc91901d539475de6eb99c98c9f",
+  "dimabot/src/utils/ast_parser/evaluator.ts": "de66da8f6207e91cbe7b96f500c9008286be175f68fcfd73acb5418c6d67737d",
   "dimabot/src/utils/ast_parser/parser.ts": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294",
   "dimabot/src/utils/ast_parser/tokenizer.ts": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9",
   "dimabot/src/utils/ast_parser/registry.ts": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93",
   "dimabot/src/utils/ast_parser/render.ts": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa",
   "dimabot/src/utils/ast_parser/timer.ts": "e526adf5867bab0ae77b03366143596b55b77dcf98efbd3849bc6585f053792b",
-  "dimabot/src/utils/ast_parser/effects.ts": "34a56b45cb579eeeb06ad2fcdf6a2b006acb0ae4b6cbe229950be6c777c5693d",
-  "dimabot/src/utils/ast_parser/functions/count.functions.ts": "ad08170f29a9e3d9d7f6f48bea721370eb52d96f58c46d29b7746a210f363117",
+  "dimabot/src/utils/ast_parser/effects.ts": "6209606ee277aa603fbc6f70bdfd8bd468257b5954f8b5f588a89048b7dbfc55",
+  "dimabot/src/utils/ast_parser/functions/count.functions.ts": "e8f85f285d379957e772afe592e543e9474fcf12a9d81206d1d7fa8acc763d62",
   "dimabot/src/utils/ast_parser/functions/delay.functions.ts": "145392681f0ed04544aabe5914df3d4653a4f51ea16683d68253823e5e36fb25",
   "dimabot/src/utils/permissions/roles.ts": "9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20",
   "dimabot/src/utils/ast_parser/arrays.test.ts": "8cf050b9ca6a7850ef5d84521f6085b50e2234d30818b05ccd3a42a88a7a085e",
@@ -169,7 +169,8 @@ function runtimeFactory(code, vm, contextBuiltins = false, options = {}) {
   };
   const sandbox = vm.createContext({
     Math: math,
-    Date: Object.freeze({ parse: text => text === '2026-01-01T00:00:00.000Z' ? 1767225600000 : NaN }),
+    // Date.parse is pure; the real one reads $(ban.time)'s timestamps (and the fixed effect time).
+    Date: Object.freeze({ parse: text => Date.parse(text) }),
     console: { error: (message, detail) => event('console.error', message, detail?.channelID, detail?.error?.message) },
     process: undefined, fetch: undefined, setTimeout: undefined, setInterval: undefined
   });
@@ -373,6 +374,38 @@ export async function sourceLoaderTransport() {
 export async function prepareBenchmark(definition, oracle) { return (oracle ?? await createSourceOracle()).prepareBenchmark(definition); }
 // Pure normalizer from a loader is exported as a convenience without loading TS.
 export function normalizeObservation(raw) { return raw.normalizeObservation(raw); }
+
+// BMP twins (the Rust port counts characters where the TypeScript counts UTF-16 units). A case
+// whose input has a character outside the BMP is also run with each such character replaced by
+// one BMP character of the same general category (case pairs by a BMP case pair), so the Rust
+// test can expect the twin's result with the replacements undone. Ordering comparisons cannot be
+// twinned (no BMP character sorts above U+FFFF); the Rust test checks code-point order for those.
+export const TWINS = [
+  ['\u{1F600}', '☀'], ['\u{1F642}', '☁'], ['\u{1F4A9}', '☂'],
+  ['\u{10000}', 'ꀀ'], ['\u{10428}', 'ӂ'], ['\u{10400}', 'Ӂ'], ['\u{1D7D8}', '٠']
+];
+const TWIN_OF = new Map(TWINS);
+const astralIn = text => [...text].filter(ch => ch.codePointAt(0) > 0xFFFF);
+export function twinInput(input) {
+  const text = JSON.stringify(input);
+  const astral = [...new Set(astralIn(text))];
+  if (!astral.length) return undefined;
+  for (const ch of astral) assert(TWIN_OF.has(ch), `no BMP twin for U+${ch.codePointAt(0).toString(16)}`);
+  const used = astral.map(ch => TWIN_OF.get(ch));
+  for (const [, bmp] of TWINS) assert(!text.includes(bmp), `twin ${bmp} already occurs in the case`);
+  // Case pairs travel together: a case with one of them can produce the other.
+  const map = TWINS.filter(([ch]) => astral.includes(ch) || (ch === '\u{10428}' && astral.includes('\u{10400}')) || (ch === '\u{10400}' && astral.includes('\u{10428}')));
+  const swap = value => typeof value === 'string' ? [...value].map(ch => TWIN_OF.get(ch) ?? ch).join('')
+    : Array.isArray(value) ? value.map(swap)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [swap(k), swap(v)])) : value;
+  assert(used.length);
+  return { map, input: swap(input) };
+}
+export async function withTwin(oracle, definition, source) {
+  const twin = twinInput(definition.input);
+  return twin ? { ...definition, source, twin: { map: twin.map, source: await oracle.execute(twin.input) } } : { ...definition, source };
+}
+const withoutTwins = list => list.map(({ twin, ...rest }) => rest);
 
 const lit = value => ({ type: 'literal', value });
 const fn = (name, ...args) => ({ type: 'function', name, args });
@@ -623,7 +656,7 @@ export async function buildCorpus() {
   for (const definition of definitions) {
     const source = await oracle.execute(definition.input);
     if (definition.invariant) assert.deepEqual(source.value, definition.invariant, `source test invariant ${definition.id}`);
-    cases.push({...definition,source});
+    cases.push(await withTwin(oracle, definition, source));
   }
   const benchmarks = [];
   for (const definition of benchmarkDefinitions()) {
@@ -678,7 +711,7 @@ export async function buildCorpus() {
   assert.deepEqual(plusStripping.source.value,{type:'string',value:'22'},'count strips every plus character');
   const emptyArray = named('builtin-count-typed').find(c=>c.input.context.argument==='7'&&Array.isArray(c.input.host.returnValue)&&c.input.host.returnValue.length===0);
   assert.deepEqual(emptyArray.source.value,{type:'string',value:'10'},'empty array is truthy and must not fall back');
-  assert.equal(sha256(JSON.stringify({cases:cases.slice(0,3386),benchmarks})),'d688c5e2b4bb038f9319b7194ab6a780911952f6b450adaafb4b8b4076c62327','original 3386 source facts and16 benchmarks must remain unchanged');
+  assert.equal(sha256(JSON.stringify({cases:withoutTwins(cases.slice(0,3386)),benchmarks})),'d688c5e2b4bb038f9319b7194ab6a780911952f6b450adaafb4b8b4076c62327','original 3386 source facts and16 benchmarks must remain unchanged');
   for (const c of named('dbuser-utf16-selector')) {
     if (c.id.endsWith('-read-miss')) {
       assert.deepEqual(c.source.value,{type:'string',value:''},'source missing DbUser read is empty text');
@@ -702,7 +735,7 @@ export async function buildCorpus() {
   const keySpread = referenceData(named('commandref-generic-eventdata').find(c=>c.id.endsWith('-object-key-utf16')));
   assert.deepEqual(keySpread.value[0][0],{utf16:[55296]},'object property key stays lossless');
   assert.deepEqual(keySpread.value[2][0],{utf16:[56320]},'low-surrogate object key stays lossless');
-  assert.equal(sha256(JSON.stringify({cases:cases.slice(0,3527),benchmarks})),'ee10b6069889ca3f77a8d877e47f7edafdf42e3d447a73bd9e1aaf3d8ab22482','all original 3527 source facts and16 benchmarks must remain unchanged');
+  assert.equal(sha256(JSON.stringify({cases:withoutTwins(cases.slice(0,3527)),benchmarks})),'ee10b6069889ca3f77a8d877e47f7edafdf42e3d447a73bd9e1aaf3d8ab22482','all original 3527 source facts and16 benchmarks must remain unchanged');
   const tags = new Set();
   function visit(value) { if (!value || typeof value !== 'object') return; if (value.type && typeof value.type === 'string') tags.add(value.type); for (const v of Object.values(value)) visit(v); }
   cases.forEach(c=>visit(c.input.ast));
