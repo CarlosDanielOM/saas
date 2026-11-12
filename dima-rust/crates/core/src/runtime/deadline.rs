@@ -3,8 +3,9 @@
 //! This is the single-process replacement for the reference's "kill the worker process when its
 //! lease is about to expire" (MIGRATION.md section 6, "Single-process cron"): the work runs as a
 //! task; when the deadline passes (or shutdown fires) its token is triggered and the task is
-//! aborted, and [`run_with_deadline`] returns only once the task, and any blocking work it started
-//! through its [`WorkScope`], has really finished. If that takes longer than the grace period it
+//! aborted, and [`run_with_deadline`] returns only once the task, any blocking work it started
+//! through its [`WorkScope`], and the work of `run_with_deadline` calls nested under
+//! [`WorkScope::token`], has really finished. If that takes longer than the grace period it
 //! returns [`DeadlineError::Unstoppable`]: the caller must then exit the process (non-zero), since
 //! the work may still be running and nothing else may take it over.
 //!
@@ -30,7 +31,6 @@ use std::future::Future;
 use std::time::Duration;
 use tokio::task::{AbortHandle, JoinError};
 use tokio::time::Instant;
-use tokio_util::task::TaskTracker;
 
 /// The time allowed for a unit of work, and for it to stop afterwards.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,8 +44,8 @@ pub struct Deadline {
 /// What the work gets to cooperate with its deadline.
 #[derive(Clone, Debug)]
 pub struct WorkScope {
+    /// A child of the caller's token, carrying this call's own registry.
     token: Shutdown,
-    tracker: TaskTracker,
 }
 
 impl WorkScope {
@@ -63,7 +63,7 @@ impl WorkScope {
         R: Send + 'static,
     {
         let hold = self.token.registry().map(WorkRegistry::hold);
-        self.tracker.spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             let _hold = hold;
             f()
         })
@@ -141,15 +141,16 @@ where
         return Err(DeadlineError::ShutDown);
     }
     let started = Instant::now();
-    let token = shutdown.child();
-    let tracker = TaskTracker::new();
+    // This call's own registry, nested in the caller's: it holds the task, the blocking work it
+    // starts and the work of calls nested inside it, and every entry also counts for the caller.
+    let registry = WorkRegistry::nested(shutdown.registry());
+    let token = shutdown.child().with_registry(&registry);
     let scope = WorkScope {
         token: token.clone(),
-        tracker: tracker.clone(),
     };
-    let hold = shutdown.registry().map(WorkRegistry::hold);
+    let hold = registry.hold();
     // `work` is called inside the task, so a panic while building the future is contained too.
-    let mut handle = tracker.spawn(async move {
+    let mut handle = tokio::spawn(async move {
         let _hold = hold;
         work(scope).await
     });
@@ -157,7 +158,6 @@ where
         token: token.clone(),
         task: handle.abort_handle(),
     };
-    tracker.close();
 
     let stopped = tokio::select! {
         biased;
@@ -177,13 +177,11 @@ where
     if stopped.is_err() {
         stop.task.abort();
     }
-    if tokio::time::timeout(deadline.grace, tracker.wait())
+    if tokio::time::timeout(deadline.grace, registry.wait())
         .await
         .is_err()
     {
-        if let Some(registry) = shutdown.registry() {
-            registry.report_unstoppable();
-        }
+        registry.report_unstoppable();
         return Err(DeadlineError::Unstoppable);
     }
     match stopped? {
@@ -414,6 +412,38 @@ mod tests {
         assert!(
             start.elapsed() >= Duration::from_millis(300),
             "returned before the work stopped"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_outer_deadline_waits_for_nested_work() {
+        let finished = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&finished);
+        let outer = Deadline {
+            limit: Duration::from_millis(50),
+            grace: Duration::from_secs(5),
+        };
+        let inner = Deadline {
+            limit: Duration::from_secs(3600),
+            grace: Duration::from_secs(5),
+        };
+        // No registry on the root token: the outer call itself must join the nested work.
+        let result = run_with_deadline(&Shutdown::new(), outer, move |scope| async move {
+            let _ = run_with_deadline(scope.token(), inner, move |scope| async move {
+                let _ = scope
+                    .spawn_blocking(move || {
+                        std::thread::sleep(Duration::from_millis(300));
+                        flag.store(true, Ordering::SeqCst);
+                    })
+                    .await;
+            })
+            .await;
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::TimedOut));
+        assert!(
+            finished.load(Ordering::SeqCst),
+            "reported stopped while nested work was still running"
         );
     }
 

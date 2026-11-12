@@ -10,6 +10,10 @@
 //! [`Supervisor`](super::Supervisor) for each run of a worker) waits on the registry, which does
 //! not live inside any future that can be cancelled.
 //!
+//! Registries nest: each `run_with_deadline` call keeps its own, inside the caller's, so an entry
+//! counts at every level. An outer call therefore waits for work started by calls nested inside
+//! it, and the owner at the top waits for all of it.
+//!
 //! The registry also records when `run_with_deadline` gave up on work it could not stop
 //! ([`DeadlineError::Unstoppable`](super::DeadlineError::Unstoppable)), whatever the caller then
 //! does with that error, so the owner can treat it as fatal.
@@ -30,12 +34,14 @@ pub struct WorkRegistry(Arc<Inner>);
 struct Inner {
     tracker: TaskTracker,
     unstoppable: CancellationToken,
+    parent: Option<WorkRegistry>,
 }
 
-/// An entry in a [`WorkRegistry`]: the work counts as running while this is alive.
+/// An entry in a [`WorkRegistry`] and in every registry it is nested in: the work counts as
+/// running while this is alive.
 #[derive(Debug)]
 pub(crate) struct WorkHold {
-    _token: TaskTrackerToken,
+    _tokens: Vec<TaskTrackerToken>,
 }
 
 impl WorkRegistry {
@@ -44,10 +50,27 @@ impl WorkRegistry {
         Self::default()
     }
 
-    /// Registers one piece of work until the returned hold is dropped.
+    /// A register inside `parent` (if any): what is registered here also counts there.
+    pub(crate) fn nested(parent: Option<&WorkRegistry>) -> Self {
+        Self(Arc::new(Inner {
+            parent: parent.cloned(),
+            ..Inner::default()
+        }))
+    }
+
+    /// This registry and the ones it is nested in, innermost first.
+    fn chain(&self) -> impl Iterator<Item = &WorkRegistry> {
+        std::iter::successors(Some(self), |registry| registry.0.parent.as_ref())
+    }
+
+    /// Registers one piece of work, here and in every enclosing registry, until the returned hold
+    /// is dropped.
     pub(crate) fn hold(&self) -> WorkHold {
         WorkHold {
-            _token: self.0.tracker.token(),
+            _tokens: self
+                .chain()
+                .map(|registry| registry.0.tracker.token())
+                .collect(),
         }
     }
 
@@ -56,9 +79,12 @@ impl WorkRegistry {
         self.0.tracker.len()
     }
 
-    /// Records that registered work did not stop within its grace period.
+    /// Records, here and in every enclosing registry, that registered work did not stop within
+    /// its grace period.
     pub(crate) fn report_unstoppable(&self) {
-        self.0.unstoppable.cancel();
+        for registry in self.chain() {
+            registry.0.unstoppable.cancel();
+        }
     }
 
     /// Whether registered work was reported unstoppable: it may still be running, and nothing
