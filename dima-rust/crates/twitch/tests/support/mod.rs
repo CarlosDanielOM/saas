@@ -367,6 +367,26 @@ pub async fn twitch_mock(
     Ok(server)
 }
 
+/// Starts the mock with the stateful token endpoint, whose answer to the `n`-th token request
+/// (0-based) is held back by `delay(n)` (Twitch has processed it by then: a refresh token is
+/// consumed when the request arrives, as on Twitch). Helix answers by `helix_ok`.
+pub async fn twitch_mock_delayed(
+    state: Shared,
+    delay: impl Fn(usize) -> Duration + Send + Sync + 'static,
+) -> Result<MockServer> {
+    let server = MockServer::start().await?;
+    let seen = std::sync::atomic::AtomicUsize::new(0);
+    server.fallback(move |request| {
+        if request.path() == "/oauth2/token" {
+            let n = seen.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            token_endpoint(request, &state).delay(delay(n))
+        } else {
+            helix_ok(request, &state)
+        }
+    });
+    Ok(server)
+}
+
 fn token_endpoint(request: &RecordedRequest, state: &Shared) -> MockResponse {
     let fields = form(&request.body_text());
     let get = |name: &str| {
@@ -577,6 +597,39 @@ pub fn assert_no_secrets(events: &RecordingEvents, secrets: &[&str]) {
             secret.len()
         );
     }
+}
+
+/// Waits until `check` holds (looked at every 10 ms, for up to 30 s so a busy machine cannot
+/// fail it); fails naming `what` otherwise.
+pub async fn eventually<F, Fut>(what: &str, mut check: F) -> Result<()>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<bool>>,
+{
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        if check().await? {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            bail!("timed out waiting until {what}");
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+/// Whether `key` exists.
+pub async fn key_exists(stores: &Stores, key: &str) -> Result<bool> {
+    Ok(stores.dragonfly.exists(&[key]).await? == 1)
+}
+
+/// Waits until the exchange marker of `id` is gone (it expires after an ambiguous exchange).
+pub async fn marker_gone(stores: &Stores, id: &str) -> Result<()> {
+    let key = &stores.keys.exchange_marker(id);
+    eventually("the exchange marker expired", move || async move {
+        Ok(!key_exists(stores, key).await?)
+    })
+    .await
 }
 
 /// `{"data": [...]}` helper for Helix answers.

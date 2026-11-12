@@ -56,17 +56,20 @@ enum Exchange {
         refresh: RefreshToken,
         expires_in: f64,
     },
-    /// Twitch refused (a 4xx or 5xx answer, or a 2xx with an `error` field).
+    /// Twitch refused (a 4xx or 5xx answer, or a 2xx with an `error` field), and no attempt of
+    /// this exchange may have been processed without an answer: the refusal is about the
+    /// token sent.
     Refused {
         kind: RefreshFailureKind,
         reason: RefreshFailureReason,
         status: u16,
     },
-    /// No usable answer (network, unparseable, incomplete). `uncertain` when Twitch may have
-    /// processed the request (a lost answer, a 2xx that could not be read).
+    /// No usable answer, or a refusal that proves nothing. `ambiguous` when Twitch may have
+    /// processed one of the attempts (a lost answer, a 5xx, a 2xx that could not be read): the
+    /// outcome is unknown, so the marker is left to expire and nothing is wiped (review F3).
     Failed {
         outcome: RefreshOutcome,
-        uncertain: bool,
+        ambiguous: bool,
     },
 }
 
@@ -219,7 +222,8 @@ impl Inner {
         user_id: &str,
         context: &RefreshContext,
     ) -> Exchange {
-        let (answer, uncertain) = self.post_refresh(refresh_token, user_id, context).await;
+        let crate::oauth::Attempts { answer, ambiguous } =
+            self.post_refresh(refresh_token, user_id, context).await;
         let Some(answer) = answer else {
             self.refresh_log(
                 Level::Error,
@@ -240,7 +244,7 @@ impl Inner {
                     None,
                     RefreshFailureReason::Network,
                 ),
-                uncertain,
+                ambiguous,
             };
         };
         let status = answer.status;
@@ -271,7 +275,7 @@ impl Inner {
                         RefreshFailureReason::Unparseable,
                     ),
                     // A 2xx that cannot be read may carry a rotation that is now lost.
-                    uncertain: (200..300).contains(&status),
+                    ambiguous: ambiguous || (200..300).contains(&status),
                 };
             }
         };
@@ -297,10 +301,37 @@ impl Inner {
                     "reason": reason.as_str(),
                 }),
             );
-            return Exchange::Refused {
-                kind,
-                reason,
-                status,
+            if !ambiguous {
+                return Exchange::Refused {
+                    kind,
+                    reason,
+                    status,
+                };
+            }
+            // Review F3: an earlier attempt may have been processed, so this refusal may be
+            // about a token Twitch rotated then. Nothing is invalidated; the next refresh, which
+            // starts clean, decides.
+            let reason = if kind == RefreshFailureKind::Permanent {
+                self.refresh_log(
+                    Level::Warn,
+                    Destination::Both,
+                    user_id,
+                    context,
+                    json!({
+                        "function": "refreshTwitchToken",
+                        "userId": user_id,
+                        "action": "token_refresh_inconclusive",
+                        "status": status,
+                        "reason": "an earlier attempt of this exchange may have reached Twitch; the refusal can be about a token Twitch had just rotated, so nothing is invalidated",
+                    }),
+                );
+                RefreshFailureReason::Inconclusive
+            } else {
+                reason
+            };
+            return Exchange::Failed {
+                outcome: failure(RefreshFailureKind::Transient, Some(status), reason),
+                ambiguous: true,
             };
         }
 
@@ -333,7 +364,7 @@ impl Inner {
                     Some(status),
                     RefreshFailureReason::IncompletePayload,
                 ),
-                uncertain: true,
+                ambiguous: true,
             };
         };
         let access = AccessToken::from_secret(access);
@@ -533,7 +564,7 @@ impl Inner {
             } => Ok(failure(kind, Some(status), reason)),
             Exchange::Failed {
                 outcome,
-                uncertain: true,
+                ambiguous: true,
             } => {
                 // Twitch may have rotated the token and the answer is lost: the marker stays
                 // until it expires, so no refusal in the meantime is blamed on the stored token.
@@ -1100,8 +1131,8 @@ impl Inner {
                         reason,
                         status,
                     } => return Ok(failure(kind, Some(status), reason)),
-                    Exchange::Failed { outcome, uncertain } => {
-                        if uncertain {
+                    Exchange::Failed { outcome, ambiguous } => {
+                        if ambiguous {
                             // The cache's token may have been consumed and its answer lost.
                             self.abandon_marker(lease);
                         }

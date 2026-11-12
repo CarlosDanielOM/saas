@@ -17,8 +17,9 @@
 //!   after the request may have reached Twitch, or the holder died): within that time a
 //!   rejection cannot be blamed on the stored token, so nothing is wiped.
 //!
-//! A permanent refusal therefore wipes only when the refused token is still the stored one and
-//! the marker is still the holder's own (no other exchange was or may be in flight).
+//! A permanent refusal therefore wipes only when the refused token is still the stored one, the
+//! marker is still the holder's own (no other exchange was or may be in flight) and no earlier
+//! attempt of the same exchange may have been processed without an answer (review F3).
 
 use crate::base::Inner;
 use crate::error::TwitchError;

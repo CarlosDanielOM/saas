@@ -111,6 +111,10 @@ pub enum RefreshFailureReason {
     ExchangeInFlight,
     /// MongoDB holds no refresh token for the streamer: nothing was sent.
     NoRefreshToken,
+    /// Twitch refused the token for good, but an earlier attempt of the same exchange may have
+    /// been processed (review F3): the refusal can be about a token Twitch had just rotated, so
+    /// nothing was invalidated. The next refresh decides.
+    Inconclusive,
 }
 
 impl RefreshFailureReason {
@@ -133,6 +137,7 @@ impl RefreshFailureReason {
             Self::Interrupted => "interrupted",
             Self::ExchangeInFlight => "exchange_in_flight",
             Self::NoRefreshToken => "no_refresh_token",
+            Self::Inconclusive => "inconclusive_refusal",
         }
     }
 
@@ -157,6 +162,9 @@ impl RefreshFailureReason {
             Self::Interrupted => "The refresh was interrupted",
             Self::ExchangeInFlight => "Another refresh of this streamer is in flight",
             Self::NoRefreshToken => "The streamer has no stored refresh token",
+            Self::Inconclusive => {
+                "Twitch refused the refresh token after an earlier attempt may have used it; nothing was invalidated"
+            }
         }
     }
 }
@@ -548,6 +556,18 @@ pub(crate) struct TokenAnswer {
     pub(crate) body: Zeroizing<Vec<u8>>,
 }
 
+/// The attempts of one refresh exchange.
+pub(crate) struct Attempts {
+    /// The last attempt's answer, when it got one.
+    pub(crate) answer: Option<TokenAnswer>,
+    /// An attempt **may have been processed by Twitch without a usable answer** (review F3): a
+    /// request that failed after it may have reached Twitch, or an answer of 500 or more (a
+    /// gateway can answer so after Twitch's token service rotated the token). Twitch may then
+    /// have consumed the token sent, so a later refusal of the same token proves nothing. Set
+    /// by the attempt that ended so and never cleared by a later one.
+    pub(crate) ambiguous: bool,
+}
+
 impl Inner {
     /// One POST of a token form; the answer's status and body text. A refresh exchange goes
     /// through the exchange client and lives until the drain ends (see `crate::drain`); the
@@ -577,15 +597,22 @@ impl Inner {
     }
 
     /// The reference's refresh loop: up to [`crate::Timings::refresh_attempts`] attempts, a
-    /// failed or 5xx attempt retried after 400 ms then 900 ms. `None` when no attempt got an
-    /// answer (each failure is logged as `token_refresh_attempt_failed`). The flag says whether
-    /// a failed attempt may have reached Twitch (its outcome is then unknown).
+    /// failed or 5xx attempt retried after 400 ms then 900 ms. No answer when no attempt got
+    /// one (each failure is logged as `token_refresh_attempt_failed`). [`Attempts::ambiguous`]
+    /// says whether an attempt may have been processed by Twitch without a usable answer.
+    ///
+    /// **A retry after an ambiguous attempt is kept** (review F3): sent again, the same token
+    /// either rotates (Twitch had not processed the first request: the streamer is served at
+    /// once), or is refused (Twitch had rotated it and the answer is lost whatever happens; the
+    /// refusal is then inconclusive and wipes nothing, see `refresh.rs`), or fails again
+    /// (nothing changes). The exchange marker stays this holder's throughout, so no other
+    /// exchange interleaves.
     pub(crate) async fn post_refresh(
         &self,
         refresh_token: &RefreshToken,
         user_id: &str,
         context: &RefreshContext,
-    ) -> (Option<TokenAnswer>, bool) {
+    ) -> Attempts {
         let timings = &self.config.timings;
         let attempts = timings.refresh_attempts.max(1);
         let pairs = [
@@ -595,12 +622,17 @@ impl Inner {
             ("refresh_token", refresh_token.expose()),
         ];
         let mut answer = None;
-        let mut uncertain = false;
+        let mut ambiguous = false;
         for attempt in 0..attempts {
             answer = match self.post_token_form(&pairs, true).await {
-                Ok(answer) => Some(answer),
+                Ok(answer) => {
+                    ambiguous |= answer.status >= 500;
+                    Some(answer)
+                }
                 Err(error) => {
-                    uncertain |= may_have_reached_twitch(error.class());
+                    // A request cancelled by the end of the drain counts as reached: it may
+                    // have been sent.
+                    ambiguous |= may_have_reached_twitch(error.class());
                     self.log(
                         Level::Warn,
                         Destination::Both,
@@ -633,7 +665,7 @@ impl Inner {
                 () = tokio::time::sleep(pause) => {}
             }
         }
-        (answer, uncertain)
+        Attempts { answer, ambiguous }
     }
 
     /// `client_credentials` exchange (no retry, as in the reference).

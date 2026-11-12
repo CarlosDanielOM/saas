@@ -340,7 +340,10 @@ async fn a_5xx_is_retried_three_times_and_changes_nothing() -> Result<()> {
             decrypt_field(&stored_account(&stores, "u1").await?, "refresh_token").as_deref(),
             Some("u1-refresh-0")
         );
-        // The next call refreshes for real (the fourth request is answered by the state).
+        // A 5xx may come after Twitch rotated the token (review F3): the exchange's outcome is
+        // unknown, so its marker is left to expire. Then the next call refreshes for real (the
+        // fourth request is answered by the state).
+        marker_gone(&stores, "u1").await?;
         let token = process.twitch.streamer_token("u1", None, "test").await?;
         assert_eq!(token.expose(), "u1-access-1");
         Ok(())

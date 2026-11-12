@@ -44,7 +44,12 @@
 //!
 //! Twitch's answer is classified ([`crate::oauth`]): a 400 or 401 whose message says the
 //! refresh token is invalid or revoked is **permanent**; anything else is transient and changes
-//! nothing. On a permanent refusal MongoDB is read again: if the stored refresh token is no
+//! nothing. A permanent refusal that follows an **ambiguous attempt** of the same exchange (a
+//! request that may have reached Twitch without a usable answer: a lost answer, a 5xx, a 2xx
+//! that could not be read) is inconclusive (review F3): Twitch may have rotated the token on
+//! that attempt, so nothing is wiped, permissions stay, the marker is left to expire and the
+//! next refresh, which starts clean, decides ([`RefreshFailureReason::Inconclusive`]). On any
+//! other permanent refusal MongoDB is read again: if the stored refresh token is no
 //! longer the refused one, another refresh rotated it and its access token is used when it has
 //! more than 60 s left (otherwise the call fails without touching anything). If it is the same
 //! but the exchange marker is no longer this refresh's own, the refusal is inconclusive (another

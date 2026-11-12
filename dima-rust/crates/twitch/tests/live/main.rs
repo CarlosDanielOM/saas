@@ -5,6 +5,7 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+mod ambiguous;
 mod concurrency;
 mod deadlines;
 mod directory;
