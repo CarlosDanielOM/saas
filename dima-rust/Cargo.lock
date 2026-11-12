@@ -1859,6 +1859,7 @@ dependencies = [
  "anyhow",
  "bson",
  "dima-core",
+ "dima-events",
  "dima-http",
  "dima-model",
  "dima-store",
