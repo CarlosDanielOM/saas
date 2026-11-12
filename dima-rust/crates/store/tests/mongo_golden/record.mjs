@@ -347,6 +347,25 @@ const cases = [
         { updateMany: { filter: { _id: 'pb2' }, update: { $set: { dueAt: 2 } }, upsert: true } },
     ] },
 
+    // ---- numbers: every JavaScript number is written by the Node BSON writer (int32 when integral
+    // and in range, double otherwise), whatever BSON type the Rust caller starts from.
+    { name: 'numbers_create_boundaries', schema: 'camel', op: 'create', doc: {
+        count: 2147483647, score: 2147483648, rank: -2147483649, nested: { b: Number.MAX_SAFE_INTEGER },
+        blob: { a: 2 ** 53, b: 2 ** 53 + 2, c: -0, d: 0.5, e: 1, f: -2147483648, g: 1e21, h: -(2 ** 53), arr: [1, 2.5, 2 ** 31, [0, -1]] },
+        items: [{ n: 2 ** 32 }], tags: ['1'],
+    } },
+    { name: 'numbers_update_boundaries', schema: 'camel', seed: [camelSeed()], op: 'updateOne', filter: { _id: oid1, count: 5 },
+        update: { $set: { score: 2 ** 53, 'nested.b': -0, blob: { x: 4294967296, y: [2147483648, -0.5] } }, $inc: { count: 2147483648 }, $max: { rank: 7 }, $mul: { 'items.0.n': 1.5 } } },
+    { name: 'numbers_upsert_filter', schema: 'plain', op: 'updateOne', filter: { _id: 'pn', dueAt: 1700000000000 }, update: { $set: { 'state.seq': 2147483648, payload: { n: 3, m: 2 ** 53 } } }, options: { upsert: true } },
+    { name: 'numbers_upsert_empty_update_filter', schema: 'plain', op: 'updateOne', filter: { _id: 'pq', dueAt: 2147483647, label: 'x' }, update: {}, options: { upsert: true } },
+    { name: 'numbers_find_one_and_update', schema: 'plain', seed: [plainSeed()], op: 'findOneAndUpdate', filter: { _id: 'p1', dueAt: 1700000000000 }, update: { $inc: { dueAt: 1, 'state.seq': -2147483649 } }, options: { new: true } },
+    { name: 'numbers_bulk', schema: 'plain', op: 'bulkWrite', ops: [
+        { updateOne: { filter: { _id: 'pk1', dueAt: 1 }, update: { $set: { 'state.seq': 2 ** 40 } }, upsert: true } },
+        { insertOne: { document: { _id: 'pk2', dueAt: 1700000000000, payload: [1, 1.5, -0] } } },
+    ] },
+    { name: 'numbers_insert_many', schema: 'plain', op: 'insertMany', docs: [{ _id: 'pm3', dueAt: 2147483648, state: { seq: 1 } }] },
+    { name: 'numbers_save', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'score', value: 2147483648 }, { set: 'blob', value: { n: 1, m: 2 ** 53 + 2, z: -0 } }, { push: 'items', values: [{ n: 4294967296 }] }] },
+
     // ---- save of a loaded document
     { name: 'save_no_change', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [] },
     { name: 'save_scalar', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, changes: [{ set: 'score', value: 7 }, { set: 'name', value: '  renamed ' }] },

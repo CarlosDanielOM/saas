@@ -22,13 +22,17 @@
 //!   `$each`;
 //! - an operator left empty is removed; an update left empty is not sent at all
 //!   (`Ok(None)`), except an upsert with a filter, which becomes `{$setOnInsert: <filter>}`;
-//! - a pipeline update only gets a trailing `{$set: {<updatedAt>: now}}` stage.
+//! - a pipeline update only gets a trailing `{$set: {<updatedAt>: now}}` stage;
+//! - every number in the filter, the update and the array filters is typed as the Node BSON
+//!   writer types a JavaScript number ([`crate::mongo::number::js_number`]), whatever BSON type
+//!   the caller used: an int64 `5` or a double `5.0` goes out as int32 `5`.
 //!
 //! Not covered: `overwrite`/`replaceOne` (no Mongoose call site), `timestamps: false` per query
 //! (none in the reference), dotted timestamp names, and casting of filter values (callers build
 //! filters with the right BSON types; see [`crate::mongo::id`]).
 
 use crate::mongo::cast::{Caster, PrepareError, WriteContext, get_path, truthy};
+use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Leaf, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
 use mongodb::options::{ReturnDocument, UpdateModifications};
@@ -86,6 +90,15 @@ pub enum UpdateDoc {
 }
 
 impl UpdateDoc {
+    /// Every number typed as the Node BSON writer types a JavaScript number.
+    fn node_numbers(mut self) -> Self {
+        match &mut self {
+            Self::Document(document) => normalize_js_numbers(document),
+            Self::Pipeline(stages) => stages.iter_mut().for_each(normalize_js_numbers),
+        }
+        self
+    }
+
     /// The operator document, if this is one.
     pub fn as_document(&self) -> Option<&Document> {
         match self {
@@ -104,13 +117,16 @@ impl From<UpdateDoc> for UpdateModifications {
     }
 }
 
-/// The options that change the update document.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The options that change what is sent.
+#[derive(Clone, Debug, PartialEq)]
 pub struct UpdateOptions {
     /// `upsert: true`.
     pub upsert: bool,
     /// Mongoose's `setDefaultsOnInsert` (on unless a call turns it off).
     pub set_defaults_on_insert: bool,
+    /// `arrayFilters`, as the caller writes them; the prepared update carries them as they
+    /// are sent.
+    pub array_filters: Option<Vec<Document>>,
 }
 
 impl Default for UpdateOptions {
@@ -118,6 +134,7 @@ impl Default for UpdateOptions {
         Self {
             upsert: false,
             set_defaults_on_insert: true,
+            array_filters: None,
         }
     }
 }
@@ -130,13 +147,23 @@ impl UpdateOptions {
             ..Self::default()
         }
     }
+
+    /// The same options with `arrayFilters`.
+    pub fn array_filters(mut self, filters: Vec<Document>) -> Self {
+        self.array_filters = Some(filters);
+        self
+    }
 }
 
 /// A prepared update.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedUpdate {
+    /// The filter to send (numbers typed as Node types them).
+    pub filter: Document,
     /// What to send.
     pub update: UpdateDoc,
+    /// The `arrayFilters` to send, when the caller gave some.
+    pub array_filters: Option<Vec<Document>>,
     /// Paths strict mode dropped (unknown to the schema). Empty when the caller's update only
     /// names schema paths, which is what a Rust caller should always do.
     pub dropped_paths: Vec<String>,
@@ -151,6 +178,7 @@ pub fn prepare_update(
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<Option<PreparedUpdate>, PrepareError> {
+    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
     let prepared = match update.into() {
         Update::Pipeline(stages) => {
@@ -174,7 +202,9 @@ pub fn prepare_update(
         }
     };
     Ok(Some(PreparedUpdate {
-        update: prepared,
+        filter: filter.clone(),
+        update: prepared.node_numbers(),
+        array_filters: node_array_filters(options.array_filters),
         dropped_paths: caster.dropped,
     }))
 }
@@ -203,9 +233,13 @@ impl From<Returned> for ReturnDocument {
 /// A prepared `findOneAndUpdate`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedFindAndModify {
+    /// The filter to send.
+    pub filter: Document,
     /// What to send, or `None` when Mongoose runs a plain `findOne` instead (empty update
     /// without upsert).
     pub update: Option<UpdateDoc>,
+    /// The `arrayFilters` to send, when the caller gave some.
+    pub array_filters: Option<Vec<Document>>,
     /// Which document the call returns; pass [`PreparedFindAndModify::return_document`] to the
     /// driver (rule 29).
     pub returned: Returned,
@@ -231,6 +265,7 @@ pub fn prepare_find_one_and_update(
     returned: Returned,
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, PrepareError> {
+    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
     let prepared = match update.into() {
         Update::Pipeline(stages) => {
@@ -259,7 +294,9 @@ pub fn prepare_find_one_and_update(
         }
     };
     Ok(PreparedFindAndModify {
-        update: prepared,
+        filter: filter.clone(),
+        update: prepared.map(UpdateDoc::node_numbers),
+        array_filters: node_array_filters(options.array_filters),
         returned,
         upsert: options.upsert,
         dropped_paths: caster.dropped,
@@ -286,6 +323,7 @@ pub fn prepare_bulk_update(
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, PrepareError> {
+    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
     let prepared = match update.into() {
         Update::Pipeline(stages) => {
@@ -320,9 +358,23 @@ pub fn prepare_bulk_update(
         }
     };
     Ok(PreparedUpdate {
-        update: prepared,
+        filter: filter.clone(),
+        update: prepared.node_numbers(),
+        array_filters: node_array_filters(options.array_filters),
         dropped_paths: caster.dropped,
     })
+}
+
+fn node_array_filters(filters: Option<Vec<Document>>) -> Option<Vec<Document>> {
+    filters.map(|filters| filters.iter().map(node_filter).collect())
+}
+
+/// The filter with its numbers typed as Node sends them (an upsert copies its equality fields
+/// into the new document, so their types are stored).
+fn node_filter(filter: &Document) -> Document {
+    let mut filter = filter.clone();
+    normalize_js_numbers(&mut filter);
+    filter
 }
 
 /// `decorateUpdateWithVersionKey`: an upsert that does not set the version key gets

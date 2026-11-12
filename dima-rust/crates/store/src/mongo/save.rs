@@ -19,6 +19,8 @@
 //!   filter; changing a path inside an array element adds `__v` to the filter only;
 //! - with `minimize`, an object that is empty after removing its empty objects is moved from
 //!   `$set` to `$unset` (appended last);
+//! - every number in the filter and the update is typed as the Node BSON writer types a
+//!   JavaScript number (a loaded int64 `__v` goes into the filter as int32);
 //! - nothing to write: `Ok(None)`, no command at all.
 //!
 //! Hooks are not part of this: the `pre('save')` hooks of `admins`, `events`, `clipdesigns`,
@@ -29,6 +31,7 @@
 use crate::mongo::cast::{
     Caster, PrepareError, WriteContext, deep_equal, get_path, remove_path, set_path,
 };
+use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Field, Kind, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
 
@@ -271,6 +274,8 @@ pub fn prepare_save(
     if schema.minimize {
         minimize_update(schema, &mut update);
     }
+    normalize_js_numbers(&mut filter);
+    normalize_js_numbers(&mut update);
     Ok(Some(PreparedSave {
         filter,
         update,

@@ -11,10 +11,12 @@
 //! | [`InsertStyle::InsertMany`] | each = now unless given | always `0` | `__v`, then timestamps |
 //! | [`InsertStyle::BulkInsertOne`] | each = now unless given | `0` unless given | timestamps, then `__v` |
 //!
-//! `minimize` removes empty objects (not arrays, not Maps, and not an object inside an array,
+//! Every number is typed as the Node BSON writer types a JavaScript number, whatever BSON type
+//! the caller used. `minimize` removes empty objects (not arrays, not Maps, and not an object inside an array,
 //! which is kept even when emptied).
 
 use crate::mongo::cast::{Caster, PrepareError, WriteContext, minimize, truthy};
+use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::Schema;
 use bson::{Bson, Document};
 
@@ -90,6 +92,7 @@ pub fn prepare_insert(
             minimize(schema, &mut doc);
         }
     }
+    normalize_js_numbers(&mut doc);
     Ok(PreparedInsert {
         document: doc,
         dropped_paths: caster.dropped,
