@@ -79,7 +79,7 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         Some(SecretString::from("t")),
     );
     let clock = Arc::new(ManualClock::new(1_793_000_000_000));
-    let credits = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
+    let credits = CreditsCache::new(dragonfly.clone(), clock.clone(), Arc::new(NoopObserver));
     let sink = Sink::default();
     let random = support::ZeroRandom;
     let ingest = Ingest {
@@ -88,6 +88,7 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         credits: &credits,
         sink: &sink,
         random: &random,
+        clock: clock.as_ref(),
         observer: &NoopObserver,
     };
     let channel = support::channel_id();
@@ -159,18 +160,21 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
     assert_eq!(llen(queue.clone()).await, 1);
     assert_eq!(server.requests().len(), 2);
 
-    // Batch with an incomplete answer: both stay queued; the next batch resends all and trims.
+    // Batch with an incomplete answer: Polar stored some of them, which is an unknown outcome
+    // (item 1 of P2-BILLING-01b): the batch stays in the processing list; the next batch
+    // resends it with the new event and acknowledges all three.
     server.push(MockResponse::json(200, r#"{"inserted":1,"duplicates":0}"#));
     let outcome = ingest
         .ingest_usage(&usage(&channel, "aiu_batch_1"), IngestMode::Batch)
         .await;
     assert_eq!(
         outcome,
-        IngestOutcome::Failed {
+        IngestOutcome::OutcomeUnknown {
             message: "PolarSH ingest incomplete".into()
         }
     );
-    assert_eq!(llen(queue.clone()).await, 2);
+    assert_eq!(llen(queue.clone()).await, 0);
+    assert_eq!(llen(format!("{queue}:processing")).await, 2);
     server.push(MockResponse::json(200, r#"{"inserted":2,"duplicates":1}"#));
     assert_eq!(
         ingest
@@ -188,6 +192,7 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         .collect();
     assert_eq!(ids, ["aiu_cached", "aiu_batch_1", "aiu_batch_2"]);
     assert_eq!(llen(queue.clone()).await, 0);
+    assert_eq!(llen(format!("{queue}:processing")).await, 0);
     assert!(
         dragonfly
             .get_text(&format!("locks:polar-ingest:{channel}"))
@@ -306,7 +311,7 @@ async fn an_ambiguous_answer_reaches_the_caller_as_an_unknown_outcome() {
         Some(SecretString::from("t")),
     );
     let clock = Arc::new(ManualClock::new(1_793_000_000_000));
-    let credits = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
+    let credits = CreditsCache::new(dragonfly.clone(), clock.clone(), Arc::new(NoopObserver));
     let sink = Sink::default();
     let random = support::ZeroRandom;
     let ingest = Ingest {
@@ -315,6 +320,7 @@ async fn an_ambiguous_answer_reaches_the_caller_as_an_unknown_outcome() {
         credits: &credits,
         sink: &sink,
         random: &random,
+        clock: clock.as_ref(),
         observer: &NoopObserver,
     };
     let channel = support::channel_id();

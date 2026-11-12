@@ -76,9 +76,10 @@ async fn grant_in_a_process(server: &MockServer, seed: u64, input: &GrantInput) 
             .unwrap(),
         Some(SecretString::from("t")),
     );
+    let clock = ManualClock::new(1_793_000_000_000);
     let credits = CreditsCache::new(
         dragonfly.clone(),
-        Arc::new(ManualClock::new(1_793_000_000_000)),
+        Arc::new(clock.clone()),
         Arc::new(NoopObserver),
     );
     let random = SeededRandom::new(seed);
@@ -88,6 +89,7 @@ async fn grant_in_a_process(server: &MockServer, seed: u64, input: &GrantInput) 
         credits: &credits,
         sink: &NoSink,
         random: &random,
+        clock: &clock,
         observer: &NoopObserver,
     };
     ingest.grant_ai_credits(input).await

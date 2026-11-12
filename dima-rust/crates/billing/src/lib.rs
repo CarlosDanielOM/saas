@@ -40,7 +40,9 @@
 //! flags `twitch:{id}:ai:exhaust` and `{id}:ai:exhaust`, `twitch:{id}:ai:credits:plan-version`,
 //! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:usage-local:*`,
 //! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`. Drained (money):
-//! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop. The
+//! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
+//! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
+//! cutover (an operator reviews `…:dead`, which is never trimmed: [`polar::flush`]). The
 //! exhaustion flags rebuild lazily (on the next credit read or usage), so the cutover step should
 //! copy them or warm them for active channels.
 //!
@@ -61,6 +63,12 @@
 //!   `undefined`, which the SDK refuses in immediate mode ([`polar::accounting_metadata`]).
 //! - Immediate ingest does not read Dragonfly before sending (the reference failed the whole call
 //!   when Dragonfly was down at its start).
+//! - The usage queue is flushed in bounded batches under a fenced lease, acknowledged by the
+//!   items claimed; an event Polar refuses for good moves to a dead-letter list instead of
+//!   blocking its channel ([`polar::flush`]).
+//! - A grant's identity is the caller's operation id ([`polar::OperationId`]), never drawn per
+//!   call; a write whose outcome is unknown is reported as such ([`polar::IngestOutcome`]).
+//! - Lists are read to the end within a bound ([`polar::MAX_LIST_PAGES`]).
 //! - A product whose `name` is truthy but not text is malformed ([`credit_packs`]).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
