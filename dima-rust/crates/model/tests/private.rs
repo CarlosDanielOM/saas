@@ -202,8 +202,7 @@ fn debug_never_prints_private_values() -> Result<()> {
             }
         }
         let given = support::base_given(&cases, info.name)?;
-        let mut document = info
-            .prepare_create(&given, &mut WriteContext::new(0))
+        let mut document = support::entry::create(info, &given, &mut WriteContext::new(0))
             .with_context(|| format!("{}: base document", info.name))?
             .document;
         let mut markers = Markers::default();
@@ -271,8 +270,7 @@ fn decode_errors_never_print_private_values() -> Result<()> {
     let (mut refused, mut collections) = (0, 0);
     for info in REGISTRY {
         let given = support::base_given(&cases, info.name)?;
-        let base = info
-            .prepare_create(&given, &mut WriteContext::new(0))
+        let base = support::entry::create(info, &given, &mut WriteContext::new(0))
             .with_context(|| format!("{}: base document", info.name))?
             .document;
         let before = refused;

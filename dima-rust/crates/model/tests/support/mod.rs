@@ -106,6 +106,19 @@ pub mod entry {
     use dima_store::mongo::save::{Change, PreparedSave};
     use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned};
 
+    /// Create through the collection's document middleware.
+    pub fn create(
+        info: &CollectionInfo,
+        given: &Document,
+        ctx: &mut WriteContext,
+    ) -> Result<dima_store::mongo::insert::PreparedInsert, ModelError> {
+        if info.name == dima_model::clipdesigns::COLLECTION {
+            dima_model::clipdesigns::prepare_create(given, ctx).map(|plan| plan.insert)
+        } else {
+            info.prepare_create(given, ctx)
+        }
+    }
+
     /// `Model.updateOne` / `updateMany`.
     pub fn update(
         info: &CollectionInfo,
@@ -163,6 +176,9 @@ pub mod entry {
         match info.name {
             channel_ai_personalities::COLLECTION => {
                 channel_ai_personalities::prepare_save(loaded, changes, owner, ctx)
+            }
+            dima_model::clipdesigns::COLLECTION => {
+                dima_model::clipdesigns::prepare_save(loaded, changes, ctx).map(|plan| plan.save)
             }
             admins::COLLECTION => admins::prepare_save(loaded, changes, ctx),
             app_configs::COLLECTION => app_configs::prepare_save(loaded, changes, ctx),

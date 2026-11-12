@@ -668,6 +668,18 @@
    "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2"
   },
   {
+   "path": "src/schemas/chat_logs.schema.ts",
+   "sha256": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433"
+  },
+  {
+   "path": "src/schemas/clip_design.schema.ts",
+   "sha256": "c879498fb7b3c8ff014d2c8683bdd4f9c4d44593e89cffc5acf4dcd0d0b25042"
+  },
+  {
+   "path": "src/schemas/clip_recommendation.schema.ts",
+   "sha256": "66dfd8e73134950412b1dbd22fc899d7c70e410de1b2a36419b569ca6d8106e1"
+  },
+  {
    "path": "src/schemas/clip_recommendation_config.schema.ts",
    "sha256": "969bda1e5a6d5a17097c151b12c4eb4aa1648d26d89ae271ce28abebf7958dc2"
   },
@@ -1364,6 +1376,14 @@
    "sha256": "a32eb5e2e14a827c0645b7eeef071c6cb07d61d879f6d24ac0f9bc8c26b711c4"
   },
   {
+   "path": "src/utils/email/email-activation-token.ts",
+   "sha256": "73ea7d089c1b8c205c9e11973a7f8fbb47d887a3e08f68e7d76685b41f98836a"
+  },
+  {
+   "path": "src/utils/email/email.service.ts",
+   "sha256": "e58cbf790b6f8d614bc1aa301e89bfab902b33ce26416318884a9c0f4dec6c21"
+  },
+  {
    "path": "src/utils/eventsub.ts",
    "sha256": "8298bfe4d0a496db00a060674dc7e60ce5c8e7f27783ad29bcc1bda53285ca4c"
   },
@@ -1649,6 +1669,1063 @@
   }
  ],
  "models": {
+  "clipdesigns": {
+   "model": "ClipDesign",
+   "file": "src/schemas/clip_design.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "cssUrl",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "isPublic",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "isDefault",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "cssUrl",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "name",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "cliprecommendations": {
+   "model": "ClipRecommendation",
+   "file": "src/schemas/clip_recommendation.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "sessionID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "streamID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "vodID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "vodUrl",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "source",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "manual"
+      }
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "requestedBy",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "queueJobID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "modelID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "meta/muse-spark-1.2-contributor"
+      }
+     },
+     {
+      "name": "vodDurationMinutes",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "costCredits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "billingStatus",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "chargeError",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "chargedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "analysisCompletedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "billingAttemptCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "billingLastAttemptAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "billingNextRetryAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "notificationStatus",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "not_required"
+      }
+     },
+     {
+      "name": "notificationPayload",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "from",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "to",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": true,
+          "value": []
+         }
+        },
+        {
+         "name": "subject",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "html",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "text",
+         "kind": "value",
+         "type": "String"
+        }
+       ]
+      }
+     },
+     {
+      "name": "notificationError",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "notificationLastAttemptAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "notificationNextRetryAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "notifiedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "previewCleanupPending",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "previewCleanupError",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "previewCleanupNextRetryAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "candidateCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "approvedCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "errorMessage",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "candidates",
+      "kind": "documentArray",
+      "schema": {
+       "id": "auto",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "startSeconds",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "endSeconds",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "reason",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "audioConfidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "videoApproved",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": false
+         }
+        },
+        {
+         "name": "videoWhy",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "s3Key",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "previewUrl",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "status",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "pending"
+         }
+        },
+        {
+         "name": "twitchClipID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "created_at",
+         "kind": "value",
+         "type": "Date",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "$date": {
+            "$numberLong": "1794392430456"
+           }
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "startedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "completedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "notificationPayload"
+   ],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "vodUrl",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "source",
+     "type": "enum",
+     "values": [
+      "stream_offline",
+      "manual"
+     ]
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "pending",
+      "processing",
+      "completed",
+      "failed"
+     ]
+    },
+    {
+     "path": "billingStatus",
+     "type": "enum",
+     "values": [
+      "pending",
+      "charged",
+      "failed"
+     ]
+    },
+    {
+     "path": "notificationStatus",
+     "type": "enum",
+     "values": [
+      "not_required",
+      "pending",
+      "sent",
+      "failed"
+     ]
+    },
+    {
+     "path": "notificationPayload.from",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "notificationPayload.to",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "notificationPayload.subject",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "notificationPayload.html",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "notificationPayload.text",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "candidates.$.startSeconds",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "candidates.$.startSeconds",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "candidates.$.endSeconds",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "candidates.$.endSeconds",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "candidates.$.reason",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "candidates.$.audioConfidence",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "candidates.$.audioConfidence",
+     "type": "max",
+     "max": 1
+    },
+    {
+     "path": "candidates.$.status",
+     "type": "enum",
+     "values": [
+      "pending",
+      "approved",
+      "rejected",
+      "confirmed",
+      "denied"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "sessionID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "streamID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "source",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "billingStatus",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "billingNextRetryAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "notificationStatus",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "notificationNextRetryAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "previewCleanupPending",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "candidates.status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "created_at",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "sessionID",
+       1
+      ],
+      [
+       "source",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ],
+      [
+       "created_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "queueJobID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "sparse": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "cliprecommendationconfigs": {
+   "model": "ClipRecommendationConfig",
+   "file": "src/schemas/clip_recommendation_config.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "autoAnalyzeEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "lastAnalyzedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "autoAnalyzeEnabled",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "chat_logs": {
+   "model": "Chat_Log",
+   "file": "src/schemas/chat_logs.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "message",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "username",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "timestamp",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
   "stream_operations_receipts": {
    "model": "stream_operations_receipt",
    "file": "src/schemas/stream_operations_receipt.schema.ts",
@@ -20332,7 +21409,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ebc0d598578f30399"
+          "value": "6af4416ef8840fb9793d8101"
          }
         },
         {

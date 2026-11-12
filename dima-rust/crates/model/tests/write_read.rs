@@ -340,7 +340,7 @@ impl Probe<'_> {
 
     async fn create(&mut self, given: &Document, path: &str, value: &Bson) -> Result<()> {
         let mut ctx = WriteContext::with_sequential_ids(NOW_MS, 3_000);
-        let Ok(prepared) = self.info.prepare_create(given, &mut ctx) else {
+        let Ok(prepared) = support::entry::create(self.info, given, &mut ctx) else {
             self.counts.refused += 1;
             return Ok(());
         };
@@ -410,8 +410,7 @@ async fn every_accepted_write_decodes() -> Result<()> {
                 );
             }
             let mut ctx = WriteContext::with_sequential_ids(NOW_MS, 1);
-            let base = info
-                .prepare_create(&given, &mut ctx)
+            let base = support::entry::create(info, &given, &mut ctx)
                 .with_context(|| format!("{}: the merged base document is refused", info.name))?
                 .document;
             let base_id = base.get("_id").cloned().context("_id")?;

@@ -109,6 +109,13 @@ impl CollectionInfo {
         given: &Document,
         ctx: &mut WriteContext,
     ) -> Result<PreparedInsert, ModelError> {
+        // This middleware writes peers too: a single PreparedInsert would lose that effect.
+        if self.name == crate::clipdesigns::COLLECTION {
+            return Err(ModelError::Hooked {
+                collection: self.name,
+                operation: "create",
+            });
+        }
         let prepared = prepare_insert(self.schema, given, InsertStyle::Create, ctx)?;
         validate_given(
             self.model,

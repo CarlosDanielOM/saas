@@ -289,6 +289,10 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod chat_logs;
+pub mod clipdesigns;
+pub mod cliprecommendationconfigs;
+pub mod cliprecommendations;
 pub mod collection;
 pub mod decode;
 mod defaults;
@@ -404,6 +408,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &clipdesigns::INFO,
+    &cliprecommendations::INFO,
+    &cliprecommendationconfigs::INFO,
+    &chat_logs::INFO,
     &stream_operations_receipts::INFO,
     &stream_operations_reconciliations::INFO,
     &stream_subscription_ledgers::INFO,
