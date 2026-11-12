@@ -1,0 +1,186 @@
+{
+  "rig_capture": 3,
+  "target": "dimafx-server",
+  "scenario": "upstream-5xx",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T06:21:17.486Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:9912a3f9c9085273",
+    "files": {
+      "upstream-5xx.json": "fnv1a64:9912a3f9c9085273"
+    }
+  },
+  "run": {
+    "seeded_at": 1794464471514,
+    "start": 1794464472002,
+    "end": 1794464472064,
+    "process_start": 1794464471517,
+    "ports": {
+      "http": 33433
+    },
+    "mongo_db": "rig_1078001_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1078001_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 33595,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794464472064,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:12 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [
+    {
+      "at": 1794464472048,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/purchase",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "71"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\",\"transactionID\":\"same-on-replay\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/scenarios/dimafx-server/upstream-5xx.json mock.routes[0]"
+    },
+    {
+      "at": 1794464472060,
+      "provider": "dimabot-api",
+      "host": "api.domdimabot.com",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/purchase",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "71"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\",\"transactionID\":\"same-on-replay\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    }
+  ],
+  "startup_ignored": {},
+  "startup_keys": []
+}

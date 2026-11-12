@@ -1,0 +1,134 @@
+{
+  "rig_capture": 3,
+  "target": "dimafx-server",
+  "scenario": "upstream-error-status",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T06:21:17.488Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:a95ef487da976015",
+    "files": {
+      "upstream-error-status.json": "fnv1a64:a95ef487da976015"
+    }
+  },
+  "run": {
+    "seeded_at": 1794464472482,
+    "start": 1794464472877,
+    "end": 1794464472940,
+    "process_start": 1794464472485,
+    "ports": {
+      "http": 39997
+    },
+    "mongo_db": "rig_1078001_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1078001_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 33595,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794464472940,
+        "status": 400,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "43"
+          ],
+          [
+            "etag",
+            "W/\"2b-XAfVjJg5GxL/Xw089ZVwwbadbxE\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:12 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"bad\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [
+    {
+      "at": 1794464472931,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/purchase",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "71"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\",\"transactionID\":\"same-on-replay\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/scenarios/dimafx-server/upstream-error-status.json mock.routes[0]"
+    }
+  ],
+  "startup_ignored": {},
+  "startup_keys": []
+}

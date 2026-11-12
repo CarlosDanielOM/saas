@@ -1,0 +1,1049 @@
+{
+  "rig_capture": 3,
+  "target": "dimafx-server",
+  "scenario": "routes",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T06:21:17.483Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:70f02ee6dd528ee0",
+    "files": {
+      "routes.json": "fnv1a64:70f02ee6dd528ee0"
+    }
+  },
+  "run": {
+    "seeded_at": 1794464470984,
+    "start": 1794464471387,
+    "end": 1794464471505,
+    "process_start": 1794464470988,
+    "ports": {
+      "http": 40863
+    },
+    "mongo_db": "rig_1078001_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1078001_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 33595,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794464471389,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "47"
+          ],
+          [
+            "etag",
+            "W/\"2f-StFawzahDLYSg7g5XPphz6kqkWs\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471444,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "175"
+          ],
+          [
+            "etag",
+            "W/\"af-VvGzcuMzWc/mzKPtTcM/VrhOJ0Q\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"identityShared\":true,\"platform\":\"twitch\",\"channelID\":\"555777\",\"userID\":\"u-1\",\"inventory\":{\"balance\":\"12\",\"connected\":false},\"balance\":12}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471447,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "152"
+          ],
+          [
+            "etag",
+            "W/\"98-hIP05EAcM5rHgoc8pv+H39lnxQI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"identityShared\":false,\"platform\":\"twitch\",\"opaqueUserID\":\"op-1\",\"channelID\":\"555777\",\"balance\":0,\"inventory\":null}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471457,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471461,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471475,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471481,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471487,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471492,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471496,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-GmPLtE3jdXJGg0gaMT11Xw2Ibe0\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"balance\":\"12\",\"connected\":false}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471500,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "175"
+          ],
+          [
+            "etag",
+            "W/\"af-VvGzcuMzWc/mzKPtTcM/VrhOJ0Q\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"identityShared\":true,\"platform\":\"twitch\",\"channelID\":\"555777\",\"userID\":\"u-1\",\"inventory\":{\"balance\":\"12\",\"connected\":false},\"balance\":12}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464471505,
+        "status": 200,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "175"
+          ],
+          [
+            "etag",
+            "W/\"af-VvGzcuMzWc/mzKPtTcM/VrhOJ0Q\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:11 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"identityShared\":true,\"platform\":\"twitch\",\"channelID\":\"555777\",\"userID\":\"u-1\",\"inventory\":{\"balance\":\"12\",\"connected\":false},\"balance\":12}}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [
+    {
+      "at": 1794464471437,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/viewers/u-1/init",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "2"
+        ]
+      ],
+      "body": "{}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471452,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "GET",
+      "path": "/extensions/dimafx/internal/channels/555777/overlay-status",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ]
+      ],
+      "body": "",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471459,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "GET",
+      "path": "/extensions/dimafx/internal/channels/555777/items",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ]
+      ],
+      "body": "",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471472,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "PATCH",
+      "path": "/extensions/dimafx/internal/channels/555777/viewers/u-1/config",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "56"
+        ]
+      ],
+      "body": "{\"quickPurchasePriority\":null,\"quickPurchaseAction\":[1]}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471479,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/purchase",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "112"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\",\"sku\":null,\"transactionID\":[1],\"action\":false,\"ttsText\":\"hé 👋 ا é\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471485,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/use-credit",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "63"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\",\"action\":{},\"ttsText\":42}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471490,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/redeem",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "38"
+        ]
+      ],
+      "body": "{\"userID\":\"u-1\",\"opaqueUserID\":\"op-1\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471494,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/items/i/purchase",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "23"
+        ]
+      ],
+      "body": "{\"opaqueUserID\":\"op-1\"}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471498,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/viewers/u-1/init",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "2"
+        ]
+      ],
+      "body": "{}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    },
+    {
+      "at": 1794464471503,
+      "provider": "dimabot-api",
+      "host": "dima-server:3000",
+      "method": "POST",
+      "path": "/extensions/dimafx/internal/channels/555777/viewers/u-1/init",
+      "query": "",
+      "headers": [
+        [
+          "host",
+          "127.0.0.1:33595"
+        ],
+        [
+          "connection",
+          "keep-alive"
+        ],
+        [
+          "content-type",
+          "application/json"
+        ],
+        [
+          "x-dimafx-service-token",
+          "<redacted>"
+        ],
+        [
+          "accept",
+          "*/*"
+        ],
+        [
+          "accept-language",
+          "*"
+        ],
+        [
+          "sec-fetch-mode",
+          "cors"
+        ],
+        [
+          "user-agent",
+          "node"
+        ],
+        [
+          "accept-encoding",
+          "gzip, deflate"
+        ],
+        [
+          "content-length",
+          "2"
+        ]
+      ],
+      "body": "{}",
+      "answered": "/home/dom/Projects/saas-rust-v2/dima-rust/rig/targets/dimafx-server.json: target mock.routes[0]"
+    }
+  ],
+  "startup_ignored": {},
+  "startup_keys": []
+}

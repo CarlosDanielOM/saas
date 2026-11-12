@@ -1,0 +1,491 @@
+{
+  "rig_capture": 3,
+  "target": "dimafx-server",
+  "scenario": "refusals",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T06:21:17.478Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:7d9e8963a6daf21f",
+    "files": {
+      "refusals.json": "fnv1a64:7d9e8963a6daf21f"
+    }
+  },
+  "run": {
+    "seeded_at": 1794464470601,
+    "start": 1794464470940,
+    "end": 1794464470975,
+    "process_start": 1794464470604,
+    "ports": {
+      "http": 38495
+    },
+    "mongo_db": "rig_1078001_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1078001_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 33595,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794464470942,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-z9df5JjzO7FOYvSP7bZlzxVHrD4\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Missing Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470947,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470950,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470953,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470955,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470957,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470959,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-lLJBNdNIVj3i/+sQaT1hcblPssg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Invalid Twitch Extension token\",\"status\":401}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470961,
+        "status": 403,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "66"
+          ],
+          [
+            "etag",
+            "W/\"42-iYqC2NN71ftyN34SJy2Kt53QscQ\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Extension channel mismatch\",\"status\":403}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470971,
+        "status": 403,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "93"
+          ],
+          [
+            "etag",
+            "W/\"5d-23G9JcflFKgIPVPne8dw/wti+vE\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Share your Twitch identity to save DimaFX preferences\",\"status\":403}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470973,
+        "status": 403,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "88"
+          ],
+          [
+            "etag",
+            "W/\"58-QQCFwPYuUGhR7zRToKtqmCGvKIk\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Share your Twitch identity to use DimaFX credits\",\"status\":403}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470975,
+        "status": 403,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "88"
+          ],
+          [
+            "etag",
+            "W/\"58-5XhT1iusgcQ/GrAoh5C4jRwMhTI\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Share your Twitch identity to redeem saved items\",\"status\":403}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}

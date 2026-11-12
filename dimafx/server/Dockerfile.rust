@@ -1,0 +1,13 @@
+# Build from the repository root, not the old server-only context. Never built by this task.
+FROM rust:1.99.1-slim-bookworm AS build
+WORKDIR /build
+COPY dima-rust ./dima-rust
+RUN cd dima-rust && tools/cargo build --locked --release -p dimafx-server
+# REFERENCE WEAKNESS: Dockerfile runs as root. Intentionally change to non-root here.
+FROM gcr.io/distroless/cc-debian12:nonroot
+WORKDIR /app
+ENV PORT=8080 NODE_ENV=production
+COPY --from=build /build/dima-rust/target/release/dimafx-server /app/dimafx-server
+USER 65532:65532
+EXPOSE 8080
+CMD ["/app/dimafx-server"]

@@ -1,0 +1,216 @@
+{
+  "rig_capture": 3,
+  "target": "dimafx-server",
+  "scenario": "parser-cors",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T06:21:17.475Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:cc7f1c3318eca712",
+    "files": {
+      "parser-cors.json": "fnv1a64:cc7f1c3318eca712"
+    }
+  },
+  "run": {
+    "seeded_at": 1794464470110,
+    "start": 1794464470566,
+    "end": 1794464470592,
+    "process_start": 1794464470116,
+    "ports": {
+      "http": 35949
+    },
+    "mongo_db": "rig_1078001_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1078001_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 33595,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794464470583,
+        "status": 400,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-security-policy",
+            "default-src 'none'"
+          ],
+          [
+            "x-content-type-options",
+            "nosniff"
+          ],
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "138"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Bad Request</pre>\n</body>\n</html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470588,
+        "status": 413,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-security-policy",
+            "default-src 'none'"
+          ],
+          [
+            "x-content-type-options",
+            "nosniff"
+          ],
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "144"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Payload Too Large</pre>\n</body>\n</html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470590,
+        "status": 204,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "access-control-allow-methods",
+            "GET,HEAD,PUT,PATCH,POST,DELETE"
+          ],
+          [
+            "vary",
+            "Access-Control-Request-Headers"
+          ],
+          [
+            "access-control-allow-headers",
+            "authorization,x-extension-jwt"
+          ],
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "http": {
+        "at": 1794464470592,
+        "status": 401,
+        "headers": [
+          [
+            "x-powered-by",
+            "Express"
+          ],
+          [
+            "access-control-allow-origin",
+            "*"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "70"
+          ],
+          [
+            "etag",
+            "W/\"46-z9df5JjzO7FOYvSP7bZlzxVHrD4\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 06:21:10 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"error\":true,\"message\":\"Missing Twitch Extension token\",\"status\":401}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}

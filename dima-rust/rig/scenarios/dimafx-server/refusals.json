@@ -1,0 +1,138 @@
+{
+  "rig_scenario": 1,
+  "description": "refusals",
+  "steps": [
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer bad"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer a.b.c"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.3SOt7KpwlLgnRP_FGzvKGyyPDC6fOejsy6xgiQm_k1c"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAibm9uZSJ9.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.OB9nOrSzekMerhEG1Sa6b1vEYjPxN9w4LKkCsd4ShTY"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.uBnHQgpSIN3nJmJz6jn2ipEriqTWmiPrnzkbu1lEAgI"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/me",
+        "expect": {
+          "status": 401
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDF9.GnWpm-1qAV0XiWNC7mt0ih7DbGPhKIX2f4AxVdZCTGY"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/v1/channels/other/overlay-status",
+        "expect": {
+          "status": 403
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.p97n2Tq4GUQ4jkA4PkaVjP6PsQgpbyK30mXR-UZctak"
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "PATCH",
+        "path": "/v1/channels/555777/me/config",
+        "expect": {
+          "status": 403
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.dPUcaVOE5vzkxqaRcR4DueXcUT3DwMSiMfhwJoF5BSk"
+        },
+        "json": {}
+      }
+    },
+    {
+      "http": {
+        "method": "POST",
+        "path": "/v1/channels/555777/items/i/use-credit",
+        "expect": {
+          "status": 403
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.dPUcaVOE5vzkxqaRcR4DueXcUT3DwMSiMfhwJoF5BSk"
+        },
+        "json": {}
+      }
+    },
+    {
+      "http": {
+        "method": "POST",
+        "path": "/v1/channels/555777/items/i/redeem",
+        "expect": {
+          "status": 403
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.dPUcaVOE5vzkxqaRcR4DueXcUT3DwMSiMfhwJoF5BSk"
+        },
+        "json": {}
+      }
+    }
+  ]
+}
