@@ -405,7 +405,9 @@ impl Error {
         }
         let connect = error.is_connect();
         let timeout = error.is_timeout();
-        let decode = error.is_decode();
+        // `Response::chunk` reports every body failure as "decode"; a failure of the connection
+        // underneath shows as a body error in the source chain.
+        let decode = error.is_decode() && !has_body_error(&error);
         let source: BoxError = Box::new(error.without_url());
         if connect && timeout {
             Self::Timeout {
@@ -419,6 +421,22 @@ impl Error {
         } else {
             Self::Transport { info, source }
         }
+    }
+}
+
+/// Whether a "decode" error from `reqwest` is really a broken connection: the decompression
+/// layer fails with an `io::Error` (invalid data), while a connection that closes or resets
+/// mid-body surfaces as the HTTP stack's own error.
+fn has_body_error(error: &reqwest::Error) -> bool {
+    match std::error::Error::source(error) {
+        Some(source) => match source.downcast_ref::<std::io::Error>() {
+            Some(io) => !matches!(
+                io.kind(),
+                std::io::ErrorKind::InvalidData | std::io::ErrorKind::Other
+            ),
+            None => true,
+        },
+        None => false,
     }
 }
 
