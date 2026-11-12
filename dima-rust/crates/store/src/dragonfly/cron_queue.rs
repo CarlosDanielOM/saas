@@ -295,8 +295,26 @@ pub enum CronQueueError {
 
 /// `enqueueCronJob` for the non-durable routes: one atomic script call.
 ///
-/// A lost reply leaves the outcome unknown; replaying the same input is safe because the dedupe
-/// marker (and the acceptance marker for automatic session jobs) answers 0 the second time.
+/// # Delivery is at least once
+///
+/// A lost reply (timeout, dropped connection: [`DragonflyError::outcome_unknown`]) leaves the
+/// outcome unknown, and retrying is **not** guaranteed to be harmless. The dedupe marker only
+/// answers 0 while it exists, and the consumer deletes it when it takes or finishes the job
+/// ([`clear_cron_job_dedupe_by_key`], as `follow_ledger.worker.ts` does). If that happens between
+/// the lost reply and the retry, the retry enqueues the job a second time
+/// (`tests/dragonfly_protocols.rs`, `a_retry_after_the_consumer_took_the_job_enqueues_it_again`).
+/// The acceptance marker of automatic session jobs is permanent, so those are the exception:
+/// a retry of one of them is refused for good.
+///
+/// What a caller must do:
+///
+/// - Retry with the **same** `uuid`. The job id is then the same in both copies, and it is the
+///   receipt key: a consumer whose effect must happen exactly once records the id it has applied
+///   (in the same write as the effect, or behind a unique index) and skips a job whose id it has
+///   already seen.
+/// - A consumer whose effect is idempotent (a sync, a recount) may run the duplicate.
+/// - Do not retry when a second run is harmful and the consumer keeps no receipt; report the
+///   unknown outcome instead.
 pub async fn enqueue_cron_job(
     dragonfly: &Dragonfly,
     input: &EnqueueCronJobInput,

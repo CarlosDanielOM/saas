@@ -275,6 +275,50 @@ async fn cron_enqueue_is_deduplicated_atomically() -> Result<()> {
     dragonfly_support::cleanup(&df, &p).await
 }
 
+/// At least once, not exactly once: the enqueue reply is lost, the consumer takes the job and
+/// clears its dedupe marker, and the caller's retry enqueues the same job again. The job id,
+/// kept by retrying with the same uuid, is what lets a consumer recognise the duplicate.
+#[tokio::test]
+async fn a_retry_after_the_consumer_took_the_job_enqueues_it_again() -> Result<()> {
+    let Some(df) = connect(DB).await? else {
+        return Ok(());
+    };
+    let p = prefix("cron-retry");
+    let queue = format!("{p}queue");
+    let config = CronQueueConfig::default();
+    let input = EnqueueCronJobInput {
+        job: "follow-ledger-sync".into(),
+        channel_id: Some("123".into()),
+        dedupe_token: Some(format!("{p}token")),
+        queue_key: Some(queue.clone()),
+        ..EnqueueCronJobInput::default()
+    };
+    let now = "2026-11-11T12:00:00.000Z";
+    let result = async {
+        // The first call is applied; pretend its reply was lost.
+        let first = cron_queue::enqueue_cron_job(&df, &input, config, now, "job-1").await?;
+        ensure!(first.enqueued);
+        // The consumer pops the job and clears its marker, as follow_ledger.worker.ts does.
+        let popped = df.lpop(&queue).await?.unwrap_or_default();
+        let taken = cron_queue::parse_cron_queue_job(&QueueItem::from_popped(popped), now, "x")?;
+        let taken = taken.ok_or_else(|| anyhow::anyhow!("job did not parse"))?;
+        cron_queue::clear_cron_job_dedupe_by_key(&df, taken.dedupe_key.as_deref()).await?;
+        // The caller retries the same input with the same uuid: the job is queued again.
+        let retry = cron_queue::enqueue_cron_job(&df, &input, config, now, "job-1").await?;
+        ensure!(retry.enqueued, "the retry was deduplicated: {retry:?}");
+        let again = df.lpop(&queue).await?.unwrap_or_default();
+        let again = cron_queue::parse_cron_queue_job(&QueueItem::from_popped(again), now, "y")?;
+        // Same job, same id: the id is the receipt key a consumer uses to skip the duplicate.
+        ensure!(again.as_ref() == Some(&taken), "{again:?} vs {taken:?}");
+        ensure!(taken.id == "job-1");
+        Ok(())
+    }
+    .await;
+    dragonfly_support::cleanup(&df, &format!("cron:jobs:dedupe:{p}")).await?;
+    dragonfly_support::cleanup(&df, &p).await?;
+    result
+}
+
 #[tokio::test]
 async fn automatic_session_acceptance_survives_dedupe_cleanup() -> Result<()> {
     let Some(df) = connect(DB).await? else {
