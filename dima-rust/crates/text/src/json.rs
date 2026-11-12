@@ -275,10 +275,7 @@ pub fn js_key_order(value: &mut Value) {
             Value::Array(items) => pending.extend(items.iter_mut()),
             Value::Object(map) => {
                 if map.keys().any(|key| array_index(key).is_some()) {
-                    let mut entries: Vec<(String, Value)> =
-                        std::mem::take(map).into_iter().collect();
-                    entries.sort_by(|(left, _), (right, _)| index_first(left, right));
-                    map.extend(entries);
+                    index_keys_first(map);
                 }
                 pending.extend(map.values_mut());
             }
@@ -336,8 +333,15 @@ fn unicode_escape(json: &[u8], at: usize) -> Option<u32> {
     }
 }
 
+/// Moves the array-index keys of one object to the front, in numeric order (stable for the rest).
+pub(crate) fn index_keys_first(map: &mut Map<String, Value>) {
+    let mut entries: Vec<(String, Value)> = std::mem::take(map).into_iter().collect();
+    entries.sort_by(|(left, _), (right, _)| index_first(left, right));
+    map.extend(entries);
+}
+
 /// `n` when `key` is an array index: the canonical decimal of an integer below 2^32 - 1.
-fn array_index(key: &str) -> Option<u32> {
+pub(crate) fn array_index(key: &str) -> Option<u32> {
     let bytes = key.as_bytes();
     if bytes.is_empty() || bytes.len() > 10 || (bytes.len() > 1 && bytes.first() == Some(&b'0')) {
         return None;

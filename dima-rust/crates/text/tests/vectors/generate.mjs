@@ -525,4 +525,79 @@ for (const [, component, uri] of decode) for (const r of [component, uri]) if (r
 
 write('uri.json', { encode, decode });
 
-console.log('wrote numbers.json whitespace.json json.json uri.json dates.json order.json text.json');
+// ---------------------------------------------------------------- JSON.parse
+
+// What JavaScript holds after JSON.parse, written out with every number as its bits (so -0 and
+// the last bit of a rounded integer show) and lone surrogates replaced (text rule 3, which is
+// what toWellFormed does).
+const held = (text) => {
+    let value;
+    try { value = JSON.parse(text); } catch (error) { if (!(error instanceof SyntaxError)) throw error; return { throws: true }; }
+    let infinite = false;
+    const dumped = JSON.stringify(wellFormed(value), (_key, v) => {
+        if (typeof v !== 'number') return v;
+        if (!Number.isFinite(v)) infinite = true;
+        return { n: bits(v) };
+    });
+    return infinite ? { infinite: true } : { held: dumped };
+};
+const parseTexts = [
+    // Key order and duplicates.
+    '{"b":1,"2":2,"a":3,"1":4,"-1":5,"01":6,"4294967294":7,"4294967295":8,"1.5":9,"10":10,"0":11," 3":12,"":13}',
+    '{"a":1,"b":2,"a":3}', '{"b":1,"a":2,"b":3,"c":4,"a":5}', '{"1":1,"a":2,"1":3}', '{"a":1,"1":2,"a":3,"0":4,"1":5}',
+    '{"x":{"9":"nine","y":0,"2":2},"1":[{"b":0,"0":0,"b":1}]}', '{"__proto__":1,"constructor":2,"toString":3}', '{"__proto__":{"a":1}}',
+    '{"4294967293":"a","4294967296":"b","9007199254740993":"c","00":"d","-0":"e","0":"f","+1":"g","1e2":"h","0x1":"i"}',
+    '{"\\u0031":"escaped one","1":"plain one"}', '{"\\u00e9":1,"e\\u0301":2,"\\ud83d\\ude00":3,"😀":4}', '{"":1,"":2}',
+    '[{"a":1},{"a":2,"a":{}},{"a":[],"a":null}]',
+    // Numbers.
+    '0', '-0', '0.0', '-0.0', '0e0', '-0e-0', '0E+0', '1', '-1', '1.0', '1.5', '1e2', '1E2', '1e+2', '1e-2', '1.5e300', '1e308',
+    '1.7976931348623157e308', '1.7976931348623158e308', '1.7976931348623159e308', '1e309', '-1e309', '5e-324', '2.4703282292062328e-324',
+    '2.4703282292062327e-324', '2e-324', '1e-400', '-1e-400', '9007199254740991', '9007199254740992', '9007199254740993',
+    '9007199254740994', '9007199254740995', '-9007199254740993', '18446744073709551615', '18446744073709551616', '-9223372036854775808',
+    '-9223372036854775809', '123456789012345678901234567890', '1' + '0'.repeat(21), '1' + '0'.repeat(400), '0.' + '0'.repeat(400) + '1',
+    '1'.repeat(30) + '.' + '1'.repeat(30), '0.1', '0.2', '0.30000000000000004', '100000000000000000000', '1e21', '1e-7', '4.35',
+    '[1.0,2.50,-0,1E2,1e+2,0.000001,0.0000001,1e21]',
+    // Strings and escapes.
+    '""', '"plain"', '"\\"\\\\\\/\\b\\f\\n\\r\\t"', '"\\u0000\\u001f\\u0020\\u007f\\u0080\\u00ff\\u0100\\uffff\\ufeff"', '"\\u0041\\u004a\\u004A"',
+    '"\\ud83d\\ude00"', '"\\uD83D\\uDE00"', '"\\ud800"', '"\\udc00"', '"\\udbff\\udfff"', '"\\ude00\\ud83d"', '"a\\ud83db"', '"\\ud83d\\ud83d\\ude00"',
+    '"\\ud83d\\u0041"', '"\\ud83d\\\\ude00"', '"\\ud83d😀"', '"😀 ñ ש 中"', '"e\\u0301"', '"\\u2028\\u2029"', '"</script>"', '"\u007f"',
+    '"\\x41"', '"\\u12"', '"\\u12G4"', '"\\U0041"', '"\\a"', '"\\\'"', '"\\0"', '"\\', '"abc', '"\t"', '"\n"', '"\u0000"', '"\u001f"',
+    '" "', '"\\u{41}"',
+    // Literals, whitespace, structure.
+    'true', 'false', 'null', 'True', 'nul', 'nulls', 'truefalse', ' \t\n\r1 \t\n\r', ' 1', '1 ', '\u000b1', '\u000c1',
+    '﻿1', ' 1', '', ' ', '[]', '{}', '[ ]', '{ }', '[1,2,3]', '[1,]', '[,1]', '[1 2]', '[1,,2]', '{"a":1,}', '{"a" 1}',
+    '{"a":}', '{a:1}', "{'a':1}", '{"a":1', '[1', '[', ']', '{', '}', '{"a":1}}', '[1]]', '1 2', '01', '00', '-', '-01', '1.', '.5',
+    '+1', '1e', '1e+', '1e-', '1.e1', '0x10', 'NaN', 'Infinity', '-Infinity', '1_0', '[-]', '{"a":[{"b":[{}]}]}', '[[],[[]],{"":[]}]',
+    '[null,true,false,"",0,{},[]]', '{"a":1}\n', '"x"garbage', '[1]x', 'nullx',
+];
+// Deep nesting (JavaScript has no limit; the Rust test lifts its own for these).
+for (const depth of [1, 2, 10, 100, 127, 128, 129, 500, 1000]) {
+    parseTexts.push('['.repeat(depth) + ']'.repeat(depth), '['.repeat(depth) + '1' + ']'.repeat(depth),
+        '{"a":'.repeat(depth) + '{}' + '}'.repeat(depth), '['.repeat(depth) + ']'.repeat(depth - 1));
+}
+// Random doubles written as JavaScript writes them, and random digit strings.
+for (let i = 0; i < 300; i++) parseTexts.push(String(randomDouble()));
+for (let i = 0; i < 300; i++) {
+    const digits = Array.from({ length: 1 + randInt(30) }, () => randInt(10)).join('').replace(/^0+(?=\d)/, '');
+    const fraction = randInt(2) ? '.' + Array.from({ length: 1 + randInt(25) }, () => randInt(10)).join('') : '';
+    const exponent = randInt(3) ? '' : pick(['e', 'E', 'e+', 'e-', 'E-']) + randInt(400);
+    parseTexts.push((randInt(3) ? '' : '-') + digits + fraction + exponent);
+}
+// Random documents: random keys (index-like ones included, duplicates likely) and values.
+const randomKey = () => pick([() => String(randInt(20)), () => pick(['a', 'b', 'c', '0', '01', '-1', '4294967295', 'é', '😀', '']), () => String(randInt(2 ** 32))])();
+const randomJson = (depth) => {
+    const kind = randInt(depth > 3 ? 5 : 8);
+    if (kind === 0) return 'null';
+    if (kind === 1) return pick(['true', 'false']);
+    if (kind === 2) return String(randInt(2) ? randomDouble() : randInt(2 ** 31) - 2 ** 30);
+    if (kind === 3) return JSON.stringify(Array.from({ length: randInt(5) }, () => pick(['a', 'é', '😀', '\n', '"', '\\', '\u0001'])).join(''));
+    if (kind === 4) return pick(['"\\ud800"', '"\\ud83d\\ude00"', '1e2', '-0', '9007199254740993']);
+    if (kind < 6) return `[${Array.from({ length: randInt(5) }, () => randomJson(depth + 1)).join(',')}]`;
+    return `{${Array.from({ length: randInt(7) }, () => `${JSON.stringify(randomKey())}:${randomJson(depth + 1)}`).join(',')}}`;
+};
+for (let i = 0; i < 400; i++) parseTexts.push(randomJson(0));
+const parsed = unique(parseTexts).map((input) => ({ input, ...held(input) }));
+
+write('json_parse.json', { parse: parsed });
+
+console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json dates.json order.json text.json');

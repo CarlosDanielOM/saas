@@ -727,3 +727,57 @@ fn uri_decoding_matches_node() {
     }
     check.finish();
 }
+
+// ------------------------------------------------------------------ JSON.parse
+
+/// The generator's dump: every number as `{"n": "<16 hex digits of its bits>"}`.
+fn with_number_bits(value: &Value) -> Value {
+    match value {
+        Value::Number(number) => {
+            let bits = number.as_f64().unwrap_or(f64::NAN).to_bits();
+            serde_json::json!({ "n": format!("{bits:016x}") })
+        }
+        Value::Array(items) => Value::Array(items.iter().map(with_number_bits).collect()),
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(key, item)| (key.clone(), with_number_bits(item)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+#[test]
+fn json_parse_matches_node() {
+    let file = load("json_parse.json");
+    let mut check = Check::new("JSON.parse");
+    // JavaScript has no limits; these are high enough for every vector.
+    let limits = JsonLimits {
+        max_depth: 10_000,
+        max_bytes: 1 << 20,
+    };
+    for row in rows(&file, "parse") {
+        let input = text(&row["input"]);
+        let actual = parse_js_json(input, limits);
+        let shown = || format!("{:?}", input.chars().take(120).collect::<String>());
+        if let Some(expected) = row["held"].as_str() {
+            let actual = actual
+                .as_ref()
+                .map(|value| to_js_json(&with_number_bits(value)));
+            check.expect(actual.as_deref() == Ok(expected), || {
+                format!("{}\n  rust {actual:?}\n  node {expected}", shown())
+            });
+        } else if row["infinite"].as_bool() == Some(true) {
+            // `Infinity` in JavaScript; a parse error here (allowed difference).
+            check.expect(
+                matches!(actual, Err(JsonParseError::NumberOutOfRange { .. })),
+                || format!("{}: {actual:?} should be out of range", shown()),
+            );
+        } else {
+            check.expect(matches!(actual, Err(JsonParseError::Syntax { .. })), || {
+                format!("{}: {actual:?} should throw", shown())
+            });
+        }
+    }
+    check.finish();
+}

@@ -6,7 +6,7 @@
 //! the contract rows of that section; no UTF-16 data is built or stored.
 //!
 //! The JavaScript behaviour reproduced here (whitespace, number text, `Number()`/`parseInt`,
-//! dates, `JSON.stringify`, URI escapes, string ordering, case mapping) is pinned by golden vectors written
+//! dates, `JSON.stringify` and `JSON.parse`, URI escapes, string ordering, case mapping) is pinned by golden vectors written
 //! by the production Node runtime: see `tests/vectors/generate.mjs`.
 //!
 //! # Reproducing `JSON.stringify` bytes
@@ -33,6 +33,7 @@ mod case;
 mod chars;
 mod date;
 mod json;
+mod json_parse;
 mod number;
 mod order;
 mod parse;
@@ -53,6 +54,7 @@ pub use json::{
     JsonIndent, SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,
     to_js_json_pretty, to_js_json_pretty_from, to_js_json_sorted,
 };
+pub use json_parse::{JsonLimits, JsonParseError, js_number_value, parse_js_json};
 pub use number::{
     NumberLocale, math_round, number_to_string, string_of, to_fixed, to_locale_string,
 };
