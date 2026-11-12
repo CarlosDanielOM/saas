@@ -404,7 +404,10 @@ inspection test (`tests/stores.rs`) and `tests/selftest.rs`, which drives the re
 per seeded defect must be caught at its path with nothing else reported. It also proves the
 cleanup after a failure and after Ctrl-C, the command allow-list, process isolation, and that
 a recording re-verified with another normalisation setting is normalised again. It needs the
-local stores and skips without `DIMA_TEST_MONGO_URI`.
+local stores and skips without `DIMA_TEST_MONGO_URI`. Its scenarios use a 10 s window
+(`tolerance_ms`): the local stores and CPUs are shared with other suites, which can stall one
+request for seconds. The unit tests pin the 2 s default, and the seeded time defects are caught
+through relations, which such stalls do not move.
 
 Worktrees share one cargo target directory, where cargo gives this crate the same artifact names
 in every checkout: another worktree building `dima-rig` at the same time replaces the binaries

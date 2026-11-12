@@ -1,9 +1,35 @@
 {
   "rig_scenario": 1,
   "description": "In-memory state of the process: one item created, then the process reports how many it created. With one process per scenario this does not depend on the scenarios that ran before.",
-  "seed": { "include": ["../_seeds/users.json"] },
+  "tolerance_ms": 10000,
+  "seed": {
+    "include": [
+      "../_seeds/users.json"
+    ]
+  },
   "steps": [
-    { "http": { "method": "POST", "path": "/items", "json": { "name": "counted", "qty": 1, "owner": "650000000000000000000001" }, "expect": { "status": 201 } } },
-    { "http": { "method": "GET", "path": "/memory", "expect": { "status": 200 } } }
+    {
+      "http": {
+        "method": "POST",
+        "path": "/items",
+        "json": {
+          "name": "counted",
+          "qty": 1,
+          "owner": "650000000000000000000001"
+        },
+        "expect": {
+          "status": 201
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/memory",
+        "expect": {
+          "status": 200
+        }
+      }
+    }
   ]
 }
