@@ -28,7 +28,7 @@ fn short(channel: &str, name: &str) -> String {
     hasher.update(channel.as_bytes());
     hasher.update([0]);
     hasher.update(name.as_bytes());
-    hex::encode(hasher.finalize())[..16].to_owned()
+    hex::encode(&hasher.finalize()[..8])
 }
 
 #[tokio::test]
