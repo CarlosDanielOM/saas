@@ -104,7 +104,9 @@ pub struct RequestEnd {
 /// the request. [`Observer::on_request`] runs on the request's task (it returns the context), so
 /// keep it short. [`Observer::on_response`] runs on a thread of its own, fed through a bounded
 /// queue the request never waits on: when the observer falls behind and the queue is full, the
-/// record is dropped and counted ([`ObserverQueue::dropped`]).
+/// record is dropped and counted ([`ObserverQueue::dropped`]). When [`crate::serve`] returns it
+/// shuts down the observers of the apps it served ([`ObserverQueue::shutdown`]): records queued
+/// by then are delivered for up to two seconds, later ones are dropped and counted.
 pub trait Observer: Send + Sync + 'static {
     /// A request arrived. The returned context is stored in the request
     /// ([`crate::Req::trace_context`]) and handed back in [`RequestEnd::trace`]. A panic here
@@ -130,44 +132,92 @@ struct DeliveryStats {
     panicked: AtomicU64,
     /// Records queued and not yet delivered.
     pending: AtomicUsize,
-    /// Woken after every delivery.
+    /// Woken after every delivery, and when the observer stops.
     delivered: Notify,
+    /// Shutdown began: new records are dropped (and counted).
+    closed: AtomicBool,
+    /// Shut down: nothing more is waited for.
+    stopped: AtomicBool,
+}
+
+impl DeliveryStats {
+    fn stop(&self) {
+        self.stopped.store(true, Ordering::Release);
+        self.delivered.notify_waiters();
+    }
+}
+
+/// What the observer's thread receives.
+enum Delivery {
+    End(RequestEnd),
+    /// Shutdown: stop once what was queued before is delivered.
+    Stop,
 }
 
 /// A view of an observer's delivery queue ([`crate::App::observer_queue`]): what was dropped,
-/// what panicked, and a way to wait until everything queued so far was delivered.
+/// what panicked, a way to wait until everything queued so far was delivered, and shutdown.
 #[derive(Debug, Clone)]
-pub struct ObserverQueue(Arc<DeliveryStats>);
+pub struct ObserverQueue {
+    stats: Arc<DeliveryStats>,
+    /// For the stop message; `None` when the thread could not be started.
+    stop: Option<SyncSender<Delivery>>,
+}
 
 impl ObserverQueue {
     /// Completion records dropped because the queue was full (or the observer's thread could
     /// not be started).
     pub fn dropped(&self) -> u64 {
-        self.0.dropped.load(Ordering::Relaxed)
+        self.stats.dropped.load(Ordering::Relaxed)
     }
 
     /// Observer calls that panicked (both kinds).
     pub fn panicked(&self) -> u64 {
-        self.0.panicked.load(Ordering::Relaxed)
+        self.stats.panicked.load(Ordering::Relaxed)
     }
 
     /// Records queued and not yet delivered.
     pub fn pending(&self) -> usize {
-        self.0.pending.load(Ordering::Acquire)
+        self.stats.pending.load(Ordering::Acquire)
+    }
+
+    /// The observer was shut down ([`ObserverQueue::shutdown`]).
+    pub fn is_shut_down(&self) -> bool {
+        self.stats.stopped.load(Ordering::Acquire)
     }
 
     /// Resolves once no record is waiting: every exchange that ended before the call has been
-    /// delivered (or dropped). For tests and shutdown.
+    /// delivered (or dropped). For tests and shutdown. Also resolves once the observer is shut
+    /// down, even with records still waiting behind a callback that never returned.
     pub async fn idle(&self) {
         loop {
-            let delivered = self.0.delivered.notified();
+            let delivered = self.stats.delivered.notified();
             let mut delivered = std::pin::pin!(delivered);
             delivered.as_mut().enable();
-            if self.pending() == 0 {
+            if self.pending() == 0 || self.is_shut_down() {
                 return;
             }
             delivered.await;
         }
+    }
+
+    /// Shuts the observer down: from now on completion records are dropped (and counted); the
+    /// ones already queued are delivered for up to `within`, then the observer is shut down
+    /// whatever its callback is doing, and [`ObserverQueue::idle`] returns. Its thread ends
+    /// after the last queued record (a callback that never returns keeps it until the process
+    /// exits). [`crate::serve`] does this, with two seconds, for every observer it saw.
+    pub async fn shutdown(&self, within: Duration) {
+        self.stats.closed.store(true, Ordering::Release);
+        if let Some(stop) = &self.stop {
+            // When the queue is full the thread stops after delivering it instead.
+            let _ = stop.try_send(Delivery::Stop);
+        }
+        let _ = tokio::time::timeout(within, self.idle()).await;
+        self.stats.stop();
+    }
+
+    /// The same observer.
+    pub(crate) fn same(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.stats, &other.stats)
     }
 }
 
@@ -175,37 +225,66 @@ impl ObserverQueue {
 /// bounded queue to the observer's thread. The thread ends when the last handle is dropped.
 pub(crate) struct ObserverHub {
     observer: Arc<dyn Observer>,
-    queue: Option<SyncSender<RequestEnd>>,
+    queue: Option<SyncSender<Delivery>>,
     stats: Arc<DeliveryStats>,
+    /// The server this observer was last registered with ([`crate::serve`] shuts it down).
+    registered: AtomicUsize,
 }
 
 impl ObserverHub {
     pub(crate) fn new(observer: Arc<dyn Observer>, capacity: usize) -> Self {
         let stats = Arc::new(DeliveryStats::default());
-        let (sender, receiver) = std::sync::mpsc::sync_channel::<RequestEnd>(capacity.max(1));
+        let (sender, receiver) = std::sync::mpsc::sync_channel::<Delivery>(capacity.max(1));
         let delivering = Arc::clone(&observer);
         let thread_stats = Arc::clone(&stats);
         let spawned = std::thread::Builder::new()
             .name("dima-web-observer".to_owned())
             .spawn(move || {
-                while let Ok(end) = receiver.recv() {
+                while let Ok(Delivery::End(end)) = receiver.recv() {
                     let call = AssertUnwindSafe(|| delivering.on_response(end));
                     if std::panic::catch_unwind(call).is_err() {
                         thread_stats.panicked.fetch_add(1, Ordering::Relaxed);
                     }
-                    thread_stats.pending.fetch_sub(1, Ordering::AcqRel);
+                    let left = thread_stats
+                        .pending
+                        .fetch_sub(1, Ordering::AcqRel)
+                        .saturating_sub(1);
                     thread_stats.delivered.notify_waiters();
+                    if left == 0 && thread_stats.closed.load(Ordering::Acquire) {
+                        break;
+                    }
                 }
+                // Records that raced with the shutdown are dropped and counted.
+                while let Ok(delivery) = receiver.try_recv() {
+                    if let Delivery::End(_) = delivery {
+                        thread_stats.pending.fetch_sub(1, Ordering::AcqRel);
+                        thread_stats.dropped.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+                thread_stats.stop();
             });
         Self {
             observer,
             queue: spawned.ok().map(|_| sender),
             stats,
+            registered: AtomicUsize::new(0),
         }
     }
 
     pub(crate) fn queue(&self) -> ObserverQueue {
-        ObserverQueue(Arc::clone(&self.stats))
+        ObserverQueue {
+            stats: Arc::clone(&self.stats),
+            stop: self.queue.clone(),
+        }
+    }
+
+    /// Registers this observer with the server `link` belongs to, once per server, so that
+    /// shutdown drains it.
+    pub(crate) fn register(&self, link: &crate::server::ServerLink) {
+        let id = link.id();
+        if self.registered.swap(id, Ordering::AcqRel) != id {
+            link.register(self.queue());
+        }
     }
 
     /// `on_request`, with a panic counted as `None`.
@@ -219,12 +298,15 @@ impl ObserverHub {
 
     /// Queues the record without waiting; drops and counts it when the queue is full.
     fn deliver(&self, end: RequestEnd) {
-        let Some(queue) = &self.queue else {
-            self.stats.dropped.fetch_add(1, Ordering::Relaxed);
-            return;
+        let queue = match &self.queue {
+            Some(queue) if !self.stats.closed.load(Ordering::Acquire) => queue,
+            _ => {
+                self.stats.dropped.fetch_add(1, Ordering::Relaxed);
+                return;
+            }
         };
         self.stats.pending.fetch_add(1, Ordering::AcqRel);
-        if queue.try_send(end).is_err() {
+        if queue.try_send(Delivery::End(end)).is_err() {
             self.stats.pending.fetch_sub(1, Ordering::AcqRel);
             self.stats.dropped.fetch_add(1, Ordering::Relaxed);
             self.stats.delivered.notify_waiters();

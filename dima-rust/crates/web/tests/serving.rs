@@ -560,3 +560,99 @@ async fn observers_see_the_refusal_that_was_sent() {
     token.cancel();
     server.await.expect("join").expect("serve");
 }
+
+/// An observer that takes its time over every record, or never returns from one.
+struct Slow {
+    delay: Option<Duration>,
+    delivered: Arc<Mutex<usize>>,
+}
+
+impl Observer for Slow {
+    fn on_response(&self, _end: RequestEnd) {
+        match self.delay {
+            Some(delay) => std::thread::sleep(delay),
+            // Stuck for good (the test process ends around it).
+            None => loop {
+                std::thread::park();
+            },
+        }
+        *self.delivered.lock().unwrap() += 1;
+    }
+}
+
+async fn serve_slow_observer(
+    delay: Option<Duration>,
+) -> (
+    std::net::SocketAddr,
+    Arc<Mutex<usize>>,
+    dima_web::ObserverQueue,
+    CancellationToken,
+    tokio::task::JoinHandle<std::io::Result<()>>,
+) {
+    let mut root = Router::new();
+    root.get("/who", who);
+    let delivered = Arc::new(Mutex::new(0));
+    let app = App::new(root, State::default())
+        .expect("app")
+        .observe(Slow {
+            delay,
+            delivered: Arc::clone(&delivered),
+        });
+    let queue = app.observer_queue().expect("observed");
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    let token = CancellationToken::new();
+    let options = ServeOptions {
+        drain_timeout: Duration::from_millis(300),
+        ..ServeOptions::default()
+    };
+    let server = tokio::spawn(serve(listener, app, token.clone(), options));
+    (addr, delivered, queue, token, server)
+}
+
+/// Review finding: `serve` returned without waiting for queued completion records.
+#[tokio::test]
+async fn shutdown_waits_for_queued_completion_records() {
+    let (addr, delivered, _queue, token, server) =
+        serve_slow_observer(Some(Duration::from_millis(250))).await;
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    for _ in 0..3 {
+        assert_eq!(
+            status_of(addr, &format!("GET /who HTTP/1.1\r\n{close}")).await,
+            "HTTP/1.1 200 OK"
+        );
+    }
+    token.cancel();
+    server.await.expect("join").expect("serve");
+    assert_eq!(*delivered.lock().unwrap(), 3);
+}
+
+/// Review finding: a stuck observer callback left `idle()` pending for ever. Shutdown waits a
+/// bounded time, then the observer is shut down and `idle()` returns.
+#[tokio::test]
+async fn a_stuck_observer_cannot_hold_shutdown() {
+    let (addr, delivered, queue, token, server) = serve_slow_observer(None).await;
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    for _ in 0..2 {
+        assert_eq!(
+            status_of(addr, &format!("GET /who HTTP/1.1\r\n{close}")).await,
+            "HTTP/1.1 200 OK"
+        );
+    }
+    let began = std::time::Instant::now();
+    token.cancel();
+    tokio::time::timeout(Duration::from_secs(5), server)
+        .await
+        .expect("serve returned")
+        .expect("join")
+        .expect("serve");
+    assert!(
+        began.elapsed() >= Duration::from_secs(1),
+        "{:?}",
+        began.elapsed()
+    );
+    tokio::time::timeout(Duration::from_secs(1), queue.idle())
+        .await
+        .expect("idle returns once the observer is shut down");
+    assert_eq!(*delivered.lock().unwrap(), 0);
+}

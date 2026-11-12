@@ -20,7 +20,9 @@
 //! - **Shutdown**: the server stops accepting, lets open requests finish and waits for upgraded
 //!   sockets and their [`UpgradeGuard`]s, all up to [`ServeOptions::drain_timeout`]; then HTTP
 //!   connections are aborted and every upgraded socket fails its reads and writes (the owner
-//!   then drops it, which closes it).
+//!   then drops it, which closes it). Last, the observers of the apps it served deliver what
+//!   they have queued, for up to two seconds, and are shut down
+//!   ([`crate::ObserverQueue::shutdown`]).
 //! - **Request head**: the request line and all header lines together at most 16 KiB (Node's
 //!   `--max-http-header-size`), and at most 100 header lines; beyond either the answer is
 //!   `431 Request Header Fields Too Large` and the connection closes. So a path with its query
@@ -62,6 +64,7 @@ use tokio_util::task::task_tracker::TaskTrackerToken;
 use tower::ServiceExt as _;
 
 use crate::Body;
+use crate::exchange::ObserverQueue;
 use crate::request::PeerAddr;
 
 /// Node's `--max-http-header-size` default: request line plus headers.
@@ -416,6 +419,62 @@ impl StreamAdmission {
     }
 }
 
+/// How long shutdown waits, after the connections are drained, for observers to deliver the
+/// completion records already queued.
+const OBSERVER_DRAIN: Duration = Duration::from_secs(2);
+
+/// What a request carries of the server that serves it, for the [`crate::App`] behind it: the
+/// observers to drain at shutdown.
+#[derive(Clone)]
+pub(crate) struct ServerLink(Arc<LinkInner>);
+
+struct LinkInner {
+    observers: Mutex<Vec<ObserverQueue>>,
+}
+
+impl ServerLink {
+    fn new() -> Self {
+        Self(Arc::new(LinkInner {
+            observers: Mutex::new(Vec::new()),
+        }))
+    }
+
+    /// Tells one server from another.
+    pub(crate) fn id(&self) -> usize {
+        Arc::as_ptr(&self.0).addr()
+    }
+
+    /// An observer to shut down when the server stops.
+    pub(crate) fn register(&self, queue: ObserverQueue) {
+        let mut observers = self
+            .0
+            .observers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if !observers.iter().any(|known| known.same(&queue)) {
+            observers.push(queue);
+        }
+    }
+
+    /// Delivers what the observers have queued, for up to [`OBSERVER_DRAIN`] in all, and shuts
+    /// them down.
+    async fn shut_down_observers(&self) {
+        let observers = std::mem::take(
+            &mut *self
+                .0
+                .observers
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner),
+        );
+        let until = Instant::now() + OBSERVER_DRAIN;
+        for observer in observers {
+            observer
+                .shutdown(until.saturating_duration_since(Instant::now()))
+                .await;
+        }
+    }
+}
+
 /// What the server shares with every connection.
 #[derive(Clone)]
 struct Shared {
@@ -426,6 +485,7 @@ struct Shared {
     shutdown: CancellationToken,
     /// Cancelled at the drain deadline: every socket still open fails its reads and writes.
     force: CancellationToken,
+    link: ServerLink,
 }
 
 /// What an upgrade owner holds: a token to watch and a guard that keeps shutdown waiting.
@@ -659,6 +719,7 @@ where
         sockets: TaskTracker::new(),
         shutdown: shutdown.clone(),
         force: CancellationToken::new(),
+        link: ServerLink::new(),
     };
     let mut connections = JoinSet::new();
     let mut slot: Option<OwnedSemaphorePermit> = None;
@@ -698,6 +759,8 @@ where
         connections.shutdown().await;
         let _ = tokio::time::timeout(FORCE_GRACE, shared.sockets.wait()).await;
     }
+    // Every exchange has ended by now (or was dropped with its connection, which reports it).
+    shared.link.shut_down_observers().await;
     Ok(())
 }
 
@@ -777,6 +840,7 @@ async fn connection<T, B>(
         let deadline = Box::pin(tokio::time::sleep(options.request_timeout));
         let mut request = request.map(|inner| Body::new(DeadlineBody { inner, deadline }));
         request.extensions_mut().insert(PeerAddr(peer));
+        request.extensions_mut().insert(shared.link.clone());
         let admission = StreamAdmission::new(&shared.streams);
         request.extensions_mut().insert(admission.clone());
         if request
