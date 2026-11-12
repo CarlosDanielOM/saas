@@ -1774,11 +1774,13 @@ dependencies = [
  "futures-util",
  "mongodb",
  "redis",
+ "regex",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
+ "unicode-normalization",
  "url",
 ]
 
