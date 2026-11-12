@@ -43,9 +43,8 @@ Four workers were running when the pause came. Their state:
 | P4-FEAT-PETS (Sol) | Stopped mid-work. Branch `t3/port-pet-features`, commit `29260755`: a first cut of `crates/features/src/pets/` with a recorder and a fixture, not gated |
 | P4-SVC-COMMANDS (Opus) | Stopped before it had written anything |
 
-The two unfinished branches exist only in the local repository on the development laptop
-(`/home/dom/Projects/saas`); they are not on `origin`. Push them, or merge nothing from them: they are
-starting points, not finished work.
+The two unfinished branches are on `origin` under the same names (pushed at the pause, at the owner's
+word). Merge nothing from them as they are: they are starting points, not finished work.
 
 ## To pick it up again
 
@@ -70,10 +69,10 @@ about the running TypeScript no longer wait for a cutover: see `typescript-findi
 
 ## What was left on the laptop
 
-- The lead's checkout `~/Projects/saas-rust-v2` (branch `rust-v2`) with its build directory
-  `dima-rust/target`, and the shared build cache `~/.cache/dima-rust/seed-target`. Together they hold
-  about 117 GB; both can be deleted at any time (`rm -rf` of those two directories) and are rebuilt by
-  the next build, which then takes about an hour.
+- The lead's checkout `~/Projects/saas-rust-v2` (branch `rust-v2`), sources only, about 240 MB. Its
+  build directory and the shared build cache were deleted at the pause (58 GB on disk: cargo keeps every
+  old version of every test binary and library, and they had piled up over some eighty merges). The next
+  build starts from nothing and takes about an hour; clear `dima-rust/target` now and then.
 - Ignored directories installed in the main checkout for recordings: `dimafx/server/node_modules`,
   `dimafx/server/dist`, `dima-analytics/node_modules`. They are untracked build products.
 - The Docker image `dimabot-ref:0c71108e` (the TypeScript backend frozen at that commit, used as the
