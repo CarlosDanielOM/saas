@@ -63,6 +63,7 @@ mod flight;
 pub mod helix;
 pub mod keys;
 pub mod oauth;
+mod refresh;
 mod secret;
 pub mod streamers;
 pub mod tokens;

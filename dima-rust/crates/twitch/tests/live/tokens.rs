@@ -480,9 +480,10 @@ async fn a_rejected_token_is_never_handed_back() -> Result<()> {
     .await
 }
 
-/// Cutover: a TypeScript process still running in database 0 refreshed the token; MongoDB has
-/// the new pair, Rust's cache the old one. The reference would wipe here (it compares with its
-/// cache); Rust compares with MongoDB, keeps the tokens and repairs its cache.
+/// The cache behind MongoDB (review finding 5), for example a TypeScript process still running
+/// in database 0 during the cutover refreshed the token: MongoDB has the new pair, Rust's cache
+/// the old one. The reference exchanges the cache's consumed token and wipes; Rust reads
+/// MongoDB first, returns its still-valid token without any exchange and repairs the cache.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_newer_token_in_mongodb_is_never_wiped() -> Result<()> {
     with_stores(|stores| async move {
@@ -505,7 +506,7 @@ async fn a_newer_token_in_mongodb_is_never_wiped() -> Result<()> {
             .await?;
         let token = process.twitch.streamer_token("u1", None, "test").await?;
         assert_eq!(token.expose(), "ts-access");
-        assert_eq!(token_requests(&server).len(), 1, "one refused attempt with the stale token");
+        assert!(token_requests(&server).is_empty(), "MongoDB's token is used, nothing is exchanged");
         let after = stored_account(&stores, "u1").await?;
         assert_eq!(decrypt_field(&after, "refresh_token").as_deref(), Some("ts-refresh"));
         assert!(after.get_bool("has_permissions")?);
@@ -748,6 +749,109 @@ async fn twitch_answers_that_echo_secrets_never_reach_logs_or_errors() -> Result
                 .events
                 .mentions("Error getting new Twitch app token: invalid_client")
         );
+        Ok(())
+    })
+    .await
+}
+
+/// The cache behind MongoDB when MongoDB's access token has expired too: the exchange uses the
+/// stored refresh token, never the cache's (consumed) copy.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_exchange_always_uses_the_stored_refresh_token() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_with("u1", "u1-refresh-1");
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        let process = process(&stores, &server, fast_timings())?;
+        seed(
+            &stores,
+            &process,
+            "u1",
+            "u1-access-0",
+            "u1-refresh-0",
+            NOW_SECS - 10,
+        )
+        .await?;
+        stores
+            .mongo
+            .documents("users")
+            .update_one(
+                doc! { "accounts.id": "u1" },
+                doc! { "$set": {
+                    "accounts.$.refresh_token": envelope("u1-refresh-1"),
+                    "accounts.$.access_token": envelope("u1-access-1"),
+                } },
+            )
+            .await?;
+        let token = process.twitch.streamer_token("u1", None, "test").await?;
+        let requests = token_requests(&server);
+        assert_eq!(requests.len(), 1);
+        assert_token_request(&requests[0], "refresh_token", Some("u1-refresh-1"));
+        // The mock numbers rotations per streamer: this is its first.
+        assert_eq!(token.expose(), "u1-access-1");
+        let after = stored_account(&stores, "u1").await?;
+        assert_eq!(
+            decrypt_field(&after, "refresh_token").as_deref(),
+            Some("u1-refresh-1")
+        );
+        let cache = cache_fields(&stores, "u1").await?;
+        assert_eq!(cache["refresh_token"], "u1-refresh-1");
+        Ok(())
+    })
+    .await
+}
+
+/// The cache ahead of MongoDB (review finding 5; for example MongoDB restored from an older
+/// backup): MongoDB's token is exchanged first and refused; the cache's different token is then
+/// tried, its rotation stored over MongoDB's dead one, and nobody is logged out. The reference
+/// (and the earlier port) exchanged the cache's token and then dropped its rotation as
+/// "superseded" by MongoDB's older one, losing the only live token.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_cache_ahead_of_mongodb_is_tried_after_the_stored_token() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_with("u1", "u1-refresh-5");
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        let process = process(&stores, &server, fast_timings())?;
+        seed(
+            &stores,
+            &process,
+            "u1",
+            "u1-access-0",
+            "u1-refresh-0",
+            NOW_SECS - 10,
+        )
+        .await?;
+        set_cache(
+            &stores,
+            "u1",
+            &[
+                ("access_token", "u1-access-5"),
+                ("refresh_token", "u1-refresh-5"),
+                ("expires_at", &(NOW_SECS - 5).to_string()),
+            ],
+        )
+        .await?;
+        let token = process.twitch.streamer_token("u1", None, "test").await?;
+        let requests = token_requests(&server);
+        assert_eq!(requests.len(), 2);
+        assert_token_request(&requests[0], "refresh_token", Some("u1-refresh-0"));
+        assert_token_request(&requests[1], "refresh_token", Some("u1-refresh-5"));
+        assert_eq!(token.expose(), "u1-access-1");
+        let after = stored_account(&stores, "u1").await?;
+        assert_eq!(
+            decrypt_field(&after, "refresh_token").as_deref(),
+            Some("u1-refresh-1")
+        );
+        assert!(after.get_bool("has_permissions")?);
+        let cache = cache_fields(&stores, "u1").await?;
+        assert_eq!(cache["refresh_token"], "u1-refresh-1");
+        assert_eq!(cache["has_permissions"], "true");
+        assert!(
+            !process
+                .events
+                .actions()
+                .contains(&"tokens_invalidated".to_owned())
+        );
+        assert!(state.lock().unwrap().valid.contains_key("u1-refresh-1"));
         Ok(())
     })
     .await
