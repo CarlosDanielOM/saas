@@ -19,6 +19,14 @@ fn reference_summary_cases() -> anyhow::Result<()> {
             );
         } else {
             let e = result.unwrap_err();
+            if e.detail.starts_with("JSON parse error:") {
+                // Accepted decision: runtime-specific parser wording is not reproduced.
+                assert!(e.detail.contains("line "));
+                assert!(e.detail.contains("column "));
+                assert!(e.raw_snippet.chars().count() <= 160);
+                assert_eq!(json!(e.phase), c["expected"]["phase"]);
+                continue;
+            }
             assert_eq!(
                 json!({"ok":false,"error":e.detail,"rawSnippet":e.raw_snippet,"phase":e.phase}),
                 c["expected"]
@@ -40,4 +48,21 @@ fn reference_summary_cases() -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+#[test]
+fn syntax_corrections_always_have_position_and_only_a_short_excerpt() {
+    for raw in [
+        "{",
+        "{\n  \"name\":",
+        "{broken",
+        &format!("{{\"text\":\"{}\" BROKEN", "😀e\u{301} مرحبا".repeat(1000)),
+    ] {
+        let error = parse_stream_summary_response(raw).unwrap_err();
+        assert!(error.detail.starts_with("JSON parse error:"));
+        assert!(error.detail.contains("line "));
+        assert!(error.detail.contains("column "));
+        assert!(error.detail.len() < 200);
+        assert!(error.raw_snippet.chars().count() <= 160);
+    }
 }

@@ -17,6 +17,45 @@ fn recorded_prompt_and_context_contract() -> anyhow::Result<()> {
             Some("chat") => json!(construct_chat_system_messages(&serde_json::from_value(
                 i.clone()
             )?)),
+            Some("stream") => {
+                let snapshot = &i["snapshot"];
+                let stream = snapshot.get("stream").map(|s| LiveStream {
+                    title: s["title"].as_str().map(str::to_owned),
+                    game_name: s["game_name"].as_str().map(str::to_owned),
+                    started_at: s["started_at"].as_str().map(str::to_owned),
+                    viewer_count: s["viewer_count"].as_f64(),
+                });
+                let context = build_stream_context(
+                    i["channel"].as_str().unwrap(),
+                    &LiveSnapshot {
+                        is_live: snapshot["isLive"] == true,
+                        stream,
+                    },
+                    i["now"].as_i64().unwrap(),
+                );
+                let prompt = construct_chat_system_messages(&ChatInput {
+                    prompt: "hello".into(),
+                    stream: context.clone(),
+                    ..Default::default()
+                });
+                json!({"context":context,"prompt":prompt})
+            }
+            Some("emotes") => {
+                let context = if i["channel"] == "" {
+                    None
+                } else {
+                    select_emote_names(
+                        &serde_json::from_value::<Vec<String>>(i["channelNames"].clone())?,
+                        &serde_json::from_value::<Vec<String>>(i["globalNames"].clone())?,
+                    )
+                };
+                let prompt = construct_chat_system_messages(&ChatInput {
+                    prompt: "hello".into(),
+                    emotes: context.clone().unwrap_or_default(),
+                    ..Default::default()
+                });
+                json!({"context":context,"prompt":prompt})
+            }
             Some("merge") => {
                 let h = merge_chat_histories(
                     &serde_json::from_value::<Vec<History>>(i["thread"].clone())?,
@@ -54,7 +93,11 @@ fn recorded_prompt_and_context_contract() -> anyhow::Result<()> {
                 continue;
             }
         }
-        assert_eq!(actual, case["expected"], "case {index}");
+        assert_eq!(
+            serde_json::from_str::<Value>(&dima_text::to_js_json(&actual))?,
+            case["expected"],
+            "case {index}"
+        );
     }
     assert_eq!(differences, 3);
     Ok(())

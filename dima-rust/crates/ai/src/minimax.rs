@@ -30,7 +30,10 @@ pub struct Config {
 impl Config {
     pub fn builder(&self) -> ProviderBuilder {
         Provider::builder("minimax", &self.base_url)
-            .secret_header("x-api-key", &self.key)
+            .secret_header(
+                "x-api-key",
+                &dima_core::SecretString::new(dima_text::trim(self.key.expose()).to_owned()),
+            )
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
             .headers_timeout(Duration::from_secs(60))
@@ -65,6 +68,9 @@ impl Config {
             )
     }
     pub fn provider(&self) -> Result<Provider, dima_http::ConfigError> {
+        if dima_text::trim(self.key.expose()).is_empty() {
+            return Err(dima_http::ConfigError::Header("minimax"));
+        }
         self.builder().build()
     }
 }
@@ -106,6 +112,8 @@ fn failure(kind: ErrorKind) -> Error {
 fn http_error(e: dima_http::Error, cancel: &Shutdown) -> Error {
     if cancel.is_triggered() {
         failure(ErrorKind::Aborted)
+    } else if let dima_http::Error::RetriesExhausted { last, .. } = e {
+        http_error(*last, cancel)
     } else if matches!(e, dima_http::Error::Timeout { .. }) {
         failure(ErrorKind::Timeout)
     } else {
@@ -250,7 +258,10 @@ impl Client {
             let mut held = String::new();
             let mut flushed = !has_tools;
             let mut complete = false;
-            while let Some(event) = sse.next_event().await {
+            while let Some(event) = tokio::time::timeout(idle, sse.next_event())
+                .await
+                .map_err(|_| failure(ErrorKind::Timeout))?
+            {
                 let event = event.map_err(|e| http_error(e, cancel))?;
                 let v: Value =
                     serde_json::from_str(&event.data).map_err(|_| failure(ErrorKind::Upstream))?;
