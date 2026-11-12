@@ -24,9 +24,11 @@
 //!   Polar; callers reconcile, they never resend blindly (ingest relies on `external_id`
 //!   deduplication, checkouts on the `Idempotency-Key`).
 
+mod flows;
 mod ingest;
 mod types;
 
+pub use flows::*;
 pub use ingest::*;
 pub use types::*;
 
