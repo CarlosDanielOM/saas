@@ -187,11 +187,7 @@ pub fn user_document(
 }
 
 pub async fn insert_user(stores: &Stores, document: Document) -> Result<()> {
-    stores
-        .mongo
-        .documents("users")
-        .insert_one(document)
-        .await?;
+    stores.mongo.documents("users").insert_one(document).await?;
     Ok(())
 }
 
@@ -306,7 +302,8 @@ fn token_endpoint(request: &RecordedRequest, state: &Shared) -> MockResponse {
     if get("client_id").as_deref() != Some(CLIENT_ID)
         || get("client_secret").as_deref() != Some(CLIENT_SECRET)
     {
-        return MockResponse::json(403, r#"{"status":403,"message":"invalid client"}"#).delay(delay);
+        return MockResponse::json(403, r#"{"status":403,"message":"invalid client"}"#)
+            .delay(delay);
     }
     match get("grant_type").as_deref() {
         Some("client_credentials") => {
@@ -455,7 +452,10 @@ pub fn token_requests(server: &MockServer) -> Vec<RecordedRequest> {
 /// `POST /oauth2/token`, no query, a form body with the fields in order.
 pub fn assert_token_request(request: &RecordedRequest, grant: &str, refresh: Option<&str>) {
     assert_eq!(request.method, "POST");
-    assert_eq!(request.target, "/oauth2/token", "credentials never in the URL");
+    assert_eq!(
+        request.target, "/oauth2/token",
+        "credentials never in the URL"
+    );
     assert_eq!(
         request.header("content-type"),
         Some("application/x-www-form-urlencoded")

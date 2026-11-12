@@ -361,8 +361,10 @@ impl Inner {
             let Some(stored) = self.load_stored(id).await? else {
                 return Ok(Persisted::UserNotFound);
             };
-            match decrypt_envelope(&self.cipher, &stored.refresh)? {
-                Some(current)
+            // An envelope that cannot be decrypted holds no usable token: it is replaced, as
+            // the reference's unconditional write would (still only while it is unchanged).
+            match decrypt_envelope(&self.cipher, &stored.refresh) {
+                Ok(Some(current))
                     if !current.is_empty() && RefreshToken::new(current.as_str()) != *used =>
                 {
                     return Ok(Persisted::Superseded(stored));
