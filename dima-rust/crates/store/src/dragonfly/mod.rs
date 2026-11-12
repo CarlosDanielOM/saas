@@ -22,7 +22,7 @@
 //! - [`pubsub`]: [`Subscriber`] (bounded, deadline-driven, resubscribing; each subscription
 //!   states its [`Overflow`] policy and may receive [`Event::Gap`]) and the JSON envelope.
 //! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script;
-//!   scripts with unbounded loops are refused before they are sent.
+//!   a heuristic refuses scripts with obviously unbounded loops before they are sent.
 //! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes; the
 //!   unfenced processing-list helpers and [`FencedTransition`] for lease-checked transitions.
 //! - [`hooks`]: command spans and connection-error reporting, so telemetry attaches from outside.
