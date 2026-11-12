@@ -152,6 +152,7 @@ function diagnosticCode(message) {
   if (message.startsWith('Unexpected token ')) return 'UNEXPECTED_TOKEN';
   if (message === 'Unclosed expression') return 'UNCLOSED_EXPRESSION';
   if (message === 'Missing variable name') return 'MISSING_VARIABLE_NAME';
+  if (message === 'Missing user selector') return 'MISSING_USER_SELECTOR';
   throw new Error(`unmapped diagnostic message: ${message}`);
 }
 
@@ -1362,6 +1363,75 @@ for (const item of cases) {
 }
 
 // ===========================================================================
+// Review fixes (E-ENGINE-01b), appended so the earlier names stay put.
+// Loop headers: after the first expression of a header part, the reference
+// parses the rest from a copy without any `;`, `)` or `}`, so a call's closer
+// disappears and what follows joins its arguments.
+// ===========================================================================
+{
+  const loopHeaders = [
+    '*(for #i in a $(upper b) c { #i })',
+    '*(for #i in a $(upper b) $(lower c) d { #i })',
+    '*(for #i in a $(upper $(lower b) c) d { #i })',
+    '*(for #i in a $(upper b) c)',
+    '*(for #i in a $(upper b) c',
+    '*(for #i in %(list[]) $(say x) y { #i })',
+    '*(for #i in a (b) c { #i })',
+    '*(for #i in a %[x, $(upper y) z] $(say w) v { #i })',
+    '*(for #i in a "${$(upper b) c}" $(say d) e { #i })',
+    '*(for #i in a %(b $(c d) e) f { #i })',
+    '*(for #i in a #(cmd b) c { #i })',
+    '*(for #i in a ^(b) c { #i })',
+    '*(for #i in a *(for #j in b c { #j }) { #i })',
+    '*(for #i in a *(1 + 1) b { #i })',
+    '*(for #i = 0 $(x a) b; #i < 3; #i++ { #i })',
+    '*(for #i = $(len a) b; #i < $(len c) d; #i++ $(say e) f { #i })',
+    '*(for #i = 0; #i < $(count x) + 1 $(say y) z; #i += $(step a) b { #i })',
+    '*(for #i = 0; #i < 2; #i++ $(say a) b)',
+    '*(for #i = 0; #i < 2 $(f a); #i++ { #i })',
+    '*(for #i in a $(upper b) c { $(say #i) d })',
+    '$(say x) *(for #i in a $(upper b) c { #i }) $(say y)'
+  ];
+  for (const source of loopHeaders) addParse('loop-header', source);
+  for (const source of [
+    'Hi *(for #i in a $(upper b) c { #i }) bye',
+    '*(for #i = 0; #i < 3 $(say a) b; #i++ { #i }) $(user)'
+  ]) addCompiled('loop-header', source);
+
+  // A per-viewer selector left open at the end of an array item makes the
+  // reference throw (`unescapeLiteral(undefined)`). Inside an interpolation the
+  // template parser catches it and shows the interpolation's text; at the top
+  // level nothing catches it, and the port reports a diagnostic instead.
+  const caughtSelector = [
+    '*("${%[%(##x(]}")', '"${%[%(##x(]}"', '"a ${%[%(**x(]} b"', '"${%[^(##x(]}"',
+    '"${%[%del(##x(]}"', '"${%[1, %(##x(]}"', '"${%[%(##x(], %(y)}" ${%(z)}"',
+    '%[%(##x()]', '"${%[%(##x()]}"', '$(say "${%[%(]}")'
+  ];
+  for (const source of caughtSelector) addParse('caught-throw', source);
+  for (const source of ['$(say "${%[%(##x(]}") ok', 'a *("${%[%(##x(]}") b']) {
+    addCompiled('caught-throw', source);
+  }
+  for (const [source, opener] of [['%[%(##x(]', '('], ['%[^(**x(]', '('], ['*(%[%del(##x(])', '(']]) {
+    const span = lastTokenSpan(source, opener);
+    addApprovedParse('approval-ac2-hardened', source,
+      diagnosticOutcome('UNCLOSED_DELIMITER', 'Unclosed "("', span), 'AC-2',
+      'The source oracle throws TypeError because a per-viewer selector is left open at the end of an array item and nothing catches it. Rust reports a diagnostic at the selector opener instead.', {
+      harden: true,
+      legacyOutcome: diagnosticOutcome('MISSING_USER_SELECTOR', 'Missing user selector', span)
+    });
+  }
+
+  // Budgets follow the input's length: many expressions under the source limit
+  // (6,006 characters, 4,004 nodes), a stored command whose substituted text is
+  // longer than a stored command may be, and deep parentheses (no tree depth).
+  addCompiled('budget', '*(1+1)'.repeat(1001));
+  addCompiled('budget', '$(say &p1) '.repeat(30).replaceAll('&p1', 'x'.repeat(400)));
+  addParse('budget', '*(1+1)'.repeat(1001));
+  addParse('budget', `*(${'('.repeat(2000)}1${')'.repeat(2000)})`);
+  addCompiled('budget', `a *(${'('.repeat(2000)}1${')'.repeat(2000)}) b`);
+}
+
+// ===========================================================================
 // Coverage + assertions
 // ===========================================================================
 function walkAst(node, visit) {
@@ -1719,6 +1789,7 @@ const output = {
       UNCLOSED_EXPRESSION: 'A compiled-template expression segment has no closing parenthesis; the plan retains its source and diagnostic.',
       UNEXPECTED_TOKEN: 'A nested expression leaves tokens unconsumed; message is Unexpected token "<tok>" in nested expression.',
       MISSING_VARIABLE_NAME: 'Legacy safe diagnosis for an empty variable name (used only by source-throw hardening fixtures).',
+      MISSING_USER_SELECTOR: 'Legacy safe diagnosis for a per-viewer selector left open at the end of an array item (used only by source-throw hardening fixtures).',
       SOURCE_LIMIT: 'Resource limit (not present in this corpus).',
       TOKEN_LIMIT: 'Resource limit (not present in this corpus).',
       NODE_LIMIT: 'Resource limit (not present in this corpus).',
