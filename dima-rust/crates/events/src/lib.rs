@@ -25,6 +25,7 @@
 
 pub mod config;
 pub mod contracts;
+pub mod dispatch;
 pub mod envelope;
 pub mod identity;
 pub mod producers;
