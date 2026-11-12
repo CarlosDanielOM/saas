@@ -33,13 +33,17 @@ async fn every_real_document_decodes() -> Result<()> {
         };
         let mut cursor = collection.find(doc! {}).sort(doc! { "_id": 1 }).await?;
         let (mut seen, mut decoded, mut failed) = (0_u64, 0_u64, 0_u64);
+        let mut decoding = std::time::Duration::ZERO;
         while let Some(raw) = cursor.try_next().await? {
             seen += 1;
             if (seen - 1) % stride != 0 {
                 continue;
             }
             decoded += 1;
-            if let Err(error) = (info.decode)(&raw) {
+            let started = std::time::Instant::now();
+            let outcome = (info.decode)(&raw);
+            decoding += started.elapsed();
+            if let Err(error) = outcome {
                 failed += 1;
                 let id = raw
                     .get("_id")
@@ -53,13 +57,14 @@ async fn every_real_document_decodes() -> Result<()> {
         }
         total += decoded;
         eprintln!(
-            "{:<28} {decoded:>7} of {count:>7} decoded{}, {failed} failed",
+            "{:<28} {decoded:>7} of {count:>7} decoded{}, {failed} failed, {:.2} µs per document (debug build)",
             info.name,
             if stride > 1 {
                 format!(" (1 in {stride})")
             } else {
                 String::new()
-            }
+            },
+            decoding.as_secs_f64() * 1e6 / decoded.max(1) as f64
         );
     }
     eprintln!("{total} documents decoded");

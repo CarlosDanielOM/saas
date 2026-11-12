@@ -1,6 +1,7 @@
 // Records what the real Mongoose models of the `dima-model` registry write, for `tests/writes.rs`:
 // the indexes `Model.init()` creates, documents created, validation errors, updates, upserts and
-// saves (hooks included), each as the documents the server stored afterwards.
+// saves (hooks included): each case as the write commands Mongoose sent (filter, update,
+// documents) and the documents the server stored afterwards.
 //
 //   eval "$(dima-rust/tools/test-env)"
 //   cd "$DIMABOT_DIR" && TZ=UTC node_modules/.bin/tsx \
@@ -370,6 +371,30 @@ const ejson = (value: any) => JSON.parse(EJSON.stringify(value, { relaxed: false
 // Deep clone through Extended JSON: dates and ObjectIds survive, numbers become plain numbers.
 const clone = (value: any) => EJSON.parse(EJSON.stringify(value, { relaxed: false }), { relaxed: true });
 const RAW = { promoteValues: false, promoteLongs: false, promoteBuffers: false };
+const exact = (value: any) => mongoose.mongo.BSON.deserialize(mongoose.mongo.BSON.serialize({ v: value }), RAW).v;
+
+// The write commands of the case being run, reduced to what a Rust caller prepares: the
+// documents of an insert, the filter and update of an update or findAndModify (driver envelope
+// and options the Rust side sets separately left out).
+let capturing: any[] | null = null;
+function capture(name: string, command: any) {
+    if (name === 'insert') return { op: 'insert', documents: command.documents };
+    if (name === 'update') {
+        return {
+            op: 'update',
+            updates: command.updates.map((u: any) => ({
+                q: u.q, u: u.u,
+                ...(u.upsert ? { upsert: true } : {}),
+                ...(u.multi ? { multi: true } : {}),
+                ...(u.arrayFilters ? { arrayFilters: u.arrayFilters } : {}),
+            })),
+        };
+    }
+    if (name === 'findAndModify') {
+        return { op: 'findAndModify', query: command.query, update: command.update, ...(command.upsert ? { upsert: true } : {}), new: Boolean(command.new) };
+    }
+    return null;
+}
 
 async function storedDocs(collection: any) {
     return collection.find({}, { sort: { _id: 1 }, ...RAW }).toArray();
@@ -383,6 +408,8 @@ async function runCase(name: string, model: any, spec: any) {
     const intent = Object.fromEntries(Object.entries(spec).filter(([k]) => !['name', 'seed', 'rust', 'differs'].includes(k)));
     let error: any = null;
     let result: any = null;
+    const commands: any[] = [];
+    capturing = commands;
     frozen = NOW_MS;
     try {
         const a = clone(intent);
@@ -425,10 +452,13 @@ async function runCase(name: string, model: any, spec: any) {
         else throw caught;
     } finally {
         frozen = null;
+        capturing = null;
     }
     const stored = await storedDocs(collection);
     if (result != null) result = mongoose.mongo.BSON.deserialize(mongoose.mongo.BSON.serialize(result), RAW);
+    // Generated ids are numbered walking the commands, then the result, then the stored documents.
     const walk = normaliser([spec.seed ?? [], intent]);
+    const sent = commands.map(walk);
     return {
         collection: collection.collectionName,
         name,
@@ -438,6 +468,7 @@ async function runCase(name: string, model: any, spec: any) {
         seed: ejson(seedStored),
         intent: ejson(intent),
         ...(error ? { error } : {}),
+        commands: ejson(sent),
         ...(result != null ? { result: ejson(walk(result)) } : {}),
         stored: ejson(stored.map(walk)),
     };
@@ -457,8 +488,13 @@ async function recordIndexes(name: string, model: any) {
 }
 
 const dbName = `dima_test_model_rec_${randomInt(1e9)}`;
-// The production connection's options: `autoIndex` and `autoCreate` stay on.
-await mongoose.connect(uri, { dbName });
+// The production connection's options (`autoIndex` and `autoCreate` stay on), with monitoring.
+await mongoose.connect(uri, { dbName, monitorCommands: true });
+mongoose.connection.getClient().on('commandStarted', (event: any) => {
+    if (!capturing) return;
+    const captured = capture(event.commandName, exact(event.command));
+    if (captured) capturing.push(captured);
+});
 const output: any = { meta: {}, indexes: [], cases: [] };
 try {
     const server = await mongoose.connection.db.admin().command({ buildInfo: 1 });

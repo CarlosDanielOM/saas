@@ -3,7 +3,8 @@
 //! `tests/mongoose/record.mts`): the indexes `Model.init()` leaves on an empty database, documents
 //! created (through the module's input type where the case names one), validation errors,
 //! updates, upserts, `findOneAndUpdate` results and saves, hooks included, each compared as the
-//! exact stored BSON (types, key order, missing versus null). Duplicate keys on the unique indexes
+//! write commands sent (filter, update, inserted documents) and the exact stored BSON (types,
+//! key order, missing versus null). Duplicate keys on the unique indexes
 //! are detected. One throwaway database per test, dropped afterwards.
 //!
 //! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set.
@@ -634,12 +635,58 @@ async fn stored(store: &MongoStore, collection: &str) -> Result<Vec<Document>> {
         .await?)
 }
 
-/// Runs one recorded case through the Rust side; returns what to compare.
-async fn run_case(
-    store: &MongoStore,
-    case: &Value,
-    now_ms: i64,
-) -> Result<(Option<Value>, Option<Bson>)> {
+/// What one case did on the Rust side.
+#[derive(Default)]
+struct Outcome {
+    /// The error, as the recording writes it.
+    error: Option<Value>,
+    /// The document `findOneAndUpdate` returned.
+    result: Option<Bson>,
+    /// The writes that were sent, in the recording's reduced form.
+    sent: Vec<Bson>,
+}
+
+fn update_doc(update: &dima_store::mongo::update::UpdateDoc) -> Bson {
+    match update {
+        dima_store::mongo::update::UpdateDoc::Document(document) => {
+            Bson::Document(document.clone())
+        }
+        dima_store::mongo::update::UpdateDoc::Pipeline(stages) => {
+            Bson::Array(stages.iter().cloned().map(Bson::Document).collect())
+        }
+    }
+}
+
+/// An `update` command as the recorder reduces it.
+fn sent_update(
+    filter: &Document,
+    update: Bson,
+    upsert: bool,
+    multi: bool,
+    array_filters: Option<&Vec<Document>>,
+) -> Bson {
+    let mut entry = doc! { "q": filter.clone(), "u": update };
+    if upsert {
+        entry.insert("upsert", true);
+    }
+    if multi {
+        entry.insert("multi", true);
+    }
+    if let Some(filters) = array_filters {
+        entry.insert(
+            "arrayFilters",
+            filters
+                .iter()
+                .cloned()
+                .map(Bson::Document)
+                .collect::<Vec<_>>(),
+        );
+    }
+    Bson::Document(doc! { "op": "update", "updates": [entry] })
+}
+
+/// Runs one recorded case through the Rust side.
+async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outcome> {
     let collection = case
         .get("collection")
         .and_then(Value::as_str)
@@ -655,7 +702,7 @@ async fn run_case(
     } else {
         Writer::Client
     };
-    let failure = |message: String| Ok((Some(Value::String(message)), None));
+    let mut outcome = Outcome::default();
     match op {
         "create" | "journal" => {
             let prepared = match case.get("rust").and_then(Value::as_str) {
@@ -676,29 +723,31 @@ async fn run_case(
             if op == "journal" {
                 writes = writes.write_concern(domain_events::journal_write_concern());
             }
+            outcome.sent.push(Bson::Document(
+                doc! { "op": "insert", "documents": [prepared.document.clone()] },
+            ));
             if let Err(error) = writes.insert_one(&prepared).await {
-                return failure(write_error(&error));
+                outcome.error = Some(Value::String(write_error(&error)));
             }
         }
         "validate" => {
-            return match create(
+            match create(
                 info,
                 &document_of(intent.get("doc").context("doc")?)?,
                 &mut ctx,
             ) {
-                Ok(_) => Ok((None, None)),
-                Err(ModelError::Validation(error)) => Ok((
-                    Some(serde_json::json!({
+                Ok(_) => {}
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(serde_json::json!({
                         "name": "ValidationError",
                         "message": error.to_string(),
                         "errors": error.errors.iter().map(|e| serde_json::json!({
                             "path": e.path, "kind": e.kind.as_str(), "message": e.message,
                         })).collect::<Vec<_>>(),
-                    })),
-                    None,
-                )),
-                Err(other) => Err(other.into()),
-            };
+                    }));
+                }
+                Err(other) => return Err(other.into()),
+            }
         }
         "updateOne" | "updateMany" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
@@ -713,13 +762,22 @@ async fn run_case(
                 )?,
                 _ => info.prepare_update(&filter, update, options, &mut ctx)?,
             };
-            let outcome = if op == "updateOne" {
+            if let Some(update) = &prepared.update {
+                outcome.sent.push(sent_update(
+                    &prepared.filter,
+                    update_doc(update),
+                    prepared.upsert,
+                    op == "updateMany",
+                    prepared.array_filters.as_ref(),
+                ));
+            }
+            let result = if op == "updateOne" {
                 writes.update_one(&prepared).await
             } else {
                 writes.update_many(&prepared).await
             };
-            if let Err(error) = outcome {
-                return failure(write_error(&error));
+            if let Err(error) = result {
+                outcome.error = Some(Value::String(write_error(&error)));
             }
         }
         "findOneAndUpdate" => {
@@ -743,14 +801,24 @@ async fn run_case(
                     info.prepare_find_one_and_update(&filter, update, options, returned, &mut ctx)?
                 }
             };
+            if let Some(update) = &prepared.update {
+                let mut sent = doc! {
+                    "op": "findAndModify",
+                    "query": prepared.filter.clone(),
+                    "update": update_doc(update),
+                };
+                if prepared.upsert {
+                    sent.insert("upsert", true);
+                }
+                sent.insert("new", returned == Returned::After);
+                outcome.sent.push(Bson::Document(sent));
+            }
             let found = writes.find_one_and_update(&prepared).await?;
-            return Ok((
-                None,
-                found.map(|mut document| {
-                    dima_store::mongo::json::remove_paths(&mut document, info.hidden);
-                    Bson::Document(document)
-                }),
-            ));
+            outcome.result = found.map(|mut document| {
+                // Mongoose's command projects the hidden paths out; the result is the same.
+                dima_store::mongo::json::remove_paths(&mut document, info.hidden);
+                Bson::Document(document)
+            });
         }
         "save" => {
             let id = bson_of(intent.get("id").context("id")?)?;
@@ -771,11 +839,20 @@ async fn run_case(
                 }
                 _ => info.prepare_save(&loaded, &changes, &mut ctx)?,
             };
+            if let Some(update) = &prepared.update {
+                outcome.sent.push(sent_update(
+                    &prepared.filter,
+                    Bson::Document(update.clone()),
+                    false,
+                    false,
+                    None,
+                ));
+            }
             writes.save(&prepared).await?;
         }
         other => bail!("unknown op {other}"),
     }
-    Ok((None, None))
+    Ok(outcome)
 }
 
 fn write_error(error: &dima_store::mongo::write::WriteError) -> String {
@@ -967,7 +1044,11 @@ async fn writes_match_mongoose() -> Result<()> {
                     .insert_many(seed.clone())
                     .await?;
             }
-            let (error, result) = match run_case(&store, case, recording.now_ms).await {
+            let Outcome {
+                error,
+                result,
+                sent,
+            } = match run_case(&store, case, recording.now_ms).await {
                 Ok(outcome) => outcome,
                 Err(error) => {
                     problems.push(format!("{collection}/{name}: {error:#}"));
@@ -992,7 +1073,17 @@ async fn writes_match_mongoose() -> Result<()> {
             }
             let intent = bson_of(case.get("intent").context("intent")?)?;
             let seed_bson = Bson::Array(seed.into_iter().map(Bson::Document).collect());
+            // Generated ids are numbered walking the commands, then the result, then the stored
+            // documents, as the recorder does.
             let mut normaliser = Normaliser::new(&[&seed_bson, &intent]);
+            let sent = canonical(normaliser.walk(Bson::Array(sent)));
+            let expected_sent = canonical(bson_of(case.get("commands").context("commands")?)?);
+            if sent != expected_sent {
+                problems.push(format!(
+                    "{collection}/{name}: commands\n  mongoose {expected_sent}\n  rust     {sent}"
+                ));
+            }
+            let result = result.map(|r| normaliser.walk(r));
             let actual: Vec<Bson> = stored(&store, collection)
                 .await?
                 .into_iter()
@@ -1010,7 +1101,7 @@ async fn writes_match_mongoose() -> Result<()> {
                 ));
             }
             if let Some(expected) = case.get("result") {
-                let actual = result.map(|r| canonical(normaliser.walk(r)));
+                let actual = result.map(canonical);
                 let expected = canonical(bson_of(expected)?);
                 if actual.as_deref() != Some(expected.as_str()) {
                     problems.push(format!(
@@ -1132,4 +1223,63 @@ fn hooked_collections_refuse_generic_writes() -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Reads for HTTP responses leave out the `select: false` paths unless the projection names them,
+/// cast the filter like Mongoose, and render like Express.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn response_reads_hide_select_false_paths() -> Result<()> {
+    support::with_store(|store| async move {
+        let mut ctx = WriteContext::with_sequential_ids(1_794_392_430_456, 1);
+        let mut command = NewCommand::new("111");
+        command.cmd = Some("!hola".into());
+        command.blocks = Some(Bson::Document(doc! { "v": 1, "root": {} }));
+        let prepared = command.prepare(&mut ctx)?;
+        let id = prepared.document.get_object_id("_id")?;
+        store
+            .writes(commands::COLLECTION)
+            .insert_one(&prepared)
+            .await?;
+        let info = &commands::INFO;
+        // A string id is cast to the ObjectId, as Mongoose casts it.
+        let filter = doc! { "_id": id.to_hex() };
+        let one = info
+            .find_one_json(&store, &filter, &mut ctx)
+            .await?
+            .context("found")?;
+        if one.get("blocks").is_some() || one.get("cmd") != Some(&Value::String("!hola".into())) {
+            bail!("findOne rendered {one}");
+        }
+        if one.get("_id") != Some(&Value::String(id.to_hex())) {
+            bail!("_id must render as hex text: {one}");
+        }
+        let all = info
+            .find_json(
+                &store,
+                &doc! { "channelID": "111" },
+                Default::default(),
+                &mut ctx,
+            )
+            .await?;
+        if all.len() != 1 || all.iter().any(|d| d.get("blocks").is_some()) {
+            bail!("find rendered {all:?}");
+        }
+        // An inclusion projection that names a hidden path gets it (Mongoose's `+blocks`).
+        let mut options = mongodb::options::FindOptions::default();
+        options.projection = Some(doc! { "blocks": 1, "cmd": 1 });
+        let selected = info.find_json(&store, &doc! {}, options, &mut ctx).await?;
+        if selected.first().and_then(|d| d.get("blocks")).is_none() {
+            bail!("an explicit projection must select blocks: {selected:?}");
+        }
+        // A bad id is Mongoose's CastError, before anything is sent.
+        if info
+            .find_one_json(&store, &doc! { "_id": "nope" }, &mut ctx)
+            .await
+            .is_ok()
+        {
+            bail!("an invalid ObjectId must fail to cast");
+        }
+        Ok(())
+    })
+    .await
 }
