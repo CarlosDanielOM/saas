@@ -267,6 +267,7 @@ fn arbitrary_utf8_syntax_never_panics_and_respects_every_limit() {
     let engine = SyntaxEngine::default();
     let tight = engine.clone().with_limits(Limits {
         source_chars: 200,
+        input_chars: 200,
         tokens: 40,
         nodes: 30,
         nesting: 6,

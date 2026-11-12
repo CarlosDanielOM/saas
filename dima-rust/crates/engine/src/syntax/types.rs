@@ -63,8 +63,11 @@ pub enum DiagnosticCode {
     /// reports it instead. Inside an interpolation both show `[Parse error: …]` with the
     /// interpolation's text, because the reference catches the throw there.
     MissingUserSelector,
-    /// The source has more characters than [`Limits::source_chars`].
+    /// A stored command text has more characters than [`Limits::source_chars`]
+    /// ([`SyntaxEngine::check_source`](super::SyntaxEngine::check_source)).
     SourceLimit,
+    /// The text to parse has more characters than [`Limits::input_chars`].
+    InputLimit,
     /// More tokens than [`Limits::tokens`].
     TokenLimit,
     /// More AST nodes than [`Limits::nodes`].
@@ -87,6 +90,7 @@ impl DiagnosticCode {
             Self::MissingVariableName => "MISSING_VARIABLE_NAME",
             Self::MissingUserSelector => "MISSING_USER_SELECTOR",
             Self::SourceLimit => "SOURCE_LIMIT",
+            Self::InputLimit => "INPUT_LIMIT",
             Self::TokenLimit => "TOKEN_LIMIT",
             Self::NodeLimit => "NODE_LIMIT",
             Self::NestingLimit => "NESTING_LIMIT",
@@ -120,6 +124,7 @@ impl Diagnostic {
         matches!(
             self.code,
             DiagnosticCode::SourceLimit
+                | DiagnosticCode::InputLimit
                 | DiagnosticCode::TokenLimit
                 | DiagnosticCode::NodeLimit
                 | DiagnosticCode::NestingLimit
@@ -593,8 +598,13 @@ impl SourceSegment {
 /// independent of any caller's configuration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Limits {
-    /// Longest source, in characters (Unicode scalar values).
+    /// Longest stored command text, in characters (Unicode scalar values). Checked where a
+    /// command is saved ([`SyntaxEngine::check_source`](super::SyntaxEngine::check_source)),
+    /// not by parsing: viewer arguments are substituted into the text before it is parsed.
     pub source_chars: usize,
+    /// Longest text that parsing, scanning and compiling accept, in characters: a stored text
+    /// with its placeholders substituted ([`MAX_INPUT_CHARS`]).
+    pub input_chars: usize,
     /// Tokens per compilation, nested arrays and interpolations included.
     pub tokens: usize,
     /// AST nodes per compilation, discarded nodes included.
@@ -611,10 +621,28 @@ pub const HARD_NESTING_CEILING: usize = 128;
 /// enter its 128th container, so every AST the parser builds stays readable by it.
 pub const HARD_JSON_NESTING_CEILING: usize = 128;
 
+/// The longest stored command text, in characters (the commands API enforces it on save).
+pub const MAX_SOURCE_CHARS: usize = 10_000;
+
+/// The longest viewer argument, in characters: a Twitch chat message is at most 500 characters,
+/// and a command's argument is that message without the command name.
+pub const MAX_ARGUMENT_CHARS: usize = 500;
+
+/// The longest text the parser can be given: a stored text with every placeholder substituted.
+///
+/// `resolveArgumentPlaceholders` (`dimabot/src/handlers/special_parser.handler.ts`) replaces each
+/// `&pN` by one word of the argument and each `&t` by the rest of the argument; other text is
+/// kept. The shortest placeholder is `&t` (2 characters) and its replacement is at most the
+/// whole argument, so the longest result is a stored text made only of `&t`: 10,000 / 2 × 500 =
+/// 2,500,000 characters. With literal arguments (commands, goals, cheers) each placeholder
+/// becomes `%(cmd_arg_<32 hex digits>_<n>)` instead, at most 48 characters, which is shorter.
+pub const MAX_INPUT_CHARS: usize = MAX_SOURCE_CHARS / 2 * MAX_ARGUMENT_CHARS;
+
 impl Default for Limits {
     fn default() -> Self {
         Self {
-            source_chars: 10_000,
+            source_chars: MAX_SOURCE_CHARS,
+            input_chars: MAX_INPUT_CHARS,
             tokens: 20_000,
             nodes: 4_000,
             nesting: HARD_NESTING_CEILING,

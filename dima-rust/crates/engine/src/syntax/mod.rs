@@ -5,9 +5,12 @@
 //! Behaviour is the reference's (`dimabot/src/utils/ast_parser/{tokenizer,registry,parser,render}.ts`),
 //! including its quirks. Differences, all on purpose:
 //!
-//! - resource limits ([`Limits`]): the reference has none. A source over the character limit, too
-//!   many tokens or nodes, or too deep nesting gives a resource-limit [`Diagnostic`] for the whole
-//!   compilation; the persisted JSON shape stays below [`HARD_JSON_NESTING_CEILING`];
+//! - resource limits ([`Limits`]): the reference has none. A stored command text over
+//!   [`MAX_SOURCE_CHARS`] is refused where it is saved ([`SyntaxEngine::check_source`]); the
+//!   text parsing gets has viewer arguments substituted already and may be longer, up to
+//!   [`MAX_INPUT_CHARS`]. Too many tokens or nodes, or too deep nesting gives a resource-limit
+//!   [`Diagnostic`] for the whole compilation; the persisted JSON shape stays below
+//!   [`HARD_JSON_NESTING_CEILING`];
 //! - where the reference throws a `TypeError` that nothing catches (a variable introducer, or a
 //!   per-viewer selector, left open at the very end of an array item) this port reports
 //!   [`DiagnosticCode::MissingVariableName`] or [`DiagnosticCode::MissingUserSelector`]. Inside an
@@ -63,6 +66,13 @@ impl SyntaxEngine {
     /// The limits.
     pub fn limits(&self) -> Limits {
         self.limits
+    }
+
+    /// Refuses a stored command text over [`Limits::source_chars`] characters, for the places
+    /// that save one. Parsing does not apply this limit: the text it gets has viewer arguments
+    /// substituted and is bounded by [`Limits::input_chars`] instead.
+    pub fn check_source(&self, text: &str) -> Result<(), Diagnostic> {
+        source::check_source(text, self.limits)
     }
 
     /// Parses a whole program (`parse` in `parser.ts`). The reference's `{ ast, error }` is

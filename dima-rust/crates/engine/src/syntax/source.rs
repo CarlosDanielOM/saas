@@ -2,15 +2,35 @@ use super::{Diagnostic, DiagnosticCode, HARD_NESTING_CEILING, Limits, ParseStats
 use crate::text::sub;
 use std::{ops::Range, sync::Arc};
 
-/// Refuses a source longer than the limit, counted in characters (row A2).
+/// Refuses a text to parse that is longer than the input limit, counted in characters (row A2).
 pub(crate) fn check_length(input: &str, limits: Limits) -> Result<(), Diagnostic> {
+    check_chars(
+        input,
+        limits.input_chars,
+        DiagnosticCode::InputLimit,
+        "Input character limit exceeded",
+    )
+}
+
+/// Refuses a stored command text longer than the source limit, counted in characters (row A2).
+pub(crate) fn check_source(input: &str, limits: Limits) -> Result<(), Diagnostic> {
+    check_chars(
+        input,
+        limits.source_chars,
+        DiagnosticCode::SourceLimit,
+        "Source character limit exceeded",
+    )
+}
+
+fn check_chars(
+    input: &str,
+    limit: usize,
+    code: DiagnosticCode,
+    message: &str,
+) -> Result<(), Diagnostic> {
     // A character is at least one byte, so short inputs need no count.
-    if input.len() > limits.source_chars && dima_text::char_len(input) > limits.source_chars {
-        return Err(Diagnostic::new(
-            DiagnosticCode::SourceLimit,
-            "Source character limit exceeded",
-            Span::new(0, input.len()),
-        ));
+    if input.len() > limit && dima_text::char_len(input) > limit {
+        return Err(Diagnostic::new(code, message, Span::new(0, input.len())));
     }
     Ok(())
 }

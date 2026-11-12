@@ -2,13 +2,10 @@
 //! `fixtures/ast_syntax_reference.mjs` under Node 24) run against `dima_engine::syntax`.
 //!
 //! Every case must give the TypeScript result (`expected.legacy`: the reference's AST or error
-//! message, plus the generator's UTF-16 location of the error). The intended differences are
-//! stated once each, in [`Expected`]:
-//!
-//! 1. positions: the port's spans are byte offsets; [`Span::to_utf16`] must give the recorded
-//!    UTF-16 span exactly;
-//! 2. the source limit: a source over 10,000 characters is a `SOURCE_LIMIT` diagnostic covering
-//!    the whole source (the reference has no limit and parses it).
+//! message, plus the generator's UTF-16 location of the error). The one intended difference is
+//! positions: the port's spans are byte offsets; [`Span::to_utf16`] must give the recorded UTF-16
+//! span exactly. Sources over the 10,000-character limit of a stored command parse like any
+//! other: that limit is [`SyntaxEngine::check_source`], and parsing takes substituted text.
 //!
 //! Everything else is compared exactly.
 
@@ -16,8 +13,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use dima_engine::syntax::{
-    AstNode, CompiledProgram, Diagnostic, Limits, SegmentKind, SegmentStep, SourceSegment, Span,
-    SyntaxEngine, unescape_literal, unescape_rendered_text,
+    AstNode, CompiledProgram, Diagnostic, DiagnosticCode, Limits, SegmentKind, SegmentStep,
+    SourceSegment, Span, SyntaxEngine, unescape_literal, unescape_rendered_text,
 };
 use serde_json::{Value, json};
 
@@ -118,40 +115,8 @@ fn actual(engine: &SyntaxEngine, case: &Value) -> Value {
     }
 }
 
-/// Which rule gives a case's expectation.
-#[derive(Debug, PartialEq, Eq)]
-enum Expected {
-    /// The recorded TypeScript result, with recorded UTF-16 spans.
-    Recorded,
-    /// Difference 2: the source is over the character limit.
-    SourceLimit,
-}
-
-fn rule(source: &str) -> Expected {
-    if dima_text::char_len(source) > Limits::default().source_chars {
-        Expected::SourceLimit
-    } else {
-        Expected::Recorded
-    }
-}
-
 fn expectation(case: &Value) -> Value {
-    let source = case["input"]["source"].as_str().unwrap_or_default();
-    match (rule(source), case["operation"].as_str().unwrap_or_default()) {
-        (Expected::SourceLimit, operation) => {
-            let error = json!({
-                "code": "SOURCE_LIMIT",
-                "message": "Source character limit exceeded",
-                "span": {"start": 0, "end": dima_text::utf16_len(source)},
-            });
-            if operation == "parse" {
-                json!({"outcome": "diagnostic", "diagnostic": error})
-            } else {
-                json!({"error": error})
-            }
-        }
-        (Expected::Recorded, _) => case["expected"]["legacy"].clone(),
-    }
+    case["expected"]["legacy"].clone()
 }
 
 /// The recorded expectation, stripped of the generator's spans and codes, is the untouched
@@ -201,7 +166,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     );
     let engine = SyntaxEngine::default();
     let mut failures = Vec::new();
-    let mut source_limit = 0;
+    let mut over_source_limit = 0;
     let mut converted_spans = 0;
     for case in cases {
         let name = case["name"].as_str().unwrap_or_default();
@@ -230,15 +195,14 @@ fn every_corpus_case_gives_the_typescript_result() {
                 }
             }
         }
-        if rule(source) == Expected::SourceLimit {
-            source_limit += 1;
-        } else {
-            CONVERT.with(|convert| convert.set(false));
-            let in_bytes = actual(&engine, case);
-            CONVERT.with(|convert| convert.set(true));
-            if in_bytes != actual(&engine, case) {
-                converted_spans += 1;
-            }
+        if dima_text::char_len(source) > Limits::default().source_chars {
+            over_source_limit += 1;
+        }
+        CONVERT.with(|convert| convert.set(false));
+        let in_bytes = actual(&engine, case);
+        CONVERT.with(|convert| convert.set(true));
+        if in_bytes != actual(&engine, case) {
+            converted_spans += 1;
         }
         let expected = expectation(case);
         let actual = actual(&engine, case);
@@ -254,13 +218,14 @@ fn every_corpus_case_gives_the_typescript_result() {
         eprintln!("{failure}");
     }
     assert!(failures.is_empty(), "{} corpus mismatches", failures.len());
-    // The intended differences and how many cases they touch.
+    // Sources longer than a stored command may be, parsed like the reference does.
     assert_eq!(
-        source_limit, 6,
+        over_source_limit, 6,
         "cases over the 10,000-character source limit"
     );
+    // The intended difference and how many cases it touches.
     assert_eq!(
-        converted_spans, 27,
+        converted_spans, 29,
         "cases whose byte spans differ from UTF-16 spans"
     );
 }
@@ -297,15 +262,16 @@ fn recorded_asts_round_trip_through_the_typed_shape() {
 }
 
 #[test]
-fn the_source_limit_counts_characters_and_reports_bytes() {
+fn the_source_limit_counts_characters_and_parsing_takes_longer_text() {
     let engine = SyntaxEngine::default();
     let at_limit = "😀".repeat(10_000);
     assert!(
-        engine.parse(&at_limit).is_ok(),
+        engine.check_source(&at_limit).is_ok(),
         "10,000 emoji are 10,000 characters"
     );
     let over = "😀".repeat(10_001);
-    let error = engine.parse(&over).unwrap_err();
+    let error = engine.check_source(&over).unwrap_err();
+    assert_eq!(error.code, DiagnosticCode::SourceLimit);
     assert_eq!(error.message, "Source character limit exceeded");
     assert_eq!(
         error.span,
@@ -315,15 +281,25 @@ fn the_source_limit_counts_characters_and_reports_bytes() {
         }
     );
     assert_eq!(error.span.to_utf16(&over).end, 20_002);
+    // Parsing gets text with viewer arguments substituted: no 10,000-character limit there.
+    assert!(engine.parse(&over).is_ok());
+    assert!(engine.compile_template(&over).is_ok());
     let small = engine.with_limits(Limits {
         source_chars: 2,
+        input_chars: 2,
         ..Limits::default()
     });
+    assert!(small.check_source("😀é").is_ok());
     assert!(small.parse("😀é").is_ok());
     assert!(
-        small.parse("e\u{301}x").is_err(),
+        small.check_source("e\u{301}x").is_err(),
         "a combining mark is its own character"
     );
+    let error = small.parse("e\u{301}x").unwrap_err();
+    assert_eq!(error.code, DiagnosticCode::InputLimit);
+    assert_eq!(error.message, "Input character limit exceeded");
+    assert!(small.scan_template("abc").is_err());
+    assert!(small.compile_template("abc").is_err());
 }
 
 #[test]
