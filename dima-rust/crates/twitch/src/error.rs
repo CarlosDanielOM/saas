@@ -1,6 +1,6 @@
 //! Errors. None of them carries a token, a refresh token, the client secret or an e-mail: store
-//! failures keep the driver's message (no document values), refresh failures keep Twitch's own
-//! error text.
+//! failures keep the driver's message (no document values), refresh failures carry a category
+//! ([`crate::RefreshFailureReason`]) and the HTTP status, never Twitch's text.
 
 use dima_core::crypto::CipherError;
 

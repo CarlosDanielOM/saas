@@ -8,12 +8,33 @@ use anyhow::{Context, Result};
 use bson::{Bson, doc};
 use dima_core::ManualClock;
 use dima_http::testing::{MockResponse, MockServer};
-use dima_twitch::{RefreshContext, RefreshFailureKind, RefreshOutcome, RefreshToken};
+use dima_twitch::{
+    RefreshContext, RefreshFailureKind, RefreshFailureReason, RefreshOutcome, RefreshToken,
+};
 use serde_json::Value;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 const USER: &str = "fixture-user";
+
+/// Deliberate difference (review finding 6): the reference returned Twitch's error text as the
+/// failure `message`; Rust returns a category, classified from that text and the status. The
+/// recorded text stays in the corpus; this table says which category each refusing trace gives.
+fn expected_reason(name: &str) -> Option<RefreshFailureReason> {
+    use RefreshFailureReason as R;
+    Some(match name {
+        "permanent" => R::InvalidGrant,
+        "permanent-401-revoked" => R::Revoked,
+        "rotated-expired" => R::RotatedElsewhere,
+        "transient-client-secret" | "transient-forbidden" => R::InvalidClient,
+        "transient-503-three-times" => R::ServerError,
+        "error-flag-on-200" => R::Refused,
+        "incomplete" | "empty-body" => R::IncompletePayload,
+        "unparseable-502" | "unparseable-200" => R::Unparseable,
+        "missing-user" => R::UserNotFound,
+        _ => return None,
+    })
+}
 
 fn corpus() -> Result<Value> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/corpus/reference.json");
@@ -127,7 +148,7 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
                     RefreshOutcome::Failure {
                         kind,
                         status,
-                        message,
+                        reason,
                     },
                     Some(expected),
                 ) => {
@@ -137,7 +158,16 @@ async fn refresh_traces_match_the_reference() -> Result<()> {
                     };
                     assert_eq!(kind, expected, "{name}");
                     assert_eq!(status.map(u64::from), result["status"].as_u64(), "{name}");
-                    assert_eq!(Some(message.as_str()), result["message"].as_str(), "{name}");
+                    assert!(
+                        result["message"].is_string(),
+                        "{name}: the reference had a message"
+                    );
+                    assert_eq!(Some(*reason), expected_reason(name), "{name}");
+                    let debug = format!("{outcome:?}");
+                    assert!(
+                        !debug.contains(result["message"].as_str().unwrap_or("\u{0}")),
+                        "{name}: Twitch's text left the classification"
+                    );
                 }
                 (outcome, expected) => {
                     panic!("{name}: {outcome:?} where the reference gave {expected:?}")

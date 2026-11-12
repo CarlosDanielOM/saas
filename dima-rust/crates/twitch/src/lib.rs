@@ -77,7 +77,7 @@ pub use helix::{
     helix_provider, oauth_provider,
 };
 pub use keys::KeySpace;
-pub use oauth::{RefreshContext, RefreshFailureKind};
+pub use oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason};
 pub use secret::{AccessToken, RefreshToken};
 pub use streamers::StreamerAccount;
 pub use tokens::{RefreshOutcome, TokenError};

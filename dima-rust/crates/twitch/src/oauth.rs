@@ -52,8 +52,124 @@ impl std::fmt::Display for RefreshFailureKind {
     }
 }
 
+/// Why a refresh gave no credentials: a category, never Twitch's own text.
+///
+/// Twitch's answer is classified from its private text (which can echo the refresh token, an
+/// access token or an e-mail) and then dropped: logs, errors and their `Debug` carry this
+/// category and the HTTP status only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum RefreshFailureReason {
+    /// Twitch says the refresh token is invalid (permanent: `invalid refresh token`, `invalid
+    /// grant`, ...).
+    InvalidGrant,
+    /// Twitch says the authorization was revoked (permanent).
+    Revoked,
+    /// Twitch refused the app's credentials (`invalid client`, `invalid client secret`).
+    InvalidClient,
+    /// Twitch reports a missing parameter.
+    MissingParameter,
+    /// 429.
+    RateLimited,
+    /// 5xx.
+    ServerError,
+    /// Any other refusal (another 4xx, or a 2xx carrying an `error` field).
+    Refused,
+    /// The answer was not JSON.
+    Unparseable,
+    /// A 2xx without both tokens.
+    IncompletePayload,
+    /// No attempt got an answer (network error or deadline).
+    Network,
+    /// The Twitch account is not in MongoDB.
+    UserNotFound,
+    /// The refresh token asked for is no longer the stored one, whose access token is not
+    /// usable: nothing was sent.
+    RotatedElsewhere,
+    /// A store failed.
+    Store,
+    /// The refresh stopped before it produced a result (the process is stopping).
+    Interrupted,
+}
+
+impl RefreshFailureReason {
+    /// A stable name for logs.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::InvalidGrant => "invalid_grant",
+            Self::Revoked => "revoked",
+            Self::InvalidClient => "invalid_client",
+            Self::MissingParameter => "missing_parameter",
+            Self::RateLimited => "rate_limited",
+            Self::ServerError => "server_error",
+            Self::Refused => "refused",
+            Self::Unparseable => "unparseable_refresh_response",
+            Self::IncompletePayload => "incomplete_payload",
+            Self::Network => "network_error_after_retries",
+            Self::UserNotFound => "user_not_found",
+            Self::RotatedElsewhere => "rotated_elsewhere",
+            Self::Store => "store_failed",
+            Self::Interrupted => "interrupted",
+        }
+    }
+
+    /// A fixed English sentence (the reference's own text where it wrote one).
+    pub const fn message(self) -> &'static str {
+        match self {
+            Self::InvalidGrant => "Twitch refused the refresh token",
+            Self::Revoked => "Twitch reports that the authorization was revoked",
+            Self::InvalidClient => "Twitch refused the app credentials",
+            Self::MissingParameter => "Twitch reports a missing parameter",
+            Self::RateLimited => "Twitch rate-limited the token refresh",
+            Self::ServerError => "Twitch failed to answer the token refresh",
+            Self::Refused => "Twitch refused the token refresh",
+            Self::Unparseable => "Failed to parse Twitch token refresh response",
+            Self::IncompletePayload => "Twitch token refresh returned incomplete payload",
+            Self::Network => "Network error while refreshing Twitch token",
+            Self::UserNotFound => "User not found while storing refreshed token",
+            Self::RotatedElsewhere => {
+                "The stored token was already rotated by a concurrent refresh"
+            }
+            Self::Store => "The token store failed",
+            Self::Interrupted => "The refresh was interrupted",
+        }
+    }
+}
+
+impl std::fmt::Display for RefreshFailureReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Classifies a refused answer (`!response.ok || data.error`): the reference's permanent test
+/// first ([`is_permanent_refresh_failure`]), then a category from the status and the private
+/// message. Nothing of the text leaves this function.
+pub fn classify_refusal(
+    status: u16,
+    payload: &Value,
+) -> (RefreshFailureKind, RefreshFailureReason) {
+    let message = dima_text::to_lower(&refresh_failure_message(payload));
+    if is_permanent_refresh_failure(status, payload) {
+        let reason = if message.contains("revoked") {
+            RefreshFailureReason::Revoked
+        } else {
+            RefreshFailureReason::InvalidGrant
+        };
+        return (RefreshFailureKind::Permanent, reason);
+    }
+    let reason = match status {
+        429 => RefreshFailureReason::RateLimited,
+        500.. => RefreshFailureReason::ServerError,
+        _ if message.contains("client") => RefreshFailureReason::InvalidClient,
+        _ if message.contains("missing") => RefreshFailureReason::MissingParameter,
+        _ => RefreshFailureReason::Refused,
+    };
+    (RefreshFailureKind::Transient, reason)
+}
+
 /// `getRefreshFailureMessage`: the non-blank string values of `message`, `error_description`
-/// and `error`, in that order, joined with ` | `; empty for anything but an object.
+/// and `error`, in that order, joined with ` | `; empty for anything but an object. The text is
+/// Twitch's and may echo a credential: it is only classified, never logged or returned.
 pub fn refresh_failure_message(payload: &Value) -> String {
     let Some(object) = payload.as_object() else {
         return String::new();
@@ -226,6 +342,82 @@ mod tests {
             refresh_failure_message(&json!({"message": "\u{a0}\u{feff}"})),
             ""
         );
+    }
+
+    #[test]
+    fn refusals_are_classified_without_keeping_the_text() {
+        use RefreshFailureKind::{Permanent, Transient};
+        use RefreshFailureReason as R;
+        let cases = [
+            (
+                400,
+                json!({"status": 400, "message": "Invalid refresh token"}),
+                Permanent,
+                R::InvalidGrant,
+            ),
+            (
+                401,
+                json!({"message": "authorization has been revoked"}),
+                Permanent,
+                R::Revoked,
+            ),
+            (
+                400,
+                json!({"error": "Bad Request", "message": "invalid client secret"}),
+                Transient,
+                R::InvalidClient,
+            ),
+            (
+                403,
+                json!({"status": 403, "message": "invalid client"}),
+                Transient,
+                R::InvalidClient,
+            ),
+            (
+                400,
+                json!({"message": "missing refresh token"}),
+                Transient,
+                R::MissingParameter,
+            ),
+            (
+                429,
+                json!({"message": "Too Many Requests"}),
+                Transient,
+                R::RateLimited,
+            ),
+            (503, json!({"message": "busy"}), Transient, R::ServerError),
+            (
+                200,
+                json!({"error": "temporarily_unavailable"}),
+                Transient,
+                R::Refused,
+            ),
+            (418, json!("text"), Transient, R::Refused),
+        ];
+        for (status, payload, kind, reason) in cases {
+            assert_eq!(
+                classify_refusal(status, &payload),
+                (kind, reason),
+                "{payload}"
+            );
+        }
+        // An answer that echoes a refresh token and an e-mail: the category says nothing of it.
+        let echo = json!({
+            "status": 400,
+            "message": "Invalid refresh token r-secret-123 for someone@example.invalid",
+        });
+        let (kind, reason) = classify_refusal(400, &echo);
+        assert_eq!(kind, Permanent);
+        for text in [
+            format!("{reason:?}"),
+            reason.to_string(),
+            reason.message().to_owned(),
+        ] {
+            assert!(
+                !text.contains("r-secret-123") && !text.contains("example.invalid"),
+                "{text}"
+            );
+        }
     }
 
     #[test]

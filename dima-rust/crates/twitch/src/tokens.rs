@@ -71,9 +71,7 @@
 use crate::base::{Inner, Twitch};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
-use crate::oauth::{
-    RefreshContext, RefreshFailureKind, is_permanent_refresh_failure, refresh_failure_message,
-};
+use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
 use crate::secret::{AccessToken, RefreshToken};
 use crate::streamers::{decrypt_envelope, persisted_expires_at};
 use bson::oid::ObjectId;
@@ -110,14 +108,14 @@ pub enum TokenError {
     #[error("the streamer has no refresh token")]
     NoRefreshToken,
     /// Twitch refused or failed the refresh.
-    #[error("the token refresh failed ({kind})")]
+    #[error("the token refresh failed ({kind}, {reason})")]
     Refresh {
         /// Transient or permanent.
         kind: RefreshFailureKind,
         /// Twitch's status, when it answered.
         status: Option<u16>,
-        /// The reference's message (Twitch's error text, never a token).
-        message: String,
+        /// The category (never Twitch's text, which can echo a credential).
+        reason: RefreshFailureReason,
     },
     /// The refresh produced the very token Twitch had refused.
     #[error("the refreshed token is the one Twitch rejected")]
@@ -149,17 +147,21 @@ pub enum RefreshOutcome {
         kind: RefreshFailureKind,
         /// Twitch's status, when it answered.
         status: Option<u16>,
-        /// The reference's message.
-        message: String,
+        /// The category (the reference returned Twitch's text here; see [`RefreshFailureReason`]).
+        reason: RefreshFailureReason,
     },
 }
 
 impl RefreshOutcome {
-    fn failure(kind: RefreshFailureKind, status: Option<u16>, message: impl Into<String>) -> Self {
+    fn failure(
+        kind: RefreshFailureKind,
+        status: Option<u16>,
+        reason: RefreshFailureReason,
+    ) -> Self {
         Self::Failure {
             kind,
             status,
-            message: message.into(),
+            reason,
         }
     }
 }
@@ -450,7 +452,11 @@ impl Inner {
                         "reason": error.to_string(),
                     }),
                 );
-                RefreshOutcome::failure(RefreshFailureKind::Transient, None, error.to_string())
+                RefreshOutcome::failure(
+                    RefreshFailureKind::Transient,
+                    None,
+                    RefreshFailureReason::Store,
+                )
             }
         }
     }
@@ -478,7 +484,7 @@ impl Inner {
             return Ok(RefreshOutcome::failure(
                 RefreshFailureKind::Transient,
                 None,
-                "Network error while refreshing Twitch token",
+                RefreshFailureReason::Network,
             ));
         };
         let status = answer.status;
@@ -507,22 +513,15 @@ impl Inner {
                     return Ok(RefreshOutcome::failure(
                         RefreshFailureKind::Transient,
                         Some(status),
-                        "Failed to parse Twitch token refresh response",
+                        RefreshFailureReason::Unparseable,
                     ));
                 }
             }
         };
 
         if !answer.ok() || truthy(data.get("error")) {
-            let mut message = refresh_failure_message(&data);
-            if message.is_empty() {
-                message = format!("HTTP {status}");
-            }
-            let kind = if is_permanent_refresh_failure(status, &data) {
-                RefreshFailureKind::Permanent
-            } else {
-                RefreshFailureKind::Transient
-            };
+            // Twitch's text is classified and dropped here: it can echo the refresh token.
+            let (kind, reason) = classify_refusal(status, &data);
             self.refresh_log(
                 if kind == RefreshFailureKind::Permanent {
                     Level::Error
@@ -538,16 +537,15 @@ impl Inner {
                     "action": "token_refresh_rejected",
                     "status": status,
                     "failureKind": kind.as_str(),
-                    "reason": message,
-                    "twitchError": data.get("error").and_then(Value::as_str),
+                    "reason": reason.as_str(),
                 }),
             );
             if kind == RefreshFailureKind::Permanent {
                 return self
-                    .refused_for_good(refresh_token, user_id, status, message, context)
+                    .refused_for_good(refresh_token, user_id, status, reason, context)
                     .await;
             }
-            return Ok(RefreshOutcome::failure(kind, Some(status), message));
+            return Ok(RefreshOutcome::failure(kind, Some(status), reason));
         }
 
         let text_of = |name: &str| {
@@ -580,7 +578,7 @@ impl Inner {
             return Ok(RefreshOutcome::failure(
                 RefreshFailureKind::Transient,
                 Some(status),
-                "Twitch token refresh returned incomplete payload",
+                RefreshFailureReason::IncompletePayload,
             ));
         };
         let access = AccessToken::new(access);
@@ -622,7 +620,7 @@ impl Inner {
                 Ok(RefreshOutcome::failure(
                     RefreshFailureKind::Transient,
                     None,
-                    "User not found while storing refreshed token",
+                    RefreshFailureReason::UserNotFound,
                 ))
             }
             Persisted::Superseded(stored) => {
@@ -704,7 +702,7 @@ impl Inner {
         failed: &RefreshToken,
         user_id: &str,
         status: u16,
-        message: String,
+        reason: RefreshFailureReason,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
         for _round in 0..CAS_ROUNDS {
@@ -717,7 +715,7 @@ impl Inner {
                 && RefreshToken::new(current.as_str()) != *failed
             {
                 return self
-                    .rotated_elsewhere(user_id, stored, &current, status, message, context)
+                    .rotated_elsewhere(user_id, stored, &current, status, context)
                     .await;
             }
             let wiped = match &stored {
@@ -757,7 +755,7 @@ impl Inner {
                     "userId": user_id,
                     "action": "tokens_invalidated",
                     "status": status,
-                    "reason": message,
+                    "reason": reason.as_str(),
                     "endpoint": context.endpoint_json(),
                     "caller": context.caller_json(),
                     "consequence": "tokens wiped and has_permissions=false; user must reauthorize at domdimabot.com",
@@ -766,7 +764,7 @@ impl Inner {
             return Ok(RefreshOutcome::failure(
                 RefreshFailureKind::Permanent,
                 Some(status),
-                message,
+                reason,
             ));
         }
         Err(TwitchError::Write(
@@ -781,7 +779,6 @@ impl Inner {
         stored: &StoredAccount,
         current: &str,
         status: u16,
-        message: String,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
         let mut cached = self.cached_credentials(user_id).await?;
@@ -833,7 +830,7 @@ impl Inner {
         Ok(RefreshOutcome::failure(
             RefreshFailureKind::Transient,
             Some(status),
-            format!("{message} (stored token already rotated by a concurrent refresh)"),
+            RefreshFailureReason::RotatedElsewhere,
         ))
     }
 
@@ -1044,7 +1041,7 @@ impl Inner {
             RefreshOutcome::Failure {
                 kind,
                 status,
-                message,
+                reason,
             } => {
                 self.token_log(
                     Level::Error,
@@ -1054,13 +1051,13 @@ impl Inner {
                         "action": "refresh_failed",
                         "reason": kind.as_str(),
                         "status": status,
-                        "message": message,
+                        "message": reason.message(),
                     }),
                 );
                 Err(TokenError::Refresh {
                     kind,
                     status,
-                    message,
+                    reason,
                 })
             }
         }
@@ -1188,20 +1185,23 @@ impl Inner {
             Ok(answer) => answer,
             Err(error) => return internal_error(error.to_string()),
         };
+        // The text never reaches a log: it may echo the app token.
         let sanitized = dima_text::sanitize_lone_surrogates(answer.text.as_bytes());
         let data: Value = match serde_json::from_slice(&sanitized) {
             Ok(data) => data,
             Err(_) => return internal_error("the answer is not JSON".to_owned()),
         };
         if !truthy(data.get("access_token")) {
-            let message = data
-                .get("message")
-                .map_or_else(|| "undefined".to_owned(), dima_text::string_of);
+            // The reference logs Twitch's `message`; only its category is logged here.
+            let (_, reason) = classify_refusal(answer.status, &data);
             self.log(
                 Level::Error,
                 Destination::Console,
                 None,
-                json!({ "message": format!("Error getting new Twitch app token: {message}") }),
+                json!({
+                    "message": format!("Error getting new Twitch app token: {}", reason.as_str()),
+                    "status": answer.status,
+                }),
             );
             return None;
         }
@@ -1327,7 +1327,7 @@ impl Twitch {
             RefreshOutcome::failure(
                 RefreshFailureKind::Transient,
                 None,
-                "the refresh was interrupted",
+                RefreshFailureReason::Interrupted,
             )
         })
     }
