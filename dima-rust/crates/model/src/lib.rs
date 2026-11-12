@@ -338,6 +338,12 @@ pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
 pub mod oauth_sessions;
+pub mod raid_analytics_histories;
+pub mod raid_analytics_summaries;
+pub mod raid_followers;
+pub mod raid_moderation_requests;
+pub mod raid_sessions;
+pub mod raid_subscription_preferences;
 pub mod random_user_settings;
 pub mod redemption_rewards;
 pub mod referral_codes;
@@ -372,6 +378,12 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &vips::INFO,
     &random_user_settings::INFO,
     &titleconfigs::INFO,
+    &raid_analytics_histories::INFO,
+    &raid_analytics_summaries::INFO,
+    &raid_followers::INFO,
+    &raid_moderation_requests::INFO,
+    &raid_sessions::INFO,
+    &raid_subscription_preferences::INFO,
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,

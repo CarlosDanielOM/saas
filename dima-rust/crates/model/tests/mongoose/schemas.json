@@ -788,8 +788,16 @@
    "sha256": "b72261525ed795df8f2b04ab36c2dce46f54e1fec0822d82ba6373272eeefb40"
   },
   {
+   "path": "src/schemas/raid_analytics.schema.ts",
+   "sha256": "8c2760bff4acd6401d7b207cd6fc42dcdc73435a96af3a965ef0083378a771ea"
+  },
+  {
    "path": "src/schemas/raid_session.schema.ts",
    "sha256": "ee75eaf8e4d3bbceef9da32aef41b17d04195204833bc2309e31f66cede3f61f"
+  },
+  {
+   "path": "src/schemas/raid_subscription_preference.schema.ts",
+   "sha256": "dfbb334ed17ac9557d9c90e648dd69eebd558f89b08547098919c1030848a27f"
   },
   {
    "path": "src/schemas/randomuser_settings.schema.ts",
@@ -1609,6 +1617,1021 @@
   }
  ],
  "models": {
+  "raid_subscription_preferences": {
+   "model": "raid_subscription_preference",
+   "file": "src/schemas/raid_subscription_preference.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "direction",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "deleted",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "operation",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "direction",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "direction",
+     "type": "enum",
+     "values": [
+      "incoming",
+      "outgoing"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "direction",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "raid_sessions": {
+   "model": "raid_session",
+   "file": "src/schemas/raid_session.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "eventID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "raiderID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "raiderLogin",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "raiderName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "viewers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "startedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "endedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "captureUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "retentionHours",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "purgeAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "backfillUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "backfillCursor",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "backfillDone",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "manualRequestID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "eventID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "raiderID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "startedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "captureUntil",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "retentionHours",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "purgeAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "backfillUntil",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "startedAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "purgeAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "raid_moderation_requests": {
+   "model": "raid_moderation_request",
+   "file": "src/schemas/raid_session.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "sessionID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "actorID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "origin",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "history"
+      }
+     },
+     {
+      "name": "includeFuture",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "requestedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "purgeAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "lockedUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "leaseToken",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "nextAttemptAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sessionID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "actorID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "origin",
+     "type": "enum",
+     "values": [
+      "history",
+      "live"
+     ]
+    },
+    {
+     "path": "requestedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "purgeAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "authorizing",
+      "pending",
+      "active",
+      "completed",
+      "cancelled",
+      "expired"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "status",
+       1
+      ],
+      [
+       "nextAttemptAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "purgeAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "raid_followers": {
+   "model": "raid_follower",
+   "file": "src/schemas/raid_session.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "sessionID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "eventID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "followedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "recordedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "queuedRequestIDs",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "eligibleRequestIDs",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "purgeAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sessionID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "eventID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "userID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "followedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "purgeAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "sessionID",
+       1
+      ],
+      [
+       "followedAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "followedAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "sessionID",
+       1
+      ],
+      [
+       "userID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "purgeAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "raid_analytics_summaries": {
+   "model": "raid_analytics_summary",
+   "file": "src/schemas/raid_analytics.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "dirtyAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "nextRefreshAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "payload",
+      "kind": "mixed"
+     },
+     {
+      "name": "error",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "nextRefreshAt",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "raid_analytics_histories": {
+   "model": "raid_analytics_history",
+   "file": "src/schemas/raid_analytics.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "direction",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "peerID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "peerLogin",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "peerName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "viewers",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "followsAfter",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "followsComputedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "followWindowEnd",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "direction",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "direction",
+     "type": "enum",
+     "values": [
+      "incoming",
+      "outgoing"
+     ]
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "direction",
+       1
+      ],
+      [
+       "peerID",
+       1
+      ],
+      [
+       "occurredAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "direction",
+       1
+      ],
+      [
+       "followsComputedAt",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "direction",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
   "titleconfigs": {
    "model": "titleConfig",
    "file": "src/schemas/title_config.schema.ts",
@@ -11799,7 +12822,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ed747cc3d15685a01"
+          "value": "6af4416e6aadb6e5b882efc8"
          }
         },
         {

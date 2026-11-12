@@ -348,6 +348,117 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("raid_subscription_preferences", "typed") => {
+            use dima_model::raid_subscription_preferences::*;
+            let input = NewRaidSubscriptionPreference {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                direction: dima_model::raid_subscription_preferences::DirectionKind::Incoming,
+                deleted: None,
+                operation: None,
+                updated_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("raid_sessions", "typed") => {
+            use dima_model::raid_sessions::*;
+            let input = NewRaidSession {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                event_id: "seed".into(),
+                raider_id: "seed".into(),
+                raider_login: None,
+                raider_name: None,
+                viewers: None,
+                started_at: JsDate(1623053350011),
+                ended_at: None,
+                capture_until: JsDate(1623053350011),
+                retention_hours: JsNumber(2.0),
+                expires_at: JsDate(1623053350011),
+                purge_at: JsDate(1623053350011),
+                backfill_until: JsDate(1623053350011),
+                backfill_cursor: None,
+                backfill_done: None,
+                manual_request_id: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("raid_moderation_requests", "typed") => {
+            use dima_model::raid_moderation_requests::*;
+            let input = NewRaidModerationRequest {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                session_id: "seed".into(),
+                actor_id: "seed".into(),
+                user_id: None,
+                origin: None,
+                include_future: None,
+                requested_at: JsDate(1623053350011),
+                expires_at: JsDate(1623053350011),
+                purge_at: JsDate(1623053350011),
+                status: None,
+                locked_until: None,
+                lease_token: None,
+                next_attempt_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("raid_followers", "typed") => {
+            use dima_model::raid_followers::*;
+            let input = NewRaidFollower {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                session_id: "seed".into(),
+                event_id: "seed".into(),
+                user_id: "seed".into(),
+                login: None,
+                name: None,
+                followed_at: JsDate(1623053350011),
+                recorded_at: None,
+                queued_request_i_ds: None,
+                eligible_request_i_ds: None,
+                purge_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("raid_analytics_summaries", "typed") => {
+            use dima_model::raid_analytics_summaries::*;
+            let input = NewRaidAnalyticsSummary {
+                id: "seed".into(),
+                dirty_at: None,
+                next_refresh_at: None,
+                lease_until: None,
+                owner: None,
+                updated_at: None,
+                payload: None,
+                error: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("raid_analytics_histories", "typed") => {
+            use dima_model::raid_analytics_histories::*;
+            let input = NewRaidAnalyticsHistory {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                direction: dima_model::raid_analytics_histories::DirectionKind::Incoming,
+                peer_id: None,
+                peer_login: None,
+                peer_name: None,
+                viewers: None,
+                occurred_at: JsDate(1623053350011),
+                follows_after: None,
+                follows_computed_at: None,
+                follow_window_end: None,
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
         ("temporary_moderators", "role") => {
             let input = dima_model::temporary_moderators::NewTemporaryModerator {
                 channel_id: "111".into(),
