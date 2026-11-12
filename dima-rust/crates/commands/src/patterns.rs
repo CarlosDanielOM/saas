@@ -16,6 +16,11 @@
 //!   `-`; repeated flags are allowed (the last setting wins), so the group is rewritten in a
 //!   canonical form `regex` accepts. `(?)` is the no-op RE2 makes of it.
 //!
+//! - Named groups become numbered ones: RE2 takes the name up to the first `>`, accepts
+//!   letters, marks, decimal digits, letter numbers and connector punctuation in any position,
+//!   and refuses a name used twice; `regex` has other name rules, and nothing reads a group by
+//!   name (`advanced.ts` reads groups 1 and 2 of its whole-word wrapper).
+//!
 //! Refused (RE2 refuses them too, or `regex` would read them differently): stacked quantifiers
 //! (`a**`, `a{2}*`); a repetition count above 1,000 or a nested repetition whose counts
 //! multiply past 1,000 (RE2's own limits); lookaround, backreferences, `(?P=name)`, comments
@@ -40,8 +45,10 @@
 //! whole-word guard) use the `regex` crate's tables, which can differ from the `re2` package's
 //! for code points assigned in recent Unicode versions.
 
+use std::collections::HashSet;
 use std::fmt;
 use std::ops::Range;
+use std::sync::LazyLock;
 
 use regex::{Regex, RegexBuilder};
 
@@ -62,6 +69,12 @@ pub const MAX_REPEAT: u64 = 1_000;
 const DIGIT: &str = "0-9";
 const WORD: &str = "0-9A-Za-z_";
 const SPACE: &str = r"\t\n\x0C\r ";
+
+/// The characters RE2 accepts in a group name (`IsValidCaptureName`): categories Lu, Ll, Lt,
+/// Lm, Lo, Nl, Mn, Mc, Nd and Pc.
+static CAPTURE_NAME: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"\A[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Mn}\p{Mc}\p{Nd}\p{Pc}]+\z").ok()
+});
 
 /// Why a pattern was refused. The text never includes the pattern.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,6 +127,8 @@ struct Translator {
     frames: Vec<Frame>,
     /// The product of the most recent atom, which a following quantifier applies to.
     last_atom: Option<u64>,
+    /// Group names seen so far.
+    names: HashSet<String>,
 }
 
 /// Rewrites RE2 syntax into equivalent `regex` syntax, or refuses it (see the module notes).
@@ -128,6 +143,7 @@ pub fn translate(source: &str) -> Result<String, PatternError> {
         quantifier: Quantifier::None,
         frames: vec![Frame { product: 1 }],
         last_atom: None,
+        names: HashSet::new(),
     };
     translator.run()?;
     Ok(translator.out)
@@ -272,15 +288,8 @@ impl Translator {
             (Some('P'), Some('<')) | (Some('<'), _)
                 if !matches!((self.peek(0), self.peek(1)), (Some('<'), Some('=' | '!'))) =>
             {
-                // A named group: copy `P<name>` or `<name>`; `regex` checks the name.
-                self.out.push_str("(?");
-                while let Some(ch) = self.next() {
-                    self.out.push(ch);
-                    if ch == '>' {
-                        break;
-                    }
-                }
-                self.push_frame();
+                self.index += if self.peek(0) == Some('P') { 2 } else { 1 };
+                self.named_group()?;
             }
             (Some('=' | '!'), _) | (Some('<'), Some('=' | '!')) => {
                 return Err(PatternError::Unsupported("lookaround"));
@@ -289,6 +298,30 @@ impl Translator {
             (Some('#'), _) => return Err(PatternError::Unsupported("comment group")),
             _ => self.flags()?,
         }
+        Ok(())
+    }
+
+    /// A named group after `(?P<` or `(?<`: checked as RE2 checks it, then numbered.
+    fn named_group(&mut self) -> Result<(), PatternError> {
+        let mut name = String::new();
+        loop {
+            match self.next() {
+                Some('>') => break,
+                Some(ch) => name.push(ch),
+                None => return Err(PatternError::Invalid),
+            }
+        }
+        if !CAPTURE_NAME
+            .as_ref()
+            .is_some_and(|valid| valid.is_match(&name))
+        {
+            return Err(PatternError::Invalid);
+        }
+        if !self.names.insert(name) {
+            return Err(PatternError::Unsupported("duplicate capture group name"));
+        }
+        self.out.push('(');
+        self.push_frame();
         Ok(())
     }
 
@@ -706,6 +739,11 @@ impl CompiledPattern {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_capture_name_class_compiles() {
+        assert!(CAPTURE_NAME.is_some());
+    }
 
     #[test]
     fn literal_escaping_covers_every_regex_meta_character() {

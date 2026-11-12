@@ -12,6 +12,7 @@
 use std::time::{Duration, Instant};
 
 use dima_commands::patterns::{self, Boundary, CompiledPattern, MAX_SOURCE_BYTES, PatternError};
+use serde_json::Value;
 
 enum Expected {
     Match(usize, usize),
@@ -82,6 +83,40 @@ fn matches_the_recorded_re2_corpus() {
         mismatches.join("\n")
     );
     assert_eq!(CORPUS.len(), 109);
+}
+
+/// Named groups as the `re2` package (1.27.0) treats them, from the recording made by
+/// `fixtures/re2_parity.mjs` in the reference image: names become numbered groups; RE2's name
+/// rules apply and a name used twice is refused.
+#[test]
+fn named_groups_follow_the_recording() {
+    let recording: Value =
+        serde_json::from_str(include_str!("fixtures/re2_parity_cases.json")).unwrap();
+    let mut checked = 0;
+    let mut mismatches = Vec::new();
+    for case in recording["cases"].as_array().unwrap() {
+        let source = case["source"].as_str().unwrap();
+        if !source.contains("(?P<") && !source.contains("(?<") {
+            continue;
+        }
+        let text = case["text"].as_str().unwrap();
+        let ignore_case = case["ignoreCase"].as_bool().unwrap();
+        let whole_word = case["wholeWord"].as_bool().unwrap();
+        let wanted = match &case["expected"] {
+            Value::Null => "no match".to_owned(),
+            Value::Array(range) => format!("{}..{}", range[0], range[1]),
+            _ => "error".to_owned(),
+        };
+        let actual = outcome(source, ignore_case, text, whole_word);
+        checked += 1;
+        if actual != wanted {
+            mismatches.push(format!(
+                "{source:?} on {text:?}: re2 {wanted}, rust {actual}"
+            ));
+        }
+    }
+    assert!(checked > 300, "{checked}");
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
 }
 
 /// From RE2's syntax (`re2/syntax.txt`) and parser (`re2/parse.cc`); not recorded.
