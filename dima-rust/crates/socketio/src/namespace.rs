@@ -49,6 +49,24 @@ pub trait Namespace: Send + Sync + 'static {
         namespace: &str,
     ) -> impl Future<Output = Result<Self::Data, ConnectError>> + Send;
 
+    /// Runs before a recovered session is given back (when
+    /// [`NamespaceOptions::recheck_recovery`] is on, the default): `Err` refuses the recovery,
+    /// which then answers as for an unknown session (the connect goes through
+    /// [`Namespace::check`] like a fresh one). `handshake` is the recovering connection's,
+    /// `data` what the session kept. By default it runs [`Namespace::check`] again and drops
+    /// the data that one returns; override it for a cheaper or a different test (a token still
+    /// valid, the channel still enabled).
+    fn recheck(
+        &self,
+        handshake: &Handshake,
+        namespace: &str,
+        data: &Self::Data,
+    ) -> impl Future<Output = Result<(), ConnectError>> + Send {
+        let _ = data;
+        let check = self.check(handshake, namespace);
+        async move { check.await.map(|_| ()) }
+    }
+
     /// The `connection` handler. The CONNECT packet has been sent.
     fn on_connect(&self, socket: Socket<Self::Data>) -> impl Future<Output = ()> + Send {
         let _ = socket;
@@ -78,7 +96,7 @@ pub trait Namespace: Send + Sync + 'static {
 }
 
 /// Per-namespace settings.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NamespaceOptions {
     /// Connection state recovery in this namespace.
     pub recovery: Recovery,
@@ -90,6 +108,24 @@ pub struct NamespaceOptions {
     ///
     /// [`Options::handler_deadlines`]: crate::Options::handler_deadlines
     pub deadlines: Option<HandlerDeadlines>,
+    /// Whether a recovery re-runs the handshake check ([`Namespace::recheck`]) before the
+    /// session is given back (on by default). The reference skips its middlewares on a recovery
+    /// (`skipMiddlewares`), so a stolen private id restores the session whatever its token has
+    /// become; turn it off only for a namespace whose check cannot pass twice and whose
+    /// sessions carry no authority (the speech preview's one-time ticket).
+    pub recheck_recovery: bool,
+}
+
+impl Default for NamespaceOptions {
+    fn default() -> Self {
+        Self {
+            recovery: Recovery::default(),
+            queue: None,
+            dispatch: Dispatch::default(),
+            deadlines: None,
+            recheck_recovery: true,
+        }
+    }
 }
 
 /// Which names a declaration covers.
@@ -135,6 +171,7 @@ pub(crate) struct Def<N: Namespace> {
     pub queue: QueueLimits,
     pub dispatch: Dispatch,
     pub deadlines: HandlerDeadlines,
+    pub recheck: bool,
     pub matcher: Matcher,
     children: Mutex<HashMap<String, Arc<Child<N::Data>>>>,
 }
@@ -196,6 +233,7 @@ impl<N: Namespace> Def<N> {
             queue,
             dispatch: options.dispatch,
             deadlines,
+            recheck: options.recheck_recovery,
             matcher,
             children: Mutex::new(children),
         }
@@ -499,7 +537,8 @@ async fn run_socket<N: Namespace>(
     }
 
     let handshake = Handshake::new(Arc::clone(&conn.first), auth, charge, now);
-    let (sid, pid, data, cursor) = match restored {
+    let restored = match restored {
+        None => None,
         Some(session) => {
             // The socket that left the session may still be finishing its handlers (its
             // `on_disconnect`, at most its deadline): the new one starts once they ended.
@@ -516,8 +555,42 @@ async fn run_socket<N: Namespace>(
             let Ok(data) = Arc::downcast::<N::Data>(session.data) else {
                 return;
             };
-            (session.sid, session.pid, data, Some(session.cursor))
+            // The handshake check, again, with the recovering connection's handshake: a
+            // revoked token cannot ride an old session. A refusal answers as an unknown session
+            // does: the session is gone and the connect goes the fresh way (its check).
+            let recheck = if def.recheck {
+                let recheck =
+                    AssertUnwindSafe(def.handler.recheck(&handshake, &nsp, &data)).catch_unwind();
+                let result = tokio::select! {
+                    biased;
+                    () = ticket.cancel.cancelled() => None,
+                    () = shared.hard_stop.cancelled() => None,
+                    result = recheck => Some(result),
+                };
+                let Some(result) =
+                    result.filter(|_| !conn.is_closed() && !ticket.cancel.is_cancelled())
+                else {
+                    return;
+                };
+                if result.is_err() {
+                    shared.telemetry.handler_panicked(&nsp);
+                }
+                matches!(result, Ok(Ok(())))
+            } else {
+                true
+            };
+            if recheck {
+                Some((session.sid, session.pid, data, Some(session.cursor)))
+            } else {
+                shared
+                    .telemetry
+                    .recovery(&nsp, RecoveryOutcome::RecheckRefused);
+                None
+            }
         }
+    };
+    let (sid, pid, data, cursor) = match restored {
+        Some(restored) => restored,
         None => {
             let check = AssertUnwindSafe(def.handler.check(&handshake, &nsp)).catch_unwind();
             let result = tokio::select! {

@@ -58,6 +58,9 @@ pub enum RecoveryOutcome {
     /// An event after the client's offset could not be stored (too large): the replay would
     /// miss it, so the client connects fresh.
     Discontinuity,
+    /// The namespace's check refused the recovering connection (`Namespace::recheck`): the
+    /// session was dropped and the connect went the fresh way.
+    RecheckRefused,
 }
 
 /// Something the stores had to drop to stay within their bounds.

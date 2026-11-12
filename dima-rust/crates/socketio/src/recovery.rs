@@ -59,6 +59,22 @@ use crate::telemetry::{Eviction, RecoveryOutcome, Telemetry};
 /// Fixed cost counted for every stored packet and session besides its text and data.
 const OVERHEAD: usize = 64;
 
+/// Where a session is filed: the SHA-256 of its private id. The private id is the recovery
+/// secret; looking it up by its digest and then comparing it in constant time means neither
+/// the map's probing nor the comparison takes longer for a guess that shares a prefix with it.
+type Key = [u8; 32];
+
+fn key(pid: &str) -> Key {
+    *dima_core::crypto::sha256(pid).bytes()
+}
+
+/// The session filed under `pid`'s digest, if its private id really is `pid`.
+fn find<'a>(sessions: &'a HashMap<Key, Session>, pid: &str) -> Option<&'a Session> {
+    sessions
+        .get(&key(pid))
+        .filter(|s| dima_core::crypto::constant_time_eq(s.pid.as_bytes(), pid.as_bytes()))
+}
+
 /// Readable copies of the store's totals (for [`crate::Stats`]); written under the store lock.
 #[derive(Debug, Default)]
 pub struct Totals {
@@ -160,7 +176,7 @@ struct Record {
     barrier: u64,
     packets: VecDeque<Stored>,
     bytes: usize,
-    sessions: HashMap<String, Session>,
+    sessions: HashMap<Key, Session>,
     /// Restores sending this record's packets; the record is kept while any runs.
     restoring: usize,
 }
@@ -185,11 +201,11 @@ impl Record {
         self.packets.is_empty() && self.sessions.is_empty() && self.restoring == 0
     }
 
-    fn oldest_session(&self) -> Option<String> {
+    fn oldest_session(&self) -> Option<Key> {
         self.sessions
-            .values()
-            .min_by_key(|s| s.disconnected_ms)
-            .map(|s| s.pid.clone())
+            .iter()
+            .min_by_key(|(_, s)| s.disconnected_ms)
+            .map(|(key, _)| *key)
     }
 }
 
@@ -283,17 +299,17 @@ impl Store {
             .iter()
             .rposition(|p| p.emitted_ms < threshold)
             .map_or(0, |last| last + 1);
-        let expired_sessions: Vec<String> = record
+        let expired_sessions: Vec<Key> = record
             .sessions
             .iter()
             .filter(|(_, s)| s.disconnected_ms < threshold)
-            .map(|(pid, _)| pid.clone())
+            .map(|(key, _)| *key)
             .collect();
         for _ in 0..expired_packets {
             self.pop_packet(nsp);
         }
-        for pid in expired_sessions {
-            self.remove_session(nsp, &pid);
+        for key in expired_sessions {
+            self.remove_session(nsp, &key);
         }
     }
 
@@ -310,8 +326,8 @@ impl Store {
         true
     }
 
-    fn remove_session(&mut self, nsp: &str, pid: &str) -> Option<Session> {
-        let session = self.records.get_mut(nsp)?.sessions.remove(pid)?;
+    fn remove_session(&mut self, nsp: &str, key: &Key) -> Option<Session> {
+        let session = self.records.get_mut(nsp)?.sessions.remove(key)?;
         self.sessions = self.sessions.saturating_sub(1);
         self.session_bytes = self.session_bytes.saturating_sub(session.cost);
         Some(session)
@@ -447,7 +463,13 @@ impl Store {
                 .recovery_evicted(nsp, Eviction::SessionTooLarge);
             return false;
         }
-        self.remove_session(nsp, &session.pid);
+        if self
+            .records
+            .get(nsp)
+            .is_some_and(|r| find(&r.sessions, &session.pid).is_some())
+        {
+            self.remove_session(nsp, &key(&session.pid));
+        }
         if !self.room_for_session(nsp, session.cost, ctx) {
             self.drop_if_empty(nsp);
             self.publish();
@@ -456,7 +478,7 @@ impl Store {
         self.sessions += 1;
         self.session_bytes += session.cost;
         let record = self.record(nsp, ctx);
-        record.sessions.insert(session.pid.clone(), session);
+        record.sessions.insert(key(&session.pid), session);
         self.publish();
         true
     }
@@ -468,13 +490,13 @@ impl Store {
         let unchanged = self
             .records
             .get(nsp)
-            .and_then(|r| r.sessions.get(pid))
+            .and_then(|r| find(&r.sessions, pid))
             .filter(|s| s.owner == owner)
             .is_none_or(|s| s.cost == cost);
         if unchanged {
             return;
         }
-        let Some(mut session) = self.remove_session(nsp, pid) else {
+        let Some(mut session) = self.remove_session(nsp, &key(pid)) else {
             return;
         };
         session.cost = cost;
@@ -498,7 +520,7 @@ impl Store {
         let max = ctx.timing.max_disconnection_ms;
         let found = match self.records.get(nsp) {
             None => Err(RecoveryOutcome::UnknownSession),
-            Some(record) => match record.sessions.get(pid) {
+            Some(record) => match find(&record.sessions, pid) {
                 None => Err(RecoveryOutcome::UnknownSession),
                 Some(session) if session.disconnected_ms.saturating_add(max) < ctx.now => {
                     Err(RecoveryOutcome::Expired)
@@ -515,7 +537,7 @@ impl Store {
             },
         };
         let outcome = match found {
-            Ok(cursor) => match self.remove_session(nsp, pid) {
+            Ok(cursor) => match self.remove_session(nsp, &key(pid)) {
                 Some(session) => {
                     if let Some(record) = self.records.get_mut(nsp) {
                         record.restoring += 1;
@@ -531,7 +553,7 @@ impl Store {
                 None => Err(RecoveryOutcome::UnknownSession),
             },
             Err(RecoveryOutcome::Expired) => {
-                self.remove_session(nsp, pid);
+                self.remove_session(nsp, &key(pid));
                 Err(RecoveryOutcome::Expired)
             }
             Err(other) => Err(other),
@@ -546,7 +568,7 @@ impl Store {
     pub fn owns(&self, nsp: &str, pid: &str, owner: u64) -> bool {
         self.records
             .get(nsp)
-            .and_then(|record| record.sessions.get(pid))
+            .and_then(|record| find(&record.sessions, pid))
             .is_some_and(|session| session.owner == owner)
     }
 
@@ -855,6 +877,32 @@ mod tests {
         // Measured again once the old socket's handlers ended: grown past the limit, dropped.
         state.settle("/n", "p3", 0, 20_000, &c);
         assert_eq!(state.kept("/n"), 1);
+    }
+
+    /// Finding 9: sessions are filed under the digest of their private id; a private id that
+    /// differs from the kept one, however slightly, finds nothing.
+    #[test]
+    fn private_ids_are_looked_up_by_digest_and_compared_whole() {
+        let (_, mut state) = store();
+        let c = ctx(0);
+        state.append("/n", None, "o1", json("[0]"), &c);
+        state.persist("/n", session("s", "abcdefghijklmnopqrst", (), 0), &c);
+        let record = &state.records["/n"];
+        assert!(record.sessions.contains_key(&key("abcdefghijklmnopqrst")));
+        for forged in [
+            "abcdefghijklmnopqrsu",
+            "abcdefghijklmnopqrs",
+            "",
+            "Abcdefghijklmnopqrst",
+        ] {
+            assert!(find(&record.sessions, forged).is_none(), "{forged}");
+            assert!(!state.owns("/n", forged, 0));
+        }
+        assert!(
+            state
+                .restore("/n", "abcdefghijklmnopqrst", "o1", &c)
+                .is_ok()
+        );
     }
 
     /// Finding 8: an event that cannot be stored still takes its place in the sequence, and

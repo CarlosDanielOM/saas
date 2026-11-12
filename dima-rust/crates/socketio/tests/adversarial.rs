@@ -1189,6 +1189,17 @@ impl Namespace for Counted {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
+    recovered_socket_keeps_its_data(false).await;
+}
+
+/// Finding 9: by default the check runs again before the session is given back (it ran twice);
+/// the socket still gets the session's data, not what the second check returned.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovered_socket_keeps_its_data_after_the_check_passes_again() {
+    recovered_socket_keeps_its_data(true).await;
+}
+
+async fn recovered_socket_keeps_its_data(recheck_recovery: bool) {
     let checks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let slot: Arc<Mutex<Option<NamespaceRef<Counted>>>> = Arc::default();
     let declared = Arc::clone(&slot);
@@ -1197,7 +1208,12 @@ async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
         let r = builder
             .namespace(
                 "/k",
-                NamespaceOptions::default(),
+                // Changed on purpose by finding 9: skipping the check on a recovery, as the
+                // reference does, is now a choice of the namespace (the default re-checks).
+                NamespaceOptions {
+                    recheck_recovery,
+                    ..NamespaceOptions::default()
+                },
                 Counted {
                     checks: counted_checks,
                 },
@@ -1233,8 +1249,8 @@ async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
     );
     assert_eq!(
         checks.load(std::sync::atomic::Ordering::SeqCst),
-        1,
-        "the check was skipped"
+        if recheck_recovery { 2 } else { 1 },
+        "the check ran again only when asked to"
     );
     let after = counted.sockets("/k").pop().unwrap();
     assert!(Arc::ptr_eq(before.data(), after.data()));
@@ -1768,4 +1784,40 @@ async fn old_work_cannot_touch_a_recovered_socket() {
     assert_eq!(io.stats().stored_packets, stored + 1);
     back.close().await;
     s.server.stop().await;
+}
+
+/// Finding 9: a recovery whose handshake the check now refuses (a revoked token) does not get
+/// the session back: it answers as an unknown session does, and the fresh connect's check
+/// refuses it with its own error. With the re-check off, the reference's behaviour: recovered.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovery_the_check_now_refuses_does_not_get_the_session() {
+    for recheck_recovery in [true, false] {
+        let options = NamespaceOptions {
+            recheck_recovery,
+            ..NamespaceOptions::default()
+        };
+        let s = setup(Options::default(), options).await;
+        let mut client = Ws::open(s.server.addr).await;
+        let (_, pid, offset) = join_and_hello(&mut client, &ok()).await;
+        client.drop_connection();
+        let io = s.server.io.clone();
+        eventually("the session is kept", || io.stats().sessions == 1).await;
+        let mut back = Ws::open(s.server.addr).await;
+        let answer = back
+            .join("/p", &json!({"pid": pid, "offset": offset, "deny": true}))
+            .await;
+        if recheck_recovery {
+            assert_eq!(
+                answer,
+                Err(json!({"message": "denied", "data": {"why": "asked"}}))
+            );
+            assert_eq!(s.telemetry.get("recovery:RecheckRefused"), 1);
+            assert_eq!(io.stats().sessions, 0);
+        } else {
+            assert_eq!(answer.unwrap()["pid"].as_str(), Some(pid.as_str()));
+            assert_eq!(s.telemetry.get("connected:true"), 1);
+        }
+        back.close().await;
+        s.server.stop().await;
+    }
 }

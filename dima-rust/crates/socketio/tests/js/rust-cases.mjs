@@ -115,6 +115,25 @@ const cases = {
     run.log('control', 'ack', await control.emitWithAck('nsp-emit', nsp, 'y'.repeat(5000)));
     await run.until('a', 'event', 'pushed');
   },
+  // Finding 9: the token changed (revoked) between the connect and the reconnect. The
+  // reference skips the check on a recovery and restores the socket; here the check runs
+  // again, refuses, and the client sees the check's own refusal.
+  async 'a recovery the check now refuses'(run, tag) {
+    const s = run.socket('/basic', 'a', { auth: { token: 'good', tag } });
+    await run.until('a', 'event', 'welcome');
+    s.auth.token = 'bad';
+    s.io.engine.close();
+    await run.until('a', 'connect_error');
+    await sleep(200);
+  },
+  // Finding 9: with a token that still passes, the recovery works as before.
+  async 'a recovery the check still accepts'(run, tag) {
+    const s = run.socket('/basic', 'a', { auth: { token: 'good', tag } });
+    await run.until('a', 'event', 'welcome');
+    s.io.engine.close();
+    await run.until('a', 'connect', undefined, 2);
+    await sleep(100);
+  },
 };
 
 const results = {};

@@ -46,7 +46,7 @@ fn entries<'a>(case: &'a Value, label: &str, kind: &str) -> Vec<&'a Value> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn the_javascript_clients_see_the_recovery_bounds() {
+async fn the_javascript_clients_see_the_recovery_bounds_and_the_recheck() {
     let options = Options {
         recovery: RecoveryLimits {
             bytes_per_namespace: 4096,
@@ -85,13 +85,22 @@ async fn the_javascript_clients_see_the_recovery_bounds() {
         } else if name.ends_with("an event too large to store is still delivered live") {
             assert_eq!(pushed.len(), 1, "{name}: {case}");
             assert_eq!(pushed[0][2], 5000, "{name}: {case}");
+        } else if name.ends_with("a recovery the check now refuses") {
+            // Finding 9: the reference would recover; here the check refuses again.
+            assert_eq!(connects.len(), 1, "{name}: {case}");
+            let errors = entries(case, "a", "connect_error");
+            assert_eq!(errors.len(), 1, "{name}: {case}");
+            assert_eq!(errors[0][1], "Invalid token", "{name}: {case}");
+        } else if name.ends_with("a recovery the check still accepts") {
+            assert_eq!(connects.len(), 2, "{name}: {case}");
+            assert_eq!(connects[1][1]["recovered"], true, "{name}: {case}");
         } else {
             continue;
         }
         checked += 1;
     }
     assert_eq!(
-        checked, 12,
+        checked, 20,
         "every case ran for 2 clients over 2 transports"
     );
 }
