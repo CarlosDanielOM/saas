@@ -7,61 +7,76 @@
 //!   requests a new one (`getAppToken`); no lock across processes, as in the reference.
 //! - **Streamer and bot tokens**: MongoDB `users.accounts[]` (`access_token` and
 //!   `refresh_token` as the `{iv, content}` envelope of `utils/crypto.ts`,
-//!   `access_token_expires_at` in epoch seconds), mirrored in plaintext in the directory hash
-//!   `accounts:twitch:{id}:data` (`access_token`, `refresh_token`, `expires_at`). The bot is the
-//!   streamer account [`crate::TWITCH_BOT_ACCOUNT_ID`].
+//!   `access_token_expires_at` in epoch seconds), mirrored in the directory hash
+//!   `accounts:twitch:{id}:data` (`access_token`, `refresh_token` as the same envelopes, as
+//!   JSON text; `expires_at`). The bot is the streamer account [`crate::TWITCH_BOT_ACCOUNT_ID`].
+//!   The app token is cached as an envelope too. No token is ever in Dragonfly in plain text
+//!   (the reference keeps them so: lead's decision, the family is Rust's own).
 //!
 //! # When a token is refreshed
 //!
 //! A cached token is used while it has more than 300 s left and is not the one Twitch just
-//! refused (`rejected`). Otherwise one refresh runs:
+//! refused (`rejected`); so is the token of a rotation this process is still writing. Otherwise
+//! one refresh runs, the same way for every entry point (a token request, a 401, the bot, the
+//! public [`Twitch::refresh_token`] of the sign-in routes):
 //!
-//! 1. **In this process**, one refresh per streamer and rejected token: concurrent callers join
-//!    it ([`crate::flight`]). It runs as a task, so a caller that gives up does not cancel it.
-//! 2. **Across processes**, the reference's lock: `SET locks:refresh:twitch:{id} <uuid> NX PX
-//!    5000`. A process that does not get it polls the hash every 150 ms for up to 4.5 s for a
-//!    token other than the rejected one with more than 60 s left, stops waiting when the lock is
-//!    gone, then tries the lock once more; failing that it gives up for this call. The holder
-//!    looks at the cache again before it refreshes (another holder may just have finished).
-//! 3. The refresh itself (`refreshTwitchToken`): three attempts, 400 ms and 900 ms apart,
-//!    retried only on a network error or a 5xx.
-//! 4. The new tokens are written to MongoDB, then to the hash.
+//! 1. **One at a time** (`lease.rs`): callers in a process join one task per streamer and
+//!    rejected token (a caller that gives up does not cancel it), which takes the streamer's
+//!    in-process gate, then the reference's cross-process lease `locks:refresh:twitch:{id}`
+//!    (`SET NX PX 5000`, **renewed** while held). A process that does not get the lease polls
+//!    the hash every 150 ms for up to 4.5 s for a token other than the rejected one with more
+//!    than 60 s left, stops waiting when the lease is gone, then tries once more; failing that
+//!    it gives up for this call.
+//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): a rotation parked by a process
+//!    that stopped is applied first; then a usable stored access token is returned (the cache
+//!    repaired from MongoDB, nothing sent); otherwise the **stored** refresh token is the one
+//!    exchanged, never the cache's copy.
+//! 3. **The exchange** (`refreshTwitchToken`): the exchange marker is set (`NX`; when another
+//!    exchange is or may be in flight nothing is sent), then three attempts, 400 ms and 900 ms
+//!    apart, retried only on a network error or a 5xx, none started once the process stops.
+//! 4. **The answer is always stored**: parked in Dragonfly (encrypted), written to MongoDB with
+//!    a compare-and-set on the state read in 2 (advancing the generation), copied to the hash
+//!    under that generation, then unparked and the marker removed. A MongoDB failure keeps the
+//!    rotation (never exchanged again) and a background writer retries; a rotation still
+//!    unwritten when the drain ends stays parked for the next refresh (`drain.rs`).
 //!
 //! # What a refused refresh does
 //!
-//! Twitch's answer is classified as the reference does ([`crate::oauth`]): a 400 or 401 whose
-//! message says the refresh token is invalid or revoked is **permanent**; anything else is
-//! transient and changes nothing. On a permanent failure the stored refresh token is compared
-//! with the one that failed: if it is different, another refresh already rotated it, and its
-//! access token is used when it has more than 60 s left (otherwise the call fails without
-//! touching anything); if it is the same, the stored tokens are wiped (`{iv: null, content:
-//! null}` envelopes, `access_token_expires_at: null`, `has_permissions` and
-//! `up_to_date_permissions` false; the hash's credential fields emptied) and the streamer must
-//! log in again at domdimabot.com.
+//! Twitch's answer is classified ([`crate::oauth`]): a 400 or 401 whose message says the
+//! refresh token is invalid or revoked is **permanent**; anything else is transient and changes
+//! nothing. On a permanent refusal MongoDB is read again: if the stored refresh token is no
+//! longer the refused one, another refresh rotated it and its access token is used when it has
+//! more than 60 s left (otherwise the call fails without touching anything). If it is the same
+//! but the exchange marker is no longer this refresh's own, the refusal is inconclusive (another
+//! exchange may have consumed the token) and nothing changes. Otherwise, when the cache holds a
+//! different refresh token, that one is tried once; failing that the stored tokens are wiped
+//! (`{iv: null, content: null}` envelopes, `access_token_expires_at: null`, `has_permissions`
+//! and `up_to_date_permissions` false; the hash's credential fields emptied) and the streamer
+//! must log in again at domdimabot.com.
 //!
-//! # Intended differences (safety; `MIGRATION.md` section 3)
+//! # What a crash can still lose
 //!
-//! - **MongoDB decides.** The reference compares the failed refresh token with the *cache*
-//!   (which it reads first, then MongoDB when the cache has none). Here the comparison reads
-//!   MongoDB, so a stale cache, or a TypeScript process still refreshing in database 0 during
-//!   the cutover, can never get a valid token wiped. When MongoDB holds a newer token than the
-//!   cache, the cache's credential fields are brought up to date from it.
-//! - **Writes are compare-and-set on the stored envelope.** The reference's
-//!   `findOneAndUpdate({'accounts.id': id}, …)` is unconditional. Here the update matches the
-//!   Twitch account whose `refresh_token` envelope is exactly the one read just before: a
-//!   successful refresh is written only if the stored refresh token is still the one it used (or
-//!   was wiped meanwhile), and a wipe happens only if it is still the one that failed. A refresh
-//!   that finds a newer token stored (a sign-in, or a refresh that overlapped after the 5 s lease
-//!   expired) does not write and returns the stored token when it is still good. Neither write
-//!   can put an older token over a newer one, and the documents written are the reference's
-//!   (same `$set`, plus Mongoose's `updated_at`).
-//! - **The lock is released atomically** (a compare-and-delete script instead of `GET` then
-//!   `DEL`, which could delete another process's lock).
+//! A hard crash (no drain: `SIGKILL`, power loss) between Twitch's answer and the park write,
+//! a few milliseconds, loses the new pair; if Twitch consumed the old refresh token, the
+//! streamer must log in again (after the marker expires, 30 s). The same happens if both
+//! Dragonfly and MongoDB fail between the answer and the end of the drain, or if a drain is cut
+//! short by the container's stop timeout while an exchange is still waiting for Twitch.
+//!
+//! # Intended differences (safety; `MIGRATION.md` section 3; review 2026-11-11)
+//!
+//! - **MongoDB decides** (see 2): the reference exchanges and compares with the *cache*.
+//! - **Writes are compare-and-set** on the stored refresh envelope and the generation
+//!   (`crate::credentials`); the reference's `findOneAndUpdate` is unconditional. The
+//!   documents written are the reference's (same `$set`, plus Mongoose's `updated_at` and the
+//!   user's `refreshed_at`, which carries the generation).
+//! - **The lease is renewed and released atomically**; the exchange marker is Rust's own.
+//! - **The public `refresh_token` is serialised** and sends nothing when the presented token was
+//!   rotated meanwhile or the user does not exist (three recorded traces change on purpose).
 //! - **A failed store read never wipes.** The reference treats an unreadable cache as "no stored
 //!   token" and wipes; here the call fails as transient.
-//! - **The refresh outlives its caller** (see 1. above).
-//! - **No body preview in logs**: the reference logs the first 500 characters of an answer it
-//!   cannot parse, which for a truncated 200 answer is part of the new access token.
+//! - **No Twitch text in logs or errors**: a refusal is a category ([`RefreshFailureReason`]);
+//!   the reference logs Twitch's message and the first 500 characters of an unreadable answer.
+//! - **The cache holds envelopes**, never a token in plain text.
 //! - Not written: the `app:twitch:bot` copy of the bot token and the OAuth debug cache (both
 //!   write-only in the reference; see [`crate::keys`]).
 //!
@@ -71,34 +86,17 @@
 use crate::base::{Inner, Twitch};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
-use crate::oauth::{
-    RefreshContext, RefreshFailureKind, is_permanent_refresh_failure, refresh_failure_message,
-};
-use crate::secret::{AccessToken, RefreshToken};
-use crate::streamers::{decrypt_envelope, persisted_expires_at};
-use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocumentBuf, doc};
-use dima_core::crypto::StoredCredential;
-use dima_model::users::{AccountType, EncryptedToken, User};
-use dima_store::dragonfly::commands::reply;
+use crate::oauth::{Field, RefreshContext, RefreshFailureKind, RefreshFailureReason, parse_answer};
+use crate::secret::{AccessToken, RefreshToken, open_cached, seal};
 use dima_store::dragonfly::script::Script;
-use dima_store::dragonfly::{SetCondition, SetExpiry, SetOptions, SetOutcome};
-use dima_store::mongo::WriteContext;
-use dima_store::mongo::number::js_number;
-use dima_store::mongo::update::UpdateOptions;
-use serde_json::{Value, json};
-use std::sync::Arc;
-use tokio::time::Instant;
 
-/// Deletes the lock only if this process still owns it (Rust only; no loop).
-static RELEASE_LOCK: Script = Script::new(
-    "RELEASE_REFRESH_LOCK_SCRIPT",
-    "\nif redis.call('GET', KEYS[1]) == ARGV[1] then\n    return redis.call('DEL', KEYS[1])\nend\nreturn 0\n",
+/// Stores a new app token only while the cache holds the expected value (Rust only).
+static REPLACE_APP_TOKEN: Script = Script::new(
+    "RUST_REPLACE_APP_TOKEN_SCRIPT",
+    include_str!("lua/replace_app_token.lua"),
 );
-
-/// How many times a compare-and-set write reads and tries again when the stored envelope
-/// changed between its read and its write.
-const CAS_ROUNDS: usize = 3;
+use serde_json::json;
+use std::sync::Arc;
 
 /// The key of one refresh in a process: the streamer and a digest of the rejected token.
 pub(crate) type FlightKey = (String, Option<[u8; 32]>);
@@ -110,14 +108,14 @@ pub enum TokenError {
     #[error("the streamer has no refresh token")]
     NoRefreshToken,
     /// Twitch refused or failed the refresh.
-    #[error("the token refresh failed ({kind})")]
+    #[error("the token refresh failed ({kind}, {reason})")]
     Refresh {
         /// Transient or permanent.
         kind: RefreshFailureKind,
         /// Twitch's status, when it answered.
         status: Option<u16>,
-        /// The reference's message (Twitch's error text, never a token).
-        message: String,
+        /// The category (never Twitch's text, which can echo a credential).
+        reason: RefreshFailureReason,
     },
     /// The refresh produced the very token Twitch had refused.
     #[error("the refreshed token is the one Twitch rejected")]
@@ -149,17 +147,21 @@ pub enum RefreshOutcome {
         kind: RefreshFailureKind,
         /// Twitch's status, when it answered.
         status: Option<u16>,
-        /// The reference's message.
-        message: String,
+        /// The category (the reference returned Twitch's text here; see [`RefreshFailureReason`]).
+        reason: RefreshFailureReason,
     },
 }
 
 impl RefreshOutcome {
-    fn failure(kind: RefreshFailureKind, status: Option<u16>, message: impl Into<String>) -> Self {
+    fn failure(
+        kind: RefreshFailureKind,
+        status: Option<u16>,
+        reason: RefreshFailureReason,
+    ) -> Self {
         Self::Failure {
             kind,
             status,
-            message: message.into(),
+            reason,
         }
     }
 }
@@ -181,891 +183,7 @@ pub fn is_access_token_usable(
     expiration.is_finite() && (now_secs as f64) < expiration - skew_secs as f64
 }
 
-/// JavaScript truthiness of a JSON value (`Boolean(x)`).
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Array(_) | Value::Object(_)) => true,
-    }
-}
-
-/// The stored state of one Twitch account, read for a compare-and-set.
-#[derive(Clone)]
-pub(crate) struct StoredAccount {
-    user: ObjectId,
-    refresh: EncryptedToken,
-    access: EncryptedToken,
-    expires_at: Option<String>,
-}
-
-/// The cache's credential fields of one streamer.
-#[derive(Default)]
-struct CachedCredentials {
-    access_token: Option<String>,
-    expires_at: Option<String>,
-    refresh_token: Option<String>,
-}
-
-/// What a compare-and-set write found.
-enum Persisted {
-    /// Written.
-    Written,
-    /// A different refresh token is stored: nothing written.
-    Superseded(StoredAccount),
-    /// No such user.
-    UserNotFound,
-}
-
-fn envelope_bson(envelope: &StoredCredential) -> Bson {
-    Bson::Document(doc! { "iv": envelope.iv.as_str(), "content": envelope.content.as_str() })
-}
-
-fn null_envelope() -> Bson {
-    Bson::Document(doc! { "iv": Bson::Null, "content": Bson::Null })
-}
-
-impl StoredAccount {
-    /// The filter that matches this account only while its refresh envelope is unchanged.
-    fn compare_filter(&self, user_id: &str) -> Document {
-        let part = |value: &Option<String>| value.clone().map_or(Bson::Null, Bson::String);
-        doc! {
-            "_id": self.user,
-            "accounts": {
-                "$elemMatch": {
-                    "type": "twitch",
-                    "id": user_id,
-                    "refresh_token.iv": part(&self.refresh.iv),
-                    "refresh_token.content": part(&self.refresh.content),
-                }
-            }
-        }
-    }
-}
-
 impl Inner {
-    /// `HMGET accounts:twitch:{id}:data access_token expires_at refresh_token`.
-    async fn cached_credentials(&self, id: &str) -> Result<CachedCredentials, TwitchError> {
-        let reply = self
-            .dragonfly
-            .query_value(
-                redis::cmd("HMGET")
-                    .arg(self.config.keys.account(id))
-                    .arg("access_token")
-                    .arg("expires_at")
-                    .arg("refresh_token"),
-            )
-            .await
-            .map_err(|error| TwitchError::cache("hmget", error))?;
-        let mut values = reply::array(reply)
-            .map_err(|_| TwitchError::Protocol { op: "hmget" })?
-            .into_iter()
-            .map(|value| {
-                reply::bytes_or_nil(value)
-                    .map_err(|_| TwitchError::Protocol { op: "hmget" })?
-                    .map(|bytes| {
-                        String::from_utf8(bytes).map_err(|_| TwitchError::Protocol { op: "hmget" })
-                    })
-                    .transpose()
-            });
-        let mut next = || values.next().transpose().map(Option::flatten);
-        Ok(CachedCredentials {
-            access_token: next()?,
-            expires_at: next()?,
-            refresh_token: next()?,
-        })
-    }
-
-    /// `HSET` of the hash's credential fields.
-    async fn set_cached_credentials(
-        &self,
-        id: &str,
-        fields: &[(&str, &str)],
-    ) -> Result<(), TwitchError> {
-        let fields: Vec<(&str, &[u8])> = fields
-            .iter()
-            .map(|(name, value)| (*name, value.as_bytes()))
-            .collect();
-        self.dragonfly
-            .hset(&self.config.keys.account(id), &fields)
-            .await
-            .map(|_| ())
-            .map_err(|error| TwitchError::cache("hset", error))
-    }
-
-    /// The stored Twitch account `id` (the user's `_id`, both envelopes, the expiry).
-    async fn load_stored(&self, id: &str) -> Result<Option<StoredAccount>, TwitchError> {
-        let raw: Option<RawDocumentBuf> = self
-            .mongo_op(
-                "find user",
-                self.mongo
-                    .collection::<RawDocumentBuf>(dima_model::users::COLLECTION)
-                    .find_one(dima_model::users::by_account(AccountType::Twitch, id))
-                    .projection(doc! { "accounts": 1 }),
-            )
-            .await?;
-        let Some(raw) = raw else {
-            return Ok(None);
-        };
-        let user: User =
-            dima_model::decode(&raw).map_err(|error| TwitchError::Decode(error.to_string()))?;
-        Ok(user
-            .accounts
-            .iter()
-            .find(|account| {
-                account.kind.is(AccountType::Twitch) && account.id.as_deref() == Some(id)
-            })
-            .map(|account| StoredAccount {
-                user: user.id,
-                refresh: account.refresh_token.expose().clone(),
-                access: account.access_token.expose().clone(),
-                expires_at: persisted_expires_at(account),
-            }))
-    }
-
-    /// One compare-and-set `updateOne` on the account: `true` when it matched.
-    async fn compare_and_set(
-        &self,
-        id: &str,
-        stored: &StoredAccount,
-        set: Document,
-    ) -> Result<bool, TwitchError> {
-        let mut ctx = WriteContext::new(self.now_ms());
-        let prepared = dima_model::users::INFO
-            .prepare_update(
-                &stored.compare_filter(id),
-                doc! { "$set": set },
-                UpdateOptions::default(),
-                &mut ctx,
-            )
-            .map_err(|error| TwitchError::Write(error.to_string()))?;
-        let mut writes = self.mongo.writes(dima_model::users::COLLECTION);
-        let outcome = self
-            .mongo_op("update user", writes.update_one(&prepared))
-            .await?;
-        Ok(outcome.matched == 1)
-    }
-
-    /// Writes rotated tokens if the stored refresh token is still `used` (or empty).
-    async fn persist_rotation(
-        &self,
-        id: &str,
-        used: &RefreshToken,
-        access: &StoredCredential,
-        refresh: &StoredCredential,
-        expires_at: f64,
-    ) -> Result<Persisted, TwitchError> {
-        for _round in 0..CAS_ROUNDS {
-            let Some(stored) = self.load_stored(id).await? else {
-                return Ok(Persisted::UserNotFound);
-            };
-            // An envelope that cannot be decrypted holds no usable token: it is replaced, as
-            // the reference's unconditional write would (still only while it is unchanged).
-            match decrypt_envelope(&self.cipher, &stored.refresh) {
-                Ok(Some(current))
-                    if !current.is_empty() && RefreshToken::new(current.as_str()) != *used =>
-                {
-                    return Ok(Persisted::Superseded(stored));
-                }
-                _ => {}
-            }
-            let set = doc! {
-                "accounts.$.refresh_token": envelope_bson(refresh),
-                "accounts.$.access_token": envelope_bson(access),
-                "accounts.$.access_token_expires_at": js_number(expires_at),
-                "accounts.$.has_permissions": true,
-                "accounts.$.up_to_date_permissions": true,
-            };
-            if self.compare_and_set(id, &stored, set).await? {
-                return Ok(Persisted::Written);
-            }
-        }
-        Err(TwitchError::Write(
-            "the stored refresh token kept changing".to_owned(),
-        ))
-    }
-
-    /// The expired cache entry is replaced by MongoDB's credentials (Rust only: the reference's
-    /// cache cannot fall behind MongoDB, Rust's can across the cutover).
-    async fn sync_cache_from(
-        &self,
-        id: &str,
-        stored: &StoredAccount,
-    ) -> Result<CachedCredentials, TwitchError> {
-        let access = decrypt_envelope(&self.cipher, &stored.access)?.unwrap_or_default();
-        let refresh = decrypt_envelope(&self.cipher, &stored.refresh)?.unwrap_or_default();
-        let expires_at = stored.expires_at.clone().unwrap_or_default();
-        self.set_cached_credentials(
-            id,
-            &[
-                ("access_token", &access),
-                ("refresh_token", &refresh),
-                ("expires_at", &expires_at),
-            ],
-        )
-        .await?;
-        Ok(CachedCredentials {
-            access_token: Some(access),
-            expires_at: Some(expires_at),
-            refresh_token: Some(refresh),
-        })
-    }
-
-    fn refresh_log(
-        &self,
-        level: Level,
-        destination: Destination,
-        user_id: &str,
-        context: &RefreshContext,
-        mut data: Value,
-    ) {
-        if let Value::Object(map) = &mut data {
-            map.insert("endpoint".to_owned(), context.endpoint_json());
-            map.insert("caller".to_owned(), context.caller_json());
-        }
-        self.log(level, destination, Some(user_id), data);
-    }
-
-    /// `refreshTwitchToken` (no lock: the caller holds it, or does not need it).
-    pub(crate) async fn refresh_twitch_token(
-        &self,
-        refresh_token: &RefreshToken,
-        user_id: &str,
-        context: &RefreshContext,
-    ) -> RefreshOutcome {
-        match self.refresh_inner(refresh_token, user_id, context).await {
-            Ok(outcome) => outcome,
-            Err(error) => {
-                self.refresh_log(
-                    Level::Error,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_exception",
-                        "reason": error.to_string(),
-                    }),
-                );
-                RefreshOutcome::failure(RefreshFailureKind::Transient, None, error.to_string())
-            }
-        }
-    }
-
-    async fn refresh_inner(
-        &self,
-        refresh_token: &RefreshToken,
-        user_id: &str,
-        context: &RefreshContext,
-    ) -> Result<RefreshOutcome, TwitchError> {
-        let Some(answer) = self.post_refresh(refresh_token, user_id, context).await else {
-            self.refresh_log(
-                Level::Error,
-                Destination::Both,
-                user_id,
-                context,
-                json!({
-                    "function": "refreshTwitchToken",
-                    "userId": user_id,
-                    "action": "token_refresh_failed",
-                    "reason": "network_error_after_retries",
-                    "attempts": self.config.timings.refresh_attempts,
-                }),
-            );
-            return Ok(RefreshOutcome::failure(
-                RefreshFailureKind::Transient,
-                None,
-                "Network error while refreshing Twitch token",
-            ));
-        };
-        let status = answer.status;
-        let data: Value = if answer.text.is_empty() {
-            json!({})
-        } else {
-            let sanitized = dima_text::sanitize_lone_surrogates(answer.text.as_bytes());
-            match serde_json::from_slice(&sanitized) {
-                Ok(data) => data,
-                Err(error) => {
-                    self.refresh_log(
-                        Level::Error,
-                        Destination::Both,
-                        user_id,
-                        context,
-                        json!({
-                            "function": "refreshTwitchToken",
-                            "userId": user_id,
-                            "action": "token_refresh_failed",
-                            "reason": "unparseable_refresh_response",
-                            "parseError": format!("{:?} at line {} column {}", error.classify(), error.line(), error.column()),
-                            "status": status,
-                            "bodyLength": dima_text::utf16_len(&answer.text),
-                        }),
-                    );
-                    return Ok(RefreshOutcome::failure(
-                        RefreshFailureKind::Transient,
-                        Some(status),
-                        "Failed to parse Twitch token refresh response",
-                    ));
-                }
-            }
-        };
-
-        if !answer.ok() || truthy(data.get("error")) {
-            let mut message = refresh_failure_message(&data);
-            if message.is_empty() {
-                message = format!("HTTP {status}");
-            }
-            let kind = if is_permanent_refresh_failure(status, &data) {
-                RefreshFailureKind::Permanent
-            } else {
-                RefreshFailureKind::Transient
-            };
-            self.refresh_log(
-                if kind == RefreshFailureKind::Permanent {
-                    Level::Error
-                } else {
-                    Level::Warn
-                },
-                Destination::Both,
-                user_id,
-                context,
-                json!({
-                    "function": "refreshTwitchToken",
-                    "userId": user_id,
-                    "action": "token_refresh_rejected",
-                    "status": status,
-                    "failureKind": kind.as_str(),
-                    "reason": message,
-                    "twitchError": data.get("error").and_then(Value::as_str),
-                }),
-            );
-            if kind == RefreshFailureKind::Permanent {
-                return self
-                    .refused_for_good(refresh_token, user_id, status, message, context)
-                    .await;
-            }
-            return Ok(RefreshOutcome::failure(kind, Some(status), message));
-        }
-
-        let text_of = |name: &str| {
-            data.get(name)
-                .and_then(Value::as_str)
-                .filter(|text| !text.is_empty())
-        };
-        let access = text_of("access_token");
-        let refresh = text_of("refresh_token");
-        let expires_in = data
-            .get("expires_in")
-            .and_then(Value::as_f64)
-            .unwrap_or(7200.0);
-        let (Some(access), Some(refresh)) = (access, refresh) else {
-            self.refresh_log(
-                Level::Error,
-                Destination::Both,
-                user_id,
-                context,
-                json!({
-                    "function": "refreshTwitchToken",
-                    "userId": user_id,
-                    "action": "token_refresh_failed",
-                    "reason": "incomplete_payload",
-                    "status": status,
-                    "hasAccessToken": access.is_some(),
-                    "hasRefreshToken": refresh.is_some(),
-                }),
-            );
-            return Ok(RefreshOutcome::failure(
-                RefreshFailureKind::Transient,
-                Some(status),
-                "Twitch token refresh returned incomplete payload",
-            ));
-        };
-        let access = AccessToken::new(access);
-        let refresh = RefreshToken::new(refresh);
-
-        #[cfg(any(test, feature = "test-util"))]
-        self.fault(crate::base::FaultPoint::AfterTwitchAnswer, user_id)
-            .await;
-
-        let random: &dyn dima_core::SecureRandom = &*self.random;
-        let access_envelope = self.cipher.encrypt(access.expose(), random)?;
-        let refresh_envelope = self.cipher.encrypt(refresh.expose(), random)?;
-        let expires_at = self.now_secs() as f64 + expires_in;
-
-        match self
-            .persist_rotation(
-                user_id,
-                refresh_token,
-                &access_envelope,
-                &refresh_envelope,
-                expires_at,
-            )
-            .await?
-        {
-            Persisted::UserNotFound => {
-                self.refresh_log(
-                    Level::Error,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_store_failed",
-                        "reason": "user_not_found",
-                        "consequence": "Twitch rotated the refresh token but it could not be stored; the rotated token is LOST and the next refresh will fail with invalid grant",
-                    }),
-                );
-                Ok(RefreshOutcome::failure(
-                    RefreshFailureKind::Transient,
-                    None,
-                    "User not found while storing refreshed token",
-                ))
-            }
-            Persisted::Superseded(stored) => {
-                let cached = self.sync_cache_from(user_id, &stored).await?;
-                let now = self.now_secs();
-                let skew = self.config.timings.waiter_expiry_skew_secs;
-                self.refresh_log(
-                    Level::Info,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_superseded",
-                        "reason": "a newer refresh token is stored; this refresh was not written",
-                    }),
-                );
-                if is_access_token_usable(
-                    cached.access_token.as_deref(),
-                    cached.expires_at.as_deref(),
-                    now,
-                    skew,
-                ) {
-                    let expiry = cached.expires_at.as_deref().map_or(f64::NAN, |raw| {
-                        dima_text::parse_int(raw, dima_text::Radix::Decimal)
-                    });
-                    return Ok(RefreshOutcome::Success {
-                        access_token: AccessToken::new(cached.access_token.unwrap_or_default()),
-                        refresh_token: RefreshToken::new(cached.refresh_token.unwrap_or_default()),
-                        expires_in: expiry - now as f64,
-                    });
-                }
-                Ok(RefreshOutcome::Success {
-                    access_token: access,
-                    refresh_token: refresh,
-                    expires_in,
-                })
-            }
-            Persisted::Written => {
-                let expires_text = dima_text::number_to_string(expires_at);
-                self.set_cached_credentials(
-                    user_id,
-                    &[
-                        ("access_token", access.expose()),
-                        ("refresh_token", refresh.expose()),
-                        ("expires_at", &expires_text),
-                        ("has_permissions", "true"),
-                        ("up_to_date_permissions", "true"),
-                    ],
-                )
-                .await?;
-                self.refresh_log(
-                    Level::Info,
-                    Destination::Cache,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_succeeded",
-                        "expiresIn": expires_in,
-                        "expiresAt": expires_at,
-                    }),
-                );
-                Ok(RefreshOutcome::Success {
-                    access_token: access,
-                    refresh_token: refresh,
-                    expires_in,
-                })
-            }
-        }
-    }
-
-    /// A permanent refusal: compare with the stored refresh token, then reuse a concurrent
-    /// rotation or wipe the stored tokens.
-    async fn refused_for_good(
-        &self,
-        failed: &RefreshToken,
-        user_id: &str,
-        status: u16,
-        message: String,
-        context: &RefreshContext,
-    ) -> Result<RefreshOutcome, TwitchError> {
-        for _round in 0..CAS_ROUNDS {
-            let stored = self.load_stored(user_id).await?;
-            let current = match &stored {
-                Some(stored) => decrypt_envelope(&self.cipher, &stored.refresh)?,
-                None => None,
-            };
-            if let (Some(stored), Some(current)) = (&stored, current.filter(|t| !t.is_empty()))
-                && RefreshToken::new(current.as_str()) != *failed
-            {
-                return self
-                    .rotated_elsewhere(user_id, stored, &current, status, message, context)
-                    .await;
-            }
-            let wiped = match &stored {
-                Some(stored) => {
-                    let set = doc! {
-                        "accounts.$.refresh_token": null_envelope(),
-                        "accounts.$.access_token": null_envelope(),
-                        "accounts.$.access_token_expires_at": Bson::Null,
-                        "accounts.$.has_permissions": false,
-                        "accounts.$.up_to_date_permissions": false,
-                    };
-                    self.compare_and_set(user_id, stored, set).await?
-                }
-                // The reference's update matches nothing; its cache write still happens.
-                None => true,
-            };
-            if !wiped {
-                continue;
-            }
-            self.set_cached_credentials(
-                user_id,
-                &[
-                    ("access_token", ""),
-                    ("refresh_token", ""),
-                    ("expires_at", ""),
-                    ("has_permissions", "false"),
-                    ("up_to_date_permissions", "false"),
-                ],
-            )
-            .await?;
-            self.log(
-                Level::Error,
-                Destination::Both,
-                Some(user_id),
-                json!({
-                    "function": "invalidateStoredTwitchTokens",
-                    "userId": user_id,
-                    "action": "tokens_invalidated",
-                    "status": status,
-                    "reason": message,
-                    "endpoint": context.endpoint_json(),
-                    "caller": context.caller_json(),
-                    "consequence": "tokens wiped and has_permissions=false; user must reauthorize at domdimabot.com",
-                }),
-            );
-            return Ok(RefreshOutcome::failure(
-                RefreshFailureKind::Permanent,
-                Some(status),
-                message,
-            ));
-        }
-        Err(TwitchError::Write(
-            "the stored refresh token kept changing".to_owned(),
-        ))
-    }
-
-    /// The stored refresh token differs from the refused one: another refresh rotated it.
-    async fn rotated_elsewhere(
-        &self,
-        user_id: &str,
-        stored: &StoredAccount,
-        current: &str,
-        status: u16,
-        message: String,
-        context: &RefreshContext,
-    ) -> Result<RefreshOutcome, TwitchError> {
-        let mut cached = self.cached_credentials(user_id).await?;
-        if cached.refresh_token.as_deref() != Some(current) {
-            cached = self.sync_cache_from(user_id, stored).await?;
-        }
-        let now = self.now_secs();
-        let skew = self.config.timings.waiter_expiry_skew_secs;
-        if is_access_token_usable(
-            cached.access_token.as_deref(),
-            cached.expires_at.as_deref(),
-            now,
-            skew,
-        ) {
-            let expiry = cached.expires_at.as_deref().map_or(f64::NAN, |raw| {
-                dima_text::parse_int(raw, dima_text::Radix::Decimal)
-            });
-            self.refresh_log(
-                Level::Info,
-                Destination::Both,
-                user_id,
-                context,
-                json!({
-                    "function": "refreshTwitchToken",
-                    "userId": user_id,
-                    "action": "token_refresh_rotation_detected",
-                    "reason": "refresh token already rotated by a concurrent refresh; returning stored access token",
-                    "storedSecondsUntilExpiry": expiry - now as f64,
-                }),
-            );
-            return Ok(RefreshOutcome::Success {
-                access_token: AccessToken::new(cached.access_token.unwrap_or_default()),
-                refresh_token: RefreshToken::new(current),
-                expires_in: expiry - now as f64,
-            });
-        }
-        self.refresh_log(
-            Level::Warn,
-            Destination::Both,
-            user_id,
-            context,
-            json!({
-                "function": "refreshTwitchToken",
-                "userId": user_id,
-                "action": "token_refresh_rotation_detected",
-                "reason": "refresh token already rotated but stored access token is not usable; skipping invalidation",
-            }),
-        );
-        Ok(RefreshOutcome::failure(
-            RefreshFailureKind::Transient,
-            Some(status),
-            format!("{message} (stored token already rotated by a concurrent refresh)"),
-        ))
-    }
-
-    /// `getAccountRefreshTokenById` with errors returned.
-    pub(crate) async fn stored_refresh_token(
-        self: &Arc<Self>,
-        id: &str,
-    ) -> Result<Option<RefreshToken>, TwitchError> {
-        let cached = self
-            .hget_text(&self.config.keys.account(id), "refresh_token")
-            .await?;
-        if let Some(token) = cached.filter(|token| !token.is_empty()) {
-            return Ok(Some(RefreshToken::new(token)));
-        }
-        Ok(self
-            .hydrate(id)
-            .await?
-            .and_then(|account| account.refresh_token()))
-    }
-
-    async fn acquire_lock(&self, key: &str) -> Result<Option<String>, TwitchError> {
-        let random: &dyn dima_core::Random = &*self.random;
-        let owner = random
-            .uuid_v4()
-            .map_err(|error| TwitchError::cache("lock", error))?;
-        let ttl = u64::try_from(self.config.timings.refresh_lock_ttl.as_millis()).unwrap_or(5000);
-        let outcome = self
-            .dragonfly
-            .set(
-                key,
-                owner.as_bytes(),
-                SetOptions {
-                    condition: SetCondition::IfMissing,
-                    expiry: SetExpiry::Millis(ttl.max(1)),
-                    get: false,
-                },
-            )
-            .await
-            .map_err(|error| TwitchError::cache("lock", error))?;
-        Ok((outcome == SetOutcome::Written).then_some(owner))
-    }
-
-    async fn release_lock(&self, key: &str, owner: &str) {
-        // The lease expires on its own; a failed release only delays the next refresh.
-        let _ = RELEASE_LOCK
-            .run_value(&self.dragonfly, &[key], &[owner])
-            .await;
-    }
-
-    /// `waitForRefreshedToken`.
-    async fn wait_for_refreshed(
-        &self,
-        id: &str,
-        lock_key: &str,
-        rejected: Option<&AccessToken>,
-    ) -> Result<Option<AccessToken>, TwitchError> {
-        let timings = &self.config.timings;
-        let deadline = Instant::now() + timings.refresh_wait;
-        while Instant::now() < deadline {
-            tokio::time::sleep(timings.refresh_wait_poll).await;
-            let cached = self.cached_credentials(id).await?;
-            let token = cached.access_token.as_deref();
-            let not_rejected = rejected.is_none_or(|rejected| token != Some(rejected.expose()));
-            if not_rejected
-                && is_access_token_usable(
-                    token,
-                    cached.expires_at.as_deref(),
-                    self.now_secs(),
-                    timings.waiter_expiry_skew_secs,
-                )
-            {
-                return Ok(token.map(AccessToken::new));
-            }
-            let held = self
-                .dragonfly
-                .exists(&[lock_key])
-                .await
-                .map_err(|error| TwitchError::cache("exists", error))?;
-            if held != 1 {
-                break;
-            }
-        }
-        Ok(None)
-    }
-
-    fn token_log(&self, level: Level, id: &str, caller: &str, mut data: Value) {
-        if let Value::Object(map) = &mut data {
-            map.insert(
-                "function".to_owned(),
-                Value::from("TwitchStreamers.getAccountTokenById"),
-            );
-            map.insert("id".to_owned(), Value::from(id));
-            map.insert("account_type".to_owned(), Value::from("twitch"));
-            map.insert("caller".to_owned(), Value::from(caller));
-        }
-        self.log(level, Destination::Cache, Some(id), data);
-    }
-
-    /// The lock, the double check and the refresh of `getAccountTokenById`.
-    async fn locked_refresh(
-        self: &Arc<Self>,
-        id: &str,
-        rejected: Option<&AccessToken>,
-        caller: &str,
-    ) -> Result<AccessToken, TokenError> {
-        let lock_key = self.config.keys.refresh_lock(id);
-        let mut owner = self.acquire_lock(&lock_key).await?;
-        if owner.is_none() {
-            if let Some(winner) = self.wait_for_refreshed(id, &lock_key, rejected).await? {
-                self.token_log(
-                    Level::Debug,
-                    id,
-                    caller,
-                    json!({ "action": "returned_token_from_concurrent_refresh" }),
-                );
-                return Ok(winner);
-            }
-            owner = self.acquire_lock(&lock_key).await?;
-            if owner.is_none() {
-                self.token_log(
-                    Level::Warn,
-                    id,
-                    caller,
-                    json!({ "action": "refresh_lock_unavailable" }),
-                );
-                return Err(TokenError::LockUnavailable);
-            }
-            self.token_log(
-                Level::Info,
-                id,
-                caller,
-                json!({ "action": "refresh_lock_takeover" }),
-            );
-        }
-        let result = self.refresh_under_lock(id, rejected, caller).await;
-        if let Some(owner) = owner {
-            self.release_lock(&lock_key, &owner).await;
-        }
-        result
-    }
-
-    async fn refresh_under_lock(
-        self: &Arc<Self>,
-        id: &str,
-        rejected: Option<&AccessToken>,
-        caller: &str,
-    ) -> Result<AccessToken, TokenError> {
-        let cached = self.cached_credentials(id).await?;
-        let token = cached.access_token.as_deref();
-        let not_rejected = rejected.is_none_or(|rejected| token != Some(rejected.expose()));
-        if not_rejected
-            && is_access_token_usable(
-                token,
-                cached.expires_at.as_deref(),
-                self.now_secs(),
-                self.config.timings.token_expiry_skew_secs,
-            )
-            && let Some(token) = token
-        {
-            self.token_log(
-                Level::Debug,
-                id,
-                caller,
-                json!({ "action": "returned_token_refreshed_before_lock" }),
-            );
-            return Ok(AccessToken::new(token));
-        }
-        let refreshed = self.perform_refresh(id, caller).await?;
-        if rejected.is_some_and(|rejected| *rejected == refreshed) {
-            return Err(TokenError::SameAsRejected);
-        }
-        Ok(refreshed)
-    }
-
-    /// `performTwitchTokenRefresh`.
-    async fn perform_refresh(
-        self: &Arc<Self>,
-        id: &str,
-        caller: &str,
-    ) -> Result<AccessToken, TokenError> {
-        let Some(refresh_token) = self.stored_refresh_token(id).await? else {
-            self.token_log(
-                Level::Error,
-                id,
-                caller,
-                json!({ "action": "refresh_failed", "reason": "refresh_token_not_found" }),
-            );
-            return Err(TokenError::NoRefreshToken);
-        };
-        let context = RefreshContext::new("token_refresh", caller);
-        match self
-            .refresh_twitch_token(&refresh_token, id, &context)
-            .await
-        {
-            RefreshOutcome::Success {
-                access_token,
-                expires_in,
-                ..
-            } => {
-                self.token_log(
-                    Level::Info,
-                    id,
-                    caller,
-                    json!({ "action": "token_refreshed_successfully", "expiresIn": expires_in }),
-                );
-                Ok(access_token)
-            }
-            RefreshOutcome::Failure {
-                kind,
-                status,
-                message,
-            } => {
-                self.token_log(
-                    Level::Error,
-                    id,
-                    caller,
-                    json!({
-                        "action": "refresh_failed",
-                        "reason": kind.as_str(),
-                        "status": status,
-                        "message": message,
-                    }),
-                );
-                Err(TokenError::Refresh {
-                    kind,
-                    status,
-                    message,
-                })
-            }
-        }
-    }
-
     /// `getAccountTokenById(id, 'twitch', rejected)`.
     pub(crate) async fn streamer_token(
         self: &Arc<Self>,
@@ -1098,7 +216,7 @@ impl Inner {
             dima_text::parse_int(raw, dima_text::Radix::Decimal)
         });
         let seconds_until = parsed.is_finite().then_some(parsed - now as f64);
-        let token = cached.access_token.as_deref().filter(|t| !t.is_empty());
+        let token = cached.access();
         self.token_log(
             Level::Debug,
             id,
@@ -1119,6 +237,7 @@ impl Inner {
                 now,
                 timings.token_expiry_skew_secs,
             )
+            && let Some(token) = cached.access_token.clone()
         {
             self.token_log(
                 Level::Debug,
@@ -1126,7 +245,7 @@ impl Inner {
                 caller,
                 json!({ "action": "returning_cached_token", "secondsUntilExpiry": seconds_until }),
             );
-            return Ok(AccessToken::new(token));
+            return Ok(token);
         }
         let reason = match token {
             None => "no_cached_token",
@@ -1145,6 +264,10 @@ impl Inner {
                 "skewSeconds": timings.token_expiry_skew_secs,
             }),
         );
+        // A rotation this process holds while MongoDB refuses to take it.
+        if let Some(token) = self.pending_token(id, rejected) {
+            return Ok(token);
+        }
         if self.shutdown.is_triggered() {
             return Err(TwitchError::Shutdown.into());
         }
@@ -1173,8 +296,83 @@ impl Inner {
         waiter.await
     }
 
-    /// `getNewTwitchAppToken` + the `SET` of `getAppToken`.
-    async fn new_app_token(&self) -> Option<AccessToken> {
+    /// The cached app token and the cached text it was read from (`None` when there is none
+    /// or it does not decrypt).
+    async fn cached_app_token(&self) -> Result<Option<(AccessToken, String)>, TwitchError> {
+        let text = self
+            .dragonfly
+            .get_text(&self.config.keys.app_token())
+            .await
+            .map_err(|error| TwitchError::cache("get app token", error))?;
+        Ok(text.and_then(|text| {
+            open_cached(&self.cipher, &text).map(|token| (AccessToken::from_secret(token), text))
+        }))
+    }
+
+    /// A new app token, one request per process at a time, stored if the cache still holds
+    /// `expected` (`""`: nothing).
+    async fn request_app_token(self: &Arc<Self>, expected: String) -> Option<AccessToken> {
+        if self.shutdown.is_triggered() {
+            return None;
+        }
+        let worker = Arc::clone(self);
+        let kill = self.kill.clone();
+        let waiter = self
+            .app_flight
+            .join((), &self.tracker, None, move || async move {
+                tokio::select! {
+                    biased;
+                    () = kill.cancelled() => None,
+                    token = worker.new_app_token(&expected) => token,
+                }
+            })?;
+        waiter.await
+    }
+
+    /// Whether a 401-driven refresh for `rejected` did not help within the window.
+    fn refresh_did_not_help(&self, rejected: &AccessToken) -> bool {
+        let key = dima_core::crypto::sha256(rejected.expose().as_bytes()).0;
+        let window = self.config.timings.unhelpful_refresh_window;
+        let unhelpful = self
+            .unhelpful_refreshes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+            .is_some_and(|at| at.elapsed() < window);
+        if unhelpful {
+            self.log(
+                Level::Warn,
+                Destination::Both,
+                None,
+                json!({
+                    "message": "Twitch refused a token that a refresh just produced (or could not replace); not refreshing again for now.",
+                }),
+            );
+        }
+        unhelpful
+    }
+
+    /// After a 401-driven refresh for `rejected`: a new token is remembered (if Twitch refuses
+    /// it too within the window, the refresh did not help); no new token marks `rejected`.
+    fn remember_refresh(&self, rejected: &AccessToken, fresh: Option<&AccessToken>) {
+        let token = match fresh {
+            Some(fresh) if fresh != rejected => fresh,
+            _ => rejected,
+        };
+        let key = dima_core::crypto::sha256(token.expose().as_bytes()).0;
+        let mut memory = self
+            .unhelpful_refreshes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if memory.len() >= crate::base::MAX_FLIGHTS {
+            memory.clear();
+        }
+        memory.insert(key, tokio::time::Instant::now());
+    }
+
+    /// `getNewTwitchAppToken` + the `SET` of `getAppToken`, as a compare-and-set: the new token
+    /// replaces the cached one only if the cache still holds `expected` (`""`: nothing).
+    async fn new_app_token(&self, expected: &str) -> Option<AccessToken> {
         let internal_error = |error: String| {
             self.log(
                 Level::Error,
@@ -1188,50 +386,65 @@ impl Inner {
             Ok(answer) => answer,
             Err(error) => return internal_error(error.to_string()),
         };
-        let sanitized = dima_text::sanitize_lone_surrogates(answer.text.as_bytes());
-        let data: Value = match serde_json::from_slice(&sanitized) {
+        // The text never reaches a log: it may echo the app token. It is read into wiping
+        // buffers (`oauth::AnswerBody`).
+        if answer.body.is_empty() {
+            return internal_error("the answer is not JSON".to_owned());
+        }
+        let status = answer.status;
+        let mut data = match parse_answer(&answer.body).0 {
             Ok(data) => data,
             Err(_) => return internal_error("the answer is not JSON".to_owned()),
         };
-        if !truthy(data.get("access_token")) {
-            let message = data
-                .get("message")
-                .map_or_else(|| "undefined".to_owned(), dima_text::string_of);
+        drop(answer);
+        if !data.access_token.truthy() {
+            // The reference logs Twitch's `message`; only its category is logged here.
+            let (_, reason) = data.classify(status);
             self.log(
                 Level::Error,
                 Destination::Console,
                 None,
-                json!({ "message": format!("Error getting new Twitch app token: {message}") }),
+                json!({
+                    "message": format!("Error getting new Twitch app token: {}", reason.as_str()),
+                    "status": status,
+                }),
             );
             return None;
         }
-        let token = data
-            .get("access_token")
-            .map(dima_text::string_of)
-            .unwrap_or_default();
+        // A truthy access token that is not a string (the reference would use it as it is)
+        // is no token here.
+        let Some(token) = data.access_token.take_text() else {
+            return internal_error("access_token is not a string".to_owned());
+        };
         // `{EX: Number(expires_in)}`: the server refuses anything but a positive integer, and
         // the reference's `SET` then throws into the same catch.
-        let seconds = match data.get("expires_in") {
-            Some(Value::Number(number)) => number.as_f64().unwrap_or(f64::NAN),
-            Some(Value::String(text)) => dima_text::parse_number(text),
+        let seconds = match &data.expires_in {
+            Field::Number(number) => *number,
+            Field::Text(text) => dima_text::parse_number(text.expose()),
             _ => f64::NAN,
         };
         if !(seconds.is_finite() && seconds >= 1.0 && seconds.fract() == 0.0 && seconds < 9e15) {
             return internal_error("expires_in is not a positive integer".to_owned());
         }
         let seconds = seconds as u64;
-        if let Err(error) = self
-            .dragonfly
-            .set(
-                &self.config.keys.app_token(),
-                token.as_bytes(),
-                SetOptions::ex(seconds),
+        let sealed = match seal(&self.cipher, &*self.random, token.expose()) {
+            Ok(sealed) => sealed,
+            Err(error) => return internal_error(error.to_string()),
+        };
+        let seconds = seconds.to_string();
+        if let Err(error) = REPLACE_APP_TOKEN
+            .run_value(
+                &self.dragonfly,
+                &[self.config.keys.app_token()],
+                &[expected, sealed.as_str(), seconds.as_str()],
             )
             .await
         {
             return internal_error(error.to_string());
         }
-        Some(AccessToken::new(token))
+        // Not stored when another token replaced the expected one meanwhile: that one is kept,
+        // and this one (also valid) is used by this caller.
+        Some(AccessToken::from_secret(token))
     }
 }
 
@@ -1272,13 +485,8 @@ impl Twitch {
     /// a time).
     pub async fn app_token(&self) -> Option<AccessToken> {
         let inner = &self.inner;
-        match inner
-            .dragonfly
-            .get_text(&inner.config.keys.app_token())
-            .await
-        {
-            Ok(Some(token)) if !token.is_empty() => return Some(AccessToken::new(token)),
-            Ok(_) => {}
+        let cached = match inner.cached_app_token().await {
+            Ok(cached) => cached,
             Err(error) => {
                 inner.log(
                     Level::Error,
@@ -1288,27 +496,67 @@ impl Twitch {
                 );
                 return None;
             }
+        };
+        if let Some((token, _)) = cached {
+            return Some(token);
         }
-        if inner.shutdown.is_triggered() {
-            return None;
-        }
-        let worker = Arc::clone(inner);
-        let kill = inner.kill.clone();
-        let waiter = inner
-            .app_flight
-            .join((), &inner.tracker, None, move || async move {
-                tokio::select! {
-                    biased;
-                    () = kill.cancelled() => None,
-                    token = worker.new_app_token() => token,
-                }
-            })?;
-        waiter.await
+        inner.request_app_token(String::new()).await
     }
 
-    /// `refreshTwitchToken(refreshToken, userId, context)` as the sign-in routes call it (no
-    /// lock, as in the reference). The refresh runs as a task: dropping the returned future
-    /// does not lose a rotation Twitch already answered.
+    /// The app token after Helix refused `rejected` (review finding 10): a different cached
+    /// token (another caller's or process's new one) is used as it is; otherwise one new token
+    /// is requested, and stored only if the cache still holds the refused one (or none), so a
+    /// concurrent winner is kept. When a refresh for this token did not help a moment ago
+    /// ([`crate::Timings::unhelpful_refresh_window`]: the refused token is one a refresh just
+    /// produced, or a refresh for it just failed), nothing is requested and the token is
+    /// returned as it is: a 401 that a new token does not cure (a missing scope) costs one
+    /// refresh per window, not one per request.
+    pub(crate) async fn app_token_after_rejection(
+        &self,
+        rejected: &AccessToken,
+    ) -> Option<AccessToken> {
+        let inner = &self.inner;
+        let cached = inner.cached_app_token().await.ok()?;
+        let expected = match cached {
+            Some((token, _)) if token != *rejected => return Some(token),
+            Some((_, text)) => text,
+            None => String::new(),
+        };
+        if inner.refresh_did_not_help(rejected) {
+            return Some(rejected.clone());
+        }
+        let fresh = inner.request_app_token(expected).await;
+        inner.remember_refresh(rejected, fresh.as_ref());
+        fresh
+    }
+
+    /// The bot's token after Helix refused `rejected` (review finding 10; moderator calls run
+    /// as the bot): the streamer refresh with `rejected` passed, so a concurrent winner is
+    /// used and the refused token is never handed back; suppressed like
+    /// [`Twitch::app_token_after_rejection`] when a refresh for it did not help a moment ago.
+    pub(crate) async fn bot_token_after_rejection(
+        &self,
+        rejected: &AccessToken,
+    ) -> Option<AccessToken> {
+        let inner = &self.inner;
+        if inner.refresh_did_not_help(rejected) {
+            return Some(rejected.clone());
+        }
+        let bot = inner.config.bot_user_id.clone();
+        let fresh = inner
+            .streamer_token(&bot, Some(rejected), "getTwitchBotHeader")
+            .await
+            .ok();
+        inner.remember_refresh(rejected, fresh.as_ref());
+        fresh
+    }
+
+    /// `refreshTwitchToken(refreshToken, userId, context)` as the sign-in routes call it. Unlike
+    /// the reference (no lock), it goes through the same gate and lease as every other refresh,
+    /// and the presented token is exchanged only while it is still the stored one; when it has
+    /// been rotated meanwhile, the stored pair is returned if its access token is usable, and
+    /// nothing is sent. The refresh runs as a task: dropping the returned future does not lose
+    /// a rotation Twitch already answered.
     pub async fn refresh_token(
         &self,
         refresh_token: &RefreshToken,
@@ -1318,18 +566,34 @@ impl Twitch {
         let inner = Arc::clone(&self.inner);
         let refresh_token = refresh_token.clone();
         let user_id = user_id.to_owned();
+        let kill = self.inner.kill.clone();
         let task = self.inner.tracker.spawn(async move {
-            inner
-                .refresh_twitch_token(&refresh_token, &user_id, &context)
-                .await
+            tokio::select! {
+                biased;
+                () = kill.cancelled() => RefreshOutcome::Failure {
+                    kind: RefreshFailureKind::Transient,
+                    status: None,
+                    reason: RefreshFailureReason::Interrupted,
+                },
+                outcome = inner.locked_rotation(&refresh_token, &user_id, &context) => outcome,
+            }
         });
         task.await.unwrap_or_else(|_| {
             RefreshOutcome::failure(
                 RefreshFailureKind::Transient,
                 None,
-                "the refresh was interrupted",
+                RefreshFailureReason::Interrupted,
             )
         })
+    }
+
+    /// Tells the crate that the streamer's credentials were written to MongoDB by another
+    /// writer (a sign-in): the generation is advanced (compare-and-set on what is stored) and
+    /// MongoDB's state is copied to the directory, so no cache write that started before can
+    /// cover it. Every writer of the token fields outside this crate must call it after its
+    /// MongoDB write.
+    pub async fn credentials_changed(&self, id: &str) -> Result<(), TwitchError> {
+        self.inner.credentials_changed(id).await
     }
 
     /// `getAccountRefreshTokenById(id, 'twitch')`: the stored refresh token (cache, else
@@ -1377,18 +641,5 @@ mod tests {
         assert!(!usable(None, 300));
         assert!(!is_access_token_usable(Some(""), Some("9999"), 1000, 300));
         assert!(!is_access_token_usable(None, Some("9999"), 1000, 300));
-    }
-
-    #[test]
-    fn truthiness_is_javascripts() {
-        assert!(!truthy(None));
-        assert!(!truthy(Some(&json!(null))));
-        assert!(!truthy(Some(&json!(""))));
-        assert!(!truthy(Some(&json!(0))));
-        assert!(!truthy(Some(&json!(false))));
-        assert!(truthy(Some(&json!("x"))));
-        assert!(truthy(Some(&json!(1))));
-        assert!(truthy(Some(&json!([]))));
-        assert!(truthy(Some(&json!({}))));
     }
 }

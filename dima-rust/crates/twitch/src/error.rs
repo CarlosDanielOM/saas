@@ -1,6 +1,6 @@
 //! Errors. None of them carries a token, a refresh token, the client secret or an e-mail: store
-//! failures keep the driver's message (no document values), refresh failures keep Twitch's own
-//! error text.
+//! failures keep the driver's message (no document values), refresh failures carry a category
+//! ([`crate::RefreshFailureReason`]) and the HTTP status, never Twitch's text.
 
 use dima_core::crypto::CipherError;
 
@@ -53,6 +53,13 @@ pub enum TwitchError {
     /// The work stopped before it produced a result (aborted at shutdown).
     #[error("the operation was interrupted")]
     Interrupted,
+    /// The caller's deadline passed first (the store is slow or unreachable; work already
+    /// started, such as a hydration, goes on in the background).
+    #[error("{op} did not finish within the caller's deadline")]
+    Deadline {
+        /// The operation.
+        op: &'static str,
+    },
 }
 
 impl TwitchError {

@@ -6,7 +6,10 @@
 mod support;
 
 mod concurrency;
+mod deadlines;
 mod directory;
+mod drain;
+mod fence;
 mod helix;
 mod parity;
 mod tokens;

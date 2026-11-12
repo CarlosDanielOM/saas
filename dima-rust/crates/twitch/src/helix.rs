@@ -17,9 +17,12 @@
 //! 1 s, 3 s and 5 s (or the delays given). For a streamer the refresh passes the refused token
 //! as `rejected`, so the cache cannot hand it back; when no different token comes back the call
 //! stops and [`HelixResponse::refresh_unavailable`] is set (the reference answers 503). For the
-//! app and the bot the reference's hook reads the token again without marking it refused, so
-//! it usually sends the same token again: reproduced and marked as a quirk (the app token is
-//! only replaced when its key expires; the bot's when it nears expiry).
+//! app and the bot (and moderator calls, which run as the bot) the refused token is passed too
+//! (review finding 10; the reference reads the same token again): a different cached token is
+//! used as it is, otherwise one refresh replaces the refused token (the app token only while
+//! the cache still holds it), and a token a refresh just produced is not refreshed again for a
+//! minute when Twitch refuses it as well (a missing scope must not cost a refresh per request);
+//! the request is then retried with the same token, as the reference does.
 //!
 //! # Differences from `twitch_helix_retry.ts`
 //!
@@ -447,25 +450,38 @@ impl HelixCredential {
             Value::from(u64::try_from(delay.as_millis()).unwrap_or(u64::MAX)),
         );
         self.log(Level::Warn, data);
+        let refused = AccessToken::from_bearer(rejected);
         match &self.auth {
-            Auth::App => match self.twitch.app_credential().await {
-                Ok(token) => Self::rotated(&token),
-                Err(error) => {
-                    let mut data = Map::new();
-                    data.insert(
-                        "message".to_owned(),
-                        Value::from("Token refresh hook failed during Twitch 401 retry."),
-                    );
-                    data.insert("attempt".to_owned(), Value::from(attempt));
-                    data.insert("error".to_owned(), Value::from(error.message()));
-                    self.log(Level::Error, data);
-                    Refresh::Retry
+            Auth::App => {
+                let fresh = match &refused {
+                    Some(refused) => self.twitch.app_token_after_rejection(refused).await,
+                    None => self.twitch.app_token().await,
+                };
+                match fresh {
+                    Some(token) => Self::rotated(&token),
+                    None => {
+                        let mut data = Map::new();
+                        data.insert(
+                            "message".to_owned(),
+                            Value::from("Token refresh hook failed during Twitch 401 retry."),
+                        );
+                        data.insert("attempt".to_owned(), Value::from(attempt));
+                        data.insert(
+                            "error".to_owned(),
+                            Value::from(CredentialError::NoAppToken.message()),
+                        );
+                        self.log(Level::Error, data);
+                        Refresh::Retry
+                    }
                 }
-            },
-            Auth::Bot | Auth::Moderator => match self.twitch.bot_credential().await {
-                Ok(token) => Self::rotated(&token),
-                Err(_) => Refresh::Retry,
-            },
+            }
+            Auth::Bot | Auth::Moderator => {
+                let fresh = match &refused {
+                    Some(refused) => self.twitch.bot_token_after_rejection(refused).await,
+                    None => self.twitch.bot_credential().await.ok(),
+                };
+                fresh.map_or(Refresh::Retry, |token| Self::rotated(&token))
+            }
             Auth::Streamer(id) => {
                 let refused = AccessToken::from_bearer(rejected);
                 let refreshed = self.twitch.streamer_credential(id, refused.as_ref()).await;
