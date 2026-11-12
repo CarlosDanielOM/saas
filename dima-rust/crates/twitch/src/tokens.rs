@@ -16,54 +16,67 @@
 //! # When a token is refreshed
 //!
 //! A cached token is used while it has more than 300 s left and is not the one Twitch just
-//! refused (`rejected`). Otherwise one refresh runs:
+//! refused (`rejected`); so is the token of a rotation this process is still writing. Otherwise
+//! one refresh runs, the same way for every entry point (a token request, a 401, the bot, the
+//! public [`Twitch::refresh_token`] of the sign-in routes):
 //!
-//! 1. **In this process**, one refresh per streamer and rejected token: concurrent callers join
-//!    it ([`crate::flight`]). It runs as a task, so a caller that gives up does not cancel it.
-//! 2. **Across processes**, the reference's lock: `SET locks:refresh:twitch:{id} <uuid> NX PX
-//!    5000`. A process that does not get it polls the hash every 150 ms for up to 4.5 s for a
-//!    token other than the rejected one with more than 60 s left, stops waiting when the lock is
-//!    gone, then tries the lock once more; failing that it gives up for this call. The holder
-//!    looks at the cache again before it refreshes (another holder may just have finished).
-//! 3. The refresh itself (`refreshTwitchToken`): three attempts, 400 ms and 900 ms apart,
-//!    retried only on a network error or a 5xx.
-//! 4. The new tokens are written to MongoDB, then to the hash.
+//! 1. **One at a time** (`lease.rs`): callers in a process join one task per streamer and
+//!    rejected token (a caller that gives up does not cancel it), which takes the streamer's
+//!    in-process gate, then the reference's cross-process lease `locks:refresh:twitch:{id}`
+//!    (`SET NX PX 5000`, **renewed** while held). A process that does not get the lease polls
+//!    the hash every 150 ms for up to 4.5 s for a token other than the rejected one with more
+//!    than 60 s left, stops waiting when the lease is gone, then tries once more; failing that
+//!    it gives up for this call.
+//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): a rotation parked by a process
+//!    that stopped is applied first; then a usable stored access token is returned (the cache
+//!    repaired from MongoDB, nothing sent); otherwise the **stored** refresh token is the one
+//!    exchanged, never the cache's copy.
+//! 3. **The exchange** (`refreshTwitchToken`): the exchange marker is set (`NX`; when another
+//!    exchange is or may be in flight nothing is sent), then three attempts, 400 ms and 900 ms
+//!    apart, retried only on a network error or a 5xx, none started once the process stops.
+//! 4. **The answer is always stored**: parked in Dragonfly (encrypted), written to MongoDB with
+//!    a compare-and-set on the state read in 2 (advancing the generation), copied to the hash
+//!    under that generation, then unparked and the marker removed. A MongoDB failure keeps the
+//!    rotation (never exchanged again) and a background writer retries; a rotation still
+//!    unwritten when the drain ends stays parked for the next refresh (`drain.rs`).
 //!
 //! # What a refused refresh does
 //!
-//! Twitch's answer is classified as the reference does ([`crate::oauth`]): a 400 or 401 whose
-//! message says the refresh token is invalid or revoked is **permanent**; anything else is
-//! transient and changes nothing. On a permanent failure the stored refresh token is compared
-//! with the one that failed: if it is different, another refresh already rotated it, and its
-//! access token is used when it has more than 60 s left (otherwise the call fails without
-//! touching anything); if it is the same, the stored tokens are wiped (`{iv: null, content:
-//! null}` envelopes, `access_token_expires_at: null`, `has_permissions` and
-//! `up_to_date_permissions` false; the hash's credential fields emptied) and the streamer must
-//! log in again at domdimabot.com.
+//! Twitch's answer is classified ([`crate::oauth`]): a 400 or 401 whose message says the
+//! refresh token is invalid or revoked is **permanent**; anything else is transient and changes
+//! nothing. On a permanent refusal MongoDB is read again: if the stored refresh token is no
+//! longer the refused one, another refresh rotated it and its access token is used when it has
+//! more than 60 s left (otherwise the call fails without touching anything). If it is the same
+//! but the exchange marker is no longer this refresh's own, the refusal is inconclusive (another
+//! exchange may have consumed the token) and nothing changes. Otherwise, when the cache holds a
+//! different refresh token, that one is tried once; failing that the stored tokens are wiped
+//! (`{iv: null, content: null}` envelopes, `access_token_expires_at: null`, `has_permissions`
+//! and `up_to_date_permissions` false; the hash's credential fields emptied) and the streamer
+//! must log in again at domdimabot.com.
 //!
-//! # Intended differences (safety; `MIGRATION.md` section 3)
+//! # What a crash can still lose
 //!
-//! - **MongoDB decides.** The reference compares the failed refresh token with the *cache*
-//!   (which it reads first, then MongoDB when the cache has none). Here the comparison reads
-//!   MongoDB, so a stale cache, or a TypeScript process still refreshing in database 0 during
-//!   the cutover, can never get a valid token wiped. When MongoDB holds a newer token than the
-//!   cache, the cache's credential fields are brought up to date from it.
-//! - **Writes are compare-and-set on the stored envelope.** The reference's
-//!   `findOneAndUpdate({'accounts.id': id}, …)` is unconditional. Here the update matches the
-//!   Twitch account whose `refresh_token` envelope is exactly the one read just before: a
-//!   successful refresh is written only if the stored refresh token is still the one it used (or
-//!   was wiped meanwhile), and a wipe happens only if it is still the one that failed. A refresh
-//!   that finds a newer token stored (a sign-in, or a refresh that overlapped after the 5 s lease
-//!   expired) does not write and returns the stored token when it is still good. Neither write
-//!   can put an older token over a newer one, and the documents written are the reference's
-//!   (same `$set`, plus Mongoose's `updated_at`).
-//! - **The lock is released atomically** (a compare-and-delete script instead of `GET` then
-//!   `DEL`, which could delete another process's lock).
+//! A hard crash (no drain: `SIGKILL`, power loss) between Twitch's answer and the park write,
+//! a few milliseconds, loses the new pair; if Twitch consumed the old refresh token, the
+//! streamer must log in again (after the marker expires, 30 s). The same happens if both
+//! Dragonfly and MongoDB fail between the answer and the end of the drain, or if a drain is cut
+//! short by the container's stop timeout while an exchange is still waiting for Twitch.
+//!
+//! # Intended differences (safety; `MIGRATION.md` section 3; review 2026-11-11)
+//!
+//! - **MongoDB decides** (see 2): the reference exchanges and compares with the *cache*.
+//! - **Writes are compare-and-set** on the stored refresh envelope and the generation
+//!   (`crate::credentials`); the reference's `findOneAndUpdate` is unconditional. The
+//!   documents written are the reference's (same `$set`, plus Mongoose's `updated_at` and the
+//!   user's `refreshed_at`, which carries the generation).
+//! - **The lease is renewed and released atomically**; the exchange marker is Rust's own.
+//! - **The public `refresh_token` is serialised** and sends nothing when the presented token was
+//!   rotated meanwhile or the user does not exist (three recorded traces change on purpose).
 //! - **A failed store read never wipes.** The reference treats an unreadable cache as "no stored
 //!   token" and wipes; here the call fails as transient.
-//! - **The refresh outlives its caller** (see 1. above).
-//! - **No body preview in logs**: the reference logs the first 500 characters of an answer it
-//!   cannot parse, which for a truncated 200 answer is part of the new access token.
+//! - **No Twitch text in logs or errors**: a refusal is a category ([`RefreshFailureReason`]);
+//!   the reference logs Twitch's message and the first 500 characters of an unreadable answer.
+//! - **The cache holds envelopes**, never a token in plain text.
 //! - Not written: the `app:twitch:bot` copy of the bot token and the OAuth debug cache (both
 //!   write-only in the reference; see [`crate::keys`]).
 //!
@@ -256,6 +269,10 @@ impl Inner {
                 "skewSeconds": timings.token_expiry_skew_secs,
             }),
         );
+        // A rotation this process holds while MongoDB refuses to take it.
+        if let Some(token) = self.pending_token(id, rejected) {
+            return Ok(token);
+        }
         if self.shutdown.is_triggered() {
             return Err(TwitchError::Shutdown.into());
         }

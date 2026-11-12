@@ -32,6 +32,7 @@
 //! let shutdown = dima_core::Shutdown::new();
 //! let twitch = Twitch::new(config, TwitchDeps {
 //!     http: dima_http::HttpClient::builder().shutdown(shutdown.clone()).build()?,
+//!     exchange_http: dima_twitch::exchange_client(dima_http::HttpClient::builder())?,
 //!     helix: registry.get(dima_twitch::HELIX_PROVIDER)?.clone(),
 //!     oauth: registry.get(dima_twitch::OAUTH_PROVIDER)?.clone(),
 //!     mongo,
@@ -43,7 +44,8 @@
 //!     shutdown: shutdown.clone(),
 //! });
 //! twitch.load_streamers().await?; // start-up, as `getTwitchAccountsFromDB`
-//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await;
+//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await; (the drain: up to
+//! // `Timings::exchange_drain` + `park_grace`, so the container's stop timeout must exceed it)
 //! # Ok(())
 //! # }
 //! ```
@@ -56,6 +58,7 @@ pub mod badges;
 mod base;
 pub mod config;
 mod credentials;
+mod drain;
 pub mod emotes;
 mod error;
 pub mod events;
@@ -70,9 +73,10 @@ pub mod streamers;
 pub mod tokens;
 
 #[cfg(any(test, feature = "test-util"))]
-pub use base::FaultPoint;
+pub use base::{FaultAction, FaultPoint};
 pub use base::{Twitch, TwitchDeps};
 pub use config::{TWITCH_BOT_ACCOUNT_ID, Timings, TwitchConfig};
+pub use drain::exchange_client;
 pub use error::TwitchError;
 pub use events::{Destination, Level, LogEvent, NoopEvents, TwitchEvents};
 pub use helix::{

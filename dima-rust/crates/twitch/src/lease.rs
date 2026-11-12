@@ -25,6 +25,7 @@ use crate::error::TwitchError;
 use dima_store::dragonfly::script::Script;
 use dima_store::dragonfly::{SetCondition, SetExpiry, SetOptions, SetOutcome};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 use tokio::sync::OwnedMutexGuard;
@@ -79,12 +80,34 @@ impl Drop for Gate {
     }
 }
 
-/// The cross-process lease, held.
+/// The cross-process lease, held. [`Lease::share`] gives the background writer of a rotation
+/// its own handle: the lease is released when the last holder releases it, and the marker is
+/// then the writer's to settle.
 pub(crate) struct Lease {
+    state: Arc<LeaseState>,
+    /// This handle's claim on the marker (the foreground's is given up by [`Lease::share`]).
+    settles_marker: bool,
+}
+
+struct LeaseState {
     key: String,
     owner: String,
     marker: Arc<Mutex<Option<(String, String)>>>,
     renewal: CancellationToken,
+    holders: AtomicUsize,
+}
+
+impl Lease {
+    /// A second holder that keeps the lease (and its renewal) alive and alone settles the
+    /// marker from now on.
+    pub(crate) fn share(&mut self) -> Lease {
+        self.state.holders.fetch_add(1, Ordering::SeqCst);
+        self.settles_marker = false;
+        Lease {
+            state: Arc::clone(&self.state),
+            settles_marker: true,
+        }
+    }
 }
 
 impl Inner {
@@ -143,10 +166,14 @@ impl Inner {
             return Ok(None);
         }
         let lease = Lease {
-            key,
-            owner,
-            marker: Arc::new(Mutex::new(None)),
-            renewal: CancellationToken::new(),
+            state: Arc::new(LeaseState {
+                key,
+                owner,
+                marker: Arc::new(Mutex::new(None)),
+                renewal: CancellationToken::new(),
+                holders: AtomicUsize::new(1),
+            }),
+            settles_marker: true,
         };
         self.renew(&lease);
         Ok(Some(lease))
@@ -166,10 +193,10 @@ impl Inner {
     /// still this holder's) get their full lifetime again.
     fn renew(self: &Arc<Self>, lease: &Lease) {
         let inner = Arc::clone(self);
-        let key = lease.key.clone();
-        let owner = lease.owner.clone();
-        let marker = Arc::clone(&lease.marker);
-        let stop = lease.renewal.clone();
+        let key = lease.state.key.clone();
+        let owner = lease.state.owner.clone();
+        let marker = Arc::clone(&lease.state.marker);
+        let stop = lease.state.renewal.clone();
         let kill = self.kill.clone();
         let ttl = self.config.timings.refresh_lock_ttl;
         let marker_ttl = self.config.timings.exchange_marker_ttl;
@@ -209,7 +236,7 @@ impl Inner {
         Ok(dima_store::dragonfly::commands::reply::int(reply).unwrap_or(0) == 1)
     }
 
-    async fn compare_delete(&self, key: &str, value: &str) {
+    pub(crate) async fn compare_delete(&self, key: &str, value: &str) {
         // The key expires on its own; a failed delete only delays the next refresh.
         let _ = COMPARE_DELETE
             .run_value(&self.dragonfly, &[key], &[value])
@@ -240,13 +267,18 @@ impl Inner {
         if outcome != SetOutcome::Written {
             return Ok(false);
         }
-        *lease.marker.lock().unwrap_or_else(PoisonError::into_inner) = Some((key, value));
+        *lease
+            .state
+            .marker
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some((key, value));
         Ok(true)
     }
 
     /// Whether the marker is still the one this holder set (no other exchange started since).
     pub(crate) async fn marker_is_ours(&self, lease: &Lease) -> Result<bool, TwitchError> {
         let current = lease
+            .state
             .marker
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -262,9 +294,14 @@ impl Inner {
         Ok(stored.as_deref() == Some(value.as_bytes()))
     }
 
-    /// The outcome of the exchange is known and stored: the marker goes.
+    /// The outcome of the exchange is known and stored: the marker goes (unless another
+    /// holder settles it).
     pub(crate) async fn clear_marker(&self, lease: &Lease) {
+        if !lease.settles_marker {
+            return;
+        }
         let current = lease
+            .state
             .marker
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -275,19 +312,28 @@ impl Inner {
     }
 
     /// The outcome of the exchange is unknown: the marker is no longer renewed and expires on
-    /// its own.
+    /// its own (unless another holder settles it).
     pub(crate) fn abandon_marker(&self, lease: &Lease) {
+        if !lease.settles_marker {
+            return;
+        }
         lease
+            .state
             .marker
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .take();
     }
 
-    /// Stops the renewal and deletes the lease if it is still this holder's. A marker still
-    /// set is left to expire (its outcome was not settled).
+    /// Gives up this handle; the last holder stops the renewal and deletes the lease if it is
+    /// still this process's. A marker still set is left to expire (its outcome was not
+    /// settled).
     pub(crate) async fn release(&self, lease: Lease) {
-        lease.renewal.cancel();
-        self.compare_delete(&lease.key, &lease.owner).await;
+        if lease.state.holders.fetch_sub(1, Ordering::SeqCst) != 1 {
+            return;
+        }
+        lease.state.renewal.cancel();
+        self.compare_delete(&lease.state.key, &lease.state.owner)
+            .await;
     }
 }

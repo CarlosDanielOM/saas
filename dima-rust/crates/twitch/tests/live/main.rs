@@ -7,6 +7,7 @@ mod support;
 
 mod concurrency;
 mod directory;
+mod drain;
 mod fence;
 mod helix;
 mod parity;

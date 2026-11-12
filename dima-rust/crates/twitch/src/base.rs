@@ -31,6 +31,10 @@ const MAX_SEEN: usize = 100_000;
 pub struct TwitchDeps {
     /// The shared outbound client.
     pub http: HttpClient,
+    /// The client for refresh-token exchanges, built with [`crate::exchange_client`]: its
+    /// requests outlive the process's shutdown token for the drain lifetime (see
+    /// `crate::drain`).
+    pub exchange_http: HttpClient,
     /// The Helix provider ([`crate::helix::helix_provider`], from the process's registry).
     pub helix: Provider,
     /// The OAuth provider ([`crate::helix::oauth_provider`]).
@@ -82,19 +86,47 @@ impl fmt::Debug for Twitch {
 pub enum FaultPoint {
     /// Twitch answered with new tokens; nothing is written yet.
     AfterTwitchAnswer,
+    /// A rotation is about to be written to MongoDB ([`FaultAction::Fail`] makes the write fail).
+    BeforePersist,
     /// A credential write to the directory hash is about to be sent (MongoDB already written).
     BeforeCacheWrite,
     /// A hydration or start-up load read the user and is about to write the hash.
     BeforeDirectoryWrite,
 }
 
+/// What the fault hook makes of a point (feature `test-util`).
 #[cfg(any(test, feature = "test-util"))]
-pub(crate) type FaultHook =
-    Arc<dyn Fn(FaultPoint, &str) -> futures_util::future::BoxFuture<'static, ()> + Send + Sync>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum FaultAction {
+    /// Go on.
+    #[default]
+    Continue,
+    /// The operation at this point fails as a store failure would.
+    Fail,
+}
+
+#[cfg(any(test, feature = "test-util"))]
+impl From<()> for FaultAction {
+    fn from((): ()) -> Self {
+        Self::Continue
+    }
+}
+
+#[cfg(any(test, feature = "test-util"))]
+pub(crate) type FaultHook = Arc<
+    dyn Fn(FaultPoint, &str) -> futures_util::future::BoxFuture<'static, FaultAction> + Send + Sync,
+>;
 
 pub(crate) struct Inner {
     pub(crate) config: TwitchConfig,
     pub(crate) http: HttpClient,
+    pub(crate) exchange_http: HttpClient,
+    /// Fires when the drain lifetime of exchanges ends ([`Twitch::shutdown`]) or at
+    /// [`Twitch::kill`]: an exchange still running is cancelled, a rotation not yet in MongoDB
+    /// is parked.
+    pub(crate) drain_expired: Shutdown,
+    /// Rotations Twitch answered that MongoDB has not taken yet (encrypted), per streamer.
+    pub(crate) pending: Mutex<HashMap<String, crate::refresh::Pending>>,
     pub(crate) helix: Provider,
     pub(crate) oauth: Provider,
     pub(crate) mongo: MongoStore,
@@ -125,6 +157,9 @@ impl Twitch {
             inner: Arc::new(Inner {
                 config,
                 http: deps.http,
+                exchange_http: deps.exchange_http,
+                drain_expired: Shutdown::new(),
+                pending: Mutex::new(HashMap::new()),
                 helix: deps.helix,
                 oauth: deps.oauth,
                 mongo: deps.mongo,
@@ -154,32 +189,42 @@ impl Twitch {
         &self.inner.config
     }
 
-    /// Waits until the refreshes and loads still running have finished, at most
-    /// [`crate::Timings::shutdown_grace`]; `true` when they all did. Call it after the shutdown
-    /// token fired: no new one starts then. A refresh is not aborted on shutdown, because one
-    /// whose answer Twitch has sent must still be written (its own deadlines bound it).
+    /// The drain: call it after the process's shutdown token fired (no new refresh is sent
+    /// then). Exchanges already sent and the writes of their answers go on for up to
+    /// [`crate::Timings::exchange_drain`]; then an exchange still waiting for Twitch is cancelled
+    /// and a rotation MongoDB has not taken is parked in Dragonfly (bounded by
+    /// [`crate::Timings::park_grace`]), where the next refresh of that streamer, in any process,
+    /// applies it first. `true` when everything finished within the drain lifetime. The
+    /// binary's stop timeout (Compose `stop_grace_period`) must leave room for both.
     pub async fn shutdown(&self) -> bool {
-        self.inner.tracker.close();
-        tokio::time::timeout(
-            self.inner.config.timings.shutdown_grace,
-            self.inner.tracker.wait(),
-        )
-        .await
-        .is_ok()
+        let inner = &self.inner;
+        inner.tracker.close();
+        let timings = &inner.config.timings;
+        if tokio::time::timeout(timings.exchange_drain, inner.tracker.wait())
+            .await
+            .is_ok()
+        {
+            return true;
+        }
+        inner.drain_expired.trigger();
+        let _ = tokio::time::timeout(timings.park_grace, inner.tracker.wait()).await;
+        false
     }
 
     /// Parks every refresh at `point` until the returned future of `hook` resolves (tests:
     /// abort the process between Twitch's answer and the write).
     #[cfg(any(test, feature = "test-util"))]
-    pub fn set_fault_hook(
+    pub fn set_fault_hook<A: Into<FaultAction> + 'static>(
         &self,
-        hook: impl Fn(FaultPoint, &str) -> futures_util::future::BoxFuture<'static, ()>
+        hook: impl Fn(FaultPoint, &str) -> futures_util::future::BoxFuture<'static, A>
         + Send
         + Sync
         + 'static,
     ) {
+        use futures_util::FutureExt;
+        let hook: FaultHook = Arc::new(move |point, id| hook(point, id).map(Into::into).boxed());
         if let Ok(mut fault) = self.inner.fault.lock() {
-            *fault = Some(Arc::new(hook));
+            *fault = Some(hook);
         }
     }
 
@@ -188,6 +233,7 @@ impl Twitch {
     pub fn kill(&self) {
         self.inner.shutdown.trigger();
         self.inner.kill.cancel();
+        self.inner.drain_expired.trigger();
         self.inner.tracker.close();
     }
 }
@@ -248,10 +294,11 @@ impl Inner {
     }
 
     #[cfg(any(test, feature = "test-util"))]
-    pub(crate) async fn fault(&self, point: FaultPoint, user_id: &str) {
+    pub(crate) async fn fault(&self, point: FaultPoint, user_id: &str) -> FaultAction {
         let hook = self.fault.lock().ok().and_then(|fault| fault.clone());
-        if let Some(hook) = hook {
-            hook(point, user_id).await;
+        match hook {
+            Some(hook) => hook(point, user_id).await,
+            None => FaultAction::Continue,
         }
     }
 }

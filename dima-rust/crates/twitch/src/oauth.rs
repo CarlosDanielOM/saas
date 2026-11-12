@@ -260,14 +260,22 @@ impl TokenAnswer {
 }
 
 impl Inner {
-    /// One POST of a token form; the answer's status and body text.
+    /// One POST of a token form; the answer's status and body text. A refresh exchange goes
+    /// through the exchange client and lives until the drain ends (see `crate::drain`); the
+    /// client-credentials request stops with the process.
     async fn post_token_form(
         &self,
         pairs: &[(&str, &str)],
+        exchange: bool,
     ) -> Result<TokenAnswer, dima_http::Error> {
-        let response = self
-            .http
-            .post(&self.oauth, TOKEN_PATH)
+        let request = if exchange {
+            self.exchange_http
+                .post(&self.oauth, TOKEN_PATH)
+                .cancel_on(&self.drain_expired)
+        } else {
+            self.http.post(&self.oauth, TOKEN_PATH)
+        };
+        let response = request
             .form(pairs)
             .timeout(self.config.timings.oauth_timeout)
             .retry(RetryPolicy::none())
@@ -299,7 +307,7 @@ impl Inner {
         let mut answer = None;
         let mut uncertain = false;
         for attempt in 0..attempts {
-            answer = match self.post_token_form(&pairs).await {
+            answer = match self.post_token_form(&pairs, true).await {
                 Ok(answer) => Some(answer),
                 Err(error) => {
                     uncertain |= may_have_reached_twitch(error.class());
@@ -323,23 +331,31 @@ impl Inner {
                 }
             };
             let retryable = answer.as_ref().is_none_or(|answer| answer.status >= 500);
-            if !retryable || attempt == attempts - 1 {
+            // No new attempt once the process is stopping: one already sent may still answer,
+            // a new one could leave a rotation nobody waits for.
+            if !retryable || attempt == attempts - 1 || self.shutdown.is_triggered() {
                 break;
             }
             let pause = usize::try_from(attempt)
                 .map_or(timings.backoff(usize::MAX), |index| timings.backoff(index));
-            tokio::time::sleep(pause).await;
+            tokio::select! {
+                () = self.shutdown.wait() => break,
+                () = tokio::time::sleep(pause) => {}
+            }
         }
         (answer, uncertain)
     }
 
     /// `client_credentials` exchange (no retry, as in the reference).
     pub(crate) async fn post_client_credentials(&self) -> Result<TokenAnswer, dima_http::Error> {
-        self.post_token_form(&[
-            ("client_id", self.config.client_id.as_str()),
-            ("client_secret", self.config.client_secret.expose()),
-            ("grant_type", "client_credentials"),
-        ])
+        self.post_token_form(
+            &[
+                ("client_id", self.config.client_id.as_str()),
+                ("client_secret", self.config.client_secret.expose()),
+                ("grant_type", "client_credentials"),
+            ],
+            false,
+        )
         .await
     }
 }

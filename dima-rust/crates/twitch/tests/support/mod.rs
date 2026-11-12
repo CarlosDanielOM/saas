@@ -460,7 +460,9 @@ pub fn fast_timings() -> Timings {
         helix_refresh_deadline: Duration::from_secs(5),
         store_deadline: Duration::from_secs(10),
         emote_timeout: Duration::from_millis(500),
-        shutdown_grace: Duration::from_secs(5),
+        exchange_drain: Duration::from_secs(5),
+        persist_retry: Duration::from_millis(20),
+        persist_retry_max: Duration::from_millis(100),
         ..Timings::reference()
     }
 }
@@ -495,10 +497,13 @@ pub fn process_at(
         .shutdown(shutdown.clone())
         .clock(Arc::clone(&clock_dyn))
         .build()?;
+    let exchange_http =
+        dima_twitch::exchange_client(HttpClient::builder().clock(Arc::clone(&clock_dyn)))?;
     let twitch = Twitch::new(
         config,
         TwitchDeps {
             http,
+            exchange_http,
             helix,
             oauth,
             mongo: stores.mongo.clone(),
