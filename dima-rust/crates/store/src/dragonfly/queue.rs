@@ -22,6 +22,7 @@ use super::error::Result;
 use dima_text::{number_to_string, sanitize_lone_surrogates, to_js_json, to_js_json_from};
 use serde::de::{Deserialize, DeserializeOwned};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 /// One queue element, exactly as stored.
@@ -318,18 +319,37 @@ impl DelayQueue {
             .await
     }
 
-    /// Members due between `min` and `max` inclusive, lowest score first (`ZRANGEBYSCORE key min
-    /// max`; the reference reads `0 .. now` and slices the batch itself).
-    pub async fn due(&self, dragonfly: &Dragonfly, min: f64, max: f64) -> Result<Vec<QueueItem>> {
+    /// At most `limit` members due between `min` and `max` inclusive, lowest score first
+    /// (`ZRANGEBYSCORE key min max LIMIT 0 limit`). The limit is sent to the server, so one call
+    /// never reads more than `limit` members however far behind the queue is. The reference reads
+    /// every due member (`0 .. now`) and slices its batch in memory; the batch it then works on is
+    /// the same. A caller that needs every due member loops: claim (remove) the batch, then ask
+    /// again until a call returns fewer than `limit`.
+    pub async fn due(
+        &self,
+        dragonfly: &Dragonfly,
+        min: f64,
+        max: f64,
+        limit: NonZeroUsize,
+    ) -> Result<Vec<QueueItem>> {
         let value = dragonfly
             .query_value(
                 redis::cmd("ZRANGEBYSCORE")
                     .arg(self.key.as_ref())
                     .arg(number_to_string(min))
-                    .arg(number_to_string(max)),
+                    .arg(number_to_string(max))
+                    .arg("LIMIT")
+                    .arg(0)
+                    .arg(limit.get()),
             )
             .await?;
-        reply::array(value)?
+        let members = reply::array(value)?;
+        if members.len() > limit.get() {
+            return Err(super::DragonflyError::Reply(
+                "ZRANGEBYSCORE returned more members than its LIMIT",
+            ));
+        }
+        members
             .into_iter()
             .map(|member| reply::bytes(member).map(QueueItem::from_popped))
             .collect()

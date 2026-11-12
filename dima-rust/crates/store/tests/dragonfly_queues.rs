@@ -11,6 +11,7 @@ use dima_store::dragonfly::{DelayQueue, End, ListQueue, ProcessingList, QueueIte
 use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 const DB: u8 = 11;
@@ -183,6 +184,47 @@ async fn presets_keep_the_reference_directions() -> Result<()> {
     cleanup(&df, &p).await
 }
 
+fn batch(n: usize) -> Result<NonZeroUsize> {
+    NonZeroUsize::new(n).context("batch size")
+}
+
+#[tokio::test]
+async fn delay_queue_reads_are_bounded_by_the_batch_limit() -> Result<()> {
+    let Some(df) = connect(DB).await? else {
+        return Ok(());
+    };
+    let p = prefix("delay-batch");
+    let queue = DelayQueue::new(Cow::Owned(format!("{p}zset")));
+    let members: Vec<QueueItem> = (0..7)
+        .map(|n| QueueItem::from_popped(format!("due-{n}").into_bytes()))
+        .collect();
+    for (n, member) in members.iter().enumerate() {
+        queue.schedule(&df, member, 100.0 + n as f64).await?;
+    }
+    queue
+        .schedule(&df, &QueueItem::from_popped(b"not-yet".to_vec()), 9_000.0)
+        .await?;
+    // One call returns at most the limit, lowest scores first.
+    let first = queue.due(&df, 0.0, 1_000.0, batch(3)?).await?;
+    ensure!(first == members[..3], "first batch");
+    // A caller that needs everything claims its batch and asks again.
+    let mut seen = Vec::new();
+    loop {
+        let batch_items = queue.due(&df, 0.0, 1_000.0, batch(3)?).await?;
+        ensure!(batch_items.len() <= 3);
+        for item in &batch_items {
+            ensure!(queue.claim(&df, item).await?);
+            seen.push(item.clone());
+        }
+        if batch_items.len() < 3 {
+            break;
+        }
+    }
+    ensure!(seen == members, "every due member once, in score order");
+    ensure!(queue.due(&df, 0.0, 1_000.0, batch(3)?).await?.is_empty());
+    cleanup(&df, &p).await
+}
+
 #[tokio::test]
 async fn delay_queue_claims_are_single_delivery() -> Result<()> {
     let Some(df) = connect(DB).await? else {
@@ -194,7 +236,7 @@ async fn delay_queue_claims_are_single_delivery() -> Result<()> {
     let later = QueueItem::from_popped(b"later".to_vec());
     queue.schedule(&df, &member, 1_000.0).await?;
     queue.schedule(&df, &later, 5_000.0).await?;
-    let due = queue.due(&df, 0.0, 2_000.0).await?;
+    let due = queue.due(&df, 0.0, 2_000.0, batch(10)?).await?;
     ensure!(due == vec![member.clone()]);
     // Many claimers race for the same member: exactly one wins.
     let claims = futures_util::future::join_all((0..8).map(|_| queue.claim(&df, &member))).await;
