@@ -17,6 +17,12 @@
 //! A lease that expires is not reclaimed: the old worker may have caused an outside effect, so
 //! [`DurableJobs::recover`] marks it `uncertain` and nothing replays it automatically.
 //!
+//! A claim whose write timed out may have committed with its reply lost. The claimer generated
+//! the token itself, so it looks the intent up by that token: committed and still leased, it is
+//! the owner and carries on (otherwise the intent would sit under a lease nobody holds and end
+//! `uncertain` although nothing ran); not found, expired, or the lookup failing too, the claim
+//! reports its error as before and the expired lease is left to [`DurableJobs::recover`].
+//!
 //! # Carried across the cutover
 //!
 //! The intents are MongoDB documents, so nothing about them changes at the cutover: an intent
@@ -370,7 +376,8 @@ fn date(ms: i64) -> bson::DateTime {
 impl<Q: JobQueue> DurableJobs<Q> {
     /// The intents on `store`, publishing to `queue`, writable once the unique indexes of
     /// `cron_job_intents` exist (`indexes` is its startup report; the reference awaits
-    /// `model.init()` before every acceptance and claim).
+    /// `model.init()` before every acceptance and claim). Every declared unique index must be in
+    /// the report, whatever policy built it ([`crate::indexes`]).
     pub fn new(
         store: MongoStore,
         queue: Q,
@@ -379,13 +386,7 @@ impl<Q: JobQueue> DurableJobs<Q> {
         config: JobsConfig,
         indexes: &IndexReport,
     ) -> Result<Self, RequiredIndexError> {
-        if indexes.collection != COLLECTION {
-            return Err(RequiredIndexError {
-                collection: COLLECTION,
-                missing: vec![format!("no index report (got {})", indexes.collection)],
-            });
-        }
-        indexes.require()?;
+        crate::indexes::require_unique(indexes, COLLECTION, dima_model::cron_job_intents::INDEXES)?;
         Ok(Self {
             store,
             queue,
@@ -777,13 +778,21 @@ impl<Q: JobQueue> DurableJobs<Q> {
                 .random
                 .uuid_v4()
                 .map_err(|e| JobError::Invalid(e.to_string()))?;
-            let claimed = self
+            let claimed = match self
                 .find_and_update(
                     doc! { "_id": id.clone(), "queueKey": queue_key, "status": "queued", "dueAt": { "$lte": date(at) } },
                     doc! { "$set": { "status": "processing", "owner": owner, "token": token.as_str(), "leaseUntil": date(at + LEASE_MS) } },
                     None,
                 )
-                .await?;
+                .await
+            {
+                Ok(claimed) => claimed,
+                Err(JobError::Store(error)) if error.outcome_unknown() => {
+                    self.reconcile_claim(&id, queue_key, owner, &token, error)
+                        .await?
+                }
+                Err(error) => return Err(error),
+            };
             if let Some(claimed) = claimed {
                 let intent_id = match claimed.get("_id") {
                     Some(Bson::ObjectId(oid)) => oid.to_hex(),
@@ -813,6 +822,41 @@ impl<Q: JobQueue> DurableJobs<Q> {
         } else {
             ClaimResult::Terminal { job }
         })
+    }
+
+    /// The claim's write failed with an unknown outcome (its deadline passed, or the connection
+    /// dropped): the server may have committed it, and the reply was lost. Look the intent up by
+    /// the token this caller generated: when the claim did commit and its lease has not expired,
+    /// this caller is its owner and carries on (the intent would otherwise sit `processing`
+    /// under a lease nobody holds and end `uncertain` although nothing ran). Otherwise, or when
+    /// the lookup fails too, the original error is reported as before. An expired claim is never
+    /// taken over: [`DurableJobs::recover`] marks it `uncertain`, for explicit reconciliation.
+    async fn reconcile_claim(
+        &self,
+        id: &Bson,
+        queue_key: &str,
+        owner: &str,
+        token: &str,
+        error: StoreError,
+    ) -> Result<Option<Document>, JobError> {
+        let filter = doc! {
+            "_id": id.clone(),
+            "queueKey": queue_key,
+            "status": "processing",
+            "owner": owner,
+            "token": token,
+            "leaseUntil": { "$gt": date(self.now()) },
+        };
+        match bounded(
+            "reconcile the cron job claim",
+            self.deadline(),
+            self.store.documents(COLLECTION).find_one(filter),
+        )
+        .await
+        {
+            Ok(Some(claimed)) => Ok(Some(claimed)),
+            Ok(None) | Err(_) => Err(JobError::Store(error)),
+        }
     }
 
     fn claim_filter(claim: &Claim, at: i64) -> Result<Document, JobError> {

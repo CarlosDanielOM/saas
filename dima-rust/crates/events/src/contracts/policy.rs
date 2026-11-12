@@ -3,7 +3,7 @@
 //! References: `domain_events/domain_event_consumers.ts` ([`CONSUMERS`]),
 //! `domain_events/domain_event_delivery_policy.ts` ([`evaluate`], [`can_admin_replay`]) and the
 //! delivery constants of `utils/domain_event_consumer.ts` and `workers/domain_events.worker.ts`
-//! ([`delivery`]), which the consumer runtime package applies.
+//! ([`delivery`]), which the consumer runtime ([`crate::consumer`]) applies.
 //!
 //! Every consumer is **required** delivery in the journal's sense (a delivery document per
 //! matching event, retried until it succeeds, is skipped or dies), except that a consumer with a
@@ -391,8 +391,8 @@ pub fn consumer_named(name: &str) -> Option<&'static ConsumerDefinition> {
     CONSUMERS.iter().find(|c| c.consumer == name)
 }
 
-/// The delivery constants of the reference's runtime, ported as they are (the consumer runtime
-/// package applies them; listed here so the policy is in one place).
+/// The delivery constants of the reference's runtime, ported as they are ([`crate::consumer`]
+/// applies them; listed here so the policy is in one place).
 pub mod delivery {
     /// `RETRY_DELAYS_MS`: the wait after a failed attempt, by attempt (the last repeats).
     pub const RETRY_DELAYS_MS: [i64; 4] = [5_000, 30_000, 5 * 60_000, 30 * 60_000];

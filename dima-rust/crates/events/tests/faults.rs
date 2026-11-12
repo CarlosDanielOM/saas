@@ -674,3 +674,93 @@ async fn a_worker_dying_mid_job_leaves_it_uncertain_and_an_unpublished_intent_is
     })
     .await
 }
+
+#[tokio::test]
+async fn constructors_refuse_a_lenient_or_partial_index_report() -> Result<()> {
+    use dima_model::index::{IndexError, IndexOutcome, IndexStatus};
+    with_store(|store| async move {
+        let clock: Arc<dyn dima_core::Clock> = Arc::new(ManualClock::new(NOW));
+        // Each declared unique index failed, but the report (built best effort) does not mark it
+        // required: `require()` would pass it.
+        let lenient = |info: &dima_model::CollectionInfo| dima_model::IndexReport {
+            collection: info.name,
+            outcomes: info
+                .indexes
+                .iter()
+                .map(|spec| IndexOutcome {
+                    index: spec.name(),
+                    required: false,
+                    status: if spec.unique {
+                        IndexStatus::Failed(IndexError::Deadline(Duration::ZERO))
+                    } else {
+                        IndexStatus::Exists
+                    },
+                })
+                .collect(),
+        };
+        // Every index there, except that the unique ones are missing from the report.
+        let partial = |info: &dima_model::CollectionInfo| dima_model::IndexReport {
+            collection: info.name,
+            outcomes: info
+                .indexes
+                .iter()
+                .filter(|spec| !spec.unique)
+                .map(|spec| IndexOutcome {
+                    index: spec.name(),
+                    required: false,
+                    status: IndexStatus::Exists,
+                })
+                .collect(),
+        };
+        let config = EventsConfig::default();
+        for report in [lenient(&domain_events::INFO), partial(&domain_events::INFO)] {
+            ensure!(
+                report.require().is_ok(),
+                "the report's own policy passes it"
+            );
+            ensure!(Journal::new(store.clone(), clock.clone(), &config, &report).is_err());
+        }
+        for report in [
+            lenient(&domain_event_deliveries::INFO),
+            partial(&domain_event_deliveries::INFO),
+        ] {
+            ensure!(
+                Dispatcher::new(store.clone(), clock.clone(), &config, &CONSUMERS, &report)
+                    .is_err()
+            );
+        }
+        for report in [
+            lenient(&cron_job_intents::INFO),
+            partial(&cron_job_intents::INFO),
+        ] {
+            ensure!(
+                DurableJobs::new(
+                    store.clone(),
+                    NoQueue,
+                    clock.clone(),
+                    Arc::new(SeededRandom::new(1)),
+                    JobsConfig::default(),
+                    &report,
+                )
+                .is_err()
+            );
+        }
+        // The real reports pass.
+        let events = support::indexes(&store, &domain_events::INFO).await?;
+        ensure!(Journal::new(store.clone(), clock.clone(), &config, &events).is_ok());
+        let intents = support::indexes(&store, &cron_job_intents::INFO).await?;
+        ensure!(
+            DurableJobs::new(
+                store.clone(),
+                NoQueue,
+                clock.clone(),
+                Arc::new(SeededRandom::new(1)),
+                JobsConfig::default(),
+                &intents,
+            )
+            .is_ok()
+        );
+        Ok(())
+    })
+    .await
+}
