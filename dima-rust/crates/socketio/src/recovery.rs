@@ -13,20 +13,40 @@
 //!
 //! A reconnecting client sends `{pid, offset, ...auth}` in its CONNECT. When the session exists,
 //! is not older than `recovery_max_disconnection`, and the offset is still stored, the socket
-//! comes back with its id and data, the check is skipped (`skipMiddlewares`), the events after
-//! the offset meant for the namespace or for that socket are sent before the CONNECT packet, and
-//! the CONNECT carries the same private id, which is what makes the client's `recovered` true.
+//! comes back with its id and data, the events after the offset meant for the namespace or for
+//! that socket are sent before the CONNECT packet, and the CONNECT carries the same private id,
+//! which is what makes the client's `recovered` true.
 //!
 //! Expiry follows the reference's schedule: its adapter sweeps every 60 s from the namespace's
 //! creation and drops what disconnected or was emitted more than 2 minutes before that sweep,
 //! so a packet stays findable for up to 3 minutes. Restoring also refuses a session older than
 //! 2 minutes.
 //!
-//! Deliberate differences: a session is claimed by the restore that uses it (the reference keeps
-//! it until it expires, so two reconnects with the same private id would both get the socket id);
-//! the stores are bounded ([`RecoveryLimits`]): the oldest packets and sessions of the namespace
-//! being written are dropped first, and a client whose offset or session is gone connects fresh.
+//! Deliberate differences, all bounds the reference does not have ([`RecoveryLimits`]):
+//!
+//! - **One store for the server**, under one lock: every namespace's packets and sessions, so
+//!   the server-wide limits are counted where they are enforced (no total checked under one
+//!   lock and incremented under another).
+//! - **Fair eviction.** A namespace over its own limits drops its own oldest entries. When a
+//!   server-wide limit is reached, the oldest entry of the namespace holding the most of that
+//!   kind (stored bytes for packets, sessions for sessions) is dropped, the writer's own
+//!   namespace included. So one channel's churn drops its own entries before it can push any
+//!   other channel below its size, and the namespaces converge to equal shares of the limit.
+//! - **Sessions are measured** by what they really keep ([`crate::RetainedSize`] of the socket
+//!   data, its ids and a fixed overhead), when the socket leaves and again when its last
+//!   handler has ended; a session over `session_bytes` is not kept, and all of them together
+//!   stay within `session_bytes_total`.
+//! - **An event that could not be stored breaks recovery** instead of leaving a silent gap: it
+//!   still takes its place in the namespace's sequence, and a later restore from an offset
+//!   before it fails as an unknown offset would (the client connects fresh, `recovered` false).
+//! - A session is claimed by the restore that uses it (the reference keeps it until it
+//!   expires, so two reconnects with the same private id would both get the socket id).
+//! - A client whose offset or session was dropped connects fresh, never with a partial replay.
+//!
+//! [`Recovery::Full`]: crate::Recovery::Full
+//! [`DisconnectReason::recoverable`]: crate::DisconnectReason::recoverable
 
+use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -36,15 +56,16 @@ use tokio_util::sync::CancellationToken;
 use crate::config::RecoveryLimits;
 use crate::telemetry::{Eviction, RecoveryOutcome, Telemetry};
 
-/// Fixed cost counted for every stored packet and session besides its text.
+/// Fixed cost counted for every stored packet and session besides its text and data.
 const OVERHEAD: usize = 64;
 
-/// The server-wide totals every store counts against.
+/// Readable copies of the store's totals (for [`crate::Stats`]); written under the store lock.
 #[derive(Debug, Default)]
 pub struct Totals {
     pub packets: AtomicUsize,
     pub bytes: AtomicUsize,
     pub sessions: AtomicUsize,
+    pub session_bytes: AtomicUsize,
 }
 
 /// The timing rules.
@@ -69,12 +90,15 @@ struct Stored {
     cost: usize,
 }
 
+/// The socket data a session keeps, whatever its type (a name belongs to one declaration, which
+/// restores it as its own type).
+pub type Data = Arc<dyn Any + Send + Sync>;
+
 /// A kept session.
-#[derive(Debug)]
-pub struct Session<D> {
+pub struct Session {
     pub sid: String,
     pub pid: String,
-    pub data: Arc<D>,
+    pub data: Data,
     /// The key of the socket that left it: only that socket's late emits may still be stored
     /// for it, and only while the session is not claimed.
     owner: u64,
@@ -84,9 +108,28 @@ pub struct Session<D> {
     cost: usize,
 }
 
-impl<D> Session<D> {
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Session")
+            .field("sid", &self.sid)
+            .field("owner", &self.owner)
+            .field("cost", &self.cost)
+            .finish_non_exhaustive()
+    }
+}
+
+/// What a session costs: its ids, its data as it is now, and a fixed overhead.
+pub fn session_cost<D: crate::RetainedSize>(sid: &str, pid: &str, data: &D) -> usize {
+    OVERHEAD
+        .saturating_add(sid.len())
+        .saturating_add(pid.len())
+        .saturating_add(std::mem::size_of::<D>())
+        .saturating_add(data.retained_bytes())
+}
+
+impl Session {
     /// A session for a socket that just left.
-    pub fn new(
+    pub fn new<D: crate::RetainedSize + Send + Sync + 'static>(
         sid: String,
         pid: String,
         data: Arc<D>,
@@ -94,7 +137,7 @@ impl<D> Session<D> {
         released: CancellationToken,
         disconnected_ms: i64,
     ) -> Self {
-        let cost = OVERHEAD + sid.len() + pid.len() + std::mem::size_of::<D>();
+        let cost = session_cost(&sid, &pid, data.as_ref());
         Self {
             sid,
             pid,
@@ -108,23 +151,27 @@ impl<D> Session<D> {
 }
 
 #[derive(Debug)]
-struct Record<D> {
+struct Record {
     created_ms: i64,
     swept_ms: i64,
     next_seq: u64,
+    /// A restore from an offset whose packet is older than this cannot be served: an event
+    /// after it could not be stored.
+    barrier: u64,
     packets: VecDeque<Stored>,
     bytes: usize,
-    sessions: HashMap<String, Session<D>>,
+    sessions: HashMap<String, Session>,
     /// Restores sending this record's packets; the record is kept while any runs.
     restoring: usize,
 }
 
-impl<D> Record<D> {
+impl Record {
     fn new(now: i64) -> Self {
         Self {
             created_ms: now,
             swept_ms: now,
             next_seq: 0,
+            barrier: 0,
             packets: VecDeque::new(),
             bytes: 0,
             sessions: HashMap::new(),
@@ -132,63 +179,25 @@ impl<D> Record<D> {
         }
     }
 
+    /// Whether the record can go: nothing stored, nothing kept, nobody restoring (with no
+    /// packet stored, no offset can be recovered, so a barrier has nothing left to guard).
     fn is_empty(&self) -> bool {
         self.packets.is_empty() && self.sessions.is_empty() && self.restoring == 0
     }
 
-    fn pop_packet(&mut self, totals: &Totals) -> bool {
-        let Some(packet) = self.packets.pop_front() else {
-            return false;
-        };
-        self.bytes = self.bytes.saturating_sub(packet.cost);
-        totals.packets.fetch_sub(1, Ordering::AcqRel);
-        totals.bytes.fetch_sub(packet.cost, Ordering::AcqRel);
-        true
-    }
-
-    fn remove_session(&mut self, pid: &str, totals: &Totals) -> Option<Session<D>> {
-        let session = self.sessions.remove(pid)?;
-        totals.sessions.fetch_sub(1, Ordering::AcqRel);
-        Some(session)
-    }
-
-    /// The reference's periodic sweep, applied for the last tick that has passed.
-    fn sweep(&mut self, now: i64, timing: Timing, totals: &Totals) {
-        let tick = if timing.sweep_interval_ms > 0 {
-            let elapsed = now.saturating_sub(self.created_ms).max(0);
-            self.created_ms + elapsed / timing.sweep_interval_ms * timing.sweep_interval_ms
-        } else {
-            now
-        };
-        if tick <= self.swept_ms {
-            return;
-        }
-        self.swept_ms = tick;
-        let threshold = tick.saturating_sub(timing.max_disconnection_ms);
-        // `for (i = length - 1; i >= 0; i--) if (packets[i].emittedAt < threshold) splice(0, i + 1)`
-        if let Some(last) = self.packets.iter().rposition(|p| p.emitted_ms < threshold) {
-            for _ in 0..=last {
-                self.pop_packet(totals);
-            }
-        }
-        let expired: Vec<String> = self
-            .sessions
-            .iter()
-            .filter(|(_, s)| s.disconnected_ms < threshold)
-            .map(|(pid, _)| pid.clone())
-            .collect();
-        for pid in expired {
-            self.remove_session(&pid, totals);
-        }
+    fn oldest_session(&self) -> Option<String> {
+        self.sessions
+            .values()
+            .min_by_key(|s| s.disconnected_ms)
+            .map(|s| s.pid.clone())
     }
 }
 
 /// A restored session: where its missed events start.
-#[derive(Debug)]
-pub struct Restored<D> {
+pub struct Restored {
     pub sid: String,
     pub pid: String,
-    pub data: Arc<D>,
+    pub data: Data,
     pub cursor: u64,
     /// Fires when the socket that left the session has no handler running any more.
     pub released: CancellationToken,
@@ -203,41 +212,109 @@ pub struct Batch {
     pub gap: bool,
 }
 
-/// The store of one namespace declaration (all members of a family share it).
-#[derive(Debug)]
-pub struct State<D> {
-    records: HashMap<String, Record<D>>,
-    /// This store's packets in emission order: `(namespace, seq)`, for eviction under the
-    /// server-wide caps. Entries of packets already dropped are skipped and compacted.
-    order: VecDeque<(String, u64)>,
-}
-
-impl<D> Default for State<D> {
-    fn default() -> Self {
-        Self {
-            records: HashMap::new(),
-            order: VecDeque::new(),
-        }
-    }
-}
-
 /// Everything a store operation needs besides the state.
 pub struct Ctx<'a> {
     pub limits: RecoveryLimits,
     pub timing: Timing,
-    pub totals: &'a Totals,
     pub telemetry: &'a dyn Telemetry,
     pub now: i64,
 }
 
-impl<D> State<D> {
-    fn record(&mut self, nsp: &str, ctx: &Ctx<'_>) -> &mut Record<D> {
-        let record = self
-            .records
+/// The server's store.
+#[derive(Debug, Default)]
+pub struct Store {
+    records: HashMap<String, Record>,
+    packets: usize,
+    bytes: usize,
+    sessions: usize,
+    session_bytes: usize,
+    totals: Arc<Totals>,
+}
+
+impl Store {
+    /// An empty store whose totals are mirrored in `totals`.
+    pub fn new(totals: Arc<Totals>) -> Self {
+        Self {
+            totals,
+            ..Self::default()
+        }
+    }
+
+    fn publish(&self) {
+        self.totals.packets.store(self.packets, Ordering::Release);
+        self.totals.bytes.store(self.bytes, Ordering::Release);
+        self.totals.sessions.store(self.sessions, Ordering::Release);
+        self.totals
+            .session_bytes
+            .store(self.session_bytes, Ordering::Release);
+    }
+
+    /// The record of `nsp`, created if needed, after its periodic sweep.
+    fn record(&mut self, nsp: &str, ctx: &Ctx<'_>) -> &mut Record {
+        if !self.records.contains_key(nsp) {
+            self.records.insert(nsp.to_owned(), Record::new(ctx.now));
+        }
+        self.sweep_one(nsp, ctx);
+        self.records
             .entry(nsp.to_owned())
-            .or_insert_with(|| Record::new(ctx.now));
-        record.sweep(ctx.now, ctx.timing, ctx.totals);
-        record
+            .or_insert_with(|| Record::new(ctx.now))
+    }
+
+    /// The reference's periodic sweep of one namespace, applied for the last tick that passed.
+    fn sweep_one(&mut self, nsp: &str, ctx: &Ctx<'_>) {
+        let Some(record) = self.records.get_mut(nsp) else {
+            return;
+        };
+        let timing = ctx.timing;
+        let tick = if timing.sweep_interval_ms > 0 {
+            let elapsed = ctx.now.saturating_sub(record.created_ms).max(0);
+            record.created_ms + elapsed / timing.sweep_interval_ms * timing.sweep_interval_ms
+        } else {
+            ctx.now
+        };
+        if tick <= record.swept_ms {
+            return;
+        }
+        record.swept_ms = tick;
+        let threshold = tick.saturating_sub(timing.max_disconnection_ms);
+        // `for (i = length - 1; i >= 0; i--) if (packets[i].emittedAt < threshold) splice(0, i + 1)`
+        let expired_packets = record
+            .packets
+            .iter()
+            .rposition(|p| p.emitted_ms < threshold)
+            .map_or(0, |last| last + 1);
+        let expired_sessions: Vec<String> = record
+            .sessions
+            .iter()
+            .filter(|(_, s)| s.disconnected_ms < threshold)
+            .map(|(pid, _)| pid.clone())
+            .collect();
+        for _ in 0..expired_packets {
+            self.pop_packet(nsp);
+        }
+        for pid in expired_sessions {
+            self.remove_session(nsp, &pid);
+        }
+    }
+
+    fn pop_packet(&mut self, nsp: &str) -> bool {
+        let Some(record) = self.records.get_mut(nsp) else {
+            return false;
+        };
+        let Some(packet) = record.packets.pop_front() else {
+            return false;
+        };
+        record.bytes = record.bytes.saturating_sub(packet.cost);
+        self.packets = self.packets.saturating_sub(1);
+        self.bytes = self.bytes.saturating_sub(packet.cost);
+        true
+    }
+
+    fn remove_session(&mut self, nsp: &str, pid: &str) -> Option<Session> {
+        let session = self.records.get_mut(nsp)?.sessions.remove(pid)?;
+        self.sessions = self.sessions.saturating_sub(1);
+        self.session_bytes = self.session_bytes.saturating_sub(session.cost);
+        Some(session)
     }
 
     fn drop_if_empty(&mut self, nsp: &str) {
@@ -246,23 +323,29 @@ impl<D> State<D> {
         }
     }
 
-    /// Drops this store's oldest live packet; `false` when it has none.
-    fn evict_oldest(&mut self, ctx: &Ctx<'_>) -> bool {
-        while let Some((nsp, seq)) = self.order.pop_front() {
-            let Some(record) = self.records.get_mut(&nsp) else {
-                continue;
-            };
-            if record.packets.front().is_some_and(|p| p.seq == seq) {
-                record.pop_packet(ctx.totals);
-                ctx.telemetry.recovery_evicted(&nsp, Eviction::Packet);
-                self.drop_if_empty(&nsp);
-                return true;
-            }
-        }
-        false
+    /// The namespace holding the most stored bytes (a scan of the namespaces that have
+    /// something stored, at most `packets_total + sessions_total` of them).
+    fn largest_by_bytes(&self) -> Option<String> {
+        self.records
+            .iter()
+            .filter(|(_, r)| !r.packets.is_empty())
+            .max_by_key(|(_, r)| r.bytes)
+            .map(|(name, _)| name.clone())
     }
 
-    /// Stores one eligible event. Returns `false` when the bounds left no room.
+    /// The namespace keeping the most sessions.
+    fn largest_by_sessions(&self) -> Option<String> {
+        self.records
+            .iter()
+            .filter(|(_, r)| !r.sessions.is_empty())
+            .max_by_key(|(_, r)| r.sessions.len())
+            .map(|(name, _)| name.clone())
+    }
+
+    /// Stores one eligible event. When the bounds leave no room for it (it alone is larger than
+    /// a namespace's or the server's byte limit), it is not stored but still takes its place in
+    /// the sequence, and offsets before it can no longer be recovered. Returns whether it was
+    /// stored.
     pub fn append(
         &mut self,
         nsp: &str,
@@ -274,26 +357,36 @@ impl<D> State<D> {
         let cost = OVERHEAD + json.len() + offset.len() + target.map_or(0, str::len);
         let limits = ctx.limits;
         if cost > limits.bytes_per_namespace || cost > limits.bytes_total {
+            let record = self.record(nsp, ctx);
+            let seq = record.next_seq;
+            record.next_seq += 1;
+            record.barrier = seq + 1;
+            ctx.telemetry.recovery_evicted(nsp, Eviction::NotStored);
+            self.drop_if_empty(nsp);
+            self.publish();
             return false;
         }
-        // Room in the namespace.
-        {
+        // Room in the namespace: its own oldest go.
+        loop {
             let record = self.record(nsp, ctx);
-            while !record.packets.is_empty()
+            let full = !record.packets.is_empty()
                 && (record.packets.len() >= limits.packets_per_namespace
-                    || record.bytes + cost > limits.bytes_per_namespace)
-            {
-                record.pop_packet(ctx.totals);
-                ctx.telemetry.recovery_evicted(nsp, Eviction::Packet);
+                    || record.bytes + cost > limits.bytes_per_namespace);
+            if !full {
+                break;
             }
+            self.pop_packet(nsp);
+            ctx.telemetry.recovery_evicted(nsp, Eviction::Packet);
         }
-        // Room in the server.
-        while ctx.totals.packets.load(Ordering::Acquire) >= limits.packets_total
-            || ctx.totals.bytes.load(Ordering::Acquire) + cost > limits.bytes_total
-        {
-            if !self.evict_oldest(ctx) {
-                self.drop_if_empty(nsp);
-                return false;
+        // Room in the server: the largest namespace's oldest go.
+        while self.packets >= limits.packets_total || self.bytes + cost > limits.bytes_total {
+            let Some(largest) = self.largest_by_bytes() else {
+                break;
+            };
+            self.pop_packet(&largest);
+            ctx.telemetry.recovery_evicted(&largest, Eviction::Packet);
+            if largest != nsp {
+                self.drop_if_empty(&largest);
             }
         }
         let record = self.record(nsp, ctx);
@@ -308,82 +401,86 @@ impl<D> State<D> {
             emitted_ms: ctx.now,
             cost,
         });
-        ctx.totals.packets.fetch_add(1, Ordering::AcqRel);
-        ctx.totals.bytes.fetch_add(cost, Ordering::AcqRel);
-        self.order.push_back((nsp.to_owned(), seq));
-        self.compact(limits);
+        self.packets += 1;
+        self.bytes += cost;
+        self.publish();
         true
     }
 
-    /// Drops index entries of packets that are gone once they outnumber the live ones.
-    fn compact(&mut self, limits: RecoveryLimits) {
-        if self.order.len() <= limits.packets_total.saturating_mul(2).max(1024) {
-            return;
-        }
-        let records = &self.records;
-        self.order.retain(|(nsp, seq)| {
-            records
-                .get(nsp)
-                .and_then(|r| r.packets.front())
-                .is_some_and(|front| *seq >= front.seq)
-        });
-    }
-
-    /// Keeps a session (`persistSession`). Returns `false` when it was not kept.
-    pub fn persist(&mut self, nsp: &str, session: Session<D>, ctx: &Ctx<'_>) -> bool {
+    /// Makes room for one more session of `cost` bytes in `nsp`; `false` when there is none.
+    fn room_for_session(&mut self, nsp: &str, cost: usize, ctx: &Ctx<'_>) -> bool {
         let limits = ctx.limits;
-        if session.cost > limits.session_bytes {
-            ctx.telemetry
-                .recovery_evicted(nsp, Eviction::SessionTooLarge);
-            return false;
-        }
-        let replaced = {
-            let record = self.record(nsp, ctx);
-            record.remove_session(&session.pid, ctx.totals).is_some()
-        };
-        let _ = replaced;
-        // Room in the namespace: drop its oldest session.
         loop {
             let record = self.record(nsp, ctx);
             if record.sessions.len() < limits.sessions_per_namespace {
                 break;
             }
-            let Some(oldest) = oldest_session(record) else {
+            let Some(oldest) = record.oldest_session() else {
                 break;
             };
-            record.remove_session(&oldest, ctx.totals);
+            self.remove_session(nsp, &oldest);
             ctx.telemetry.recovery_evicted(nsp, Eviction::Session);
         }
-        // Room in the server: drop this store's oldest session.
-        while ctx.totals.sessions.load(Ordering::Acquire) >= limits.sessions_total {
-            let oldest = self
-                .records
-                .iter()
-                .filter_map(|(name, record)| {
-                    oldest_session(record).and_then(|pid| {
-                        record
-                            .sessions
-                            .get(&pid)
-                            .map(|s| (s.disconnected_ms, name.clone(), pid))
-                    })
-                })
-                .min_by_key(|(at, _, _)| *at);
-            let Some((_, name, pid)) = oldest else {
-                self.drop_if_empty(nsp);
+        while self.sessions >= limits.sessions_total
+            || self.session_bytes + cost > limits.session_bytes_total
+        {
+            let Some(largest) = self.largest_by_sessions() else {
                 return false;
             };
-            if let Some(record) = self.records.get_mut(&name) {
-                record.remove_session(&pid, ctx.totals);
-            }
-            ctx.telemetry.recovery_evicted(&name, Eviction::Session);
-            if name != nsp {
-                self.drop_if_empty(&name);
+            let Some(oldest) = self.records.get(&largest).and_then(Record::oldest_session) else {
+                return false;
+            };
+            self.remove_session(&largest, &oldest);
+            ctx.telemetry.recovery_evicted(&largest, Eviction::Session);
+            if largest != nsp {
+                self.drop_if_empty(&largest);
             }
         }
+        true
+    }
+
+    /// Keeps a session (`persistSession`). Returns `false` when it was not kept.
+    pub fn persist(&mut self, nsp: &str, session: Session, ctx: &Ctx<'_>) -> bool {
+        let limits = ctx.limits;
+        if session.cost > limits.session_bytes || session.cost > limits.session_bytes_total {
+            ctx.telemetry
+                .recovery_evicted(nsp, Eviction::SessionTooLarge);
+            return false;
+        }
+        self.remove_session(nsp, &session.pid);
+        if !self.room_for_session(nsp, session.cost, ctx) {
+            self.drop_if_empty(nsp);
+            self.publish();
+            return false;
+        }
+        self.sessions += 1;
+        self.session_bytes += session.cost;
         let record = self.record(nsp, ctx);
         record.sessions.insert(session.pid.clone(), session);
-        ctx.totals.sessions.fetch_add(1, Ordering::AcqRel);
+        self.publish();
         true
+    }
+
+    /// Measures a kept session again once the socket that left it has no handler running
+    /// (`on_disconnect` may have changed its data): `cost` is its size now. A session that grew
+    /// past `session_bytes` is dropped; one that grew is given room as a new one would be.
+    pub fn settle(&mut self, nsp: &str, pid: &str, owner: u64, cost: usize, ctx: &Ctx<'_>) {
+        let unchanged = self
+            .records
+            .get(nsp)
+            .and_then(|r| r.sessions.get(pid))
+            .filter(|s| s.owner == owner)
+            .is_none_or(|s| s.cost == cost);
+        if unchanged {
+            return;
+        }
+        let Some(mut session) = self.remove_session(nsp, pid) else {
+            return;
+        };
+        session.cost = cost;
+        self.persist(nsp, session, ctx);
+        self.drop_if_empty(nsp);
+        self.publish();
     }
 
     /// `restoreSession(pid, offset)`, claiming the session.
@@ -393,40 +490,54 @@ impl<D> State<D> {
         pid: &str,
         offset: &str,
         ctx: &Ctx<'_>,
-    ) -> Result<Restored<D>, RecoveryOutcome> {
-        let max = ctx.timing.max_disconnection_ms;
-        let Some(record) = self.records.get_mut(nsp) else {
+    ) -> Result<Restored, RecoveryOutcome> {
+        if !self.records.contains_key(nsp) {
             return Err(RecoveryOutcome::UnknownSession);
-        };
-        record.sweep(ctx.now, ctx.timing, ctx.totals);
-        let outcome = match record.sessions.get(pid) {
+        }
+        self.sweep_one(nsp, ctx);
+        let max = ctx.timing.max_disconnection_ms;
+        let found = match self.records.get(nsp) {
             None => Err(RecoveryOutcome::UnknownSession),
-            Some(session) if session.disconnected_ms.saturating_add(max) < ctx.now => {
-                record.remove_session(pid, ctx.totals);
-                Err(RecoveryOutcome::Expired)
-            }
-            Some(_) => match record.packets.iter().find(|p| p.offset == offset) {
-                // The session stays, as in the reference: another offset may still be found.
-                None => Err(RecoveryOutcome::UnknownOffset),
-                Some(packet) => {
-                    let cursor = packet.seq;
-                    match record.remove_session(pid, ctx.totals) {
-                        Some(session) => {
-                            record.restoring += 1;
-                            Ok(Restored {
-                                sid: session.sid,
-                                pid: session.pid,
-                                data: session.data,
-                                cursor,
-                                released: session.released,
-                            })
-                        }
-                        None => Err(RecoveryOutcome::UnknownSession),
-                    }
+            Some(record) => match record.sessions.get(pid) {
+                None => Err(RecoveryOutcome::UnknownSession),
+                Some(session) if session.disconnected_ms.saturating_add(max) < ctx.now => {
+                    Err(RecoveryOutcome::Expired)
                 }
+                Some(_) => match record.packets.iter().find(|p| p.offset == offset) {
+                    // The session stays, as in the reference: another offset may still be found.
+                    None => Err(RecoveryOutcome::UnknownOffset),
+                    // An event after this offset could not be stored: the replay would miss it.
+                    Some(packet) if packet.seq < record.barrier => {
+                        Err(RecoveryOutcome::Discontinuity)
+                    }
+                    Some(packet) => Ok(packet.seq),
+                },
             },
         };
+        let outcome = match found {
+            Ok(cursor) => match self.remove_session(nsp, pid) {
+                Some(session) => {
+                    if let Some(record) = self.records.get_mut(nsp) {
+                        record.restoring += 1;
+                    }
+                    Ok(Restored {
+                        sid: session.sid,
+                        pid: session.pid,
+                        data: session.data,
+                        cursor,
+                        released: session.released,
+                    })
+                }
+                None => Err(RecoveryOutcome::UnknownSession),
+            },
+            Err(RecoveryOutcome::Expired) => {
+                self.remove_session(nsp, pid);
+                Err(RecoveryOutcome::Expired)
+            }
+            Err(other) => Err(other),
+        };
         self.drop_if_empty(nsp);
+        self.publish();
         outcome
     }
 
@@ -454,13 +565,14 @@ impl<D> State<D> {
             cursor,
             gap: false,
         };
-        let Some(record) = self.records.get_mut(nsp) else {
+        self.sweep_one(nsp, ctx);
+        self.publish();
+        let Some(record) = self.records.get(nsp) else {
             batch.gap = true;
             return batch;
         };
-        record.sweep(ctx.now, ctx.timing, ctx.totals);
         let first = record.packets.front().map_or(record.next_seq, |p| p.seq);
-        if first > cursor.saturating_add(1) {
+        if first > cursor.saturating_add(1) || cursor < record.barrier {
             batch.gap = true;
             return batch;
         }
@@ -484,49 +596,43 @@ impl<D> State<D> {
         self.drop_if_empty(nsp);
     }
 
-    /// Whether events after `cursor` exist.
-    #[cfg(test)]
-    pub fn has_after(&self, nsp: &str, cursor: u64) -> bool {
-        self.records
-            .get(nsp)
-            .and_then(|r| r.packets.back())
-            .is_some_and(|last| last.seq > cursor)
-    }
-
-    /// The periodic sweep over every namespace of the store.
+    /// The periodic sweep over every namespace.
     pub fn sweep(&mut self, ctx: &Ctx<'_>) {
-        for record in self.records.values_mut() {
-            record.sweep(ctx.now, ctx.timing, ctx.totals);
+        let names: Vec<String> = self.records.keys().cloned().collect();
+        for name in names {
+            self.sweep_one(&name, ctx);
+            self.drop_if_empty(&name);
         }
-        self.records.retain(|_, record| !record.is_empty());
-        self.compact(ctx.limits);
+        self.publish();
     }
 
-    /// Drops everything (shutdown), releasing the totals.
-    pub fn clear(&mut self, totals: &Totals) {
-        for record in self.records.values_mut() {
-            while record.pop_packet(totals) {}
-            let pids: Vec<String> = record.sessions.keys().cloned().collect();
-            for pid in pids {
-                record.remove_session(&pid, totals);
-            }
-        }
+    /// Drops everything (shutdown).
+    pub fn clear(&mut self) {
         self.records.clear();
-        self.order.clear();
+        self.packets = 0;
+        self.bytes = 0;
+        self.sessions = 0;
+        self.session_bytes = 0;
+        self.publish();
     }
 
     #[cfg(test)]
     fn stored(&self, nsp: &str) -> usize {
         self.records.get(nsp).map_or(0, |r| r.packets.len())
     }
-}
 
-fn oldest_session<D>(record: &Record<D>) -> Option<String> {
-    record
-        .sessions
-        .values()
-        .min_by_key(|s| s.disconnected_ms)
-        .map(|s| s.pid.clone())
+    #[cfg(test)]
+    fn kept(&self, nsp: &str) -> usize {
+        self.records.get(nsp).map_or(0, |r| r.sessions.len())
+    }
+
+    #[cfg(test)]
+    fn has_after(&self, nsp: &str, cursor: u64) -> bool {
+        self.records
+            .get(nsp)
+            .and_then(|r| r.packets.back())
+            .is_some_and(|last| last.seq > cursor)
+    }
 }
 
 #[cfg(test)]
@@ -534,14 +640,13 @@ mod tests {
     use super::*;
     use crate::telemetry::NoTelemetry;
 
-    fn ctx(totals: &Totals, now: i64) -> Ctx<'_> {
+    fn ctx(now: i64) -> Ctx<'static> {
         Ctx {
             limits: RecoveryLimits::default(),
             timing: Timing {
                 max_disconnection_ms: 120_000,
                 sweep_interval_ms: 60_000,
             },
-            totals,
             telemetry: &NoTelemetry,
             now,
         }
@@ -551,29 +656,40 @@ mod tests {
         Arc::from(text)
     }
 
+    fn session<D: crate::RetainedSize + Send + Sync + 'static>(
+        sid: &str,
+        pid: &str,
+        data: D,
+        at: i64,
+    ) -> Session {
+        Session::new(
+            sid.into(),
+            pid.into(),
+            Arc::new(data),
+            0,
+            CancellationToken::new(),
+            at,
+        )
+    }
+
+    fn store() -> (Arc<Totals>, Store) {
+        let totals = Arc::new(Totals::default());
+        (Arc::clone(&totals), Store::new(totals))
+    }
+
     #[test]
     fn restore_replays_after_the_offset_for_the_namespace_and_the_socket() {
-        let totals = Totals::default();
-        let mut state: State<u8> = State::default();
-        let c = ctx(&totals, 1_000);
+        let (totals, mut state) = store();
+        let c = ctx(1_000);
         assert!(state.append("/n", None, "o1", json("[\"a\",\"o1\"]"), &c));
-        state.persist(
-            "/n",
-            Session::new(
-                "sid1".into(),
-                "pid1".into(),
-                Arc::new(7),
-                0,
-                CancellationToken::new(),
-                1_000,
-            ),
-            &c,
-        );
+        state.persist("/n", session("sid1", "pid1", 7_u8, 1_000), &c);
         assert!(state.append("/n", None, "o2", json("[\"b\",\"o2\"]"), &c));
         assert!(state.append("/n", Some("other"), "o3", json("[\"c\",\"o3\"]"), &c));
         assert!(state.append("/n", Some("sid1"), "o4", json("[\"d\",\"o4\"]"), &c));
         let restored = state.restore("/n", "pid1", "o1", &c).unwrap();
-        assert_eq!((restored.sid.as_str(), *restored.data), ("sid1", 7));
+        let sid = restored.sid.clone();
+        let data = Arc::downcast::<u8>(restored.data).unwrap();
+        assert_eq!((sid.as_str(), *data), ("sid1", 7));
         let batch = state.missed("/n", restored.cursor, "sid1", 100, &c);
         assert_eq!(
             batch.packets.iter().map(|p| p.as_ref()).collect::<Vec<_>>(),
@@ -582,8 +698,8 @@ mod tests {
         assert!(!state.has_after("/n", batch.cursor));
         // Claimed: a second reconnect with the same private id gets nothing.
         assert_eq!(
-            state.restore("/n", "pid1", "o1", &c).map(|r| r.sid),
-            Err(RecoveryOutcome::UnknownSession)
+            state.restore("/n", "pid1", "o1", &c).map(|r| r.sid).err(),
+            Some(RecoveryOutcome::UnknownSession)
         );
         state.finish_restore("/n");
         assert_eq!(totals.sessions.load(Ordering::Acquire), 0);
@@ -591,22 +707,10 @@ mod tests {
 
     #[test]
     fn misses_unknown_offsets_expired_sessions_and_wrong_namespaces() {
-        let totals = Totals::default();
-        let mut state: State<()> = State::default();
-        let c = ctx(&totals, 0);
+        let (_, mut state) = store();
+        let c = ctx(0);
         state.append("/n", None, "o1", json("[\"a\",\"o1\"]"), &c);
-        state.persist(
-            "/n",
-            Session::new(
-                "s".into(),
-                "p".into(),
-                Arc::new(()),
-                0,
-                CancellationToken::new(),
-                0,
-            ),
-            &c,
-        );
+        state.persist("/n", session("s", "p", (), 0), &c);
         assert!(matches!(
             state.restore("/n", "p", "nope", &c),
             Err(RecoveryOutcome::UnknownOffset)
@@ -620,72 +724,44 @@ mod tests {
             Err(RecoveryOutcome::UnknownSession)
         ));
         // 120 s later is still in time; 120.001 s is not.
-        assert!(
-            state
-                .restore("/n", "p", "o1", &ctx(&totals, 120_000))
-                .is_ok()
-        );
+        assert!(state.restore("/n", "p", "o1", &ctx(120_000)).is_ok());
         state.finish_restore("/n");
-        state.persist(
-            "/n",
-            Session::new(
-                "s".into(),
-                "p2".into(),
-                Arc::new(()),
-                0,
-                CancellationToken::new(),
-                0,
-            ),
-            &c,
-        );
+        state.persist("/n", session("s", "p2", (), 0), &c);
         state.append("/n", None, "o2", json("[\"a\",\"o2\"]"), &c);
         assert!(matches!(
-            state.restore("/n", "p2", "o2", &ctx(&totals, 120_001)),
+            state.restore("/n", "p2", "o2", &ctx(120_001)),
             Err(RecoveryOutcome::Expired)
         ));
     }
 
     #[test]
     fn packets_expire_on_the_sweep_schedule() {
-        let totals = Totals::default();
-        let mut state: State<()> = State::default();
+        let (_, mut state) = store();
         // Created at 0: sweeps at 60 s, 120 s, 180 s…
-        state.append("/n", None, "o1", json("[1]"), &ctx(&totals, 0));
-        state.append("/n", None, "o2", json("[2]"), &ctx(&totals, 50_000));
+        state.append("/n", None, "o1", json("[1]"), &ctx(0));
+        state.append("/n", None, "o2", json("[2]"), &ctx(50_000));
         // At 170 s the last sweep was at 120 s (threshold 0): nothing older than 0.
-        state.persist(
-            "/n",
-            Session::new(
-                "s".into(),
-                "p".into(),
-                Arc::new(()),
-                0,
-                CancellationToken::new(),
-                169_000,
-            ),
-            &ctx(&totals, 170_000),
-        );
+        state.persist("/n", session("s", "p", (), 169_000), &ctx(170_000));
         assert_eq!(state.stored("/n"), 2);
         // At 180 s (threshold 60 s) both are gone.
         assert!(matches!(
-            state.restore("/n", "p", "o2", &ctx(&totals, 180_000)),
+            state.restore("/n", "p", "o2", &ctx(180_000)),
             Err(RecoveryOutcome::UnknownOffset)
         ));
         assert_eq!(state.stored("/n"), 0);
         // The periodic sweep drops namespaces nobody touches any more.
-        state.append("/m", None, "o3", json("[3]"), &ctx(&totals, 200_000));
-        state.sweep(&ctx(&totals, 260_000));
+        state.append("/m", None, "o3", json("[3]"), &ctx(200_000));
+        state.sweep(&ctx(260_000));
         assert_eq!(state.stored("/m"), 1);
-        state.sweep(&ctx(&totals, 380_000));
+        state.sweep(&ctx(380_000));
         assert_eq!(state.stored("/m"), 0);
-        assert!(state.records.is_empty());
+        assert!(!state.records.contains_key("/m"));
     }
 
     #[test]
     fn bounds_drop_the_oldest_and_a_gap_is_reported() {
-        let totals = Totals::default();
-        let mut state: State<()> = State::default();
-        let mut c = ctx(&totals, 0);
+        let (totals, mut state) = store();
+        let mut c = ctx(0);
         c.limits.packets_per_namespace = 3;
         for i in 0..5 {
             assert!(state.append("/n", None, &format!("o{i}"), json("[0]"), &c));
@@ -693,60 +769,115 @@ mod tests {
         assert_eq!(state.stored("/n"), 3);
         assert_eq!(totals.packets.load(Ordering::Acquire), 3);
         // A cursor before the retained range is a gap.
-        state.persist(
-            "/n",
-            Session::new(
-                "s".into(),
-                "p".into(),
-                Arc::new(()),
-                0,
-                CancellationToken::new(),
-                0,
-            ),
-            &c,
-        );
+        state.persist("/n", session("s", "p", (), 0), &c);
         let restored = state.restore("/n", "p", "o2", &c).unwrap();
         assert!(!state.missed("/n", restored.cursor, "s", 10, &c).gap);
         assert!(state.missed("/n", 0, "s", 10, &c).gap);
-        // Server-wide: the store evicts its own oldest.
+        // Server-wide: the largest namespace gives way.
         c.limits.packets_per_namespace = 100;
         c.limits.packets_total = 4;
         assert!(state.append("/m", None, "x1", json("[0]"), &c));
         assert!(state.append("/m", None, "x2", json("[0]"), &c));
         assert_eq!(totals.packets.load(Ordering::Acquire), 4);
+        assert_eq!((state.stored("/n"), state.stored("/m")), (2, 2));
         // Sessions.
         c.limits.sessions_per_namespace = 2;
         for i in 0..4 {
-            state.persist(
-                "/s",
-                Session::new(
-                    format!("s{i}"),
-                    format!("p{i}"),
-                    Arc::new(()),
-                    0,
-                    CancellationToken::new(),
-                    i,
-                ),
-                &c,
-            );
+            state.persist("/s", session(&format!("s{i}"), &format!("p{i}"), (), i), &c);
         }
         assert_eq!(totals.sessions.load(Ordering::Acquire), 2);
         c.limits.session_bytes = 10;
-        assert!(!state.persist(
-            "/s",
-            Session::new(
-                "s".into(),
-                "p".into(),
-                Arc::new(()),
-                0,
-                CancellationToken::new(),
-                9
-            ),
-            &c
-        ));
-        state.clear(&totals);
+        assert!(!state.persist("/s", session("s", "p", (), 9), &c));
+        state.clear();
         assert_eq!(totals.packets.load(Ordering::Acquire), 0);
         assert_eq!(totals.sessions.load(Ordering::Acquire), 0);
         assert_eq!(totals.bytes.load(Ordering::Acquire), 0);
+    }
+
+    /// Finding 6: one namespace's churn cannot evict every other namespace's sessions or
+    /// packets: at the server-wide limit the largest namespace gives way first.
+    #[test]
+    fn eviction_at_the_server_limit_is_fair_between_namespaces() {
+        let (_, mut state) = store();
+        let mut c = ctx(0);
+        c.limits.sessions_per_namespace = 100;
+        c.limits.sessions_total = 10;
+        for i in 0..3 {
+            state.persist(
+                "/quiet",
+                session(&format!("q{i}"), &format!("qp{i}"), (), i),
+                &c,
+            );
+        }
+        // A churning namespace keeps disconnecting new sockets.
+        for i in 0..1000 {
+            state.persist(
+                "/busy",
+                session(&format!("b{i}"), &format!("bp{i}"), (), 10 + i),
+                &c,
+            );
+        }
+        assert_eq!((state.kept("/quiet"), state.kept("/busy")), (3, 7));
+        // The quiet one still gets room, from the busy one.
+        state.persist("/quiet", session("q9", "qp9", (), 5_000), &c);
+        assert_eq!((state.kept("/quiet"), state.kept("/busy")), (4, 6));
+        // Packets: the same rule by stored bytes.
+        c.limits.packets_total = 10;
+        for i in 0..3 {
+            assert!(state.append("/quiet", None, &format!("q{i}"), json("[0]"), &c));
+        }
+        for i in 0..1000 {
+            assert!(state.append("/busy", None, &format!("b{i}"), json("[0]"), &c));
+        }
+        assert_eq!((state.stored("/quiet"), state.stored("/busy")), (3, 7));
+    }
+
+    /// Finding 7: a session costs what its data really keeps.
+    #[test]
+    fn sessions_are_measured_by_what_their_data_keeps() {
+        let (totals, mut state) = store();
+        let mut c = ctx(0);
+        c.limits.session_bytes = 16 << 10;
+        // `size_of::<String>()` is 24 bytes; its contents are 20 kB.
+        assert!(!state.persist("/n", session("s", "p", "x".repeat(20_000), 0), &c));
+        let mut map = std::collections::HashMap::new();
+        map.insert("k".to_owned(), vec![0_u8; 20_000]);
+        assert!(!state.persist("/n", session("s", "p", map, 0), &c));
+        assert!(state.persist("/n", session("s", "p", "x".repeat(1_000), 0), &c));
+        let kept = totals.session_bytes.load(Ordering::Acquire);
+        assert!((1_000..1_200).contains(&kept), "{kept}");
+        // All sessions together stay within their own total.
+        c.limits.session_bytes_total = 3_000;
+        assert!(state.persist("/n", session("s2", "p2", "y".repeat(1_000), 1), &c));
+        assert!(state.persist("/n", session("s3", "p3", "z".repeat(1_000), 2), &c));
+        assert_eq!(state.kept("/n"), 2);
+        assert!(totals.session_bytes.load(Ordering::Acquire) <= 3_000);
+        // Measured again once the old socket's handlers ended: grown past the limit, dropped.
+        state.settle("/n", "p3", 0, 20_000, &c);
+        assert_eq!(state.kept("/n"), 1);
+    }
+
+    /// Finding 8: an event that cannot be stored still takes its place in the sequence, and
+    /// a restore from an offset before it fails instead of replaying around the hole.
+    #[test]
+    fn an_event_that_could_not_be_stored_breaks_earlier_offsets() {
+        let (_, mut state) = store();
+        let mut c = ctx(0);
+        c.limits.bytes_per_namespace = 1_000;
+        assert!(state.append("/n", None, "o1", json("[\"a\"]"), &c));
+        state.persist("/n", session("s", "p", (), 0), &c);
+        let big = json(&format!("[\"{}\"]", "x".repeat(2_000)));
+        assert!(!state.append("/n", None, "o2", big, &c));
+        assert!(state.append("/n", None, "o3", json("[\"c\"]"), &c));
+        assert!(matches!(
+            state.restore("/n", "p", "o1", &c),
+            Err(RecoveryOutcome::Discontinuity)
+        ));
+        // From after the hole, recovery works.
+        let restored = state.restore("/n", "p", "o3", &c).unwrap();
+        let batch = state.missed("/n", restored.cursor, "s", 10, &c);
+        assert!(!batch.gap && batch.packets.is_empty());
+        // A cursor before the hole is a gap for a restore already under way.
+        assert!(state.missed("/n", 0, "s", 10, &c).gap);
     }
 }

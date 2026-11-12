@@ -22,6 +22,7 @@ use crate::outbox::Delivery;
 use crate::pattern::Pattern;
 use crate::recovery::{self, Session};
 use crate::server::Shared;
+use crate::size::RetainedSize;
 use crate::socket::{Core, ErasedSocket, Event, Socket};
 use crate::telemetry::{Handler, RecoveryOutcome, Refusal, SendOutcome};
 
@@ -35,7 +36,10 @@ use crate::telemetry::{Handler, RecoveryOutcome, Refusal, SendOutcome};
 /// them in the reference), then [`Namespace::on_disconnect`] exactly once.
 pub trait Namespace: Send + Sync + 'static {
     /// `socket.data`: what the check returns and the handlers share for this socket.
-    type Data: Send + Sync + 'static;
+    ///
+    /// [`RetainedSize`] measures what a recovery session of the socket keeps; implement it by
+    /// adding up the fields (implementations for the standard types are provided).
+    type Data: Send + Sync + RetainedSize + 'static;
 
     /// The reference's middleware (`nsp.use`): admits the socket with its data, or refuses it
     /// with a CONNECT_ERROR. `namespace` is the concrete name (`/clip/123` in a family).
@@ -133,7 +137,6 @@ pub(crate) struct Def<N: Namespace> {
     pub deadlines: HandlerDeadlines,
     pub matcher: Matcher,
     children: Mutex<HashMap<String, Arc<Child<N::Data>>>>,
-    store: Option<Mutex<recovery::State<N::Data>>>,
 }
 
 /// What a socket needs from its declaration.
@@ -169,9 +172,6 @@ pub(crate) trait ErasedDef: Send + Sync {
         charge: Charge,
         ticket: Ticket,
     ) -> Result<(), Refusal>;
-    /// Applies the recovery store's periodic sweep.
-    fn sweep(&self);
-    fn clear(&self);
 }
 
 impl<N: Namespace> Def<N> {
@@ -185,8 +185,6 @@ impl<N: Namespace> Def<N> {
         let deadlines = options
             .deadlines
             .unwrap_or(shared.options.handler_deadlines);
-        let store =
-            (options.recovery == Recovery::Full).then(|| Mutex::new(recovery::State::default()));
         let mut children = HashMap::new();
         if let Matcher::Static(name) = &matcher {
             children.insert(name.clone(), Arc::new(Child::new(name.clone())));
@@ -200,7 +198,6 @@ impl<N: Namespace> Def<N> {
             deadlines,
             matcher,
             children: Mutex::new(children),
-            store,
         }
     }
 
@@ -208,23 +205,24 @@ impl<N: Namespace> Def<N> {
         self.children.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn store(&self) -> Option<MutexGuard<'_, recovery::State<N::Data>>> {
-        self.store
-            .as_ref()
-            .map(|store| store.lock().unwrap_or_else(PoisonError::into_inner))
+    /// The server's recovery store, for a declaration with full recovery.
+    fn store(&self) -> Option<MutexGuard<'_, recovery::Store>> {
+        (self.recovery == Recovery::Full).then(|| self.shared.store())
     }
 
     fn ctx(&self, now: i64) -> recovery::Ctx<'_> {
-        let options = &self.shared.options;
-        recovery::Ctx {
-            limits: options.recovery,
-            timing: recovery::Timing {
-                max_disconnection_ms: millis(options.recovery_max_disconnection),
-                sweep_interval_ms: millis(options.recovery_sweep_interval),
-            },
-            totals: &self.shared.recovery,
-            telemetry: self.shared.telemetry.as_ref(),
-            now,
+        self.shared.recovery_ctx(now)
+    }
+
+    /// Once the socket that left a session has no handler running, its session (if still kept
+    /// for it) is measured again: `on_disconnect` may have changed the data.
+    fn settle(&self, core: &Core<N::Data>) {
+        if let Some(mut store) = self.store()
+            && store.owns(&core.nsp, &core.pid, core.key)
+        {
+            let cost = recovery::session_cost(&core.id, &core.pid, core.data.as_ref());
+            let now = self.shared.clock.now_ms();
+            store.settle(&core.nsp, &core.pid, core.key, cost, &self.ctx(now));
         }
     }
 
@@ -266,10 +264,6 @@ impl<N: Namespace> Def<N> {
     fn members(child: &Child<N::Data>) -> Vec<Arc<Core<N::Data>>> {
         child.lock().sockets.values().cloned().collect()
     }
-}
-
-fn millis(duration: Duration) -> i64 {
-    i64::try_from(duration.as_millis()).unwrap_or(i64::MAX)
 }
 
 impl<N: Namespace> DefOps<N::Data> for Def<N> {
@@ -388,18 +382,6 @@ impl<N: Namespace> ErasedDef for Def<N> {
             .tasks
             .spawn(run_socket(self, child, conn, nsp, auth, charge, ticket));
         Ok(())
-    }
-
-    fn sweep(&self) {
-        if let Some(mut store) = self.store() {
-            store.sweep(&self.ctx(self.shared.clock.now_ms()));
-        }
-    }
-
-    fn clear(&self) {
-        if let Some(mut store) = self.store() {
-            store.clear(&self.shared.recovery);
-        }
     }
 }
 
@@ -530,7 +512,11 @@ async fn run_socket<N: Namespace>(
             if !released || conn.is_closed() {
                 return;
             }
-            (session.sid, session.pid, session.data, Some(session.cursor))
+            // A name belongs to one declaration, so the data is this one's type.
+            let Ok(data) = Arc::downcast::<N::Data>(session.data) else {
+                return;
+            };
+            (session.sid, session.pid, data, Some(session.cursor))
         }
         None => {
             let check = AssertUnwindSafe(def.handler.check(&handshake, &nsp)).catch_unwind();
@@ -650,6 +636,7 @@ async fn run_socket<N: Namespace>(
         def.handler.on_disconnect(socket, reason),
     )
     .await;
+    def.settle(&core);
 }
 
 /// Makes the socket a member and sends its CONNECT, under the member lock, so a namespace emit

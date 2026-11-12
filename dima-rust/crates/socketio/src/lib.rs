@@ -15,8 +15,8 @@
 //! ```
 //! use std::time::Duration;
 //! use dima_socketio::{
-//!     ConnectError, Event, Handshake, Namespace, NamespaceOptions, Options, Runtime, Socket,
-//!     SocketIo,
+//!     ConnectError, Event, Handshake, Namespace, NamespaceOptions, Options, RetainedSize, Runtime,
+//!     Socket, SocketIo,
 //! };
 //! use serde_json::json;
 //!
@@ -26,6 +26,13 @@
 //! /// `socket.data` of a trigger overlay.
 //! struct Overlay {
 //!     channel: String,
+//! }
+//!
+//! // What a recovery session of the socket keeps (see `RetainedSize`).
+//! impl RetainedSize for Overlay {
+//!     fn retained_bytes(&self) -> usize {
+//!         self.channel.retained_bytes()
+//!     }
 //! }
 //!
 //! impl Namespace for Triggers {
@@ -168,6 +175,7 @@ mod pattern;
 mod recovery;
 mod server;
 mod service;
+mod size;
 mod socket;
 pub mod telemetry;
 
@@ -180,5 +188,6 @@ pub use outbox::{Delivery, MAX_PENDING_KEYS};
 pub use pattern::{Pattern, PatternError};
 pub use server::{Builder, Runtime, SocketIo, Stats};
 pub use service::SocketIoService;
+pub use size::RetainedSize;
 pub use socket::{Ack, Event, Socket};
 pub use telemetry::{NoTelemetry, Telemetry};

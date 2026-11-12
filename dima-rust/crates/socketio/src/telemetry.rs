@@ -55,6 +55,9 @@ pub enum RecoveryOutcome {
     UnknownOffset,
     /// Packets were evicted while the missed ones were being sent: the connection was closed.
     Gap,
+    /// An event after the client's offset could not be stored (too large): the replay would
+    /// miss it, so the client connects fresh.
+    Discontinuity,
 }
 
 /// Something the stores had to drop to stay within their bounds.
@@ -66,6 +69,9 @@ pub enum Eviction {
     Session,
     /// A session larger than `session_bytes`, not kept.
     SessionTooLarge,
+    /// An event too large to store: delivered live, and earlier offsets of its namespace can
+    /// no longer be recovered.
+    NotStored,
 }
 
 /// A kind of handler.

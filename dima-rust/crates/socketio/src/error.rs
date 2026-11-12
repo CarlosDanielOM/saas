@@ -170,4 +170,14 @@ pub enum BuildError {
         /// `dima_web::ServeOptions::max_streams`.
         streams: usize,
     },
+    /// `max_namespaces` is smaller than the static namespaces plus `max_connections` ×
+    /// `max_namespaces_per_connection`: connections could fill the table before the
+    /// connection cap stops them.
+    #[error("max_namespaces ({namespaces}) is below what the connections may hold ({needed})")]
+    NamespaceTable {
+        /// `Options::max_namespaces`.
+        namespaces: usize,
+        /// Static namespaces plus `max_connections` × `max_namespaces_per_connection`.
+        needed: usize,
+    },
 }

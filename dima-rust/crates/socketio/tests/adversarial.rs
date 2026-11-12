@@ -195,9 +195,13 @@ fn ok() -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn namespace_floods_are_refused_before_anything_is_allocated() {
+    // Changed on purpose by finding 6: the table must hold what the connections may claim
+    // (2 static names + 2 connections × 8), so it can no longer fill before the connection cap;
+    // the old version of this test filled a 15-entry table from two connections.
     let s = setup(
         Options {
-            max_namespaces: 3 + 12,
+            max_connections: 2,
+            max_namespaces: 2 + 2 * 8,
             ..Options::default()
         },
         NamespaceOptions::default(),
@@ -230,19 +234,21 @@ async fn namespace_floods_are_refused_before_anything_is_allocated() {
         );
     }
     assert_eq!(s.server.io.stats().namespaces, base + 8);
-    // Server-wide: 3 + 12 concrete namespaces at most (2 static + 13 members).
+    // Server-wide: every connection gets its 8, and a third connection is refused by the
+    // connection cap before it could claim any.
     let mut joined = 0;
     for i in 0..8 {
         if b.join(&format!("/f/b{i}"), &ok()).await.is_ok() {
             joined += 1;
         }
     }
-    assert_eq!(joined, 5);
-    assert_eq!(s.server.io.stats().namespaces, 15);
+    assert_eq!(joined, 8);
+    assert_eq!(s.server.io.stats().namespaces, 18);
+    assert_eq!(try_open(s.server.addr).await.err(), Some(Some(503)));
     assert_eq!(s.telemetry.get("refusal:TooManyOnConnection"), 1);
     assert_eq!(s.telemetry.get("refusal:NameTooLong"), 1);
     assert_eq!(s.telemetry.get("refusal:InvalidNamespace"), 5);
-    assert_eq!(s.telemetry.get("refusal:TooManyNamespaces"), 3);
+    assert_eq!(s.telemetry.get("refusal:TooManyNamespaces"), 0);
     // Members are released with their last socket.
     a.close().await;
     b.close().await;
@@ -1355,6 +1361,36 @@ async fn a_connection_cap_beyond_the_stream_quota_refuses_to_build() {
             connections: 11,
             streams: 10
         })
+    );
+}
+
+/// Finding 6: the namespace table must hold what the connections may claim.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_namespace_table_smaller_than_the_connections_may_claim_refuses_to_build() {
+    let builder = dima_socketio::SocketIo::builder(
+        Options {
+            max_connections: 100,
+            max_namespaces: 100 * 8,
+            ..Options::default()
+        },
+        Runtime::default(),
+        dima_core::Shutdown::new(),
+    );
+    assert_eq!(
+        builder.build(&dima_web::ServeOptions::default()).err(),
+        Some(dima_socketio::BuildError::NamespaceTable {
+            namespaces: 800,
+            needed: 801
+        })
+    );
+    assert!(
+        dima_socketio::SocketIo::builder(
+            Options::default(),
+            Runtime::default(),
+            dima_core::Shutdown::new()
+        )
+        .build(&dima_web::ServeOptions::default())
+        .is_ok()
     );
 }
 

@@ -37,9 +37,17 @@ pub struct Options {
     /// Engine.IO connections open at once (4096). Beyond, a new handshake is answered
     /// `503 Service Unavailable`.
     pub max_connections: usize,
-    /// Concrete namespaces in existence at once, family members included (4096). A connect to a
-    /// family member that would exceed it is refused with `Invalid namespace`. Members are
-    /// released when their last socket leaves (the reference never releases them).
+    /// Concrete namespaces in existence at once, family members included (33,024: room for
+    /// `max_connections` × `max_namespaces_per_connection` members plus 256 static names). A
+    /// member exists only while some connection has joined it or is joining it, and is released
+    /// when the last one leaves (the reference never releases them); the builder refuses a value
+    /// below the static names plus `max_connections` × `max_namespaces_per_connection`, so the
+    /// table can never be full before the connection cap is: an unauthenticated connection can
+    /// claim at most its own 8 entries, whatever the checks answer. (Of the two possible rules,
+    /// charging per connection was chosen over admitting a member only after its check passed
+    /// because several families accept any channel name in their check, as the reference does,
+    /// so a passed check proves nothing about the client.) A connect beyond it would answer
+    /// `Invalid namespace`. Each member costs a few hundred bytes (about 13 MB at the limit).
     pub max_namespaces: usize,
     /// Sockets joined or joining one concrete namespace at once (4096, the connection cap, so
     /// by default it never refuses before the connection cap does). Beyond, `Invalid namespace`.
@@ -102,7 +110,7 @@ impl Default for Options {
             recovery_max_disconnection: Duration::from_secs(120),
             recovery_sweep_interval: Duration::from_secs(60),
             max_connections: 4096,
-            max_namespaces: 4096,
+            max_namespaces: 4096 * 8 + 256,
             max_sockets_per_namespace: 4096,
             max_namespaces_per_connection: 8,
             max_namespace_name: 256,
@@ -178,9 +186,11 @@ impl Default for QueueLimits {
     }
 }
 
-/// Hard bounds on what connection state recovery keeps. When one is reached the oldest entries
-/// of the namespace being written are dropped; a client whose offset or session was dropped
-/// connects fresh (`recovered` false), never with a partial replay.
+/// Hard bounds on what connection state recovery keeps. At a namespace's own bound its oldest
+/// entries are dropped; at a server-wide bound, the oldest entries of the namespace holding the
+/// most (stored bytes, or sessions) are, so one channel's churn cannot evict the others'. A
+/// client whose offset or session was dropped connects fresh (`recovered` false), never with a
+/// partial replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryLimits {
     /// Stored packets per namespace (4096).
@@ -195,9 +205,11 @@ pub struct RecoveryLimits {
     pub sessions_per_namespace: usize,
     /// Sessions kept in all namespaces (4096).
     pub sessions_total: usize,
-    /// The largest session kept (16 KiB, estimated from its ids and the size of the socket data
-    /// type); a larger one is not kept.
+    /// The largest session kept (16 KiB: its ids, `size_of` the socket data and what the data
+    /// keeps on the heap, [`crate::RetainedSize`]); a larger one is not kept.
     pub session_bytes: usize,
+    /// Bytes of all kept sessions together (32 MiB).
+    pub session_bytes_total: usize,
 }
 
 impl Default for RecoveryLimits {
@@ -210,6 +222,7 @@ impl Default for RecoveryLimits {
             sessions_per_namespace: 256,
             sessions_total: 4096,
             session_bytes: 16 << 10,
+            session_bytes_total: 32 << 20,
         }
     }
 }

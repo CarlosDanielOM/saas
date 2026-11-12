@@ -64,7 +64,9 @@ pub(crate) struct Shared {
     pub offsets: Offsets,
     /// Bytes queued for all clients.
     pub outbound_bytes: AtomicUsize,
-    pub recovery: recovery::Totals,
+    pub recovery: Arc<recovery::Totals>,
+    /// Every namespace's recovery state, under one lock.
+    store: Mutex<recovery::Store>,
     /// Server-to-client acknowledgements awaited.
     pub pending_acks: AtomicUsize,
     /// Inbound bytes held (parsed client data not yet finished with).
@@ -115,6 +117,25 @@ impl Shared {
     pub fn namespace_count(&self) -> usize {
         self.namespaces.load(Ordering::Acquire)
     }
+
+    /// The recovery store.
+    pub fn store(&self) -> MutexGuard<'_, recovery::Store> {
+        self.store.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// What a recovery store operation at `now` needs.
+    pub fn recovery_ctx(&self, now: i64) -> recovery::Ctx<'_> {
+        let millis = |d: Duration| i64::try_from(d.as_millis()).unwrap_or(i64::MAX);
+        recovery::Ctx {
+            limits: self.options.recovery,
+            timing: recovery::Timing {
+                max_disconnection_ms: millis(self.options.recovery_max_disconnection),
+                sweep_interval_ms: millis(self.options.recovery_sweep_interval),
+            },
+            telemetry: self.telemetry.as_ref(),
+            now,
+        }
+    }
 }
 
 /// The declarations, fixed when the server is built.
@@ -131,10 +152,6 @@ impl Registry {
             .get(name)
             .cloned()
             .or_else(|| self.families.iter().find(|def| def.matches(name)).cloned())
-    }
-
-    fn all(&self) -> impl Iterator<Item = &Arc<dyn ErasedDef>> {
-        self.statics.values().chain(self.families.iter())
     }
 }
 
@@ -171,6 +188,7 @@ impl Builder {
     /// A server with `options`, the injected `runtime`, stopped by `shutdown`.
     pub fn new(options: Options, runtime: Runtime, shutdown: Shutdown) -> Self {
         let largest_queue = options.queue.packets;
+        let totals = Arc::new(recovery::Totals::default());
         let shared = Arc::new(Shared {
             options,
             clock: runtime.clock,
@@ -178,7 +196,8 @@ impl Builder {
             telemetry: runtime.telemetry,
             offsets: Offsets::default(),
             outbound_bytes: AtomicUsize::new(0),
-            recovery: recovery::Totals::default(),
+            recovery: Arc::clone(&totals),
+            store: Mutex::new(recovery::Store::new(totals)),
             pending_acks: AtomicUsize::new(0),
             inbound_bytes: Arc::default(),
             namespaces: AtomicUsize::new(0),
@@ -265,6 +284,22 @@ impl Builder {
                 streams: serve.max_streams,
             });
         }
+        // Every family member exists only while a connection holds an entry for it (joined or
+        // joining), at most `max_namespaces_per_connection` per connection: with room for that
+        // many per connection, unauthenticated connections cannot fill the table before the
+        // connection cap stops them.
+        let options = &self.shared.options;
+        let statics = self.statics.len() + usize::from(!self.statics.contains_key("/"));
+        let needed = options
+            .max_connections
+            .saturating_mul(options.max_namespaces_per_connection)
+            .saturating_add(statics);
+        if options.max_namespaces < needed {
+            return Err(BuildError::NamespaceTable {
+                namespaces: options.max_namespaces,
+                needed,
+            });
+        }
         if !self.statics.contains_key("/") {
             let def = Arc::new(Def::new(
                 Arc::clone(&self.shared),
@@ -340,9 +375,10 @@ impl Builder {
                     _ = tick.tick() => {}
                 }
                 let Some(inner) = weak.upgrade() else { return };
-                for def in inner.registry.all() {
-                    def.sweep();
-                }
+                let shared = &inner.shared;
+                shared
+                    .store()
+                    .sweep(&shared.recovery_ctx(shared.clock.now_ms()));
             }
         });
         Ok(SocketIo { inner })
@@ -531,6 +567,8 @@ pub struct Stats {
     pub stored_bytes: usize,
     /// Sessions kept for recovery.
     pub sessions: usize,
+    /// Bytes the kept sessions hold (their data measured by `RetainedSize`).
+    pub session_bytes: usize,
     /// Server-to-client acknowledgements awaited.
     pub pending_acks: usize,
     /// Inbound bytes held: client data reserved before parsing and not yet finished with.
@@ -559,6 +597,7 @@ impl SocketIo {
             stored_packets: shared.recovery.packets.load(Ordering::Acquire),
             stored_bytes: shared.recovery.bytes.load(Ordering::Acquire),
             sessions: shared.recovery.sessions.load(Ordering::Acquire),
+            session_bytes: shared.recovery.session_bytes.load(Ordering::Acquire),
             pending_acks: shared.pending_acks.load(Ordering::Acquire),
             inbound_bytes: shared.inbound_bytes.load(Ordering::Acquire),
         }
@@ -600,9 +639,7 @@ impl SocketIo {
         let _ = tokio::time::timeout_at(deadline, shared.tasks.wait()).await;
         shared.hard_stop.cancel();
         let _ = tokio::time::timeout(Duration::from_secs(1), shared.tasks.wait()).await;
-        for def in inner.registry.all() {
-            def.clear();
-        }
+        shared.store().clear();
         inner.done.cancel();
     }
 }
