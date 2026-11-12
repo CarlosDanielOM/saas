@@ -112,7 +112,7 @@ Before implementing data-dependent features or functions that may duplicate exis
 
 ## Documentation Work
 
-- When the active agent or harness provides GPT-6.1 Terra, use GPT-6.1 Terra in **high reasoning/thinking mode** for documentation updates (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.1-terra`, `reasoningEffort: high`; its default effort is low, so set it explicitly).
+- When the active agent or harness provides GPT-6.1 Terra, use GPT-6.1 Terra in **high reasoning/thinking mode** for documentation updates (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.1-terra`, `reasoningEffort: high`; its default effort is low, so set it explicitly). If Terra is unavailable, use Claude Haiku 5.5 in **high thinking mode** instead (T3 Code: provider `claudeAgent`, model `claude-haiku-5-5`, `effort: high`; its default is medium). Use exactly Haiku 5.5: not Haiku 4.5, and not a generic `haiku` alias that may resolve to an older model.
 - For a broad docs refresh, delegate source-backed audits to separate agents when the harness permits it. Give each agent a non-overlapping set of files and feature sources, stay within the actual concurrency limit, and have one integrator reconcile terminology and English/Spanish parity.
 - Delegation does not replace verification. Repository guidance changes need a reviewed diff and `git diff --check`; published `dimadocs` content still needs the docs preview, candidate build, behavior check, deployment, and production verification described above.
 
