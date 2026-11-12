@@ -10,7 +10,7 @@
 //! | `twitch:{id}:ai:exhaust`, `{id}:ai:exhaust` | both scripts, the exhaustion repair | none |
 //! | `twitch:{id}:ai:credits:plan-version` | the plan projection (read here) | none |
 //! | `twitch:{id}:ai:usage-local:{sha256(externalId)}` | [`APPLY_AI_CREDIT_USAGE`] | 31 days |
-//! | `twitch:{id}:ai:credits:revision` | the generation and the debits held against Polar's figures: every debit, acknowledgement, dead letter, read of Polar and publication ([`super::balance`]) | 31 days |
+//! | `twitch:{id}:ai:credits:revision` | the generation and the acknowledged debits held against Polar's figures: every debit, acknowledgement, read of Polar and publication ([`super::balance`]; queued and dead-lettered debits are held by their lists) | 31 days |
 //!
 //! The exhaustion flags are rebuilt lazily: after a clear, a channel reads as not exhausted until
 //! its next `getAiCredits` (which every paid AI path calls) or usage write. The cutover step

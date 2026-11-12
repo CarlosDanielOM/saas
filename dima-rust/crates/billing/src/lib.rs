@@ -54,7 +54,8 @@
 //! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:credits:revision` (the generation and
 //! the debits held against Polar's figures, [`plans::balance`]), `twitch:{id}:ai:usage-local:*`,
 //! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`, `locks:plan-effects:{owner}`
-//! (one plan change's write and effects at a time, [`plans::projection`]). An admin grant's
+//! (one plan change's write and effects at a time, and the usage ledger's writers read the
+//! owner's tier and write its expiry under it, [`plans::projection`]). An admin grant's
 //! identity and outcome are kept in MongoDB, not Dragonfly ([`admin_grant`]). Drained (money):
 //! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
 //! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
