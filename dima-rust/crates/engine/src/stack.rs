@@ -27,7 +27,8 @@
 //! - **Parsing** ([`crate::syntax::SyntaxEngine`], and the engine's `compile` and `parse`) needs
 //!   [`PARSE_STACK_BYTES`]. On a thread that is not registered, or has less left, a program is
 //!   parsed on a short-lived thread with a stack of [`PARSE_THREAD_STACK_BYTES`] instead, so
-//!   parsing works on any thread; on a registered thread with room it costs nothing extra.
+//!   parsing works on any thread; on a registered thread with room it costs nothing extra. At
+//!   most [`PARSE_THREADS`] such threads run at once; a caller over the cap waits its turn.
 //! - **Evaluation** (every entry point of [`crate::eval::Engine`]: `render_message`,
 //!   `render_reference`, `evaluate_message`, `evaluate_program_message`, `evaluate_reference`,
 //!   `evaluate_timer_message`) needs [`EVAL_STACK_BYTES`] left every time its future is polled. A future
@@ -39,6 +40,7 @@
 //!   [`crate::host::Host`] the evaluator polls, at any depth, may use that much.
 
 use std::cell::Cell;
+use std::sync::{Condvar, Mutex, PoisonError};
 
 /// The stack a parse needs: the deepest program (32 levels on the costliest recursive path of
 /// the grammar, a loop's header: about 22 KiB a level) measured in a debug build, with room for
@@ -112,9 +114,101 @@ pub fn run_on_thread<T: Send>(stack_size: usize, work: impl FnOnce() -> T + Send
     })
 }
 
+/// How many parses may run on their own thread at once ([`crate::syntax::SyntaxEngine`] on a
+/// thread that is not registered, or has too little stack left): four, about 3.7 MiB of
+/// parse stacks at most. A caller over the cap waits its turn: every parse is bounded by its
+/// own work budget, so a turn always comes.
+pub const PARSE_THREADS: usize = 4;
+
+/// The parse threads in flight, and the signal that one ended.
+static PARSE_SLOTS: (Mutex<usize>, Condvar) = (Mutex::new(0), Condvar::new());
+
+/// One of the [`PARSE_THREADS`] places, given back when dropped (a panic in the parse
+/// included).
+struct ParseSlot;
+
+impl ParseSlot {
+    fn take() -> Self {
+        let (busy, freed) = &PARSE_SLOTS;
+        let mut busy = busy.lock().unwrap_or_else(PoisonError::into_inner);
+        while *busy >= PARSE_THREADS {
+            busy = freed.wait(busy).unwrap_or_else(PoisonError::into_inner);
+        }
+        *busy += 1;
+        Self
+    }
+}
+
+impl Drop for ParseSlot {
+    fn drop(&mut self) {
+        let (busy, freed) = &PARSE_SLOTS;
+        let mut busy = busy.lock().unwrap_or_else(PoisonError::into_inner);
+        *busy = busy.saturating_sub(1);
+        drop(busy);
+        freed.notify_one();
+    }
+}
+
+/// Runs a parse on its own short-lived thread with a stack of [`PARSE_THREAD_STACK_BYTES`],
+/// at most [`PARSE_THREADS`] at once: a caller over the cap blocks until one ends. Waiting,
+/// not a "busy" error: every parse is bounded by its own work budget (derived from its
+/// length, [`crate::syntax::WORK_PER_INPUT_BYTE`]), so a turn always comes, and the waiting
+/// thread is the caller's own, which exists already; an error would show a valid command as
+/// `[Parse error: …]` in chat whenever a burst arrived. A parse never waits for a slot from
+/// inside a parse thread, so the wait cannot deadlock.
+pub(crate) fn run_on_parse_thread<T: Send>(work: impl FnOnce() -> T + Send) -> Option<T> {
+    let _slot = ParseSlot::take();
+    run_on_thread(PARSE_THREAD_STACK_BYTES, work)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_threads_are_capped() {
+        use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+        let current = AtomicUsize::new(0);
+        let peak = AtomicUsize::new(0);
+        let finished = AtomicUsize::new(0);
+        let callers = 4 * PARSE_THREADS;
+        std::thread::scope(|scope| {
+            for _ in 0..callers {
+                scope.spawn(|| {
+                    let done = run_on_parse_thread(|| {
+                        let now = current.fetch_add(1, SeqCst) + 1;
+                        peak.fetch_max(now, SeqCst);
+                        std::thread::sleep(std::time::Duration::from_millis(30));
+                        current.fetch_sub(1, SeqCst);
+                    });
+                    if done.is_some() {
+                        finished.fetch_add(1, SeqCst);
+                    }
+                });
+            }
+        });
+        // Every caller got its parse; never more than the cap ran at once.
+        assert_eq!(finished.load(SeqCst), callers);
+        let peak = peak.load(SeqCst);
+        assert!(
+            (1..=PARSE_THREADS).contains(&peak),
+            "{peak} parse threads at once"
+        );
+    }
+
+    #[test]
+    fn a_burst_of_parses_on_unregistered_threads_all_complete() {
+        let engine = crate::syntax::SyntaxEngine::default();
+        let deep = format!("{}a{}", "$(upper ".repeat(20), ")".repeat(20));
+        std::thread::scope(|scope| {
+            let parses: Vec<_> = (0..4 * PARSE_THREADS)
+                .map(|_| scope.spawn(|| engine.parse(&deep).is_ok()))
+                .collect();
+            for parse in parses {
+                assert!(parse.join().unwrap_or(false));
+            }
+        });
+    }
 
     #[test]
     fn a_registered_thread_knows_what_is_left() {

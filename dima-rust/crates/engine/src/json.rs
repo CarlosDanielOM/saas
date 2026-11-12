@@ -7,6 +7,11 @@
 //! Containers nest up to [`MAX_JSON_NESTING`], read without recursion; V8's reader has no
 //! depth limit of its own, and deeper text reads as invalid JSON here.
 //!
+//! The evaluator reads with a budget ([`parse_within`]): every value node costs
+//! [`JSON_NODE_BYTES`], every text and object key its bytes on top (a key also a node), charged
+//! as the value is built, so a short text of many small containers (`[[],[],…]`: three bytes a
+//! node) cannot become a value many times its size.
+//!
 //! It is separate from the web crate's request-body parser, which is stricter on purpose.
 
 use crate::value::Value;
@@ -15,6 +20,18 @@ use crate::value::Value;
 /// cloned, compared, written and dropped by recursive code; the evaluator's stack contract
 /// (`crate::stack`) leaves room for a value this deep.
 pub const MAX_JSON_NESTING: usize = 256;
+
+/// What [`parse_within`] charges for every value node (and every object key), on top of the
+/// bytes of its text: a [`Value`] is 32 bytes on a 64-bit target and an object entry is a key
+/// (a 24-byte `String`) beside its value, so this is a floor for what a node takes.
+pub const JSON_NODE_BYTES: usize = 32;
+
+const _: () = assert!(std::mem::size_of::<Value>() <= JSON_NODE_BYTES);
+
+/// The value [`parse_within`] was reading needs more than its budget.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("the JSON value needs more memory than its budget")]
+pub struct OverBudget;
 
 /// A container being read.
 enum Frame {
@@ -26,14 +43,40 @@ enum Frame {
 struct Reader<'a> {
     text: &'a str,
     at: usize,
+    /// Bytes of the budget left.
+    left: usize,
+    /// Set when the budget ran out (the read then ends as `None`).
+    over: bool,
 }
 
 /// `JSON.parse(text)`, or `None` where it throws (or the nesting is over the bound).
 pub fn parse(text: &str) -> Option<Value> {
-    let mut reader = Reader { text, at: 0 };
+    parse_within(text, usize::MAX).unwrap_or_default()
+}
+
+/// [`parse`] within a budget of `budget` bytes, charged as the value is built
+/// ([`JSON_NODE_BYTES`] a node plus the bytes of its text): [`OverBudget`] as soon as the value
+/// read so far needs more, before anything more is built.
+pub fn parse_within(text: &str, budget: usize) -> Result<Option<Value>, OverBudget> {
+    let mut reader = Reader {
+        text,
+        at: 0,
+        left: budget,
+        over: false,
+    };
+    let value = read(&mut reader);
+    if reader.over {
+        return Err(OverBudget);
+    }
+    Ok(value)
+}
+
+fn read(reader: &mut Reader<'_>) -> Option<Value> {
+    let text = reader.text;
     let mut stack: Vec<Frame> = Vec::new();
     'value: loop {
         reader.skip_space();
+        reader.charge(JSON_NODE_BYTES)?;
         let mut value = match reader.peek()? {
             open @ (b'[' | b'{') => {
                 reader.at += 1;
@@ -56,7 +99,11 @@ pub fn parse(text: &str) -> Option<Value> {
                     continue 'value;
                 }
             }
-            b'"' => Value::Text(reader.string()?),
+            b'"' => {
+                let text = reader.string()?;
+                reader.charge(text.len())?;
+                Value::Text(text)
+            }
             b't' => reader.word("true", Value::Bool(true))?,
             b'f' => reader.word("false", Value::Bool(false))?,
             b'n' => reader.word("null", Value::Null)?,
@@ -102,6 +149,20 @@ pub fn parse(text: &str) -> Option<Value> {
 }
 
 impl Reader<'_> {
+    /// Takes `bytes` from the budget; `None` (and the flag) when they are not left.
+    fn charge(&mut self, bytes: usize) -> Option<()> {
+        match self.left.checked_sub(bytes) {
+            Some(left) => {
+                self.left = left;
+                Some(())
+            }
+            None => {
+                self.over = true;
+                None
+            }
+        }
+    }
+
     fn peek(&self) -> Option<u8> {
         self.text.as_bytes().get(self.at).copied()
     }
@@ -131,12 +192,13 @@ impl Reader<'_> {
         Some(value)
     }
 
-    /// An object key and its colon.
+    /// An object key and its colon, charged as a node and its bytes.
     fn key(&mut self) -> Option<String> {
         if self.peek() != Some(b'"') {
             return None;
         }
         let key = self.string()?;
+        self.charge(JSON_NODE_BYTES.saturating_add(key.len()))?;
         self.skip_space();
         self.eat(b':').then_some(key)
     }
@@ -321,6 +383,25 @@ mod tests {
         ] {
             assert_eq!(parse(invalid), None, "{invalid:?}");
         }
+    }
+
+    #[test]
+    fn a_budget_is_charged_per_node_and_text_byte() {
+        // A list of two texts: three nodes and three bytes.
+        let cost = 3 * JSON_NODE_BYTES + 3;
+        assert_eq!(
+            parse_within(r#"["ab","c"]"#, cost),
+            Ok(parse(r#"["ab","c"]"#))
+        );
+        assert_eq!(parse_within(r#"["ab","c"]"#, cost - 1), Err(OverBudget));
+        // An object entry: the object, the key (a node and its byte) and the value.
+        assert!(parse_within(r#"{"k":1}"#, 3 * JSON_NODE_BYTES + 1).is_ok());
+        assert_eq!(
+            parse_within(r#"{"k":1}"#, 3 * JSON_NODE_BYTES),
+            Err(OverBudget)
+        );
+        // Invalid text within the budget is still `None`.
+        assert_eq!(parse_within("[1,", 1024), Ok(None));
     }
 
     #[test]

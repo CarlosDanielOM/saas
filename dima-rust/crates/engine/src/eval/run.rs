@@ -5,6 +5,7 @@ use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
 use super::frame::{Frames, Scalars};
+use super::limits::KEPT_ENTRY_BYTES;
 use super::{Engine, EvalError, EvalStats, LimitKind};
 use crate::context::{
     BudgetSnapshot, CommandReference, Context, LoopExit, Origin, ReferenceAuthorization,
@@ -54,14 +55,55 @@ pub(super) enum Kept {
     LoopVars,
 }
 
+/// What an entry of a kept map is charged: its bytes and [`KEPT_ENTRY_BYTES`].
 fn entry_size(key: &str, value: &str) -> usize {
-    key.len().saturating_add(value.len())
+    key.len()
+        .saturating_add(value.len())
+        .saturating_add(KEPT_ENTRY_BYTES)
 }
 
 fn map_size(map: &OrderedMap<String, String>) -> usize {
     map.iter().fold(0usize, |total, (k, v)| {
         total.saturating_add(entry_size(k, v))
     })
+}
+
+/// What one entry of the response list keeps, in bytes: [`KEPT_ENTRY_BYTES`] and its
+/// serialised size.
+fn response_kept(item: &str) -> usize {
+    crate::value::json_string_size(item).saturating_add(KEPT_ENTRY_BYTES)
+}
+
+/// Running totals of the response list, kept as it changes (never rescanned).
+#[derive(Clone, Copy, Default)]
+pub(super) struct ResponseTotals {
+    /// Bytes of text of every entry together, within [`super::EvalLimits::text_bytes`].
+    text: usize,
+    /// What the entries keep ([`response_kept`]) together.
+    pub(super) kept: usize,
+    /// [`Self::kept`] when the run started: the run is charged only for growth past it.
+    kept_at_start: usize,
+}
+
+impl ResponseTotals {
+    fn of(items: &[String]) -> Self {
+        let (text, kept) = items.iter().fold((0usize, 0usize), |(text, kept), item| {
+            (
+                text.saturating_add(item.len()),
+                kept.saturating_add(response_kept(item)),
+            )
+        });
+        Self {
+            text,
+            kept,
+            kept_at_start: kept,
+        }
+    }
+
+    /// What the run is charged for the list when it keeps `kept` bytes.
+    fn charge(&self, kept: usize) -> usize {
+        kept.saturating_sub(self.kept_at_start)
+    }
 }
 
 /// How a loop body ended.
@@ -91,6 +133,8 @@ pub(super) struct Run<'a> {
     lease: u64,
     /// Bytes of output charged to the message's budget.
     output: usize,
+    /// The response list's running totals.
+    pub(super) responses: ResponseTotals,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -116,11 +160,12 @@ fn item_texts(items: &[Value]) -> Result<Vec<String>, CoercionError> {
 
 /// `parseIterableValue`: a list's items, a JSON list's items, otherwise the text as one item
 /// (none for empty text, `null` and `undefined`). A JSON list whose items `String()` cannot
-/// convert is one item, its text: the reference converts them inside its `try`.
-fn iterable_values(value: Value) -> Result<Vec<String>, CoercionError> {
+/// convert is one item, its text: the reference converts them inside its `try`. `parsed` is
+/// the text read as JSON ([`Run::parse_json`]).
+fn iterable_values(value: Value, parsed: Option<Value>) -> Result<Vec<String>, CoercionError> {
     Ok(match value {
         Value::List(items) => item_texts(&items)?,
-        Value::Text(text) => match Value::parse_json(&text) {
+        Value::Text(text) => match parsed {
             Some(Value::List(items)) => item_texts(&items).unwrap_or_else(|_| vec![text]),
             Some(_) => vec![text],
             None if text.is_empty() => Vec::new(),
@@ -231,6 +276,7 @@ impl<'a> Run<'a> {
             effect: context.effect.clone(),
         };
         let loop_vars = std::mem::take(&mut state.loop_vars);
+        let responses = ResponseTotals::of(&state.command_responses);
         Self {
             engine,
             host,
@@ -244,6 +290,7 @@ impl<'a> Run<'a> {
             budget,
             lease: 0,
             output: 0,
+            responses,
         }
     }
 
@@ -440,6 +487,21 @@ impl<'a> Run<'a> {
                 .saturating_add(map_size(&outer)),
         );
         self.frames.loop_vars = outer;
+    }
+
+    /// The memory the run may still take: within its own limit and the message's.
+    fn memory_room(&self) -> usize {
+        let run = self.engine.limits.memory_bytes.saturating_sub(self.memory);
+        let message = usize::try_from(self.budget.memory_left()).unwrap_or(usize::MAX);
+        run.min(message)
+    }
+
+    /// `JSON.parse(text)` (`None` where it throws), its nodes charged as they are built
+    /// against the memory the run may still take ([`crate::json::parse_within`]): a value
+    /// that needs more is [`LimitKind::Memory`] and is not built.
+    pub(super) fn parse_json(&self, text: &str) -> Result<Option<Value>, EvalError> {
+        crate::json::parse_within(text, self.memory_room())
+            .map_err(|_| EvalError::Limit(LimitKind::Memory))
     }
 
     /// Adds `bytes` to a running total of one step's gathered values, within the text budget.
@@ -810,11 +872,13 @@ impl<'a> Run<'a> {
             let responses = &self.state.command_responses;
             return Ok(match accessor {
                 None | Some(ArrayAccessor::Array) => {
-                    let size = responses
-                        .iter()
-                        .fold(responses.len().saturating_add(1), |total, item| {
-                            total.saturating_add(crate::value::json_string_size(item))
-                        });
+                    // The serialised entries, their commas and brackets, from the totals.
+                    let entries = responses.len();
+                    let size = self
+                        .responses
+                        .kept
+                        .saturating_sub(entries.saturating_mul(KEPT_ENTRY_BYTES))
+                        .saturating_add(entries.saturating_add(1));
                     self.check_size(size)?;
                     Value::Text(json_of_texts(&self.state.command_responses))
                 }
@@ -876,14 +940,7 @@ impl<'a> Run<'a> {
         if Self::responses(name, storage) {
             match accessor {
                 Some(ArrayAccessor::Append) => {
-                    let total = self
-                        .state
-                        .command_responses
-                        .iter()
-                        .chain(&appended)
-                        .fold(0usize, |total, item| total.saturating_add(item.len()));
-                    self.check_size(total)?;
-                    self.state.command_responses.extend(appended);
+                    self.append_responses(appended)?;
                     self.save_responses().await?;
                 }
                 Some(ArrayAccessor::SetIndex { index }) => {
@@ -891,9 +948,7 @@ impl<'a> Run<'a> {
                     if let Some(at) =
                         resolve_array_index(&index, self.state.command_responses.len())?
                     {
-                        if let Some(slot) = self.state.command_responses.get_mut(at) {
-                            *slot = text;
-                        }
+                        self.replace_response(at, text)?;
                         self.save_responses().await?;
                     }
                 }
@@ -968,6 +1023,63 @@ impl<'a> Run<'a> {
             }
             _ => false,
         }))
+    }
+
+    /// Appends `items` to the response list, all or none. The list's size afterwards is
+    /// computed from the running totals first: its entries must stay within
+    /// [`super::EvalLimits::response_entries`], its text within the text budget, and what it
+    /// keeps more is reserved against the run's and the message's memory.
+    fn append_responses(&mut self, items: Vec<String>) -> Result<(), EvalError> {
+        let totals = self.responses;
+        self.state
+            .command_responses
+            .len()
+            .checked_add(items.len())
+            .filter(|entries| *entries <= self.engine.limits.response_entries)
+            .ok_or(EvalError::Limit(LimitKind::Memory))?;
+        let (text, kept) = items
+            .iter()
+            .try_fold((totals.text, totals.kept), |(text, kept), item| {
+                Some((
+                    text.checked_add(item.len())?,
+                    kept.checked_add(response_kept(item))?,
+                ))
+            })
+            .ok_or(EvalError::Limit(LimitKind::TextSize))?;
+        self.check_size(text)?;
+        self.keep(totals.charge(kept), totals.charge(totals.kept))?;
+        self.state.command_responses.extend(items);
+        self.responses.text = text;
+        self.responses.kept = kept;
+        Ok(())
+    }
+
+    /// Replaces the response at `at` with `text`. The list's size afterwards is computed
+    /// first: its text must stay within the text budget and what it keeps more is reserved
+    /// against the run's and the message's memory, or nothing changes.
+    fn replace_response(&mut self, at: usize, text: String) -> Result<(), EvalError> {
+        let Some(old) = self.state.command_responses.get(at) else {
+            return Ok(());
+        };
+        let totals = self.responses;
+        let text_total = totals
+            .text
+            .checked_sub(old.len())
+            .and_then(|rest| rest.checked_add(text.len()))
+            .ok_or(EvalError::Limit(LimitKind::TextSize))?;
+        self.check_size(text_total)?;
+        let kept = totals
+            .kept
+            .checked_sub(response_kept(old))
+            .and_then(|rest| rest.checked_add(response_kept(&text)))
+            .ok_or(EvalError::Limit(LimitKind::Memory))?;
+        self.keep(totals.charge(kept), totals.charge(totals.kept))?;
+        if let Some(slot) = self.state.command_responses.get_mut(at) {
+            *slot = text;
+        }
+        self.responses.text = text_total;
+        self.responses.kept = kept;
+        Ok(())
     }
 
     /// `JSON.stringify` of a list, within the size limit.
@@ -1161,10 +1273,14 @@ impl<'a> Run<'a> {
                 None => Value::empty(),
             };
             self.next_active(depth);
-            if let Value::Text(text) = &value {
-                self.charge_bytes(text.len())?;
-            }
-            for item in iterable_values(value)? {
+            let parsed = match &value {
+                Value::Text(text) => {
+                    self.charge_bytes(text.len())?;
+                    self.parse_json(text)?
+                }
+                _ => None,
+            };
+            for item in iterable_values(value, parsed)? {
                 if iterations >= max {
                     break;
                 }
@@ -1283,7 +1399,15 @@ impl<'a> Run<'a> {
             _ => None,
         };
         let argument = values.join(" ");
-        self.keep(argument.len(), 0)?;
+        let event_data = reference_event_data(context);
+        // The reference keeps its argument and its event data until the bot runs it.
+        self.keep(
+            argument
+                .len()
+                .saturating_add(event_data.weight())
+                .saturating_add(KEPT_ENTRY_BYTES),
+            0,
+        )?;
         let mut visited = context.visited_commands.clone();
         if !visited.contains(&key) {
             visited.push(key);
@@ -1293,7 +1417,7 @@ impl<'a> Run<'a> {
             channel_id: context.broadcaster_id.clone(),
             command_name: name,
             argument,
-            event_data: reference_event_data(context),
+            event_data,
             authorization: self.reference_authorization(),
             state: ReferenceState {
                 visited_commands: visited,

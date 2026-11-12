@@ -447,6 +447,8 @@ pub struct Delivery {
     pub runs: Vec<(String, Result<String, dima_engine::eval::EvalError>)>,
     /// The message's budget.
     pub budget: dima_engine::eval::MessageBudget,
+    /// The most entries any run's response list held when it ended.
+    pub most_responses: usize,
 }
 
 /// The context a referenced command runs with (`commandHandler` with the reference's state).
@@ -484,6 +486,7 @@ pub fn deliver(
             .await
             .unwrap();
         let budget = top.budget.clone();
+        let mut most_responses = top.state.command_responses.len();
         let mut runs = vec![(context.command_name.clone(), Ok(top.text))];
         let mut pending: Vec<_> = top.state.command_references.into_iter().rev().collect();
         while let Some(reference) = pending.pop() {
@@ -506,6 +509,7 @@ pub fn deliver(
                 .await
             {
                 Ok(rendered) => {
+                    most_responses = most_responses.max(rendered.state.command_responses.len());
                     runs.push((reference.command_name.clone(), Ok(rendered.text)));
                     pending.extend(rendered.state.command_references.into_iter().rev());
                 }
@@ -518,6 +522,10 @@ pub fn deliver(
                 }
             }
         }
-        Delivery { runs, budget }
+        Delivery {
+            runs,
+            budget,
+            most_responses,
+        }
     })
 }
