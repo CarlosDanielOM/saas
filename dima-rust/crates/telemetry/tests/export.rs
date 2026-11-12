@@ -149,6 +149,12 @@ async fn batches_split_and_the_inbox_keeps_one_hundred() {
         .await
         .unwrap();
     assert_eq!(overflow, 2);
+    // The overflow counter expires like the inbox.
+    let ttl: i64 = dragonfly
+        .query(redis::cmd("TTL").arg(format!("{name}:overflow")))
+        .await
+        .unwrap();
+    assert!((3500..=3600).contains(&ttl), "overflow ttl {ttl}");
     assert!(items.iter().all(|item| item.len() <= 256_000));
     support::keys_and_cleanup(&dragonfly, &format!("{name}:*")).await;
 }

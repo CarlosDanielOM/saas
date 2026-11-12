@@ -12,7 +12,8 @@
 //! **Spans** (at most 300 per flush) and **telemetry logs** (at most 100) are kept as rows.
 //!
 //! **Payloads** are the reference's version-1 envelope, split into batches of 100 metrics, 50
-//! spans and 25 logs; a batch over 256,000 bytes is dropped and counted.
+//! spans and 25 logs; a batch over 256,000 bytes is not sent: every observation, span and log in
+//! it is counted as lost, and the batch in `Stats::oversized_batches`.
 
 use crate::label::{self, CHANNEL_MAX, Channel, KIND_MAX, Label, MetricKey, NAME_MAX, OUTCOME_MAX};
 use crate::trace::{SpanId, TraceId};
@@ -516,6 +517,15 @@ pub(crate) struct Payload {
     pub(crate) items: u64,
 }
 
+/// Batches over [`MAX_PAYLOAD_BYTES`], which are not sent.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Oversized {
+    /// Batches.
+    pub(crate) batches: u64,
+    /// Observations, spans and logs they held: what is lost.
+    pub(crate) items: u64,
+}
+
 /// Everything one flush exports.
 #[derive(Default)]
 pub(crate) struct Taken {
@@ -530,20 +540,20 @@ impl Taken {
     }
 
     /// Splits into payloads. Oversized batches are skipped and returned as the second value
-    /// (how many batches and the items they held).
+    /// (how many batches, and the observations, spans and logs they held).
     pub(crate) fn encode(
         &self,
         service: &str,
         instance: &str,
         at: u64,
         mut id: impl FnMut() -> String,
-    ) -> (Vec<Payload>, u64) {
+    ) -> (Vec<Payload>, Oversized) {
         let batches = 1
             .max(self.metrics.len().div_ceil(BATCH_METRICS))
             .max(self.spans.len().div_ceil(BATCH_SPANS))
             .max(self.logs.len().div_ceil(BATCH_LOGS));
         let mut payloads = Vec::with_capacity(batches);
-        let mut oversized = 0;
+        let mut oversized = Oversized::default();
         for index in 0..batches {
             let metrics = chunk(&self.metrics, index, BATCH_METRICS);
             let spans = chunk(&self.spans, index, BATCH_SPANS);
@@ -566,7 +576,10 @@ impl Taken {
                 Ok(json) if json.len() <= MAX_PAYLOAD_BYTES => {
                     payloads.push(Payload { json, items })
                 }
-                _ => oversized += 1,
+                _ => {
+                    oversized.batches += 1;
+                    oversized.items += items;
+                }
             }
         }
         (payloads, oversized)
@@ -791,6 +804,40 @@ mod tests {
     }
 
     #[test]
+    fn an_oversized_batch_counts_the_observations_it_held() {
+        let row = |index: usize| MetricRow {
+            at: 0,
+            kind: "k".into(),
+            name: format!("{index}{}", "n".repeat(3000)),
+            channel: String::new(),
+            outcome: "ok".into(),
+            count: 7,
+            sum: 7.0,
+            max: 1.0,
+            histogram: [7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        };
+        let taken = Taken {
+            // The first batch of 100 rows is over 256,000 bytes; the second, of 10, is not.
+            metrics: (0..110).map(row).collect(),
+            spans: Vec::new(),
+            logs: (0..30)
+                .map(|_| LogRow::from_data(0, "warn", &Value::Null, Channel::EMPTY, None))
+                .collect(),
+        };
+        let (payloads, oversized) = taken.encode("cron", "i", 1, || "id".into());
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0].items, 10 * 7 + 5);
+        // 100 rows of 7 observations and 25 logs: 725 items lost in one batch.
+        assert_eq!(
+            oversized,
+            Oversized {
+                batches: 1,
+                items: 100 * 7 + 25
+            }
+        );
+    }
+
+    #[test]
     fn batches_follow_the_reference_sizes() {
         let taken = Taken {
             metrics: (0..250)
@@ -812,7 +859,7 @@ mod tests {
                 .collect(),
         };
         let (payloads, oversized) = taken.encode("cron", "i", 1, || "id".into());
-        assert_eq!((payloads.len(), oversized), (3, 0));
+        assert_eq!((payloads.len(), oversized), (3, Oversized::default()));
         let first: Value = serde_json::from_str(&payloads[0].json).unwrap_or_default();
         assert_eq!(first["metrics"].as_array().map(Vec::len), Some(100));
         assert_eq!(first["logs"].as_array().map(Vec::len), Some(25));

@@ -49,7 +49,9 @@ pub const FLUSH_OFFSET_MS: i64 = 1_000;
 pub const MAX_WORKERS: usize = 128;
 
 /// The reference's enqueue script: newest batch first, at most 100 batches, the excess counted in
-/// the overflow key, one hour of expiry. No loop: bounded by construction.
+/// the overflow key, one hour of expiry for the inbox. Changed: the overflow key gets the same
+/// hour of expiry each time it grows (the reference left it without one, so it lived forever).
+/// No loop: bounded by construction.
 pub static ENQUEUE: Script = Script::new("ENQUEUE", include_str!("lua/enqueue.lua"));
 
 /// How a process reports. Built by the binary from its configuration; nothing here reads the
@@ -145,8 +147,12 @@ pub enum TelemetryError {
 /// Counters for health pages and tests.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Stats {
-    /// Metric observations, spans, telemetry logs and payloads lost by the pipeline.
+    /// Metric observations, spans and telemetry logs lost by the pipeline (each observation of a
+    /// lost batch counts, not the batch).
     pub pipeline_dropped: u64,
+    /// Batches not sent because they were over the payload limit (their content is counted in
+    /// [`Stats::pipeline_dropped`]; this is the number of batches).
+    pub oversized_batches: u64,
     /// Console lines lost.
     pub console_dropped: u64,
     /// Cache log entries lost (queue full, budget spent, store unavailable or failed).
@@ -280,6 +286,7 @@ pub(crate) struct Shared {
     pub(crate) payloads_sent: AtomicU64,
     pub(crate) cache_written: AtomicU64,
     pub(crate) unserializable: AtomicU64,
+    pub(crate) oversized_batches: AtomicU64,
     pub(crate) sinks: Sinks,
     pub(crate) receivers: Mutex<Option<Receivers>>,
     pub(crate) posthog: Mutex<Option<otlp::Exporter>>,
@@ -389,6 +396,7 @@ impl Telemetry {
             payloads_sent: AtomicU64::new(0),
             cache_written: AtomicU64::new(0),
             unserializable: AtomicU64::new(0),
+            oversized_batches: AtomicU64::new(0),
             sinks,
             receivers: Mutex::new(Some(receivers)),
             posthog: Mutex::new(posthog),
@@ -783,6 +791,7 @@ impl Telemetry {
         let drops = &self.0.sinks.drops;
         Stats {
             pipeline_dropped: self.0.dropped.load(Ordering::Relaxed),
+            oversized_batches: self.0.oversized_batches.load(Ordering::Relaxed),
             console_dropped: drops.console.load(Ordering::Relaxed),
             cache_dropped: drops.cache.load(Ordering::Relaxed),
             posthog_dropped: drops.posthog.load(Ordering::Relaxed),
@@ -837,7 +846,11 @@ impl Telemetry {
         }
         let (payloads, oversized) =
             taken.encode(&self.0.service, &self.0.instance, self.now_ms(), uuid);
-        self.lose(oversized);
+        // A batch the consumer would refuse is not sent: its observations are lost.
+        self.lose(oversized.items);
+        self.0
+            .oversized_batches
+            .fetch_add(oversized.batches, Ordering::Relaxed);
         // Whatever is not acknowledged by the store is lost and counted, also when this future
         // is dropped half-way (an abort at shutdown).
         let mut unsent = Unsent {

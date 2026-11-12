@@ -1,1 +1,1 @@
-local n=redis.call('LPUSH',KEYS[1],ARGV[1]); local dropped=math.max(0,n-100); redis.call('LTRIM',KEYS[1],0,99); if dropped>0 then redis.call('INCRBY',KEYS[2],dropped) end; redis.call('EXPIRE',KEYS[1],3600); return dropped
+local n=redis.call('LPUSH',KEYS[1],ARGV[1]); local dropped=math.max(0,n-100); redis.call('LTRIM',KEYS[1],0,99); if dropped>0 then redis.call('INCRBY',KEYS[2],dropped); redis.call('EXPIRE',KEYS[2],3600) end; redis.call('EXPIRE',KEYS[1],3600); return dropped
