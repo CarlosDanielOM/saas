@@ -20,8 +20,8 @@ use dima_billing::plans::credits_cache::{CreditsCache, UsageProjection};
 use dima_billing::plans::entitlements::EntitledPlan;
 use dima_billing::plans::pack_context::{PackContextCache, context_cache_key};
 use dima_billing::plans::projection::{
-    PlanEffects, PlanOwnerState, ProjectionError, ProjectionStores, project_credit_snapshot,
-    project_polar_plan,
+    EffectGuard, PlanEffects, PlanOwnerState, PlanProjection, ProjectionError, ProjectionStores,
+    Retention, project_credit_snapshot, project_polar_plan,
 };
 use dima_billing::products::AI_CREDITS_METER_ID;
 use dima_core::ManualClock;
@@ -50,17 +50,21 @@ impl PlanEffects for Effects {
         &'a self,
         channel_ids: &'a [String],
         tier: PlanTier,
-    ) -> BoxFuture<'a, Result<(), String>> {
+        guard: &'a EffectGuard<'a>,
+    ) -> BoxFuture<'a, Result<Retention, String>> {
         Box::pin(async move {
             if self.fail.load(Ordering::SeqCst) > 0 {
                 self.fail.fetch_sub(1, Ordering::SeqCst);
                 return Err("retention store unavailable".into());
             }
+            if guard.confirm().await.is_err() {
+                return Ok(Retention::Stale);
+            }
             self.calls
                 .lock()
                 .unwrap()
                 .push((channel_ids.to_vec(), tier));
-            Ok(())
+            Ok(Retention::Applied)
         })
     }
 }
@@ -142,9 +146,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         let (document, after) = load(&store, id).await;
         assert_eq!(document.get_str("plan_tier")?, "premium");
         assert_eq!(
@@ -198,9 +203,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0 + 5,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         assert_eq!(effects.calls.lock().unwrap().len(), 1);
         assert_eq!(load(&store, id).await.1, after);
 
@@ -215,9 +221,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-1",
             T0 + 6,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(applied);
+        assert_eq!(applied, PlanProjection::Applied);
         assert_eq!(
             effects.calls.lock().unwrap().len(),
             1,
@@ -238,6 +245,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-0",
             T0 + 7,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(matches!(older, Err(ProjectionError::LostRace)), "{older:?}");
@@ -251,9 +259,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-0",
             T0 + 8,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(!older_same);
+        assert_eq!(older_same, PlanProjection::AlreadyCurrent);
         assert_eq!(load(&store, id).await.1.plan_tier, "premium");
 
         // Interrupted between the two writes: the plan is stored with the pending flag and the
@@ -275,6 +284,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-2",
             T0 + 9,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(matches!(failed, Err(ProjectionError::Retention(_))));
@@ -301,9 +311,10 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp-2",
             T0 + 10,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(retried);
+        assert_eq!(retried, PlanProjection::Applied);
         let (document, _) = load(&store, id).await;
         assert!(!document.contains_key("polar_plan_effects_pending"));
         assert!(!exists(&dragonfly, &credits_cache_key(&channel)).await);
@@ -324,7 +335,8 @@ async fn plan_projection_fault_cases() -> Result<()> {
                 "evt-3",
                 CUSTOMER,
                 "fp-3",
-                T0 + 11
+                T0 + 11,
+                &dima_core::SystemRandom
             ),
             project_polar_plan(
                 stores.clone(),
@@ -335,12 +347,16 @@ async fn plan_projection_fault_cases() -> Result<()> {
                 "evt-4",
                 CUSTOMER,
                 "fp-4",
-                T0 + 11
+                T0 + 11,
+                &dima_core::SystemRandom
             ),
         );
         assert!(b.is_ok(), "{b:?}");
         assert!(
-            matches!(a, Ok(true) | Err(ProjectionError::LostRace)),
+            matches!(
+                a,
+                Ok(PlanProjection::Applied) | Err(ProjectionError::LostRace)
+            ),
             "{a:?}"
         );
         let (document, _) = load(&store, id).await;
@@ -366,6 +382,7 @@ async fn plan_projection_fault_cases() -> Result<()> {
             CUSTOMER,
             "fp",
             T0 + 12,
+            &dima_core::SystemRandom,
         )
         .await;
         assert!(
@@ -391,7 +408,7 @@ async fn credit_snapshot_fault_cases() -> Result<()> {
         let newer = [json!({"meter_id": AI_CREDITS_METER_ID, "consumed_units": 200_000, "balance": -200_000})];
         let older = [json!({"meter_id": AI_CREDITS_METER_ID, "consumed_units": 10, "balance": -10})];
 
-        let first = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0).await?.unwrap();
+        let first = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(first.accepted.len(), 1);
         let cached = dragonfly.get_text(&credits_cache_key(&channel)).await?.unwrap();
         assert!(cached.contains(r#""status":"exhausted""#), "{cached}");
@@ -402,19 +419,19 @@ async fn credit_snapshot_fault_cases() -> Result<()> {
         assert!(matches!(snapshot.get_array("meters")?[0].as_document().unwrap().get("consumed_units"), Some(Bson::Int32(200_000))));
 
         // Delivered twice: the same snapshot is accepted again with the same result.
-        let again = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0 + 1).await?.unwrap();
+        let again = project_credit_snapshot(stores.clone(), id, T0 + 1000, "snap-2", &newer, T0 + 1, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(again.payload, first.payload);
 
         // An older snapshot arriving late is not stored; the newer one is published again.
-        let late = project_credit_snapshot(stores.clone(), id, T0, "snap-1", &older, T0 + 2).await?.unwrap();
+        let late = project_credit_snapshot(stores.clone(), id, T0, "snap-1", &older, T0 + 2, &dima_core::SystemRandom).await?.unwrap();
         assert_eq!(late.snapshot_version, first.snapshot_version);
         let stored = store.documents("users").find_one(doc! {"_id": id}).await?.unwrap();
         assert_eq!(stored.get_document("polar_credit_snapshot")?.get_str("eventKey")?, "snap-2");
 
         // Two at once: the newest wins in MongoDB and in the cache.
         let (a, b) = tokio::join!(
-            project_credit_snapshot(stores.clone(), id, T0 + 3000, "snap-4", &older, T0 + 3),
-            project_credit_snapshot(stores.clone(), id, T0 + 2000, "snap-3", &newer, T0 + 3),
+            project_credit_snapshot(stores.clone(), id, T0 + 3000, "snap-4", &older, T0 + 3, &dima_core::SystemRandom),
+            project_credit_snapshot(stores.clone(), id, T0 + 2000, "snap-3", &newer, T0 + 3, &dima_core::SystemRandom),
         );
         a?;
         b?;
@@ -445,6 +462,7 @@ async fn usage_projection_and_pack_context_fault_cases() -> Result<()> {
             dima_store::dragonfly::SetOptions::ex(300),
         )
         .await?;
+    support::plant_revision(&dragonfly, &channel).await?;
 
     // Delivered twice: one application per external id; the marker lives 31 days.
     assert_eq!(
@@ -585,9 +603,10 @@ async fn a_stale_owner_cannot_suppress_the_invalidation_of_a_plan_change() -> Re
             CUSTOMER,
             "fp-a",
             T0 + 1,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(a);
+        assert_eq!(a, PlanProjection::Applied);
         // Premium caches, filled after A's effects.
         seed_caches(&dragonfly, &channel).await;
 
@@ -601,9 +620,10 @@ async fn a_stale_owner_cannot_suppress_the_invalidation_of_a_plan_change() -> Re
             CUSTOMER,
             "fp-b",
             T0 + 2,
+            &dima_core::SystemRandom,
         )
         .await?;
-        assert!(b);
+        assert_eq!(b, PlanProjection::Applied);
         let (document, after) = load(&store, id).await;
         assert_eq!(document.get_str("plan_tier")?, "free");
         assert!(!after.effects_pending);

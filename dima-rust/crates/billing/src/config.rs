@@ -23,6 +23,16 @@
 //! ([`PolarConfig::base_url_override`], refused by `dima-http` in production). Production has
 //! neither variable set (`ledger/env.json`).
 //!
+//! The forms of `POLARSH_API_BASE_URL` (item 5 of P2-BILLING-01c, re-check finding N6), checked
+//! at start-up by [`BillingConfig::from_lookup`] and [`PolarConfig::check_base_url`]:
+//!
+//! | Form | Outcome |
+//! |---|---|
+//! | Polar's host over https: any case, one trailing dot (`api.polar.sh.`), port 443 written or not, surrounding spaces, one trailing `/` | accepted as that host |
+//! | Polar's host with a path, a query or a fragment, another port, or over http | refused, named |
+//! | credentials, a scheme other than http(s), or text that is not a URL | refused, named |
+//! | another host over http(s) (the rig's mock) | a test-mode override; refused, named, when the binary runs without a test mode |
+//!
 //! **Redirect fallbacks** (`BILLING_*_URL`) are validated at start-up ([`RedirectConfig::validate`]):
 //! `https` (or `http` to a loopback host), no credentials, on the allowlist when it is set.
 
@@ -34,6 +44,9 @@ pub enum ConfigError {
     /// A configured redirect fallback is not a safe redirect target.
     #[error("{0} is not a safe redirect URL")]
     UnsafeRedirect(&'static str),
+    /// `POLARSH_API_BASE_URL` has a form that is refused, with the reason.
+    #[error("POLARSH_API_BASE_URL {0}")]
+    PolarBaseUrl(&'static str),
 }
 
 /// `https://api.polar.sh`.
@@ -123,6 +136,21 @@ impl PolarConfig {
         self.api_base_url.as_deref().and_then(polar_host)
     }
 
+    /// Checks `POLARSH_API_BASE_URL` (see the module docs): `Ok` when it is unset or one of
+    /// Polar's hosts, or, in a test mode, another host over http(s); otherwise the variable
+    /// and the reason. A binary calls it at start-up with its test mode, before the registry
+    /// is built; [`BillingConfig::from_lookup`] already refuses the forms no mode accepts.
+    pub fn check_base_url(&self, test_mode: bool) -> Result<(), ConfigError> {
+        match self.api_base_url.as_deref().map(classify_base_url) {
+            None | Some(Ok(BaseUrl::Polar(_))) => Ok(()),
+            Some(Ok(BaseUrl::Other)) if test_mode => Ok(()),
+            Some(Ok(BaseUrl::Other)) => Err(ConfigError::PolarBaseUrl(
+                "names a host that is not Polar's; it is honoured only in a test mode",
+            )),
+            Some(Err(reason)) => Err(ConfigError::PolarBaseUrl(reason)),
+        }
+    }
+
     /// The host the provider declares (`getPolarBaseUrl`): `POLARSH_API_BASE_URL` when it is
     /// one of Polar's own hosts over https, else the host of [`Self::environment`].
     pub fn declared_base_url(&self) -> &'static str {
@@ -133,35 +161,80 @@ impl PolarConfig {
     /// `POLARSH_API_BASE_URL` with one trailing `/` removed (`replace(/\/$/, '')`), for
     /// `RegistryBuilder::base_url_override` in a test mode only: `None` when it is unset or
     /// already the declared host (one of Polar's own, [`Self::declared_base_url`]).
+    ///
+    /// Only another host is an override: one of Polar's hosts in a refused form (a path, another
+    /// port...) is never sent anywhere, it fails [`Self::check_base_url`].
     pub fn base_url_override(&self) -> Option<&str> {
-        if self.polar_api_base_url().is_some() {
+        let base = self.api_base_url.as_deref()?;
+        if classify_base_url(base) != Ok(BaseUrl::Other) {
             return None;
         }
-        self.api_base_url
-            .as_deref()
-            .map(|base| base.strip_suffix('/').unwrap_or(base))
-            .filter(|base| !base.is_empty())
+        let base = base.trim();
+        Some(base.strip_suffix('/').unwrap_or(base)).filter(|base| !base.is_empty())
     }
 }
 
-/// Polar's host when `value` is exactly one of Polar's API origins over https
-/// (`https://api.polar.sh` or `https://sandbox-api.polar.sh`, one trailing `/` allowed): no
-/// other port, path, query, fragment or credentials.
-pub fn polar_host(value: &str) -> Option<&'static str> {
-    let url = url::Url::parse(value).ok()?;
-    if url.scheme() != "https"
-        || !url.username().is_empty()
-        || url.password().is_some()
-        || url.port().is_some()
-        || url.query().is_some()
-        || url.fragment().is_some()
-        || url.path() != "/"
-    {
-        return None;
+/// What `POLARSH_API_BASE_URL` names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BaseUrl {
+    /// One of Polar's hosts.
+    Polar(&'static str),
+    /// Another host over http(s): a test-mode override.
+    Other,
+}
+
+/// Polar's declared host for a host name, after the one trailing dot of a fully qualified name
+/// is removed (`url` has already lowered its case).
+fn polar_host_name(host: &str) -> Option<&'static str> {
+    match host.strip_suffix('.').unwrap_or(host) {
+        "api.polar.sh" => Some(PRODUCTION_BASE_URL),
+        "sandbox-api.polar.sh" => Some(SANDBOX_BASE_URL),
+        _ => None,
     }
-    match url.host() {
-        Some(url::Host::Domain("api.polar.sh")) => Some(PRODUCTION_BASE_URL),
-        Some(url::Host::Domain("sandbox-api.polar.sh")) => Some(SANDBOX_BASE_URL),
+}
+
+/// The forms of the module docs' table, with the reason of a refusal.
+fn classify_base_url(value: &str) -> Result<BaseUrl, &'static str> {
+    let url = url::Url::parse(value).map_err(|_| "is not a URL")?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err("must use http or https");
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("has credentials");
+    }
+    let polar = match url.host() {
+        Some(url::Host::Domain(host)) => polar_host_name(host),
+        _ => None,
+    };
+    let Some(polar) = polar else {
+        return if url.query().is_some() || url.fragment().is_some() {
+            Err("has a query or a fragment")
+        } else {
+            Ok(BaseUrl::Other)
+        };
+    };
+    if url.scheme() != "https" {
+        return Err("must use https for Polar's host");
+    }
+    // `url` drops the scheme's default port, so `:443` reads as none.
+    if url.port().is_some() {
+        return Err("names a port other than 443 for Polar's host");
+    }
+    if url.query().is_some() || url.fragment().is_some() {
+        return Err("has a query or a fragment");
+    }
+    if url.path() != "/" {
+        return Err("has a path; give Polar's origin only");
+    }
+    Ok(BaseUrl::Polar(polar))
+}
+
+/// Polar's host when `value` is one of Polar's API origins over https
+/// (`https://api.polar.sh` or `https://sandbox-api.polar.sh`, in any case, with one trailing dot,
+/// port 443 and one trailing `/` allowed): no other port, path, query, fragment or credentials.
+pub fn polar_host(value: &str) -> Option<&'static str> {
+    match classify_base_url(value) {
+        Ok(BaseUrl::Polar(host)) => Some(host),
         _ => None,
     }
 }
@@ -226,12 +299,15 @@ pub struct BillingConfig {
 
 impl BillingConfig {
     /// Reads every variable through `lookup` and validates the redirect fallbacks
-    /// ([`RedirectConfig::validate`]).
+    /// ([`RedirectConfig::validate`]) and the forms of `POLARSH_API_BASE_URL` that no mode
+    /// accepts ([`PolarConfig::check_base_url`] in a test mode; the binary checks again with
+    /// its own mode).
     pub fn from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, ConfigError> {
         let config = Self {
             polar: PolarConfig::from_lookup(&lookup),
             redirects: RedirectConfig::from_lookup(&lookup),
         };
+        config.polar.check_base_url(true)?;
         config.redirects.validate()?;
         Ok(config)
     }
@@ -288,24 +364,111 @@ mod tests {
             assert_eq!(config.base_url_override(), None, "{base}");
         }
         for base in [
-            "http://api.polar.sh",
             "https://api.polar.sh.evil.test",
             "https://evil.test/api.polar.sh",
-            "https://user:x@api.polar.sh",
-            "https://api.polar.sh:8443",
-            "https://api.polar.sh/v1",
-            "https://api.polar.sh/?x=1",
             "http://127.0.0.1:9/",
         ] {
             let config = polar(base);
             assert_eq!(config.declared_base_url(), PRODUCTION_BASE_URL, "{base}");
             assert!(config.base_url_override().is_some(), "{base}");
         }
+        // Item 5 of P2-BILLING-01c: Polar's host in a refused form is no longer a test-mode
+        // override (it is refused at start-up instead).
+        for base in [
+            "http://api.polar.sh",
+            "https://user:x@api.polar.sh",
+            "https://api.polar.sh:8443",
+            "https://api.polar.sh/v1",
+            "https://api.polar.sh/?x=1",
+        ] {
+            let config = polar(base);
+            assert_eq!(config.declared_base_url(), PRODUCTION_BASE_URL, "{base}");
+            assert_eq!(config.base_url_override(), None, "{base}");
+            assert!(config.check_base_url(true).is_err(), "{base}");
+        }
         let sandbox = PolarConfig {
             environment: PolarEnvironment::Sandbox,
             ..Default::default()
         };
         assert_eq!(sandbox.declared_base_url(), SANDBOX_BASE_URL);
+    }
+
+    // Item 5 of P2-BILLING-01c (re-check finding N6): every form a valid production value can
+    // take is Polar's host; every other form is refused at start-up with a message that names
+    // the variable and the reason, never accepted as a test-mode override by accident.
+    #[test]
+    fn every_form_of_polars_host_is_accepted_and_the_rest_is_named() {
+        let polar = |base: &str| PolarConfig {
+            api_base_url: Some(base.to_owned()),
+            ..Default::default()
+        };
+        for (base, declared) in [
+            ("https://api.polar.sh./", PRODUCTION_BASE_URL),
+            ("https://api.polar.sh.", PRODUCTION_BASE_URL),
+            ("https://API.POLAR.SH./", PRODUCTION_BASE_URL),
+            ("https://api.polar.sh:443", PRODUCTION_BASE_URL),
+            ("https://api.polar.sh.:443/", PRODUCTION_BASE_URL),
+            ("  https://api.polar.sh/  ", PRODUCTION_BASE_URL),
+            ("https://sandbox-api.polar.sh./", SANDBOX_BASE_URL),
+        ] {
+            let config = polar(base);
+            assert_eq!(config.declared_base_url(), declared, "{base}");
+            assert_eq!(config.base_url_override(), None, "{base}");
+            assert_eq!(config.check_base_url(false), Ok(()), "{base}");
+        }
+        for (base, reason) in [
+            (
+                "https://api.polar.sh/v1",
+                "has a path; give Polar's origin only",
+            ),
+            (
+                "https://api.polar.sh//",
+                "has a path; give Polar's origin only",
+            ),
+            ("https://api.polar.sh/?x=1", "has a query or a fragment"),
+            ("https://api.polar.sh?", "has a query or a fragment"),
+            ("https://api.polar.sh/#x", "has a query or a fragment"),
+            (
+                "https://api.polar.sh:8443",
+                "names a port other than 443 for Polar's host",
+            ),
+            ("http://api.polar.sh", "must use https for Polar's host"),
+            ("https://user:x@api.polar.sh", "has credentials"),
+            ("not a url", "is not a URL"),
+            ("ftp://127.0.0.1/", "must use http or https"),
+        ] {
+            let message = format!("POLARSH_API_BASE_URL {reason}");
+            let config = polar(base);
+            assert_eq!(
+                config.check_base_url(true).map_err(|e| e.to_string()),
+                Err(message.clone()),
+                "{base}"
+            );
+            assert_eq!(config.base_url_override(), None, "{base}");
+            let env = [("POLARSH_API_BASE_URL", base)];
+            let started = BillingConfig::from_lookup(|name| {
+                env.iter()
+                    .find(|(key, _)| *key == name)
+                    .map(|(_, value)| (*value).to_owned())
+            });
+            assert_eq!(
+                started.err().map(|e| e.to_string()),
+                Some(message),
+                "{base}"
+            );
+        }
+        // Another host is the rig's mock: honoured in a test mode only, and named otherwise.
+        let mock = polar("http://127.0.0.1:9999/mock/polar/");
+        assert_eq!(mock.check_base_url(true), Ok(()));
+        assert_eq!(
+            mock.base_url_override(),
+            Some("http://127.0.0.1:9999/mock/polar")
+        );
+        assert_eq!(
+            mock.check_base_url(false).map_err(|e| e.to_string()),
+            Err("POLARSH_API_BASE_URL names a host that is not Polar's; it is honoured only in a test mode".to_owned())
+        );
+        assert_eq!(PolarConfig::default().check_base_url(false), Ok(()));
     }
 
     // Item 8: configured fallbacks are validated at start-up.

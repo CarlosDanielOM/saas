@@ -190,7 +190,7 @@ async fn a_slow_fetch_cannot_overwrite_a_newer_snapshot() -> Result<()> {
         };
         let meanwhile = async {
             polar.started.notified().await;
-            project_credit_snapshot(stores.clone(), id, T0, "snap-1", &[meter(25_000.0)], T0)
+            project_credit_snapshot(stores.clone(), id, T0, "snap-1", &[meter(25_000.0)], T0, &dima_core::SystemRandom)
                 .await
                 .unwrap();
             polar.answer.notify_one();

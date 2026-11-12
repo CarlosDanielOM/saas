@@ -196,8 +196,8 @@ pub fn unavailable_ai_credits(now_iso: String) -> AiCreditsData {
 /// How far a balance can be trusted (item 5 of P2-BILLING-01b, review finding 6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BalanceState {
-    /// Polar's AI credit meter, read by this call at `at_ms` and published (with any local
-    /// debits made during the read).
+    /// Polar's AI credit meter, read by this call at `at_ms` and published by it (with the
+    /// local debits it does not cover yet held).
     Verified {
         /// When Polar answered (epoch ms).
         at_ms: i64,
@@ -206,50 +206,94 @@ pub enum BalanceState {
     /// the local debits made since, or a newer snapshot that replaced this call's read.
     Cached,
     /// Not verified by Polar: it could not be reached, its answer has no AI credit meter, the
-    /// plan fence refused the read, or the user has no customer. The numbers are the
-    /// reference's fallback (which may say `used = limit`, `available: true` when an
-    /// exhaustion flag exists).
+    /// plan fence refused the read, the user has no customer, or the read could not be
+    /// published. The numbers are the reference's fallback (which may say `used = limit`,
+    /// `available: true` when an exhaustion flag exists).
     Unknown,
 }
 
-/// A balance as `getAiCredits` answers it, and how far it can be trusted.
+/// A balance as `getAiCredits` answers it, and how far it can be trusted. Only this crate makes
+/// one (a private field holds the verified balance, if any).
 #[derive(Clone, Debug, PartialEq)]
 pub struct AiCredits {
     /// The reference's answer (what clients and chat features read).
     pub data: AiCreditsData,
     /// Its provenance.
     pub state: BalanceState,
+    verified: Option<VerifiedBalance>,
 }
 
 impl AiCredits {
-    /// The balance as a basis for a grant, a reset or a top-up: only when Polar verified it.
-    pub fn verified(&self) -> Option<VerifiedBalance> {
-        match self.state {
-            BalanceState::Verified { at_ms } => Some(VerifiedBalance::new(&self.data, at_ms)),
-            BalanceState::Cached | BalanceState::Unknown => None,
+    /// An answer that verifies nothing.
+    pub(crate) fn unverified(data: AiCreditsData, state: BalanceState) -> Self {
+        Self {
+            data,
+            state,
+            verified: None,
         }
+    }
+
+    /// The answer of a read this call published: [`BalanceState::Verified`].
+    pub(crate) fn verified_by(verified: VerifiedBalance, data: AiCreditsData) -> Self {
+        Self {
+            data,
+            state: BalanceState::Verified {
+                at_ms: verified.verified_at_ms,
+            },
+            verified: Some(verified),
+        }
+    }
+
+    /// The balance as a basis for a reset or a top-up: only when this call read Polar's meter
+    /// and published what it read (never a cached, superseded or unknown balance).
+    pub fn verified(&self) -> Option<VerifiedBalance> {
+        self.verified.clone()
     }
 }
 
-/// A balance Polar's AI credit meter verified at a known time. Only this crate makes one (from
-/// a read of Polar: [`AiCredits::verified`],
-/// [`super::credits_cache::CreditsCache::verified_balance`]); anything that grants, resets or
-/// tops up credits takes it, so an unverified or invented balance cannot reach it.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A balance Polar's AI credit meter verified, as the read that verified it published it
+/// (item 2 of P2-BILLING-01c, re-check finding N2): Polar's figure with the local debits it did
+/// not cover yet held, read back from what was stored. Its fields are private and only this
+/// crate makes one, from a read of Polar whose publication was accepted
+/// ([`AiCredits::verified`],
+/// [`super::credits_cache::CreditsCache::verified_balance`]): a superseded, cached, fenced or
+/// unknown balance never becomes one. It remembers the publication it came from, so a top-up
+/// ([`super::credits_cache::CreditsCache::top_up`]) applies on top of exactly that publication,
+/// once.
+///
+/// What needs one: the free-credit reset of a new period
+/// ([`crate::free_credit_reset::ResetUsage`], the credits granted are computed from the usage)
+/// and the local top-up after an admin grant (`adminGrantAiCredits`, which writes the balance
+/// before the grant plus the credits). What does not: the grant itself and every grant that
+/// does not depend on a balance, which only sends credits to Polar ([`crate::polar::GrantInput`]:
+/// an admin grant, a gift, a reset's pending retry; a credit-pack purchase is Polar's own
+/// benefit); a gift's delivery reads the balance again from Polar instead of writing one.
+#[derive(Clone, Debug, PartialEq)]
 pub struct VerifiedBalance {
     used: f64,
     limit: f64,
     balance: f64,
     verified_at_ms: i64,
+    generation: String,
+    publication: i64,
 }
 
 impl VerifiedBalance {
-    pub(crate) fn new(data: &AiCreditsData, verified_at_ms: i64) -> Self {
+    /// The balance a read published (`data`, read back from what was stored) in `generation`
+    /// as its `publication`-th publication.
+    pub(crate) fn new(
+        data: &AiCreditsData,
+        verified_at_ms: i64,
+        generation: String,
+        publication: i64,
+    ) -> Self {
         Self {
             used: data.used,
             limit: data.limit,
             balance: data.balance,
             verified_at_ms,
+            generation,
+            publication,
         }
     }
 
@@ -271,6 +315,11 @@ impl VerifiedBalance {
     /// When Polar answered (epoch ms).
     pub fn verified_at_ms(&self) -> i64 {
         self.verified_at_ms
+    }
+
+    /// The generation and publication it came from.
+    pub(crate) fn publication(&self) -> (&str, i64) {
+        (&self.generation, self.publication)
     }
 }
 

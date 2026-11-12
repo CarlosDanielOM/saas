@@ -5,7 +5,22 @@
 -- unknown): it is resumed first, then topped up from the queue head within both limits (the
 -- first item is always taken, so an item over the byte limit is claimed alone and refused by
 -- the caller). Returns {items resumed, the batch in order}, or -1 when the lease is not ours.
+-- Both lists are checked to be lists (or absent) first (P2-BILLING-01c item 6): a wrong type is
+-- an error and nothing moves.
 if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end
+local function kind(key)
+    local t = redis.call('TYPE', key)
+    if type(t) == 'table' then t = t.ok end
+    return t
+end
+local target = kind(KEYS[2])
+if target ~= 'none' and target ~= 'list' then
+    return redis.error_reply('WRONGTYPE processing list is a ' .. tostring(target) .. ', nothing moved')
+end
+local source = kind(KEYS[3])
+if source ~= 'none' and source ~= 'list' then
+    return redis.error_reply('WRONGTYPE queue is a ' .. tostring(source) .. ', nothing moved')
+end
 local limit = tonumber(ARGV[4])
 local batch = redis.call('LRANGE', KEYS[2], 0, math.min(tonumber(ARGV[3]), 1000) - 1)
 local resumed = #batch

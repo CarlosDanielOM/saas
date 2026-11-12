@@ -247,3 +247,20 @@ pub fn same(expected: &Value, actual: &Value) -> bool {
         (e, a) => e == a,
     }
 }
+
+/// A balance Rust writes always has its revision hash beside it (item 1 of P2-BILLING-01c); a
+/// balance found without one belongs to a lost generation and is read again from Polar. A test
+/// that plants a balance by hand plants its revision too, with this.
+pub async fn plant_revision(dragonfly: &Dragonfly, id: &str) -> Result<()> {
+    let _: i64 = dragonfly
+        .query(
+            redis::cmd("HSET")
+                .arg(dima_billing::plans::balance::revision_key(id))
+                .arg("gen")
+                .arg(format!("planted-{id}"))
+                .arg("pub")
+                .arg(0),
+        )
+        .await?;
+    Ok(())
+}

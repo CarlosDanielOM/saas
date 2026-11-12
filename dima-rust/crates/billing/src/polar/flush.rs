@@ -22,7 +22,9 @@
 //! 4. The lease is extended to cover the send ([`FLUSH_SEND_LEASE_MS`]), and the batch is sent
 //!    with an explicit timeout ([`FLUSH_SEND_TIMEOUT`]).
 //! 5. Polar stored every event: **acknowledge** removes exactly the claimed items (by their
-//!    bytes), whatever was queued meanwhile.
+//!    bytes), whatever was queued meanwhile, and in the same step holds their credits against
+//!    the balances published from Polar until its meter has had time to count them
+//!    ([`crate::plans::balance`]).
 //! 6. Polar refused the request as invalid (400/422, nothing stored): the events it names go to
 //!    the dead-letter list with its error type; the rest return to the queue head in order. A
 //!    refusal that names no event makes the rest of this flush send one event at a time, so the
@@ -48,15 +50,17 @@
 //!
 //! | Key | Type |
 //! |---|---|
-//! | `twitch:{channel}:ai:polarshevent` | list: the queue (`RPUSH`, claimed from the head) |
+//! | `twitch:{channel}:ai:polarshevent` | list: the queue (`RPUSH`, claimed from the head); each item is the event's JSON with `queuedAt` |
 //! | `twitch:{channel}:ai:polarshevent:processing` | list: the batch being sent |
 //! | `twitch:{channel}:ai:polarshevent:dead` | list: `{"reason","at"}` JSON, a newline, the item |
 //! | `locks:polar-ingest:{channel}` | the lease (expires on its own) |
 
 use super::{BatchAnswer, IngestEvent, PolarClient};
 use crate::Observer;
+use crate::plans::balance;
 use dima_core::{Clock, Random};
 use dima_store::dragonfly::commands::reply;
+use dima_store::dragonfly::plan_cache_fence::credits_cache_key;
 use dima_store::dragonfly::{
     Dragonfly, DragonflyError, End, Fence, FencedTransition, ProcessingList, QueueItem,
     SetCondition, SetExpiry, SetOptions, SetOutcome, Transition,
@@ -85,13 +89,21 @@ pub const FLUSH_SEND_LEASE_MS: u64 = 35_000;
 
 static CLAIM: FencedTransition =
     FencedTransition::new("INGEST_CLAIM", include_str!("lua/ingest_claim.lua"));
-static ACK: FencedTransition =
-    FencedTransition::new("INGEST_ACK", include_str!("lua/ingest_ack.lua"));
+static ACK: FencedTransition = FencedTransition::new(
+    "INGEST_ACK_HELD",
+    concat!(
+        include_str!("../plans/lua/credits_hold.lua"),
+        include_str!("lua/ingest_ack.lua")
+    ),
+);
 static REQUEUE: FencedTransition =
     FencedTransition::new("INGEST_REQUEUE", include_str!("lua/ingest_requeue.lua"));
 static DEAD_LETTER: FencedTransition = FencedTransition::new(
-    "INGEST_DEAD_LETTER",
-    include_str!("lua/ingest_dead_letter.lua"),
+    "INGEST_DEAD_LETTER_HELD",
+    concat!(
+        include_str!("../plans/lua/credits_hold.lua"),
+        include_str!("lua/ingest_dead_letter.lua")
+    ),
 );
 static EXTEND: FencedTransition = FencedTransition::new(
     "INGEST_LEASE_EXTEND",
@@ -127,8 +139,10 @@ pub fn lease_key(channel: &str) -> String {
     format!("locks:polar-ingest:{channel}")
 }
 
-/// The queued form of an event: Rust's own JSON (the key family is drained at cutover).
-pub(crate) fn queued_text(event: &IngestEvent) -> String {
+/// The queued form of an event: Rust's own JSON (the key family is drained at cutover), with
+/// when it was queued (`queuedAt`, ms): its debit is held until then plus
+/// [`crate::plans::balance::QUEUED_HOLD_MS`] at most (item 1 of P2-BILLING-01c).
+pub(crate) fn queued_text(event: &IngestEvent, queued_at_ms: i64) -> String {
     let mut map = Map::new();
     map.insert("name".into(), Value::from(event.name.as_str()));
     map.insert(
@@ -137,6 +151,7 @@ pub(crate) fn queued_text(event: &IngestEvent) -> String {
     );
     map.insert("externalId".into(), Value::from(event.external_id.as_str()));
     map.insert("metadata".into(), Value::Object(event.metadata.clone()));
+    map.insert("queuedAt".into(), Value::from(queued_at_ms));
     dima_text::to_js_json(&Value::Object(map))
 }
 
@@ -437,7 +452,7 @@ impl Flush<'_> {
         let items: Vec<&QueueItem> = sendable.iter().map(|(item, _)| item).collect();
         match self.polar.ingest_batch(&wire, FLUSH_SEND_TIMEOUT).await {
             Ok(BatchAnswer::Stored(result)) if result.is_complete(wire.len()) => {
-                if !self.transition(&ACK, channel, lease, &items, &[]).await? {
+                if !self.acknowledge(channel, lease, &items).await? {
                     return Ok(Step::End(FlushEnd::LeaseLost));
                 }
                 report.sent += wire.len();
@@ -535,7 +550,53 @@ impl Flush<'_> {
             != Transition::LeaseLost)
     }
 
-    /// Moves one claimed item to the dead-letter list; `false` when the lease was lost.
+    /// A fresh generation token for a revision the script may have to create.
+    fn generation_token(&self) -> Result<String, DragonflyError> {
+        self.random
+            .uuid_v4()
+            .map_err(|_| DragonflyError::Reply("generation token unavailable"))
+    }
+
+    /// Acknowledges a stored batch and holds its credits ([`ACK`]); `false` when the lease was
+    /// lost.
+    async fn acknowledge(
+        &self,
+        channel: &str,
+        lease: &Lease,
+        items: &[&QueueItem],
+    ) -> Result<bool, DragonflyError> {
+        let Some((first, rest)) = items.split_first() else {
+            return Ok(true);
+        };
+        let now = self.clock.now_ms();
+        let trailing = [
+            now.to_string(),
+            balance::SETTLE_AFTER_ACK_MS.to_string(),
+            balance::QUEUED_HOLD_MS.to_string(),
+            balance::ACK_BUCKET_MS.to_string(),
+            self.generation_token()?,
+            balance::REVISION_TTL_SECONDS.to_string(),
+            balance::sweep_floor(now).to_string(),
+        ];
+        let mut args: Vec<&[u8]> = rest.iter().map(|item| item.as_bytes()).collect();
+        args.extend(trailing.iter().map(String::as_bytes));
+        let revision = balance::revision_key(channel);
+        let credits = credits_cache_key(channel);
+        Ok(ACK
+            .run(
+                self.dragonfly,
+                fence(lease),
+                &processing_list(channel),
+                first,
+                &[&revision, &credits],
+                &args,
+            )
+            .await?
+            != Transition::LeaseLost)
+    }
+
+    /// Moves one claimed item to the dead-letter list, its credits still held; `false` when
+    /// the lease was lost.
     async fn dead_letter(
         &self,
         channel: &str,
@@ -543,16 +604,29 @@ impl Flush<'_> {
         item: &QueueItem,
         reason: &str,
     ) -> Result<bool, DragonflyError> {
-        let header = dead_letter_header(reason, self.clock.now_ms());
+        let now = self.clock.now_ms();
+        let header = dead_letter_header(reason, now);
         let dead = dead_letter_key(channel);
+        let revision = balance::revision_key(channel);
+        let credits = credits_cache_key(channel);
+        let args = [
+            header,
+            now.to_string(),
+            balance::QUEUED_HOLD_MS.to_string(),
+            balance::DEAD_LETTER_BUCKET_MS.to_string(),
+            self.generation_token()?,
+            balance::REVISION_TTL_SECONDS.to_string(),
+            balance::sweep_floor(now).to_string(),
+        ];
+        let args: Vec<&[u8]> = args.iter().map(String::as_bytes).collect();
         let moved = DEAD_LETTER
             .run(
                 self.dragonfly,
                 fence(lease),
                 &processing_list(channel),
                 item,
-                &[&dead],
-                &[header.as_bytes()],
+                &[&dead, &revision, &credits],
+                &args,
             )
             .await?;
         if moved == Transition::LeaseLost {
