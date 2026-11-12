@@ -60,6 +60,26 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_job'],
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_cache'],
+    ['src/schemas/moderation_chatter.schema.ts', 'moderation_chatter'],
+    ['src/schemas/moderation_action_log.schema.ts', 'moderation_action_log'],
+    ['src/schemas/follow_attack_log.schema.ts', 'follow_attack_log'],
+    ['src/schemas/follow_relationship_ledger.schema.ts', 'follow_relationship_ledger'],
+    ['src/schemas/follow_hate_raid_source.schema.ts', 'follow_hate_raid_source'],
+    ['src/schemas/follow_defense_settings.schema.ts', 'follow_defense_settings'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_control'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_action'],
+    ['src/schemas/raid_subscription_preference.schema.ts', 'raid_subscription_preference'],
+    ['src/schemas/raid_session.schema.ts', 'raid_session'],
+    ['src/schemas/raid_session.schema.ts', 'raid_moderation_request'],
+    ['src/schemas/raid_session.schema.ts', 'raid_follower'],
+    ['src/schemas/raid_analytics.schema.ts', 'raid_analytics_summary'],
+    ['src/schemas/raid_analytics.schema.ts', 'raid_analytics_history'],
+    ['src/schemas/title_config.schema.ts', 'titleConfig'],
+    ['src/schemas/randomuser_settings.schema.ts', 'random_user_settings'],
+    ['src/schemas/vip.schema.ts', 'vip'],
+    ['src/schemas/temporary_moderator.schema.ts', 'temporary_moderator'],
     ['src/schemas/users.schema.ts', 'users'],
     ['src/schemas/eventsub.schema.ts', 'eventsub'],
     ['src/schemas/ast_variables.schema.ts', 'AstVariables'],
@@ -376,6 +396,131 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+    moderation_variation_jobs: [
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    moderation_variation_caches: [
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    moderation_chatters: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'duplicate_marker', op: 'create', seed: [{ _id: 'seed', firstSeenAt: T2 }], doc: { _id: 'seed', firstSeenAt: T2 } },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","firstSeenAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","firstSeenAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "firstSeenAt": T1 } } },
+    ],
+
+    moderation_action_logs: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'excerpt_too_long', op: 'validate', doc: { channelID: 'seed', userID: 'seed', ruleID: 'seed', ruleType: 'caps', action: 'warn', messageExcerpt: 'x'.repeat(201) } },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"channelID":"seed","userID":"seed","ruleID":"seed","ruleType":"seed","action":"off","messageExcerpt":TEXT,"errorMessage":null} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"channelID":"seed","userID":"seed","ruleID":"seed","ruleType":"seed","action":"off","messageExcerpt":TEXT,"errorMessage":null}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+follow_attack_logs:[{name:'create',op:'create',rust:'typed',doc:{_id:OID(1),"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]}},{name:'update',op:'updateOne',seed:[{...{"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{totalFollows:5}}}],
+    follow_relationship_ledgers: [
+        { name: 'duplicate_active', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', follower_id: 'seed', followed_id: 'seed', status: 'active' }], doc: { follower_id: 'seed', followed_id: 'seed' } },
+        { name: 'ended_edge_not_unique', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', follower_id: 'seed', followed_id: 'seed', status: 'ended' }], doc: { follower_id: 'seed', followed_id: 'seed', status: 'ended' } },
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"platform":"twitch","follower_id":"seed","followed_id":"seed","followed_at":T2,"ended_at":null,"ended_reason":null,"last_event_at":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"platform":"twitch","follower_id":"seed","followed_id":"seed","followed_at":T2,"last_event_at":T2}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "follower_id": TEXT } } },
+    ],
+
+    follow_hate_raid_sources: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"targetChannelID":"seed","raiderChannelID":"seed","firstSeenAt":T2,"lastSeenAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"targetChannelID":"seed","raiderChannelID":"seed","firstSeenAt":T2,"lastSeenAt":T2}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "targetChannelID": TEXT } } },
+    ],
+
+    follow_defense_settings: [
+        { name: 'unchecked_zero_threshold', op: 'updateOne', seed: [{ _id: OID(1), channelID: 'seed' }], filter: { _id: OID(1) }, update: { $set: { silentThresholdX: 0 } } },
+        { name: 'invalid_threshold', op: 'validate', doc: { channelID: 'seed', silentThresholdX: 0 } },
+        { name: 'duplicate_channel', op: 'create', seed: [{ _id: OID(1), channelID: 'seed' }], doc: { channelID: 'seed' } },
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"channelID":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"channelID":"seed"}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    follow_defense_controls: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "leaseToken": TEXT } } },
+    ],
+
+    follow_defense_actions: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","eventID":"seed","kind":"ban","mode":"protection","authorizedAt":T2,"status":"pending","nextAttemptAt":T2,"expiresAt":T2,"purgeAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","eventID":"seed","kind":"ban","mode":"protection","authorizedAt":T2,"status":"pending","nextAttemptAt":T2,"expiresAt":T2,"purgeAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    raid_subscription_preferences: [
+        { name: 'duplicate_direction', op: 'create', seed: [{ _id: 'old', channelID: 'seed', direction: 'incoming' }], doc: { _id: 'new', channelID: 'seed', direction: 'incoming' } },
+        { name: 'invalid_direction', op: 'validate', doc: { _id: 'seed', channelID: 'seed', direction: 'unknown' } },
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","direction":"incoming"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","direction":"incoming"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    raid_sessions: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","eventID":"seed","raiderID":"seed","startedAt":T2,"endedAt":null,"captureUntil":T2,"retentionHours":2,"expiresAt":T2,"purgeAt":T2,"backfillUntil":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","eventID":"seed","raiderID":"seed","startedAt":T2,"captureUntil":T2,"retentionHours":2,"expiresAt":T2,"purgeAt":T2,"backfillUntil":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    raid_moderation_requests: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","sessionID":"seed","actorID":"seed","requestedAt":T2,"expiresAt":T2,"purgeAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","sessionID":"seed","actorID":"seed","requestedAt":T2,"expiresAt":T2,"purgeAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    raid_followers: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","sessionID":"seed","eventID":"seed","userID":"seed","followedAt":T2,"purgeAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","sessionID":"seed","eventID":"seed","userID":"seed","followedAt":T2,"purgeAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    raid_analytics_summaries: [
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "owner": TEXT } } },
+    ],
+
+    raid_analytics_histories: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","direction":"incoming","occurredAt":T2,"expiresAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","direction":"incoming","occurredAt":T2,"expiresAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    temporary_moderators: [
+        { name: 'duplicate_role', op: 'create', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2 }], doc: { channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 3, expireTimestamp: T2 } },
+        { name: 'create_role', op: 'create', rust: 'role', doc: { channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2 } },
+        { name: 'update_expiry', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2, createdAt: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { durationDays: 3, expireTimestamp: T1 } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+    vips: [
+        { name: 'save_invalid_change', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'username', value: '' }] },
+        { name: 'save_invalid_untouched', op: 'save', seed: [{ _id: OID(1), username: '', userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+        { name: 'save_missing_required', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+        { name: 'save_multiple_errors', op: 'save', seed: [{ _id: OID(1), username: '', userID: '', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, __v: 0 }], id: OID(1), changes: [{ set: 'channel', value: '' }] },
+        { name: 'create_role', op: 'create', rust: 'role', doc: { username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2 } },
+        { name: 'update_role', op: 'updateOne', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { duration: 3 } } },
+        { name: 'redemption_missing_expiry', op: 'validate', doc: { username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 } } },
+        { name: 'save_role', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+    ],
+    random_user_settings: [
+        { name: 'duplicate_channel', op: 'create', seed: [{ _id: OID(1), channelID: '111', blacklist: [] }], doc: { channelID: '111' } },
+        { name: 'create_settings', op: 'create', rust: 'settings', doc: { channelID: '111', blacklist: ['seed'] } },
+        { name: 'update_settings', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', blacklist: ['seed'], createdAt: T1, updatedAt: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { blacklist: ['other'] } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+    titleconfigs: [
+        { name: 'create_settings', op: 'create', rust: 'settings', doc: { channelID: '111', channel: 'seed', pretitle: TEXT } },
+        { name: 'update_settings', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', pretitle: TEXT, active: true, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { active: false } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+
     mediaassets: [
         { name: 'create_upload', op: 'create', rust: 'upload', doc: uploadAsset() },
         // `thumbnail_generator.ts:112`: the thumbnail is an asset of its own.

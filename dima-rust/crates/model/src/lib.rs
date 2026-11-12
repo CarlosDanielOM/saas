@@ -333,19 +333,39 @@ pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
 pub mod extension_wallet_transactions;
+pub mod follow_attack_logs;
+pub mod follow_defense_actions;
+pub mod follow_defense_controls;
+pub mod follow_defense_settings;
+pub mod follow_hate_raid_sources;
+pub mod follow_relationship_ledgers;
 pub mod media_assets;
+pub mod moderation_action_logs;
+pub mod moderation_chatters;
+pub mod moderation_variation_caches;
+pub mod moderation_variation_jobs;
 pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
 pub mod oauth_sessions;
+pub mod raid_analytics_histories;
+pub mod raid_analytics_summaries;
+pub mod raid_followers;
+pub mod raid_moderation_requests;
+pub mod raid_sessions;
+pub mod raid_subscription_preferences;
+pub mod random_user_settings;
 pub mod redemption_rewards;
 pub mod referral_codes;
 pub mod site_analytics;
 pub mod stream_sessions;
+pub mod temporary_moderators;
 pub mod timer_commands;
+pub mod titleconfigs;
 pub mod user_extension_inventories;
 pub mod user_media_library_items;
 pub mod users;
+pub mod vips;
 
 pub use collection::{ClientNulls, CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
@@ -364,6 +384,26 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &temporary_moderators::INFO,
+    &vips::INFO,
+    &random_user_settings::INFO,
+    &titleconfigs::INFO,
+    &raid_analytics_histories::INFO,
+    &raid_analytics_summaries::INFO,
+    &raid_followers::INFO,
+    &raid_moderation_requests::INFO,
+    &raid_sessions::INFO,
+    &raid_subscription_preferences::INFO,
+    &follow_defense_actions::INFO,
+    &follow_defense_controls::INFO,
+    &follow_defense_settings::INFO,
+    &follow_hate_raid_sources::INFO,
+    &follow_relationship_ledgers::INFO,
+    &follow_attack_logs::INFO,
+    &moderation_action_logs::INFO,
+    &moderation_chatters::INFO,
+    &moderation_variation_caches::INFO,
+    &moderation_variation_jobs::INFO,
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,
