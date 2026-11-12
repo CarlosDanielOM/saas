@@ -1,0 +1,11437 @@
+{
+ "client": {
+  "4.7.5 polling burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 polling invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 polling large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport error"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling namespace broadcast": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475polling11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475polling11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t475polling17",
+      "x": null,
+      "token": null,
+      "tag": "t475polling17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t475polling17",
+      "x": null,
+      "token": null,
+      "tag": "t475polling17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t475polling20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t475polling20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475polling24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475polling24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: only this socket and the namespace": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.7.5 polling short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.7.5 polling short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475polling28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 polling upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 upgrade invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 upgrade large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade namespace broadcast": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475upgrade11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475upgrade11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t475upgrade17",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t475upgrade17",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t475upgrade20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t475upgrade20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475upgrade24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475upgrade24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: only this socket and the namespace": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.7.5 upgrade short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.7.5 upgrade short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475upgrade28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 upgrade upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "websocket"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 websocket invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.7.5 websocket large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket namespace broadcast": {
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475websocket11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475websocket11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t475websocket17",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t475websocket17",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t475websocket20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t475websocket20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475websocket24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t475websocket24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: only this socket and the namespace": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.7.5 websocket short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.7.5 websocket short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t475websocket28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.7.5 websocket upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "websocket"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 polling invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 polling large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport error"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling namespace broadcast": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483polling11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483polling11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t483polling17",
+      "x": null,
+      "token": null,
+      "tag": "t483polling17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t483polling17",
+      "x": null,
+      "token": null,
+      "tag": "t483polling17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t483polling20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t483polling20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483polling24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483polling24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: only this socket and the namespace": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.8.3 polling short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.8.3 polling short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483polling28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 polling upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "polling"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 upgrade invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 upgrade large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade namespace broadcast": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483upgrade11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483upgrade11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t483upgrade17",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t483upgrade17",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t483upgrade20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t483upgrade20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483upgrade24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483upgrade24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: only this socket and the namespace": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.8.3 upgrade short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.8.3 upgrade short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483upgrade28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 upgrade upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "websocket"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket burst of events": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "received",
+     300,
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket client disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket connect check ok": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": "2",
+      "token": "good",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "nsp",
+     "/basic"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket connect check refusals": {
+   "bad": [
+    [
+     "connect_error",
+     "Invalid token",
+     {
+      "code": "bad_token",
+      "n": 1
+     }
+    ]
+   ],
+   "plain": [
+    [
+     "connect_error",
+     "Plain refusal",
+     null
+    ]
+   ],
+   "slow": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": "slow",
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket connect root": {
+   "root": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket events and acknowledgements": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "echo",
+     "a",
+     {
+      "b": [
+       1
+      ]
+     },
+     null,
+     1.5,
+     "<offset>"
+    ],
+    [
+     "ack",
+     "x"
+    ],
+    [
+     "ack",
+     1
+    ],
+    [
+     "ack-multi all",
+     [
+      1,
+      "two",
+      {
+       "three": [
+        3
+       ]
+      },
+      null
+     ]
+    ],
+    [
+     "ack-empty all",
+     []
+    ],
+    [
+     "ack",
+     "first"
+    ],
+    [
+     "ack error",
+     "operation has timed out"
+    ],
+    [
+     "event",
+     "one",
+     "num",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket family names": {
+   "/fam/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/ABC_123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/ABC_123",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/ab-c": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/abc/def": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/x_deny": [
+    [
+     "connect_error",
+     "Denied",
+     {
+      "nsp": "/fam/x_deny"
+     }
+    ]
+   ],
+   "/digits/123": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     3,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abcd": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     1,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/zzzz": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/pick/abc": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "which",
+     2,
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 websocket invalid namespace": {
+   "nope": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ]
+  },
+  "4.8.3 websocket large payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "large ack",
+     900000
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket malformed packets close the connection": {
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/basic,[\"connect\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "0/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "2/elsewhere,[\"x\"]": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "3/basic,": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "timeout waiting for",
+     "disconnect",
+     null,
+     1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket multiplexed namespaces": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "a"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "one engine",
+     true
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mx",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     "b"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "c": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "ack",
+     "c"
+    ],
+    [
+     "ack",
+     "still"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket namespace broadcast": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483websocket11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "ack",
+     2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t483websocket11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: forged session": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "forged"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: missed events are replayed": {
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/rep_t483websocket17",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket17"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "direct-1",
+     "<offset>"
+    ],
+    [
+     "event",
+     "pushed",
+     "away-2",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/rep_t483websocket17",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket17"
+     },
+     "<offset>"
+    ],
+    [
+     "same id",
+     true
+    ],
+    [
+     "ack",
+     "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: multiplexed sockets": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket20"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/mr_t483websocket20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/fam/mr_t483websocket20",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: not after a client disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket22"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: not after a server disconnect": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket23"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: nothing received yet": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: off": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: offsets without sessions": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483websocket24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/nopersist/t483websocket24",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: only this socket and the namespace": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "event",
+     "direct",
+     "for-a",
+     "<offset>"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket19-a"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket19-b"
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "direct",
+     "for-b",
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket recovery: twice in a row": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket18"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket server asks": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question",
+     {
+      "q": 1
+     },
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": true,
+      "reply": {
+       "got": {
+        "q": 1
+       }
+      }
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "question-silent",
+     "<ack requested>"
+    ],
+    [
+     "event",
+     "answer",
+     {
+      "ok": false,
+      "error": "operation has timed out"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket server closes the connection": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket server disconnects": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io server disconnect"
+    ],
+    [
+     "connected after",
+     false
+    ]
+   ]
+  },
+  "4.8.3 websocket short: connect timeout": {
+   "manager": [
+    [
+     "open"
+    ],
+    [
+     "close",
+     "transport close"
+    ]
+   ]
+  },
+  "4.8.3 websocket short: recovery window expired": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket27"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket short: recovery within the window": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "forced close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": "t483websocket28"
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket unicode payloads": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "texts",
+     {
+      "emoji": "😀👍🏽",
+      "combining": "é",
+      "rtl": "שלום עולם",
+      "zwj": "👨‍👩‍👧",
+      "separators": "a b c",
+      "keys": {
+       "1": 4,
+       "2": 2,
+       "b": 1,
+       "a": 3
+      },
+      "numbers": [
+       1e+21,
+       0,
+       0.30000000000000004,
+       9007199254740992,
+       1.5e-7,
+       123456789012
+      ]
+     },
+     "<offset>"
+    ],
+    [
+     "ack",
+     {
+      "text": "é😀 שלום ́",
+      "lone": "x"
+     }
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  },
+  "4.8.3 websocket upgrade with concurrent emits": {
+   "a": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/norec",
+      "x": null,
+      "token": null,
+      "tag": null
+     }
+    ],
+    [
+     "echoes",
+     50,
+     true
+    ],
+    [
+     "transport",
+     "websocket"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ]
+  }
+ },
+ "http": {
+  "client files": {
+   "socket.io.js": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.min.js": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "7bcff1b4f1442787ff11dfc510dedb8de16502ff5c987c4bbeb477605f76d9a0"
+   },
+   "socket.io.js.map": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "08aff03d7b1a397d2d1023aec24ca5bc0a0040fbf05e0f203e5a9952320d0f00"
+   },
+   "socket.io.esm.min.js": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "72a57408c85583436488d4dc29231cbb9b805b6e9bec8c7a73a43ff7f21f6c95"
+   },
+   "socket.io.esm.min.js.map": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "c3964e5dbb4adf8d0e5f34f2ea5212734915a032d4e66f21e4558a6ef25b5288"
+   },
+   "socket.io.msgpack.min.js": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "d04937e0b82ed5549344a11ab9ec5ef1a12d7972a2363086cd203b98937eb57f"
+   },
+   "socket.io.msgpack.min.js.map": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "95b7d1ba5b4b968048456821dceda90009072c21d9cf58010abeac7595fd6857"
+   },
+   "socket.io.min.js.map": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "a953ef419437258f0a3d12957bce6556a333e03396c5b96a2e4723795ce81bc3"
+   },
+   "socket.io.js gzip": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "gzip"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js br": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "br"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js deflate": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "deflate"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js gzip, deflate, br, zstd": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "gzip"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js br;q=0.5, gzip": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "gzip"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js *": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\"",
+     "content-encoding": "br"
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js identity": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "socket.io.js gzip;q=0": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "if-none-match \"4.8.3\"": {
+    "status": 304,
+    "headers": {},
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "if-none-match W/\"4.8.3\"": {
+    "status": 304,
+    "headers": {},
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "if-none-match \"4.8.2\"": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "if-none-match *": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "if-none-match \"4.8.3\", \"x\"": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "query string": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "bc425714aa8f2547d6939e3721ebafd3830a7562a1f6cb08acc1e794bd707954"
+   },
+   "head": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "post": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/javascript; charset=utf-8",
+     "cache-control": "public, max-age=0",
+     "etag": "\"4.8.3\""
+    },
+    "sha256": "7bcff1b4f1442787ff11dfc510dedb8de16502ff5c987c4bbeb477605f76d9a0"
+   },
+   "not shipped: esm": {
+    "error": "ECONNRESET"
+   },
+   "not shipped: msgpack map": {
+    "error": "ECONNRESET"
+   },
+   "other name": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": {
+     "code": 0,
+     "message": "Transport unknown"
+    }
+   }
+  },
+  "engine errors": {
+   "no query": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":0,\"message\":\"Transport unknown\"}"
+   },
+   "unknown path": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":0,\"message\":\"Transport unknown\"}"
+   },
+   "unknown transport": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":0,\"message\":\"Transport unknown\"}"
+   },
+   "protocol 3": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":5,\"message\":\"Unsupported protocol version\"}"
+   },
+   "no protocol": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":5,\"message\":\"Unsupported protocol version\"}"
+   },
+   "post handshake": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":2,\"message\":\"Bad handshake method\"}"
+   },
+   "websocket without upgrade": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":3,\"message\":\"Bad request\"}"
+   },
+   "unknown sid": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":1,\"message\":\"Session ID unknown\"}"
+   },
+   "unknown sid on post": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":1,\"message\":\"Session ID unknown\"}"
+   },
+   "last transport wins": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":0,\"message\":\"Transport unknown\"}"
+   },
+   "put on a session": {
+    "status": 500,
+    "headers": {},
+    "body": ""
+   },
+   "websocket request on a polling session": {
+    "status": 400,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"code\":3,\"message\":\"Bad request\"}"
+   }
+  },
+  "polling responses": {
+   "handshake": {
+    "status": 200,
+    "headers": {
+     "content-type": "text/plain; charset=UTF-8",
+     "cache-control": "no-store",
+     "x-xss-protection": "0"
+    }
+   },
+   "open": {
+    "sid": "string",
+    "upgrades": [
+     "websocket"
+    ],
+    "pingInterval": 25000,
+    "pingTimeout": 20000,
+    "maxPayload": 1000000
+   },
+   "post": {
+    "status": 200,
+    "headers": {
+     "content-type": "text/html",
+     "cache-control": "no-store"
+    },
+    "body": "ok"
+   },
+   "poll": {
+    "status": 200,
+    "headers": {
+     "content-type": "text/plain; charset=UTF-8",
+     "cache-control": "no-store",
+     "content-encoding": "gzip"
+    }
+   },
+   "message packets": 62,
+   "first message": "40/basic,{<ids>}",
+   "oversized post": {
+    "status": 413,
+    "headers": {}
+   }
+  },
+  "the app and other upgrades": {
+   "hello": {
+    "status": 200,
+    "body": "hello from the app"
+   },
+   "socket.io without slash": {
+    "status": 404
+   },
+   "socket.io prefix lookalike": {
+    "status": 404
+   },
+   "other path": {
+    "status": 404
+   },
+   "raw websocket": {
+    "message": "app:ping"
+   },
+   "bad upgrade": {
+    "status": 400,
+    "body": "Transport unknown"
+   }
+  }
+ }
+}

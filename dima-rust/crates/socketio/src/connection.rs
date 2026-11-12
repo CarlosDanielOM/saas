@@ -1,0 +1,561 @@
+//! One Engine.IO connection and the namespaces it joined (`Client` in `socket.io` 4.8.3).
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::time::Duration;
+
+use dima_web::UpgradeGuard;
+use engineioxide::Str;
+use serde_json::{Map, Value};
+use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
+
+use crate::codec::{self, Kind};
+use crate::error::DisconnectReason;
+use crate::handshake::Origin;
+use crate::outbox::{Delivery, NotSent, Outbox, Outgoing, Transport, TransportFull};
+use crate::server::{Registry, Shared};
+use crate::socket::ErasedSocket;
+use crate::telemetry::Refusal;
+
+/// The data `engineioxide` keeps on each of its sockets: our connection, until it closes.
+#[derive(Default)]
+pub(crate) struct EngineData(Mutex<Option<Arc<Connection>>>);
+
+impl EngineData {
+    pub fn set(&self, conn: Arc<Connection>) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(conn);
+    }
+
+    pub fn get(&self) -> Option<Arc<Connection>> {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    pub fn take(&self) -> Option<Arc<Connection>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).take()
+    }
+}
+
+pub(crate) type EngineSocket = engineioxide::Socket<EngineData>;
+
+impl Transport for EngineSocket {
+    fn send(&self, message: Str) -> Result<(), TransportFull> {
+        self.emit(message).map_err(|error| match error {
+            tokio::sync::mpsc::error::TrySendError::Full(_) => TransportFull::Full,
+            tokio::sync::mpsc::error::TrySendError::Closed(_) => TransportFull::Closed,
+        })
+    }
+}
+
+/// A namespace this connection is joining or has joined.
+enum Entry {
+    /// The check or the restore is running; the ticket identifies that attempt.
+    Pending(Ticket),
+    Joined(Arc<dyn ErasedSocket>),
+}
+
+/// One admission attempt.
+#[derive(Clone)]
+pub(crate) struct Ticket {
+    pub id: u64,
+    pub cancel: CancellationToken,
+}
+
+struct State {
+    entries: HashMap<String, Entry>,
+    /// A socket has joined: the connect timeout no longer applies.
+    joined: bool,
+    guard: Option<UpgradeGuard>,
+}
+
+/// How often a busy connection's queue is swept while nothing else happens.
+const TICK: Duration = Duration::from_millis(100);
+
+/// How long a closing connection may take to hand its last packets and the close packet to the
+/// client (`Polling.closeTimeout` of `engine.io`: 30 s).
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(30);
+
+pub(crate) struct Connection {
+    pub shared: Arc<Shared>,
+    registry: Arc<Registry>,
+    engine: Arc<EngineSocket>,
+    pub first: Arc<Origin>,
+    state: Mutex<State>,
+    outbox: Mutex<Outbox>,
+    /// Fires when the connection starts closing (sockets leave, inbound is ignored).
+    closed: CancellationToken,
+    /// Fires when the Engine.IO session is gone.
+    gone: CancellationToken,
+    reason: OnceLock<DisconnectReason>,
+    drained: Notify,
+    poke: Notify,
+    /// Polling requests waiting for data.
+    polls: std::sync::atomic::AtomicUsize,
+}
+
+/// One polling request waiting in Engine.IO. Dropped before [`PollGuard::finish`] (the client
+/// went away mid-poll), it closes the connection: `poll connection closed prematurely`.
+pub(crate) struct PollGuard {
+    conn: Arc<Connection>,
+    finished: bool,
+}
+
+impl PollGuard {
+    pub fn finish(mut self) {
+        self.finished = true;
+    }
+}
+
+impl Drop for PollGuard {
+    fn drop(&mut self) {
+        self.conn
+            .polls
+            .fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
+        if !self.finished {
+            self.conn.close(DisconnectReason::TransportError);
+        }
+    }
+}
+
+fn engine_reason(reason: &engineioxide::DisconnectReason) -> DisconnectReason {
+    use engineioxide::DisconnectReason as E;
+    match reason {
+        E::TransportClose => DisconnectReason::TransportClose,
+        E::TransportError | E::MultipleHttpPollingError => DisconnectReason::TransportError,
+        E::PacketParsingError => DisconnectReason::ParseError,
+        E::HeartbeatTimeout => DisconnectReason::PingTimeout,
+        E::ClosingServer => DisconnectReason::ServerShuttingDown,
+    }
+}
+
+impl Connection {
+    pub fn new(
+        shared: Arc<Shared>,
+        registry: Arc<Registry>,
+        engine: Arc<EngineSocket>,
+        first: Arc<Origin>,
+        guard: Option<UpgradeGuard>,
+        capacity: usize,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            shared,
+            registry,
+            engine,
+            first,
+            state: Mutex::new(State {
+                entries: HashMap::new(),
+                joined: false,
+                guard,
+            }),
+            outbox: Mutex::new(Outbox::new(capacity)),
+            closed: CancellationToken::new(),
+            gone: CancellationToken::new(),
+            reason: OnceLock::new(),
+            drained: Notify::new(),
+            poke: Notify::new(),
+            polls: std::sync::atomic::AtomicUsize::new(0),
+        })
+    }
+
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn outbox(&self) -> MutexGuard<'_, Outbox> {
+        self.outbox.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.closed.is_cancelled()
+    }
+
+    /// The Engine.IO transport in use (`polling` or `websocket`).
+    pub fn transport(&self) -> &'static str {
+        match self.engine.transport_type() {
+            engineioxide::TransportType::Polling => "polling",
+            engineioxide::TransportType::Websocket => "websocket",
+        }
+    }
+
+    /// A polling request is about to wait in Engine.IO.
+    pub fn poll_started(self: &Arc<Self>) -> PollGuard {
+        self.polls.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        PollGuard {
+            conn: Arc::clone(self),
+            finished: false,
+        }
+    }
+
+    /// Keeps the upgrade guard of a WebSocket upgrade until the connection closes.
+    pub fn attach_guard(&self, guard: UpgradeGuard) {
+        if !self.is_closed() {
+            self.state().guard = Some(guard);
+        }
+    }
+
+    // ----- inbound -------------------------------------------------------------------------
+
+    /// One Engine.IO message (`Client.ondata` / `ondecoded`).
+    pub fn on_message(self: &Arc<Self>, text: &str) {
+        if self.is_closed() {
+            return;
+        }
+        let Ok(codec::Packet { nsp, kind }) = codec::decode(text) else {
+            self.shared.telemetry.protocol_error();
+            self.close(DisconnectReason::ForcedClose);
+            return;
+        };
+        let kind = match kind {
+            Kind::Connect(auth) => return self.on_connect_packet(nsp, auth),
+            other => other,
+        };
+        let socket = match kind {
+            Kind::ConnectError => None,
+            _ => match self.state().entries.get(&nsp) {
+                Some(Entry::Joined(socket)) => Some(Arc::clone(socket)),
+                _ => None,
+            },
+        };
+        // A packet for a namespace this connection has not joined: `invalid state`.
+        let Some(socket) = socket else {
+            self.shared.telemetry.protocol_error();
+            self.close(DisconnectReason::ForcedServerClose);
+            return;
+        };
+        match kind {
+            Kind::Event { name, args, ack } => {
+                if !socket.deliver(name, args, ack) {
+                    self.close(DisconnectReason::InboundOverflow);
+                }
+            }
+            Kind::Ack { id, args } => socket.resolve_ack(id, args),
+            Kind::Disconnect => socket.leave(DisconnectReason::ClientNamespaceDisconnect),
+            Kind::Ignored | Kind::Connect(_) | Kind::ConnectError => {}
+        }
+    }
+
+    /// A binary Engine.IO message: refused.
+    pub fn on_binary(&self) {
+        self.shared.telemetry.protocol_error();
+        self.close(DisconnectReason::ForcedClose);
+    }
+
+    /// CONNECT (`Client.connect`): admission, then the namespace's own flow.
+    fn on_connect_packet(self: &Arc<Self>, nsp: String, auth: Map<String, Value>) {
+        if self.shared.stopping() {
+            return;
+        }
+        let options = &self.shared.options;
+        let refusal = {
+            let state = self.state();
+            if state.entries.contains_key(&nsp) {
+                drop(state);
+                // A second CONNECT while the first is joined or still checking.
+                self.shared.telemetry.protocol_error();
+                self.close(DisconnectReason::ForcedServerClose);
+                return;
+            }
+            if state.entries.len() >= options.max_namespaces_per_connection {
+                Some(Refusal::TooManyOnConnection)
+            } else if nsp.len() > options.max_namespace_name {
+                Some(Refusal::NameTooLong)
+            } else {
+                None
+            }
+        };
+        if let Some(refusal) = refusal {
+            return self.refuse(&nsp, refusal);
+        }
+        let Some(def) = self.registry.lookup(&nsp) else {
+            return self.refuse(&nsp, Refusal::InvalidNamespace);
+        };
+        let ticket = Ticket {
+            id: self.shared.next_key(),
+            cancel: CancellationToken::new(),
+        };
+        {
+            let mut state = self.state();
+            if self.is_closed() || state.entries.contains_key(&nsp) {
+                return;
+            }
+            state
+                .entries
+                .insert(nsp.clone(), Entry::Pending(ticket.clone()));
+        }
+        if let Err(refusal) = def.admit(self, &nsp, auth, ticket.clone()) {
+            self.remove_pending(&nsp, &ticket);
+            self.refuse(&nsp, refusal);
+        }
+    }
+
+    /// `Invalid namespace` (every admission refusal reads the same to the client).
+    fn refuse(&self, nsp: &str, refusal: Refusal) {
+        self.shared.telemetry.connect_refused(nsp, refusal);
+        self.push_control(codec::encode_connect_error(nsp, "Invalid namespace", None));
+    }
+
+    // ----- membership ----------------------------------------------------------------------
+
+    /// Turns a pending entry into a joined one; `false` when the attempt was cancelled or the
+    /// connection closed meanwhile.
+    pub fn join(&self, nsp: &str, ticket: &Ticket, socket: Arc<dyn ErasedSocket>) -> bool {
+        let mut state = self.state();
+        if self.is_closed() {
+            return false;
+        }
+        match state.entries.get(nsp) {
+            Some(Entry::Pending(current)) if current.id == ticket.id => {
+                state.entries.insert(nsp.to_owned(), Entry::Joined(socket));
+                true
+            }
+            _ => false,
+        }
+    }
+
+    pub fn remove_pending(&self, nsp: &str, ticket: &Ticket) {
+        let mut state = self.state();
+        if matches!(state.entries.get(nsp), Some(Entry::Pending(current)) if current.id == ticket.id)
+        {
+            state.entries.remove(nsp);
+        }
+    }
+
+    /// Removes a joined entry, if it is still this socket.
+    pub fn remove_joined(&self, nsp: &str, key: u64) {
+        let mut state = self.state();
+        if matches!(state.entries.get(nsp), Some(Entry::Joined(socket)) if socket.queue().0 == key)
+        {
+            state.entries.remove(nsp);
+        }
+    }
+
+    /// The first socket joined: the connect timeout is over.
+    pub fn mark_joined(&self) {
+        self.state().joined = true;
+    }
+
+    fn joined(&self) -> bool {
+        self.state().joined
+    }
+
+    // ----- outbound ------------------------------------------------------------------------
+
+    /// Hands a packet to the transport under the queue bounds.
+    pub fn push(&self, outgoing: Outgoing<'_>) -> Result<(), NotSent> {
+        if self.is_closed() {
+            return Err(NotSent::Closed);
+        }
+        let result = self.outbox().push(
+            self.engine.as_ref(),
+            outgoing,
+            &self.shared.outbound_bytes,
+            self.shared.options.max_outbound_total,
+        );
+        self.poke.notify_one();
+        result
+    }
+
+    /// A packet that belongs to no socket (CONNECT_ERROR). A client that never reads them is a
+    /// slow consumer.
+    pub fn push_control(&self, packet: String) {
+        let pushed = self.push(Outgoing {
+            socket: None,
+            packet,
+            delivery: &Delivery::Reliable,
+        });
+        if pushed == Err(NotSent::SlowConsumer) {
+            self.close(DisconnectReason::SlowConsumer);
+        }
+    }
+
+    /// Sends a packet that must not be lost and may wait for room (missed events of a restore).
+    /// `false` when the connection closed or the attempt was cancelled first.
+    pub async fn push_waiting(
+        &self,
+        key: u64,
+        limits: crate::config::QueueLimits,
+        packet: String,
+        ticket: &Ticket,
+    ) -> bool {
+        loop {
+            let pushed = self.push(Outgoing {
+                socket: Some((key, limits)),
+                packet: packet.clone(),
+                delivery: &Delivery::Reliable,
+            });
+            match pushed {
+                Ok(()) => return true,
+                Err(NotSent::SlowConsumer) => {
+                    let drained = self.drained.notified();
+                    tokio::select! {
+                        () = self.closed.cancelled() => return false,
+                        () = ticket.cancel.cancelled() => return false,
+                        () = drained => {}
+                        () = tokio::time::sleep(TICK) => {}
+                    }
+                }
+                Err(_) => return false,
+            }
+        }
+    }
+
+    pub fn forget_socket(&self, key: u64) {
+        self.outbox().forget_socket(key);
+    }
+
+    /// Whether packets still wait for the client.
+    pub fn has_queued(&self) -> bool {
+        let mut outbox = self.outbox();
+        outbox.sweep(&self.shared.outbound_bytes);
+        outbox.queued() > 0
+    }
+
+    fn sweep_and_flush(&self) {
+        let released = {
+            let mut outbox = self.outbox();
+            let released = outbox.sweep(&self.shared.outbound_bytes);
+            if outbox.has_waiting() {
+                outbox.flush_waiting(
+                    self.engine.as_ref(),
+                    &self.shared.outbound_bytes,
+                    self.shared.options.max_outbound_total,
+                );
+            }
+            released
+        };
+        if released > 0 {
+            self.drained.notify_waiters();
+        }
+    }
+
+    // ----- closing -------------------------------------------------------------------------
+
+    /// Every joined socket leaves with `reason`; pending attempts are cancelled. The connection
+    /// stays open.
+    pub fn leave_all(&self, reason: DisconnectReason) {
+        let entries: Vec<Entry> = self
+            .state()
+            .entries
+            .drain()
+            .map(|(_, entry)| entry)
+            .collect();
+        for entry in entries {
+            match entry {
+                Entry::Pending(ticket) => ticket.cancel.cancel(),
+                Entry::Joined(socket) => socket.leave(reason),
+            }
+        }
+    }
+
+    /// `socket.disconnect(true)`: DISCONNECT to every joined namespace, then close.
+    pub fn disconnect_all(&self) {
+        let joined: Vec<Arc<dyn ErasedSocket>> = self
+            .state()
+            .entries
+            .values()
+            .filter_map(|entry| match entry {
+                Entry::Joined(socket) => Some(Arc::clone(socket)),
+                Entry::Pending(_) => None,
+            })
+            .collect();
+        for socket in joined {
+            socket.disconnect();
+        }
+        self.close(DisconnectReason::ForcedServerClose);
+    }
+
+    /// Closes the connection (`Client.close`): every socket leaves with `reason` and inbound
+    /// packets are ignored from now on. As in `engine.io`, what is queued still reaches the
+    /// client, then the close packet (on the next poll for a polling client), within
+    /// [`CLOSE_TIMEOUT`]; a slow consumer and a shutdown close at once. The first reason wins.
+    pub fn close(&self, reason: DisconnectReason) {
+        if self.reason.set(reason).is_err() {
+            return;
+        }
+        self.closed.cancel();
+        self.leave_all(reason);
+        if matches!(
+            reason,
+            DisconnectReason::SlowConsumer | DisconnectReason::ServerShuttingDown
+        ) {
+            self.engine
+                .close(engineioxide::DisconnectReason::TransportClose);
+        }
+        // Otherwise the connection's task drains, then closes.
+    }
+
+    /// `engineioxide` reports the session closed (by the client, the transport, the heartbeat,
+    /// or after [`Connection::close`]).
+    pub fn on_engine_closed(&self, reason: &engineioxide::DisconnectReason) {
+        self.gone.cancel();
+        let reason = match self.reason.set(engine_reason(reason)) {
+            Ok(()) => {
+                self.closed.cancel();
+                let reason = engine_reason(reason);
+                self.leave_all(reason);
+                reason
+            }
+            Err(_) => self
+                .reason
+                .get()
+                .copied()
+                .unwrap_or(DisconnectReason::TransportClose),
+        };
+        self.outbox().clear(&self.shared.outbound_bytes);
+        self.state().guard = None;
+        self.drained.notify_waiters();
+        self.shared.telemetry.connection_closed(reason);
+    }
+
+    /// The deferred part of [`Connection::close`].
+    async fn drain_then_close(&self) {
+        let deadline = tokio::time::sleep(CLOSE_TIMEOUT);
+        tokio::pin!(deadline);
+        loop {
+            self.sweep_and_flush();
+            let drained = self.outbox().queued() == 0;
+            let deliverable = self.engine.transport_type()
+                == engineioxide::TransportType::Websocket
+                || self.polls.load(std::sync::atomic::Ordering::Acquire) > 0;
+            if drained && deliverable {
+                break;
+            }
+            tokio::select! {
+                () = self.gone.cancelled() => return,
+                () = self.shared.hard_stop.cancelled() => break,
+                () = &mut deadline => break,
+                () = tokio::time::sleep(Duration::from_millis(10)) => {}
+            }
+        }
+        self.engine
+            .close(engineioxide::DisconnectReason::TransportClose);
+    }
+
+    /// The connection's own task: the connect timeout and the queue sweeps.
+    pub async fn run(self: Arc<Self>) {
+        let timeout = tokio::time::sleep(self.shared.options.connect_timeout);
+        tokio::pin!(timeout);
+        let mut waiting_for_join = true;
+        loop {
+            let busy = self.outbox().busy();
+            tokio::select! {
+                biased;
+                () = self.closed.cancelled() => break,
+                () = &mut timeout, if waiting_for_join => {
+                    waiting_for_join = false;
+                    if !self.joined() {
+                        self.close(DisconnectReason::ForcedServerClose);
+                    }
+                }
+                () = self.poke.notified() => {}
+                () = tokio::time::sleep(TICK), if busy => self.sweep_and_flush(),
+            }
+        }
+        if !self.gone.is_cancelled() {
+            self.drain_then_close().await;
+        }
+    }
+}
