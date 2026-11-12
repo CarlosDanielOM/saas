@@ -86,7 +86,7 @@ Before implementing data-dependent features or functions that may duplicate exis
 
 ## Documentation Work
 
-- When the active agent or harness provides GPT-6 Luna, use GPT-6 Luna in **high reasoning/thinking mode** for documentation updates.
+- When the active agent or harness provides GPT-6.1 Terra, use GPT-6.1 Terra in **high reasoning/thinking mode** for documentation updates (T3 Code: `delegate_task` with provider `codex`, model `gpt-6.1-terra`, `reasoningEffort: high`; its default effort is low, so set it explicitly).
 - For a broad docs refresh, delegate source-backed audits to separate agents when the harness permits it. Give each agent a non-overlapping set of files and feature sources, stay within the actual concurrency limit, and have one integrator reconcile terminology and English/Spanish parity.
 - Delegation does not replace verification. Repository guidance changes need a reviewed diff and `git diff --check`; published `dimadocs` content still needs the docs preview, candidate build, behavior check, deployment, and production verification described above.
 
