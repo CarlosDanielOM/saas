@@ -38,18 +38,16 @@ fn census_counts() -> Result<std::collections::HashMap<String, u64>> {
         .collect())
 }
 
-/// Registered collections production never created: their schema is ported, but no code of the
-/// reference imports the model (`channelconfigs`, ledger status `schema-without-collection`).
-const NEVER_CREATED: &[&str] = &["channelconfigs"];
-
-/// Every registered collection exists in the copy (an empty one included), except
-/// [`NEVER_CREATED`].
+/// Every registered collection that start-up initialises exists in the copy (an empty one
+/// included). The others (`initialised_at_startup: false`, schemas no process imports) may or
+/// may not: `channelconfigs` never existed, `accounts` and `app_configs` are left from older code.
 async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<()> {
     let names = store.database().list_collection_names().await?;
     let absent: Vec<&str> = REGISTRY
         .iter()
+        .filter(|info| info.initialised_at_startup)
         .map(|info| info.name)
-        .filter(|name| !names.iter().any(|n| n == name) && !NEVER_CREATED.contains(name))
+        .filter(|name| !names.iter().any(|n| n == name))
         .collect();
     if !absent.is_empty() {
         let message = format!("collections missing from the copy: {}", absent.join(", "));
@@ -175,19 +173,17 @@ async fn real_indexes_match_declarations() -> Result<()> {
         return Ok(());
     };
     expected_collections(&store).await?;
-    let differences =
+    let preflight =
         dima_model::preflight_indexes(&store, REGISTRY, std::time::Duration::from_secs(60)).await?;
-    // A collection the copy does not have (`NEVER_CREATED`) has no indexes to compare, and the
-    // differences production is known to have are reported, not failed.
+    // The collections start-up does not initialise are reported apart, and the differences
+    // production is known to have are reported, not failed.
+    for skipped in &preflight.not_initialised {
+        eprintln!("{skipped}");
+    }
     let mut known = Vec::new();
-    let real: Vec<String> = differences
+    let real: Vec<String> = preflight
+        .differences
         .iter()
-        .filter(|d| {
-            !matches!(
-                d,
-                dima_model::index::IndexDifference::MissingCollection { .. }
-            )
-        })
         .filter(
             |d| match KNOWN_DIFFERENCES.iter().find(|k| is_known(d, k)) {
                 Some((collection, index, why)) => {

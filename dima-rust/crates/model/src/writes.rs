@@ -616,6 +616,7 @@ mod tests {
             rules: RULES,
             read_needs: &[],
             hooks: Hooks::Save,
+            initialised_at_startup: true,
             private: &[],
             decode: |_| Ok(Box::new(())),
         };

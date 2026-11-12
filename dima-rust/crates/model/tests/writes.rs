@@ -2254,8 +2254,22 @@ async fn index_reports_policies_and_preflight() -> Result<()> {
             )
             .await?;
         let before = list_indexes(&store, journal.name).await?;
-        let infos = [journal, sessions, &dima_model::users::INFO];
-        let differences = preflight_indexes(&store, &infos, DEADLINE).await?;
+        // `channelconfigs` is not initialised at start-up: reported apart, not as missing.
+        let infos = [
+            journal,
+            sessions,
+            &dima_model::users::INFO,
+            &dima_model::channel_configs::INFO,
+        ];
+        let preflight = preflight_indexes(&store, &infos, DEADLINE).await?;
+        let skipped = dima_model::index::NotInitialised {
+            collection: "channelconfigs",
+            exists: false,
+        };
+        if preflight.not_initialised != [skipped] {
+            bail!("not initialised: {:?}", preflight.not_initialised);
+        }
+        let differences = preflight.differences;
         let after = list_indexes(&store, journal.name).await?;
         if before != after {
             bail!("the preflight changed the indexes");

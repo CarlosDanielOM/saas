@@ -40,6 +40,11 @@ pub struct CollectionInfo {
     pub read_needs: &'static [ReadNeed],
     /// The Mongoose middleware the module's adapters reproduce.
     pub hooks: Hooks,
+    /// A process of the reference (bot, API or cron) imports the model, so Mongoose's
+    /// `Model.init()` creates the collection and its indexes at start-up. `false` for a schema
+    /// no running process imports (`ledger/modules.json`, `processes: []`): its collection may
+    /// not exist in production, and start-up must not create it ([`crate::startup_policy`]).
+    pub initialised_at_startup: bool,
     /// The private paths of the read type (`$` for each array element): every `select: false`
     /// path, e-mail addresses, tokens, payloads with personal data. Their read type fields are
     /// [`crate::Private`], so `Debug` never shows them (`tests/private.rs`).
@@ -199,6 +204,7 @@ mod tests {
         rules: &[],
         read_needs: &[],
         hooks: Hooks::None,
+        initialised_at_startup: true,
         private: &[],
         decode: |_| Ok(Box::new(())),
     };

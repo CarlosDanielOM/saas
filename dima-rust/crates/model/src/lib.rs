@@ -294,7 +294,8 @@ pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;
 pub use index::{
-    IndexPolicy, IndexReport, IndexSpec, ensure_indexes, preflight_indexes, startup_policy,
+    IndexPolicy, IndexReport, IndexSpec, Preflight, ensure_indexes, preflight_indexes,
+    startup_policy,
 };
 pub use loaded::LoadedForSave;
 pub use private::Private;

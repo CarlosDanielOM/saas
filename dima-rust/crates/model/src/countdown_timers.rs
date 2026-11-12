@@ -73,6 +73,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<Countdown>,
 };
@@ -131,6 +132,7 @@ pub static CONFIG_INFO: CollectionInfo = CollectionInfo {
     rules: CONFIG_RULES,
     read_needs: CONFIG_READ_NEEDS,
     hooks: Hooks::None,
+    initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<CountdownConfig>,
 };

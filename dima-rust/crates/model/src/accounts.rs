@@ -67,6 +67,8 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: &[],
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    // No process of the reference imports the schema (`ledger/modules.json`: unreachable).
+    initialised_at_startup: false,
     private: PRIVATE,
     decode: decode_boxed::<Account>,
 };

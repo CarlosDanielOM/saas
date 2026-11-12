@@ -169,6 +169,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
+    initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<Command>,
 };
