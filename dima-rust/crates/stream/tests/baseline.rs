@@ -135,7 +135,9 @@ async fn cache_age_lt_requests_ttls_old_rust_payload_and_due_receipts() -> Resul
                 cache.clone(),
                 clock.clone(),
                 Config {
-                    mongo_deadline: std::time::Duration::from_nanos(1),
+                    // Zero: the first poll of a network call is never ready, so this always elapses
+                    // (one nanosecond rounded up to a timer tick that a fast local query could beat).
+                    mongo_deadline: std::time::Duration::ZERO,
                     key_prefix: prefix.clone(),
                     ..Config::default()
                 },

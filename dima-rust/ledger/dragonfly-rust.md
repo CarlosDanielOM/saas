@@ -14,7 +14,7 @@ and none is read by the TypeScript. The lead keeps it current at each merge.
 | `twitch:{id}:ai:credits:revision` | hash | `rev`, `pub`, `debits` | none | `dima-billing` | Revision of the cached credit balance: every local debit and every accepted publication advances it, and a publication is refused when it started from an older one |
 | `site:analytics:refresh:lock` | string | random owner | 151 s by default (refresh deadline, store deadline, one second), deleted after each refresh | `dima-stream` | One refresh of the live channels board at a time; fences publication |
 | `locks:refresh:twitch:{id}:exchange` | string | random owner | 30 s, renewed while its holder works, removed once the outcome is stored, left to expire when the outcome is unknown | `dima-twitch` | A token exchange for this streamer is, or may be, in flight: no other refresh is sent meanwhile, and a refusal inside that time is not read as a revoked token |
-| `twitch:{id}:refresh:parked` | string | encrypted answer of a token exchange with its generation | 30 days today; no expiry once P2-TWITCH-01c is merged | `dima-twitch` | An answer from Twitch that MongoDB does not hold yet. **It must not be flushed while any is left**: see the cutover and rollback notes of the Twitch re-check |
+| `twitch:{id}:refresh:parked` | hash | `generation`, `rotation` (the encrypted answer of a token exchange) | none | `dima-twitch` | An answer from Twitch that MongoDB does not hold yet. Written when absent and never over a newer generation; removed when MongoDB holds the answer or something newer, or the account is gone. **It must not be flushed while any is left**: reconciliation (`Twitch::reconcile_recovery`) empties the family |
 
 ## Keys whose value changed
 
