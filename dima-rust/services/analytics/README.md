@@ -139,3 +139,9 @@ both HTTP freshness/timeline timestamps to equal their 10 s/60 s floors. Every c
 predicate is true. Counts, sums, histograms and resolutions still compare exactly.
 Default double-run recording and candidate verification pass (16 steps); no capture was
 edited by hand. No service bucketing change was necessary.
+
+Part 3: `verify analytics --dragonfly-dbs 4-5` passed all three scenarios (61 steps).
+There are no unallowed differences. The four ingestion allowances above account solely for
+UTC quantization of independent run clocks. The only note is non-contract object-key order
+in `channelNames`. PostgreSQL catalogue definitions and rows compare without structural
+allowances, including schema creation from empty databases in access/routes/ingestion.
