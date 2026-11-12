@@ -659,6 +659,71 @@ impl CommandCache {
         .await
     }
 
+    /// Adds `delta` to the counter of the command `id` of `channel_id` (`$inc`), under the write
+    /// protocol: the names in `names` (the name the command was invoked by, and its `cmd` when
+    /// that differs) are marked stale before the write and again after it. `false` when no
+    /// command of the channel has that id.
+    ///
+    /// What a run of `$(count)` stores (P4-CHAT-MESSAGE, at the request of P4-ACT-CORE): the
+    /// reference stores the run's total with `$set` (`updateCommandInDB(channelID, command,
+    /// {count})`, see [`Self::update_count`]), so two runs at once both store their own total and
+    /// one use is lost; an increment by the run's change never loses one. The value goes through
+    /// [`dima_store::mongo::number::js_number`], so a whole delta is an `int32` as Mongoose casts
+    /// it, and the stored BSON type follows MongoDB's `$inc` rules (an `int32` total stays
+    /// `int32` until it overflows). The update goes through the model's write helpers
+    /// (`updatedAt`, the availability hook). A `delta` that is zero or not finite writes nothing
+    /// and answers whether the command exists.
+    pub async fn increment_count(
+        &self,
+        channel_id: &str,
+        names: &[&str],
+        id: bson::oid::ObjectId,
+        delta: f64,
+    ) -> Result<bool, WriteFailure<RuntimeError>> {
+        let filter = doc! { "_id": id, "channelID": channel_id };
+        if delta == 0.0 || !delta.is_finite() {
+            return within(
+                "commands.findOne",
+                self.config.read_deadline,
+                self.stores
+                    .mongo
+                    .documents(commands::COLLECTION)
+                    .find_one(filter)
+                    .projection(doc! { "_id": 1 }),
+            )
+            .await
+            .map(|found| found.is_some())
+            .map_err(WriteFailure::Write);
+        }
+        let mut fields: Vec<&str> = Vec::with_capacity(names.len());
+        for name in names {
+            if !fields.contains(name) {
+                fields.push(name);
+            }
+        }
+        self.write(channel_id, Names::These(&fields), || async {
+            let mut ctx = WriteContext::new(self.clock.now_ms());
+            let prepared = commands::prepare_update(
+                &filter,
+                doc! { "$inc": { "count": dima_store::mongo::number::js_number(delta) } },
+                dima_model::UpdateOptions::default(),
+                Writer::Client,
+                &mut ctx,
+                self.random.as_ref(),
+            )?;
+            let outcome = within("commands.updateOne", self.config.write_deadline, async {
+                self.stores
+                    .mongo
+                    .writes(commands::COLLECTION)
+                    .update_one(&prepared)
+                    .await
+            })
+            .await?;
+            Ok(outcome.matched > 0)
+        })
+        .await
+    }
+
     /// `Commands.deleteCommand(channelID, name)` (`!cmd del`): deletes the command
     /// [`Self::find`] would find, and invalidates the name. Its document, or `None` ("Command
     /// does not exist").

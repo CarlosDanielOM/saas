@@ -15,6 +15,17 @@ test-util = []
 
 [dependencies]
 dima-actions = { workspace = true }
+# P4-CHAT-MESSAGE: the message handler reads commands, keywords, permissions and chat history
+# (`dima-commands`), runs and delivers commands (`dima-actions`, `dima-engine` values), reads the
+# streamer directory and posts plain chat (`dima-twitch`), queues chat memory (`dima-ai`), and
+# reads the chat message subscription document (`dima-model`, `bson`); `regex` reads the command.
+dima-ai = { workspace = true }
+dima-commands = { workspace = true }
+dima-engine = { workspace = true }
+dima-model = { workspace = true }
+dima-twitch = { workspace = true }
+bson = { workspace = true }
+regex = { workspace = true }
 # P4-BOT-INGRESS: the webhook (journal, raid filter, Dragonfly claims, the HTTP edge).
 dima-core = { workspace = true }
 dima-events = { workspace = true }
@@ -40,6 +51,8 @@ anyhow = { workspace = true }
 base64 = { workspace = true }
 bson = { workspace = true }
 dima-model = { workspace = true }
-dima-twitch = { workspace = true }
+dima-twitch = { workspace = true, features = ["test-util"] }
+# P4-CHAT-MESSAGE's tests: Twitch is a local mock server.
+dima-http = { workspace = true, features = ["test-util"] }
 hyper = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }

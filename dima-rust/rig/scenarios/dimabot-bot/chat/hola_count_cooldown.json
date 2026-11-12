@@ -1,0 +1,277 @@
+{
+  "rig_scenario": 1,
+  "description": "The first vertical slice (ledger/upper-layers.md section 6): a custom command `!hola` = `Hola $(user), van $(count) saludos` with a 30 s cooldown, in a live channel whose moderation is off (its settings document is disabled, spam protection included: without one the reference runs its default spam review on a chatter's first message). `!hola 2` from one viewer: the command runs (`$(count)` adds its argument: the stored count becomes 2), the bot answers in chat, the stream recorders count the message and the command, the shared cooldown gate is set for 30 s. Then `!hola` from another viewer inside the cooldown: no Helix call, no count, the message itself is still recorded. Times compare within a 10 s window: the reference loads its chat pipeline lazily on the first notification. Dragonfly families left out of the comparison are internal caches whose Rust encoding differs on purpose (charter section 3), each compared by its own package's tests: the command cache (`{channel}:commands:{name}` in the reference, `commands:snapshot|revision|writers:*` in Rust, P4-CMD-RUNTIME), the streamer directory and the app token (tokens encrypted in Rust), the ingress's message claims (P4-BOT-INGRESS scenarios) and moderation's settings cache (P4-MOD-RUN).",
+  "seed": {
+    "mongo": {
+      "users": [
+        {
+          "_id": {
+            "$oid": "650000000000000000001001"
+          },
+          "name": "RigStreamer",
+          "email": "rigstreamer@example.test",
+          "accounts": [
+            {
+              "type": "twitch",
+              "id": "1001",
+              "name": "rigstreamer",
+              "email": "rigstreamer@example.test",
+              "actived": true,
+              "chat_enabled": true,
+              "has_permissions": true,
+              "up_to_date_permissions": true,
+              "_id": {
+                "$oid": "650000000000000000002001"
+              },
+              "access_token_expires_at": null
+            }
+          ],
+          "plan_tier": "free",
+          "language": "es",
+          "created_at": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "updated_at": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "commands": [
+        {
+          "_id": {
+            "$oid": "650000000000000000003101"
+          },
+          "channelID": "1001",
+          "channel": "rigstreamer",
+          "name": "Hola",
+          "cmd": "hola",
+          "func": "custom",
+          "message": "Hola $(user), van $(count) saludos",
+          "type": "command",
+          "platform": "twitch",
+          "reserved": false,
+          "cooldown": {
+            "$numberInt": "30"
+          },
+          "count": {
+            "$numberInt": "0"
+          },
+          "userLevelName": "everyone",
+          "userLevel": {
+            "$numberInt": "0"
+          },
+          "enabled": true,
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "channel_moderation_settings": [
+        {
+          "_id": {
+            "$oid": "650000000000000000006001"
+          },
+          "channelID": "1001",
+          "channel": "rigstreamer",
+          "enabled": false,
+          "rules": [],
+          "spamProtection": {
+            "enabled": false,
+            "categories": []
+          },
+          "settingsVersion": {
+            "$numberInt": "1"
+          },
+          "createdAt": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "updatedAt": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "streamsessions": [
+        {
+          "_id": {
+            "$oid": "650000000000000000007001"
+          },
+          "channelID": "1001",
+          "status": "live",
+          "started_at": {
+            "$rigNow": "-1h"
+          },
+          "ended_at": null,
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$rigNow": "-1h"
+          },
+          "updated_at": {
+            "$rigNow": "-1h"
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "name": "!hola 2 from a viewer",
+      "eventsub": {
+        "type": "channel.chat.message",
+        "condition": {
+          "broadcaster_user_id": "1001",
+          "user_id": "698614112"
+        },
+        "event": {
+          "broadcaster_user_id": "1001",
+          "broadcaster_user_login": "rigstreamer",
+          "broadcaster_user_name": "RigStreamer",
+          "chatter_user_id": "2002",
+          "chatter_user_login": "rigviewer",
+          "chatter_user_name": "RigViewer",
+          "message_id": "c0ffee00-0000-4000-8000-000000000201",
+          "message": {
+            "text": "!hola 2",
+            "fragments": [
+              {
+                "type": "text",
+                "text": "!hola 2",
+                "cheermote": null,
+                "emote": null,
+                "mention": null
+              }
+            ]
+          },
+          "color": "#1E90FF",
+          "badges": [],
+          "message_type": "text",
+          "cheer": null,
+          "reply": null,
+          "channel_points_custom_reward_id": null,
+          "source_broadcaster_user_id": null,
+          "source_message_id": null,
+          "is_source_only": null
+        },
+        "expect": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "name": "the answer in chat",
+      "wait_call": {
+        "host": "api.twitch.tv",
+        "method": "POST",
+        "path": "/helix/chat/messages",
+        "body": {
+          "broadcaster_id": "1001",
+          "message": "Hola RigViewer, van 2 saludos"
+        },
+        "timeout_ms": 20000
+      }
+    },
+    {
+      "wait_quiet": {
+        "quiet_ms": 1500,
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "!hola from another viewer inside the cooldown",
+      "eventsub": {
+        "type": "channel.chat.message",
+        "condition": {
+          "broadcaster_user_id": "1001",
+          "user_id": "698614112"
+        },
+        "event": {
+          "broadcaster_user_id": "1001",
+          "broadcaster_user_login": "rigstreamer",
+          "broadcaster_user_name": "RigStreamer",
+          "chatter_user_id": "2003",
+          "chatter_user_login": "rigviewertwo",
+          "chatter_user_name": "RigViewerTwo",
+          "message_id": "c0ffee00-0000-4000-8000-000000000202",
+          "message": {
+            "text": "!hola",
+            "fragments": [
+              {
+                "type": "text",
+                "text": "!hola",
+                "cheermote": null,
+                "emote": null,
+                "mention": null
+              }
+            ]
+          },
+          "color": "#1E90FF",
+          "badges": [],
+          "message_type": "text",
+          "cheer": null,
+          "reply": null,
+          "channel_points_custom_reward_id": null,
+          "source_broadcaster_user_id": null,
+          "source_message_id": null,
+          "is_source_only": null
+        },
+        "expect": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "wait_quiet": {
+        "quiet_ms": 1500,
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "name": "the shared cooldown gate",
+      "dragonfly": [
+        "PTTL",
+        "command:execution:cooldown:1001:hola"
+      ]
+    }
+  ],
+  "compare": {
+    "dragonfly": {
+      "exclude": [
+        "logger:*",
+        "observability:*",
+        "metrics:bot:*",
+        "ast_catalog:*",
+        "*:commands:*",
+        "commands:snapshot:*",
+        "commands:revision:*",
+        "commands:writers:*",
+        "accounts:twitch:*",
+        "streamers:by:id",
+        "app:twitch:token",
+        "twitch:eventsub:message:*",
+        "moderation:*"
+      ]
+    }
+  },
+  "allow": [
+    {
+      "path": "steps[5].body",
+      "kind": "ttl",
+      "unit": "ms",
+      "reason": "The cooldown gate's remaining lifetime when it is read: compared as the moment it ends (30 s after the first command ran)."
+    }
+  ],
+  "tolerance_ms": 10000
+}
