@@ -22,7 +22,7 @@ use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
 use crate::timefmt;
 
-pub const SCENARIO_VERSION: u64 = 2;
+pub const SCENARIO_VERSION: u64 = 3;
 pub const SEED_VERSION: u64 = 1;
 const MAX_TIMEOUT_MS: u64 = 600_000;
 
@@ -71,6 +71,8 @@ struct SeedBody {
     mongo: Map<String, Value>,
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
+    #[serde(default)]
+    postgres: Vec<String>,
     /// Files written into the side's data directory (`{data_dir}`) before it starts.
     #[serde(default)]
     files: BTreeMap<String, FileSeed>,
@@ -101,6 +103,8 @@ struct SeedFile {
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
     #[serde(default)]
+    postgres: Vec<String>,
+    #[serde(default)]
     files: BTreeMap<String, FileSeed>,
 }
 
@@ -115,6 +119,8 @@ struct StepFile {
     http: Option<HttpFile>,
     #[serde(default)]
     dragonfly: Option<Vec<Value>>,
+    #[serde(default)]
+    sql: Option<String>,
     #[serde(default)]
     pause_ms: Option<u64>,
     #[serde(default)]
@@ -513,6 +519,7 @@ pub enum StepKind {
     Socketio(crate::socketio::Action),
     Http(HttpStep),
     Dragonfly(Vec<Arg>),
+    Sql(String),
     Pause(u64),
     WaitFor {
         cond: WaitCond,
@@ -533,6 +540,7 @@ impl StepKind {
             StepKind::Socketio(_) => "socketio",
             StepKind::Http(_) => "http",
             StepKind::Dragonfly(_) => "dragonfly",
+            StepKind::Sql(_) => "sql",
             StepKind::Pause(_) => "pause_ms",
             StepKind::WaitFor { .. } => "wait_for",
             StepKind::WaitQuiet(_) => "wait_quiet",
@@ -562,6 +570,7 @@ pub struct Scenario {
     /// Collection → documents (Extended JSON, `$rigNow` resolved at seed time).
     pub seed_mongo: Vec<(String, Vec<Value>)>,
     pub seed_dragonfly: Vec<Vec<Arg>>,
+    pub seed_postgres: Vec<String>,
     pub steps: Vec<Step>,
     pub mongo: Selection,
     pub dragonfly: Selection,
@@ -829,6 +838,7 @@ struct Loader<'a> {
     seed_offsets: Vec<(i64, bool)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
+    postgres: Vec<String>,
     data_files: Vec<(String, Vec<u8>)>,
 }
 
@@ -993,11 +1003,16 @@ impl Loader<'_> {
                     include: sf.include,
                     mongo: sf.mongo,
                     dragonfly: sf.dragonfly,
+                    postgres: sf.postgres,
                     files: sf.files,
                 },
                 depth + 1,
             )?;
         }
+        for sql in &body.postgres {
+            collect_inputs(self.patterns, &Value::String(sql.clone()), &mut self.known);
+        }
+        self.postgres.extend(body.postgres);
         let at = file.display().to_string();
         for (coll, docs) in body.mongo {
             if coll.is_empty()
@@ -1714,7 +1729,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     let v = read_json(&file)?;
     let f: ScenarioFile = parse(&file, &v)?;
     let at = file.display().to_string();
-    if ![1, SCENARIO_VERSION].contains(&f.rig_scenario) {
+    if ![1, 2, SCENARIO_VERSION].contains(&f.rig_scenario) {
         return Err(config(format!(
             "{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}",
             f.rig_scenario
@@ -1739,6 +1754,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         )],
         mongo: Vec::new(),
         dragonfly: Vec::new(),
+        postgres: Vec::new(),
         data_files: Vec::new(),
     };
     if let Ok(c) = file.canonicalize() {
@@ -1750,6 +1766,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     for (i, s) in f.steps.into_iter().enumerate() {
         let here = format!("{at}: steps[{i}]");
         let given: Vec<&str> = [
+            s.sql.as_ref().map(|_| "sql"),
             s.socketio.as_ref().map(|_| "socketio"),
             s.http.as_ref().map(|_| "http"),
             s.dragonfly.as_ref().map(|_| "dragonfly"),
@@ -1765,7 +1782,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .collect();
         if given.len() != 1 {
             return Err(config(format!(
-                "{here}: a step has exactly one of socketio, http, dragonfly, pause_ms, wait_for, wait_quiet, eventsub, polar, wait_call (found: {})",
+                "{here}: a step has exactly one of sql, socketio, http, dragonfly, pause_ms, wait_for, wait_quiet, eventsub, polar, wait_call (found: {})",
                 if given.is_empty() {
                     "none".to_string()
                 } else {
@@ -1773,7 +1790,10 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
                 }
             )));
         }
-        let kind = if let Some(a) = s.socketio {
+        let kind = if let Some(sql) = s.sql {
+            collect_inputs(patterns, &Value::String(sql.clone()), &mut loader.known);
+            StepKind::Sql(sql)
+        } else if let Some(a) = s.socketio {
             a.validate()
                 .map_err(|e| config(format!("{here}.socketio: {e}")))?;
             let input = serde_json::to_value(&a).map_err(|e| config(e.to_string()))?;
@@ -1931,6 +1951,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         allow_scripts: f.allow_scripts,
         seed_mongo: loader.mongo,
         seed_dragonfly: loader.dragonfly,
+        seed_postgres: loader.postgres,
         steps,
         mongo: selection(compare.mongo),
         dragonfly: selection(compare.dragonfly),

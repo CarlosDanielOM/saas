@@ -129,8 +129,20 @@ impl<'s> SideRunner<'s> {
         label: &str,
         existing: Option<&Existing>,
     ) -> Result<SideRunner<'s>> {
+        let mut store_cfg = settings.stores.clone();
+        if !target.postgres {
+            store_cfg.postgres_uri = None;
+        }
+        if target.postgres && store_cfg.postgres_uri.is_none() {
+            return Err(config(
+                "target requires DIMA_TEST_POSTGRES_URI; load tools/test-env",
+            ));
+        }
+        if target.postgres && target.share_process {
+            return Err(config("PostgreSQL targets require isolated processes"));
+        }
         let mut stores = SideStores::allocate(
-            &settings.stores,
+            &store_cfg,
             reg,
             label,
             existing.map(|e| e.db.as_str()),
@@ -226,6 +238,9 @@ impl<'s> SideRunner<'s> {
         }
         for (n, p) in &ports {
             vars.insert(format!("port.{n}"), p.to_string());
+        }
+        if let Some(pg) = &self.stores.postgres {
+            vars.insert("postgres_uri".into(), pg.uri.clone());
         }
         vars.insert("mongo_uri".into(), self.stores.mongo_uri());
         vars.insert("mongo_root_uri".into(), s.stores.mongo_uri.clone());
@@ -580,6 +595,9 @@ impl<'s> SideRunner<'s> {
         let seeded_at = timefmt::now_ms();
         let start = seeded_at;
         let own_process = !(self.target.share_process || sc.share_process) || sc.restart;
+        if self.target.postgres && !own_process {
+            return Err(self.fail("PostgreSQL scenarios require isolated processes"));
+        }
         let mock_spec = MockSpec::merged(&self.target.mock, &sc.mock);
         let mut startup_keys = Vec::new();
         if own_process {
@@ -728,7 +746,16 @@ impl<'s> SideRunner<'s> {
         if own_process && let Some(why) = self.stop_process().await {
             return Err(self.fail(format!("{why} before the rig stopped it")));
         }
+        let postgres = match &self.stores.postgres {
+            Some(pg) => Some(
+                pg.snapshot()
+                    .await
+                    .map_err(|e| self.fail(format!("reading PostgreSQL: {e}")))?,
+            ),
+            None => None,
+        };
         let mut raw = RawCapture {
+            postgres,
             steps,
             mongo,
             dragonfly,
@@ -1330,6 +1357,7 @@ pub async fn diff_get(
         allow_scripts: false,
         seed_mongo: Vec::new(),
         seed_dragonfly: Vec::new(),
+        seed_postgres: Vec::new(),
         steps: list.steps.clone(),
         mongo: Selection {
             only: Some(Vec::new()),

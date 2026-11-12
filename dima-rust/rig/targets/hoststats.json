@@ -6,7 +6,7 @@
       "node",
       "src/index.mjs"
     ],
-    "cwd": "{rig_dir}/../../dima-hoststats",
+    "cwd": "/home/dom/Projects/saas/dima-hoststats",
     "env": {
       "PORT": "{port}",
       "HOSTSTATS_PROC": "{data_dir}/proc",

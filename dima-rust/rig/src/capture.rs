@@ -19,10 +19,10 @@ use serde_json::{Map, Value, json};
 use crate::value::{self, Moment, Text, Val};
 
 /// Version of the capture file format. Bump it only when old files cannot be read any more;
-/// normalisation changes do not need a bump (captures are raw). Version 4 adds Socket.IO steps.
-pub const CAPTURE_VERSION: u64 = 4;
-/// Older versions this rig still reads (2 has no outbound calls; 3 has no Socket.IO steps).
-pub const READS_VERSIONS: &[u64] = &[2, 3, 4];
+/// normalisation changes do not need a bump (captures are raw). Version 5 adds PostgreSQL state and SQL steps.
+pub const CAPTURE_VERSION: u64 = 5;
+/// Versions 2–4 remain readable; absence of PostgreSQL means it was not observed.
+pub const READS_VERSIONS: &[u64] = &[2, 3, 4, 5];
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
@@ -31,6 +31,7 @@ const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STA
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RawCapture {
+    pub postgres: Option<Value>,
     pub steps: Vec<RawStep>,
     pub mongo: BTreeMap<String, RawColl>,
     pub dragonfly: Vec<RawEntry>,
@@ -48,6 +49,10 @@ pub struct RawCapture {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawStep {
+    Sql {
+        at: i64,
+        value: Value,
+    },
     Socketio {
         at: i64,
         value: Value,
@@ -297,6 +302,7 @@ pub struct CaptureFile {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Capture {
+    pub postgres: Option<Val>,
     pub steps: Vec<StepCap>,
     pub mongo: BTreeMap<String, CollCap>,
     pub dragonfly: Vec<EntryCap>,
@@ -425,7 +431,7 @@ pub fn normalised_json(cap: &Capture) -> Value {
             Value::Array(c.calls.iter().map(value::encode).collect()),
         );
     }
-    json!({ "steps": steps, "mongo": mongo, "dragonfly": dragonfly, "calls": calls })
+    json!({ "postgres": cap.postgres.as_ref().map(value::encode), "steps": steps, "mongo": mongo, "dragonfly": dragonfly, "calls": calls })
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -650,6 +656,7 @@ fn dec_value(kind: &str, v: &Value, ctx: &str) -> Result<RawValue, String> {
 
 fn enc_step(s: &RawStep) -> Value {
     match s {
+        RawStep::Sql { at, value } => json!({"sql": {"at": at, "rows": value}}),
         RawStep::Socketio { at, value } => json!({"socketio": {"at": at, "observations": value}}),
         RawStep::Http(h) => json!({ "http": {
             "at": h.at,
@@ -670,6 +677,13 @@ fn dec_step(v: &Value, i: usize) -> Result<RawStep, String> {
     let ctx = format!("steps[{i}]");
     let (kind, inner) = one_key(v, &ctx)?;
     match kind {
+        "sql" => {
+            let h = obj(inner, &ctx)?;
+            Ok(RawStep::Sql {
+                at: int(field(h, "at", &ctx)?, &ctx)?,
+                value: field(h, "rows", &ctx)?.clone(),
+            })
+        }
         "socketio" => {
             let h = obj(inner, &ctx)?;
             Ok(RawStep::Socketio {
@@ -772,6 +786,7 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
             "qdrant_port": r.qdrant_port,
             "qdrant_prefix": r.qdrant_prefix,
         },
+        "postgres": f.raw.postgres,
         "steps": f.raw.steps.iter().map(enc_step).collect::<Vec<_>>(),
         "mongo": mongo,
         "dragonfly": dragonfly,
@@ -990,6 +1005,7 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
         hashes,
         run,
         raw: RawCapture {
+            postgres: o.get("postgres").filter(|v| !v.is_null()).cloned(),
             steps,
             mongo,
             dragonfly,
@@ -1016,6 +1032,7 @@ mod tests {
 
     fn sample() -> CaptureFile {
         let mut raw = RawCapture {
+            postgres: Some(json!({"public.example":{"rows":[{"id":1}]}})),
             steps: vec![
                 RawStep::Http(RawHttp {
                     at: 1_794_400_000_100,

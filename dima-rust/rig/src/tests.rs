@@ -79,6 +79,7 @@ fn date(ms: i64) -> Bson {
 
 fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry>) -> RawCapture {
     RawCapture {
+        postgres: None,
         steps,
         mongo: mongo
             .into_iter()

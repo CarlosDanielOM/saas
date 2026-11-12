@@ -1,6 +1,7 @@
 {
-  "rig_target": 1,
-  "description": "Analytics: caller must provision distinct disposable PostgreSQL databases; rig has no PostgreSQL isolation yet. Use --dragonfly-dbs 4-5.",
+  "rig_target": 2,
+  "postgres": true,
+  "description": "Analytics with isolated per-side PostgreSQL databases.",
   "reference": {
     "command": [
       "node",
@@ -13,7 +14,7 @@
       "OWNER_TWITCH_ID": "1",
       "COLLECTORS_DISABLED": "true",
       "HOSTSTATS_URL": "off",
-      "DATABASE_URL": "{var.reference_postgres_uri}"
+      "DATABASE_URL": "{postgres_uri}"
     },
     "pass_env": [
       "PATH"
@@ -33,7 +34,7 @@
       "OWNER_TWITCH_ID": "1",
       "COLLECTORS_DISABLED": "true",
       "HOSTSTATS_URL": "off",
-      "DATABASE_URL": "{var.candidate_postgres_uri}"
+      "DATABASE_URL": "{postgres_uri}"
     },
     "ready": {
       "http": "/health",

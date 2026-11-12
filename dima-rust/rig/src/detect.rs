@@ -814,6 +814,16 @@ impl Detector<'_, '_> {
         let mut path = Path::root("steps");
         path.push_index(i);
         match s {
+            RawStep::Sql { at, value } => {
+                self.read_at = Some(*at);
+                let v = exact_sql_numbers(self.json(&mut path.with_key("body"), value));
+                self.read_at = None;
+                StepCap::Http {
+                    status: 200,
+                    headers: vec![],
+                    body: Body::Json(v),
+                }
+            }
             RawStep::Socketio { at, value } => {
                 // Reuse response JSON normalization and ordered comparison, including generated IDs.
                 self.step(
@@ -1243,6 +1253,30 @@ impl Detector<'_, '_> {
             .collect()
     }
 
+    fn postgres(&mut self, raw: &Value) -> Val {
+        let value = sql_timestamp_values(raw);
+        // Catalogue definitions are exact SQL, including partition-bound dates and constants.
+        let mut detected = sql_catalogue_literal(&value);
+        if let Val::Obj(tables) = &mut detected {
+            for (table, fields) in tables {
+                let table_name = table.display();
+                if let Val::Obj(fields) = fields {
+                    for (name, v) in fields {
+                        if name.display() == "rows" {
+                            *v = self.json(
+                                &mut Path::root("postgres")
+                                    .with_key(table_name.clone())
+                                    .with_key("rows"),
+                                &value[&table_name]["rows"],
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        exact_sql_numbers(detected)
+    }
+
     fn run(&mut self, raw: &RawCapture) -> Capture {
         self.startup_keys = raw.startup_keys.iter().cloned().collect();
         let steps = raw
@@ -1258,7 +1292,9 @@ impl Detector<'_, '_> {
             .collect();
         let dragonfly = raw.dragonfly.iter().map(|e| self.entry(e)).collect();
         let calls = self.calls(&raw.calls);
+        let postgres = raw.postgres.as_ref().map(|v| self.postgres(v));
         Capture {
+            postgres,
             steps,
             mongo,
             dragonfly,
@@ -1315,6 +1351,68 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         startup_keys: std::collections::HashMap::new(),
     };
     second.run(raw)
+}
+
+fn sql_catalogue_literal(v: &Value) -> Val {
+    match v {
+        Value::Null => Val::Null,
+        Value::Bool(b) => Val::Bool(*b),
+        Value::String(s) => Val::str(s),
+        Value::Number(n) => Val::Dec(n.to_string()),
+        Value::Array(a) => Val::Arr(a.iter().map(sql_catalogue_literal).collect()),
+        Value::Object(o) => Val::Obj(
+            o.iter()
+                .map(|(k, v)| (Text::lit(k), sql_catalogue_literal(v)))
+                .collect(),
+        ),
+    }
+}
+
+// SQL numeric values may have hundreds of significant digits; never compare them via f64.
+fn exact_sql_numbers(v: Val) -> Val {
+    match v {
+        Val::Num(n) => Val::Dec(n.to_string()),
+        Val::Arr(a) => Val::Arr(a.into_iter().map(exact_sql_numbers).collect()),
+        Val::Obj(o) => Val::Obj(
+            o.into_iter()
+                .map(|(k, v)| (k, exact_sql_numbers(v)))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+// PostgreSQL omits trailing fractional zeroes in to_jsonb(timestamp); that is not stored text.
+fn sql_timestamp_values(v: &Value) -> Value {
+    let mut v = v.clone();
+    if let Some(tables) = v.as_object_mut() {
+        for table in tables.values_mut() {
+            let names: Vec<String> = table["columns"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|c| {
+                    c["type"]
+                        .as_str()
+                        .is_some_and(|t| t.starts_with("timestamp"))
+                })
+                .filter_map(|c| c["name"].as_str().map(str::to_string))
+                .collect();
+            if let Some(rows) = table["rows"].as_array_mut() {
+                for row in rows {
+                    for name in &names {
+                        if let Some(text) = row[name].as_str()
+                            && let Some(ms) = timefmt::parse_iso(text)
+                            && let Some(iso) = timefmt::format_iso_ms(ms)
+                        {
+                            row[name] = Value::String(iso);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    v
 }
 
 #[cfg(test)]

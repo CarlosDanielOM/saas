@@ -201,7 +201,7 @@ expected keys.
 }
 ```
 
-Top level: `rig_scenario` (2; version 1 remains readable), `description` (required), `seed`, `steps` (required), `compare`,
+Top level: `rig_scenario` (3; versions 1 and 2 remain readable), `description` (required), `seed`, `steps` (required), `compare`,
 `allow`, `mock` (see the mock section), `restart` (only with shared processes),
 `share_process` (default `false`), `allow_scripts` (default `false`), `tolerance_ms` (default
 2000), `relation_tolerance_ms` (default 50).
@@ -775,3 +775,58 @@ metrics), so it is stopped after a 1.5 s grace. Start-up calls are left out of t
    `metrics:bot:*`) and start-up caches (`ast_catalog:*`, 660 KB of vectors in every capture
    otherwise). Run `record` once more: it must say `UNCHANGED`.
 5. Commit the scenario and its capture together.
+
+## PostgreSQL scenarios
+
+Set `"postgres": true` in the target (target format **2**, version 1 still loads).
+Load `eval "$(dima-rust/tools/test-env)"`; `DIMA_TEST_POSTGRES_URI` must name a local
+PostgreSQL administrator able to create/drop databases. Each side receives `{postgres_uri}`,
+for example `"DATABASE_URL": "{postgres_uri}"`. The rig creates a fresh `rig_<pid>_<n>_<side>`
+database before seeding or launching the service, recreates it between scenarios, and drops
+it after success, failure or interruption, including with `--keep`. `gc` recovers abandoned databases
+after SIGKILL. PostgreSQL targets require separate processes per scenario; `share_process` fails
+explicitly. The connection is local and unencrypted; do not use production credentials.
+
+Scenario format **3** adds SQL (versions 1 and 2 remain readable):
+
+```json
+{
+  "rig_scenario": 3,
+  "description": "Read a seeded SQL row and compare the service's final writes.",
+  "seed": {"postgres": [
+    "CREATE TABLE widgets(id integer PRIMARY KEY, name text NOT NULL)",
+    "INSERT INTO widgets VALUES (1, 'héllo 🍕')"
+  ]},
+  "steps": [{"sql": "SELECT * FROM widgets ORDER BY id"}]
+}
+```
+
+`seed.postgres` is an ordered list of SQL strings, also available in included seed files.
+Seeds run before service startup: seed the necessary schema when the service creates it only at
+startup. `sql` runs a single row-returning query inside a read-only transaction, accepts the usual
+`${...}` interpolation, and compares its ordered rows at `steps[i].body`. Use `ORDER BY` when order
+matters, or a reasoned `set` allowance on that path. Query failures fail the scenario.
+
+Final state compares at `postgres["public.widgets"]`: `kind`, ordered `columns` (name, SQL type,
+nullability, default, identity/generated status, collation and ordinal), `indexes` (name, complete SQL
+definition and validity), `constraints` (name, definition and validation), partition keys/bounds, view definitions, and unordered `rows`.
+All non-system schemas are included; NULL stays null. JSON and SQL arrays retain their element order.
+Timestamp columns normalize PostgreSQL's trimmed fractional zeroes at millisecond precision; raw
+captures retain the original strings. Generated UUIDs, timestamps and run-relative deadlines use the same normalizer and identity mapping
+as HTTP and MongoDB. An auto-incrementing integer stays exact (fresh sequences normally reproduce it).
+Allowances work here too, e.g. `postgres["public.widgets"].rows[*].updated_at`, with a mandatory
+reason; use `exact` when a time-looking string is actually fixed data. No PostgreSQL differences are
+ignored by default. SQL statements time out after 15 seconds, connections after 20 seconds; queries
+over 20,000 rows fail instead of comparing a truncated result. Snapshots use repeatable-read.
+
+Capture format **5** adds `postgres` and raw `sql` observations. Formats 2–4 still load unchanged;
+a missing PostgreSQL snapshot compared with an observed database is a difference, never an empty
+passing comparison. Existing non-SQL captures require no migration. `tokio-postgres` reuses the
+workspace dependency for local PostgreSQL connections and catalogue inspection.
+
+Catalogue definitions compare as exact SQL, including date constants in partition bounds.
+
+The SQL observer currently does not compare roles, grants, triggers, function bodies, user-defined type definitions or sequence
+counters. PostgreSQL values are captured through `to_jsonb`; the catalogue retains column types. Numeric
+values retain arbitrary precision and compare exactly unless classified as times; approximate numeric
+tolerance is not implemented for SQL numeric cells.

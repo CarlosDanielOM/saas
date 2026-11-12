@@ -9,7 +9,7 @@ use crate::error::{Result, config};
 use crate::mock::{MockFile, MockSpec};
 use crate::template;
 
-pub const TARGET_VERSION: u64 = 1;
+pub const TARGET_VERSION: u64 = 2;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -27,6 +27,8 @@ struct TargetFile {
     /// Give each side a prefixing proxy to the local Qdrant (`{qdrant_port}`).
     #[serde(default)]
     qdrant: bool,
+    #[serde(default)]
+    postgres: bool,
     /// Where the signed-webhook steps deliver, and with which test secret.
     #[serde(default)]
     webhooks: Option<WebhooksFile>,
@@ -224,6 +226,7 @@ pub struct Target {
     /// The target's `mock` section as written (its values are known inputs).
     pub mock_json: serde_json::Value,
     pub qdrant: bool,
+    pub postgres: bool,
     /// Each side connects with a user limited to its own database.
     pub own_mongo_user: bool,
     pub eventsub: Option<Webhook>,
@@ -236,6 +239,7 @@ pub struct Target {
 pub const PLACEHOLDERS: &[&str] = &[
     "port",
     "mongo_uri",
+    "postgres_uri",
     "mongo_root_uri",
     "mongo_db",
     "dragonfly_host",
@@ -491,7 +495,7 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
     let f: TargetFile =
         serde_json::from_str(&text).map_err(|e| config(format!("{}: {e}", file.display())))?;
     let at = file.display().to_string();
-    if f.rig_target != TARGET_VERSION {
+    if ![1, TARGET_VERSION].contains(&f.rig_target) {
         return Err(config(format!(
             "{at}: rig_target {} is not supported; this rig reads version {TARGET_VERSION}",
             f.rig_target
@@ -569,6 +573,7 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
         mock,
         mock_json,
         qdrant: f.qdrant,
+        postgres: f.postgres,
         own_mongo_user,
         eventsub,
         polar,

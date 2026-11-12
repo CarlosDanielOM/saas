@@ -1557,6 +1557,16 @@ impl<'a> Comparator<'a> {
 
     /// Compare a reference capture with a candidate capture.
     pub fn compare(mut self, a: &Capture, b: &Capture) -> Outcome {
+        match (&a.postgres, &b.postgres) {
+            (Some(x), Some(y)) => self.val(&mut Path::root("postgres"), x, y),
+            (None, None) => {}
+            _ => self.diff(
+                &Path::root("postgres"),
+                "PostgreSQL snapshot missing on one side",
+                None,
+                None,
+            ),
+        }
         self.steps(&a.steps, &b.steps);
         let names: BTreeSet<&String> = a.mongo.keys().chain(b.mongo.keys()).collect();
         for name in names {
