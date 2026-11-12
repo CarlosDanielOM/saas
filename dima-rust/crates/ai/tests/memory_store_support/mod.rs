@@ -345,11 +345,12 @@ impl Env {
     }
 }
 
-/// Runs `body` with a fresh environment and always cleans up.
+/// Runs `body` with a fresh environment and always cleans up, a panic included (the body runs
+/// in its own task; its panic is turned into an error after the cleanup).
 pub async fn with_env<F, Fut>(names: &[(&str, &str)], body: F) -> anyhow::Result<()>
 where
     F: FnOnce(Arc<Env>) -> Fut,
-    Fut: std::future::Future<Output = anyhow::Result<()>>,
+    Fut: std::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
     let names = names
         .iter()
@@ -359,7 +360,7 @@ where
         return Ok(());
     };
     let env = Arc::new(env);
-    let result = body(env.clone()).await;
+    let result = tokio::spawn(body(env.clone())).await;
     env.cleanup().await;
-    result
+    result.map_err(|e| anyhow::anyhow!("test body panicked: {e}"))?
 }
