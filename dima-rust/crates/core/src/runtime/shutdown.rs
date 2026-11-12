@@ -137,23 +137,23 @@ impl ShutdownReport {
 }
 
 /// Runs the steps one after another, all within one overall `deadline`: a step that is still
-/// running when the deadline passes is dropped and the remaining steps are skipped. Uses tokio
-/// time, so paused-time tests control it.
+/// running when the deadline passes is dropped, and no step starts once the deadline has passed
+/// (it is reported skipped), even if the previous one finished. Uses tokio time, so paused-time
+/// tests control it.
 pub async fn shutdown_in_order(steps: Vec<ShutdownStep>, deadline: Duration) -> ShutdownReport {
-    let end = Instant::now() + deadline;
+    let start = Instant::now();
     let mut report = ShutdownReport { steps: Vec::new() };
-    let mut expired = false;
     for step in steps {
-        if expired {
+        let remaining = deadline
+            .checked_sub(start.elapsed())
+            .filter(|remaining| !remaining.is_zero());
+        let Some(remaining) = remaining else {
             report.steps.push((step.name, StepOutcome::Skipped));
             continue;
-        }
-        let outcome = match tokio::time::timeout_at(end, step.run).await {
+        };
+        let outcome = match tokio::time::timeout(remaining, step.run).await {
             Ok(()) => StepOutcome::Completed,
-            Err(_) => {
-                expired = true;
-                StepOutcome::TimedOut
-            }
+            Err(_) => StepOutcome::TimedOut,
         };
         report.steps.push((step.name, outcome));
     }
@@ -197,6 +197,25 @@ mod tests {
         );
         assert!(!report.is_clean());
         assert_eq!(*log.lock().unwrap(), vec!["stop-accepting", "drain"]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_step_starts_after_the_deadline() {
+        let ran = Arc::new(Mutex::new(false));
+        let flag = Arc::clone(&ran);
+        let report = shutdown_in_order(
+            vec![
+                // Finishes exactly at the deadline.
+                ShutdownStep::new("drain", sleep(Duration::from_millis(500))),
+                ShutdownStep::new("close", async move {
+                    *flag.lock().unwrap() = true;
+                }),
+            ],
+            Duration::from_millis(500),
+        )
+        .await;
+        assert_eq!(report.steps[1], ("close", StepOutcome::Skipped));
+        assert!(!*ran.lock().unwrap(), "a step started after the deadline");
     }
 
     #[tokio::test]

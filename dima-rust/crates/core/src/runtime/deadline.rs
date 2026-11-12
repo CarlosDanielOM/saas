@@ -29,6 +29,7 @@ use super::shutdown::Shutdown;
 use std::future::Future;
 use std::time::Duration;
 use tokio::task::{AbortHandle, JoinError};
+use tokio::time::Instant;
 use tokio_util::task::TaskTracker;
 
 /// The time allowed for a unit of work, and for it to stop afterwards.
@@ -118,7 +119,10 @@ impl Drop for StopOnDrop {
 /// - Panicked: [`DeadlineError::Panicked`].
 /// - Deadline or shutdown: the token fires, the task is aborted, and this waits until the task and
 ///   its blocking work have stopped, then returns [`DeadlineError::TimedOut`] or
-///   [`DeadlineError::ShutDown`]; a value produced in that window is discarded.
+///   [`DeadlineError::ShutDown`]; a value produced in that window is discarded. When the work
+///   finishes as the deadline passes or shutdown is requested, the deadline or shutdown is
+///   reported, never the value.
+/// - Shutdown already requested: [`DeadlineError::ShutDown`] at once; `work` is not called.
 /// - The returned future dropped first: the token fires and the task is aborted at once; the work
 ///   stays in `shutdown`'s [`WorkRegistry`] until it has stopped (see the module documentation).
 pub async fn run_with_deadline<T, F, Fut>(
@@ -131,6 +135,10 @@ where
     Fut: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
+    if shutdown.is_triggered() {
+        return Err(DeadlineError::ShutDown);
+    }
+    let started = Instant::now();
     let token = shutdown.child();
     let tracker = TaskTracker::new();
     let scope = WorkScope {
@@ -151,9 +159,17 @@ where
 
     let stopped = tokio::select! {
         biased;
-        joined = &mut handle => Ok(joined),
         () = tokio::time::sleep(deadline.limit) => Err(DeadlineError::TimedOut),
         () = shutdown.wait() => Err(DeadlineError::ShutDown),
+        joined = &mut handle => Ok(joined),
+    };
+    // The work may have finished just as the deadline passed or shutdown was requested (the
+    // timer is only seen once the runtime fires it). Then the deadline or shutdown wins: its
+    // owner may already treat the work as abandoned.
+    let stopped = match stopped {
+        Ok(_) if started.elapsed() >= deadline.limit => Err(DeadlineError::TimedOut),
+        Ok(_) if shutdown.is_triggered() => Err(DeadlineError::ShutDown),
+        other => other,
     };
     token.trigger();
     if stopped.is_err() {
@@ -320,6 +336,43 @@ mod tests {
             run_with_deadline(&shutdown, DEADLINE, |_| std::future::pending()).await;
         assert_eq!(result, Err(DeadlineError::ShutDown));
         assert_eq!(start.elapsed(), Duration::from_millis(200));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_work_starts_after_shutdown() {
+        let shutdown = Shutdown::new();
+        shutdown.trigger();
+        let started = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&started);
+        let result = run_with_deadline(&shutdown, DEADLINE, move |_| async move {
+            flag.store(true, Ordering::SeqCst);
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::ShutDown));
+        tokio::task::yield_now().await;
+        assert!(!started.load(Ordering::SeqCst), "the work was started");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_after_shutdown_reports_shutdown() {
+        let shutdown = Shutdown::new();
+        let trigger = shutdown.clone();
+        let result = run_with_deadline(&shutdown, DEADLINE, move |_| async move {
+            trigger.trigger();
+            42
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::ShutDown));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_at_the_deadline_reports_the_deadline() {
+        let result = run_with_deadline(&Shutdown::new(), DEADLINE, |_| async {
+            tokio::time::advance(DEADLINE.limit).await;
+            42
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::TimedOut));
     }
 
     #[tokio::test(start_paused = true)]
