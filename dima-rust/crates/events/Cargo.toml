@@ -1,0 +1,28 @@
+[package]
+name = "dima-events"
+description = "The durable domain event journal: contracts, identities, producers, wakeups, health, durable cron-job intents."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bson = { workspace = true }
+dima-core = { workspace = true }
+dima-model = { workspace = true }
+dima-store = { workspace = true }
+dima-text = { workspace = true }
+futures-util = { workspace = true }
+mongodb = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dima-core = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util"] }
