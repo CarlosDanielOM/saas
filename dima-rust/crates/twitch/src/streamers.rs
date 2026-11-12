@@ -15,7 +15,8 @@
 //! **How it is loaded.** [`Twitch::load_streamers`] at start-up (the API, the bot and several
 //! cron workers call `getTwitchAccountsFromDB` when they start): every user with a Twitch
 //! account, in natural order, written through `WRITE_PLAN_ACCOUNT_SCRIPT` (refused when billing's
-//! plan fence is newer), then added to `streamers:by:id`.
+//! plan fence is newer) extended with the credential fence (the credentials are kept when the
+//! hash holds a newer generation: see `credentials.rs`), then added to `streamers:by:id`.
 //!
 //! **How one streamer is refreshed.** [`Twitch::streamer`] reads the hash and its fence in one
 //! atomic script; a missing, incomplete or fenced-out hash is hydrated from MongoDB again (one
@@ -40,6 +41,7 @@
 //! result, without blocking the server).
 
 use crate::base::{Inner, Twitch};
+use crate::credentials::{GENERATION_FIELD, WRITE_ACCOUNT};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::secret::{AccessToken, RefreshToken, cache_text_of, open_cached};
@@ -48,8 +50,7 @@ use dima_core::crypto::{CipherError, CredentialCipher};
 use dima_model::users::{Account, AccountType, EncryptedToken, User};
 use dima_store::dragonfly::commands::reply;
 use dima_store::dragonfly::plan_cache_fence::{
-    CHECK_PLAN_ACCOUNTS, PLAN_CACHE_VERSION_FIELD, READ_PLAN_ACCOUNT, WRITE_PLAN_ACCOUNT,
-    plan_cache_version,
+    CHECK_PLAN_ACCOUNTS, PLAN_CACHE_VERSION_FIELD, READ_PLAN_ACCOUNT, plan_cache_version,
 };
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::filter::prepare_filter;
@@ -84,6 +85,7 @@ pub struct StreamerAccount {
     fields: Vec<(String, String)>,
     access_token: Option<AccessToken>,
     refresh_token: Option<RefreshToken>,
+    generation: i64,
 }
 
 impl fmt::Debug for StreamerAccount {
@@ -101,6 +103,7 @@ impl StreamerAccount {
     pub(crate) fn from_cache(fields: Vec<(String, String)>, cipher: &CredentialCipher) -> Self {
         let mut access_token = None;
         let mut refresh_token = None;
+        let mut generation = 0;
         let mut kept = Vec::with_capacity(fields.len());
         for (name, value) in fields {
             match name.as_str() {
@@ -110,6 +113,7 @@ impl StreamerAccount {
                 "refresh_token" => {
                     refresh_token = open_cached(cipher, &value).map(RefreshToken::from_secret);
                 }
+                GENERATION_FIELD => generation = value.parse().unwrap_or(0),
                 PLAN_CACHE_VERSION_FIELD => {}
                 _ => kept.push((name, value)),
             }
@@ -118,6 +122,7 @@ impl StreamerAccount {
             fields: kept,
             access_token,
             refresh_token,
+            generation,
         }
     }
 
@@ -341,12 +346,14 @@ fn decode_read(value: Reply) -> Result<HashRead, TwitchError> {
     })
 }
 
-/// The filter and projection of the directory's user reads.
+/// The filter and projection of the directory's user reads (`PLAN_ACCOUNT_FIELDS`, plus the
+/// credential generation).
 fn plan_projection() -> Document {
     let mut projection = Document::new();
     for field in PLAN_ACCOUNT_FIELDS {
         projection.insert(field, 1);
     }
+    projection.insert("refreshed_at", 1);
     projection
 }
 
@@ -386,35 +393,45 @@ impl Inner {
         );
     }
 
-    /// `WRITE_PLAN_ACCOUNT_SCRIPT`: `false` when billing's fence is newer than the user's plan.
+    /// `WRITE_PLAN_ACCOUNT_SCRIPT` with the credential fence: `false` when billing's fence is
+    /// newer than the user's plan. When the hash holds a newer credential generation than the
+    /// user's, the other fields are written and the hash's credentials kept.
     async fn write_account(
         &self,
         user: &User,
         id: &str,
         fields: &[(&'static str, String)],
     ) -> Result<bool, TwitchError> {
+        #[cfg(any(test, feature = "test-util"))]
+        self.fault(crate::base::FaultPoint::BeforeDirectoryWrite, id)
+            .await;
         let version = plan_cache_version(
             user.polar_plan_event_at.map(|date| date.0),
             user.polar_plan_event_key.as_deref(),
         )
         .map_err(|error| TwitchError::cache("write account", error))?;
+        let generation = user
+            .refreshed_at
+            .map_or(0, |date| date.0.max(0))
+            .to_string();
         let keys = &self.config.keys;
         let script_keys = [keys.plan_fence(id), keys.account(id), keys.aggregate()];
-        let mut args: Vec<&str> = Vec::with_capacity(fields.len() * 2 + 3);
+        let mut args: Vec<&str> = Vec::with_capacity(fields.len() * 2 + 4);
         args.push(&version);
+        args.push(&generation);
         for (name, value) in fields {
             args.push(name);
             args.push(value);
         }
         args.push(PLAN_CACHE_VERSION_FIELD);
         args.push(&version);
-        let reply = WRITE_PLAN_ACCOUNT
+        let reply = WRITE_ACCOUNT
             .run_value(&self.dragonfly, &script_keys, &args)
             .await
             .map_err(|error| TwitchError::cache("write account", error))?;
         Ok(reply::int(reply).map_err(|_| TwitchError::Protocol {
             op: "write account",
-        })? == 1)
+        })? != 0)
     }
 
     /// `hydrateTwitchAccountById` without the single flight.
@@ -454,6 +471,11 @@ impl Inner {
             }
             self.sadd(&keys.streamer_ids(), id).await?;
             self.streamer_seen(id, account.name.as_deref().unwrap_or_default());
+            // What the hash holds now: the fields just written, with the credentials of a newer
+            // generation when the hash had one.
+            if let HashRead::Accepted(fields) = self.read_hash(id).await? {
+                return Ok(Some(StreamerAccount::from_cache(fields, &self.cipher)));
+            }
             return Ok(Some(StreamerAccount::from_cache(
                 fields
                     .into_iter()
@@ -531,11 +553,8 @@ impl Inner {
             .map_err(|error| TwitchError::cache("sadd", error))
     }
 
-    /// `getTwitchAccountById` with errors returned.
-    pub(crate) async fn account(
-        self: &Arc<Self>,
-        id: &str,
-    ) -> Result<Option<StreamerAccount>, TwitchError> {
+    /// `READ_PLAN_ACCOUNT_SCRIPT`: the hash and its fence in one atomic read.
+    async fn read_hash(&self, id: &str) -> Result<HashRead, TwitchError> {
         let keys = &self.config.keys;
         let script_keys = [keys.account(id), keys.plan_fence(id)];
         let args = [READ_MAX_FIELDS.to_string(), READ_MAX_BYTES.to_string()];
@@ -543,7 +562,25 @@ impl Inner {
             .run_value(&self.dragonfly, &script_keys, &args)
             .await
             .map_err(|error| TwitchError::cache("read account", error))?;
-        match decode_read(reply)? {
+        decode_read(reply)
+    }
+
+    /// `getTwitchAccountById` with errors returned. A cached `has_permissions` other than
+    /// `"true"` is checked against MongoDB first (review finding 4: a delayed or stray write
+    /// must not lock a streamer out).
+    pub(crate) async fn account(
+        self: &Arc<Self>,
+        id: &str,
+    ) -> Result<Option<StreamerAccount>, TwitchError> {
+        let account = match self.read_hash(id).await? {
+            HashRead::Accepted(fields) => StreamerAccount::from_cache(fields, &self.cipher),
+            HashRead::Missing | HashRead::Stale => return self.hydrate(id).await,
+            HashRead::TooLarge => return Err(TwitchError::Protocol { op: "read account" }),
+        };
+        if account.has_permissions() || !self.recheck_permissions(id, account.generation).await? {
+            return Ok(Some(account));
+        }
+        match self.read_hash(id).await? {
             HashRead::Accepted(fields) => {
                 Ok(Some(StreamerAccount::from_cache(fields, &self.cipher)))
             }

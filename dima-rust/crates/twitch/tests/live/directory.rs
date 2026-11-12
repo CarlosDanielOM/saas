@@ -64,7 +64,9 @@ async fn the_start_up_load_writes_every_streamer_like_the_reference() -> Result<
                 "chat_enabled",
                 "has_permissions",
                 "up_to_date_permissions",
-                "__polar_plan_version"
+                "__polar_plan_version",
+                // Rust only: the credential generation (the user's `refreshed_at`).
+                "__credential_generation"
             ]
         );
         let pro = cache_fields(&stores, "200").await?;

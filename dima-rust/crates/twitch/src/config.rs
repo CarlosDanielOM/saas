@@ -71,6 +71,7 @@ impl fmt::Debug for TwitchConfig {
 /// | `store_deadline` | 10 s | none in the reference (Mongoose without `maxTimeMS`); one MongoDB operation |
 /// | `emote_timeout` | 3 s | `AbortSignal.timeout(3000)` (`twitch_emotes.ts`) |
 /// | `shutdown_grace` | 10 s | Rust only: how long [`crate::Twitch::shutdown`] waits for refreshes in flight |
+/// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Timings {
     /// Lease of the cross-process refresh lock (`SET NX PX`).
@@ -97,6 +98,9 @@ pub struct Timings {
     pub emote_timeout: Duration,
     /// How long shutdown waits for refreshes that are still running.
     pub shutdown_grace: Duration,
+    /// How long a cached "no permissions" that MongoDB confirmed is trusted without asking
+    /// MongoDB again.
+    pub permission_recheck: Duration,
 }
 
 impl Timings {
@@ -115,6 +119,7 @@ impl Timings {
             store_deadline: Duration::from_secs(10),
             emote_timeout: Duration::from_secs(3),
             shutdown_grace: Duration::from_secs(10),
+            permission_recheck: Duration::from_secs(30),
         }
     }
 

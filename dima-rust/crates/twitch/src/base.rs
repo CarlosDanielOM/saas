@@ -82,6 +82,10 @@ impl fmt::Debug for Twitch {
 pub enum FaultPoint {
     /// Twitch answered with new tokens; nothing is written yet.
     AfterTwitchAnswer,
+    /// A credential write to the directory hash is about to be sent (MongoDB already written).
+    BeforeCacheWrite,
+    /// A hydration or start-up load read the user and is about to write the hash.
+    BeforeDirectoryWrite,
 }
 
 #[cfg(any(test, feature = "test-util"))]
@@ -107,6 +111,7 @@ pub(crate) struct Inner {
     pub(crate) app_flight: Flights<(), Option<AccessToken>>,
     pub(crate) hydrate_flights: Flights<String, Result<Option<StreamerAccount>, TwitchError>>,
     pub(crate) emote_flights: Flights<String, ChannelEmoteCatalog>,
+    pub(crate) permission_checks: crate::credentials::PermissionChecks,
     seen: Mutex<HashMap<String, String>>,
     #[cfg(any(test, feature = "test-util"))]
     pub(crate) fault: Mutex<Option<FaultHook>>,
@@ -134,6 +139,7 @@ impl Twitch {
                 app_flight: Flights::new(1),
                 hydrate_flights: Flights::new(MAX_FLIGHTS),
                 emote_flights: Flights::new(MAX_FLIGHTS),
+                permission_checks: Mutex::new(HashMap::new()),
                 seen: Mutex::new(HashMap::new()),
                 #[cfg(any(test, feature = "test-util"))]
                 fault: Mutex::new(None),

@@ -71,22 +71,17 @@
 //! derives it from a stack trace).
 
 use crate::base::{Inner, Twitch};
+use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields, wipe_fields};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
-use crate::secret::{AccessToken, RefreshToken, cache_text, cache_text_of, open_cached, seal};
-use crate::streamers::{decrypt_envelope, persisted_expires_at};
-use bson::oid::ObjectId;
-use bson::{Bson, Document, RawDocumentBuf, doc};
+use crate::secret::{AccessToken, RefreshToken, open_cached, seal};
+use crate::streamers::decrypt_envelope;
 use dima_core::SecretString;
-use dima_core::crypto::StoredCredential;
-use dima_model::users::{AccountType, EncryptedToken, User};
+use dima_model::users::EncryptedToken;
 use dima_store::dragonfly::commands::reply;
 use dima_store::dragonfly::script::Script;
 use dima_store::dragonfly::{SetCondition, SetExpiry, SetOptions, SetOutcome};
-use dima_store::mongo::WriteContext;
-use dima_store::mongo::number::js_number;
-use dima_store::mongo::update::UpdateOptions;
 use serde_json::{Value, json};
 use std::sync::Arc;
 use tokio::time::Instant;
@@ -96,10 +91,6 @@ static RELEASE_LOCK: Script = Script::new(
     "RELEASE_REFRESH_LOCK_SCRIPT",
     "\nif redis.call('GET', KEYS[1]) == ARGV[1] then\n    return redis.call('DEL', KEYS[1])\nend\nreturn 0\n",
 );
-
-/// How many times a compare-and-set write reads and tries again when the stored envelope
-/// changed between its read and its write.
-const CAS_ROUNDS: usize = 3;
 
 /// The key of one refresh in a process: the streamer and a digest of the rejected token.
 pub(crate) type FlightKey = (String, Option<[u8; 32]>);
@@ -197,15 +188,6 @@ fn truthy(value: Option<&Value>) -> bool {
     }
 }
 
-/// The stored state of one Twitch account, read for a compare-and-set.
-#[derive(Clone)]
-pub(crate) struct StoredAccount {
-    user: ObjectId,
-    refresh: EncryptedToken,
-    access: EncryptedToken,
-    expires_at: Option<String>,
-}
-
 /// The cache's credential fields of one streamer, decrypted.
 #[derive(Default)]
 struct CachedCredentials {
@@ -222,38 +204,22 @@ impl CachedCredentials {
 
 /// What a compare-and-set write found.
 enum Persisted {
-    /// Written.
-    Written,
+    /// Written with this generation.
+    Written(i64),
     /// A different refresh token is stored: nothing written.
-    Superseded(StoredAccount),
+    Superseded(Box<StoredAccount>),
     /// No such user.
     UserNotFound,
 }
 
-fn envelope_bson(envelope: &StoredCredential) -> Bson {
-    Bson::Document(doc! { "iv": envelope.iv.as_str(), "content": envelope.content.as_str() })
-}
-
-fn null_envelope() -> Bson {
-    Bson::Document(doc! { "iv": Bson::Null, "content": Bson::Null })
-}
-
-impl StoredAccount {
-    /// The filter that matches this account only while its refresh envelope is unchanged.
-    fn compare_filter(&self, user_id: &str) -> Document {
-        let part = |value: &Option<String>| value.clone().map_or(Bson::Null, Bson::String);
-        doc! {
-            "_id": self.user,
-            "accounts": {
-                "$elemMatch": {
-                    "type": "twitch",
-                    "id": user_id,
-                    "refresh_token.iv": part(&self.refresh.iv),
-                    "refresh_token.content": part(&self.refresh.content),
-                }
-            }
-        }
-    }
+/// The refresh token in a stored envelope, wiped when dropped.
+fn stored_token(
+    cipher: &dima_core::crypto::CredentialCipher,
+    envelope: &EncryptedToken,
+) -> Result<Option<RefreshToken>, dima_core::crypto::CipherError> {
+    Ok(decrypt_envelope(cipher, envelope)?
+        .filter(|token| !token.is_empty())
+        .map(|token| RefreshToken::from_secret(SecretString::new(token))))
 }
 
 impl Inner {
@@ -291,83 +257,13 @@ impl Inner {
         })
     }
 
-    /// `HSET` of the hash's credential fields.
-    async fn set_cached_credentials(
-        &self,
-        id: &str,
-        fields: &[(&str, &str)],
-    ) -> Result<(), TwitchError> {
-        let fields: Vec<(&str, &[u8])> = fields
-            .iter()
-            .map(|(name, value)| (*name, value.as_bytes()))
-            .collect();
-        self.dragonfly
-            .hset(&self.config.keys.account(id), &fields)
-            .await
-            .map(|_| ())
-            .map_err(|error| TwitchError::cache("hset", error))
-    }
-
-    /// The stored Twitch account `id` (the user's `_id`, both envelopes, the expiry).
-    async fn load_stored(&self, id: &str) -> Result<Option<StoredAccount>, TwitchError> {
-        let raw: Option<RawDocumentBuf> = self
-            .mongo_op(
-                "find user",
-                self.mongo
-                    .collection::<RawDocumentBuf>(dima_model::users::COLLECTION)
-                    .find_one(dima_model::users::by_account(AccountType::Twitch, id))
-                    .projection(doc! { "accounts": 1 }),
-            )
-            .await?;
-        let Some(raw) = raw else {
-            return Ok(None);
-        };
-        let user: User =
-            dima_model::decode(&raw).map_err(|error| TwitchError::Decode(error.to_string()))?;
-        Ok(user
-            .accounts
-            .iter()
-            .find(|account| {
-                account.kind.is(AccountType::Twitch) && account.id.as_deref() == Some(id)
-            })
-            .map(|account| StoredAccount {
-                user: user.id,
-                refresh: account.refresh_token.expose().clone(),
-                access: account.access_token.expose().clone(),
-                expires_at: persisted_expires_at(account),
-            }))
-    }
-
-    /// One compare-and-set `updateOne` on the account: `true` when it matched.
-    async fn compare_and_set(
-        &self,
-        id: &str,
-        stored: &StoredAccount,
-        set: Document,
-    ) -> Result<bool, TwitchError> {
-        let mut ctx = WriteContext::new(self.now_ms());
-        let prepared = dima_model::users::INFO
-            .prepare_update(
-                &stored.compare_filter(id),
-                doc! { "$set": set },
-                UpdateOptions::default(),
-                &mut ctx,
-            )
-            .map_err(|error| TwitchError::Write(error.to_string()))?;
-        let mut writes = self.mongo.writes(dima_model::users::COLLECTION);
-        let outcome = self
-            .mongo_op("update user", writes.update_one(&prepared))
-            .await?;
-        Ok(outcome.matched == 1)
-    }
-
     /// Writes rotated tokens if the stored refresh token is still `used` (or empty).
     async fn persist_rotation(
         &self,
         id: &str,
         used: &RefreshToken,
-        access: &StoredCredential,
-        refresh: &StoredCredential,
+        access: &dima_core::crypto::StoredCredential,
+        refresh: &dima_core::crypto::StoredCredential,
         expires_at: f64,
     ) -> Result<Persisted, TwitchError> {
         for _round in 0..CAS_ROUNDS {
@@ -376,23 +272,16 @@ impl Inner {
             };
             // An envelope that cannot be decrypted holds no usable token: it is replaced, as
             // the reference's unconditional write would (still only while it is unchanged).
-            match decrypt_envelope(&self.cipher, &stored.refresh) {
-                Ok(Some(current))
-                    if !current.is_empty() && RefreshToken::new(current.as_str()) != *used =>
-                {
-                    return Ok(Persisted::Superseded(stored));
-                }
-                _ => {}
+            if let Ok(Some(current)) = stored_token(&self.cipher, &stored.refresh)
+                && current != *used
+            {
+                return Ok(Persisted::Superseded(Box::new(stored)));
             }
-            let set = doc! {
-                "accounts.$.refresh_token": envelope_bson(refresh),
-                "accounts.$.access_token": envelope_bson(access),
-                "accounts.$.access_token_expires_at": js_number(expires_at),
-                "accounts.$.has_permissions": true,
-                "accounts.$.up_to_date_permissions": true,
-            };
-            if self.compare_and_set(id, &stored, set).await? {
-                return Ok(Persisted::Written);
+            if let Written::Done(generation) = self
+                .write_rotation(id, &stored, access, refresh, expires_at)
+                .await?
+            {
+                return Ok(Persisted::Written(generation));
             }
         }
         Err(TwitchError::Write(
@@ -417,15 +306,7 @@ impl Inner {
         let access = open(&stored.access)?;
         let refresh = open(&stored.refresh)?;
         let expires_at = stored.expires_at.clone().unwrap_or_default();
-        self.set_cached_credentials(
-            id,
-            &[
-                ("access_token", &cache_text_of(&stored.access)),
-                ("refresh_token", &cache_text_of(&stored.refresh)),
-                ("expires_at", &expires_at),
-            ],
-        )
-        .await?;
+        self.publish_stored(id, stored).await?;
         Ok(CachedCredentials {
             access_token: access.map(AccessToken::from_secret),
             expires_at: Some(expires_at),
@@ -676,17 +557,11 @@ impl Inner {
                     expires_in,
                 })
             }
-            Persisted::Written => {
-                let expires_text = dima_text::number_to_string(expires_at);
-                self.set_cached_credentials(
+            Persisted::Written(generation) => {
+                self.publish(
                     user_id,
-                    &[
-                        ("access_token", &cache_text(&access_envelope)),
-                        ("refresh_token", &cache_text(&refresh_envelope)),
-                        ("expires_at", &expires_text),
-                        ("has_permissions", "true"),
-                        ("up_to_date_permissions", "true"),
-                    ],
+                    generation,
+                    &rotation_fields(&access_envelope, &refresh_envelope, expires_at),
                 )
                 .await?;
                 self.refresh_log(
@@ -724,44 +599,26 @@ impl Inner {
         for _round in 0..CAS_ROUNDS {
             let stored = self.load_stored(user_id).await?;
             let current = match &stored {
-                Some(stored) => decrypt_envelope(&self.cipher, &stored.refresh)?,
+                Some(stored) => stored_token(&self.cipher, &stored.refresh)?,
                 None => None,
             };
-            if let (Some(stored), Some(current)) = (&stored, current.filter(|t| !t.is_empty()))
-                && RefreshToken::new(current.as_str()) != *failed
+            if let (Some(stored), Some(current)) = (&stored, current)
+                && current != *failed
             {
                 return self
                     .rotated_elsewhere(user_id, stored, &current, status, context)
                     .await;
             }
-            let wiped = match &stored {
-                Some(stored) => {
-                    let set = doc! {
-                        "accounts.$.refresh_token": null_envelope(),
-                        "accounts.$.access_token": null_envelope(),
-                        "accounts.$.access_token_expires_at": Bson::Null,
-                        "accounts.$.has_permissions": false,
-                        "accounts.$.up_to_date_permissions": false,
-                    };
-                    self.compare_and_set(user_id, stored, set).await?
-                }
-                // The reference's update matches nothing; its cache write still happens.
-                None => true,
+            let generation = match &stored {
+                Some(stored) => match self.write_wipe(user_id, stored).await? {
+                    Written::Done(generation) => generation,
+                    Written::Changed => continue,
+                },
+                // The reference's update matches nothing; its cache write still happens (with
+                // no generation to carry, it does not replace a fenced entry).
+                None => 0,
             };
-            if !wiped {
-                continue;
-            }
-            self.set_cached_credentials(
-                user_id,
-                &[
-                    ("access_token", ""),
-                    ("refresh_token", ""),
-                    ("expires_at", ""),
-                    ("has_permissions", "false"),
-                    ("up_to_date_permissions", "false"),
-                ],
-            )
-            .await?;
+            self.publish(user_id, generation, &wipe_fields()).await?;
             self.log(
                 Level::Error,
                 Destination::Both,
@@ -793,12 +650,12 @@ impl Inner {
         &self,
         user_id: &str,
         stored: &StoredAccount,
-        current: &str,
+        current: &RefreshToken,
         status: u16,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
         let mut cached = self.cached_credentials(user_id).await?;
-        if cached.refresh_token.as_ref().map(RefreshToken::expose) != Some(current) {
+        if cached.refresh_token.as_ref() != Some(current) {
             cached = self.sync_cache_from(user_id, stored).await?;
         }
         let now = self.now_secs();
@@ -824,7 +681,7 @@ impl Inner {
             );
             return Ok(RefreshOutcome::Success {
                 access_token,
-                refresh_token: RefreshToken::new(current),
+                refresh_token: current.clone(),
                 expires_in: expiry - now as f64,
             });
         }
@@ -1352,6 +1209,15 @@ impl Twitch {
                 RefreshFailureReason::Interrupted,
             )
         })
+    }
+
+    /// Tells the crate that the streamer's credentials were written to MongoDB by another
+    /// writer (a sign-in): the generation is advanced (compare-and-set on what is stored) and
+    /// MongoDB's state is copied to the directory, so no cache write that started before can
+    /// cover it. Every writer of the token fields outside this crate must call it after its
+    /// MongoDB write.
+    pub async fn credentials_changed(&self, id: &str) -> Result<(), TwitchError> {
+        self.inner.credentials_changed(id).await
     }
 
     /// `getAccountRefreshTokenById(id, 'twitch')`: the stored refresh token (cache, else

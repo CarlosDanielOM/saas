@@ -55,6 +55,7 @@
 pub mod badges;
 mod base;
 pub mod config;
+mod credentials;
 pub mod emotes;
 mod error;
 pub mod events;
