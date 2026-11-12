@@ -6,19 +6,26 @@
 #   directory, `dima-rust/target`. A shared one is not safe: crates with the same
 #   name in two worktrees get the same artifact names, so one worktree's tests
 #   could run against another worktree's code.
-# - Compiling commands take one machine-wide lock, so only one build or test run
-#   is active at a time however many agents are working.
+# - A new checkout starts from a copy-on-write copy of the seed build cache
+#   (`~/.cache/dima-rust/seed-target`, a snapshot the lead refreshes), so it
+#   compiles the workspace crates and not the two hundred dependencies. The copy
+#   shares disk blocks (btrfs reflink); where that is not possible it is skipped.
+# - Compiling commands take one of two machine-wide slots, so at most two builds
+#   or test runs are active at a time however many agents are working. A test
+#   run that waits on the network no longer blocks everyone's compile.
 # - One systemd slice holds every cargo process: soft cap 6 GB (the kernel
 #   throttles and reclaims above it), hard cap 8 GB (processes are killed above
-#   it), 8 CPUs, no swap. Each run is also sized to the memory that is free right
-#   now, minus a reserve, and waits when there is too little.
+#   it), 8 CPUs, no swap. Each run gets an equal share of the caps and is also
+#   sized to the memory that is free right now, minus a reserve; it waits when
+#   there is too little.
 #
 # `run` holds the lock for as long as the program runs: for anything long-lived,
 # build it, then start the binary from `dima-rust/target/` yourself.
 #
 # Overrides: DIMA_BUILD_CPUS (8), DIMA_BUILD_MEM_SOFT_MB (6144),
 # DIMA_BUILD_MEM_HARD_MB (8192), DIMA_BUILD_RESERVE_MB (1500),
-# DIMA_BUILD_WAIT_SECS (900), DIMA_BUILD_SLICE, CARGO_TARGET_DIR, CARGO_BUILD_JOBS.
+# DIMA_BUILD_WAIT_SECS (900), DIMA_BUILD_SLOTS (2), DIMA_BUILD_SEED, DIMA_BUILD_SLICE,
+# CARGO_TARGET_DIR, CARGO_BUILD_JOBS.
 # The production host does not use this file; it builds through scripts/saas-ops.
 set -euo pipefail
 
@@ -29,9 +36,22 @@ reserve_mb="${DIMA_BUILD_RESERVE_MB:-1500}"
 min_scope_mb=1536
 wait_secs="${DIMA_BUILD_WAIT_SECS:-900}"
 slice="${DIMA_BUILD_SLICE:-dima-build.slice}"
+slots="${DIMA_BUILD_SLOTS:-2}"
+(( slots < 1 )) && slots=1
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust"
+seed="${DIMA_BUILD_SEED:-$cache_dir/seed-target}"
 
 workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$workspace/target}"
+if [[ ! -e "$CARGO_TARGET_DIR" && -d "$seed" && "$CARGO_TARGET_DIR" == "$workspace/target" ]]; then
+    # All or nothing: a partial copy would look like a valid cache.
+    if cp -a --reflink=always "$seed" "$CARGO_TARGET_DIR.seeding.$$" 2>/dev/null \
+        && mv -T "$CARGO_TARGET_DIR.seeding.$$" "$CARGO_TARGET_DIR" 2>/dev/null; then
+        echo "tools/cargo: build cache seeded from $seed" >&2
+    else
+        rm -rf "$CARGO_TARGET_DIR.seeding.$$"
+    fi
+fi
 mkdir -p "$CARGO_TARGET_DIR"
 
 # Commands that do not compile need neither the lock nor the memory guard.
@@ -40,12 +60,23 @@ case "${1:-}" in
         exec cargo "$@" ;;
 esac
 
-# One build at a time across the machine. `flock -o` keeps the lock in the flock
-# process only, so a program the build leaves running cannot hold it.
+# At most `slots` builds at a time across the machine. `flock -o` keeps the lock in
+# the flock process only, so a program the build leaves running cannot hold it.
+# Exit status 222 is flock's "slot taken" here; cargo does not use it.
 if [[ -z "${DIMA_CARGO_LOCKED:-}" ]] && command -v flock >/dev/null 2>&1; then
-    lock_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust"
-    mkdir -p "$lock_dir"
-    exec env DIMA_CARGO_LOCKED=1 flock -o "$lock_dir/build.lock" "${BASH_SOURCE[0]}" "$@"
+    mkdir -p "$cache_dir"
+    while :; do
+        for (( slot = 1; slot <= slots; slot++ )); do
+            status=0
+            # Slot 1 keeps the name of the old single lock, so a checkout with the old
+            # wrapper shares it.
+            lock="$cache_dir/build.lock"
+            (( slot > 1 )) && lock="$cache_dir/build.$slot.lock"
+            env DIMA_CARGO_LOCKED=1 flock -n -E 222 -o "$lock" "${BASH_SOURCE[0]}" "$@" || status=$?
+            (( status == 222 )) || exit "$status"
+        done
+        sleep 1
+    done
 fi
 
 mem_available_mb() { awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo; }
@@ -65,15 +96,20 @@ while :; do
     sleep 10
     waited=$(( waited + 10 ))
 done
-(( scope_hard > hard_mb )) && scope_hard=$hard_mb
+# An equal share of the caps for each slot.
+run_hard=$(( hard_mb / slots ))
+run_soft=$(( soft_mb / slots ))
+run_cpus=$(( cpus / slots ))
+(( run_cpus < 2 )) && run_cpus=2
+(( scope_hard > run_hard )) && scope_hard=$run_hard
 scope_soft=$(( scope_hard * 3 / 4 ))
-(( scope_soft > soft_mb )) && scope_soft=$soft_mb
+(( scope_soft > run_soft )) && scope_soft=$run_soft
 
 # About one rustc per GB of this run's room, between 2 and the CPU cap.
 if [[ -z "${CARGO_BUILD_JOBS:-}" ]]; then
     jobs=$(( scope_hard / 1024 ))
     (( jobs < 2 )) && jobs=2
-    (( jobs > cpus )) && jobs=$cpus
+    (( jobs > run_cpus )) && jobs=$run_cpus
     export CARGO_BUILD_JOBS="$jobs"
 fi
 

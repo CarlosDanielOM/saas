@@ -128,9 +128,14 @@ build order only, and no package has to interoperate with a running TypeScript p
 ## Pace
 
 A provider rate limit stopped four workers at once on 2026-11-11 (their work was recovered from the
-worktrees). Run two implementation workers at a time (a third only when it is a small fix package),
-`high` unless a package is truly hard, and every brief tells the worker to commit as it goes. Reviews by GPT-6.1 Sol run on another provider and do not
-count against that limit.
+worktrees). The plan's usage is readable in T3 Code's provider cache
+(`~/.t3/caches/claudeAgent.json`, `usageLimits`: a five-hour window and a weekly one). Measured on the
+evening of 2026-11-11: a package costs about 3% of a five-hour window, and a full window about 8% of the
+week. The lead reads the figures before each wave and keeps the five-hour window under about 80% and
+the week on a pace that lasts until its reset. Within that, five or six implementation workers run at a
+time; the practical limits are the laptop's memory, the two build slots and the lead's own integration
+(merge, gate, review of each result). `high` unless a package is truly hard; every brief tells the
+worker to commit as it goes. Reviews by GPT-6.1 Sol run on another provider and do not count.
 
 ## Baseline (2026-11-11)
 

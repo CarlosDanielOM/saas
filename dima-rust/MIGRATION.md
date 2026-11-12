@@ -257,6 +257,11 @@ integrity (journals, queues, account deletion) get the highest effort and always
   runs the gates and commits. Nothing merges on a worker's report alone.
 - **Implementation (Claude Opus 5.5, high or xhigh)**: one package per agent, one crate or module
   directory owned exclusively, in its own git worktree. Stay inside the files the brief assigns.
+- **Where the branch lives.** The lead integrates in its own checkout of `rust-v2`
+  (`~/Projects/saas-rust-v2`), not in the main checkout, which may be on another branch at any time.
+  A worker's new worktree can therefore start from an old commit: the first step of every package is
+  `git merge --ff-only rust-v2`, checked against the commit the brief names. `dimabot/node_modules`
+  (for recording against the real libraries) is used from the main checkout, read-only.
 - **Review (GPT-6.1 Sol, high or xhigh)**: a teammate, not an authority. The lead verifies findings and
   decides; low-value findings are set aside and noted.
 - Agents do not deploy, do not start subagents, do not touch `dimabot/` or another package's files, and
@@ -287,11 +292,13 @@ in one window, and is the owner's to trigger.
 ## 11. Machine limits (development laptop)
 
 - **Always** run cargo through `dima-rust/tools/cargo` (same arguments as cargo). It puts every build in
-  one cgroup with a 6 GB soft cap, an 8 GB hard cap, 8 CPUs and no swap, sizes each run to the memory
-  that is actually free (and waits when there is too little), and lets one build or test run at a time
-  across the machine. Each checkout builds into its own `dima-rust/target`: a shared target directory
-  let one worktree's tests run against another worktree's code, so never set `CARGO_TARGET_DIR` to a
-  shared place. Never run plain `cargo`. Start long-lived programs from the built binary, not `cargo run`.
+  one cgroup with a 6 GB soft cap, an 8 GB hard cap, 8 CPUs and no swap, gives each run an equal share
+  sized to the memory that is actually free (and waits when there is too little), and lets two builds or
+  test runs go at a time across the machine. Each checkout builds into its own `dima-rust/target`: a
+  shared target directory let one worktree's tests run against another worktree's code, so never set
+  `CARGO_TARGET_DIR` to a shared place. A new checkout's first build starts from a copy-on-write copy of
+  the lead's snapshot of the build cache, so only the workspace crates compile. Never run plain `cargo`.
+  Start long-lived programs from the built binary, not `cargo run`.
 - Implementation agents run `check`, `clippy` and `test` scoped to their crates (`-p <crate>`). Release
   builds and whole-workspace runs are the lead's.
 - The laptop has 16 GB in total and is the owner's working machine: it must never run out of memory.
