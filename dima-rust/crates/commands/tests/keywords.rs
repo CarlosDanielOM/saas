@@ -7,9 +7,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use dima_commands::keywords::{
-    self, BODY_SCRIPT, KeywordEntry, KeywordIndex, KeywordIndexCache, KeywordLoader,
-    KeywordMatchMode, KeywordRow, KeywordStorage, KeywordStorageError, PreparedMessage,
-    SHARED_INDEX_SCRIPT, SharedKeywordLoader,
+    self, BODY_SCRIPT, KeywordCacheError, KeywordCacheLimits, KeywordEntry, KeywordIndex,
+    KeywordIndexCache, KeywordLoader, KeywordMatchMode, KeywordRow, KeywordStorage,
+    KeywordStorageError, Overload, PreparedMessage, SHARED_INDEX_SCRIPT, SharedKeywordLoader,
 };
 use dima_core::{Clock, ManualClock};
 use serde_json::{Value, json};
@@ -214,11 +214,11 @@ async fn simultaneous_loads_share_one_request_and_empty_indexes_stay_cached() {
     let tasks: Vec<_> = (0..50)
         .map(|_| {
             let cache = Arc::clone(&cache);
-            tokio::spawn(async move { cache.get("channel").await.map(|index| index.is_empty()) })
+            tokio::spawn(async move { cache.get("channel").await.unwrap().is_empty() })
         })
         .collect();
     for task in tasks {
-        assert_eq!(task.await.unwrap(), Ok(true));
+        assert!(task.await.unwrap());
     }
     cache.get("channel").await.unwrap();
     assert_eq!(cache.loader().reads.load(Ordering::SeqCst), 1);
@@ -264,11 +264,16 @@ async fn failed_cold_load_is_retried_and_local_ttl_and_capacity_bound_memory() {
         }),
     };
     let (manual, clock) = clock();
-    let cache = KeywordIndexCache::with_limits(loader, Arc::clone(&clock), 0, 1);
-    assert_eq!(
-        *cache.get("a").await.unwrap_err(),
-        "shared cache unavailable"
-    );
+    let limits = |ttl_ms, channels| KeywordCacheLimits {
+        ttl_ms,
+        channels,
+        ..KeywordCacheLimits::default()
+    };
+    let cache = KeywordIndexCache::with_limits(loader, Arc::clone(&clock), limits(0, 1));
+    match cache.get("a").await.unwrap_err() {
+        KeywordCacheError::Load(error) => assert_eq!(*error, "shared cache unavailable"),
+        other => panic!("{other:?}"),
+    }
     cache.get("a").await.unwrap();
     cache.get("a").await.unwrap();
     assert_eq!(
@@ -281,7 +286,7 @@ async fn failed_cold_load_is_retried_and_local_ttl_and_capacity_bound_memory() {
         reads: AtomicUsize::new(0),
         plan: Box::new(|_| LoadPlan::Ready(Vec::new())),
     };
-    let bounded = KeywordIndexCache::with_limits(loader, clock, 60_000, 1);
+    let bounded = KeywordIndexCache::with_limits(loader, clock, limits(60_000, 1));
     bounded.get("a").await.unwrap();
     bounded.get("b").await.unwrap();
     bounded.get("a").await.unwrap();
@@ -375,9 +380,16 @@ impl KeywordStorage for Storage {
         Ok(self.strings.lock().unwrap().get(key).cloned())
     }
 
-    async fn query_index(&self, channel: &str) -> Result<Vec<KeywordRow>, String> {
+    async fn query_index(&self, channel: &str, limit: usize) -> Result<Vec<KeywordRow>, String> {
         self.race(channel);
-        Ok(self.rows.lock().unwrap().clone())
+        Ok(self
+            .rows
+            .lock()
+            .unwrap()
+            .iter()
+            .take(limit)
+            .cloned()
+            .collect())
     }
 
     async fn query_body(&self, channel: &str, id: &str) -> Result<Option<Value>, String> {
@@ -573,4 +585,166 @@ async fn refresh_bumps_announces_and_warms_and_bodies_follow_the_fence() {
         &json!({"channelID": ""})
     ));
     assert!(!keywords::apply_keyword_change(&cache, &json!({})));
+}
+
+fn entries(count: usize, prefix: &str) -> Vec<KeywordEntry> {
+    (0..count)
+        .map(|index| {
+            entry_id(
+                &format!("{prefix}{index}"),
+                Anywhere,
+                &format!("{prefix}{index}"),
+            )
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn a_channel_over_its_keyword_or_byte_limit_is_refused_and_the_refusal_cached() {
+    let loader = Loader {
+        reads: AtomicUsize::new(0),
+        plan: Box::new(|_| LoadPlan::Ready(entries(4, "w"))),
+    };
+    let limits = KeywordCacheLimits {
+        keywords_per_channel: 3,
+        ..KeywordCacheLimits::default()
+    };
+    let cache = KeywordIndexCache::with_limits(loader, clock().1, limits);
+    for _ in 0..3 {
+        assert!(matches!(
+            cache.get("big").await,
+            Err(KeywordCacheError::Overloaded(Overload::TooManyKeywords {
+                limit: 3
+            }))
+        ));
+    }
+    assert_eq!(
+        cache.loader().reads.load(Ordering::SeqCst),
+        1,
+        "the refusal is cached"
+    );
+
+    let loader = Loader {
+        reads: AtomicUsize::new(0),
+        plan: Box::new(|_| LoadPlan::Ready(vec![entry(&"x".repeat(2_000), Exact)])),
+    };
+    let limits = KeywordCacheLimits {
+        index_bytes: 1_000,
+        ..KeywordCacheLimits::default()
+    };
+    let cache = KeywordIndexCache::with_limits(loader, clock().1, limits);
+    assert!(matches!(
+        cache.get("long").await,
+        Err(KeywordCacheError::Overloaded(Overload::IndexTooLarge {
+            limit: 1_000,
+            ..
+        }))
+    ));
+}
+
+#[tokio::test]
+async fn the_bytes_of_all_indexes_are_bounded_by_evicting_whole_channels() {
+    let loader = Loader {
+        reads: AtomicUsize::new(0),
+        plan: Box::new(|_| LoadPlan::Ready(entries(20, "keyword"))),
+    };
+    let one = KeywordIndex::new(entries(20, "keyword")).heap_bytes() + 1;
+    let limits = KeywordCacheLimits {
+        total_bytes: one * 2 + 16,
+        ..KeywordCacheLimits::default()
+    };
+    let cache = KeywordIndexCache::with_limits(loader, clock().1, limits);
+    for channel in ["a", "b", "c", "d"] {
+        assert_eq!(cache.get(channel).await.unwrap().len(), 20);
+        assert!(
+            cache.heap_bytes() <= limits.total_bytes,
+            "{}",
+            cache.heap_bytes()
+        );
+    }
+    assert_eq!(cache.len(), 2);
+    // "a" was evicted (the oldest), "d" was kept.
+    cache.get("d").await.unwrap();
+    assert_eq!(cache.loader().reads.load(Ordering::SeqCst), 4);
+    cache.get("a").await.unwrap();
+    assert_eq!(cache.loader().reads.load(Ordering::SeqCst), 5);
+}
+
+#[tokio::test]
+async fn loads_in_flight_are_bounded_and_the_refusal_does_not_wait() {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let receiver = Mutex::new(Some(receiver));
+    let loader = Loader {
+        reads: AtomicUsize::new(0),
+        plan: Box::new(move |read| match read {
+            1 => LoadPlan::Wait(receiver.lock().unwrap().take().unwrap()),
+            _ => LoadPlan::Ready(Vec::new()),
+        }),
+    };
+    let limits = KeywordCacheLimits {
+        loads_in_flight: 1,
+        ..KeywordCacheLimits::default()
+    };
+    let cache = Arc::new(KeywordIndexCache::with_limits(loader, clock().1, limits));
+    let slow = {
+        let cache = Arc::clone(&cache);
+        tokio::spawn(async move { cache.get("slow").await })
+    };
+    while cache.loads_in_flight() == 0 {
+        tokio::task::yield_now().await;
+    }
+    // Another channel is refused at once; a caller of the channel in flight waits for it.
+    assert!(matches!(
+        cache.get("other").await,
+        Err(KeywordCacheError::Overloaded(Overload::LoadsInFlight {
+            limit: 1
+        }))
+    ));
+    let waiter = {
+        let cache = Arc::clone(&cache);
+        tokio::spawn(async move { cache.get("slow").await })
+    };
+    sender.send(vec![entry("x", Start)]).unwrap();
+    assert_eq!(slow.await.unwrap().unwrap().len(), 1);
+    assert_eq!(waiter.await.unwrap().unwrap().len(), 1);
+    assert_eq!(cache.loads_in_flight(), 0);
+    cache.get("other").await.unwrap();
+}
+
+#[tokio::test]
+async fn the_shared_index_never_reads_or_publishes_more_than_the_limit() {
+    let storage = Storage::default();
+    *storage.rows.lock().unwrap() = (0..=keywords::MAX_KEYWORDS_PER_CHANNEL)
+        .map(|index| KeywordRow {
+            id: format!("id{index}"),
+            cmd: format!("word{index}"),
+            match_mode: Start,
+        })
+        .chain([KeywordRow {
+            id: "beyond".into(),
+            cmd: "beyond".into(),
+            match_mode: Start,
+        }])
+        .collect();
+    let loaded = keywords::load_shared_index(&storage, "c").await.unwrap();
+    assert_eq!(loaded.len(), keywords::MAX_KEYWORDS_PER_CHANNEL + 1);
+    assert!(
+        storage
+            .strings
+            .lock()
+            .unwrap()
+            .get("keywords:index:c")
+            .is_none()
+    );
+
+    let oversized = format!("[{}]", " ".repeat(keywords::MAX_SHARED_INDEX_JSON_BYTES));
+    storage
+        .strings
+        .lock()
+        .unwrap()
+        .insert("keywords:index:c".into(), oversized);
+    assert!(matches!(
+        keywords::load_shared_index(&storage, "c").await,
+        Err(KeywordStorageError::SharedIndexTooLarge { .. })
+    ));
 }
