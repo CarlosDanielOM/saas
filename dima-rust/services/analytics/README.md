@@ -195,3 +195,40 @@ create identical tables, ordered columns, SQL types, indexes and constraints, in
 partitions. The rig also compares final rows after each scenario. Its observer does not cover
 roles/grants, triggers/function bodies, user-defined types or sequence counters; those are
 not claimed here. The only SQL allowances concern fixture/quantized row timestamps.
+
+Part 6: release Rust versus Node, Linux `/proc/<pid>/status` VmRSS and `/proc/<pid>/stat`
+user+system CPU time, sampled by `tests/resource_probe.py` every 50 ms for both services.
+The probe records the first successful health check and the last live sample after the rig's
+fixed ingestion workload: one valid batch containing metric/span/log observations, its replay,
+and malformed JSON. Collectors are disabled on both sides; each has its own fresh PostgreSQL,
+MongoDB and Dragonfly database, using the normal rig mocks and cleanup. Only the service
+process is measured (not Python, PostgreSQL, Redis or the mock).
+
+| Service | Startup RSS KiB | After workload RSS KiB | Startup CPU s | Total CPU s | Workload CPU delta s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Node | 116968 | 117108 | 0.79 | 0.84 | 0.05 |
+| Rust release | 11080 | 11336 | 0.02 | 0.03 | 0.01 |
+
+The final release comparison matched ingestion, including exact bucket predicates and all
+values. These are one successful pair of small-workload measurements, not a throughput benchmark;
+CPU resolution is 10 ms. An earlier pair failed because the first observation was not available
+at the scenario's 1.5-second check and was excluded; its resources were cleaned up before retry.
+For reproduction, wrap both target commands with `python3 <absolute path>/tests/resource_probe.py`,
+set `DIMA_RESOURCE_SIDE` to reference/candidate, replace the candidate command with the absolute
+`target/release/dima-analytics`, and run `compare analytics ingestion` using a temporary target
+and the normal rig scenarios. Do not change the committed debug target or reference checkout.
+
+Final gate: `eval "$(dima-rust/tools/test-env)"; dima-rust/tools/check dima-analytics` passed
+format, clippy with warnings denied, and 9 tests with no skips. Last lines:
+
+```text
+   Doc-tests dima_analytics
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+All rig runs, including interrupted/failed attempts, reported deletion of their PostgreSQL and
+MongoDB databases/users and flushing of their claimed Dragonfly databases. Store tests also
+removed their uniquely named fixtures. No container was started/stopped/built; nothing was
+deployed or pushed. Original author open items outside this package's requested scenarios
+(such as long-range performance and outbound fault comparisons) are not certified by these results.
