@@ -5,6 +5,7 @@ use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
 use super::frame::{Frames, Scalars};
+use super::limits::KEPT_ENTRY_BYTES;
 use super::{Engine, EvalError, EvalStats, LimitKind};
 use crate::context::{
     BudgetSnapshot, CommandReference, Context, LoopExit, Origin, ReferenceAuthorization,
@@ -54,8 +55,11 @@ pub(super) enum Kept {
     LoopVars,
 }
 
+/// What an entry of a kept map is charged: its bytes and [`KEPT_ENTRY_BYTES`].
 fn entry_size(key: &str, value: &str) -> usize {
-    key.len().saturating_add(value.len())
+    key.len()
+        .saturating_add(value.len())
+        .saturating_add(KEPT_ENTRY_BYTES)
 }
 
 fn map_size(map: &OrderedMap<String, String>) -> usize {
@@ -64,18 +68,19 @@ fn map_size(map: &OrderedMap<String, String>) -> usize {
     })
 }
 
-/// What one entry of the response list keeps, in bytes: its serialised size.
+/// What one entry of the response list keeps, in bytes: [`KEPT_ENTRY_BYTES`] and its
+/// serialised size.
 fn response_kept(item: &str) -> usize {
-    crate::value::json_string_size(item)
+    crate::value::json_string_size(item).saturating_add(KEPT_ENTRY_BYTES)
 }
 
 /// Running totals of the response list, kept as it changes (never rescanned).
 #[derive(Clone, Copy, Default)]
-struct ResponseTotals {
+pub(super) struct ResponseTotals {
     /// Bytes of text of every entry together, within [`super::EvalLimits::text_bytes`].
     text: usize,
     /// What the entries keep ([`response_kept`]) together.
-    kept: usize,
+    pub(super) kept: usize,
     /// [`Self::kept`] when the run started: the run is charged only for growth past it.
     kept_at_start: usize,
 }
@@ -129,7 +134,7 @@ pub(super) struct Run<'a> {
     /// Bytes of output charged to the message's budget.
     output: usize,
     /// The response list's running totals.
-    responses: ResponseTotals,
+    pub(super) responses: ResponseTotals,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -851,11 +856,13 @@ impl<'a> Run<'a> {
             let responses = &self.state.command_responses;
             return Ok(match accessor {
                 None | Some(ArrayAccessor::Array) => {
-                    let size = responses
-                        .iter()
-                        .fold(responses.len().saturating_add(1), |total, item| {
-                            total.saturating_add(crate::value::json_string_size(item))
-                        });
+                    // The serialised entries, their commas and brackets, from the totals.
+                    let entries = responses.len();
+                    let size = self
+                        .responses
+                        .kept
+                        .saturating_sub(entries.saturating_mul(KEPT_ENTRY_BYTES))
+                        .saturating_add(entries.saturating_add(1));
                     self.check_size(size)?;
                     Value::Text(json_of_texts(&self.state.command_responses))
                 }
@@ -917,19 +924,7 @@ impl<'a> Run<'a> {
         if Self::responses(name, storage) {
             match accessor {
                 Some(ArrayAccessor::Append) => {
-                    let total = self
-                        .state
-                        .command_responses
-                        .iter()
-                        .chain(&appended)
-                        .fold(0usize, |total, item| total.saturating_add(item.len()));
-                    self.check_size(total)?;
-                    for item in &appended {
-                        self.responses.text = self.responses.text.saturating_add(item.len());
-                        self.responses.kept =
-                            self.responses.kept.saturating_add(response_kept(item));
-                    }
-                    self.state.command_responses.extend(appended);
+                    self.append_responses(appended)?;
                     self.save_responses().await?;
                 }
                 Some(ArrayAccessor::SetIndex { index }) => {
@@ -1012,6 +1007,35 @@ impl<'a> Run<'a> {
             }
             _ => false,
         }))
+    }
+
+    /// Appends `items` to the response list, all or none. The list's size afterwards is
+    /// computed from the running totals first: its entries must stay within
+    /// [`super::EvalLimits::response_entries`], its text within the text budget, and what it
+    /// keeps more is reserved against the run's and the message's memory.
+    fn append_responses(&mut self, items: Vec<String>) -> Result<(), EvalError> {
+        let totals = self.responses;
+        self.state
+            .command_responses
+            .len()
+            .checked_add(items.len())
+            .filter(|entries| *entries <= self.engine.limits.response_entries)
+            .ok_or(EvalError::Limit(LimitKind::Memory))?;
+        let (text, kept) = items
+            .iter()
+            .try_fold((totals.text, totals.kept), |(text, kept), item| {
+                Some((
+                    text.checked_add(item.len())?,
+                    kept.checked_add(response_kept(item))?,
+                ))
+            })
+            .ok_or(EvalError::Limit(LimitKind::TextSize))?;
+        self.check_size(text)?;
+        self.keep(totals.charge(kept), totals.charge(totals.kept))?;
+        self.state.command_responses.extend(items);
+        self.responses.text = text;
+        self.responses.kept = kept;
+        Ok(())
     }
 
     /// Replaces the response at `at` with `text`. The list's size afterwards is computed
@@ -1355,7 +1379,15 @@ impl<'a> Run<'a> {
             _ => None,
         };
         let argument = values.join(" ");
-        self.keep(argument.len(), 0)?;
+        let event_data = reference_event_data(context);
+        // The reference keeps its argument and its event data until the bot runs it.
+        self.keep(
+            argument
+                .len()
+                .saturating_add(event_data.weight())
+                .saturating_add(KEPT_ENTRY_BYTES),
+            0,
+        )?;
         let mut visited = context.visited_commands.clone();
         if !visited.contains(&key) {
             visited.push(key);
@@ -1365,7 +1397,7 @@ impl<'a> Run<'a> {
             channel_id: context.broadcaster_id.clone(),
             command_name: name,
             argument,
-            event_data: reference_event_data(context),
+            event_data,
             authorization: self.reference_authorization(),
             state: ReferenceState {
                 visited_commands: visited,

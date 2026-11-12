@@ -34,7 +34,9 @@
 //!   first: a builtin sizes its result before building it, the values one step gathers (a
 //!   call's arguments, a list literal's items, a reference's argument, a list written as JSON)
 //!   are counted as they are gathered, and what a run keeps (variables, the database memo, loop
-//!   variables, reference arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper
+//!   variables, reference arguments, the response list) is charged to
+//!   [`EvalLimits::memory_bytes`] before it is kept, every entry at least [`KEPT_ENTRY_BYTES`];
+//!   the response list holds at most [`EvalLimits::response_entries`]. A tree deeper
 //!   than [`EvalLimits::nesting`] (32, as the parser) is refused before any of it runs;
 //! - one budget per message ([`MessageBudget`]): the command a message runs and every command
 //!   reference it starts, at any depth, draw their work, host calls, memory and output from one
@@ -70,8 +72,9 @@ mod storage;
 
 pub use budget::{MessageBudget, MessageLimits, MessageUsage};
 pub use limits::{
-    DEADLINE_MS, EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, MESSAGE_FACTOR,
-    PerPlan, STEPS_PER_STATEMENT, SUPPORTED_STATEMENTS,
+    DEADLINE_MS, EvalLimits, HOST_CALLS_PER_STATEMENT, KEPT_ENTRY_BYTES, LimitKind,
+    MAX_EVAL_NESTING, MESSAGE_FACTOR, PerPlan, RESPONSE_ENTRIES, STEPS_PER_STATEMENT,
+    SUPPORTED_STATEMENTS,
 };
 
 use crate::context::{Context, State, TimerSnapshot};

@@ -351,6 +351,7 @@ fn every_stored_message_runs_within_the_shared_budget() -> Result<()> {
     let (mut messages, mut with_references, mut near, mut stopped) = (0, 0, 0, 0);
     let (mut largest, mut largest_with_references) = (0.0f64, 0.0f64);
     let mut most_runs = 0;
+    let mut most_responses = 0;
     let mut slowest = Duration::ZERO;
     for (channel, _, text) in &texts {
         let Some(source) = placeholders::resolve(text, "a b c", false) else {
@@ -384,6 +385,7 @@ fn every_stored_message_runs_within_the_shared_budget() -> Result<()> {
             slowest = slowest.max(started.elapsed());
             messages += 1;
             most_runs = most_runs.max(delivery.runs.len());
+            most_responses = most_responses.max(delivery.most_responses);
             let used = share(delivery.budget.usage(), delivery.budget.limits());
             largest = largest.max(used);
             if delivery.runs.len() > 1 {
@@ -422,8 +424,14 @@ fn every_stored_message_runs_within_the_shared_budget() -> Result<()> {
         "real data: {messages} messages (texts x plans); {with_references} started command \
          references (at most {} runs in one message); largest share of the message budget: \
          {largest:.6} (with references {largest_with_references:.6}); over half of it: {near}; \
-         stopped at the shared budget: {stopped}; slowest message {slowest:?} (in-memory host)",
+         stopped at the shared budget: {stopped}; slowest message {slowest:?} (in-memory host); \
+         largest response list built: {most_responses} entries",
         most_runs
+    );
+    // The entry limit leaves stored commands far more room than they use.
+    assert!(
+        most_responses * 10 <= dima_engine::eval::RESPONSE_ENTRIES,
+        "a stored message builds {most_responses} responses"
     );
     assert_eq!(
         near, 0,

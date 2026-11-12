@@ -270,7 +270,10 @@ impl Run<'_> {
         Ok(())
     }
 
+    /// Hands the whole response list to the host: its kept size costs work, as JSON written
+    /// does.
     pub(super) async fn save_responses(&mut self) -> Result<(), EvalError> {
+        self.charge_bytes(self.responses.kept)?;
         host_call!(
             self,
             self.host.save_responses(&self.state.command_responses)

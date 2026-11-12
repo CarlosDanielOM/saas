@@ -114,6 +114,12 @@ pub struct EvalLimits {
     /// database memo), its loop variables and the arguments of the command references it
     /// starts. Each value is within [`Self::text_bytes`]; this bounds how many there are.
     pub memory_bytes: usize,
+    /// The most entries the response list (`%(responses[] …)`) may hold. Each entry is also
+    /// charged to [`Self::memory_bytes`] ([`KEPT_ENTRY_BYTES`] plus its serialised size) and
+    /// every write hands the whole list to the host (`Host::save_responses`), so the count
+    /// bounds that work too. A write past it is refused with [`LimitKind::Memory`] and changes
+    /// nothing. Default [`RESPONSE_ENTRIES`].
+    pub response_entries: usize,
     /// The deepest tree evaluated, at most [`MAX_EVAL_NESTING`]. The evaluator recurses on the
     /// thread's stack, one level per tree level, within the stack contract ([`crate::stack`]).
     /// A deeper tree (read back from storage, say: the parser already stops at the same depth)
@@ -137,6 +143,21 @@ pub struct EvalLimits {
     pub deadline_ms: PerPlan,
 }
 
+/// The default [`EvalLimits::response_entries`]: a thousand. The stored commands of the
+/// production copy start with at most 5 responses and build at most a few more
+/// (`tests/real_commands.rs` prints the largest list a stored message builds), so the limit
+/// leaves two orders of magnitude of room; it stops a loop from building a list of a hundred
+/// thousand empty entries, each handed to the host again on every write.
+pub const RESPONSE_ENTRIES: usize = 1_000;
+
+/// What every entry a run keeps is charged on top of its bytes: an entry of a kept map
+/// (variables, the database memo, loop variables), an entry of the response list and a
+/// command reference. An empty entry is not free: its key and value (or its slot in the
+/// list) are a `String` header each (24 bytes) and a heap allocation, so 32 bytes is a floor,
+/// not an estimate. Without it a loop could keep a hundred thousand empty entries for
+/// nothing (re-check R2).
+pub const KEPT_ENTRY_BYTES: usize = 32;
+
 /// The default [`EvalLimits::message_factor`].
 pub const MESSAGE_FACTOR: u64 = 2;
 
@@ -157,6 +178,7 @@ impl Default for EvalLimits {
             host_calls: PerPlan::supported(HOST_CALLS_PER_STATEMENT),
             text_bytes: 256 * 1024,
             memory_bytes: 4 * 1024 * 1024,
+            response_entries: RESPONSE_ENTRIES,
             nesting: MAX_EVAL_NESTING,
             message_factor: MESSAGE_FACTOR,
             deadline_ms: PerPlan::all(DEADLINE_MS),

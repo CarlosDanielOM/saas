@@ -94,3 +94,94 @@ fn a_response_written_by_index_is_charged_before_it_replaces_a_slot() {
     assert_eq!(host.responses, *responses);
     assert!(rendered.budget.usage().memory_bytes <= small.memory_bytes as u64 * 2);
 }
+
+/// `l` stored as a channel variable: a list holding a list of 1,024 empty strings.
+fn r2_host() -> MemoryHost {
+    let mut host = MemoryHost::new(1);
+    let inner = vec!["\"\""; 1024].join(",");
+    host.channel.insert("l".into(), format!("[[{inner}]]"));
+    host
+}
+
+/// R2: a loop of 100 `%(responses[] %(*l[0]))`. Before the fix: 102,400 entries with 3,076
+/// bytes charged, each append rescanning the list.
+const R2: &str = "*(for #i = 0; #i < 100; #i++ { %(responses[] %(*l[0])) })";
+
+#[test]
+fn every_response_entry_costs_something_and_the_list_has_a_limit() {
+    // The default entry limit refuses the first append of 1,024 entries: nothing is added.
+    let limits = EvalLimits::default();
+    let mut host = r2_host();
+    let rendered = run(limits, &mut host, R2);
+    let usage = rendered.budget.usage();
+    println!(
+        "R2 (default limits): {} entries, {} bytes charged, {} steps; {}",
+        rendered.state.command_responses.len(),
+        usage.memory_bytes,
+        rendered.stats.steps,
+        rendered.text
+    );
+    assert_eq!(rendered.text, marker(LimitKind::Memory));
+    assert!(rendered.state.command_responses.is_empty());
+    assert!(host.responses.is_empty());
+    assert!(limits.response_entries < 1024);
+
+    // Without the entry limit, the 102,400 empty entries are each charged their overhead and
+    // their serialised size (two bytes).
+    let unlimited = EvalLimits {
+        response_entries: usize::MAX,
+        ..EvalLimits::default()
+    };
+    let mut host = r2_host();
+    let rendered = run(unlimited, &mut host, R2);
+    let usage = rendered.budget.usage();
+    let entries = rendered.state.command_responses.len();
+    println!(
+        "R2 (no entry limit): {entries} entries, {} bytes charged, {} steps; {}",
+        usage.memory_bytes, rendered.stats.steps, rendered.text
+    );
+    assert_eq!(entries, 102_400);
+    let per_entry = (dima_engine::eval::KEPT_ENTRY_BYTES + 2) as u64;
+    assert!(usage.memory_bytes >= 102_400 * per_entry, "{usage:?}");
+
+    // Appending many entries at once is charged for all of them before any is added.
+    let tight = EvalLimits {
+        response_entries: usize::MAX,
+        memory_bytes: 1024 * dima_engine::eval::KEPT_ENTRY_BYTES,
+        ..EvalLimits::default()
+    };
+    let mut host = r2_host();
+    let rendered = run(tight, &mut host, R2);
+    assert_eq!(rendered.text, marker(LimitKind::Memory));
+    assert!(rendered.state.command_responses.is_empty());
+    assert!(host.responses.is_empty());
+
+    // One at a time, the list stops at the entry limit exactly.
+    let few = EvalLimits {
+        response_entries: 150,
+        ..EvalLimits::default()
+    };
+    let mut host = MemoryHost::new(1);
+    let rendered = run(
+        few,
+        &mut host,
+        "*(for #i = 0; #i < 100; #i++ { *(for #j = 0; #j < 2; #j++ { %(responses[] \"\") }) })",
+    );
+    assert_eq!(rendered.text, marker(LimitKind::Memory));
+    assert_eq!(rendered.state.command_responses.len(), 150);
+    assert_eq!(host.responses.len(), 150);
+}
+
+#[test]
+fn kept_entries_and_reference_arguments_cost_their_overhead() {
+    let overhead = dima_engine::eval::KEPT_ENTRY_BYTES as u64;
+    // Two empty memory variables with one-byte names.
+    let mut host = MemoryHost::new(1);
+    let rendered = run(EvalLimits::default(), &mut host, "%(a \"\") %(b \"\")");
+    assert_eq!(rendered.budget.usage().memory_bytes, 2 * (1 + overhead));
+    // A command reference with no argument keeps its entry and its event data.
+    let mut host = MemoryHost::new(1);
+    let rendered = run(EvalLimits::default(), &mut host, "#(other)");
+    assert_eq!(rendered.state.command_references.len(), 1);
+    assert!(rendered.budget.usage().memory_bytes > overhead);
+}
