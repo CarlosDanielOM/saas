@@ -34,6 +34,11 @@
 //! a confirmation and the operation that follows it, which the effect keeps to one MongoDB
 //! operation with a server time limit below [`EFFECTS_LEASE_MS`] − [`EFFECTS_DEADLINE`].
 //!
+//! **The writers of the usage ledger take the same lease** (item 4 of P2-BILLING-02c, re-check
+//! point S5): a receipt or a backfill reads the owner's tier under it and writes the expiry it
+//! implies under it ([`crate::usage_ledger::record`]), so no plan change can write the owner's
+//! tier and run its retention between that read and that write.
+//!
 //! Writes go through `dima_model::users::INFO` (timestamps as Mongoose adds them) and the store's
 //! `PlanCacheFence` (`INVALIDATE_PLAN_SCRIPT`, `SYNC_CREDITS_SCRIPT`, verbatim).
 
@@ -342,12 +347,23 @@ fn until_bson(until: Option<i64>) -> Bson {
     until.map_or(Bson::Null, date)
 }
 
-/// Takes the owner's plan effects lease, waiting [`EFFECTS_LEASE_WAIT`]; `None` when another
-/// plan change keeps it.
+/// Takes the owner's plan effects lease, waiting [`EFFECTS_LEASE_WAIT`]; `false` when another
+/// plan change (or a ledger writer) keeps it.
 async fn take_effects_lease(
     dragonfly: &Dragonfly,
     key: &str,
     token: &str,
+) -> Result<bool, DragonflyError> {
+    take_owner_lease(dragonfly, key, token, EFFECTS_LEASE_WAIT).await
+}
+
+/// Takes the owner's plan effects lease `key` with `token` (`SET NX PX` [`EFFECTS_LEASE_MS`]),
+/// trying every [`EFFECTS_LEASE_RETRY`] for `wait`; `false` when it stayed taken.
+pub(crate) async fn take_owner_lease(
+    dragonfly: &Dragonfly,
+    key: &str,
+    token: &str,
+    wait: std::time::Duration,
 ) -> Result<bool, DragonflyError> {
     let started = tokio::time::Instant::now();
     loop {
@@ -361,11 +377,32 @@ async fn take_effects_lease(
         {
             return Ok(true);
         }
-        if started.elapsed() >= EFFECTS_LEASE_WAIT {
+        if started.elapsed() >= wait {
             return Ok(false);
         }
         tokio::time::sleep(EFFECTS_LEASE_RETRY).await;
     }
+}
+
+/// Extends the owner's plan effects lease `key` to [`EFFECTS_LEASE_MS`] if `token` still holds
+/// it; `false` when it passed to another holder.
+pub(crate) async fn extend_owner_lease(
+    dragonfly: &Dragonfly,
+    key: &str,
+    token: &str,
+) -> Result<bool, DragonflyError> {
+    let extended = EXTEND_EFFECTS_LEASE
+        .run_value(dragonfly, &[key], &[token, &EFFECTS_LEASE_MS.to_string()])
+        .await?;
+    Ok(dima_store::dragonfly::commands::reply::int(extended)? == 1)
+}
+
+/// Releases the owner's plan effects lease `key` if `token` still holds it (a failed release
+/// expires on its own).
+pub(crate) async fn release_owner_lease(dragonfly: &Dragonfly, key: &str, token: &str) {
+    let _ = RELEASE_EFFECTS_LEASE
+        .run_value(dragonfly, &[key], &[token])
+        .await;
 }
 
 /// `projectPolarPlan(owner, plan, observedAt, eventKey, customerId, deps, fingerprint)`.

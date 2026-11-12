@@ -96,6 +96,13 @@ pub struct LedgerConfig {
     pub retention_batch: i64,
     /// The receipts one backfill write sends at most (500, the reference's batch).
     pub backfill_batch: usize,
+    /// How long recording a receipt waits for the owner's plan effects lease (2.5 s, a plan
+    /// write's own wait) before it answers [`LedgerError::PlanChanging`] (item 4 of
+    /// P2-BILLING-02c: the consumer then leaves the receipt for its next call).
+    pub plan_lease_wait: Duration,
+    /// How long a backfill waits for it (75 s: longer than a plan change's effects,
+    /// `EFFECTS_DEADLINE` and a lease's lifetime, so a backfill job is not failed by one).
+    pub backfill_plan_lease_wait: Duration,
 }
 
 impl Default for LedgerConfig {
@@ -107,6 +114,8 @@ impl Default for LedgerConfig {
             op_deadline: Duration::from_secs(15),
             retention_batch: 500,
             backfill_batch: 500,
+            plan_lease_wait: crate::plans::projection::EFFECTS_LEASE_WAIT,
+            backfill_plan_lease_wait: Duration::from_secs(75),
         }
     }
 }
@@ -138,6 +147,10 @@ pub enum LedgerError {
     /// The account lock passed to another writer before a write: nothing more was written.
     #[error("AI usage ledger lease lost; retry required")]
     LeaseLost,
+    /// A plan change of the channel's owner holds the owner's plan effects lease: nothing was
+    /// written; retry once it is done (item 4 of P2-BILLING-02c).
+    #[error("a plan change of this channel's owner is running; retry later")]
+    PlanChanging,
     /// No randomness for a lock token.
     #[error("randomness unavailable")]
     Random,

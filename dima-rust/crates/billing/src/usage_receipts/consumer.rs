@@ -7,10 +7,15 @@
 //! the lease renewed before it:
 //!
 //! - a job that is not a receipt goes to the dead-letter list at once (one attempt);
-//! - a receipt is recorded with the plan of the channel's owner (read once per call; the native
-//!   worker cached it for a minute) through [`crate::usage_ledger::Ledger::persist_receipt`],
-//!   then settled; recording it again is a no-op (its key), so a job resumed after a stop is
-//!   harmless;
+//! - a receipt is recorded with the plan of the channel's owner through
+//!   [`crate::usage_ledger::Ledger::persist_receipt`], then settled; recording it again is a
+//!   no-op (its key), so a job resumed after a stop is harmless. Intended difference (item 4 of
+//!   P2-BILLING-02c, re-check point S5): the native worker cached the plan for a minute (and the
+//!   first port read it once per call), so a plan change finishing its retention in between let
+//!   a receipt be stored with the old plan's expiry; the plan is now read under the owner's plan
+//!   effects lease, at the write. While a plan change of the owner holds that lease, the receipt
+//!   stays claimed for the next call (not an attempt), and the call skips the channel's other
+//!   receipts ([`SettleReport::deferred`]);
 //! - a failure counts an attempt: back to the queue tail, or to the dead-letter list after the
 //!   third.
 //!
@@ -27,13 +32,12 @@
 use crate::Observer;
 use crate::usage_ledger::receipt::parse_queued_receipt;
 use crate::usage_ledger::record::Persisted;
-use crate::usage_ledger::{Ledger, LedgerError, ops, valid_tier};
+use crate::usage_ledger::{Ledger, LedgerError};
 use crate::usage_queue::{self, Failed, QueueKeys};
-use bson::doc;
 use dima_core::Random;
 use dima_model::ai_usage_receipts::RetentionTier;
 use dima_store::dragonfly::DragonflyError;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::time::Duration;
 
 /// The consumer's settings.
@@ -97,6 +101,9 @@ pub struct SettleReport {
     pub retried: usize,
     /// Jobs moved to the dead-letter list.
     pub dead_lettered: usize,
+    /// Receipts left claimed for the next call because a plan change of their channel's owner
+    /// was running (not attempts).
+    pub deferred: usize,
     /// How it ended.
     pub end: SettleEnd,
 }
@@ -111,6 +118,7 @@ impl SettleReport {
             expired: 0,
             retried: 0,
             dead_lettered: 0,
+            deferred: 0,
             end,
         }
     }
@@ -118,7 +126,10 @@ impl SettleReport {
     /// Whether every claimed job was settled cleanly and a whole batch was taken (the native
     /// worker's `ready`: the next call may follow at once).
     pub fn ready(&self) -> bool {
-        self.end == SettleEnd::Full && self.retried == 0 && self.dead_lettered == 0
+        self.end == SettleEnd::Full
+            && self.retried == 0
+            && self.dead_lettered == 0
+            && self.deferred == 0
     }
 }
 
@@ -149,20 +160,6 @@ impl std::fmt::Debug for ReceiptConsumer<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ReceiptConsumer")
     }
-}
-
-/// `pro` and `premium` are themselves; anything else, or no owner, is `free`.
-async fn plan_of(ledger: &Ledger<'_>, channel: &str) -> Result<RetentionTier, LedgerError> {
-    let user = ops::find_one(
-        ledger,
-        dima_model::users::COLLECTION,
-        doc! { "accounts": { "$elemMatch": { "type": "twitch", "id": channel } } },
-        Some(doc! { "plan_tier": 1 }),
-    )
-    .await?;
-    Ok(valid_tier(
-        user.as_ref().and_then(|u| u.get_str("plan_tier").ok()),
-    ))
 }
 
 impl ReceiptConsumer<'_> {
@@ -209,7 +206,8 @@ impl ReceiptConsumer<'_> {
         });
         report.claimed = jobs.len();
         report.resumed = resumed;
-        let mut plans: HashMap<String, RetentionTier> = HashMap::new();
+        // Channels whose owner's plan is changing: their receipts wait for the next call.
+        let mut changing: HashSet<String> = HashSet::new();
         for job in jobs {
             if started.elapsed() >= self.config.tick_deadline {
                 report.end = SettleEnd::Deadline;
@@ -233,17 +231,15 @@ impl ReceiptConsumer<'_> {
                 );
                 continue;
             };
-            let attempt = tokio::time::timeout(self.config.job_deadline, async {
-                let tier = match plans.get(&receipt.channel_id) {
-                    Some(tier) => *tier,
-                    None => {
-                        let tier = plan_of(&self.ledger, &receipt.channel_id).await?;
-                        plans.insert(receipt.channel_id.clone(), tier);
-                        tier
-                    }
-                };
-                self.ledger.persist_receipt(&receipt, tier).await
-            })
+            if changing.contains(&receipt.channel_id) {
+                report.deferred += 1;
+                continue;
+            }
+            // `validTier` of no owner: what a channel no user owns is recorded with.
+            let attempt = tokio::time::timeout(
+                self.config.job_deadline,
+                self.ledger.persist_receipt(&receipt, RetentionTier::Free),
+            )
             .await;
             let Ok(outcome) = attempt else {
                 report.end = SettleEnd::Timeout;
@@ -265,6 +261,10 @@ impl ReceiptConsumer<'_> {
                         Persisted::Duplicate => report.duplicates += 1,
                         Persisted::Expired => report.expired += 1,
                     }
+                }
+                Err(LedgerError::PlanChanging) => {
+                    report.deferred += 1;
+                    changing.insert(receipt.channel_id.clone());
                 }
                 Err(error) => {
                     self.observer.error(
