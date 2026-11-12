@@ -6,7 +6,10 @@
 //! paths are decoded too. A failure names the collection, the `_id` and the field.
 //!
 //! Without the copy the tests skip with a notice; with `DIMA_TEST_REQUIRE_STORES=1` a missing
-//! server, copy or registered collection fails them.
+//! server, copy or registered collection fails them, and so does an empty collection that the
+//! census (`ledger/mongo.json`) shows with documents: the copy has expiring collections, so the
+//! counts are not compared, but one emptied by accident would otherwise pass with nothing
+//! decoded.
 
 mod support;
 
@@ -16,6 +19,24 @@ use dima_model::REGISTRY;
 use futures_util::TryStreamExt;
 
 const SAMPLE: u64 = 50_000;
+
+/// The document count of each collection in the census of the production copy
+/// (`ledger/mongo.json`, `collections.<name>.db.count`).
+fn census_counts() -> Result<std::collections::HashMap<String, u64>> {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../ledger/mongo.json");
+    let ledger: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+    let collections = ledger
+        .get("collections")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| anyhow::anyhow!("{path}: no collections"))?;
+    Ok(collections
+        .iter()
+        .filter_map(|(name, entry)| {
+            let count = entry.pointer("/db/count")?.as_u64()?;
+            Some((name.clone(), count))
+        })
+        .collect())
+}
 
 /// Registered collections production never created: their schema is ported, but no code of the
 /// reference imports the model (`channelconfigs`, ledger status `schema-without-collection`).
@@ -67,10 +88,16 @@ async fn every_real_document_decodes() -> Result<()> {
     let full =
         support::stores_required() || std::env::var("DIMA_MODEL_FULL_SCAN").is_ok_and(|v| v == "1");
     let mut failures = Vec::new();
+    let mut emptied = Vec::new();
+    let census = census_counts()?;
     let mut total = 0_u64;
     for info in REGISTRY {
         let collection = store.database().collection::<RawDocumentBuf>(info.name);
         let count = collection.count_documents(doc! {}).await?;
+        let counted = census.get(info.name).copied().unwrap_or(0);
+        if count == 0 && counted > 0 {
+            emptied.push(format!("{} (the census counted {counted})", info.name));
+        }
         let stride = if full || count <= SAMPLE {
             1
         } else {
@@ -120,6 +147,16 @@ async fn every_real_document_decodes() -> Result<()> {
             " (sampled)"
         }
     );
+    if !emptied.is_empty() {
+        let message = format!(
+            "collections the census shows with documents are empty in the copy: {}",
+            emptied.join(", ")
+        );
+        if support::stores_required() {
+            bail!("{message} (DIMA_TEST_REQUIRE_STORES=1)");
+        }
+        eprintln!("{message}");
+    }
     if !failures.is_empty() {
         bail!(
             "{} documents failed to decode:\n{}",
