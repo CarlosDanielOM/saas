@@ -1511,10 +1511,15 @@ dependencies = [
 name = "dima-commands"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bson",
  "dima-core",
+ "dima-store",
  "dima-text",
+ "futures-util",
  "regex",
+ "regex-automata",
+ "regex-syntax",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

@@ -95,6 +95,8 @@ uuid = { version = "1.28.0", features = ["v4"] }
 regex = "1.13.1"
 # dima-core: the dotenv line grammar needs anchored captures at chosen offsets (same engine as regex).
 regex-automata = { version = "0.4.18", default-features = false, features = ["std", "syntax", "meta", "nfa-pikevm", "unicode"] }
+# dima-commands: the complement of a Unicode property as explicit ranges (RE2 patterns).
+regex-syntax = { version = "0.8.11", default-features = false, features = ["std", "unicode"] }
 unicode-normalization = "0.1.26"
 icu_collator = "2.3.0"
 # Side-by-side rig (rig/): command line, process-group signals (it also uses bson's Extended JSON, declared with the stores).

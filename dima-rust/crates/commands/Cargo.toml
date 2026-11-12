@@ -17,6 +17,11 @@ serde_json = { workspace = true }
 # Stored permission expressions are untyped `Mixed` values read as raw BSON (`dima-model`).
 bson = { workspace = true }
 regex = { workspace = true }
+# The complement of a Unicode property as explicit ranges, as the `re2` package writes it.
+regex-syntax = { workspace = true }
+# The combined variation rule is compiled in chunks whose heap use is counted (`memory_usage`),
+# on the same engine `regex` uses, with its performance features.
+regex-automata = { workspace = true, features = ["hybrid", "nfa-backtrack", "dfa-onepass", "perf-literal"] }
 # The keyword index cache coalesces cold loads (`sync`) and resolves roles concurrently (`macros`).
 tokio = { workspace = true }
 thiserror = { workspace = true }
@@ -24,3 +29,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 dima-core = { workspace = true, features = ["test-util"] }
 tokio = { workspace = true, features = ["test-util"] }
+# tests/real_data.rs only: reads the stored patterns and keywords of the local production copy.
+dima-store = { workspace = true }
+futures-util = { workspace = true }
+anyhow = { workspace = true }

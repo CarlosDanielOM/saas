@@ -31,11 +31,14 @@ use serde::{Deserialize, Serialize};
 use crate::value::{Js, JsView};
 
 pub use cache::{
-    BODY_SCRIPT, BODY_TTL_SECONDS, KEYWORD_TOPIC, KeywordIndexCache, KeywordLoader, KeywordRow,
-    KeywordStorage, KeywordStorageError, LoadError, MAX_REVISION_ATTEMPTS, SHARED_INDEX_SCRIPT,
-    SHARED_INDEX_TTL_SECONDS, SharedKeywordLoader, apply_keyword_change, get_keyword_body,
-    keyword_body_key, keyword_index_key, keyword_revision_key, load_shared_index,
-    refresh_keyword_index, save_keyword_count,
+    BODY_SCRIPT, BODY_TTL_SECONDS, KEYWORD_TOPIC, KeywordCacheError, KeywordCacheLimits,
+    KeywordIndexCache, KeywordLoader, KeywordRow, KeywordStorage, KeywordStorageError,
+    MAX_CACHED_KEYWORD_BYTES, MAX_KEYWORD_INDEX_BYTES, MAX_KEYWORD_LOADS_IN_FLIGHT,
+    MAX_KEYWORDS_PER_CHANNEL, MAX_LOOKUP_ATTEMPTS, MAX_LOOKUP_MS, MAX_REVISION_ATTEMPTS,
+    MAX_SHARED_INDEX_JSON_BYTES, Overload, SHARED_INDEX_SCRIPT, SHARED_INDEX_TTL_SECONDS,
+    SharedKeywordLoader, apply_keyword_change, get_keyword_body, keyword_body_key,
+    keyword_index_key, keyword_revision_key, load_shared_index, refresh_keyword_index,
+    save_keyword_count,
 };
 
 /// The longest keyword, in characters (the reference counts UTF-16 units).
@@ -168,6 +171,8 @@ fn is_valid_normalized(normalized: &str) -> bool {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct KeywordIndex {
     buckets: HashMap<String, Vec<KeywordEntry>>,
+    entries: usize,
+    heap_bytes: usize,
 }
 
 impl KeywordIndex {
@@ -175,11 +180,39 @@ impl KeywordIndex {
     /// text before the first space (entries are expected normalised).
     pub fn new(entries: impl IntoIterator<Item = KeywordEntry>) -> Self {
         let mut buckets: HashMap<String, Vec<KeywordEntry>> = HashMap::new();
+        let mut count = 0;
+        let mut heap_bytes = 0;
         for entry in entries {
+            count += 1;
+            heap_bytes += size_of::<KeywordEntry>() + entry.id.capacity() + entry.text.capacity();
             let first = entry.text.split(' ').next().unwrap_or_default().to_owned();
             buckets.entry(first).or_default().push(entry);
         }
-        Self { buckets }
+        // Each bucket: its key, its vector's spare room, and the map's slot (with control byte).
+        heap_bytes += buckets
+            .iter()
+            .map(|(word, bucket)| {
+                word.capacity()
+                    + (bucket.capacity() - bucket.len()) * size_of::<KeywordEntry>()
+                    + size_of::<(String, Vec<KeywordEntry>)>()
+                    + 1
+            })
+            .sum::<usize>();
+        Self {
+            buckets,
+            entries: count,
+            heap_bytes,
+        }
+    }
+
+    /// The number of keywords.
+    pub fn len(&self) -> usize {
+        self.entries
+    }
+
+    /// An estimate of the heap the index holds, in bytes (what the cache counts).
+    pub fn heap_bytes(&self) -> usize {
+        self.heap_bytes
     }
 
     /// The entries whose first word is `word`.
