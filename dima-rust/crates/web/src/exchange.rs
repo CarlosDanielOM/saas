@@ -120,6 +120,14 @@ pub trait Observer: Send + Sync + 'static {
     /// was dropped because the queue was full), in the order the exchanges ended, on the
     /// observer's own thread, some time after the request ended.
     fn on_response(&self, end: RequestEnd);
+
+    /// A file an upload stored could not be removed after the upload failed or was abandoned
+    /// ([`crate::multipart`]): it is left behind. Called on the task doing the removal, so
+    /// keep it short. Every such failure is also counted
+    /// ([`ObserverQueue::cleanup_failures`]), whether or not this is implemented.
+    fn on_cleanup_error(&self, failure: &crate::multipart::CleanupFailure) {
+        let _ = failure;
+    }
 }
 
 /// Completion records waiting for an observer by default ([`crate::App::observe`]).
@@ -130,6 +138,7 @@ pub const OBSERVER_QUEUE: usize = 4096;
 struct DeliveryStats {
     dropped: AtomicU64,
     panicked: AtomicU64,
+    cleanup_failures: AtomicU64,
     /// Records queued and not yet delivered.
     pending: AtomicUsize,
     /// Woken after every delivery, and when the observer stops.
@@ -170,9 +179,14 @@ impl ObserverQueue {
         self.stats.dropped.load(Ordering::Relaxed)
     }
 
-    /// Observer calls that panicked (both kinds).
+    /// Observer calls that panicked (any kind).
     pub fn panicked(&self) -> u64 {
         self.stats.panicked.load(Ordering::Relaxed)
+    }
+
+    /// Upload files that could not be removed ([`Observer::on_cleanup_error`]).
+    pub fn cleanup_failures(&self) -> u64 {
+        self.stats.cleanup_failures.load(Ordering::Relaxed)
     }
 
     /// Records queued and not yet delivered.
@@ -294,6 +308,15 @@ impl ObserverHub {
             self.stats.panicked.fetch_add(1, Ordering::Relaxed);
             None
         })
+    }
+
+    /// Counts a failed upload cleanup and tells the observer, with a panic counted.
+    pub(crate) fn cleanup_failed(&self, failure: &crate::multipart::CleanupFailure) {
+        self.stats.cleanup_failures.fetch_add(1, Ordering::Relaxed);
+        let call = AssertUnwindSafe(|| self.observer.on_cleanup_error(failure));
+        if std::panic::catch_unwind(call).is_err() {
+            self.stats.panicked.fetch_add(1, Ordering::Relaxed);
+        }
     }
 
     /// Queues the record without waiting; drops and counts it when the queue is full.

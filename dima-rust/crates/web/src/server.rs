@@ -424,19 +424,28 @@ impl StreamAdmission {
 const OBSERVER_DRAIN: Duration = Duration::from_secs(2);
 
 /// What a request carries of the server that serves it, for the [`crate::App`] behind it: the
-/// observers to drain at shutdown.
+/// observers to drain at shutdown and the drain that cleanup work joins.
 #[derive(Clone)]
 pub(crate) struct ServerLink(Arc<LinkInner>);
 
 struct LinkInner {
     observers: Mutex<Vec<ObserverQueue>>,
+    /// Cleanup that outlives its request (removal of an abandoned upload's files): shutdown
+    /// waits for it with the connections.
+    cleanup: TaskTracker,
 }
 
 impl ServerLink {
     fn new() -> Self {
         Self(Arc::new(LinkInner {
             observers: Mutex::new(Vec::new()),
+            cleanup: TaskTracker::new(),
         }))
+    }
+
+    /// Where work that must finish before the server stops is tracked.
+    pub(crate) fn cleanup(&self) -> &TaskTracker {
+        &self.0.cleanup
     }
 
     /// Tells one server from another.
@@ -748,16 +757,24 @@ where
     }
     drop(listener);
     shared.sockets.close();
-    // HTTP connections finish their requests; upgrade owners saw the shutdown token and close.
+    shared.link.cleanup().close();
+    // HTTP connections finish their requests; upgrade owners saw the shutdown token and close;
+    // removals of abandoned uploads finish.
     let drained = tokio::time::timeout(options.drain_timeout, async {
         while connections.join_next().await.is_some() {}
         shared.sockets.wait().await;
+        shared.link.cleanup().wait().await;
     })
     .await;
     if drained.is_err() {
         shared.force.cancel();
+        // Aborting the connections drops their handlers, which may start more cleanup.
         connections.shutdown().await;
-        let _ = tokio::time::timeout(FORCE_GRACE, shared.sockets.wait()).await;
+        let _ = tokio::time::timeout(FORCE_GRACE, async {
+            shared.sockets.wait().await;
+            shared.link.cleanup().wait().await;
+        })
+        .await;
     }
     // Every exchange has ended by now (or was dropped with its connection, which reports it).
     shared.link.shut_down_observers().await;

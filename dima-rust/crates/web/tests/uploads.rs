@@ -10,10 +10,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use dima_web::multipart::{
-    DiskStorage, FileInfo, FileStream, Limits, Multer, Storage, StoredFile, UploadError,
-    UploadedFile,
+    CleanupFailure, DiskStorage, FileInfo, FileStream, Limits, Multer, Storage, StoredFile,
+    UploadError, UploadedFile,
 };
-use dima_web::{App, BoxFuture, Error, Req, Response, Router, ServeOptions, serve};
+use dima_web::{
+    App, BoxFuture, Error, Observer, Req, RequestEnd, Response, Router, ServeOptions, serve,
+};
 use serde_json::json;
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
@@ -75,9 +77,24 @@ struct Shared {
     first_chunk: Mutex<Option<oneshot::Sender<usize>>>,
     /// Files the `Early` storage was asked to remove.
     removed: Mutex<Vec<String>>,
+    /// Failed removals, as the route's hook saw them.
+    hooked: Mutex<Vec<String>>,
+    /// Failed removals, as the observer saw them.
+    observed: Mutex<Vec<String>>,
 }
 
 type State = Arc<Shared>;
+
+struct Watch(State);
+
+impl Observer for Watch {
+    fn on_response(&self, _end: RequestEnd) {}
+
+    fn on_cleanup_error(&self, failure: &CleanupFailure) {
+        let text = format!("{} {}", failure.originalname, failure.error);
+        self.0.observed.lock().unwrap().push(text);
+    }
+}
 
 fn report(req: &Req<State>, text: String) {
     if let Some(tx) = req.state().outcome.lock().unwrap().take() {
@@ -218,6 +235,75 @@ impl Storage for Early {
     }
 }
 
+/// A storage like `Early` whose removals take [`SLOW_REMOVAL`], or fail.
+struct Removal {
+    shared: State,
+    fails: bool,
+}
+
+/// How long a slow removal takes.
+const SLOW_REMOVAL: Duration = Duration::from_millis(400);
+
+impl Storage for Removal {
+    fn handle_file<'a>(
+        &'a self,
+        file: &'a FileInfo,
+        data: &'a mut FileStream<'_>,
+    ) -> BoxFuture<'a, Result<StoredFile, Error>> {
+        Box::pin(async move {
+            let size = match data.chunk().await {
+                Some(chunk) => chunk?.len() as u64,
+                None => 0,
+            };
+            Ok(StoredFile {
+                size,
+                filename: Some(file.originalname.clone()),
+                ..StoredFile::default()
+            })
+        })
+    }
+
+    fn remove_file<'a>(&'a self, file: &'a mut UploadedFile) -> BoxFuture<'a, Result<(), Error>> {
+        let name = file.stored.filename.take().unwrap_or_default();
+        Box::pin(async move {
+            if self.fails {
+                return Err(Error::msg("disk on fire"));
+            }
+            tokio::time::sleep(SLOW_REMOVAL).await;
+            self.shared.removed.lock().unwrap().push(name);
+            Ok(())
+        })
+    }
+}
+
+/// POST /slow-removal: an upload whose stored file takes a while to remove.
+async fn slow_removal(req: &mut Req<State>) -> Response {
+    let storage = Removal {
+        shared: Arc::clone(req.state()),
+        fails: false,
+    };
+    let outcome = Multer::new(storage).single("file").run(req).await;
+    Response::new().json(&json!({ "outcome": outcome_text(&outcome) }))
+}
+
+/// POST /failing-removal: an upload whose stored file cannot be removed.
+async fn failing_removal(req: &mut Req<State>) -> Response {
+    let shared = Arc::clone(req.state());
+    let storage = Removal {
+        shared: Arc::clone(&shared),
+        fails: true,
+    };
+    let outcome = Multer::new(storage)
+        .on_cleanup_error(move |failure| {
+            let text = format!("{} {}", failure.originalname, failure.error);
+            shared.hooked.lock().unwrap().push(text);
+        })
+        .single("file")
+        .run(req)
+        .await;
+    Response::status(400).json(&json!({ "outcome": outcome_text(&outcome) }))
+}
+
 /// POST /early: the `Early` storage, given up on after [`GIVE_UP`].
 async fn early(req: &mut Req<State>) -> Response {
     let multer = Multer::new(Early(Arc::clone(req.state())));
@@ -236,6 +322,18 @@ async fn start(
     State,
     tokio::task::JoinHandle<std::io::Result<()>>,
 ) {
+    start_with(dir, ServeOptions::default()).await
+}
+
+async fn start_with(
+    dir: &Path,
+    options: ServeOptions,
+) -> (
+    std::net::SocketAddr,
+    CancellationToken,
+    State,
+    tokio::task::JoinHandle<std::io::Result<()>>,
+) {
     let shared: State = Arc::new(Shared {
         dir: dir.to_owned(),
         ..Shared::default()
@@ -246,11 +344,15 @@ async fn start(
     root.post("/stream", stream);
     root.post("/giveup", give_up);
     root.post("/early", early);
-    let app = App::with_shared_state(root, Arc::new(Arc::clone(&shared))).expect("app");
+    root.post("/slow-removal", slow_removal);
+    root.post("/failing-removal", failing_removal);
+    let app = App::with_shared_state(root, Arc::new(Arc::clone(&shared)))
+        .expect("app")
+        .observe(Watch(Arc::clone(&shared)));
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
     let token = CancellationToken::new();
-    let server = tokio::spawn(serve(listener, app, token.clone(), ServeOptions::default()));
+    let server = tokio::spawn(serve(listener, app, token.clone(), options));
     (addr, token, shared, server)
 }
 
@@ -471,6 +573,72 @@ async fn a_custom_storage_result_is_removed_when_the_upload_is_dropped() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     assert_eq!(removed, ["kept.mp4"]);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: the removal spawned when an upload's future was dropped was detached, so
+/// `serve` could return (and the process exit) before it ran.
+#[tokio::test]
+async fn shutdown_waits_for_the_cleanup_of_dropped_uploads() {
+    let dir = TempDir::new("drain");
+    let options = ServeOptions {
+        drain_timeout: Duration::from_millis(200),
+        ..ServeOptions::default()
+    };
+    let (addr, token, shared, server) = start_with(&dir.0, options).await;
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+    client
+        .write_all(&upload_head("/slow-removal", "slow.mp4", 1_000_000))
+        .await
+        .expect("head");
+    client.write_all(&[6u8; 1024]).await.expect("data");
+    // The storage has the file; the rest of the part never comes.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    // At the drain deadline the stalled upload is dropped and its file removed.
+    token.cancel();
+    tokio::time::timeout(Duration::from_secs(5), server)
+        .await
+        .expect("serve returned")
+        .expect("join")
+        .expect("serve");
+    assert_eq!(*shared.removed.lock().unwrap(), ["slow.mp4"]);
+}
+
+/// Review finding: removal errors were discarded. They now reach the route's hook and the
+/// app's observer.
+#[tokio::test]
+async fn a_failed_removal_is_reported() {
+    let dir = TempDir::new("failing");
+    let (addr, token, shared, server) = start(&dir.0).await;
+    let mut body = part_head("lost.mp4").into_bytes();
+    body.extend_from_slice(&[1u8; 64]);
+    // A second file is unexpected: the upload fails and the first file must be removed.
+    body.extend_from_slice(format!("\r\n{}", part_head("extra.mp4")).as_bytes());
+    body.extend_from_slice(&[2u8; 64]);
+    body.extend_from_slice(closing().as_bytes());
+    let mut request = format!(
+        "POST /failing-removal HTTP/1.1\r\nHost: x\r\nConnection: close\r\nContent-Type: multipart/form-data; boundary={BOUNDARY}\r\nContent-Length: {}\r\n\r\n",
+        body.len()
+    )
+    .into_bytes();
+    request.extend_from_slice(&body);
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+    client.write_all(&request).await.expect("request");
+    let response = read_all(&mut client).await;
+    assert!(response.starts_with("HTTP/1.1 400"), "{response}");
+    assert!(response.contains("LIMIT_UNEXPECTED_FILE"), "{response}");
+    let expected = ["lost.mp4 disk on fire"];
+    assert_eq!(*shared.hooked.lock().unwrap(), expected);
+    let mut observed = Vec::new();
+    for _ in 0..200 {
+        observed = shared.observed.lock().unwrap().clone();
+        if !observed.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(observed, expected);
     token.cancel();
     server.await.expect("join").expect("serve");
 }

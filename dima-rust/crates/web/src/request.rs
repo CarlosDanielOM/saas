@@ -159,6 +159,8 @@ pub struct Req<S = ()> {
     pub(crate) route_slot: RouteSlot,
     /// The mount patterns stripped so far (the pattern form of `base_url`).
     pub(crate) pattern_base: String,
+    /// The app's observer, for reports that are not about the exchange (upload cleanup).
+    pub(crate) observer: Option<Arc<crate::exchange::ObserverHub>>,
 }
 
 impl<S> Req<S> {
@@ -191,6 +193,7 @@ impl<S> Req<S> {
             route: None,
             route_slot: RouteSlot::default(),
             pattern_base: String::new(),
+            observer: None,
         }
     }
 

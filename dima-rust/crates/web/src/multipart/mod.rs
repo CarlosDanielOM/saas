@@ -49,7 +49,11 @@
 //!   returned. Unlike multer, a partly written file (client gone, storage failure, deadline) is
 //!   removed too, and so is every stored file when the upload's future is dropped before a file
 //!   was handed over (the client went away and hyper dropped the handler, or the handler gave
-//!   up): the removal then runs on a spawned task.
+//!   up): the removal then runs on a spawned task, which [`crate::serve`]'s shutdown waits for
+//!   (up to its drain deadline). A removal that fails is reported, never dropped: to the route's
+//!   [`Multer::on_cleanup_error`] hook and to the app's [`crate::Observer::on_cleanup_error`]
+//!   (and counted in [`crate::ObserverQueue::cleanup_failures`]). A file already gone counts as
+//!   removed.
 //! - Field names and file names are header text, read as latin1 like multer does (no
 //!   `defParamCharset`): a UTF-8 file name arrives as mojibake (`😀` becomes `ð\u{9f}\u{98}\u{80}`).
 //!   `filename*=utf-8''…` is decoded. Field values are UTF-8.
@@ -61,11 +65,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use std::panic::AssertUnwindSafe;
+
 use bytes::Bytes;
 use serde_json::{Map, Value};
 use tokio::io::AsyncWriteExt as _;
+use tokio_util::task::TaskTracker;
 
 use crate::error::Error;
+use crate::exchange::ObserverHub;
 use crate::handler::{BoxFuture, Flow, Handler};
 use crate::mediatype::type_is;
 use crate::request::{BodyState, Req};
@@ -322,10 +330,80 @@ impl UploadedFile {
     }
 }
 
+/// A stored (or partly written) file that could not be removed after its upload failed or was
+/// abandoned: it is left behind and someone should know.
+#[derive(Debug)]
+pub struct CleanupFailure {
+    /// The form field name.
+    pub fieldname: String,
+    /// The client's file name.
+    pub originalname: String,
+    /// Where the file is, when the storage keeps it on disk.
+    pub path: Option<PathBuf>,
+    /// Why the removal failed.
+    pub error: Error,
+}
+
+impl CleanupFailure {
+    fn new(info: &FileInfo, path: Option<PathBuf>, error: Error) -> Self {
+        Self {
+            fieldname: info.fieldname.clone(),
+            originalname: info.originalname.clone(),
+            path,
+            error,
+        }
+    }
+}
+
+type CleanupHook = dyn Fn(&CleanupFailure) + Send + Sync;
+
+/// Where one upload's cleanup runs and reports: the server's drain (so shutdown waits for
+/// removals spawned from `Drop`), the app's observer and the route's hook.
+#[derive(Clone, Default)]
+struct Cleanup {
+    tracker: Option<TaskTracker>,
+    observer: Option<Arc<ObserverHub>>,
+    hook: Option<Arc<CleanupHook>>,
+}
+
+impl Cleanup {
+    /// Runs `work` on the runtime, tracked by the server's drain when there is one. Outside a
+    /// runtime there is nowhere to run it.
+    fn spawn(&self, work: impl Future<Output = ()> + Send + 'static) {
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            return;
+        };
+        match &self.tracker {
+            Some(tracker) => drop(runtime.spawn(tracker.track_future(work))),
+            None => drop(runtime.spawn(work)),
+        }
+    }
+
+    /// Reports a removal that failed.
+    fn report(&self, failure: &CleanupFailure) {
+        if let Some(hook) = &self.hook {
+            let _ = std::panic::catch_unwind(AssertUnwindSafe(|| hook(failure)));
+        }
+        if let Some(observer) = &self.observer {
+            observer.cleanup_failed(failure);
+        }
+    }
+}
+
+/// Removes a file from disk; one that is already gone counts as removed.
+async fn remove_path(path: &std::path::Path) -> Result<(), Error> {
+    match tokio::fs::remove_file(path).await {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
 /// A file's bytes as they arrive. Read it to the end (`None`); a storage that stops early
 /// leaves the rest to be skipped.
 pub struct FileStream<'a> {
     scanner: &'a mut Scanner,
+    cleanup: Cleanup,
     size: u64,
     limit: Option<u64>,
     /// The size limit was reached (multer then fails with `LIMIT_FILE_SIZE`).
@@ -488,17 +566,24 @@ fn random_name() -> String {
 }
 
 /// Removes a partly written file unless the write completed.
-struct Partial(Option<PathBuf>);
+struct Partial {
+    path: Option<PathBuf>,
+    info: FileInfo,
+    cleanup: Cleanup,
+}
 
 impl Drop for Partial {
     fn drop(&mut self) {
-        if let Some(path) = self.0.take()
-            && let Ok(runtime) = tokio::runtime::Handle::try_current()
-        {
-            runtime.spawn(async move {
-                let _ = tokio::fs::remove_file(path).await;
-            });
-        }
+        let Some(path) = self.path.take() else {
+            return;
+        };
+        let info = self.info.clone();
+        let cleanup = self.cleanup.clone();
+        self.cleanup.spawn(async move {
+            if let Err(error) = remove_path(&path).await {
+                cleanup.report(&CleanupFailure::new(&info, Some(path), error));
+            }
+        });
     }
 }
 
@@ -514,7 +599,11 @@ impl Storage for DiskStorage {
             let path = self.destination.join(&filename);
             let mut output = tokio::fs::File::create(&path).await?;
             // Removes the file if this future is dropped half-way (deadline, client gone).
-            let mut partial = Partial(Some(path.clone()));
+            let mut partial = Partial {
+                path: Some(path.clone()),
+                info: file.clone(),
+                cleanup: data.cleanup.clone(),
+            };
             let written: Result<u64, Error> = async {
                 let mut size = 0u64;
                 while let Some(chunk) = data.chunk().await {
@@ -526,13 +615,16 @@ impl Storage for DiskStorage {
                 Ok(size)
             }
             .await;
-            partial.0 = None;
+            partial.path = None;
             let size = match written {
                 Ok(size) => size,
                 Err(error) => {
                     // multer leaves this partial file behind; it is removed before answering.
                     drop(output);
-                    let _ = tokio::fs::remove_file(&path).await;
+                    if let Err(failure) = remove_path(&path).await {
+                        data.cleanup
+                            .report(&CleanupFailure::new(file, Some(path), failure));
+                    }
                     return Err(error);
                 }
             };
@@ -550,7 +642,7 @@ impl Storage for DiskStorage {
             file.stored.destination = None;
             file.stored.filename = None;
             if let Some(path) = file.stored.path.take() {
-                tokio::fs::remove_file(path).await?;
+                remove_path(&path).await?;
             }
             Ok(())
         })
@@ -567,6 +659,7 @@ pub struct Multer {
     filter: Option<Arc<FilterFn>>,
     preserve_path: bool,
     deadline: Option<Duration>,
+    cleanup_hook: Option<Arc<CleanupHook>>,
 }
 
 impl std::fmt::Debug for Multer {
@@ -587,6 +680,7 @@ impl Multer {
             filter: None,
             preserve_path: false,
             deadline: None,
+            cleanup_hook: None,
         }
     }
 
@@ -622,6 +716,19 @@ impl Multer {
     #[must_use]
     pub fn deadline(mut self, deadline: Duration) -> Self {
         self.deadline = Some(deadline);
+        self
+    }
+
+    /// Not in multer: called when a stored or partly written file could not be removed after
+    /// the upload failed or was abandoned (multer passes such errors on as `storageErrors` or
+    /// drops them). Runs on the task doing the removal: keep it short. The app's
+    /// [`crate::Observer::on_cleanup_error`] is told as well.
+    #[must_use]
+    pub fn on_cleanup_error(
+        mut self,
+        hook: impl Fn(&CleanupFailure) + Send + Sync + 'static,
+    ) -> Self {
+        self.cleanup_hook = Some(Arc::new(hook));
         self
     }
 
@@ -676,8 +783,17 @@ impl Single {
         )?;
         let mut scanner =
             Scanner::new(req.take_body_stream(), &boundary).limit(self.multer.limits.wire_budget());
+        let cleanup = Cleanup {
+            tracker: req
+                .extensions()
+                .get::<crate::server::ServerLink>()
+                .map(|link| link.cleanup().clone()),
+            observer: req.observer.clone(),
+            hook: self.multer.cleanup_hook.clone(),
+        };
         // Every stored file is removed if this future is dropped before the file is handed over.
-        let mut progress = Progress::new(StoredFiles::new(Arc::clone(&self.multer.storage)));
+        let mut progress =
+            Progress::new(StoredFiles::new(Arc::clone(&self.multer.storage), cleanup));
         let outcome = {
             let read = self.read(&mut scanner, &mut progress);
             match self.multer.deadline {
@@ -870,6 +986,7 @@ impl Single {
         progress.storage_used = true;
         let mut stream = FileStream {
             scanner,
+            cleanup: progress.stored.cleanup.clone(),
             size: 0,
             limit: self.multer.limits.file_size,
             limited: false,
@@ -909,6 +1026,7 @@ impl Single {
 /// through the storage, from a spawned task if need be.
 struct StoredFiles {
     storage: Arc<dyn Storage>,
+    cleanup: Cleanup,
     files: Vec<UploadedFile>,
     /// Files at the front already removed.
     removed: usize,
@@ -917,9 +1035,10 @@ struct StoredFiles {
 }
 
 impl StoredFiles {
-    fn new(storage: Arc<dyn Storage>) -> Self {
+    fn new(storage: Arc<dyn Storage>, cleanup: Cleanup) -> Self {
         Self {
             storage,
+            cleanup,
             files: Vec::new(),
             removed: 0,
             settled: false,
@@ -930,7 +1049,7 @@ impl StoredFiles {
     async fn remove_all(&mut self) {
         let storage = Arc::clone(&self.storage);
         while let Some(file) = self.files.get_mut(self.removed) {
-            let _ = storage.remove_file(file).await;
+            remove_reporting(storage.as_ref(), file, &self.cleanup).await;
             self.removed += 1;
         }
         self.settled = true;
@@ -954,13 +1073,21 @@ impl Drop for StoredFiles {
             return;
         }
         let storage = Arc::clone(&self.storage);
-        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
-            runtime.spawn(async move {
-                for file in &mut pending {
-                    let _ = storage.remove_file(file).await;
-                }
-            });
-        }
+        let cleanup = self.cleanup.clone();
+        self.cleanup.spawn(async move {
+            for file in &mut pending {
+                remove_reporting(storage.as_ref(), file, &cleanup).await;
+            }
+        });
+    }
+}
+
+/// Removes one stored file through the storage, reporting a failure.
+async fn remove_reporting(storage: &dyn Storage, file: &mut UploadedFile, cleanup: &Cleanup) {
+    // The storage may clear the paths it removes; the report names the file as it was.
+    let path = file.stored.path.clone();
+    if let Err(error) = storage.remove_file(file).await {
+        cleanup.report(&CleanupFailure::new(&file.info, path, error));
     }
 }
 

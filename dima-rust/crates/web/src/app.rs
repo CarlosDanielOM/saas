@@ -130,6 +130,7 @@ impl<S: Send + Sync + 'static> App<S> {
             })
         });
         req.trace = trace.clone();
+        req.observer = self.observer.clone();
         // Dropped with this future if the client goes away first; then it reports the abort.
         let exchange = Exchange::start(
             self.observer.clone(),
