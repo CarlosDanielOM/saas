@@ -1508,6 +1508,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-billing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-http",
+ "dima-model",
+ "dima-store",
+ "dima-text",
+ "futures-util",
+ "mongodb",
+ "redis",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-core"
 version = "0.1.0"
 dependencies = [
