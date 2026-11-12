@@ -1700,6 +1700,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-twitch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-http",
+ "dima-model",
+ "dima-store",
+ "dima-text",
+ "dima-twitch",
+ "futures-util",
+ "mongodb",
+ "redis",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "dima-web"
 version = "0.1.0"
 dependencies = [
