@@ -11,8 +11,12 @@ use anyhow::{Context, Result};
 use dima_core::SystemClock;
 use dima_http::HttpClient;
 use dima_http::testing::{MockResponse, MockServer};
-use dima_platform::auth::cache::{activity_touch_key, token_cache_key};
-use dima_platform::auth::twitch::HttpTwitchUserApi;
+use dima_platform::auth::cache::{
+    activity_touch_key, token_cache_key, token_fence_key, user_fence_key,
+};
+use dima_platform::auth::twitch::{
+    HttpTwitchUserApi, Scheme, TwitchAnswer, TwitchUserApi, Unreachable,
+};
 use dima_platform::auth::{
     AuthConfig, AuthDeps, AuthenticatedUser, Authenticator, BoundChannel, HasAuthenticator,
     NoReport, optional_user, require_user, require_workspace_owner,
@@ -522,7 +526,8 @@ async fn forgetting_a_token_revalidates_it() -> Result<()> {
         let header = format!("Bearer {token}");
         assert_eq!(send(&app, "/probe", Some(&header)).await?.0, 200);
         assert!(app.state().auth.cached_user(&header).await.is_some());
-        app.state().auth.forget(&header).await;
+        stores.track(token_fence_key(&token));
+        app.state().auth.forget(&header).await?;
         assert_eq!(send(&app, "/probe", Some(&header)).await?.0, 401);
         assert!(app.state().auth.cached_user(&header).await.is_none());
         Ok(())
@@ -538,4 +543,391 @@ fn keys_and_debug_never_show_the_token() -> Result<()> {
     let config = AuthConfig::new("client")?;
     assert!(!format!("{config:?}").contains(token));
     Ok(())
+}
+
+/// The Twitch of the tests, whose `/users` answer is held until the test releases it.
+#[derive(Debug)]
+struct Held {
+    inner: HttpTwitchUserApi,
+    gate: Arc<tokio::sync::Semaphore>,
+}
+
+impl TwitchUserApi for Held {
+    fn validate<'a>(
+        &'a self,
+        token: &'a dima_core::SecretString,
+        scheme: Scheme,
+        timeout: Duration,
+    ) -> futures_util::future::BoxFuture<'a, Result<TwitchAnswer, Unreachable>> {
+        self.inner.validate(token, scheme, timeout)
+    }
+
+    fn users<'a>(
+        &'a self,
+        token: &'a dima_core::SecretString,
+        timeout: Duration,
+    ) -> futures_util::future::BoxFuture<'a, Result<TwitchAnswer, Unreachable>> {
+        Box::pin(async move {
+            let answer = self.inner.users(token, timeout).await;
+            let _permit = self.gate.acquire().await;
+            answer
+        })
+    }
+}
+
+/// An authenticator on its own Dragonfly connection whose `/users` answers wait for `gate`.
+async fn held_authenticator(
+    stores: &Stores,
+    server: &MockServer,
+    client_id: &str,
+    gate: Arc<tokio::sync::Semaphore>,
+) -> Result<Authenticator> {
+    let http = HttpClient::builder().build()?;
+    let inner = HttpTwitchUserApi::new(
+        http,
+        server.provider(dima_twitch::oauth_provider())?,
+        server.provider(dima_twitch::helix_provider(client_id))?,
+    );
+    let own = stores.second().await?;
+    Ok(Authenticator::new(
+        AuthConfig::new(client_id)?,
+        AuthDeps {
+            twitch: Arc::new(Held { inner, gate }),
+            cache: own.cache,
+            mongo: own.mongo,
+            clock: Arc::new(SystemClock),
+            report: Arc::new(NoReport),
+        },
+    ))
+}
+
+/// The review's sequence (A1): an authentication waits for Twitch; the token is forgotten on
+/// another connection; Twitch answers. The authentication may answer its own request, but it
+/// must not cache the token again.
+#[tokio::test]
+async fn forget_wins_over_an_authentication_in_flight() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?;
+        let server = MockServer::start().await?;
+        script_twitch(&server, &cases, &stores.run);
+        let gate = Arc::new(tokio::sync::Semaphore::new(0));
+        let held = Arc::new(held_authenticator(&stores, &server, client_id, gate.clone()).await?);
+        let signer_out = authenticator(&stores, &server, client_id, None)?;
+        let token = token_of("valid", &stores.run);
+        stores.track(token_cache_key(&token));
+        stores.track(token_fence_key(&token));
+        let header = format!("Bearer {token}");
+
+        let in_flight = tokio::spawn({
+            let held = held.clone();
+            let header = header.clone();
+            async move { held.authenticate(Some(&header)).await }
+        });
+        // Twitch has answered both calls; the `/users` answer is held.
+        server.wait_for(2).await;
+        signer_out.forget(&header).await?;
+        assert_eq!(stores.cache.exists(&[&token_cache_key(&token)]).await?, 0);
+        gate.add_permits(1);
+        let user = in_flight
+            .await?
+            .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+        assert_eq!(user.id(), id_of("valid", &stores.run));
+        assert_eq!(
+            stores.cache.exists(&[&token_cache_key(&token)]).await?,
+            0,
+            "a forgotten token was cached again by an authentication in flight"
+        );
+        assert!(signer_out.cached_user(&header).await.is_none());
+        // The next request asks Twitch again.
+        let before = server.requests().len();
+        gate.add_permits(1);
+        held.authenticate(Some(&header))
+            .await
+            .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+        assert_eq!(server.requests().len(), before + 2);
+        Ok(())
+    })
+    .await
+}
+
+/// Forgetting a user ends the cached validations of all their tokens, and keeps one in flight
+/// from being cached.
+#[tokio::test]
+async fn forgetting_a_user_ends_every_cached_token() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?;
+        let server = MockServer::start().await?;
+        script_twitch(&server, &cases, &stores.run);
+        let gate = Arc::new(tokio::sync::Semaphore::new(0));
+        let held = Arc::new(held_authenticator(&stores, &server, client_id, gate.clone()).await?);
+        let admin = authenticator(&stores, &server, client_id, None)?;
+        let id = id_of("valid", &stores.run);
+        stores.track(user_fence_key(&id));
+        stores.track(activity_touch_key(&id));
+        // Two tokens of the same user (`valid` and `valid_raw`), both cached.
+        let first = format!("Bearer {}", token_of("valid", &stores.run));
+        let second = format!("Bearer {}", token_of("valid_raw", &stores.run));
+        let third = format!("Bearer {}", token_of("creator", &stores.run));
+        for kind in ["valid", "valid_raw", "creator", "short_lived"] {
+            stores.track(token_cache_key(&token_of(kind, &stores.run)));
+        }
+        for header in [&first, &second] {
+            admin
+                .authenticate(Some(header))
+                .await
+                .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+            assert!(admin.cached_user(header).await.is_some());
+        }
+        // Another user's token, and a third token of this user in flight.
+        admin
+            .authenticate(Some(&third))
+            .await
+            .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+        let fourth = format!("Bearer {}", token_of("short_lived", &stores.run));
+        let before = server.requests().len();
+        let in_flight = tokio::spawn({
+            let held = held.clone();
+            let fourth = fourth.clone();
+            async move { held.authenticate(Some(&fourth)).await }
+        });
+        server.wait_for(before + 2).await;
+
+        admin.forget_user(&id).await?;
+        assert!(admin.cached_user(&first).await.is_none());
+        assert!(admin.cached_user(&second).await.is_none());
+        assert!(
+            admin.cached_user(&third).await.is_some(),
+            "another user's tokens stay cached"
+        );
+        gate.add_permits(1);
+        in_flight
+            .await?
+            .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+        assert!(admin.cached_user(&fourth).await.is_none());
+        // A forgotten token is validated with Twitch again on its next use.
+        let before = server.requests().len();
+        admin
+            .authenticate(Some(&first))
+            .await
+            .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
+        assert_eq!(server.requests().len(), before + 2);
+        Ok(())
+    })
+    .await
+}
+
+/// A forget that cannot reach Dragonfly says so; it is never reported as done.
+#[tokio::test]
+async fn a_forget_that_fails_is_returned() -> Result<()> {
+    with_stores(14, |stores| async move {
+        let mut config = AuthConfig::new("client")?;
+        config.store_deadline = Duration::from_millis(200);
+        let server = MockServer::start().await?;
+        let http = HttpClient::builder().build()?;
+        let auth = Authenticator::new(
+            config,
+            AuthDeps {
+                twitch: Arc::new(HttpTwitchUserApi::new(
+                    http,
+                    server.provider(dima_twitch::oauth_provider())?,
+                    server.provider(dima_twitch::helix_provider("client"))?,
+                )),
+                cache: silent_dragonfly().await?,
+                mongo: stores.mongo.clone(),
+                clock: Arc::new(SystemClock),
+                report: Arc::new(NoReport),
+            },
+        );
+        assert!(auth.forget("Bearer sometoken0123").await.is_err());
+        assert!(auth.forget_user("123").await.is_err());
+        Ok(())
+    })
+    .await
+}
+
+/// `/validate`'s `expires_in` (A2): zero or less is an expired token, refused without `/users`;
+/// absent or not a number is accepted but not cached; a positive one bounds the cache, and a
+/// lifetime of a few seconds is not cached at all.
+#[tokio::test]
+async fn a_token_without_life_left_is_not_cached() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?.to_owned();
+        let run = stores.run.clone();
+        // kind, `expires_in` as JSON (None: absent), status, cached.
+        let rows: [(&str, Option<&str>, u16, bool); 8] = [
+            // Zero with a 200: accepted, never cached (Twitch reports never-expiring tokens so).
+            ("life_zero", Some("0"), 200, false),
+            ("life_negative", Some("-30"), 401, false),
+            ("life_absent", None, 200, false),
+            ("life_null", Some("null"), 200, false),
+            ("life_text", Some("\"3600\""), 200, false),
+            ("life_fraction", Some("0.5"), 200, false),
+            ("life_three", Some("3"), 200, false),
+            ("life_hundred", Some("100"), 200, true),
+        ];
+        let server = MockServer::start().await?;
+        let answers: Vec<(String, Option<String>)> = rows
+            .iter()
+            .map(|(kind, life, _, _)| (token_of(kind, &run), life.map(str::to_owned)))
+            .collect();
+        let (mock_client, user_id) = (client_id.clone(), id_of("life", &run));
+        server.fallback(move |request| {
+            let auth = request.header("authorization").unwrap_or_default();
+            let token = auth.strip_prefix("Bearer ").unwrap_or(auth);
+            let Some((_, life)) = answers.iter().find(|(t, _)| t == token) else {
+                return MockResponse::json(401, r#"{"status":401}"#);
+            };
+            if endpoint(request) == "validate" {
+                let life = life
+                    .as_deref()
+                    .map(|life| format!(r#","expires_in":{life}"#))
+                    .unwrap_or_default();
+                MockResponse::json(
+                    200,
+                    &format!(
+                        r#"{{"client_id":"{mock_client}","login":"l","scopes":[],"user_id":"{user_id}"{life}}}"#
+                    ),
+                )
+            } else {
+                MockResponse::json(
+                    200,
+                    &format!(r#"{{"data":[{{"id":"{user_id}","login":"l","display_name":"L"}}]}}"#),
+                )
+            }
+        });
+        let app = app(authenticator(&stores, &server, &client_id, None)?)?;
+        stores.track(activity_touch_key(&id_of("life", &run)));
+        for (kind, _, status, cached) in rows {
+            let token = token_of(kind, &run);
+            stores.track(token_cache_key(&token));
+            let before = server.requests().len();
+            let (got, _, body) = send(&app, "/probe", Some(&format!("Bearer {token}"))).await?;
+            assert_eq!(got, status, "{kind}: {body}");
+            let calls: Vec<_> = server.requests()[before..].iter().map(endpoint).collect();
+            if status == 401 {
+                assert_eq!(
+                    body,
+                    r#"{"error":true,"message":"Invalid token","status":401,"type":"invalid_token"}"#
+                );
+                assert_eq!(calls, ["validate"], "{kind}");
+            }
+            let key = token_cache_key(&token);
+            assert_eq!(stores.cache.exists(&[&key]).await? == 1, cached, "{kind}: cached");
+            if cached {
+                let Ttl::Seconds(ttl) = stores.cache.ttl(&key).await? else {
+                    panic!("{kind}: no lifetime");
+                };
+                assert!(ttl > 0 && ttl < 100, "{kind}: lifetime {ttl}");
+            }
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// kind, `/validate` status, `/users` status, answer status, message, Twitch calls.
+type HelixRow = (
+    &'static str,
+    u16,
+    u16,
+    u16,
+    Option<&'static str>,
+    &'static [&'static str],
+);
+
+/// A5: `/validate` failing with another status than 401 lets Helix decide, and a successful
+/// lookup is accepted (Helix accepts a token only with the client id it was issued to); a 401
+/// from `/validate` is never overridden, even when Helix would answer.
+#[tokio::test]
+async fn helix_decides_only_when_validate_fails_without_a_401() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?.to_owned();
+        let run = stores.run.clone();
+        let rows: [HelixRow; 4] = [
+            (
+                "helix_after_500",
+                500,
+                200,
+                200,
+                None,
+                &["validate", "users"],
+            ),
+            (
+                "helix_after_429",
+                429,
+                200,
+                200,
+                None,
+                &["validate", "users"],
+            ),
+            (
+                "helix_refuses_after_503",
+                503,
+                401,
+                401,
+                Some("Invalid token or user not found"),
+                &["validate", "users"],
+            ),
+            (
+                "validate_401",
+                401,
+                200,
+                401,
+                Some("Invalid token"),
+                &["validate"],
+            ),
+        ];
+        let server = MockServer::start().await?;
+        let answers: Vec<(String, u16, u16)> = rows
+            .iter()
+            .map(|(kind, validate, users, ..)| (token_of(kind, &run), *validate, *users))
+            .collect();
+        let user_id = id_of("helix", &run);
+        let mock_id = user_id.clone();
+        server.fallback(move |request| {
+            let auth = request.header("authorization").unwrap_or_default();
+            let token = auth.strip_prefix("Bearer ").unwrap_or(auth);
+            let Some((_, validate, users)) = answers.iter().find(|(t, ..)| t == token) else {
+                return MockResponse::json(401, r#"{"status":401}"#);
+            };
+            if endpoint(request) == "validate" {
+                MockResponse::json(
+                    *validate,
+                    &format!(r#"{{"status":{validate},"message":"x"}}"#),
+                )
+            } else if *users == 200 {
+                MockResponse::json(
+                    200,
+                    &format!(r#"{{"data":[{{"id":"{mock_id}","login":"h","display_name":"H"}}]}}"#),
+                )
+            } else {
+                MockResponse::json(*users, r#"{"status":401,"message":"Invalid OAuth token"}"#)
+            }
+        });
+        let app = app(authenticator(&stores, &server, &client_id, None)?)?;
+        stores.track(activity_touch_key(&user_id));
+        for (kind, _, _, status, message, expected_calls) in rows {
+            let token = token_of(kind, &run);
+            stores.track(token_cache_key(&token));
+            let before = server.requests().len();
+            let (got, _, body) = send(&app, "/probe", Some(&format!("Bearer {token}"))).await?;
+            assert_eq!(got, status, "{kind}: {body}");
+            let calls: Vec<_> = server.requests()[before..].iter().map(endpoint).collect();
+            assert_eq!(calls, expected_calls, "{kind}");
+            if let Some(message) = message {
+                let body: Value = serde_json::from_str(&body)?;
+                assert_eq!(body["message"], message, "{kind}");
+            } else {
+                assert!(body.contains(&user_id), "{kind}: {body}");
+            }
+            let cached = stores.cache.exists(&[&token_cache_key(&token)]).await? == 1;
+            assert_eq!(cached, status == 200, "{kind}: cached");
+        }
+        Ok(())
+    })
+    .await
 }

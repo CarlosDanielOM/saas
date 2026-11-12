@@ -26,8 +26,31 @@
 //!
 //! Every Dragonfly and MongoDB call has [`AuthConfig::store_deadline`], every Twitch call
 //! [`AuthConfig::twitch_timeout`] (the reference's `fetch` has none). A cache that cannot be read
-//! is a miss (Twitch decides, as in the reference); a cache or activity write that fails is
-//! reported and ignored (as in the reference). Twitch unreachable is a refusal, never access.
+//! is a miss (Twitch decides, as in the reference) and the validation is then not cached; a cache
+//! or activity write that fails is reported and ignored (as in the reference). Twitch unreachable
+//! is a refusal, never access.
+//!
+//! # The one accepted exception to "fail closed"
+//!
+//! When `/validate` fails with a status other than 401 (a 5xx, a 429…) and a JSON body, the
+//! Helix user lookup decides, and a successful lookup **accepts** the request (as the
+//! reference does; such a validation is cached for [`AuthConfig::cache_ttl`], since no
+//! `expires_in` is known). This is kept on purpose: Helix accepts a user token only together
+//! with the client id it was issued to (this application's `Client-Id` is sent), so a
+//! successful lookup is itself a validation of the token for this application, and refusing
+//! would sign everyone out during an outage of `/validate` alone. A 401 from `/validate` is
+//! never overridden: it is refused before Helix is asked.
+//!
+//! # Forgetting
+//!
+//! [`Authenticator::forget`] (sign-out) and [`Authenticator::forget_user`] (account deletion, a
+//! ban) end cached validations at once, including one that an authentication already waiting for
+//! Twitch would publish afterwards ([`cache`] has the fences). They return the store's failure:
+//! a sign-out that could not reach Dragonfly has **not** ended the cached validation, which
+//! may still be accepted for up to [`DEFAULT_CACHE_TTL`]. The sign-out route then answers an
+//! error (`503`, so the client knows the session may outlive it and can retry; a retry is
+//! harmless) instead of a success, and the client discards its token either way. An account
+//! deletion or a ban that cannot forget retries or fails the operation, never ignores it.
 //!
 //! # Intended differences (all invisible to a client that sends a real token)
 //!
@@ -36,8 +59,17 @@
 //!   `expires_in` ([`cache`] has the reasons). Worst-case staleness after a revocation on
 //!   Twitch's side (the user disconnects the app, changes password, Twitch bans the account):
 //!   one hour, and less when the token expires sooner; [`Authenticator::forget`] ends it at once
-//!   for a sign-out or an account deletion. Roles are never cached here: every access decision
-//!   reads MongoDB ([`crate::access`]), so losing a role takes effect on the next request.
+//!   for a sign-out, [`Authenticator::forget_user`] for an account deletion or a ban. Roles are
+//!   never cached here: every access decision reads MongoDB ([`crate::access`]), so losing a
+//!   role takes effect on the next request.
+//! - `/validate`'s `expires_in` (the reference ignores it): a negative one is refused as
+//!   "Invalid token" without the `/users` call. Zero, absent, `null` or not a number, the
+//!   token's life is unknown (Twitch reports its old never-expiring tokens as zero): the request
+//!   is accepted (Twitch answered 200) but the validation is not cached, so the next request
+//!   asks Twitch again. Twitch documents `expires_in` as part
+//!   of every successful validation and says nothing of its absence; not caching is the reading
+//!   that can never keep an expired token alive. A positive one bounds the cache lifetime, less
+//!   the time the user lookup took, and an entry shorter than [`MIN_CACHE_TTL`] is not written.
 //! - A token that is longer than [`MAX_TOKEN_CHARS`] or holds characters no OAuth token has
 //!   (outside RFC 6750's `token68` set) is refused as "Invalid token" without asking Twitch, which
 //!   would have refused it the same way.
@@ -59,7 +91,7 @@ use dima_store::dragonfly::Dragonfly;
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
 use dima_web::{Error as WebError, Flow, Req, Response};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Value, json};
 use std::fmt;
 use std::sync::Arc;
@@ -78,6 +110,8 @@ pub const ACTIVITY_TOUCH_TTL: Duration = Duration::from_secs(86_400);
 pub const DEFAULT_TWITCH_TIMEOUT: Duration = Duration::from_secs(10);
 /// Default per-command deadline for Dragonfly and MongoDB.
 pub const DEFAULT_STORE_DEADLINE: Duration = Duration::from_secs(5);
+/// Shortest cache entry written: a token with less life left is validated on every request.
+pub const MIN_CACHE_TTL: Duration = Duration::from_secs(5);
 /// Longest token sent to Twitch.
 pub const MAX_TOKEN_CHARS: usize = 2048;
 
@@ -120,6 +154,28 @@ impl AuthConfig {
         .validated()
     }
 
+    /// The longest an authentication may take between its cache lookup and its publication:
+    /// the lookup, the two Twitch calls and the publication under their deadlines, plus 5 s.
+    /// A publication later than that is refused ([`cache`]).
+    pub fn publish_window(&self) -> Duration {
+        self.store_deadline
+            .saturating_mul(2)
+            .saturating_add(self.twitch_timeout.saturating_mul(2))
+            .saturating_add(Duration::from_secs(5))
+    }
+
+    /// Lifetime of a token's fence: twice the window, plus the clock allowance.
+    pub fn token_fence_ttl(&self) -> Duration {
+        self.publish_window()
+            .saturating_mul(2)
+            .saturating_add(cache::CLOCK_ALLOWANCE)
+    }
+
+    /// Lifetime of a user's fence: it must outlive every entry it covers.
+    pub fn user_fence_ttl(&self) -> Duration {
+        self.cache_ttl.saturating_add(self.token_fence_ttl())
+    }
+
     /// Checks a configuration built by hand.
     pub fn validated(self) -> Result<Self, AuthConfigError> {
         if self.client_id.is_empty() || self.client_id == "undefined" {
@@ -140,20 +196,82 @@ impl AuthConfig {
 }
 
 /// `req.user`: the Twitch identity the token was proven to belong to.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Only the guards make one (the fields are private and it cannot be decoded); a test in
+/// another crate uses `for_tests` (feature `test-util`, enabled from `[dev-dependencies]` only).
+///
+/// ```compile_fail,E0451
+/// let user = dima_platform::auth::AuthenticatedUser {
+///     id: "1".into(),
+///     login: "a".into(),
+///     display_name: "A".into(),
+///     profile_image_url: None,
+/// };
+/// ```
+///
+/// ```compile_fail,E0277
+/// let user: Result<dima_platform::auth::AuthenticatedUser, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct AuthenticatedUser {
-    /// Twitch user id.
-    pub id: String,
-    /// Twitch login.
-    pub login: String,
-    /// Twitch display name.
-    pub display_name: String,
-    /// Profile image (`''` when read from the cache and Twitch had none).
+    id: String,
+    login: String,
+    display_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile_image_url: Option<String>,
+    profile_image_url: Option<String>,
 }
 
 impl AuthenticatedUser {
+    pub(crate) fn new(
+        id: String,
+        login: String,
+        display_name: String,
+        profile_image_url: Option<String>,
+    ) -> Self {
+        Self {
+            id,
+            login,
+            display_name,
+            profile_image_url,
+        }
+    }
+
+    /// An identity for tests in other crates (feature `test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn for_tests(
+        id: impl Into<String>,
+        login: impl Into<String>,
+        display_name: impl Into<String>,
+        profile_image_url: Option<String>,
+    ) -> Self {
+        Self::new(
+            id.into(),
+            login.into(),
+            display_name.into(),
+            profile_image_url,
+        )
+    }
+
+    /// Twitch user id.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Twitch login.
+    pub fn login(&self) -> &str {
+        &self.login
+    }
+
+    /// Twitch display name.
+    pub fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    /// Profile image (`""` when read from the cache and Twitch had none).
+    pub fn profile_image_url(&self) -> Option<&str> {
+        self.profile_image_url.as_deref()
+    }
+
     /// The user [`require_user`] attached. A handler mounted without the guard gets a 500 (the
     /// default error page), never an anonymous pass.
     pub fn of<S>(req: &Req<S>) -> Result<&AuthenticatedUser, WebError> {
@@ -253,6 +371,11 @@ impl AuthFailure {
     }
 }
 
+/// A forget did not reach the validation cache: the cached validation may still be accepted.
+#[derive(Debug, thiserror::Error)]
+#[error("the validation cache could not be updated: {0}")]
+pub struct ForgetError(#[from] cache::CacheError);
+
 /// Where failures of best-effort steps go (the reference's `error(…, {destination: 'both'})`).
 /// Messages never contain a token.
 pub trait AuthReport: Send + Sync + fmt::Debug {
@@ -346,25 +469,36 @@ impl Authenticator {
         if !plausible_token(token) {
             return Err(AuthFailure::InvalidToken(InvalidReason::Refused));
         }
-        match cache::get(&self.deps.cache, token, self.config.store_deadline).await {
-            Ok(Some(user)) => return Ok(user),
-            Ok(None) => {}
-            Err(error) => self.deps.report.error("getCachedToken", &error.to_string()),
-        }
+        let began = match cache::get(&self.deps.cache, token, self.config.store_deadline).await {
+            Ok(cache::Lookup {
+                user: Some(user), ..
+            }) => return Ok(user),
+            Ok(lookup) => Some(lookup.began),
+            Err(error) => {
+                self.deps.report.error("getCachedToken", &error.to_string());
+                None
+            }
+        };
         let secret = SecretString::new(token.to_owned());
-        let validation = self.validate(&secret).await?;
+        let lifetime = self.validate(&secret).await?;
+        let validated = tokio::time::Instant::now();
         let user = self.user(&secret).await?;
-        let ttl = cache_ttl(self.config.cache_ttl, validation.as_ref());
-        if let Err(error) = cache::put(
-            &self.deps.cache,
-            token,
-            &user,
-            ttl,
-            self.config.store_deadline,
-        )
-        .await
-        {
-            self.deps.report.error("cacheToken", &error.to_string());
+        let ttl = cache_ttl(self.config.cache_ttl, lifetime, validated.elapsed());
+        // Without the server time of the lookup, a forget racing this authentication could not
+        // be detected: the validation is used for this request only.
+        if let (Some(began), Some(ttl_seconds)) = (began, ttl) {
+            let publication = cache::Publication {
+                token,
+                user: &user,
+                began,
+                ttl_seconds,
+                window: self.config.publish_window(),
+            };
+            if let Err(error) =
+                cache::publish(&self.deps.cache, publication, self.config.store_deadline).await
+            {
+                self.deps.report.error("cacheToken", &error.to_string());
+            }
         }
         Ok(user)
     }
@@ -380,9 +514,8 @@ impl Authenticator {
         Ok(user)
     }
 
-    /// `validateTwitchToken`. `Ok(Some(answer))` for a 200 (its `expires_in` bounds the cache),
-    /// `Ok(None)` for another status that the reference counts as valid.
-    async fn validate(&self, token: &SecretString) -> Result<Option<Value>, AuthFailure> {
+    /// `validateTwitchToken`, and what the answer says about the token's remaining life.
+    async fn validate(&self, token: &SecretString) -> Result<Lifetime, AuthFailure> {
         let answer = self
             .deps
             .twitch
@@ -399,13 +532,23 @@ impl Authenticator {
             return Err(AuthFailure::InvalidToken(InvalidReason::Refused));
         }
         if answer.status != 200 {
-            return Ok(None);
+            return Ok(Lifetime::HelixDecides);
         }
         // Defence in depth: Helix refuses another application's token too (same answer).
         if body.get("client_id").and_then(Value::as_str) != Some(self.config.client_id.as_str()) {
             return Err(AuthFailure::UserFetch(UserFetchReason::Refused));
         }
-        Ok(Some(body))
+        match body.get("expires_in").and_then(Value::as_f64) {
+            // Twitch never sends a negative life with a 200; one is not a token to accept.
+            Some(seconds) if seconds < 0.0 => {
+                Err(AuthFailure::InvalidToken(InvalidReason::Refused))
+            }
+            // Zero with a 200 is either the token's last second or one of Twitch's old tokens
+            // that never expire (it reports those as 0). Twitch accepted it now, so the request
+            // is accepted, and nothing is cached: the next request asks Twitch again.
+            Some(seconds) if seconds > 0.0 => Ok(Lifetime::Seconds(seconds)),
+            Some(_) | None => Ok(Lifetime::Unknown),
+        }
     }
 
     /// `getUserFromToken`.
@@ -437,12 +580,12 @@ impl Authenticator {
         let Some(id) = text("id").filter(|id| !id.is_empty()) else {
             return Err(unreachable);
         };
-        Ok(AuthenticatedUser {
+        Ok(AuthenticatedUser::new(
             id,
-            login: text("login").unwrap_or_default(),
-            display_name: text("display_name").unwrap_or_default(),
-            profile_image_url: text("profile_image_url"),
-        })
+            text("login").unwrap_or_default(),
+            text("display_name").unwrap_or_default(),
+            text("profile_image_url"),
+        ))
     }
 
     /// `touchLastAppActivity`: once a day per user, `users.last_app_activity_at = now` for the
@@ -495,37 +638,76 @@ impl Authenticator {
         cache::get(&self.deps.cache, token, self.config.store_deadline)
             .await
             .ok()
-            .flatten()
+            .and_then(|lookup| lookup.user)
     }
 
-    /// Ends a token's cached validation at once (sign-out, account deletion), so a revoked token
-    /// is checked with Twitch on its next use.
-    pub async fn forget(&self, authorization: &str) {
+    /// Ends a token's cached validation at once (sign-out), so it is checked with Twitch on its
+    /// next use, and keeps an authentication of it already in flight from caching it again.
+    /// `Err` when Dragonfly could not be reached: the validation may still be cached (see the
+    /// module docs for what the route answers).
+    pub async fn forget(&self, authorization: &str) -> Result<(), ForgetError> {
         let token = bearer_token(authorization);
         if token.is_empty() {
-            return;
+            return Ok(());
         }
-        if let Err(error) = cache::forget(&self.deps.cache, token, self.config.store_deadline).await
-        {
-            self.deps.report.error("forgetToken", &error.to_string());
+        cache::forget_token(
+            &self.deps.cache,
+            token,
+            self.config.token_fence_ttl(),
+            self.config.store_deadline,
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Ends every cached validation of a Twitch user's tokens (account deletion, a ban), and
+    /// keeps authentications in flight for that user from caching. `Err` as for
+    /// [`Authenticator::forget`].
+    pub async fn forget_user(&self, twitch_user_id: &str) -> Result<(), ForgetError> {
+        if twitch_user_id.is_empty() {
+            return Ok(());
         }
+        cache::forget_user(
+            &self.deps.cache,
+            twitch_user_id,
+            self.config.user_fence_ttl(),
+            self.config.store_deadline,
+        )
+        .await?;
+        Ok(())
     }
 }
 
-/// Seconds a validated token stays cached: the configured lifetime, bounded by the token's own
-/// `expires_in` when Twitch gave a positive one.
-fn cache_ttl(configured: Duration, validation: Option<&Value>) -> u64 {
+/// What `/validate` said about a token's remaining life.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Lifetime {
+    /// A 200 with a positive `expires_in`.
+    Seconds(f64),
+    /// A 200 without a usable `expires_in` (zero, absent, `null`, not a number).
+    Unknown,
+    /// `/validate` failed with another status and the Helix lookup decides (see the module docs).
+    HelixDecides,
+}
+
+/// Seconds a validated token stays cached, or `None` when it must not be cached: the configured
+/// lifetime, bounded by the token's remaining life minus the time spent since `/validate`
+/// answered (the user lookup), never below [`MIN_CACHE_TTL`]. An unknown remaining life is not
+/// cached: every request asks Twitch again.
+fn cache_ttl(configured: Duration, lifetime: Lifetime, spent: Duration) -> Option<u64> {
     let configured = configured.as_secs().max(1);
-    let expires_in = validation
-        .and_then(|body| body.get("expires_in"))
-        .and_then(Value::as_f64)
-        .filter(|seconds| seconds.is_finite() && *seconds >= 1.0);
-    match expires_in {
-        // Whole seconds, rounded down: never past the token's expiry.
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        Some(seconds) => configured.min(seconds.floor() as u64),
-        None => configured,
-    }
+    let ttl = match lifetime {
+        Lifetime::HelixDecides => configured,
+        Lifetime::Unknown => return None,
+        Lifetime::Seconds(seconds) => {
+            // Whole seconds, rounded down, minus the time spent rounded up: never past the
+            // token's expiry. `as` saturates (an enormous `expires_in` is `u64::MAX`).
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let remaining = seconds.floor() as u64;
+            let spent = spent.as_secs() + u64::from(spent.subsec_nanos() > 0);
+            configured.min(remaining.saturating_sub(spent))
+        }
+    };
+    (ttl >= MIN_CACHE_TTL.as_secs()).then_some(ttl)
 }
 
 /// Application state that carries the authenticator.
@@ -631,11 +813,26 @@ mod tests {
     }
 
     #[test]
-    fn ttl_is_bounded_by_the_token() {
+    fn ttl_is_bounded_by_the_token_and_the_time_spent() {
         let ttl = Duration::from_secs(3600);
-        assert_eq!(cache_ttl(ttl, None), 3600);
-        assert_eq!(cache_ttl(ttl, Some(&json!({"expires_in": 120.7}))), 120);
-        assert_eq!(cache_ttl(ttl, Some(&json!({"expires_in": 0}))), 3600);
-        assert_eq!(cache_ttl(ttl, Some(&json!({"expires_in": 99999}))), 3600);
+        let none = Duration::ZERO;
+        assert_eq!(cache_ttl(ttl, Lifetime::HelixDecides, none), Some(3600));
+        assert_eq!(cache_ttl(ttl, Lifetime::Unknown, none), None);
+        assert_eq!(cache_ttl(ttl, Lifetime::Seconds(120.7), none), Some(120));
+        assert_eq!(
+            cache_ttl(ttl, Lifetime::Seconds(120.7), Duration::from_millis(2_300)),
+            Some(117)
+        );
+        assert_eq!(
+            cache_ttl(ttl, Lifetime::Seconds(99_999.0), none),
+            Some(3600)
+        );
+        assert_eq!(cache_ttl(ttl, Lifetime::Seconds(1e300), none), Some(3600));
+        assert_eq!(cache_ttl(ttl, Lifetime::Seconds(5.0), none), Some(5));
+        assert_eq!(
+            cache_ttl(ttl, Lifetime::Seconds(6.0), Duration::from_secs(2)),
+            None
+        );
+        assert_eq!(cache_ttl(ttl, Lifetime::Seconds(0.5), none), None);
     }
 }
