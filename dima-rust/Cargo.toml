@@ -41,6 +41,8 @@ mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3
 # The same bson 3 the driver uses (re-exported as `mongodb::bson`), named directly for its
 # extended JSON support (`serde_json-1`), which dima-store needs for DBPointer and test fixtures.
 bson = { version = "3.1.0", features = ["serde", "serde_json-1"] }
+# dima-model: the path of a field that failed to decode (taken only after a decode failed).
+serde_path_to_error = "0.1.20"
 redis = { version = "1.7.1", default-features = false, features = ["tokio-comp", "aio", "script", "connection-manager"] }
 # HTTP, outbound and inbound.
 reqwest = { version = "0.12.28", default-features = false, features = ["json", "stream", "gzip", "brotli", "deflate", "rustls-tls-native-roots"] }
