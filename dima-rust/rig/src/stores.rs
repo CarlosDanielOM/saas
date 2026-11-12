@@ -205,6 +205,7 @@ pub struct Registry(Arc<Mutex<Held>>);
 #[derive(Default)]
 struct Held {
     postgres: Vec<(String, String)>,
+    forced_postgres: Vec<String>,
     mongo_dbs: Vec<String>,
     /// Users defined in the `admin` database.
     users: Vec<String>,
@@ -222,6 +223,7 @@ struct Held {
 pub struct Cleanup {
     pub dropped_dbs: Vec<String>,
     pub dropped_postgres: Vec<String>,
+    pub forced_postgres: Vec<String>,
     pub kept_dbs: Vec<String>,
     pub dropped_users: Vec<String>,
     pub flushed: Vec<u8>,
@@ -239,6 +241,12 @@ impl Cleanup {
             parts.push(format!(
                 "dropped PostgreSQL databases {}",
                 self.dropped_postgres.join(", ")
+            ));
+        }
+        if !self.forced_postgres.is_empty() {
+            parts.push(format!(
+                "PostgreSQL FORCE required: {}",
+                self.forced_postgres.join(", ")
             ));
         }
         if !self.dropped_dbs.is_empty() {
@@ -289,6 +297,13 @@ impl Registry {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    pub fn note_postgres_force(&self, name: &str) {
+        let mut held = self.held();
+        if !held.forced_postgres.iter().any(|n| n == name) {
+            held.forced_postgres.push(name.to_string());
+        }
+    }
+
     pub fn add_postgres(&self, uri: &str, name: &str) {
         self.held().postgres.push((uri.into(), name.into()));
     }
@@ -335,6 +350,10 @@ impl Registry {
         };
         let mut out = Cleanup::default();
         let postgres = std::mem::take(&mut self.held().postgres);
+        out.forced_postgres = std::mem::take(&mut self.held().forced_postgres);
+        if let Err(error) = crate::postgres::flush_observers().await {
+            out.errors.push(error.to_string());
+        }
         // Containers first: nothing may write to the stores while they are released.
         for name in containers {
             match crate::side::remove_container(&name).await {
@@ -345,10 +364,17 @@ impl Registry {
         }
         for (uri, name) in postgres {
             match crate::postgres::drop_database(&uri, &name).await {
-                Ok(()) => out.dropped_postgres.push(name),
-                Err(e) => out
-                    .errors
-                    .push(format!("dropping PostgreSQL database {name}: {e}")),
+                Ok(forced) => {
+                    if forced {
+                        out.forced_postgres.push(name.clone());
+                    }
+                    out.dropped_postgres.push(name);
+                }
+                Err(e) => {
+                    out.errors
+                        .push(format!("dropping PostgreSQL database {name}: {e}"));
+                    self.add_postgres(&uri, &name);
+                }
             }
         }
         for dir in data_dirs {
@@ -560,6 +586,19 @@ fn first_batch(reply: &Document) -> Vec<Document> {
         .unwrap_or_default()
 }
 
+#[derive(Default)]
+pub struct DragonflyTimeCache {
+    dumps: std::collections::BTreeMap<Vec<u8>, Vec<u8>>,
+    bytes: usize,
+}
+
+/// A provenance observation, separate from the complete final-state capture.
+pub struct DragonflyTimeEntry {
+    pub key: Vec<u8>,
+    pub value: Option<RawValue>,
+    pub expiry: Option<i64>,
+}
+
 impl SideStores {
     /// Claim a logical database and name a fresh MongoDB database (or use `existing_db`, which
     /// the rig never drops or writes). Both are registered for [`Registry::cleanup`] before
@@ -757,125 +796,223 @@ impl SideStores {
     pub async fn capture_dragonfly(&mut self, sel: &Selection) -> Result<Vec<RawEntry>> {
         let mut out = Vec::new();
         for key in self.keys().await? {
-            if !sel.includes(&String::from_utf8_lossy(&key)) {
-                continue;
+            if sel.includes(&String::from_utf8_lossy(&key))
+                && let Some(entry) = self.read_dragonfly_entry(key).await?
+            {
+                out.push(entry);
             }
-            let kind = match self.q(redis::cmd("TYPE").arg(&key)).await? {
-                redis::Value::SimpleString(s) => s,
-                redis::Value::Okay => "string".into(),
-                redis::Value::BulkString(b) => String::from_utf8_lossy(&b).to_string(),
-                _ => continue,
-            };
-            let value = match kind.as_str() {
-                "none" => continue,
-                "string" => match self.q(redis::cmd("GET").arg(&key)).await? {
-                    redis::Value::BulkString(b) => RawValue::Str(b),
-                    redis::Value::Nil => continue,
-                    other => RawValue::Str(format!("{other:?}").into_bytes()),
-                },
-                "hash" => {
-                    let flat = bulk_list(self.q(redis::cmd("HGETALL").arg(&key)).await?);
-                    RawValue::Hash(
-                        flat.chunks(2)
-                            .filter_map(|c| match c {
-                                [k, v] => Some((k.clone(), v.clone())),
-                                _ => None,
-                            })
-                            .collect(),
-                    )
-                }
-                "list" => RawValue::List(bulk_list(
-                    self.q(redis::cmd("LRANGE").arg(&key).arg(0).arg(-1))
-                        .await?,
-                )),
-                "set" => RawValue::Set(bulk_list(self.q(redis::cmd("SMEMBERS").arg(&key)).await?)),
-                "zset" => {
-                    let reply = self
-                        .q(redis::cmd("ZRANGE")
-                            .arg(&key)
-                            .arg(0)
-                            .arg(-1)
-                            .arg("WITHSCORES"))
-                        .await?;
-                    let mut pairs = Vec::new();
-                    if let redis::Value::Array(items) = reply {
-                        let mut flat: Vec<redis::Value> = Vec::new();
-                        for it in items {
-                            match it {
-                                redis::Value::Array(pair) => flat.extend(pair),
-                                other => flat.push(other),
-                            }
-                        }
-                        for c in flat.chunks(2) {
-                            if let [m, s] = c {
-                                let member = match m {
-                                    redis::Value::BulkString(b) => b.clone(),
-                                    other => format!("{other:?}").into_bytes(),
-                                };
-                                // The score as the server wrote it.
-                                let score = match s {
-                                    redis::Value::BulkString(b) => {
-                                        String::from_utf8_lossy(b).to_string()
-                                    }
-                                    redis::Value::Double(f) => f.to_string(),
-                                    redis::Value::Int(i) => i.to_string(),
-                                    other => format!("{other:?}"),
-                                };
-                                pairs.push((member, score));
-                            }
+        }
+        Ok(out)
+    }
+
+    async fn read_dragonfly_entry(&mut self, key: Vec<u8>) -> Result<Option<RawEntry>> {
+        let kind = match self.q(redis::cmd("TYPE").arg(&key)).await? {
+            redis::Value::SimpleString(s) => s,
+            redis::Value::Okay => "string".into(),
+            redis::Value::BulkString(b) => String::from_utf8_lossy(&b).to_string(),
+            _ => return Ok(None),
+        };
+        let value = match kind.as_str() {
+            "none" => return Ok(None),
+            "string" => match self.q(redis::cmd("GET").arg(&key)).await? {
+                redis::Value::BulkString(b) => RawValue::Str(b),
+                redis::Value::Nil => return Ok(None),
+                other => RawValue::Str(format!("{other:?}").into_bytes()),
+            },
+            "hash" => {
+                let flat = bulk_list(self.q(redis::cmd("HGETALL").arg(&key)).await?);
+                RawValue::Hash(
+                    flat.chunks(2)
+                        .filter_map(|c| match c {
+                            [k, v] => Some((k.clone(), v.clone())),
+                            _ => None,
+                        })
+                        .collect(),
+                )
+            }
+            "list" => RawValue::List(bulk_list(
+                self.q(redis::cmd("LRANGE").arg(&key).arg(0).arg(-1))
+                    .await?,
+            )),
+            "set" => RawValue::Set(bulk_list(self.q(redis::cmd("SMEMBERS").arg(&key)).await?)),
+            "zset" => {
+                let reply = self
+                    .q(redis::cmd("ZRANGE")
+                        .arg(&key)
+                        .arg(0)
+                        .arg(-1)
+                        .arg("WITHSCORES"))
+                    .await?;
+                let mut pairs = Vec::new();
+                if let redis::Value::Array(items) = reply {
+                    let mut flat: Vec<redis::Value> = Vec::new();
+                    for it in items {
+                        match it {
+                            redis::Value::Array(pair) => flat.extend(pair),
+                            other => flat.push(other),
                         }
                     }
-                    RawValue::ZSet(pairs)
-                }
-                "stream" => {
-                    let reply = self
-                        .q(redis::cmd("XRANGE").arg(&key).arg("-").arg("+"))
-                        .await?;
-                    let mut entries = Vec::new();
-                    if let redis::Value::Array(items) = reply {
-                        for it in items {
-                            if let redis::Value::Array(parts) = it {
-                                let mut parts = parts.into_iter();
-                                let id = match parts.next() {
-                                    Some(redis::Value::BulkString(b)) => {
-                                        String::from_utf8_lossy(&b).to_string()
-                                    }
-                                    Some(redis::Value::SimpleString(s)) => s,
-                                    _ => continue,
-                                };
-                                let fields = parts.next().map(bulk_list).unwrap_or_default();
-                                let pairs = fields
-                                    .chunks(2)
-                                    .filter_map(|c| match c {
-                                        [k, v] => Some((k.clone(), v.clone())),
-                                        _ => None,
-                                    })
-                                    .collect();
-                                entries.push((id, pairs));
-                            }
+                    for c in flat.chunks(2) {
+                        if let [m, s] = c {
+                            let member = match m {
+                                redis::Value::BulkString(b) => b.clone(),
+                                other => format!("{other:?}").into_bytes(),
+                            };
+                            // The score as the server wrote it.
+                            let score = match s {
+                                redis::Value::BulkString(b) => {
+                                    String::from_utf8_lossy(b).to_string()
+                                }
+                                redis::Value::Double(f) => f.to_string(),
+                                redis::Value::Int(i) => i.to_string(),
+                                other => format!("{other:?}"),
+                            };
+                            pairs.push((member, score));
                         }
                     }
-                    RawValue::Stream(entries)
                 }
-                _ => RawValue::Other,
-            };
-            // Each TTL with the time of its own reading (the middle of the round trip).
-            let before = crate::timefmt::now_ms();
-            let pttl = match self.q(redis::cmd("PTTL").arg(&key)).await? {
-                redis::Value::Int(i) => i,
-                _ => -1,
-            };
-            let pttl_at = before + (crate::timefmt::now_ms() - before) / 2;
-            if pttl == -2 {
-                continue;
+                RawValue::ZSet(pairs)
             }
-            out.push(RawEntry {
-                key,
-                kind,
-                value,
-                pttl,
-                pttl_at,
-            });
+            "stream" => {
+                let reply = self
+                    .q(redis::cmd("XRANGE").arg(&key).arg("-").arg("+"))
+                    .await?;
+                let mut entries = Vec::new();
+                if let redis::Value::Array(items) = reply {
+                    for it in items {
+                        if let redis::Value::Array(parts) = it {
+                            let mut parts = parts.into_iter();
+                            let id = match parts.next() {
+                                Some(redis::Value::BulkString(b)) => {
+                                    String::from_utf8_lossy(&b).to_string()
+                                }
+                                Some(redis::Value::SimpleString(s)) => s,
+                                _ => continue,
+                            };
+                            let fields = parts.next().map(bulk_list).unwrap_or_default();
+                            let pairs = fields
+                                .chunks(2)
+                                .filter_map(|c| match c {
+                                    [k, v] => Some((k.clone(), v.clone())),
+                                    _ => None,
+                                })
+                                .collect();
+                            entries.push((id, pairs));
+                        }
+                    }
+                }
+                RawValue::Stream(entries)
+            }
+            _ => RawValue::Other,
+        };
+        // Each TTL with the time of its own reading (the middle of the round trip).
+        let before = crate::timefmt::now_ms();
+        let pttl = match self.q(redis::cmd("PTTL").arg(&key)).await? {
+            redis::Value::Int(i) => i,
+            _ => -1,
+        };
+        let pttl_at = before + (crate::timefmt::now_ms() - before) / 2;
+        if pttl == -2 {
+            return Ok(None);
+        }
+        Ok(Some(RawEntry {
+            key,
+            kind,
+            value,
+            pttl,
+            pttl_at,
+        }))
+    }
+
+    /// Exact DUMP bytes detect value changes without reparsing immutable seeded values.
+    /// Every TTL is still read; the complete final-state observer above is unchanged.
+    pub async fn dragonfly_time_changes(
+        &mut self,
+        sel: &Selection,
+        cache: &mut DragonflyTimeCache,
+    ) -> Result<Vec<DragonflyTimeEntry>> {
+        let keys: Vec<_> = self
+            .keys()
+            .await?
+            .into_iter()
+            .filter(|key| sel.includes(&String::from_utf8_lossy(key)))
+            .collect();
+        let bytes = &mut cache.bytes;
+        cache.dumps.retain(|key, dump| {
+            if keys.binary_search(key).is_ok() {
+                true
+            } else {
+                *bytes -= dump.len();
+                false
+            }
+        });
+        let mut out = Vec::new();
+        let mut changed = Vec::new();
+        for batch in keys.chunks(128) {
+            let mut pipeline = redis::pipe();
+            for key in batch {
+                pipeline.cmd("DUMP").arg(key).cmd("PEXPIRETIME").arg(key);
+            }
+            let values: Vec<redis::Value> = timed(
+                "Dragonfly provenance pipeline",
+                pipeline.query_async(&mut self.redis),
+            )
+            .await?;
+            if values.len() != batch.len() * 2 {
+                return Err(store(
+                    "Dragonfly provenance",
+                    "incomplete DUMP/PEXPIRETIME pipeline",
+                ));
+            }
+            let (pairs, _) = values.as_chunks::<2>();
+            for (key, pair) in batch.iter().zip(pairs) {
+                let (dump, expiry) = match pair {
+                    [redis::Value::BulkString(dump), redis::Value::Int(expiry)]
+                        if *expiry != -2 =>
+                    {
+                        (dump, (*expiry >= 0).then_some(*expiry))
+                    }
+                    [redis::Value::Nil, _] | [_, redis::Value::Int(-2)] => {
+                        if let Some(old) = cache.dumps.remove(key) {
+                            cache.bytes -= old.len();
+                        }
+                        continue;
+                    }
+                    _ => {
+                        return Err(store(
+                            "Dragonfly provenance",
+                            "invalid DUMP/PEXPIRETIME response",
+                        ));
+                    }
+                };
+                if cache.dumps.get(key) == Some(dump) {
+                    out.push(DragonflyTimeEntry {
+                        key: key.clone(),
+                        value: None,
+                        expiry,
+                    });
+                } else {
+                    let previous = cache.dumps.get(key).map_or(0, Vec::len);
+                    let bytes = cache.bytes - previous + dump.len();
+                    if bytes > 64 * 1024 * 1024 {
+                        return Err(config(
+                            "Dragonfly timestamp observation cache exceeds 64 MiB",
+                        ));
+                    }
+                    cache.bytes = bytes;
+                    cache.dumps.insert(key.clone(), dump.clone());
+                    changed.push((key.clone(), expiry));
+                }
+            }
+        }
+        for (key, expiry) in changed {
+            if let Some(entry) = self.read_dragonfly_entry(key).await? {
+                out.push(DragonflyTimeEntry {
+                    key: entry.key,
+                    value: Some(entry.value),
+                    expiry,
+                });
+            }
         }
         Ok(out)
     }

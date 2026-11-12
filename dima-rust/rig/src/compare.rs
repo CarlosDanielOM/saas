@@ -59,6 +59,7 @@ impl Default for Tolerances {
 /// One time of a unit, on both sides: milliseconds relative to each side's run start.
 #[derive(Debug, Clone)]
 struct TimeObs {
+    step: Option<usize>,
     path: Path,
     /// Which time inside a string (strings may hold several).
     label: String,
@@ -170,6 +171,7 @@ pub fn mask(v: &Val) -> String {
     match v {
         Val::Oid(Id::Lit(x)) | Val::Uuid(Id::Lit(x)) => format!("I{x}"),
         Val::Oid(_) | Val::Uuid(_) => "I<id>".into(),
+        Val::Time(r, Moment::Step { step, .. }) => format!("T{r:?}step{step}"),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}{ms}"),
         Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, Moment::Startup { .. }) => format!("T{r:?}startup"),
@@ -360,7 +362,9 @@ impl<'a> Comparator<'a> {
         // The start of a minute can lie before the first step even when the value was written
         // during the run: run times and start-up times compare alike at this precision.
         let rel = |m: &Moment| match m {
-            Moment::Rel { off, .. } | Moment::Startup { off } => Some(*off),
+            Moment::Step { off, .. } | Moment::Rel { off, .. } | Moment::Startup { off } => {
+                Some(*off)
+            }
             _ => None,
         };
         match (rel(a), rel(b)) {
@@ -382,6 +386,15 @@ impl<'a> Comparator<'a> {
 
     fn moments(&self, path: &Path, a: &Moment, b: &Moment) -> Result<(), String> {
         match (a, b) {
+            (Moment::Step { step: x, off: a, span: sa, .. }, Moment::Step { step: y, off: b, span: sb, .. }) => {
+                if x != y { return Err(format!("time produced by different steps: reference {x}, candidate {y}")); }
+                let gap = (a-sa-b).max(b-sb-a).max(0);
+                if gap <= self.tol(path) { Ok(()) } else {
+                    Err(format!("step-relative times differ by {} (tolerance {})", human_duration(gap), human_duration(self.tol(path))))
+                }
+            }
+            (Moment::Step { run, .. }, other) => self.moments(path, &Moment::Rel { off: *run, abs: None }, other),
+            (other, Moment::Step { run, .. }) => self.moments(path, other, &Moment::Rel { off: *run, abs: None }),
             (Moment::Abs(x), Moment::Abs(y)) => {
                 if x == y {
                     Ok(())
@@ -644,6 +657,10 @@ impl<'a> Comparator<'a> {
         }
         if let (Some(r), Some(c)) = (a.run_offset(), b.run_offset()) {
             self.unit.push(TimeObs {
+                step: match a {
+                    Moment::Step { step, .. } => Some(*step),
+                    _ => None,
+                },
                 path: path.clone(),
                 label,
                 r,
@@ -700,7 +717,11 @@ impl<'a> Comparator<'a> {
             let tol = allowed.map_or(self.relation, |t| t.max(self.relation));
             // A seeded time and a run time have different anchors (the process start lies
             // between them, and varies): only their order means something.
-            let fine = a.fine && b.fine && a.seeded == b.seeded && a.startup == b.startup;
+            let fine = a.fine
+                && b.fine
+                && a.seeded == b.seeded
+                && a.startup == b.startup
+                && a.step == b.step;
             // "One clock reading" is exact unless a tolerance allowance covers one of the two
             // (two clock readings that usually fall in the same millisecond).
             let same_tol = allowed.unwrap_or(0);

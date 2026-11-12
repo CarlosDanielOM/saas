@@ -111,6 +111,7 @@ pub fn load(file: &FsPath) -> Result<GetList> {
         steps.push(Step {
             name: req.name,
             kind: StepKind::Http(HttpStep {
+                scan: None,
                 method: "GET".into(),
                 path: req.path,
                 port: f.port.clone(),

@@ -90,3 +90,68 @@ fn index_inspection_fails_on_anything_but_a_missing_namespace() {
         std::panic::resume_unwind(p);
     }
 }
+
+#[tokio::test]
+async fn timestamp_cache_observes_changed_values_and_every_ttl() {
+    use anyhow::{Result, ensure};
+    use dima_rig::capture::RawValue;
+    use dima_rig::stores::{DragonflyTimeCache, Registry, SideStores};
+    if std::env::var("DIMA_TEST_MONGO_URI").is_err() {
+        assert!(std::env::var("DIMA_TEST_REQUIRE_STORES").is_err());
+        return;
+    }
+    let settings =
+        dima_rig::config::settings(&Default::default(), std::env::vars().collect()).unwrap();
+    let reg = Registry::default();
+    let result: Result<()> = async {
+        let mut stores =
+            SideStores::allocate(&settings.stores, &reg, "time_cache", None, false).await?;
+        stores.reset_empty().await?;
+        stores
+            .command(&[
+                b"SET".to_vec(),
+                b"lease".to_vec(),
+                b"old".to_vec(),
+                b"EX".to_vec(),
+                b"600".to_vec(),
+            ])
+            .await?;
+        let mut cache = DragonflyTimeCache::default();
+        let selected = Default::default();
+        let first = stores.dragonfly_time_changes(&selected, &mut cache).await?;
+        ensure!(
+            first.len() == 1
+                && matches!(&first[0].value, Some(RawValue::Str(value)) if value==b"old")
+        );
+        let same = stores.dragonfly_time_changes(&selected, &mut cache).await?;
+        ensure!(same.len() == 1 && same[0].value.is_none());
+        stores
+            .command(&[b"PEXPIRE".to_vec(), b"lease".to_vec(), b"300000".to_vec()])
+            .await?;
+        let ttl = stores.dragonfly_time_changes(&selected, &mut cache).await?;
+        ensure!(
+            ttl[0].expiry.is_some() && ttl[0].expiry < first[0].expiry,
+            "TTL-only change was missed"
+        );
+        stores
+            .command(&[b"SET".to_vec(), b"lease".to_vec(), b"new".to_vec()])
+            .await?;
+        let changed = stores.dragonfly_time_changes(&selected, &mut cache).await?;
+        ensure!(matches!(&changed[0].value, Some(RawValue::Str(value)) if value==b"new"));
+        ensure!(changed[0].expiry.is_none(), "TTL removal was missed");
+        stores
+            .command(&[b"DEL".to_vec(), b"lease".to_vec()])
+            .await?;
+        ensure!(
+            stores
+                .dragonfly_time_changes(&selected, &mut cache)
+                .await?
+                .is_empty()
+        );
+        Ok(())
+    }
+    .await;
+    let cleanup = reg.cleanup(&settings.stores, false).await;
+    assert!(cleanup.errors.is_empty(), "{cleanup:?}");
+    result.unwrap();
+}

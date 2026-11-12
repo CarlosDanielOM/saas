@@ -39,6 +39,14 @@ pub struct Hooks {
 }
 
 pub struct Runner<'a> {
+    pub observe_times: bool,
+    pub started_at: Option<i64>,
+    pub scan_pages: BTreeMap<usize, Vec<RawStep>>,
+    pub step_ends: Vec<i64>,
+    pub mongo_selection: &'a scenario::Selection,
+    pub dragonfly_selection: &'a scenario::Selection,
+    pub time_anchors: BTreeMap<i64, (usize, i64)>,
+    pub ttl_origins: BTreeMap<Vec<u8>, (i64, (usize, i64))>,
     pub stores: &'a mut SideStores,
     pub proc: &'a mut SideProcess,
     pub http: &'a reqwest::Client,
@@ -118,6 +126,132 @@ impl Runner<'_> {
     }
 
     async fn http(&mut self, i: usize, h: &scenario::HttpStep) -> Result<RawStep, StepError> {
+        let Some(scan) = &h.scan else {
+            return self.http_one(i, h, None).await;
+        };
+        let path = self.fill(i, &h.path, timefmt::now_ms())?;
+        let mut url =
+            reqwest::Url::parse(&format!("http://rig{path}")).map_err(|e| err(i, e.to_string()))?;
+        let mut page = h.clone();
+        page.scan = None;
+        let started = tokio::time::Instant::now();
+        let mut union = BTreeMap::new();
+        let mut cursors = std::collections::BTreeSet::new();
+        let mut first: Option<RawHttp> = None;
+        let mut envelope = None;
+        let mut bytes = 0usize;
+        for _ in 0..scan.max_pages {
+            page.path = format!(
+                "{}{}",
+                url.path(),
+                url.query().map(|q| format!("?{q}")).unwrap_or_default()
+            );
+            page.timeout_ms = h
+                .timeout_ms
+                .saturating_sub(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
+            if page.timeout_ms == 0 {
+                return Err(err(i, "scan exceeded the step timeout"));
+            }
+            let response = self.http_one(i, &page, Some(&page.path)).await?;
+            let RawStep::Http(ref raw) = response else {
+                return Err(err(i, "scan expected HTTP"));
+            };
+            if !(200..300).contains(&raw.status) {
+                return Err(err(i, format!("scan page returned HTTP {}", raw.status)));
+            }
+            bytes += raw.body.len();
+            if bytes > 32 * 1024 * 1024 {
+                return Err(err(i, "scan pages exceed 32 MiB"));
+            }
+            let mut body: Value = serde_json::from_slice(&raw.body)
+                .map_err(|e| err(i, format!("scan page JSON: {e}")))?;
+            // An aggregate has one read clock. Translate later pages' remaining-second
+            // TTLs back to that clock while preserving their exact raw page bytes.
+            if let Some(ttl) = &scan.ttl {
+                let offset = first
+                    .as_ref()
+                    .map_or(0, |first| (raw.at - first.at).max(0) / 1000);
+                let items = body
+                    .pointer_mut(&scan.items)
+                    .and_then(Value::as_array_mut)
+                    .ok_or_else(|| err(i, "scan TTL translation requires the items array"))?;
+                for item in items {
+                    let value = item
+                        .pointer_mut(ttl)
+                        .ok_or_else(|| err(i, format!("scan item missing TTL at {ttl}")))?;
+                    let remaining = value
+                        .as_i64()
+                        .ok_or_else(|| err(i, "scan TTL must be integer seconds"))?;
+                    if remaining >= 0 {
+                        *value = Value::from(remaining.saturating_add(offset));
+                    }
+                }
+            }
+            let cursor = scan.page(&body, &mut union).map_err(|e| err(i, e))?;
+            if first
+                .as_ref()
+                .is_some_and(|first| first.status != raw.status)
+            {
+                return Err(err(i, "scan page HTTP status changed"));
+            }
+            let mut rest = body.clone();
+            if let Some(v) = rest.pointer_mut(&scan.cursor) {
+                *v = Value::Null;
+            }
+            if let Some(v) = rest.pointer_mut(&scan.items) {
+                *v = Value::Null;
+            }
+            if envelope.as_ref().is_some_and(|first| first != &rest) {
+                return Err(err(i, "scan page envelope changed outside cursor/items"));
+            }
+            envelope = Some(rest);
+            if first.is_none() {
+                first = Some(raw.clone());
+            }
+            self.scan_pages.entry(i).or_default().push(response);
+            if cursor == "0" {
+                let mut raw = first.ok_or_else(|| err(i, "scan has no first page"))?;
+                let mut body: Value =
+                    serde_json::from_slice(&raw.body).map_err(|e| err(i, e.to_string()))?;
+                *body
+                    .pointer_mut(&scan.items)
+                    .ok_or_else(|| err(i, "scan items pointer disappeared"))? =
+                    Value::Array(union.into_values().collect());
+                *body
+                    .pointer_mut(&scan.cursor)
+                    .ok_or_else(|| err(i, "scan cursor pointer disappeared"))? =
+                    Value::String("0".into());
+                raw.body = serde_json::to_vec(&body).map_err(|e| err(i, e.to_string()))?;
+                return Ok(RawStep::Http(raw));
+            }
+            if !cursors.insert(cursor.clone()) {
+                return Err(err(
+                    i,
+                    format!("scan repeated cursor {cursor:?} before zero"),
+                ));
+            }
+            let params: Vec<(String, String)> = url
+                .query_pairs()
+                .filter(|(k, _)| k != &scan.query)
+                .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                .collect();
+            url.set_query(None);
+            url.query_pairs_mut()
+                .extend_pairs(params)
+                .append_pair(&scan.query, &cursor);
+        }
+        Err(err(
+            i,
+            format!("scan did not reach zero within {} pages", scan.max_pages),
+        ))
+    }
+
+    async fn http_one(
+        &mut self,
+        i: usize,
+        h: &scenario::HttpStep,
+        resolved_path: Option<&str>,
+    ) -> Result<RawStep, StepError> {
         let now = timefmt::now_ms();
         let mut headers = Vec::new();
         for (k, v) in &h.headers {
@@ -156,7 +290,10 @@ impl Runner<'_> {
         {
             headers.push(("content-type".into(), ct.into()));
         }
-        let path = self.fill(i, &h.path, now)?;
+        let path = match resolved_path {
+            Some(path) => path.to_string(),
+            None => self.fill(i, &h.path, now)?,
+        };
         self.exchange(
             i,
             Exchange {
@@ -690,10 +827,32 @@ impl Runner<'_> {
     }
 
     pub async fn run(&mut self, steps: &[Step]) -> Result<Vec<RawStep>, StepError> {
+        let mut observer = match &self.stores.postgres {
+            Some(pg) if self.observe_times => Some(
+                pg.time_observer()
+                    .await
+                    .map_err(|e| err(0, e.to_string()))?,
+            ),
+            _ => None,
+        };
         let mut socketio = None;
-        let result = self.run_inner(steps, &mut socketio).await;
+        let result = self.run_inner(steps, &mut socketio, &mut observer).await;
         if let Some(client) = socketio {
             client.stop().await;
+        }
+        if let Some(observer) = observer
+            && let Err(error) = observer.finish().await
+        {
+            return Err(err(
+                steps.len().saturating_sub(1),
+                format!(
+                    "PostgreSQL time observer close: {error}; step result: {}",
+                    result
+                        .as_ref()
+                        .err()
+                        .map_or("success".to_string(), |e| e.message.clone())
+                ),
+            ));
         }
         result
     }
@@ -702,10 +861,26 @@ impl Runner<'_> {
         &mut self,
         steps: &[Step],
         socketio: &mut Option<crate::socketio::Client>,
+        observer: &mut Option<crate::postgres::TimeObserver>,
     ) -> Result<Vec<RawStep>, StepError> {
+        let patterns = crate::detect::Patterns::new().map_err(|e| err(0, e.to_string()))?;
         let mut out = Vec::with_capacity(steps.len());
+        let mut producer = (0, timefmt::now_ms());
+        let mut dragonfly_times = crate::stores::DragonflyTimeCache::default();
+
         for (i, s) in steps.iter().enumerate() {
             self.alive(i, "before the step")?;
+            let request_at = timefmt::now_ms();
+            self.started_at.get_or_insert(request_at);
+            if !matches!(
+                s.kind,
+                StepKind::Pause(_)
+                    | StepKind::WaitFor { .. }
+                    | StepKind::WaitQuiet(_)
+                    | StepKind::WaitCall { .. }
+            ) {
+                producer = (i, request_at);
+            }
             let r = match &s.kind {
                 StepKind::Sql(sql) => {
                     let pg = self
@@ -799,6 +974,106 @@ impl Runner<'_> {
                 }
             };
             self.alive(i, "during the step")?;
+            if !self.observe_times {
+                out.push(r);
+                continue;
+            }
+            self.step_ends.push(timefmt::now_ms());
+            // Observe values after each operation so later latency cannot move earlier writes.
+            let mongo = self
+                .stores
+                .capture_mongo(self.mongo_selection)
+                .await
+                .map_err(|e| err(i, format!("timestamp provenance: {e}")))?;
+            let mut known = crate::detect::Known::default();
+            for coll in mongo.values() {
+                for doc in &coll.docs {
+                    crate::detect::collect_known_bson(
+                        &patterns,
+                        &bson::Bson::Document(doc.clone()),
+                        &mut known,
+                    );
+                }
+            }
+            if let RawStep::Http(h) = &r
+                && let Ok(v) = serde_json::from_slice::<Value>(&h.body)
+            {
+                crate::detect::collect_known_json(&patterns, &v, &mut known);
+            }
+            if let RawStep::Http(h) = &r {
+                for (_, bytes) in &h.headers {
+                    if let Ok(text) = std::str::from_utf8(bytes) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+            }
+            match &r {
+                RawStep::Sql { value, .. } | RawStep::Socketio { value, .. } => {
+                    crate::detect::collect_known_json(&patterns, value, &mut known);
+                }
+                RawStep::Reply(reply) => crate::detect::collect_known_json(
+                    &patterns,
+                    &crate::capture::enc_reply(&reply.reply),
+                    &mut known,
+                ),
+                RawStep::Http(h) => {
+                    if let Ok(text) = std::str::from_utf8(&h.body) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+                RawStep::Done(_) => {}
+            }
+            let df = self
+                .stores
+                .dragonfly_time_changes(self.dragonfly_selection, &mut dragonfly_times)
+                .await
+                .map_err(|e| err(i, format!("timestamp provenance Dragonfly: {e}")))?;
+            for entry in df {
+                if let Some(value) = &entry.value {
+                    // Unchanged keys were already observed with their first value.
+                    if let Ok(key) = std::str::from_utf8(&entry.key) {
+                        patterns.collect_known(key, &mut known);
+                    }
+                    crate::detect::collect_known_json(
+                        &patterns,
+                        &crate::capture::enc_value(value),
+                        &mut known,
+                    );
+                }
+                if let Some(expiry) = entry.expiry {
+                    let origin = match self.ttl_origins.get(&entry.key) {
+                        Some((old, origin)) if *old == expiry => *origin,
+                        _ => producer,
+                    };
+                    self.ttl_origins.insert(entry.key, (expiry, origin));
+                }
+            }
+            if let Some(pg) = observer {
+                let snapshot = pg
+                    .rows()
+                    .await
+                    .map_err(|e| err(i, format!("timestamp provenance PostgreSQL: {e}")))?;
+                crate::detect::collect_known_json(&patterns, &snapshot, &mut known);
+            }
+            for call in self.mock.calls() {
+                patterns.collect_known(&call.path, &mut known);
+                patterns.collect_known(&call.query, &mut known);
+                for (_, bytes) in &call.headers {
+                    if let Ok(text) = std::str::from_utf8(bytes) {
+                        patterns.collect_known(text, &mut known);
+                    }
+                }
+                let (_, body) = crate::mock::decode_body(&call.headers, &call.body);
+                if let Some(body) = body {
+                    crate::detect::collect_known_json(&patterns, &body, &mut known);
+                }
+            }
+            for ms in known.times {
+                self.time_anchors.entry(ms).or_insert(producer);
+            }
+            if self.time_anchors.len() > 200_000 || self.ttl_origins.len() > 200_000 {
+                return Err(err(i, "timestamp provenance exceeded 200000 values"));
+            }
             out.push(r);
         }
         Ok(out)

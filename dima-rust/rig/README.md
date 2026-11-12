@@ -201,7 +201,7 @@ expected keys.
 }
 ```
 
-Top level: `rig_scenario` (3; versions 1 and 2 remain readable), `description` (required), `seed`, `steps` (required), `compare`,
+Top level: `rig_scenario` (5; versions 1–4 remain readable), `description` (required), `time_inputs`, `seed`, `steps` (required), `compare`,
 `allow`, `mock` (see the mock section), `restart` (only with shared processes),
 `share_process` (default `false`), `allow_scripts` (default `false`), `tolerance_ms` (default
 2000), `relation_tolerance_ms` (default 50).
@@ -370,13 +370,19 @@ Applied to both sides every time they are compared, never stored.
 - **Times.** BSON dates, ISO strings (inside any string; the format is kept as a shape such as
   `dddd-dd-ddTdd:dd:dd.dddZ`), `YYYY-MM-DD` days, epoch-millisecond numbers (int64, double, JSON,
   13-digit runs in strings), HTTP dates in headers and TTLs within 400 days of the run become
-  **relative to the side's own run start** (just before the first step: the time a process takes
-  to start does not move them) and compare within `tolerance_ms`, never by absolute equality
+  **relative to the measured request interval of the step that first observed the value**.
+  The rig observes stores after each step and records that provenance; a slow earlier request no longer shifts
+  every later timestamp. Each step records its start and end: offsets are compared as
+  intervals, so a slow store round-trip inside a request also cannot create a false shift.
+  The producing step must agree too. Original times are retained for
+  document ordering and lease-duration checks. Legacy captures without provenance retain their
+  run-start comparison until re-recorded and compare within `tolerance_ms`, never by absolute equality
   with the other side (a replayed timestamp is a difference; declare a constant date near the
   run with `exact`). Values the seed wrote with `$rigNow` are recognised exactly and compare by
   their seed offset (`seed+60000ms`). Times in the inputs, and times farther away, compare
   exactly. "No TTL" versus a TTL, a date versus an epoch number, and a different ISO format are
-  differences. Each TTL is relative to the moment it was read. A date-only constant in a request
+  differences. TTL captures measure an expiry from the key's read clock; a known producing
+  step supplies its comparison origin. A date-only constant in a request
   is an input together with its UTC midnight, and epoch seconds in a request also as
   milliseconds, so the date or time the application stores from them compares exactly.
 - **Start-up.** In a scenario with its own process, a time written after the process started
@@ -391,7 +397,8 @@ Applied to both sides every time they are compared, never stored.
   with its TTL, a reply) the times must relate as in the reference: equal times (one clock
   reading used twice) stay equal; a difference of a whole number of seconds, at least one
   (a lease or expiry computed as now plus a constant), stays that duration within
-  `relation_tolerance_ms` (50); otherwise the order stays (a gap within the relation tolerance
+  `relation_tolerance_ms` (50) when both times came from the same step. Across different
+  steps, elapsed time depends on machine load, so only order is checked. Otherwise the order stays (a gap within the relation tolerance
   may close on a faster candidate, never reverse). Times with one-second precision (epoch
   seconds, HTTP dates, ISO without milliseconds, TTLs) count only by order, and only when more
   than a second apart. This catches a missing `updatedAt` bump or a lease of the wrong length
@@ -830,3 +837,117 @@ The SQL observer currently does not compare roles, grants, triggers, function bo
 counters. PostgreSQL values are captured through `to_jsonb`; the catalogue retains column types. Numeric
 values retain arbitrary precision and compare exactly unless classified as times; approximate numeric
 tolerance is not implemented for SQL numeric cells.
+
+## Step time provenance (formats 6 / 4)
+
+Capture format **6** adds `time_anchors`: triples `[epoch_ms, step_index, request_start_ms]`, `step_ends` (epoch milliseconds
+indexed by step), and `ttl_origins` entries
+`[key, observed_expiry_ms, step_index, request_start_ms]` (binary keys use `$rigBytes`).
+TTL origins follow a key while its absolute millisecond expiry remains unchanged. At most 200,000 timestamp anchors are allowed;
+exceeding the bound fails the scenario.
+Formats 2–5 remain readable, with their original run-relative checks. Re-record to obtain
+step timing checks; no historical step timing is invented. The observer reads MongoDB,
+Dragonfly and PostgreSQL rows between operations; allow for this cost in timeout budgets.
+
+Scenario format **4** adds `time_inputs`, an array of supplied fixed timestamps (ISO strings
+or epoch numbers), e.g. `"time_inputs": ["2026-11-12T12:00:00.000Z", 1794484800000]`.
+These values compare exactly wherever observed, including derived representations; list a
+rounded bucket value as well when the application rounds an input time. Use a fixed timestamp
+in the request body when testing bucketing, rather than the wall clock. Versions 1–3 still load.
+An `exact` allowance can additionally keep a time-looking constant literal at a selected path.
+
+Provenance records the first step observing an epoch value, not a database write trace.
+Multiple writes of the identical millisecond share an anchor. Wait and pause steps retain the preceding request anchor, so asynchronous writes first
+observed during a wait belong to the request that preceded it. Separate independent operations with a pause
+when their equality would otherwise be accidental. Within a document, fixed durations are
+checked for times from the same step; across steps ordering is checked, because the elapsed
+time between requests may vary. The self-test includes a side that waits 15 seconds after
+creating the leased item, before the next request; lease-length and missing-update defects must
+still fail with a field path.
+
+The self-test allows 60 seconds for fixture startup and 30 seconds for background jobs
+under compilation load; comparison tolerances are unchanged. Three consecutive end-to-end
+runs alongside repeated capped `tools/cargo build -p dima-model` builds passed in
+222.30 s, 249.37 s and 106.24 s. The tested matrix includes the 15-second delayed side,
+a missing `updatedAt` bump and a lease one second too long.
+
+## Cursor scans (scenario 5, capture 7)
+
+For an HTTP endpoint that returns a cursor and key objects, declare a complete walk:
+
+```json
+{"http": {"method": "GET", "path": "/api/redis/env%3Arig/keys?count=3",
+  "scan": {"cursor": "/data/cursor", "items": "/data/keys",
+           "identity": "/name", "query": "cursor", "max_pages": 100}}}
+```
+
+The pointer strings are JSON pointers into each response (identity is relative to an item).
+Use an empty identity pointer (`""`) for an array of primitive keys. All five settings are required. The rig starts at the supplied path, replaces only the named
+query parameter on subsequent requests, and stops at string or numeric zero. It compares
+the sorted union of item identities, with the last observed metadata for duplicate identities.
+The aggregate cursor is `"0"`; page boundaries and duplicate appearances do not compare.
+The first page supplies the compared headers and remaining envelope; all pages must have
+the same successful status and envelope outside the two selected pointers. Later page
+headers remain available in the raw recording but are not independently compared.
+Use ordinary HTTP steps to test pagination-specific header behaviour.
+
+This is GET-only, without a request body or `save`. A repeated nonzero cursor, missing
+pointer/identity, invalid JSON, a page error, or an exhausted bound fails the step. The whole
+walk shares `timeout_ms` (default 30 seconds), at most 1,000 pages, 20,000 distinct items
+and 32 MiB of response bodies. `max_pages` may lower the page bound.
+
+Capture format **7** adds `scan_pages` (step index to an array of raw HTTP observations),
+retaining status, headers, bytes and read time for every page. The step's HTTP body holds
+the aggregate used for comparison. Captures 2–6 remain readable; scenarios 1–4 remain
+readable. Existing captures require no migration unless their scenario opts into `scan`;
+re-record that scenario, as done for `dimadb/redis/scan`.
+
+For remaining-second metadata, add `"ttl": "/ttl"` to `scan`. Later pages' nonnegative
+TTLs are translated to the first page's read clock before merging; negative sentinel values
+stay exact. Use a `ttl` allowance on the aggregate field to compare expiry, and set a fixture
+expiry with a Dragonfly step after startup. An inferred expiry binds to a known key's producing
+step only when all key expiries within the two-second rounding window share that origin.
+The `dimadb/redis/scan` fixture does this; its invalid count and cursor checks remain ordinary
+HTTP requests.
+
+## PostgreSQL observer shutdown and cleanup
+
+Every read and repeatable-read snapshot explicitly commits on success and rolls back on
+error. The observer then drops its client and awaits its connection driver. Cancellation
+queues an owned rollback/close task; the next observer and the cleanup registry join these
+tasks before continuing. At most 128 observer sessions can own connections. A close that
+cannot finish within 60 seconds is a named rig error; its driver is aborted and joined as
+a failure fallback.
+
+The side process is stopped before its database is reset or removed. Cleanup waits up to
+30 seconds for `pg_stat_activity` to show no backend on that database, then attempts a normal
+`DROP DATABASE` with a 120-second statement/client limit. Only an in-use database then gets
+`WITH (FORCE)`. Every forced removal names the database in stderr and the run report's
+warnings, including forces during between-scenario resets. A failed drop names the database
+as a rig error, never a response/state mismatch; the database remains discoverable by `gc`.
+The cleanup tests cover successful reads, SQL errors, cancelled reads, backend disappearance,
+a named failed drop, garbage collection and a remaining external backend requiring FORCE.
+
+Timestamp provenance uses a scenario-scoped PostgreSQL connection for row-only observations.
+Every pass is a fresh read-only repeatable-read transaction, explicitly ended before the next
+request. Table discovery and a single bounded row query see newly created tables without
+repeatedly inspecting every index/constraint. This observer closes and joins its driver on
+scenario success/error; cancellation uses the same owned cleanup queue. Its connection setup
+is outside the run clock. The final full catalogue and state snapshot remains unchanged.
+Provenance queries reject more than 2,000 tables or 20,000 total rows rather than truncating.
+
+Database creation/recreation also has a 120-second admin-operation limit: PostgreSQL can
+need a checkpoint while copying its template on a loaded host. SQL read statements retain
+their 15-second limit. The analytics fixture allows 60 seconds for startup under build load.
+
+Dragonfly provenance probes keys in batches of 128 using exact `DUMP` bytes and
+`PEXPIRETIME`. Unchanged values need no reparsing; every expiry is still observed, including
+TTL-only changes. The per-scenario exact-byte cache is bounded at 64 MiB and fails when
+exceeded. Changed values use the same parser as the full final snapshot, which still reads
+every selected key. This keeps large seeded scans from adding thousands of serial value
+reads between requests.
+
+When verifying a legacy capture without step timing metadata, both sides keep the original
+run-relative checks. The candidate skips between-step provenance reads that have no reference
+equivalent; full final-state snapshots, SQL steps, responses and calls are still compared.
+Re-recording enables producing-step checks and the bounded observers described above.

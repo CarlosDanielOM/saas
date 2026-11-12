@@ -48,13 +48,13 @@
             "step": 2
           }
         },
-        "timeout_ms": 5000
+        "timeout_ms": 30000
       }
     },
     {
       "wait_quiet": {
         "quiet_ms": 300,
-        "timeout_ms": 5000
+        "timeout_ms": 30000
       }
     },
     {

@@ -184,7 +184,7 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
     let run = rig(work, &rd, variant, &["verify", "selftest"]);
     let all = ALL;
     match variant {
-        "equivalent" => {
+        "equivalent" | "delayed" => {
             assert_eq!(run.code, 0, "equivalent must match\n{}", run.text);
             for name in all {
                 assert_eq!(run.status(name), "match", "{name}\n{}", run.text);
@@ -194,7 +194,11 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
                 .as_array()
                 .unwrap()
                 .len();
-            assert!(notes > 0, "key order notes expected\n{}", run.text);
+            assert!(
+                variant == "delayed" || notes > 0,
+                "key order notes expected\n{}",
+                run.text
+            );
         }
         "int64" => assert_only(&run, variant, all, |p, w| {
             p.starts_with("mongo.items[")
@@ -244,7 +248,7 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         // A lease deadline replayed from the reference's recording (an absolute time).
         "lease-replay" => assert_only(&run, variant, &["items/lease"], |p, w| {
             p == "mongo.items[0].leaseUntil"
-                && (w.contains("run-relative times differ")
+                && (w.contains("run-relative times differ") || w.contains("step-relative times differ") || w.contains("time produced by different steps")
                     || w.contains("time relation")
                     // Under load the recorded deadline can precede candidate startup.
                     || w == "candidate wrote this time during start-up, reference during the run or another time")
@@ -252,7 +256,8 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         // updatedAt not bumped by the second operation: only the relation sees it.
         "no-bump" => assert_only(&run, variant, &["items/lease"], |p, w| {
             p == "mongo.items[0].updatedAt"
-                && w.contains("time relation to mongo.items[0].createdAt differs")
+                && (w.contains("time relation to mongo.items[0].createdAt differs")
+                    || w.contains("time produced by different steps"))
         }),
         // A lease of 61 s instead of 60 s: within the window tolerance, a fixed duration broken.
         "lease-length" => assert_only(&run, variant, &["items/lease"], |p, w| {
@@ -445,6 +450,48 @@ fn self_test_end_to_end() {
         );
     }
 
+    // Format 5 keeps its original run-relative checks and still catches timing defects.
+    let legacy = work.join("legacy-captures");
+    copy_dir(&work.join("captures"), &legacy);
+    let lease_path = legacy.join("selftest/items/lease.json");
+    let mut lease: Value = serde_json::from_slice(&std::fs::read(&lease_path).unwrap()).unwrap();
+    let fields = lease.as_object_mut().unwrap();
+    fields.insert("rig_capture".into(), json!(5));
+    for name in ["step_ends", "time_anchors", "ttl_origins", "scan_pages"] {
+        fields.remove(name);
+    }
+    std::fs::write(&lease_path, serde_json::to_vec(&lease).unwrap()).unwrap();
+    for (variant, path, message) in [
+        ("good", "", ""),
+        ("no-bump", "mongo.items[0].updatedAt", "time relation"),
+        (
+            "lease-length",
+            "mongo.items[0].leaseUntil",
+            "a fixed duration",
+        ),
+    ] {
+        let run = rig_with(
+            &work,
+            &rd,
+            &legacy,
+            variant,
+            &["verify", "selftest", "items/lease"],
+        );
+        pids.push(run.pid);
+        if variant == "good" {
+            assert_eq!(run.code, 0, "legacy reference must match: {}", run.text);
+        } else {
+            assert_eq!(run.code, 1, "legacy defect {variant}: {}", run.text);
+            assert!(
+                run.differences("items/lease")
+                    .iter()
+                    .any(|(p, w)| p == path && w.contains(message)),
+                "legacy defect {variant} lacks actionable path: {}",
+                run.text
+            );
+        }
+    }
+
     // One process per scenario: a scenario verified alone gives what it gave after the others.
     let alone = rig(
         &work,
@@ -458,6 +505,7 @@ fn self_test_end_to_end() {
     // Verify every candidate variant, a few at a time.
     let variants = [
         "equivalent",
+        "delayed",
         "int64",
         "null-field",
         "no-ttl",
@@ -982,4 +1030,49 @@ fn cleanup_after_a_failure_and_an_interrupt() {
     );
     assert_own_binaries();
     let _ = std::fs::remove_dir_all(&work);
+}
+
+#[test]
+fn cursor_scan_compares_union_and_reports_missing_keys_and_loops() {
+    let Some(uri) = std::env::var("DIMA_TEST_MONGO_URI")
+        .ok()
+        .filter(|s| !s.is_empty())
+    else {
+        return;
+    };
+    let work =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("rig-scan-{}", std::process::id()));
+    let rd = work.join("rig");
+    copy_dir(&selftest_dir(), &rd);
+    std::fs::write(rd.join("scenarios/selftest/scan.json"), json!({
+        "rig_scenario": 5, "description": "Compare a complete cursor walk.",
+        "steps": [{"http": {"method": "GET", "path": "/scan", "scan": {
+            "cursor": "/data/cursor", "items": "/data/keys", "identity": "/name", "query": "cursor", "max_pages": 10, "ttl": "/ttl"
+        }}}]
+    }).to_string()).unwrap();
+    let recorded = rig(&work, &rd, "good", &["record", "selftest", "scan"]);
+    assert_eq!(recorded.code, 0, "{}", recorded.text);
+    let paged = rig(&work, &rd, "scan-paged", &["verify", "selftest", "scan"]);
+    assert_eq!(paged.code, 0, "{}", paged.text);
+    let missing = rig(&work, &rd, "scan-missing", &["verify", "selftest", "scan"]);
+    assert_eq!(missing.code, 1, "{}", missing.text);
+    assert!(
+        missing
+            .differences("scan")
+            .iter()
+            .any(|(p, w)| p == "steps[0].body.data.keys[1]" && w.contains("missing in candidate")),
+        "{}",
+        missing.text
+    );
+    let looping = rig(&work, &rd, "scan-loop", &["verify", "selftest", "scan"]);
+    assert_eq!(looping.code, 1, "{}", looping.text);
+    assert!(
+        looping.text.contains("scan repeated cursor"),
+        "{}",
+        looping.text
+    );
+    for run in [recorded, paged, missing, looping] {
+        assert_no_databases_of(&uri, run.pid);
+    }
+    std::fs::remove_dir_all(work).unwrap();
 }

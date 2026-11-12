@@ -18,11 +18,10 @@ use serde_json::{Map, Value, json};
 
 use crate::value::{self, Moment, Text, Val};
 
-/// Version of the capture file format. Bump it only when old files cannot be read any more;
-/// normalisation changes do not need a bump (captures are raw). Version 5 adds PostgreSQL state and SQL steps.
-pub const CAPTURE_VERSION: u64 = 5;
-/// Versions 2–4 remain readable; absence of PostgreSQL means it was not observed.
-pub const READS_VERSIONS: &[u64] = &[2, 3, 4, 5];
+/// Version 7 retains cursor scan pages; version 6 added step timing provenance.
+pub const CAPTURE_VERSION: u64 = 7;
+/// Versions 2–6 remain readable; absent provenance retains run-relative comparison.
+pub const READS_VERSIONS: &[u64] = &[2, 3, 4, 5, 6, 7];
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
@@ -31,6 +30,11 @@ const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STA
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RawCapture {
+    pub scan_pages: BTreeMap<usize, Vec<RawStep>>,
+    pub step_ends: Vec<i64>,
+    /// Epoch milliseconds -> (producing step, request start).
+    pub time_anchors: BTreeMap<i64, (usize, i64)>,
+    pub ttl_origins: BTreeMap<Vec<u8>, (i64, (usize, i64))>,
     pub postgres: Option<Value>,
     pub steps: Vec<RawStep>,
     pub mongo: BTreeMap<String, RawColl>,
@@ -499,7 +503,7 @@ fn dec_doc(v: &Value, ctx: &str) -> Result<Document, String> {
     }
 }
 
-fn enc_reply(r: &RawReply) -> Value {
+pub(crate) fn enc_reply(r: &RawReply) -> Value {
     match r {
         RawReply::Nil => Value::Null,
         RawReply::Int(i) => json!({ "int": i }),
@@ -588,7 +592,7 @@ fn dec_pairs(v: &Value, ctx: &str) -> Result<BytePairs, String> {
         .collect()
 }
 
-fn enc_value(v: &RawValue) -> Value {
+pub(crate) fn enc_value(v: &RawValue) -> Value {
     match v {
         RawValue::Str(b) => enc_bytes(b),
         RawValue::Hash(pairs) => enc_pairs(pairs),
@@ -786,6 +790,10 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
             "qdrant_port": r.qdrant_port,
             "qdrant_prefix": r.qdrant_prefix,
         },
+        "ttl_origins": f.raw.ttl_origins.iter().map(|(key, (expiry, (step, at)))| json!([enc_bytes(key), expiry, step, at])).collect::<Vec<_>>(),
+        "scan_pages": f.raw.scan_pages.iter().map(|(i,p)| (i.to_string(), Value::Array(p.iter().map(enc_step).collect()))).collect::<Map<_,_>>(),
+        "step_ends": f.raw.step_ends,
+        "time_anchors": f.raw.time_anchors.iter().map(|(ms, (step, at))| json!([ms, step, at])).collect::<Vec<_>>(),
         "postgres": f.raw.postgres,
         "steps": f.raw.steps.iter().map(enc_step).collect::<Vec<_>>(),
         "mongo": mongo,
@@ -1005,6 +1013,65 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
         hashes,
         run,
         raw: RawCapture {
+            scan_pages: match o.get("scan_pages") {
+                Some(v) => obj(v, "scan_pages")?
+                    .iter()
+                    .map(|(i, p)| {
+                        let i = i
+                            .parse::<usize>()
+                            .map_err(|e| format!("scan_pages index: {e}"))?;
+                        let pages = arr(p, "scan_pages")?
+                            .iter()
+                            .map(|p| dec_step(p, i))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        if pages.iter().any(|p| !matches!(p, RawStep::Http(_))) {
+                            return Err("scan_pages: expected HTTP pages".into());
+                        }
+                        Ok((i, pages))
+                    })
+                    .collect::<Result<_, String>>()?,
+                None => BTreeMap::new(),
+            },
+            step_ends: match o.get("step_ends") {
+                Some(v) => {
+                    serde_json::from_value(v.clone()).map_err(|e| format!("step_ends: {e}"))?
+                }
+                None => Vec::new(),
+            },
+            ttl_origins: match o.get("ttl_origins") {
+                Some(v) => arr(v, "ttl_origins")?
+                    .iter()
+                    .map(|row| {
+                        let r = arr(row, "ttl_origins row")?;
+                        match r.as_slice() {
+                            [key, expiry, step, at] => Ok((
+                                dec_bytes(key, "ttl_origins key")?,
+                                (
+                                    int(expiry, "ttl expiry")?,
+                                    (
+                                        usize::try_from(int(step, "ttl step")?)
+                                            .map_err(|e| e.to_string())?,
+                                        int(at, "ttl anchor")?,
+                                    ),
+                                ),
+                            )),
+                            _ => {
+                                Err("ttl_origins: expected [key, expiry, step, request_start]"
+                                    .into())
+                            }
+                        }
+                    })
+                    .collect::<Result<_, String>>()?,
+                None => BTreeMap::new(),
+            },
+            time_anchors: match o.get("time_anchors") {
+                Some(v) => serde_json::from_value::<Vec<(i64, usize, i64)>>(v.clone())
+                    .map_err(|e| format!("time_anchors: {e}"))?
+                    .into_iter()
+                    .map(|(ms, step, at)| (ms, (step, at)))
+                    .collect(),
+                None => BTreeMap::new(),
+            },
             postgres: o.get("postgres").filter(|v| !v.is_null()).cloned(),
             steps,
             mongo,
@@ -1032,6 +1099,10 @@ mod tests {
 
     fn sample() -> CaptureFile {
         let mut raw = RawCapture {
+            scan_pages: BTreeMap::new(),
+            step_ends: vec![1_794_400_000_150],
+            time_anchors: [(1_794_400_000_100, (0, 1_794_400_000_000))].into(),
+            ttl_origins: [(vec![0xff], (1_794_400_060_100, (0, 1_794_400_000_000)))].into(),
             postgres: Some(json!({"public.example":{"rows":[{"id":1}]}})),
             steps: vec![
                 RawStep::Http(RawHttp {
@@ -1131,6 +1202,7 @@ mod tests {
             startup_ignored: [("embeddings".to_string(), 3)].into(),
             startup_keys: vec![(b"stream".to_vec(), 1_794_400_005_301)],
         };
+        raw.scan_pages.insert(0, vec![raw.steps[0].clone()]);
         raw.sort();
         CaptureFile {
             provenance: Provenance {
@@ -1188,6 +1260,10 @@ mod tests {
         // A document that Extended JSON cannot carry is kept as BSON bytes.
         let docs = &v["mongo"]["items"]["documents"];
         assert!(docs[0].get("$rigBson").is_some() && docs[1].get("$rigBson").is_some());
+        assert_eq!(back.raw.scan_pages, f.raw.scan_pages);
+        assert_eq!(back.raw.step_ends, f.raw.step_ends);
+        assert_eq!(back.raw.time_anchors, f.raw.time_anchors);
+        assert_eq!(back.raw.ttl_origins, f.raw.ttl_origins);
         assert_eq!(back.raw.calls, f.raw.calls);
         assert_eq!(back.raw.startup_ignored, f.raw.startup_ignored);
         assert_eq!(back.raw.startup_keys, f.raw.startup_keys);
@@ -1202,6 +1278,10 @@ mod tests {
         let mut v: Value = serde_json::from_str(&to_file_string(&f)).unwrap();
         v["rig_capture"] = json!(2);
         let o = v.as_object_mut().unwrap();
+        o.remove("scan_pages");
+        o.remove("step_ends");
+        o.remove("time_anchors");
+        o.remove("ttl_origins");
         o.remove("calls");
         o.remove("startup_ignored");
         let run = o.get_mut("run").unwrap().as_object_mut().unwrap();
@@ -1209,6 +1289,8 @@ mod tests {
             run.remove(k);
         }
         let back = from_file_json(&v).unwrap();
+        assert!(back.raw.time_anchors.is_empty());
+        assert!(back.raw.ttl_origins.is_empty());
         assert!(back.raw.calls.is_empty());
         assert_eq!(back.run.mock_port, None);
         assert_eq!(back.raw.steps, f.raw.steps);

@@ -1,5 +1,5 @@
 {
-  "rig_scenario": 1,
+  "rig_scenario": 5,
   "description": "Key scanning: MATCH patterns (glob, emoji), COUNT (default 50, capped at 200, a non-number falls back to 50, a negative count is a Redis error), each key's type and TTL, and paging with the cursor until it comes back as 0.",
   "restart": true,
   "seed": {
@@ -29,11 +29,6 @@
         "SET",
         "session:a",
         "x"
-      ],
-      [
-        "EXPIRE",
-        "session:a",
-        "900"
       ],
       [
         "SET",
@@ -81,6 +76,14 @@
   },
   "steps": [
     {
+      "name": "start expiry after process startup",
+      "dragonfly": [
+        "EXPIRE",
+        "session:a",
+        "900"
+      ]
+    },
+    {
       "name": "setup",
       "http": {
         "method": "POST",
@@ -108,6 +111,14 @@
         "headers": {
           "x-dimadb": "1",
           "cookie": "${cookie}"
+        },
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
@@ -119,6 +130,14 @@
         "headers": {
           "x-dimadb": "1",
           "cookie": "${cookie}"
+        },
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
@@ -130,6 +149,14 @@
         "headers": {
           "x-dimadb": "1",
           "cookie": "${cookie}"
+        },
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
@@ -141,6 +168,14 @@
         "headers": {
           "x-dimadb": "1",
           "cookie": "${cookie}"
+        },
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
@@ -163,11 +198,19 @@
         "headers": {
           "x-dimadb": "1",
           "cookie": "${cookie}"
+        },
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
     {
-      "name": "page 1",
+      "name": "small pages",
       "http": {
         "method": "GET",
         "path": "/api/redis/env%3Arig/keys?match=user%3A*&count=3",
@@ -175,19 +218,13 @@
           "x-dimadb": "1",
           "cookie": "${cookie}"
         },
-        "save": {
-          "next": "body.data.cursor"
-        }
-      }
-    },
-    {
-      "name": "page 2",
-      "http": {
-        "method": "GET",
-        "path": "/api/redis/env%3Arig/keys?match=user%3A*&count=3&cursor=${next}",
-        "headers": {
-          "x-dimadb": "1",
-          "cookie": "${cookie}"
+        "scan": {
+          "cursor": "/data/cursor",
+          "items": "/data/keys",
+          "identity": "/name",
+          "query": "cursor",
+          "max_pages": 100,
+          "ttl": "/ttl"
         }
       }
     },
@@ -206,9 +243,9 @@
   "allow": [
     {
       "path": "steps[*].body.data.keys[*].ttl",
-      "kind": "tolerance",
-      "ms": 3,
-      "reason": "A TTL in seconds counts down from the seed while the scenario runs; each side reaches this step after its own start-up and scrypt time (slow in a debug build), so the value may be a second or two lower."
+      "kind": "ttl",
+      "unit": "s",
+      "reason": "Each TTL is a remaining duration observed on its page; compare its expiry against the step that set it, independent of startup and request delays."
     }
   ]
 }

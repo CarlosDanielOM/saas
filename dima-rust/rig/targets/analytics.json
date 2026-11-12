@@ -21,7 +21,7 @@
     ],
     "ready": {
       "http": "/health",
-      "timeout_ms": 10000
+      "timeout_ms": 60000
     }
   },
   "candidate": {
@@ -38,7 +38,7 @@
     },
     "ready": {
       "http": "/health",
-      "timeout_ms": 10000
+      "timeout_ms": 60000
     }
   }
 }

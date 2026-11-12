@@ -51,6 +51,12 @@ pub enum Id {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Moment {
     Abs(i64),
+    Step {
+        step: usize,
+        off: i64,
+        span: i64,
+        run: i64,
+    },
     Rel {
         off: i64,
         abs: Option<i64>,
@@ -77,6 +83,7 @@ impl Moment {
     /// Milliseconds relative to the run start, for relations between times of one side.
     pub fn run_offset(&self) -> Option<i64> {
         match self {
+            Moment::Step { run, .. } => Some(*run),
             Moment::Abs(_) | Moment::StartupTtl { .. } => None,
             Moment::Rel { off, .. } | Moment::Seed { off, .. } | Moment::Startup { off } => {
                 Some(*off)
@@ -220,6 +227,7 @@ fn encode_id(id: &Id) -> String {
 pub fn encode_moment(m: &Moment) -> String {
     let iso = |ms: i64| timefmt::format_iso_ms(ms).unwrap_or_else(|| ms.to_string());
     match m {
+        Moment::Step { step, off, .. } => format!("step{step}{}", timefmt::format_offset(*off)),
         Moment::Abs(ms) => format!("t@{}", iso(*ms)),
         Moment::Rel { off, abs: None } => format!("t{}", timefmt::format_offset(*off)),
         Moment::Rel { off, abs: Some(a) } => {
