@@ -14,6 +14,8 @@
 //!   event.
 //! - [`producers`]: Twitch, Polar and custom goal notifications to events, and the journal append.
 //! - [`dispatch`]: the fan-out of journaled events into one delivery per consumer.
+//! - [`consumer`]: the consumer runtime: claims, leases, retries, dead letters, checkpoints, the
+//!   sweep, replay, and the handler trait the feature packages implement.
 //! - [`wakeups`]: the hint that tells consumers there is work, and why losing it only delays it.
 //! - [`health`]: the admin page's journal health report.
 //! - [`jobs`]: durable cron-job intents on the store's cron queue.
@@ -25,6 +27,7 @@
 #![warn(missing_docs)]
 
 pub mod config;
+pub mod consumer;
 pub mod contracts;
 pub mod dispatch;
 pub mod envelope;
