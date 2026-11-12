@@ -1728,15 +1728,23 @@ dependencies = [
 name = "dima-platform"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
+ "bson",
  "bytes",
+ "dima-billing",
  "dima-core",
  "dima-http",
+ "dima-model",
+ "dima-store",
  "dima-text",
  "futures-util",
+ "mongodb",
+ "regex",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "unicode-normalization",
  "url",
 ]
 
