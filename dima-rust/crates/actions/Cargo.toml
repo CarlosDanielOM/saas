@@ -24,6 +24,10 @@ dima-events = { workspace = true }
 # Foundation crates the host's handles come from.
 dima-core = { workspace = true }
 dima-store = { workspace = true }
+# P4-ACT-CORE: the `astvariables` and `commands` write helpers, and the driver's types.
+dima-model = { workspace = true }
+bson = { workspace = true }
+mongodb = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 # P4-BOT-INGRESS: the bot runtime metrics, the pub/sub manager and the product events.

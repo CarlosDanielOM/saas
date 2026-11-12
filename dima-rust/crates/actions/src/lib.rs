@@ -32,10 +32,11 @@
 //!
 //! # Modules and the packages that fill them
 //!
-//! - [`host`]: the dispatch is P4-SKEL's (done), the storage methods P4-ACT-CORE's (wave 2);
+//! - [`host`]: the dispatch is P4-SKEL's, the storage methods ([`host::storage`]) and the
+//!   effect authority ([`host::effects`]) P4-ACT-CORE's;
 //!   [`host::moderation`] P4-ACT-MOD, [`host::channel`] P4-ACT-CHANNEL, [`host::media`]
 //!   P4-ACT-MEDIA, [`host::ai`] P4-ACT-AI-A (all wave 3).
-//! - [`delivery`], [`runner`], [`timers`], [`simulate`]: P4-ACT-CORE (wave 2).
+//! - [`delivery`], [`runner`], [`timers`], [`simulate`]: P4-ACT-CORE.
 //! - [`ai`], by P4-ACT-AI-A (wave 3); [`ai::chat`] P4-ACT-AI-B (wave 4); [`ai::catalog`]
 //!   P4-ACT-AI-C (wave 3).
 //! - [`backend`], by P4-ACT-MEDIA (wave 3).
