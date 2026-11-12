@@ -69,8 +69,10 @@ const COMMON_WORDS: &[&str] = &[
     "sobre",
     "tiene",
 ];
+static WORDS: std::sync::LazyLock<Result<regex::Regex, regex::Error>> =
+    std::sync::LazyLock::new(|| regex::Regex::new(r"[\p{L}\p{N}_]{4,}"));
 fn distinctive_words(value: &str) -> HashSet<String> {
-    let Ok(words) = regex::Regex::new(r"[\p{L}\p{N}_]{4,}") else {
+    let Ok(words) = WORDS.as_ref() else {
         return HashSet::new();
     };
     words

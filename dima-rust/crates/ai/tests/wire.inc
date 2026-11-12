@@ -59,6 +59,9 @@ async fn sdk_wire_recordings() {
         let r = server.requests().last().unwrap().clone();
         assert_eq!(r.target, target);
         assert_eq!(r.method, expected["method"]);
+        // Host/connection/compression/user-agent/fetch metadata are transport noise.
+        // All SDK headers are recorded, but contract headers must match.
+        assert_eq!(r.header("accept"), expected["headers"]["accept"].as_str());
         assert_eq!(
             r.header("api-key").is_some(),
             expected["headers"]["api-key"].as_bool().unwrap()
@@ -81,6 +84,7 @@ async fn sdk_wire_recordings() {
 async fn failures_are_typed_empty_results() {
     for status in [404, 409, 500] {
         let s = MockServer::start().await.unwrap();
+        s.push(MockResponse::json(200, r#"{"result":{"collections":[]}}"#));
         s.push(MockResponse::json(
             status,
             r#"{"status":{"error":"fixture"}}"#,
@@ -108,6 +112,7 @@ async fn failures_are_typed_empty_results() {
     for response in [
         MockResponse::json(200, "not json"),
         MockResponse::json(200, "{}"),
+        MockResponse::json(200, r#"{"result":null}"#),
         MockResponse::json(200, r#"{"result":true}"#).delay(Duration::from_millis(100)),
     ] {
         let s = MockServer::start().await.unwrap();
@@ -316,4 +321,20 @@ async fn collection_conflicts_are_not_silently_accepted() {
         assert!(r.error);
         assert!([409, 500].contains(&r.status));
     }
+}
+
+#[tokio::test]
+async fn create_race_409_is_a_creation_failure() {
+    let s = MockServer::start().await.unwrap();
+    s.push(MockResponse::json(200, r#"{"result":{"collections":[]}}"#));
+    s.push(MockResponse::json(200, r#"{"result":{"exists":false}}"#));
+    s.push(MockResponse::json(409, r#"{"status":{"error":"exists"}}"#));
+    let c = Client::new(
+        HttpClient::builder().build().unwrap(),
+        Some(Config::new(s.url()).provider().unwrap()),
+    );
+    let r = c.create_collection(&twitch_chat_logs_collection()).await;
+    assert!(r.error);
+    assert_eq!(r.status, 500); // Reference catches the HTTP conflict as a generic creation failure.
+    assert_eq!(s.requests().len(), 3);
 }

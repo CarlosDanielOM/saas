@@ -9,7 +9,7 @@ const records=[];
 const server=createServer(async(req,res)=>{
  const chunks=[];for await(const b of req)chunks.push(b);
  const text=Buffer.concat(chunks).toString();
- records.push({method:req.method,target:req.url,headers:{'content-type':req.headers['content-type'],'api-key':Boolean(req.headers['api-key'])},body:text?JSON.parse(text):null});
+ records.push({method:req.method,target:req.url,headers:{...req.headers,host:'<loopback>', 'api-key':Boolean(req.headers['api-key'])},body:text?JSON.parse(text):null});
  let result=req.url.endsWith('/exists')?{exists:false}:req.url.endsWith('/scroll')?{points:[],next_page_offset:null}:req.url.endsWith('/query')?{points:[]}:req.method==='POST'&&req.url.endsWith('/points')?[]:req.url==='/collections'?{collections:[]}:true;
  res.setHeader('content-type','application/json');res.end(JSON.stringify({result,status:'ok',time:0}));
 });

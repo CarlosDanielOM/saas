@@ -14,7 +14,9 @@
 //! Tests accept `DIMA_TEST_QDRANT_API_KEY` for local stores that enable auth;
 //! `tools/test-env` supplies the URL and required-store gate. No key is recorded.
 //! No waits or polling are introduced in the library. SDK constructor's advisory
-//! version probe is omitted; the functional getCollections readiness call remains.
+//! version probe is omitted; transport headers (user-agent, compression and
+//! fetch metadata) use the shared Rust stack rather than impersonating Node.
+//! The functional getCollections readiness call remains.
 //! Embedding timings, language detection and application metrics belong to callers.
 //! All required shared helpers were available; no compatibility shim is needed.
 //! The observer must connect to application logging; the default is silent.
@@ -25,7 +27,8 @@
 //! Startup retains the reference's successful outer result for individual errors.
 //! Memory candidates require MongoDB policy validation by their caller before use.
 //! Quirks retained: 32-bit chat ID collisions overwrite; deletion without a memory
-//! ID skips ownership verification; startup returns 200 for creation, not 201.
+//! ID skips ownership verification; read-before-write collision checks are not
+//! atomic and cannot prevent a concurrent collision race; startup returns 200 for creation, not 201.
 mod pure;
 mod schema;
 mod types;
@@ -164,7 +167,14 @@ impl Client {
         wait: Option<bool>,
     ) -> Result<Value, Error> {
         let provider = self.provider.as_ref().ok_or(Error::NotConfigured)?;
-        let mut request = self.http.request(provider, method, path);
+        let mut request = self.http.request(provider, method, path).header(
+            "accept",
+            if body.is_some() {
+                "application/json"
+            } else {
+                "*/*"
+            },
+        );
         if let Some(wait) = wait {
             request = request.query(&[("wait", if wait { "true" } else { "false" })]);
         }
@@ -172,7 +182,10 @@ impl Client {
             request = request.json_js(body);
         }
         let v: Value = request.send_json().await?;
-        v.get("result").cloned().ok_or(Error::Malformed)
+        v.get("result")
+            .filter(|v| !v.is_null())
+            .cloned()
+            .ok_or(Error::Malformed)
     }
     fn path(template: &'static str, c: &str) -> Result<Path, Error> {
         Ok(Path::template(template, &[c])?)
@@ -336,7 +349,18 @@ impl Client {
    if let Some(payload)=self.payload(p.qdrant_point_id).await? && !qdrant_point_belongs_to_memory(Some(&payload),&p.memory_id,&p.channel_id) {return Ok(OperationResult::failure("Qdrant point ID collision detected; refusing to overwrite another memory"));}
    if build_memory_embedding_input(&p.summary,&p.content).is_empty() {return Ok(OperationResult::failure("Memory content is empty"));}
    let mut payload=json!({"memory_id":p.memory_id,"channel_id":p.channel_id,"subject_username":p.subject_username.as_deref().unwrap_or(""),"subject_user_id":p.subject_user_id.as_deref().unwrap_or(""),"content":p.content,"summary":p.summary});
-   for (k,v) in [("memory_type",json!(p.memory_type)),("status",json!(p.status)),("risk",json!(p.risk)),("confidence",json!(p.confidence)),("subject_scope",json!(p.subject_scope)),("created_at",json!(p.created_at_unix)),("updated_at",json!(p.updated_at_unix))] {if !v.is_null(){payload[k]=v;} }
+   for (key, value) in [
+       ("memory_type", p.memory_type.as_ref().map(|v| json!(v))),
+       ("status", p.status.as_ref().map(|v| json!(v))),
+       ("risk", p.risk.as_ref().map(|v| json!(v))),
+       ("confidence", p.confidence.map(|v| json!(v))),
+       ("subject_scope", p.subject_scope.as_ref().map(|v| json!(v))),
+       ("created_at", p.created_at_unix.map(|v| json!(v))),
+       ("updated_at", p.updated_at_unix.map(|v| json!(v))),
+   ] {
+       // Missing values are omitted; supplied nonfinite numbers serialize as null, as JS does.
+       if let Some(value) = value { payload[key] = value; }
+   }
    self.upsert(&self.memory_collection,p.qdrant_point_id,vector,payload,true).await?;Ok::<_,Error>(OperationResult::success())
   }.await;
         result.unwrap_or_else(|_| {

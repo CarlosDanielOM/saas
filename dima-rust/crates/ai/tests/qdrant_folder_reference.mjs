@@ -65,7 +65,7 @@ const points = [
 ];
 for (const threshold of [.75, .69, 1]) for (const limit of [1, 3, 15]) {
   add('semantic_select', { channelID: 'c', points, threshold, limit }, semantic.dedupeAndSort('c', points, threshold, limit));
-  cases.at(-1).expected_scalar = semantic.dedupeAndSort('c', points.filter(p => Array.from(String(p.payload?.message || '').trim()).length >= 3), threshold, limit);
+  cases.at(-1).expected_scalar = JSON.parse(JSON.stringify(semantic.dedupeAndSort('c', points.filter(p => Array.from(String(p.payload?.message || '').trim()).length >= 3), threshold, limit)));
 }
 for (const point of [
   {}, { id: 0, payload: {} },
