@@ -137,15 +137,24 @@ build order only, and no package has to interoperate with a running TypeScript p
 
 ## Pace
 
-A provider rate limit stopped four workers at once on 2026-11-11 (their work was recovered from the
-worktrees). The plan's usage is readable in T3 Code's provider cache
-(`~/.t3/caches/claudeAgent.json`, `usageLimits`: a five-hour window and a weekly one). Measured on the
-evening of 2026-11-11: a package costs about 3% of a five-hour window, and a full window about 8% of the
-week. The lead reads the figures before each wave and keeps the five-hour window under about 80% and
-the week on a pace that lasts until its reset. Within that, five or six implementation workers run at a
-time; the practical limits are the laptop's memory, the two build slots and the lead's own integration
-(merge, gate, review of each result). `high` unless a package is truly hard; every brief tells the
-worker to commit as it goes. Reviews by GPT-6.1 Sol run on another provider and do not count.
+The plan's usage is readable in T3 Code's provider cache (`~/.t3/caches/claudeAgent.json`,
+`usageLimits`: a five-hour window and a weekly one). The weekly limit is the binding one: measured on
+2026-11-11 with ten Opus workers, 40 minutes took 19% of a five-hour window and 5% of the week, so a
+full window costs about a quarter of the week. The week resets on Saturday 2026-11-14 at 18:00 MST.
+
+Owner's rules (2026-11-11, 22:15 MST):
+
+- Full speed until the weekly figure reaches 75%, then slow down until 95%, then stop until the reset.
+- The five-hour window must never reach 100% (workers die in the middle of a task, as happened once):
+  the lead reads the figures before every launch and keeps it under about 90%.
+- Night, 23:00 to 07:00 MST: four GPT-6.1 Sol implementers and two Opus. Day: about six Opus
+  implementers, Sol reviews. Sol gets well-specified or self-contained packages (the small services,
+  thin API wrappers, email, model batches); Opus keeps money, tokens, the engine and data integrity.
+  Every result, whoever wrote it, is merged, gated and reviewed the same way.
+
+Other limits: the laptop's memory, the two build slots, and the lead's own integration (merge, gate,
+review of each result). `high` unless a package is truly hard; every brief tells the worker to commit
+as it goes.
 
 ## Baseline (2026-11-11)
 
