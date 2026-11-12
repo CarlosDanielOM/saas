@@ -9,10 +9,12 @@
 //!    the cache is repaired from MongoDB (fenced by the generation): nothing is exchanged.
 //! 2. Otherwise the **stored** refresh token is exchanged, never the cache's copy. A cache that
 //!    differs from MongoDB is not assumed to be older or newer.
-//! 3. When Twitch refuses the stored token for good and the cache holds a *different* refresh
-//!    token, that one is tried once before the streamer is wiped (the cache can be ahead of
-//!    MongoDB, for example after a restore of MongoDB). A rotation it yields is stored over the
-//!    refused state; a refusal of it too wipes as usual.
+//! 3. When Twitch refuses the stored token for good, other refresh tokens are tried once each
+//!    before the streamer is wiped: first the answer of an **unmatched** recovery record (MongoDB
+//!    holds another token at its generation, see `crate::recovery`), then a *different* token in
+//!    the cache (the cache can be ahead of MongoDB, for example after a restore of MongoDB). A
+//!    rotation one of them yields is stored over the refused state; when all are refused the
+//!    streamer is wiped as usual.
 //! 4. A rotation is written with a compare-and-set on the state read in step 1; when that state
 //!    changed meanwhile (a sign-in), the newer stored token is kept.
 
@@ -71,6 +73,34 @@ enum Exchange {
         outcome: RefreshOutcome,
         ambiguous: bool,
     },
+}
+
+/// A refresh token other than the stored one, tried once before a permanent refusal wipes.
+pub(crate) struct Rescue {
+    token: RefreshToken,
+    /// From an unmatched recovery record (otherwise from the cache).
+    from_record: bool,
+}
+
+/// The rescues of a refresh, in the order they are tried: the answers of unmatched records,
+/// then the cache's token; none equal to `stored` or to an earlier one.
+fn rescues(
+    records: Vec<RefreshToken>,
+    cached: Option<RefreshToken>,
+    stored: Option<&RefreshToken>,
+) -> Vec<Rescue> {
+    let mut list: Vec<Rescue> = Vec::new();
+    let candidates = records
+        .into_iter()
+        .map(|token| (token, true))
+        .chain(cached.map(|token| (token, false)));
+    for (token, from_record) in candidates {
+        if stored == Some(&token) || list.iter().any(|rescue| rescue.token == token) {
+            continue;
+        }
+        list.push(Rescue { token, from_record });
+    }
+    list
 }
 
 /// The lease of a streamer, or the token another holder produced while this one waited.
@@ -388,10 +418,11 @@ impl Inner {
     ) -> Result<RefreshOutcome, TwitchError> {
         // An answer not yet in MongoDB is written first, never exchanged again (review F1/F2).
         self.apply_registered(user_id, context).await?;
-        self.recover_record(user_id, context).await?;
+        let recovery = self.recover_record(user_id, context).await?;
         let Some(stored) = self.load_stored(user_id).await? else {
             return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::UserNotFound));
         };
+        let rescue = rescues(recovery.unmatched_tokens, None, Some(presented));
         match stored_refresh(&self.cipher, &stored.refresh) {
             Ok(Some(current)) if current != *presented => {
                 // Rotated since the caller read it: the stored pair, nothing sent.
@@ -401,7 +432,7 @@ impl Inner {
             // Still the stored one, or the stored envelope is unreadable (the presented token
             // then replaces it).
             Ok(Some(_)) | Err(_) => {
-                self.exchange_and_store(lease, presented, user_id, context, Some(stored), None)
+                self.exchange_and_store(lease, presented, user_id, context, Some(stored), rescue)
                     .await
             }
             Ok(None) => {
@@ -469,7 +500,7 @@ impl Inner {
 
     /// Exchanges `refresh_token` under the exchange marker and stores the outcome. `base` is
     /// the stored state the token was read from (the rotation is written over it with a
-    /// compare-and-set); `rescue` is a different refresh token to try before a permanent
+    /// compare-and-set); `rescue` are other refresh tokens to try, once each, before a permanent
     /// refusal wipes the streamer.
     async fn exchange_and_store(
         self: &Arc<Self>,
@@ -478,7 +509,7 @@ impl Inner {
         user_id: &str,
         context: &RefreshContext,
         base: Option<StoredAccount>,
-        rescue: Option<RefreshToken>,
+        rescue: Vec<Rescue>,
     ) -> Result<RefreshOutcome, TwitchError> {
         if self.shutdown.is_triggered() {
             return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::Interrupted));
@@ -585,11 +616,15 @@ impl Inner {
                     .after_settlement(user_id, settlement, &answer.rotation, context)
                     .await?
                 {
-                    Settled::Written | Settled::Superseded(None) => RefreshOutcome::Success {
-                        access_token: access,
-                        refresh_token: refresh,
-                        expires_in,
-                    },
+                    // Unmatched: MongoDB holds another token, the answer stays in Dragonfly; the
+                    // pair Twitch just gave is valid and is what the caller gets.
+                    Settled::Written | Settled::Superseded(None) | Settled::Unmatched => {
+                        RefreshOutcome::Success {
+                            access_token: access,
+                            refresh_token: refresh,
+                            expires_in,
+                        }
+                    }
                     Settled::Superseded(Some(stored)) => stored,
                     Settled::UserNotFound => failure(
                         RefreshFailureKind::Transient,
@@ -628,7 +663,8 @@ impl Inner {
     }
 
     /// A permanent refusal of `failed`: compared with the stored refresh token, then a
-    /// concurrent rotation is reused, the `rescue` token tried, or the stored tokens wiped.
+    /// concurrent rotation is reused, the `rescue` tokens tried (once each), or the stored
+    /// tokens wiped.
     #[allow(clippy::too_many_arguments)]
     async fn refused_for_good(
         self: &Arc<Self>,
@@ -638,7 +674,7 @@ impl Inner {
         status: u16,
         reason: RefreshFailureReason,
         context: &RefreshContext,
-        rescue: Option<RefreshToken>,
+        rescue: Vec<Rescue>,
     ) -> Result<RefreshOutcome, TwitchError> {
         let mut rescue = rescue;
         for _round in 0..CAS_ROUNDS {
@@ -676,55 +712,61 @@ impl Inner {
                     RefreshFailureReason::ExchangeInFlight,
                 ));
             }
-            // The stored token is the refused one. A different token in the cache is tried once
-            // before the streamer is wiped: the cache may be ahead of MongoDB.
-            if let (Some(base), Some(candidate)) = (&stored, rescue.take()) {
-                self.refresh_log(
-                    Level::Warn,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_rescue_attempt",
-                        "reason": "the stored refresh token was refused; the cache holds a different one",
-                    }),
-                );
-                match self.exchange(&candidate, user_id, context).await {
-                    Exchange::Rotated {
-                        access,
-                        refresh,
-                        expires_in,
-                    } => {
-                        return self
-                            .store_rotation(
-                                lease,
-                                user_id,
-                                failed,
-                                Some(base.clone()),
-                                access,
-                                refresh,
-                                expires_in,
-                                context,
-                            )
-                            .await;
-                    }
-                    Exchange::Refused {
-                        kind: RefreshFailureKind::Permanent,
-                        ..
-                    } => {}
-                    Exchange::Refused {
-                        kind,
-                        reason,
-                        status,
-                    } => return Ok(failure(kind, Some(status), reason)),
-                    Exchange::Failed { outcome, ambiguous } => {
-                        if ambiguous {
-                            // The cache's token may have been consumed and its answer lost.
-                            self.abandon_marker(lease);
+            // The stored token is the refused one. Other tokens (an unmatched record's answer,
+            // the cache's) are tried once each before the streamer is wiped.
+            if let Some(base) = &stored {
+                for candidate in std::mem::take(&mut rescue) {
+                    self.refresh_log(
+                        Level::Warn,
+                        Destination::Both,
+                        user_id,
+                        context,
+                        json!({
+                            "function": "refreshTwitchToken",
+                            "userId": user_id,
+                            "action": "token_refresh_rescue_attempt",
+                            "reason": if candidate.from_record {
+                                "the stored refresh token was refused; an unmatched recovery record holds a different one"
+                            } else {
+                                "the stored refresh token was refused; the cache holds a different one"
+                            },
+                        }),
+                    );
+                    match self.exchange(&candidate.token, user_id, context).await {
+                        Exchange::Rotated {
+                            access,
+                            refresh,
+                            expires_in,
+                        } => {
+                            return self
+                                .store_rotation(
+                                    lease,
+                                    user_id,
+                                    failed,
+                                    Some(base.clone()),
+                                    access,
+                                    refresh,
+                                    expires_in,
+                                    context,
+                                )
+                                .await;
                         }
-                        return Ok(outcome);
+                        Exchange::Refused {
+                            kind: RefreshFailureKind::Permanent,
+                            ..
+                        } => {}
+                        Exchange::Refused {
+                            kind,
+                            reason,
+                            status,
+                        } => return Ok(failure(kind, Some(status), reason)),
+                        Exchange::Failed { outcome, ambiguous } => {
+                            if ambiguous {
+                                // The token may have been consumed and its answer lost.
+                                self.abandon_marker(lease);
+                            }
+                            return Ok(outcome);
+                        }
                     }
                 }
             }
@@ -1010,7 +1052,7 @@ impl Inner {
         let context = RefreshContext::new("token_refresh", caller);
         // An answer not yet in MongoDB is written first, never exchanged again (review F1/F2).
         self.apply_registered(id, &context).await?;
-        self.recover_record(id, &context).await?;
+        let recovery = self.recover_record(id, &context).await?;
         let Some(stored) = self.load_stored(id).await? else {
             return not_found();
         };
@@ -1036,13 +1078,13 @@ impl Inner {
         let candidate = cached.refresh_token;
         let (token, rescue) = match stored_refresh(&self.cipher, &stored.refresh) {
             Ok(Some(token)) => {
-                let rescue = candidate.filter(|other| *other != token);
+                let rescue = rescues(recovery.unmatched_tokens, candidate, Some(&token));
                 (token, rescue)
             }
             // An envelope that cannot be decrypted holds no usable token: the cache's copy is
             // the only candidate (its rotation replaces the unreadable envelope).
             Err(_) if candidate.is_some() => match candidate {
-                Some(token) => (token, None),
+                Some(token) => (token, Vec::new()),
                 None => return not_found(),
             },
             Ok(None) | Err(_) => {
