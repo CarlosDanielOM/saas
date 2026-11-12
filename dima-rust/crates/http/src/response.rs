@@ -7,6 +7,7 @@ use crate::sse::SseStream;
 use bytes::{Bytes, BytesMut};
 use http::{HeaderMap, StatusCode};
 use serde::de::DeserializeOwned;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::sync::OwnedSemaphorePermit;
@@ -29,6 +30,7 @@ pub(crate) struct Limits {
 pub struct Response {
     inner: reqwest::Response,
     info: RequestInfo,
+    secrets: Arc<[&'static str]>,
     limits: Limits,
     received: u64,
     cancel: Cancel,
@@ -53,14 +55,14 @@ impl Response {
     pub(crate) fn new(
         inner: reqwest::Response,
         info: RequestInfo,
-        secrets: &[&'static str],
+        secrets: Arc<[&'static str]>,
         limits: Limits,
         cancel: Cancel,
     ) -> Self {
-        let info = info.with_query(inner.url(), secrets);
         Self {
             inner,
             info,
+            secrets,
             limits,
             received: 0,
             cancel,
@@ -98,9 +100,11 @@ impl Response {
         self.inner.headers()
     }
 
-    /// The request this answers (safe to print).
-    pub fn info(&self) -> &RequestInfo {
-        &self.info
+    /// The request this answers (safe to print), with its redacted query.
+    pub fn info(&self) -> RequestInfo {
+        self.info
+            .clone()
+            .with_query(self.inner.url(), &self.secrets)
     }
 
     /// How many attempts were made.
@@ -179,7 +183,7 @@ impl Response {
                 Ok(None)
             }
             Step::Next(Err(error)) => {
-                let error = Error::from_reqwest(self.info.clone(), error);
+                let error = Error::from_reqwest(self.info(), error);
                 if let Some(end) = &mut self.end {
                     end.fail(error.class());
                 }
@@ -193,7 +197,7 @@ impl Response {
         if let Some(end) = &mut self.end {
             end.fail(class);
         }
-        let info = self.info.clone();
+        let info = self.info();
         match class {
             FailureClass::Cancelled => Error::Cancelled { info },
             FailureClass::Timeout(kind) => Error::Timeout { info, kind },
@@ -236,7 +240,7 @@ impl Response {
     /// The body parsed as JSON. Unpaired surrogate escapes become U+FFFD first (MIGRATION.md,
     /// text rule 3).
     pub async fn json<T: DeserializeOwned>(self) -> Result<T> {
-        let info = self.info.clone();
+        let info = self.info();
         let bytes = self.bytes().await?;
         let clean = dima_text::sanitize_lone_surrogates(&bytes);
         serde_json::from_slice(&clean).map_err(|error| Error::Decode {
@@ -252,12 +256,12 @@ impl Response {
                 .write_all(&chunk)
                 .await
                 .map_err(|error| Error::Transport {
-                    info: self.info.clone(),
+                    info: self.info(),
                     source: Box::new(error),
                 })?;
         }
         writer.flush().await.map_err(|error| Error::Transport {
-            info: self.info.clone(),
+            info: self.info(),
             source: Box::new(error),
         })?;
         Ok(self.received)
@@ -303,7 +307,7 @@ impl Response {
         let attempts = self.attempts;
         let retried = self.retried_status;
         let error = Error::Status(Box::new(StatusError {
-            info: self.info.clone(),
+            info: self.info(),
             status,
             headers,
             body: body.freeze(),

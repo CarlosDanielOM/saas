@@ -528,16 +528,17 @@ impl GuardedRequest<'_> {
             if let Body::Bytes(bytes) = &body {
                 builder = builder.body(bytes.clone());
             }
-            let call_info = info(method.clone());
-            let response =
-                client::await_with(builder.send(), deadline, None, &cancel, &call_info).await?;
+            let response = client::await_with(builder.send(), deadline, None, &cancel, || {
+                info(method.clone())
+            })
+            .await?;
             let status = response.status();
             if status.is_redirection()
                 && let Some(location) = response.headers().get(http::header::LOCATION)
             {
                 if hop >= policy.max_redirects {
                     return Err(Error::Blocked {
-                        info: call_info,
+                        info: info(method),
                         reason: BlockReason::TooManyRedirects,
                     });
                 }
@@ -546,8 +547,8 @@ impl GuardedRequest<'_> {
                     .ok()
                     .and_then(|l| url.join(l).ok())
                     .filter(|u| !has_zone(u.as_str()))
-                    .ok_or(Error::Blocked {
-                        info: call_info,
+                    .ok_or_else(|| Error::Blocked {
+                        info: info(method.clone()),
                         reason: BlockReason::BadRedirect,
                     })?;
                 drop(response);
@@ -569,7 +570,13 @@ impl GuardedRequest<'_> {
                 idle: self.idle_timeout,
                 deadline,
             };
-            return Ok(Response::new(response, info(method), &[], limits, cancel));
+            return Ok(Response::new(
+                response,
+                info(method),
+                Arc::from([]),
+                limits,
+                cancel,
+            ));
         }
     }
 }

@@ -68,7 +68,7 @@ pub(crate) async fn await_with(
     deadline: Instant,
     headers_deadline: Option<Instant>,
     cancel: &Cancel,
-    info: &RequestInfo,
+    info: impl Fn() -> RequestInfo,
 ) -> Result<reqwest::Response> {
     let headers_deadline = headers_deadline.unwrap_or(deadline);
     let (kind, at) = if headers_deadline < deadline {
@@ -78,9 +78,9 @@ pub(crate) async fn await_with(
     };
     tokio::select! {
         biased;
-        () = cancel.wait() => Err(Error::Cancelled { info: info.clone() }),
-        () = tokio::time::sleep_until(at) => Err(Error::Timeout { info: info.clone(), kind }),
-        result = send => result.map_err(|error| Error::from_reqwest(info.clone(), error)),
+        () = cancel.wait() => Err(Error::Cancelled { info: info() }),
+        () = tokio::time::sleep_until(at) => Err(Error::Timeout { info: info(), kind }),
+        result = send => result.map_err(|error| Error::from_reqwest(info(), error)),
     }
 }
 
@@ -685,7 +685,7 @@ impl<'a> Sender<'a> {
         Response::new(
             response,
             RequestInfo::new(self.provider.0.name, self.method.clone(), self.template),
-            &self.provider.0.secret_query,
+            Arc::clone(&self.provider.0.secret_query),
             limits,
             self.cancel.clone(),
         )
@@ -750,13 +750,12 @@ impl<'a> Sender<'a> {
                     self.body = Body::Stream(reqwest::Body::from(Bytes::new()));
                 }
             }
-            let info = self.info();
             let response = match await_with(
                 builder.send(),
                 deadline,
                 headers_deadline,
                 &self.cancel,
-                &info,
+                || self.info(),
             )
             .await
             {
@@ -767,13 +766,13 @@ impl<'a> Sender<'a> {
             if !status.is_redirection() || !response.headers().contains_key(LOCATION) {
                 return (AttemptResult::Answer(response), end);
             }
-            let redirect = Error::Redirect {
-                info,
+            let redirect = || Error::Redirect {
+                info: self.info(),
                 status: status.as_u16(),
             };
             let max = match self.provider.0.redirects {
                 Redirects::Manual => return (AttemptResult::Answer(response), end),
-                Redirects::Error => return (AttemptResult::Failed(redirect), end),
+                Redirects::Error => return (AttemptResult::Failed(redirect()), end),
                 Redirects::SameOrigin { max } => max,
             };
             let next = response
@@ -781,17 +780,14 @@ impl<'a> Sender<'a> {
                 .get(LOCATION)
                 .and_then(|l| l.to_str().ok())
                 .and_then(|l| url.join(l).ok());
-            let replay_ok = !matches!(self.body, Body::Stream(_))
-                || !matches!(
-                    status,
-                    StatusCode::TEMPORARY_REDIRECT | StatusCode::PERMANENT_REDIRECT
-                );
+            // 301/302 turn POST into GET and 303 turns everything but HEAD into GET, as fetch
+            // does; any other hop re-sends the body, which a consumed stream cannot.
+            let to_get = (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
+                && method == Method::POST)
+                || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
+            let replay_ok = to_get || !matches!(self.body, Body::Stream(_));
             match next {
                 Some(next) if hops < max && next.origin() == url.origin() && replay_ok => {
-                    let to_get =
-                        (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
-                            && method == Method::POST)
-                            || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
                     if to_get {
                         method = Method::GET;
                         self.body = Body::Empty;
@@ -800,7 +796,7 @@ impl<'a> Sender<'a> {
                     url = next;
                     hops += 1;
                 }
-                _ => return (AttemptResult::Failed(redirect), end),
+                _ => return (AttemptResult::Failed(redirect()), end),
             }
         }
     }

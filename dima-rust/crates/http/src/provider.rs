@@ -79,7 +79,7 @@ pub(crate) struct ProviderInner {
     pub retry: RetryPolicy,
     pub redirects: Redirects,
     pub semaphore: Option<Arc<Semaphore>>,
-    pub secret_query: Vec<&'static str>,
+    pub secret_query: Arc<[&'static str]>,
     pub internal: bool,
 }
 
@@ -266,7 +266,7 @@ impl ProviderBuilder {
             retry: self.retry,
             redirects: self.redirects,
             semaphore: self.max_concurrency.map(|n| Arc::new(Semaphore::new(n))),
-            secret_query: self.secret_query,
+            secret_query: Arc::from(self.secret_query),
             internal: self.internal,
         })))
     }

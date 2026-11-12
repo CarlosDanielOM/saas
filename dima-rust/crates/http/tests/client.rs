@@ -1035,3 +1035,38 @@ async fn corrupt_compressed_body_is_a_decode_error() {
         .unwrap_err();
     assert_eq!(error.class(), FailureClass::Decode, "{error:?}");
 }
+
+#[tokio::test]
+async fn a_streamed_body_is_not_resent_through_a_redirect() {
+    let server = MockServer::start().await.unwrap();
+    let follow = Provider::builder("f", &server.url())
+        .redirects(Redirects::SameOrigin { max: 3 })
+        .build()
+        .unwrap();
+    let client = client();
+    for status in [301, 307] {
+        server.push(MockResponse::new(status).header("location", "/next"));
+        let error = client
+            .request(&follow, Method::PUT, "/upload")
+            .body_stream(dima_http::StreamBody::from(Bytes::from_static(b"data")))
+            .send()
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(error, Error::Redirect { .. }),
+            "{status}: {error:?}"
+        );
+    }
+    // A 303 needs no body: it is followed as a GET.
+    server.push(MockResponse::new(303).header("location", "/next"));
+    server.push(MockResponse::new(200));
+    let response = client
+        .request(&follow, Method::PUT, "/upload")
+        .body_stream(dima_http::StreamBody::from(Bytes::from_static(b"data")))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let last = server.requests().pop().unwrap();
+    assert_eq!((last.method.as_str(), last.body.len()), ("GET", 0));
+}
