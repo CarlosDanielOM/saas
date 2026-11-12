@@ -671,9 +671,11 @@ impl CompiledSettingsCache {
                     .saturating_sub(old.compiled.memory_usage().max(MIN_ENTRY_BYTES));
             }
         }
-        if self.limits.channels == 0 || size > self.limits.bytes {
+        if self.limits.channels == 0 {
             return;
         }
+        // A document larger than the whole budget is still kept (alone): recompiling it on
+        // every message would cost far more than the memory.
         state.tick += 1;
         let used = state.tick;
         state.bytes += size;

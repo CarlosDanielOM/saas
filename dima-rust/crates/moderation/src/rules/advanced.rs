@@ -134,6 +134,15 @@ fn fold_by_character(text: &str) -> (String, Vec<FoldedChar>) {
     let mut buffer = [0_u8; 4];
     for (start, ch) in text.char_indices() {
         let end = start + ch.len_utf8();
+        if ch.is_ascii() {
+            map.push(FoldedChar {
+                folded_start: folded.len(),
+                start,
+                end,
+            });
+            folded.push(ch.to_ascii_lowercase());
+            continue;
+        }
         let piece = fold_text(ch.encode_utf8(&mut buffer));
         if piece.is_empty() {
             continue;
