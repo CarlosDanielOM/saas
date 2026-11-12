@@ -635,4 +635,20 @@ const dateText = unique(dateTimes).map((ms) => {
 
 write('date_text.json', { date_text: dateText });
 
-console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json date_text.json dates.json order.json text.json');
+// ---------------------------------------------------------------- a value as JavaScript sees it
+
+// String(v), Number(v), Boolean(v) and Object.keys(v) of parsed JSON. The Rust test reads the
+// input with serde_json (keys in text order), so the key order comes from js_object_keys alone.
+const viewInputs = [...stringOfInputs, '"  12 "', '" 12﻿"', '"0x10"', '"0b101"', '"0o17"', '"1e3"', '" "', '"1_000"', '"Infinity"',
+    '"-Infinity"', '"abc"', '"-0"', '"0"', '"false"', '[" 7 "]', '[[]]', '[[[5]]]', '[1,2]', '[true]', '["0x1F"]', '[null,1]', '[1e21]', '[-0]',
+    '[""]', '[" "]', '[{}]', '{"b":1,"2":2,"a":3,"1":4}', '{"10":1,"9":2,"01":3,"-1":4,"4294967294":5,"4294967295":6,"":7}', '{"z":{"1":1}}',
+    '0.1', '-1.5', '5e-324', '1.7976931348623157e308', '9007199254740993', '18446744073709551616', '-1e21', '1e-7', '"\\t\\n 3.5e1 \\r"', '"+.5"',
+    '"0x"', '"1e400"', '"-1e400"', '["1","2"]', '[[1,[2,[3]]]]', '[[null],[]]', '{"0":"a"}', '{"length":1}'];
+const jsView = unique(viewInputs).map((input) => {
+    const v = JSON.parse(input);
+    return [input, String(v), bits(Number(v)), Boolean(v), v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v) : null];
+});
+
+write('view.json', { js_view: jsView });
+
+console.log('wrote numbers.json whitespace.json json.json uri.json json_parse.json date_text.json view.json dates.json order.json text.json');

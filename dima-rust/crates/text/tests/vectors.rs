@@ -802,3 +802,38 @@ fn date_text_matches_node() {
     }
     check.finish();
 }
+
+// ------------------------------------------------------------------ a value as JavaScript sees it
+
+#[test]
+fn js_view_matches_node() {
+    let file = load("view.json");
+    let mut check = Check::new("String/Number/Boolean/Object.keys");
+    for row in rows(&file, "js_view") {
+        let input = text(&row[0]);
+        // Keys in text order: the property order must come from `js_object_keys`.
+        let value: Value =
+            serde_json::from_str(input).unwrap_or_else(|error| panic!("{input}: {error}"));
+        let string = js_string(&value);
+        check.expect(string == text(&row[1]), || {
+            format!("String({input}): {string:?} != {}", row[1])
+        });
+        let number = js_number(&value);
+        check.expect(same(number, double(&row[2])), || {
+            format!("Number({input}): {number:e} != {:e}", double(&row[2]))
+        });
+        let truthy = js_truthy(&value);
+        check.expect(Some(truthy) == row[3].as_bool(), || {
+            format!("Boolean({input}): {truthy} != {}", row[3])
+        });
+        let keys = js_object_keys(&value);
+        let expected: Vec<&str> = row[4]
+            .as_array()
+            .map(|keys| keys.iter().map(text).collect())
+            .unwrap_or_default();
+        check.expect(keys == expected, || {
+            format!("Object.keys({input}): {keys:?} != {expected:?}")
+        });
+    }
+    check.finish();
+}

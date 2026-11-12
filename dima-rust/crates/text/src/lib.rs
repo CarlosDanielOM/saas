@@ -6,7 +6,8 @@
 //! the contract rows of that section; no UTF-16 data is built or stored.
 //!
 //! The JavaScript behaviour reproduced here (whitespace, number text, `Number()`/`parseInt`,
-//! dates, `JSON.stringify` and `JSON.parse`, URI escapes, string ordering, case mapping) is pinned by golden vectors written
+//! dates, `JSON.stringify` and `JSON.parse`, URI escapes, string ordering, case mapping, and a
+//! value read as JavaScript reads it: [`JsView`]) is pinned by golden vectors written
 //! by the production Node runtime: see `tests/vectors/generate.mjs`.
 //!
 //! # Reproducing `JSON.stringify` bytes
@@ -39,6 +40,7 @@ mod order;
 mod parse;
 mod uri;
 mod utf16;
+mod view;
 mod whitespace;
 
 pub use case::{nfc, to_lower, to_upper};
@@ -64,4 +66,8 @@ pub use order::{CollationError, Collator};
 pub use parse::{Radix, parse_float, parse_int, parse_number};
 pub use uri::{UriError, decode_uri, decode_uri_component, encode_uri, encode_uri_component};
 pub use utf16::{truncate_utf16_budget, utf16_len, utf16_offset, utf16_to_byte};
+pub use view::{
+    Js, JsView, js_number, js_number_with, js_object_keys, js_property_order, js_string,
+    js_string_with, js_truthy, js_truthy_with,
+};
 pub use whitespace::{is_js_whitespace, trim, trim_end, trim_start};

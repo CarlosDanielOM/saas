@@ -6,23 +6,14 @@
 
 use serde_json::Value;
 
-/// `Boolean(value)`: `false`, `0`, `-0`, `NaN`, `""`, `null` and `undefined` are falsy.
+/// `Boolean(value)` ([`dima_text::js_truthy`]); `undefined` is falsy.
 pub fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Array(_) | Value::Object(_)) => true,
-    }
+    value.is_some_and(dima_text::js_truthy)
 }
 
-/// `String(value)`; `undefined` is `"undefined"`.
+/// `String(value)` ([`dima_text::js_string`]); `undefined` is `"undefined"`.
 pub fn string(value: Option<&Value>) -> String {
-    match value {
-        None => "undefined".to_owned(),
-        Some(value) => dima_text::string_of(value),
-    }
+    value.map_or_else(|| "undefined".to_owned(), dima_text::js_string)
 }
 
 /// `String(value || '')`.
@@ -38,23 +29,13 @@ pub fn string_or_empty(value: Option<&Value>) -> String {
 pub fn string_nullish(value: Option<&Value>) -> String {
     match value {
         None | Some(Value::Null) => String::new(),
-        Some(value) => dima_text::string_of(value),
+        Some(value) => dima_text::js_string(value),
     }
 }
 
-/// `Number(value)`.
+/// `Number(value)` ([`dima_text::js_number`]); `undefined` is NaN.
 pub fn number(value: Option<&Value>) -> f64 {
-    match value {
-        None => f64::NAN,
-        Some(Value::Null) => 0.0,
-        Some(Value::Bool(flag)) => f64::from(u8::from(*flag)),
-        Some(Value::Number(number)) => number.as_f64().unwrap_or(f64::NAN),
-        Some(Value::String(text)) => dima_text::parse_number(text),
-        // ToPrimitive: arrays join their items, objects are "[object Object]" (NaN).
-        Some(other @ (Value::Array(_) | Value::Object(_))) => {
-            dima_text::parse_number(&dima_text::string_of(other))
-        }
-    }
+    value.map_or(f64::NAN, dima_text::js_number)
 }
 
 /// `Number.isInteger(n)`.

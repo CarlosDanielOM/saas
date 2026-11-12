@@ -353,7 +353,7 @@ pub(crate) fn array_index(key: &str) -> Option<u32> {
 }
 
 /// Array-index keys first in numeric order; the rest keep their relative order (stable sort).
-fn index_first(left: &str, right: &str) -> Ordering {
+pub(crate) fn index_first(left: &str, right: &str) -> Ordering {
     match (array_index(left), array_index(right)) {
         (Some(left), Some(right)) => left.cmp(&right),
         (Some(_), None) => Ordering::Less,
