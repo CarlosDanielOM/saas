@@ -1,7 +1,7 @@
 //! Trigger delivery through the existing backend owner-token API boundary.
 use super::{
     Envelope,
-    chats::speech::{BackendApi, BackendRequest},
+    chats::speech::{ApiTarget, BackendApi, BackendRequest},
 };
 use crate::Twitch;
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,7 @@ pub async fn send_trigger(
     body["queue"] = queue.into();
     let Ok(reply) = api
         .request(BackendRequest {
+            target: ApiTarget::PublicApi,
             method: dima_http::Method::POST,
             path: format!(
                 "/triggers/{}/send",

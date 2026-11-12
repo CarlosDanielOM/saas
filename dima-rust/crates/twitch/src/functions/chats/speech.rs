@@ -6,8 +6,50 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
 
+/// Which reference base URL the API transport uses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ApiTarget {
+    /// INTERNAL_API_URL, NODE_ENV production, then legacy getUrl().
+    Speech,
+    /// getApiUrl(), always https://api.domdimabot.com.
+    PublicApi,
+}
+/// Startup configuration for the future backend HTTP transport.
+pub struct BackendConfig {
+    /// Trusted speech service base, including explicit operator override.
+    pub speech_base: String,
+    /// Trigger API base (fixed by the reference).
+    pub public_base: &'static str,
+}
+impl BackendConfig {
+    /// Read supplied startup values once; callers own environment access.
+    pub fn from_values(
+        internal_api_url: Option<&str>,
+        node_env: Option<&str>,
+        legacy_environment: Option<&str>,
+    ) -> Self {
+        let speech_base = internal_api_url
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| {
+                if node_env == Some("production") {
+                    "http://dima-server:3000"
+                } else if legacy_environment == Some("production") {
+                    "https://api.domdimabot.com"
+                } else {
+                    "http://localhost:3000"
+                }
+            })
+            .to_owned();
+        Self {
+            speech_base,
+            public_base: "https://api.domdimabot.com",
+        }
+    }
+}
 /// The backend API request, relative to its configured trusted base URL.
 pub struct BackendRequest {
+    /// Select the configured base; the transport must not derive it from user input.
+    pub target: ApiTarget,
     /// HTTP method.
     pub method: dima_http::Method,
     /// Relative route.
@@ -30,7 +72,8 @@ pub struct BackendReply {
 }
 /// Small transport interface for the future API crate. Only trusted configured API URLs are used.
 pub trait BackendApi: Send + Sync {
-    /// Perform this request without logging its owner token. JSON bodies set Content-Type.
+    /// Perform once without logging its owner token. JSON bodies set Content-Type.
+    /// The transport applies BackendConfig and the shared observability trace/signature headers.
     fn request(&self, request: BackendRequest)
     -> BoxFuture<'_, Result<BackendReply, BackendError>>;
 }
@@ -71,6 +114,7 @@ pub async fn request_tts(
     };
     let Ok(reply) = api
         .request(BackendRequest {
+            target: ApiTarget::Speech,
             method: dima_http::Method::POST,
             path: format!("/speech/{}", dima_text::encode_uri_component(channel)),
             owner: None,
@@ -162,6 +206,7 @@ pub async fn control_tts(
     };
     let Ok(reply) = api
         .request(BackendRequest {
+            target: ApiTarget::Speech,
             method: dima_http::Method::POST,
             path: format!(
                 "/speech/{}/control",
@@ -189,6 +234,18 @@ pub async fn control_tts(
     result.error = !(200..300).contains(&reply.status) || has_error(&body);
     result
 }
+fn decode_status(value: &Value) -> Option<TtsStatusData> {
+    let n = value.get("queueLength")?.as_f64()?;
+    if !n.is_finite() || n.fract() != 0.0 || !(0.0..=9_007_199_254_740_991.0).contains(&n) {
+        return None;
+    }
+    Some(TtsStatusData {
+        connected: value.get("connected")?.as_bool()?,
+        playing: value.get("playing")?.as_bool()?,
+        preparing: value.get("preparing")?.as_bool()?,
+        queue_length: n as u64,
+    })
+}
 /// `getTtsStatus`.
 pub async fn get_tts_status(
     twitch: &Twitch,
@@ -200,6 +257,7 @@ pub async fn get_tts_status(
     };
     let Ok(reply) = api
         .request(BackendRequest {
+            target: ApiTarget::Speech,
             method: dima_http::Method::GET,
             path: format!(
                 "/speech/{}/status",
@@ -220,7 +278,7 @@ pub async fn get_tts_status(
     let data = body
         .get("data")
         .cloned()
-        .and_then(|v| serde_json::from_value::<TtsStatusData>(v).ok())
+        .and_then(|v| decode_status(&v))
         .filter(|d| d.queue_length <= 9_007_199_254_740_991);
     if !(200..300).contains(&reply.status) || has_error(&body) || data.is_none() {
         return Envelope::failure(
