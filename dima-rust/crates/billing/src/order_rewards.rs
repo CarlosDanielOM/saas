@@ -72,8 +72,9 @@ pub enum RewardError {
     /// `throw new Error(message)`: the event is retried.
     #[error("{0}")]
     Failed(String),
-    /// The owner could not be resolved or no longer exists (`DomainEventPrerequisiteMissingError`).
-    #[error("{0}")]
+    /// The owner could not be resolved or no longer exists (`DomainEventPrerequisiteMissingError`,
+    /// whose message the reference prefixes).
+    #[error("Missing prerequisite: {0}")]
     PrerequisiteMissing(&'static str),
     /// The unique index on `idempotencyKey` is not there: nothing may be reserved.
     #[error("credittransactions unique index unavailable: {0}")]

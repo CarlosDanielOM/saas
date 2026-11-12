@@ -92,7 +92,26 @@ pub async fn create_campaign_code(
         .await?;
         return Err(over());
     }
-    Ok(to_json_value(&prepared.document))
+    Ok(created_json(&prepared.document))
+}
+
+/// `res.json(new ReferralCodeSchema({...}))` after `save()`: the hydrated document's fields
+/// in the order Mongoose builds them (the given paths and defaults, then `_id`, the
+/// timestamps and `__v`).
+fn created_json(document: &Document) -> Value {
+    const LAST: [&str; 4] = ["_id", "createdAt", "updatedAt", "__v"];
+    let mut ordered = Document::new();
+    for (key, value) in document {
+        if !LAST.contains(&key.as_str()) {
+            ordered.insert(key.clone(), value.clone());
+        }
+    }
+    for key in LAST {
+        if let Some(value) = document.get(key) {
+            ordered.insert(key, value.clone());
+        }
+    }
+    to_json_value(&ordered)
 }
 
 /// `getUserCodes(userId)`: the owner's active codes, newest first, as `.lean()` sends them.
