@@ -6,7 +6,7 @@
 //! the contract rows of that section; no UTF-16 data is built or stored.
 //!
 //! The JavaScript behaviour reproduced here (whitespace, number text, `Number()`/`parseInt`,
-//! dates, `JSON.stringify`, string ordering, case mapping) is pinned by golden vectors written
+//! dates, `JSON.stringify`, URI escapes, string ordering, case mapping) is pinned by golden vectors written
 //! by the production Node runtime: see `tests/vectors/generate.mjs`.
 //!
 //! # Reproducing `JSON.stringify` bytes
@@ -36,6 +36,7 @@ mod json;
 mod number;
 mod order;
 mod parse;
+mod uri;
 mod utf16;
 mod whitespace;
 
@@ -59,5 +60,6 @@ pub use order::cmp_utf16;
 #[cfg(feature = "collation")]
 pub use order::{CollationError, Collator};
 pub use parse::{Radix, parse_float, parse_int, parse_number};
+pub use uri::{UriError, decode_uri, decode_uri_component, encode_uri, encode_uri_component};
 pub use utf16::{truncate_utf16_budget, utf16_len, utf16_offset, utf16_to_byte};
 pub use whitespace::{is_js_whitespace, trim, trim_end, trim_start};

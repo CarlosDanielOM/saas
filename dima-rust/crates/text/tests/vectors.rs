@@ -678,3 +678,52 @@ fn nfc_matches_node() {
     }
     check.finish();
 }
+
+// ------------------------------------------------------------------ URI escapes
+
+#[test]
+fn uri_encoding_matches_node() {
+    let file = load("uri.json");
+    let mut check = Check::new("encodeURIComponent/encodeURI");
+    for row in rows(&file, "encode") {
+        let input = text(&row[0]);
+        let component = encode_uri_component(input);
+        check.expect(component == text(&row[1]), || {
+            format!("encodeURIComponent({input:?}): {component:?} != {}", row[1])
+        });
+        let uri = encode_uri(input);
+        check.expect(uri == text(&row[2]), || {
+            format!("encodeURI({input:?}): {uri:?} != {}", row[2])
+        });
+    }
+    // Above ASCII both escape every UTF-8 byte; the generator checks this rule with Node for every
+    // scalar value, so it is applied here to every code point.
+    for ch in (0x80..=0x10_ffff).filter_map(char::from_u32) {
+        let mut buffer = [0; 4];
+        let single = ch.encode_utf8(&mut buffer);
+        let expected: String = single.bytes().map(|byte| format!("%{byte:02X}")).collect();
+        check.expect(
+            encode_uri_component(single) == expected && encode_uri(single) == expected,
+            || format!("U+{:04X}", u32::from(ch)),
+        );
+    }
+    check.finish();
+}
+
+#[test]
+fn uri_decoding_matches_node() {
+    let file = load("uri.json");
+    let mut check = Check::new("decodeURIComponent/decodeURI");
+    for row in rows(&file, "decode") {
+        let input = text(&row[0]);
+        let component = decode_uri_component(input).ok();
+        check.expect(component.as_deref() == row[1].as_str(), || {
+            format!("decodeURIComponent({input:?}): {component:?} != {}", row[1])
+        });
+        let uri = decode_uri(input).ok();
+        check.expect(uri.as_deref() == row[2].as_str(), || {
+            format!("decodeURI({input:?}): {uri:?} != {}", row[2])
+        });
+    }
+    check.finish();
+}

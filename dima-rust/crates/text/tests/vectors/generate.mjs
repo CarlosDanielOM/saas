@@ -469,4 +469,60 @@ write('text.json', {
     nfc_strings: nfcStrings.map((s) => [s, s.normalize('NFC')]),
 });
 
-console.log('wrote numbers.json whitespace.json json.json dates.json order.json text.json');
+// Sections added later go below, so the random draws above (and their vectors) do not move.
+
+// ---------------------------------------------------------------- URI escapes
+
+const uriEncoder = new TextEncoder();
+const utf8Escaped = (s) => [...uriEncoder.encode(s)].map((b) => `%${b.toString(16).toUpperCase().padStart(2, '0')}`).join('');
+// Above ASCII both encoders escape every UTF-8 byte; checked here for every scalar value so the
+// Rust test can apply the rule to every code point (the ASCII rows below are recorded one by one).
+for (let cp = 0x80; cp <= 0x10ffff; cp++) {
+    if (cp >= 0xd800 && cp <= 0xdfff) continue;
+    const s = String.fromCodePoint(cp);
+    if (encodeURIComponent(s) !== utf8Escaped(s) || encodeURI(s) !== utf8Escaped(s)) throw new Error(`U+${cp.toString(16)} breaks the UTF-8 rule`);
+}
+const encodeInputs = [];
+for (let cp = 0; cp < 0x80; cp++) encodeInputs.push(String.fromCharCode(cp));
+const encodeSamples = [0x80, 0xff, 0x100, 0x7ff, 0x800, 0xfff, 0x1000, 0xd7ff, 0xe000, 0xfeff, 0xfffd, 0xffff, 0x10000, 0x1f600, 0xfffff,
+    0x100000, 0x10ffff];
+for (let i = 0; i < 300; i++) {
+    const cp = pick([() => 0x80 + randInt(0x780), () => 0x800 + randInt(0xd000), () => 0xe000 + randInt(0x2000), () => 0x10000 + randInt(0x100000)])();
+    encodeSamples.push(cp);
+}
+for (const cp of encodeSamples) encodeInputs.push(String.fromCodePoint(cp));
+encodeInputs.push('', 'plain', 'a b', 'a+b', 'key=value&other=1', 'https://example.com/a path/?q=ñ&r=😀#frag', '%', '%41', '%%', '100%',
+    'ñandú', '😀👍🏽', 'שלום', '\u0000\u001f\u007f', ";/?:@&=+$,#-_.!~*'()", '[]{}|\\^`"<>', 'e\u0301', '\u2028\u2029');
+const encode = encodeInputs.map((s) => [s, encodeURIComponent(s), encodeURI(s)]);
+
+const attempt = (f, s) => { try { return f(s); } catch (error) { if (!(error instanceof URIError)) throw error; return null; } };
+const hex2 = (b) => b.toString(16).padStart(2, '0');
+const decodeInputs = [];
+for (let b = 0; b < 256; b++) decodeInputs.push(`%${hex2(b).toUpperCase()}`, `%${hex2(b)}`, `a%${hex2(b)}b`);
+const continuations = [0x00, 0x2f, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xff];
+for (let lead = 0xc0; lead <= 0xff; lead++) {
+    for (const second of continuations) {
+        decodeInputs.push(`%${hex2(lead)}%${hex2(second)}`);
+        if (lead >= 0xe0) for (const third of [0x80, 0xbf, 0x7f, 0xc0]) {
+            decodeInputs.push(`%${hex2(lead)}%${hex2(second)}%${hex2(third)}`);
+            if (lead >= 0xf0) for (const fourth of [0x80, 0xbf, 0x41]) decodeInputs.push(`%${hex2(lead)}%${hex2(second)}%${hex2(third)}%${hex2(fourth)}`);
+        }
+    }
+}
+decodeInputs.push('', 'plain', '%', '%4', '%G0', '%0G', 'a%', 'a%4', '%%', '%%41', '%41%', '%E2%82', '%E2%82%A', '%E2%82X', '%E2%82%',
+    '%E2%82%AC', '%e2%82%ac', '%E2%%82%AC', '%E2%82%2C', '%E2 %82%AC', '%E2%82%AC%', 'ñ%20😀', '%F0%9F%98%80', '%f0%9f%98%80x',
+    '%2F%2f%3B%3b%23%26%3D%2B%24%2C%3A%40%3F', '%252F', '%25', '%2', '%C0%80', '%C1%BF', '%C2%80', '%DF%BF', '%E0%80%80', '%E0%9F%BF',
+    '%E0%A0%80', '%ED%9F%BF', '%ED%A0%80', '%ED%BF%BF', '%EE%80%80', '%EF%BF%BF', '%EF%BB%BF', '%F0%80%80%80', '%F0%8F%BF%BF',
+    '%F0%90%80%80', '%F4%8F%BF%BF', '%F4%90%80%80', '%F5%80%80%80', '%F8%88%80%80%80', '%FC%84%80%80%80%80', '%FE', '%FF',
+    'a+b%20c', 'ключ%3Dзначение', '%D0%BA%D0%BB%D1%8E%D1%87', '%00', '%7F', '%0A%0D%09', 'x%E2%82%ACy%E2%82%ACz', '%C3%A9%C3', '%C3%A9%',
+    '%C3%A9%C3%A9', '%u0041', '%+41', '% 41', '%-1', '%0x', '\u{1f600}%F0%9F%98%80\u{1f600}');
+const tokens = ['%20', '%2F', '%2f', '%23', '%3A', '%41', '%C3%A9', '%E2%82%AC', '%F0%9F%98%80', '%', '%4', '%C3', '%80', '%ED%A0%80',
+    'a', 'Z', '9', ' ', '+', '/', '#', 'é', '😀', '%25', '%%', '%zz'];
+for (let i = 0; i < 600; i++) decodeInputs.push(Array.from({ length: 1 + randInt(8) }, () => pick(tokens)).join(''));
+const decode = decodeInputs.map((s) => [s, attempt(decodeURIComponent, s), attempt(decodeURI, s)]);
+// Lone surrogates cannot reach a result: every invalid sequence throws.
+for (const [, component, uri] of decode) for (const r of [component, uri]) if (r !== null && r !== r.toWellFormed()) throw new Error('lone surrogate');
+
+write('uri.json', { encode, decode });
+
+console.log('wrote numbers.json whitespace.json json.json uri.json dates.json order.json text.json');
