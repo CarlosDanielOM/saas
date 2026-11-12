@@ -14,14 +14,22 @@ use serde::Deserialize;
 struct ExpiringVip {
     #[serde(rename = "userID")]
     user_id: String,
-    #[serde(rename = "expireDate")]
-    date: Calendar,
+    #[serde(rename = "expireDate", default)]
+    date: Option<Calendar>,
 }
 #[derive(Deserialize)]
 struct Calendar {
-    year: JsNumber,
-    month: JsNumber,
-    day: JsNumber,
+    #[serde(default, deserialize_with = "calendar_part")]
+    year: Option<Option<JsNumber>>,
+    #[serde(default, deserialize_with = "calendar_part")]
+    month: Option<Option<JsNumber>>,
+    #[serde(default, deserialize_with = "calendar_part")]
+    day: Option<Option<JsNumber>>,
+}
+fn calendar_part<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Option<JsNumber>>, D::Error> {
+    Option::<JsNumber>::deserialize(deserializer).map(Some)
 }
 /// Scan active VIPs for this channel, remove expired roles once, then delete one matching row.
 /// Reference has no total batch limit or sleep; stream Mongo batches of 100 to bound memory.
@@ -65,15 +73,21 @@ async fn expire(twitch: &Twitch, channel: &str) -> Result<Option<()>, FunctionEr
     }
     let now = twitch.inner.clock.now_ms();
     while let Some(vip) = next {
-        let expiration = dima_text::date_utc(
-            vip.date.year.0 as i64,
-            vip.date.month.0 as i64,
-            vip.date.day.0 as i64,
-            0,
-            0,
-            0,
-            0,
-        );
+        // Missing or nonfinite calendar parts produce Invalid Date in the reference,
+        // whose comparison is false; keep the record without contacting Twitch.
+        let expiration = vip.date.and_then(|date| {
+            // Date constructor: explicit null is zero; missing is NaN.
+            let number = |part| match part {
+                None => None,
+                Some(None) => Some(0.0),
+                Some(Some(JsNumber(n))) => Some(n),
+            };
+            let (year, month, day) = (number(date.year)?, number(date.month)?, number(date.day)?);
+            if !year.is_finite() || !month.is_finite() || !day.is_finite() {
+                return None;
+            }
+            dima_text::date_utc(year as i64, month as i64, day as i64, 0, 0, 0, 0)
+        });
         if expiration.is_some_and(|deadline| now > deadline) {
             remove_channel_vip(twitch, channel, &vip.user_id)
                 .await

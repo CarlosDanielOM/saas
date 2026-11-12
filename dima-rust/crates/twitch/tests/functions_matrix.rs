@@ -311,6 +311,23 @@ async fn only_editors_refresh_on_401_all_other_wrappers_return_first_answer() ->
             if op == 10 {
                 assert_eq!(r, json!({"error":false,"editors":[]}));
                 assert_eq!(count.load(Ordering::SeqCst), 2);
+                let requests = server.requests();
+                let editors: Vec<_> = requests
+                    .iter()
+                    .filter(|r| r.path() == "/helix/channels/editors")
+                    .collect();
+                assert_eq!(editors[0].header("authorization"), Some("Bearer access"));
+                assert_eq!(
+                    editors[1].header("authorization"),
+                    Some("Bearer u1-access-1")
+                );
+                assert_eq!(
+                    token_requests(&server)
+                        .iter()
+                        .filter(|r| form_value(r, "grant_type").as_deref() == Some("refresh_token"))
+                        .count(),
+                    1
+                );
             } else {
                 assert_eq!(r["message"], "reference 401", "{name}: {r}");
                 assert_eq!(
