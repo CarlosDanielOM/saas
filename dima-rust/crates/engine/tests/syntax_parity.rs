@@ -196,7 +196,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     let cases = corpus["cases"].as_array().expect("cases");
     assert_eq!(
         cases.len(),
-        1260,
+        1283,
         "regenerate the test's counts with the corpus"
     );
     let engine = SyntaxEngine::default();

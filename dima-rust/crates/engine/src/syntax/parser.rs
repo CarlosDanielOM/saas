@@ -23,7 +23,8 @@ pub(crate) struct Built {
 }
 
 pub(crate) struct Parser<'a, 'b> {
-    pub tokens: &'a Tokens,
+    /// The arena. Loop headers append filtered copies of their tokens to it (see [`Self::single`]).
+    pub tokens: &'a mut Tokens,
     pub grammar: &'a PreparedGrammar,
     pub budget: &'b mut Budget,
 }
@@ -138,23 +139,48 @@ impl Parser<'_, '_> {
     }
 
     /// `parseTokensToSingleNode`: one expression, or a root of several.
+    ///
+    /// The reference parses the rest of the header after the first expression from a copy of
+    /// its tokens without any `;`, `)` or `}` (`tokens.slice(…).filter(…)`), so a call's closer in
+    /// `a $(upper b) c` is gone and `c` becomes another argument of `upper`.
     fn single(&mut self, range: Range<usize>, depth: usize) -> Result<Built, Diagnostic> {
         if range.is_empty() {
             return self.literal("", range.start);
         }
-        let (first, mut i) = self.star(range.start, range.end, 0, depth)?;
-        while i < range.end && matches!(self.text(i, range.end), ";" | ")" | "}") {
-            i = self.next(i);
-        }
-        if i >= range.end {
+        let (first, i) = self.star(range.start, range.end, 0, depth)?;
+        let rest = self.filtered(i..range.end);
+        if rest.is_empty() {
             return Ok(first);
         }
-        let (rest, rest_depth) = self.nodes(i..range.end, depth)?;
+        let (rest, rest_depth) = self.nodes(rest, depth)?;
         let max = first.depth.max(rest_depth);
         let mut children = Vec::with_capacity(rest.len() + 1);
         children.push(first.node);
         children.extend(rest);
         self.make(AstNode::Root { children }, max, range.start)
+    }
+
+    /// Appends to the arena a copy of the top-level tokens of `range` without `;`, `)` and `}`
+    /// and returns where the copy is. An array or a quoted string is one token in the
+    /// reference, so only top-level tokens are filtered; a copied array keeps pointing at its
+    /// items where they are. Each token is copied at most once: a loop inside the copy cannot
+    /// find the `}` of its body (all of them are gone), so it never filters again, and a loop
+    /// inside an array item filters that item's own tokens.
+    fn filtered(&mut self, range: Range<usize>) -> Range<usize> {
+        let start = self.tokens.tokens.len();
+        let mut i = range.start;
+        while i < range.end {
+            let next = self.next(i);
+            if !matches!(self.text(i, range.end), ";" | ")" | "}")
+                && let Some(token) = self.tokens.tokens.get(i)
+            {
+                let mut copy = token.clone();
+                copy.next = self.tokens.tokens.len() + 1;
+                self.tokens.tokens.push(copy);
+            }
+            i = next;
+        }
+        start..self.tokens.tokens.len()
     }
 
     /// `parseExpression`.
@@ -778,13 +804,14 @@ impl Parser<'_, '_> {
                 Ok(tokens) if tokens.range.is_empty() => segments.push(TemplateSegment::Text {
                     value: String::new(),
                 }),
-                Ok(tokens) => {
+                Ok(mut tokens) => {
+                    let range = tokens.range.clone();
                     let mut parser = Parser {
-                        tokens: &tokens,
+                        tokens: &mut tokens,
                         grammar: self.grammar,
                         budget: self.budget,
                     };
-                    match parser.star(tokens.range.start, tokens.range.end, 0, depth) {
+                    match parser.star(range.start, range.end, 0, depth) {
                         Err(error) if error.is_resource_limit() => return Err(error),
                         // The reference catches the throw and shows the expression's text.
                         Err(_) => segments.push(TemplateSegment::Text {

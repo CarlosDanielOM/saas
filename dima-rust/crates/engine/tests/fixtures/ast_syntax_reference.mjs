@@ -1362,6 +1362,43 @@ for (const item of cases) {
 }
 
 // ===========================================================================
+// Review fixes (E-ENGINE-01b), appended so the earlier names stay put.
+// Loop headers: after the first expression of a header part, the reference
+// parses the rest from a copy without any `;`, `)` or `}`, so a call's closer
+// disappears and what follows joins its arguments.
+// ===========================================================================
+{
+  const loopHeaders = [
+    '*(for #i in a $(upper b) c { #i })',
+    '*(for #i in a $(upper b) $(lower c) d { #i })',
+    '*(for #i in a $(upper $(lower b) c) d { #i })',
+    '*(for #i in a $(upper b) c)',
+    '*(for #i in a $(upper b) c',
+    '*(for #i in %(list[]) $(say x) y { #i })',
+    '*(for #i in a (b) c { #i })',
+    '*(for #i in a %[x, $(upper y) z] $(say w) v { #i })',
+    '*(for #i in a "${$(upper b) c}" $(say d) e { #i })',
+    '*(for #i in a %(b $(c d) e) f { #i })',
+    '*(for #i in a #(cmd b) c { #i })',
+    '*(for #i in a ^(b) c { #i })',
+    '*(for #i in a *(for #j in b c { #j }) { #i })',
+    '*(for #i in a *(1 + 1) b { #i })',
+    '*(for #i = 0 $(x a) b; #i < 3; #i++ { #i })',
+    '*(for #i = $(len a) b; #i < $(len c) d; #i++ $(say e) f { #i })',
+    '*(for #i = 0; #i < $(count x) + 1 $(say y) z; #i += $(step a) b { #i })',
+    '*(for #i = 0; #i < 2; #i++ $(say a) b)',
+    '*(for #i = 0; #i < 2 $(f a); #i++ { #i })',
+    '*(for #i in a $(upper b) c { $(say #i) d })',
+    '$(say x) *(for #i in a $(upper b) c { #i }) $(say y)'
+  ];
+  for (const source of loopHeaders) addParse('loop-header', source);
+  for (const source of [
+    'Hi *(for #i in a $(upper b) c { #i }) bye',
+    '*(for #i = 0; #i < 3 $(say a) b; #i++ { #i }) $(user)'
+  ]) addCompiled('loop-header', source);
+}
+
+// ===========================================================================
 // Coverage + assertions
 // ===========================================================================
 function walkAst(node, visit) {

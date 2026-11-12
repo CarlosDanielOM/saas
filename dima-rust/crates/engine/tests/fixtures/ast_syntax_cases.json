@@ -91,14 +91,14 @@
     "render.ts": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
   },
   "counts": {
-    "cases": 1260,
-    "compiled-template": 46,
-    "parse": 985,
+    "cases": 1283,
+    "compiled-template": 48,
+    "parse": 1006,
     "scan": 152,
     "unescape": 77,
     "parity": {
       "approved-correction": 59,
-      "source-parity": 1197,
+      "source-parity": 1220,
       "source-throw-hardened": 4
     }
   },
@@ -237,13 +237,13 @@
       "range"
     ],
     "errorChannels": {
-      "parseErrorCases": 127,
-      "loopErrorLiteralNodes": 5,
+      "parseErrorCases": 128,
+      "loopErrorLiteralNodes": 8,
       "templateParseErrorTextSegments": 9,
       "sourceOracleThrowsRecorded": 4,
       "unclosedScanSegments": 23
     },
-    "maxCaseAstDepth": 5,
+    "maxCaseAstDepth": 7,
     "maxCorpusJsonDepth": 18
   },
   "approvedErrorContract": {
@@ -268,7 +268,7 @@
     "Deep benchmarks (nested arrays 8..128, compute 32..128) are source-only definitions: the corpus stores no deep AST, keeping the fixture well under serde_json default recursion limits. Source-parity cases stay at AST depth <= 16.",
     "Spans are UTF-16 half-open offsets. Legacy TypeScript exposed no spans: source-parity spans, and the legacy code/span of an approved case, are derived from the real token/segment stream for verification, not from source facts. Approved default code/message/span are additive spec and are asserted exactly."
   ],
-  "corpusHash": "30cd18e6ef3fff779ba9ba414b7e62c3701ffd1f2e5502516f6e29d008139379",
+  "corpusHash": "64f80bb22ecd1379f6fcf04d2ab2efefca84ae117707721f468819fb9532c8f8",
   "cases": [
     {
       "name": "0001-plain-empty",
@@ -88429,6 +88429,4085 @@
         },
         "default": {
           "value": "%𐐀"
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1408-loop-header-for_i_in_a_upper_b_c_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper b) c { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "function",
+                    "name": "upper",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "c"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1409-loop-header-for_i_in_a_upper_b_lower_c_d_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper b) $(lower c) d { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "function",
+                    "name": "upper",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      },
+                      {
+                        "type": "function",
+                        "name": "lower",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "c"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "d"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "function",
+                          "name": "lower",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "c"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "d"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "function",
+                          "name": "lower",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "c"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "d"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1410-loop-header-for_i_in_a_upper_lower_b_c_d_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper $(lower b) c) d { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "function",
+                    "name": "upper",
+                    "args": [
+                      {
+                        "type": "function",
+                        "name": "lower",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "b"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "c"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "d"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "function",
+                          "name": "lower",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "b"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "c"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "d"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "function",
+                          "name": "lower",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "b"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "c"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "d"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1411-loop-header-for_i_in_a_upper_b_c",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper b) c)"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "literal",
+              "value": "[Loop error: missing loop body]"
+            },
+            {
+              "type": "literal",
+              "value": "for"
+            },
+            {
+              "type": "loopVar",
+              "name": "i"
+            },
+            {
+              "type": "literal",
+              "value": "in"
+            },
+            {
+              "type": "literal",
+              "value": "a"
+            },
+            {
+              "type": "function",
+              "name": "upper",
+              "args": [
+                {
+                  "type": "literal",
+                  "value": "b"
+                }
+              ]
+            },
+            {
+              "type": "literal",
+              "value": "c"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "literal",
+                "value": "[Loop error: missing loop body]"
+              },
+              {
+                "type": "literal",
+                "value": "for"
+              },
+              {
+                "type": "loopVar",
+                "name": "i"
+              },
+              {
+                "type": "literal",
+                "value": "in"
+              },
+              {
+                "type": "literal",
+                "value": "a"
+              },
+              {
+                "type": "function",
+                "name": "upper",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  }
+                ]
+              },
+              {
+                "type": "literal",
+                "value": "c"
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "literal",
+                "value": "[Loop error: missing loop body]"
+              },
+              {
+                "type": "literal",
+                "value": "for"
+              },
+              {
+                "type": "loopVar",
+                "name": "i"
+              },
+              {
+                "type": "literal",
+                "value": "in"
+              },
+              {
+                "type": "literal",
+                "value": "a"
+              },
+              {
+                "type": "function",
+                "name": "upper",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  }
+                ]
+              },
+              {
+                "type": "literal",
+                "value": "c"
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1412-loop-header-for_i_in_a_upper_b_c",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper b) c"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": []
+        },
+        "error": "Unclosed \"*(\""
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_DELIMITER",
+            "message": "Unclosed \"*(\"",
+            "span": {
+              "start": 0,
+              "end": 2
+            }
+          }
+        },
+        "default": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_DELIMITER",
+            "message": "Unclosed \"*(\"",
+            "span": {
+              "start": 0,
+              "end": 2
+            }
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1413-loop-header-for_i_in_list_say_x_y_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in %(list[]) $(say x) y { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "getVar",
+                    "name": "list",
+                    "storage": "memory",
+                    "accessor": {
+                      "type": "array"
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "x"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "y"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "getVar",
+                      "name": "list",
+                      "storage": "memory",
+                      "accessor": {
+                        "type": "array"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "x"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "y"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "getVar",
+                      "name": "list",
+                      "storage": "memory",
+                      "accessor": {
+                        "type": "array"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "x"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "y"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1414-loop-header-for_i_in_a_b_c_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a (b) c { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "("
+                  },
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "c"
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "("
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "("
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1415-loop-header-for_i_in_a_x_upper_y_z_say_w_v_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a %[x, $(upper y) z] $(say w) v { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "arrayLiteral",
+                    "items": [
+                      {
+                        "type": "literal",
+                        "value": "x"
+                      },
+                      {
+                        "type": "function",
+                        "name": "upper",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "y"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "w"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "v"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "arrayLiteral",
+                      "items": [
+                        {
+                          "type": "literal",
+                          "value": "x"
+                        },
+                        {
+                          "type": "function",
+                          "name": "upper",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "y"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "w"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "v"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "arrayLiteral",
+                      "items": [
+                        {
+                          "type": "literal",
+                          "value": "x"
+                        },
+                        {
+                          "type": "function",
+                          "name": "upper",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "y"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "w"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "v"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1416-loop-header-for_i_in_a_upper_b_c_say_d_e_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a \"${$(upper b) c}\" $(say d) e { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "template",
+                    "segments": [
+                      {
+                        "type": "expr",
+                        "node": {
+                          "type": "function",
+                          "name": "upper",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "b"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "d"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "e"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "template",
+                      "segments": [
+                        {
+                          "type": "expr",
+                          "node": {
+                            "type": "function",
+                            "name": "upper",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "d"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "e"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "template",
+                      "segments": [
+                        {
+                          "type": "expr",
+                          "node": {
+                            "type": "function",
+                            "name": "upper",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "d"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "e"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1417-loop-header-for_i_in_a_b_c_d_e_f_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a %(b $(c d) e) f { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "setVar",
+                    "name": "b",
+                    "storage": "memory",
+                    "value": {
+                      "type": "function",
+                      "name": "c",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "d"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "e"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "f"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "setVar",
+                      "name": "b",
+                      "storage": "memory",
+                      "value": {
+                        "type": "function",
+                        "name": "c",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "d"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "e"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "f"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "setVar",
+                      "name": "b",
+                      "storage": "memory",
+                      "value": {
+                        "type": "function",
+                        "name": "c",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "d"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "e"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "f"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1418-loop-header-for_i_in_a_cmd_b_c_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a #(cmd b) c { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "commandRef",
+                    "commandName": "cmd",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "c"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "commandRef",
+                      "commandName": "cmd",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "commandRef",
+                      "commandName": "cmd",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1419-loop-header-for_i_in_a_b_c_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a ^(b) c { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "exists",
+                    "name": "b",
+                    "storage": "memory"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "c"
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "exists",
+                      "name": "b",
+                      "storage": "memory"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "exists",
+                      "name": "b",
+                      "storage": "memory"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1420-loop-header-for_i_in_a_for_j_in_b_c_j_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a *(for #j in b c { #j }) { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "[Loop error: unclosed loop body]"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "for"
+                  },
+                  {
+                    "type": "loopVar",
+                    "name": "j"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "in"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "c"
+                  },
+                  {
+                    "type": "literal",
+                    "value": "{"
+                  },
+                  {
+                    "type": "loopVar",
+                    "name": "j"
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "[Loop error: unclosed loop body]"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "for"
+                    },
+                    {
+                      "type": "loopVar",
+                      "name": "j"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "in"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "{"
+                    },
+                    {
+                      "type": "loopVar",
+                      "name": "j"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "[Loop error: unclosed loop body]"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "for"
+                    },
+                    {
+                      "type": "loopVar",
+                      "name": "j"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "in"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "c"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "{"
+                    },
+                    {
+                      "type": "loopVar",
+                      "name": "j"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1421-loop-header-for_i_in_a_1_1_b_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a *(1 + 1) b { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "binary",
+                    "operator": "+",
+                    "left": {
+                      "type": "literal",
+                      "value": "1"
+                    },
+                    "right": {
+                      "type": "literal",
+                      "value": "1"
+                    }
+                  },
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "binary",
+                      "operator": "+",
+                      "left": {
+                        "type": "literal",
+                        "value": "1"
+                      },
+                      "right": {
+                        "type": "literal",
+                        "value": "1"
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "binary",
+                      "operator": "+",
+                      "left": {
+                        "type": "literal",
+                        "value": "1"
+                      },
+                      "right": {
+                        "type": "literal",
+                        "value": "1"
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1422-loop-header-for_i_0_x_a_b_i_3_i_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i = 0 $(x a) b; #i < 3; #i++ { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "range",
+              "init": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "loopAssign",
+                    "name": "i",
+                    "operator": "=",
+                    "value": {
+                      "type": "literal",
+                      "value": "0"
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "name": "x",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "a"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "condition": {
+                "type": "binary",
+                "operator": "<",
+                "left": {
+                  "type": "loopVar",
+                  "name": "i"
+                },
+                "right": {
+                  "type": "literal",
+                  "value": "3"
+                }
+              },
+              "update": {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "++"
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "=",
+                      "value": {
+                        "type": "literal",
+                        "value": "0"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "x",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "condition": {
+                  "type": "binary",
+                  "operator": "<",
+                  "left": {
+                    "type": "loopVar",
+                    "name": "i"
+                  },
+                  "right": {
+                    "type": "literal",
+                    "value": "3"
+                  }
+                },
+                "update": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "++"
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "=",
+                      "value": {
+                        "type": "literal",
+                        "value": "0"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "x",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "condition": {
+                  "type": "binary",
+                  "operator": "<",
+                  "left": {
+                    "type": "loopVar",
+                    "name": "i"
+                  },
+                  "right": {
+                    "type": "literal",
+                    "value": "3"
+                  }
+                },
+                "update": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "++"
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1423-loop-header-for_i_len_a_b_i_len_c_d_i_say_e_f_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i = $(len a) b; #i < $(len c) d; #i++ $(say e) f { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "range",
+              "init": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "loopAssign",
+                    "name": "i",
+                    "operator": "=",
+                    "value": {
+                      "type": "function",
+                      "name": "len",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  }
+                ]
+              },
+              "condition": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "binary",
+                    "operator": "<",
+                    "left": {
+                      "type": "loopVar",
+                      "name": "i"
+                    },
+                    "right": {
+                      "type": "function",
+                      "name": "len",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "literal",
+                    "value": "d"
+                  }
+                ]
+              },
+              "update": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "loopAssign",
+                    "name": "i",
+                    "operator": "++"
+                  },
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "e"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "f"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "=",
+                      "value": {
+                        "type": "function",
+                        "name": "len",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "function",
+                        "name": "len",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "c"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "d"
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "++"
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "e"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "f"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "=",
+                      "value": {
+                        "type": "function",
+                        "name": "len",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "function",
+                        "name": "len",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "c"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "d"
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "++"
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "e"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "f"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1424-loop-header-for_i_0_i_count_x_1_say_y_z_i_step_a_b_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i = 0; #i < $(count x) + 1 $(say y) z; #i += $(step a) b { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "range",
+              "init": {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "=",
+                "value": {
+                  "type": "literal",
+                  "value": "0"
+                }
+              },
+              "condition": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "binary",
+                    "operator": "<",
+                    "left": {
+                      "type": "loopVar",
+                      "name": "i"
+                    },
+                    "right": {
+                      "type": "binary",
+                      "operator": "+",
+                      "left": {
+                        "type": "function",
+                        "name": "count",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "x"
+                          }
+                        ]
+                      },
+                      "right": {
+                        "type": "literal",
+                        "value": "1"
+                      }
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "y"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "z"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "update": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "loopAssign",
+                    "name": "i",
+                    "operator": "+=",
+                    "value": {
+                      "type": "function",
+                      "name": "step",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "literal",
+                    "value": "b"
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "=",
+                  "value": {
+                    "type": "literal",
+                    "value": "0"
+                  }
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "binary",
+                        "operator": "+",
+                        "left": {
+                          "type": "function",
+                          "name": "count",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "x"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "type": "literal",
+                          "value": "1"
+                        }
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "y"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "z"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "+=",
+                      "value": {
+                        "type": "function",
+                        "name": "step",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "=",
+                  "value": {
+                    "type": "literal",
+                    "value": "0"
+                  }
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "binary",
+                        "operator": "+",
+                        "left": {
+                          "type": "function",
+                          "name": "count",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "x"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "type": "literal",
+                          "value": "1"
+                        }
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "y"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "z"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "+=",
+                      "value": {
+                        "type": "function",
+                        "name": "step",
+                        "args": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "literal",
+                      "value": "b"
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1425-loop-header-for_i_0_i_2_i_say_a_b",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i = 0; #i < 2; #i++ $(say a) b)"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "literal",
+              "value": "[Loop error: missing loop body]"
+            },
+            {
+              "type": "literal",
+              "value": "for"
+            },
+            {
+              "type": "loopAssign",
+              "name": "i",
+              "operator": "=",
+              "value": {
+                "type": "literal",
+                "value": "0"
+              }
+            },
+            {
+              "type": "loopVar",
+              "name": "i"
+            },
+            {
+              "type": "literal",
+              "value": "<"
+            },
+            {
+              "type": "literal",
+              "value": "2"
+            },
+            {
+              "type": "loopAssign",
+              "name": "i",
+              "operator": "++"
+            },
+            {
+              "type": "function",
+              "name": "say",
+              "args": [
+                {
+                  "type": "literal",
+                  "value": "a"
+                }
+              ]
+            },
+            {
+              "type": "literal",
+              "value": "b"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "literal",
+                "value": "[Loop error: missing loop body]"
+              },
+              {
+                "type": "literal",
+                "value": "for"
+              },
+              {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "=",
+                "value": {
+                  "type": "literal",
+                  "value": "0"
+                }
+              },
+              {
+                "type": "loopVar",
+                "name": "i"
+              },
+              {
+                "type": "literal",
+                "value": "<"
+              },
+              {
+                "type": "literal",
+                "value": "2"
+              },
+              {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "++"
+              },
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  }
+                ]
+              },
+              {
+                "type": "literal",
+                "value": "b"
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "literal",
+                "value": "[Loop error: missing loop body]"
+              },
+              {
+                "type": "literal",
+                "value": "for"
+              },
+              {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "=",
+                "value": {
+                  "type": "literal",
+                  "value": "0"
+                }
+              },
+              {
+                "type": "loopVar",
+                "name": "i"
+              },
+              {
+                "type": "literal",
+                "value": "<"
+              },
+              {
+                "type": "literal",
+                "value": "2"
+              },
+              {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "++"
+              },
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  }
+                ]
+              },
+              {
+                "type": "literal",
+                "value": "b"
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1426-loop-header-for_i_0_i_2_f_a_i_i",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i = 0; #i < 2 $(f a); #i++ { #i })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "range",
+              "init": {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "=",
+                "value": {
+                  "type": "literal",
+                  "value": "0"
+                }
+              },
+              "condition": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "binary",
+                    "operator": "<",
+                    "left": {
+                      "type": "loopVar",
+                      "name": "i"
+                    },
+                    "right": {
+                      "type": "literal",
+                      "value": "2"
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "name": "f",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "a"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "update": {
+                "type": "loopAssign",
+                "name": "i",
+                "operator": "++"
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "=",
+                  "value": {
+                    "type": "literal",
+                    "value": "0"
+                  }
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "literal",
+                        "value": "2"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "f",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "++"
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "range",
+                "init": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "=",
+                  "value": {
+                    "type": "literal",
+                    "value": "0"
+                  }
+                },
+                "condition": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "binary",
+                      "operator": "<",
+                      "left": {
+                        "type": "loopVar",
+                        "name": "i"
+                      },
+                      "right": {
+                        "type": "literal",
+                        "value": "2"
+                      }
+                    },
+                    {
+                      "type": "function",
+                      "name": "f",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "update": {
+                  "type": "loopAssign",
+                  "name": "i",
+                  "operator": "++"
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1427-loop-header-for_i_in_a_upper_b_c_say_i_d",
+      "operation": "parse",
+      "input": {
+        "source": "*(for #i in a $(upper b) c { $(say #i) d })"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "function",
+                    "name": "upper",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "c"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "function",
+                  "name": "say",
+                  "args": [
+                    {
+                      "type": "loopVar",
+                      "name": "i"
+                    }
+                  ]
+                },
+                {
+                  "type": "literal",
+                  "value": "d"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "loopVar",
+                        "name": "i"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "literal",
+                    "value": "d"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "loopVar",
+                        "name": "i"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "literal",
+                    "value": "d"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1428-loop-header-say_x_for_i_in_a_upper_b_c_i_say_y",
+      "operation": "parse",
+      "input": {
+        "source": "$(say x) *(for #i in a $(upper b) c { #i }) $(say y)"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "function",
+              "name": "say",
+              "args": [
+                {
+                  "type": "literal",
+                  "value": "x"
+                }
+              ]
+            },
+            {
+              "type": "forLoop",
+              "loopVar": "i",
+              "mode": "foreach",
+              "iterable": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "literal",
+                    "value": "a"
+                  },
+                  {
+                    "type": "function",
+                    "name": "upper",
+                    "args": [
+                      {
+                        "type": "literal",
+                        "value": "b"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "c"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "body": [
+                {
+                  "type": "loopVar",
+                  "name": "i"
+                }
+              ]
+            },
+            {
+              "type": "function",
+              "name": "say",
+              "args": [
+                {
+                  "type": "literal",
+                  "value": "y"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "x"
+                  }
+                ]
+              },
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              },
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "y"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "x"
+                  }
+                ]
+              },
+              {
+                "type": "forLoop",
+                "loopVar": "i",
+                "mode": "foreach",
+                "iterable": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "literal",
+                      "value": "a"
+                    },
+                    {
+                      "type": "function",
+                      "name": "upper",
+                      "args": [
+                        {
+                          "type": "literal",
+                          "value": "b"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "c"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "body": [
+                  {
+                    "type": "loopVar",
+                    "name": "i"
+                  }
+                ]
+              },
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "literal",
+                    "value": "y"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1429-loop-header-Hi_for_i_in_a_upper_b_c_i_bye",
+      "operation": "compiled-template",
+      "input": {
+        "source": "Hi *(for #i in a $(upper b) c { #i }) bye"
+      },
+      "source": {
+        "segments": [
+          {
+            "kind": "text",
+            "text": "Hi "
+          },
+          {
+            "kind": "expr",
+            "source": "*(for #i in a $(upper b) c { #i })",
+            "parse": {
+              "ast": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "forLoop",
+                    "loopVar": "i",
+                    "mode": "foreach",
+                    "iterable": {
+                      "type": "root",
+                      "children": [
+                        {
+                          "type": "literal",
+                          "value": "a"
+                        },
+                        {
+                          "type": "function",
+                          "name": "upper",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "b"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "c"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "body": [
+                      {
+                        "type": "loopVar",
+                        "name": "i"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "kind": "text",
+            "text": " bye"
+          }
+        ]
+      },
+      "expected": {
+        "legacy": {
+          "segments": [
+            {
+              "kind": "text",
+              "text": "Hi ",
+              "span": {
+                "start": 0,
+                "end": 3
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "*(for #i in a $(upper b) c { #i })",
+              "span": {
+                "start": 3,
+                "end": 37
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "forLoop",
+                      "loopVar": "i",
+                      "mode": "foreach",
+                      "iterable": {
+                        "type": "root",
+                        "children": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          },
+                          {
+                            "type": "function",
+                            "name": "upper",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              },
+                              {
+                                "type": "literal",
+                                "value": "c"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "body": [
+                        {
+                          "type": "loopVar",
+                          "name": "i"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " bye",
+              "span": {
+                "start": 37,
+                "end": 41
+              }
+            }
+          ]
+        },
+        "default": {
+          "segments": [
+            {
+              "kind": "text",
+              "text": "Hi ",
+              "span": {
+                "start": 0,
+                "end": 3
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "*(for #i in a $(upper b) c { #i })",
+              "span": {
+                "start": 3,
+                "end": 37
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "forLoop",
+                      "loopVar": "i",
+                      "mode": "foreach",
+                      "iterable": {
+                        "type": "root",
+                        "children": [
+                          {
+                            "type": "literal",
+                            "value": "a"
+                          },
+                          {
+                            "type": "function",
+                            "name": "upper",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              },
+                              {
+                                "type": "literal",
+                                "value": "c"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "body": [
+                        {
+                          "type": "loopVar",
+                          "name": "i"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " bye",
+              "span": {
+                "start": 37,
+                "end": 41
+              }
+            }
+          ]
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1430-loop-header-for_i_0_i_3_say_a_b_i_i_user",
+      "operation": "compiled-template",
+      "input": {
+        "source": "*(for #i = 0; #i < 3 $(say a) b; #i++ { #i }) $(user)"
+      },
+      "source": {
+        "segments": [
+          {
+            "kind": "expr",
+            "source": "*(for #i = 0; #i < 3 $(say a) b; #i++ { #i })",
+            "parse": {
+              "ast": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "forLoop",
+                    "loopVar": "i",
+                    "mode": "range",
+                    "init": {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "=",
+                      "value": {
+                        "type": "literal",
+                        "value": "0"
+                      }
+                    },
+                    "condition": {
+                      "type": "root",
+                      "children": [
+                        {
+                          "type": "binary",
+                          "operator": "<",
+                          "left": {
+                            "type": "loopVar",
+                            "name": "i"
+                          },
+                          "right": {
+                            "type": "literal",
+                            "value": "3"
+                          }
+                        },
+                        {
+                          "type": "function",
+                          "name": "say",
+                          "args": [
+                            {
+                              "type": "literal",
+                              "value": "a"
+                            },
+                            {
+                              "type": "literal",
+                              "value": "b"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "update": {
+                      "type": "loopAssign",
+                      "name": "i",
+                      "operator": "++"
+                    },
+                    "body": [
+                      {
+                        "type": "loopVar",
+                        "name": "i"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "kind": "text",
+            "text": " "
+          },
+          {
+            "kind": "expr",
+            "source": "$(user)",
+            "parse": {
+              "ast": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "function",
+                    "name": "user",
+                    "args": []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "legacy": {
+          "segments": [
+            {
+              "kind": "expr",
+              "source": "*(for #i = 0; #i < 3 $(say a) b; #i++ { #i })",
+              "span": {
+                "start": 0,
+                "end": 45
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "forLoop",
+                      "loopVar": "i",
+                      "mode": "range",
+                      "init": {
+                        "type": "loopAssign",
+                        "name": "i",
+                        "operator": "=",
+                        "value": {
+                          "type": "literal",
+                          "value": "0"
+                        }
+                      },
+                      "condition": {
+                        "type": "root",
+                        "children": [
+                          {
+                            "type": "binary",
+                            "operator": "<",
+                            "left": {
+                              "type": "loopVar",
+                              "name": "i"
+                            },
+                            "right": {
+                              "type": "literal",
+                              "value": "3"
+                            }
+                          },
+                          {
+                            "type": "function",
+                            "name": "say",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "a"
+                              },
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "update": {
+                        "type": "loopAssign",
+                        "name": "i",
+                        "operator": "++"
+                      },
+                      "body": [
+                        {
+                          "type": "loopVar",
+                          "name": "i"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " ",
+              "span": {
+                "start": 45,
+                "end": 46
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "$(user)",
+              "span": {
+                "start": 46,
+                "end": 53
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "function",
+                      "name": "user",
+                      "args": []
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "default": {
+          "segments": [
+            {
+              "kind": "expr",
+              "source": "*(for #i = 0; #i < 3 $(say a) b; #i++ { #i })",
+              "span": {
+                "start": 0,
+                "end": 45
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "forLoop",
+                      "loopVar": "i",
+                      "mode": "range",
+                      "init": {
+                        "type": "loopAssign",
+                        "name": "i",
+                        "operator": "=",
+                        "value": {
+                          "type": "literal",
+                          "value": "0"
+                        }
+                      },
+                      "condition": {
+                        "type": "root",
+                        "children": [
+                          {
+                            "type": "binary",
+                            "operator": "<",
+                            "left": {
+                              "type": "loopVar",
+                              "name": "i"
+                            },
+                            "right": {
+                              "type": "literal",
+                              "value": "3"
+                            }
+                          },
+                          {
+                            "type": "function",
+                            "name": "say",
+                            "args": [
+                              {
+                                "type": "literal",
+                                "value": "a"
+                              },
+                              {
+                                "type": "literal",
+                                "value": "b"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "update": {
+                        "type": "loopAssign",
+                        "name": "i",
+                        "operator": "++"
+                      },
+                      "body": [
+                        {
+                          "type": "loopVar",
+                          "name": "i"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " ",
+              "span": {
+                "start": 45,
+                "end": 46
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "$(user)",
+              "span": {
+                "start": 46,
+                "end": 53
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "function",
+                      "name": "user",
+                      "args": []
+                    }
+                  ]
+                }
+              }
+            }
+          ]
         }
       },
       "parity": "source-parity"

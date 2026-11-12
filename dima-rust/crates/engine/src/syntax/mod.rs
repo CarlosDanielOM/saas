@@ -79,13 +79,14 @@ impl SyntaxEngine {
         budget: &mut Budget,
     ) -> Result<CompiledProgram, Diagnostic> {
         let previous = budget.stats;
-        let tokens = lexer::tokenize(view.clone(), bytes.clone(), &self.grammar, budget, 0)?;
+        let mut tokens = lexer::tokenize(view.clone(), bytes.clone(), &self.grammar, budget, 0)?;
+        let range = tokens.range.clone();
         let mut parser = parser::Parser {
-            tokens: &tokens,
+            tokens: &mut tokens,
             grammar: &self.grammar,
             budget,
         };
-        let root = parser.root(tokens.range.clone(), 0)?;
+        let root = parser.root(range, 0)?;
         let span = view.span(bytes);
         persistence::validate(&root.node, span)?;
         Ok(CompiledProgram {
