@@ -19,3 +19,33 @@ dima-chat = { workspace = true }
 # The inbound edge and the guards the routers mount.
 dima-web = { workspace = true }
 dima-platform = { workspace = true }
+# The handles every route package reaches through `state::Core` (P4-API-APP), and the services
+# of the application's own routes: stores, Twitch, the outbound client of the analytics proxy,
+# the site analytics snapshot, the clock and randomness, telemetry's web observer.
+dima-core = { workspace = true }
+dima-store = { workspace = true }
+dima-twitch = { workspace = true }
+dima-http = { workspace = true }
+dima-stream = { workspace = true }
+dima-model = { workspace = true }
+dima-telemetry = { workspace = true }
+dima-text = { workspace = true }
+bson = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dima-core = { workspace = true, features = ["test-util"] }
+dima-http = { workspace = true, features = ["test-util"] }
+dima-platform = { workspace = true, features = ["test-util"] }
+dima-twitch = { workspace = true, features = ["test-util"] }
+http-body-util = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
+tokio-util = { workspace = true }

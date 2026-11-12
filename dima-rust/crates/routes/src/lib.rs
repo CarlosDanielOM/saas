@@ -22,8 +22,8 @@
 //!
 //! # Modules and the packages that fill them
 //!
-//! - [`mounts`], [`state`]: P4-SKEL (done); [`mounts`] passes to P4-API-APP for the middleware.
-//! - [`app`], by P4-API-APP (wave 1).
+//! - [`mounts`], [`state`], [`app`], [`oauth`], [`observability`]: P4-API-APP (the shell, the
+//!   way a route reaches its services: read [`state`] first).
 //! - [`auth`], by P4-API-AUTH-A (wave 2); [`auth::account`]: P4-API-AUTH-B (wave 3).
 //! - [`users`], by P4-API-USERS; [`admins`]: P4-API-ADMINS; [`admin_site`]: P4-API-ADMIN-SITE;
 //!   [`billing`]: P4-API-BILLING; [`data`]: P4-API-DATA (wave 2).
@@ -48,6 +48,8 @@ pub mod data;
 pub mod dimafx;
 pub mod media;
 pub mod mounts;
+pub mod oauth;
+pub mod observability;
 pub mod overlays;
 pub mod state;
 pub mod triggers;

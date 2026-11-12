@@ -1957,13 +1957,33 @@ dependencies = [
 name = "dima-routes"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bson",
+ "bytes",
  "dima-chat",
+ "dima-core",
+ "dima-http",
+ "dima-model",
  "dima-platform",
  "dima-realtime",
  "dima-recap",
  "dima-services",
  "dima-site-agent",
+ "dima-store",
+ "dima-stream",
+ "dima-telemetry",
+ "dima-text",
+ "dima-twitch",
  "dima-web",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tower 0.5.3",
 ]
 
 [[package]]
