@@ -10,6 +10,7 @@
 //! | `twitch:{id}:ai:exhaust`, `{id}:ai:exhaust` | both scripts, the exhaustion repair | none |
 //! | `twitch:{id}:ai:credits:plan-version` | the plan projection (read here) | none |
 //! | `twitch:{id}:ai:usage-local:{sha256(externalId)}` | [`APPLY_AI_CREDIT_USAGE`] | 31 days |
+//! | `twitch:{id}:ai:credits:revision` | every debit and publication ([`super::balance`]) | 31 days |
 //!
 //! The exhaustion flags are rebuilt lazily: after a clear, a channel reads as not exhausted until
 //! its next `getAiCredits` (which every paid AI path calls) or usage write. The cutover step
@@ -17,13 +18,17 @@
 //!
 //! Ordering is the reference's: the version is compared with the fence in Rust before the
 //! provider call (JavaScript's `<`, UTF-16 order) and again inside the script (byte order) at
-//! publication, so a plan downgrade that lands while Polar is being read wins.
+//! publication, so a plan downgrade that lands while Polar is being read wins. On top of it
+//! (item 4 of P2-BILLING-01b), a fetched balance is published under the usage revision read
+//! before Polar was asked ([`super::balance`]): a newer publication wins, and local debits made
+//! meanwhile are applied instead of being overwritten. The exhaustion flags are read and repaired
+//! in one atomic step.
 
 use super::ai_credit_limit_for_plan;
+use super::balance::{self, Publication, Revision};
 use super::credits::{
     AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AiCreditsData, CreditStatus,
-    build_ai_credits_data_from_meter, cached_snapshot_is_exhausted, read_cached_credits,
-    unavailable_ai_credits,
+    build_ai_credits_data_from_meter, read_cached_credits, unavailable_ai_credits,
 };
 use crate::Observer;
 use crate::products::AI_CREDITS_METER_ID;
@@ -33,16 +38,14 @@ use dima_store::dragonfly::plan_cache_fence::{
     Acceptance, CreditMode, FenceError, PlanCacheFence, TtlSeconds, credits_cache_key,
     exhaustion_cache_keys, plan_cache_fence_key, plan_cache_version,
 };
-use dima_store::dragonfly::{Dragonfly, DragonflyError, Script, SetOptions};
+use dima_store::dragonfly::{Dragonfly, DragonflyError};
 use futures_util::future::BoxFuture;
 use serde_json::Value;
 use std::sync::Arc;
 
-/// `APPLY_AI_CREDIT_USAGE_SCRIPT` (`billing.ts`), verbatim.
-pub static APPLY_AI_CREDIT_USAGE: Script = Script::new(
-    "APPLY_AI_CREDIT_USAGE_SCRIPT",
-    include_str!("lua/apply_ai_credit_usage.lua"),
-);
+/// `APPLY_AI_CREDIT_USAGE_SCRIPT` (`billing.ts`) with the usage revision
+/// ([`super::balance::DEBIT_REVISION_LINES`]): otherwise the reference's text.
+pub use super::balance::DEBIT as APPLY_AI_CREDIT_USAGE;
 
 /// 31 days, the usage rewrite's TTL and the idempotency marker's.
 pub const USAGE_MARKER_TTL_SECONDS: u64 = 31 * 24 * 60 * 60;
@@ -259,6 +262,7 @@ impl CreditsCache {
             canonical,
             legacy,
             format!("twitch:{channel_id}:ai:usage-local:{marker}"),
+            balance::revision_key(channel_id),
         ];
         let args = [
             dima_text::number_to_string(credits),
@@ -277,18 +281,6 @@ impl CreditsCache {
         })
     }
 
-    async fn set_exhausted(&self, channel_id: &str) -> Result<(), DragonflyError> {
-        let [canonical, legacy] = exhausted_key(channel_id);
-        let (a, b) = tokio::join!(
-            self.dragonfly
-                .set(&canonical, b"true", SetOptions::default()),
-            self.dragonfly.set(&legacy, b"true", SetOptions::default()),
-        );
-        a?;
-        b?;
-        Ok(())
-    }
-
     async fn exhaustion_flags(&self, channel_id: &str) -> Result<(bool, bool), DragonflyError> {
         let [canonical, legacy] = exhausted_key(channel_id);
         let (canonical, legacy) = ([canonical.as_str()], [legacy.as_str()]);
@@ -299,34 +291,55 @@ impl CreditsCache {
         Ok((a? == 1, b? == 1))
     }
 
-    /// `isAiCreditsExhausted(channelID)`: either flag, or an exhausted cached snapshot; a missing
-    /// flag is repaired.
+    /// `isAiCreditsExhausted(channelID)`: either flag, or an exhausted cached snapshot
+    /// ([`super::credits::cached_snapshot_is_exhausted`]'s rule); a missing flag is repaired. The
+    /// reads and the repair are one atomic script ([`balance::EXHAUSTION`]): the reference read
+    /// the flags, then set them, and a refill published between the two was undone (item 4 of
+    /// P2-BILLING-01b, review finding 7).
     pub async fn is_ai_credits_exhausted(&self, channel_id: &str) -> Result<bool, DragonflyError> {
         if channel_id.is_empty() {
             return Ok(false);
         }
-        let (canonical, legacy) = self.exhaustion_flags(channel_id).await?;
-        if canonical || legacy {
-            if !(canonical && legacy) {
-                self.set_exhausted(channel_id).await?;
-            }
-            return Ok(true);
-        }
-        let Some(cached) = self
-            .dragonfly
-            .get_text(&credits_cache_key(channel_id))
-            .await?
-        else {
-            return Ok(false);
-        };
-        if cached.is_empty() {
-            return Ok(false);
-        }
-        let exhausted = cached_snapshot_is_exhausted(&cached);
-        if exhausted {
-            self.set_exhausted(channel_id).await?;
-        }
-        Ok(exhausted)
+        let [canonical, legacy] = exhausted_key(channel_id);
+        let keys = [canonical, legacy, credits_cache_key(channel_id)];
+        let no_args: [&str; 0] = [];
+        let reply = balance::EXHAUSTION
+            .run_value(&self.dragonfly, &keys, &no_args)
+            .await?;
+        Ok(dima_store::dragonfly::commands::reply::int(reply)? == 1)
+    }
+
+    /// Publishes a fetched balance under the revision read before the fetch
+    /// ([`balance::PUBLISH`]).
+    async fn publish(
+        &self,
+        channel_id: &str,
+        version: &str,
+        raw: &str,
+        start: Revision,
+    ) -> Result<Publication, DragonflyError> {
+        let [canonical, legacy] = exhausted_key(channel_id);
+        let keys = [
+            credits_cache_key(channel_id),
+            canonical,
+            legacy,
+            plan_cache_fence_key(channel_id),
+            balance::revision_key(channel_id),
+        ];
+        let args = [
+            version.to_owned(),
+            raw.to_owned(),
+            AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
+            start.rev.to_string(),
+            start.debits.to_string(),
+            self.now_iso(),
+            balance::REVISION_TTL_SECONDS.to_string(),
+        ];
+        balance::publication(
+            balance::PUBLISH
+                .run_value(&self.dragonfly, &keys, &args)
+                .await?,
+        )
     }
 
     async fn accept(
@@ -418,6 +431,10 @@ impl CreditsCache {
                 }
                 return Ok(data);
             };
+            // The usage revision before Polar is asked (item 4).
+            let start = balance::read_revision(&self.dragonfly, twitch_id)
+                .await
+                .map_err(|e| e.to_string())?;
             let state = polar
                 .customer_state(customer_id)
                 .await
@@ -440,14 +457,21 @@ impl CreditsCache {
                 payload.status = CreditStatus::Unavailable;
             }
             let raw = payload.to_cache_text(&version);
-            let accepted = self
-                .accept(twitch_id, &payload, &version, &raw, CreditMode::Write)
+            let published = self
+                .publish(twitch_id, &version, &raw, start)
                 .await
                 .map_err(|e| e.to_string())?;
-            Ok(if accepted {
-                payload
-            } else {
-                unavailable_ai_credits(self.now_iso())
+            let read_back = |stored: &str| {
+                read_cached_credits(stored, options.require_verified, || self.now_iso())
+                    .map(|read| read.payload)
+            };
+            Ok(match published {
+                Publication::Accepted(stored) if stored == raw => payload,
+                // Debits made during the fetch were applied to what Polar answered.
+                Publication::Accepted(stored) => read_back(&stored).unwrap_or(payload),
+                // A newer snapshot was published meanwhile: it stands.
+                Publication::Superseded(current) => read_back(&current).unwrap_or(payload),
+                Publication::Fenced => unavailable_ai_credits(self.now_iso()),
             })
         }
         .await;

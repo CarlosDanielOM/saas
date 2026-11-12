@@ -33,7 +33,8 @@ use dima_model::users::{AccountType, User};
 use dima_model::{Private, StrEnum};
 use dima_store::dragonfly::Dragonfly;
 use dima_store::dragonfly::plan_cache_fence::{
-    Acceptance, Exhaustion, FenceError, PlanCacheFence, TtlSeconds, plan_cache_version,
+    Acceptance, Exhaustion, FenceError, PlanCacheFence, credits_cache_key, exhaustion_cache_keys,
+    plan_cache_fence_key, plan_cache_version, snapshot_version_key,
 };
 use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
@@ -351,6 +352,10 @@ fn le_zero(value: &Value) -> bool {
 /// The write of `applyPolarCreditsDomainEvent`: keep the newest snapshot on the user, then
 /// publish the credits it implies to every Twitch account, fenced by the plan and snapshot
 /// versions. `None` when the owner has no Twitch account.
+///
+/// Local debits made after the projection began are applied to the published snapshot (item 4
+/// of P2-BILLING-01b: [`super::balance`]), and the publication advances the usage revision, so
+/// a slower fetch that started before it cannot overwrite it.
 pub async fn project_credit_snapshot(
     stores: ProjectionStores<'_>,
     owner_id: ObjectId,
@@ -359,6 +364,26 @@ pub async fn project_credit_snapshot(
     meters: &[Value],
     now_ms: i64,
 ) -> Result<Option<CreditSync>, ProjectionError> {
+    // The debits of every account of the owner before anything is read (the accounts are
+    // read again from the stored document below; one missing here starts at 0).
+    let mut started: Vec<(String, super::balance::Revision)> = Vec::new();
+    if let Some(stored) = stores
+        .mongo
+        .documents(dima_model::users::COLLECTION)
+        .find_one(doc! { "_id": owner_id })
+        .await
+        .map_err(dima_store::mongo::write::WriteError::from)?
+    {
+        for id in twitch_ids(&dima_model::decode_document::<User>(&stored)?) {
+            let revision = super::balance::read_revision(stores.dragonfly, &id)
+                .await
+                .map_err(|source| FenceError::Redis {
+                    write_outcome_unknown: false,
+                    source,
+                })?;
+            started.push((id, revision));
+        }
+    }
     let filter = doc! {
         "_id": owner_id,
         "$or": [
@@ -475,21 +500,51 @@ pub async fn project_credit_snapshot(
         "{}:{current_key}",
         dima_text::pad_start(&current_at.to_string(), 13, "0")
     );
-    let fence = PlanCacheFence::new(stores.dragonfly.clone());
-    let ttl = TtlSeconds::new(AI_CREDITS_CACHE_TTL_SECONDS)?;
+    let updated_at = dima_text::to_iso_string(now_ms).unwrap_or_default();
     let mut accepted = Vec::with_capacity(twitch.len());
     for id in &twitch {
+        let debits = started
+            .iter()
+            .find(|(known, _)| known == id)
+            .map_or(0, |(_, revision)| revision.debits);
+        let [canonical, legacy] = exhaustion_cache_keys(id);
+        let keys = [
+            credits_cache_key(id),
+            canonical,
+            legacy,
+            snapshot_version_key(id),
+            plan_cache_fence_key(id),
+            super::balance::revision_key(id),
+        ];
+        let args = [
+            snapshot_version.clone(),
+            payload.clone(),
+            match exhaustion {
+                Exhaustion::Keep => String::new(),
+                Exhaustion::Exhausted => "1".to_owned(),
+                Exhaustion::Available => "0".to_owned(),
+            },
+            AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
+            plan_version.clone(),
+            debits.to_string(),
+            updated_at.clone(),
+            super::balance::REVISION_TTL_SECONDS.to_string(),
+        ];
+        let reply = super::balance::SYNC
+            .run_value(stores.dragonfly, &keys, &args)
+            .await
+            .map_err(|source| FenceError::Redis {
+                write_outcome_unknown: true,
+                source,
+            })?;
         accepted.push(
-            fence
-                .sync_credits(
-                    id,
-                    &snapshot_version,
-                    (!payload.is_empty()).then_some(payload.as_str()),
-                    exhaustion,
-                    ttl,
-                    &plan_version,
-                )
-                .await?,
+            match dima_store::dragonfly::commands::reply::int(reply)
+                .map_err(|_| FenceError::Protocol)?
+            {
+                1 => Acceptance::Accepted,
+                0 => Acceptance::Rejected,
+                _ => return Err(FenceError::Protocol.into()),
+            },
         );
     }
     Ok(Some(CreditSync {

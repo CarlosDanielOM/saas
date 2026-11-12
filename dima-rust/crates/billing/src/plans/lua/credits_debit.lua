@@ -3,6 +3,12 @@ if ARGV[5] == '1' then
     local marked = redis.call('SET', KEYS[4], '1', 'NX', 'EX', ARGV[4])
     if not marked then return 2 end
 end
+local consumedNow = math.max(0, math.ceil(tonumber(ARGV[1]) or 0))
+if consumedNow > 0 then
+    redis.call('HINCRBY', KEYS[5], 'rev', 1)
+    redis.call('HINCRBY', KEYS[5], 'debits', consumedNow)
+    redis.call('EXPIRE', KEYS[5], ARGV[4])
+end
 local raw = redis.call('GET', KEYS[1])
 if not raw then return 0 end
 local ok, data = pcall(cjson.decode, raw)

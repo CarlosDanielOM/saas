@@ -14,6 +14,7 @@
 //! no longer grants a paid tier. A caller's tier is checked against the plan fence before it is
 //! trusted for credits ([`credits_cache`]).
 
+pub mod balance;
 pub mod checkout;
 pub mod credits;
 pub mod credits_cache;

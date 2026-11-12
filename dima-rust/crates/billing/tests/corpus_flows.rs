@@ -565,6 +565,7 @@ async fn get_ai_credits_matches_the_reference() {
     let clock = Arc::new(ManualClock::new(now()));
     let cache = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
     let mut report = Report::new("get_ai_credits");
+    let mut published = 0;
     for case in cases("get_ai_credits") {
         let input = &case["input"];
         let id = support::channel_id();
@@ -604,6 +605,20 @@ async fn get_ai_credits_matches_the_reference() {
             )
             .await
             .unwrap();
+        // Intended difference (item 4 of P2-BILLING-01b): a published balance advances the
+        // usage revision, a Rust-only hash the reference does not have. It is checked here and
+        // left out of the comparison of the reference's keys.
+        let revision_key = dima_billing::plans::balance::revision_key(&id);
+        let revision: Vec<Option<String>> = dragonfly
+            .query(redis::cmd("HMGET").arg(&revision_key).arg("rev").arg("pub"))
+            .await
+            .unwrap();
+        if revision[0].is_some() {
+            assert_eq!(revision[0], revision[1], "a publication sets pub to rev");
+            assert_eq!(revision[0].as_deref(), Some("1"));
+            published += 1;
+            dragonfly.del(&[&revision_key]).await.unwrap();
+        }
         let after: Map<String, Value> = support::keys_with(&dragonfly, &id)
             .await
             .unwrap()
@@ -629,6 +644,9 @@ async fn get_ai_credits_matches_the_reference() {
         });
     }
     report.finish();
+    // Every case whose fetch reached Polar and was accepted: the cache value itself is the
+    // reference's, byte for byte or as JSON (no debit happens during these fetches).
+    assert_eq!(published, 340, "cases that published under the revision");
 }
 
 #[allow(dead_code)]
