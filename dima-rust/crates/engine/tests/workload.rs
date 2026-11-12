@@ -49,7 +49,7 @@ fn run(source: &str, plan: Plan, limits: EvalLimits) -> (String, EvalStats, Dura
     let mut host = MemoryHost::new(1);
     let started = Instant::now();
     let rendered =
-        block_on(engine.render(&template, &context, State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context, State::default(), &mut host)).unwrap();
     (rendered.text, rendered.stats, started.elapsed())
 }
 

@@ -30,7 +30,8 @@ fn cost(source: &str) -> (EvalStats, usize) {
     let template = engine.compile(source).unwrap();
     let mut host = MemoryHost::new(1);
     let rendered =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     (rendered.stats, rendered.text.len())
 }
 
@@ -158,10 +159,11 @@ fn references_carry_the_message_budget_and_a_new_message_starts_a_new_one() {
     let engine = engine_with(&[]);
     let template = engine.compile("#(a) #(b)").unwrap();
     let mut host = MemoryHost::new(1);
-    let first =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+    let first = block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+        .unwrap();
     let second =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     assert_eq!(first.state.command_references.len(), 2);
     for reference in &first.state.command_references {
         assert!(reference.state.message.same(&first.budget));
@@ -240,7 +242,8 @@ fn a_host_call_in_flight_is_dropped_at_the_deadline() {
     // The call moves the clock eleven seconds on and never answers.
     host.hang = Some(("hang", 11_000));
     let rendered =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     let stopped = marker(LimitKind::Deadline);
     assert_eq!(rendered.text, format!("a {stopped} b {stopped}"));
     assert!(
@@ -256,7 +259,8 @@ fn a_delay_is_cut_at_the_deadline() {
     let mut host = MemoryHost::new(1);
     host.sleep_moves_clock = true;
     let rendered =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     let stopped = marker(LimitKind::Deadline);
     assert_eq!(rendered.text, format!(" one {stopped} two"));
 }
@@ -271,7 +275,8 @@ fn work_reads_the_clock_once_per_lease_and_stops_at_the_deadline() {
     let mut host = MemoryHost::new(1);
     host.clock.tick.store(1, SeqCst);
     let rendered =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     assert!(!rendered.text.contains("[Parse error"));
     // One read when the message starts, one per lease of 1,024 units.
     let reads = host.clock.reads.load(SeqCst);
@@ -285,7 +290,61 @@ fn work_reads_the_clock_once_per_lease_and_stops_at_the_deadline() {
     let mut host = MemoryHost::new(1);
     host.clock.tick.store(1_000, SeqCst);
     let rendered =
-        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+        block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+            .unwrap();
     assert_eq!(rendered.text, marker(LimitKind::Deadline));
     assert_eq!(host.clock.reads.load(SeqCst), 11);
+}
+
+// ---- the entry points ----
+
+#[test]
+fn the_entry_points_say_whether_they_start_a_message_or_join_one() {
+    let engine = engine_with(&[]);
+    let mut host = MemoryHost::new(1);
+    let program = engine.parse("#(a) *(1 + 1)").unwrap();
+    let message = block_on(engine.evaluate_program_message(
+        &program,
+        &context(),
+        State::default(),
+        &mut host,
+    ))
+    .unwrap();
+    let reference = &message.state.command_references[0];
+    assert!(reference.state.message.same(&message.budget));
+    let reference_context = memory::reference_context(&context(), reference);
+    // A node run for the reference joins the message.
+    let joined = block_on(engine.evaluate_reference(
+        program.root(),
+        &reference_context,
+        State::default(),
+        &mut host,
+        &reference.state.message,
+    ))
+    .unwrap();
+    assert!(joined.budget.same(&message.budget));
+    assert_eq!(
+        message.budget.usage().steps,
+        message.stats.steps + joined.stats.steps
+    );
+    // So does rendered text.
+    let template = engine.compile("x *(2 + 2)").unwrap();
+    let rendered = block_on(engine.render_reference(
+        &template,
+        &reference_context,
+        State::default(),
+        &mut host,
+        &reference.state.message,
+    ))
+    .unwrap();
+    assert_eq!(rendered.text, "x 4");
+    assert!(rendered.budget.same(&message.budget));
+    // A message of its own starts its own budget, whichever entry point runs it.
+    let fresh =
+        block_on(engine.evaluate_message(program.root(), &context(), State::default(), &mut host))
+            .unwrap();
+    assert!(!fresh.budget.same(&message.budget));
+    let fresh = block_on(engine.render_message(&template, &context(), State::default(), &mut host))
+        .unwrap();
+    assert!(!fresh.budget.same(&message.budget));
 }

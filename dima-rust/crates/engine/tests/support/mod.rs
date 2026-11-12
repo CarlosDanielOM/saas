@@ -1112,7 +1112,7 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                 let ast: AstNode = serde_json::from_value(input["ast"].clone())
                     .map_err(|_| Unrepresentable::UnknownTag)?;
                 engine
-                    .evaluate(&ast, &context, state, &mut host)
+                    .evaluate_message(&ast, &context, state, &mut host)
                     .await
                     .map(|done| {
                         note_budget(&done.budget, &done.state);
@@ -1125,7 +1125,7 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                     Ok((None, state))
                 }
                 Ok(program) => engine
-                    .evaluate_program(&program, &context, state, &mut host)
+                    .evaluate_program_message(&program, &context, state, &mut host)
                     .await
                     .map(|done| {
                         note_budget(&done.budget, &done.state);
@@ -1135,7 +1135,7 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
             "render" | "preparedRender" => {
                 let template = engine.compile(input["text"].as_str().unwrap()).unwrap();
                 engine
-                    .render(&template, &context, state, &mut host)
+                    .render_message(&template, &context, state, &mut host)
                     .await
                     .map(|done| {
                         note_budget(&done.budget, &done.state);
@@ -1148,7 +1148,7 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                     panic!("timer case without a function node")
                 };
                 engine
-                    .evaluate_timer(&args, &context, state, &mut host)
+                    .evaluate_timer_message(&args, &context, state, &mut host)
                     .await
                     .map(|done| {
                         note_budget(&done.budget, &done.state);

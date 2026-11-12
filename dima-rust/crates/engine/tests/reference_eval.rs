@@ -266,16 +266,21 @@ fn timer_defers_nested_actions_and_returns_no_immediate_body_text() {
     let engine = engine_with(&[("timer.testaction", None)]);
     let mut host = MemoryHost::new(1);
     let args = timer_args(&engine, "$(timer 300 5 minutes over $(timer.testaction))");
-    let done =
-        block_on(engine.evaluate_timer(&args, &timer_context(), State::default(), &mut host))
-            .unwrap();
+    let done = block_on(engine.evaluate_timer_message(
+        &args,
+        &timer_context(),
+        State::default(),
+        &mut host,
+    ))
+    .unwrap();
     assert_eq!(text(&done), "");
     assert!(host.recorded.calls.is_empty());
     let (seconds, body, _) = host.recorded.timers.pop().unwrap();
     assert_eq!(seconds, 300.0);
     let root = AstNode::Root { children: body };
     let later =
-        block_on(engine.evaluate(&root, &timer_context(), State::default(), &mut host)).unwrap();
+        block_on(engine.evaluate_message(&root, &timer_context(), State::default(), &mut host))
+            .unwrap();
     assert_eq!(text(&later), "5 minutes over");
     assert_eq!(host.recorded.calls.len(), 1);
 }
@@ -285,7 +290,7 @@ fn duration_can_be_computed_while_the_body_remains_lazy() {
     let engine = default_engine();
     let mut host = MemoryHost::new(1);
     let args = timer_args(&engine, "$(timer %(seconds) \"Time is up!\")");
-    block_on(engine.evaluate_timer(
+    block_on(engine.evaluate_timer_message(
         &args,
         &timer_context(),
         with_variable("seconds", "300"),
@@ -309,9 +314,13 @@ fn rejects_invalid_timer_without_scheduling() {
     ] {
         let mut host = MemoryHost::new(1);
         let args = timer_args(&engine, source);
-        let done =
-            block_on(engine.evaluate_timer(&args, &timer_context(), State::default(), &mut host))
-                .unwrap();
+        let done = block_on(engine.evaluate_timer_message(
+            &args,
+            &timer_context(),
+            State::default(),
+            &mut host,
+        ))
+        .unwrap();
         assert!(text(&done).starts_with("timer:"), "{source}");
         assert!(host.recorded.timers.is_empty(), "{source}");
     }
@@ -337,7 +346,8 @@ fn nesting_and_channel_validation_do_not_execute_the_timer_body() {
     ] {
         let mut host = MemoryHost::new(1);
         let done =
-            block_on(engine.evaluate_timer(&args, &context, State::default(), &mut host)).unwrap();
+            block_on(engine.evaluate_timer_message(&args, &context, State::default(), &mut host))
+                .unwrap();
         assert!(text(&done).starts_with("timer:"));
         assert!(host.recorded.timers.is_empty() && host.recorded.calls.is_empty());
     }
@@ -384,9 +394,10 @@ fn deferred_restricted_actions_retain_the_original_caller_permission_gate() {
     let engine = engine_with(&[("timer.restricted", Some(7.0))]);
     let mut host = MemoryHost::new(1);
     let args = timer_args(&engine, "$(timer 300 $(timer.restricted))");
-    block_on(engine.evaluate_timer(&args, &timer_context(), State::default(), &mut host)).unwrap();
+    block_on(engine.evaluate_timer_message(&args, &timer_context(), State::default(), &mut host))
+        .unwrap();
     let (_, body, _) = host.recorded.timers.pop().unwrap();
-    let later = block_on(engine.evaluate(
+    let later = block_on(engine.evaluate_message(
         &AstNode::Root { children: body },
         &timer_context(),
         State::default(),

@@ -28,8 +28,9 @@
 //!   [`PARSE_STACK_BYTES`]. On a thread that is not registered, or has less left, a program is
 //!   parsed on a short-lived thread with a stack of [`PARSE_THREAD_STACK_BYTES`] instead, so
 //!   parsing works on any thread; on a registered thread with room it costs nothing extra.
-//! - **Evaluation** ([`crate::eval::Engine`]'s `render`, `evaluate`, `evaluate_program`,
-//!   `evaluate_timer`) needs [`EVAL_STACK_BYTES`] left every time its future is polled. A future
+//! - **Evaluation** (every entry point of [`crate::eval::Engine`]: `render_message`,
+//!   `render_reference`, `evaluate_message`, `evaluate_program_message`, `evaluate_reference`,
+//!   `evaluate_timer_message`) needs [`EVAL_STACK_BYTES`] left every time its future is polled. A future
 //!   polled with less, or on a thread that is not registered, returns
 //!   [`crate::eval::EvalError::Stack`] instead of running: a caller that breaks the contract gets
 //!   an error, not a crash. A tokio worker with the default 2 MiB stack, registered, keeps it

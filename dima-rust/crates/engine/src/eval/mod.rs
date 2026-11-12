@@ -1,12 +1,22 @@
 //! The evaluator (`evaluator.ts`, `render.ts`, `timer.ts`): runs compiled command text against
 //! a [`Context`] and a [`Host`].
 //!
-//! - [`Engine::render`]: what the bot does with a command's response text
-//!   (`renderAstWithSourceReference`): text segments copied, each expression evaluated in turn
-//!   with the state threaded through, a parse error shown in place, an unclosed expression
-//!   ending the output.
-//! - [`Engine::evaluate`]: one program or node (`evaluate(ast, ctx)`), as the AI tools and the
-//!   reference's tests call it.
+//! Every evaluation belongs to a **message** ([`MessageBudget`]): what one chat message, timer
+//! or redemption starts. The entry points say which part of a message they run:
+//!
+//! - [`Engine::render_message`]: what the bot does with the response text of the command a
+//!   message runs (`renderAstWithSourceReference`): text segments copied, each expression
+//!   evaluated in turn with the state threaded through, a parse error shown in place, an
+//!   unclosed expression ending the output. It starts the message's budget.
+//! - [`Engine::render_reference`]: the same for a command that a command reference
+//!   (`#(name)`) of a message started; it takes the message's budget from the reference
+//!   ([`crate::context::ReferenceState::message`]) and is refused once the message stopped.
+//!   There is no way to give a reference a fresh budget: [`MessageBudget`] cannot be made
+//!   outside the engine.
+//! - [`Engine::evaluate_message`], [`Engine::evaluate_program_message`] and
+//!   [`Engine::evaluate_reference`]: one program or node (`evaluate(ast, ctx)`), as the AI tools,
+//!   a timer firing and the reference's tests call it.
+//! - [`Engine::evaluate_timer_message`]: `evaluateTimer` on its own.
 //!
 //! An evaluation is a `Send` future over `&mut dyn Host`; it keeps no global state and no
 //! reference counting, so many run at once on a multi-threaded runtime.
@@ -20,7 +30,7 @@
 //!   against the supported workload of [`SUPPORTED_STATEMENTS`]): when one is hit inside an
 //!   expression, that expression's output is `[Parse error: …]` and rendering goes on (once
 //!   the work, call or text budget is spent, every later expression hits it too);
-//!   [`Engine::evaluate`] returns [`EvalError::Limit`]. Nothing is allocated past a limit
+//!   the `evaluate_*` entry points return [`EvalError::Limit`]. Nothing is allocated past a limit
 //!   first: a builtin sizes its result before building it, the values one step gathers (a
 //!   call's arguments, a list literal's items, a reference's argument, a list written as JSON)
 //!   are counted as they are gathered, and what a run keeps (variables, the database memo, loop
@@ -108,7 +118,7 @@ pub struct EvalStats {
     pub stack_bytes: usize,
 }
 
-/// The result of [`Engine::evaluate`].
+/// The result of [`Engine::evaluate_message`] and the other `evaluate_*` entry points.
 #[derive(Debug)]
 pub struct Evaluated {
     /// The value (`result.value`).
@@ -121,7 +131,7 @@ pub struct Evaluated {
     pub budget: MessageBudget,
 }
 
-/// The result of [`Engine::render`].
+/// The result of [`Engine::render_message`] and [`Engine::render_reference`].
 #[derive(Debug)]
 pub struct Rendered {
     /// The rendered text, before the bot's final unescape pass (`parsedText`).
@@ -200,21 +210,21 @@ impl Engine {
         self.limits
     }
 
-    /// Compiles command text (placeholders already substituted) for [`Engine::render`]. A
+    /// Compiles command text (placeholders already substituted) for [`Engine::render_message`]. A
     /// syntax resource limit inside one expression stays with that expression; only a text over
     /// [`Limits::input_chars`] fails.
     pub fn compile(&self, text: &str) -> Result<CompiledTemplate, Diagnostic> {
         self.syntax.compile_template(text)
     }
 
-    /// Parses one program for [`Engine::evaluate_program`] (`parse`).
+    /// Parses one program for [`Engine::evaluate_program_message`] (`parse`).
     pub fn parse(&self, text: &str) -> Result<CompiledProgram, Diagnostic> {
         self.syntax.parse(text)
     }
 
     /// Renders compiled command text (`renderAstWithSourceReference`) as a message of its own,
     /// with a fresh [`MessageBudget`].
-    pub async fn render(
+    pub async fn render_message(
         &self,
         template: &CompiledTemplate,
         context: &Context,
@@ -313,20 +323,21 @@ impl Engine {
     }
 
     /// Evaluates a parsed program (`evaluate(parse(text).ast, ctx)`) as a message of its own.
-    pub async fn evaluate_program(
+    pub async fn evaluate_program_message(
         &self,
         program: &CompiledProgram,
         context: &Context,
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        self.evaluate(program.root(), context, state, host).await
+        self.evaluate_message(program.root(), context, state, host)
+            .await
     }
 
     /// Evaluates any node (`evaluate(node, ctx)`) as a message of its own, for instance a timer
     /// body read back from the cache. A tree deeper than [`EvalLimits::nesting`] is refused
     /// before it runs ([`EvalError::Limit`] with [`LimitKind::Nesting`]).
-    pub async fn evaluate(
+    pub async fn evaluate_message(
         &self,
         node: &AstNode,
         context: &Context,
@@ -371,7 +382,7 @@ impl Engine {
 
     /// `evaluateTimer(node, ctx)` on its own, as a message of its own: a `$(timer …)`
     /// function node.
-    pub async fn evaluate_timer(
+    pub async fn evaluate_timer_message(
         &self,
         args: &[AstNode],
         context: &Context,

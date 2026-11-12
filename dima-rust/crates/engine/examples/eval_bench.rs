@@ -249,7 +249,7 @@ fn run() {
         };
         let render = time(iterations, || {
             runtime
-                .block_on(engine.render(&template, &context, State::default(), &mut host))
+                .block_on(engine.render_message(&template, &context, State::default(), &mut host))
                 .map_or(0, |done| done.text.len())
         });
         compile_total += compile;

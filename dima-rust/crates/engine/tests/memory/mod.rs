@@ -414,7 +414,7 @@ pub fn evaluate(
     let program = engine
         .parse(source)
         .unwrap_or_else(|e| panic!("{source}: {}", e.message));
-    block_on(engine.evaluate_program(&program, context, state, host)).unwrap()
+    block_on(engine.evaluate_program_message(&program, context, state, host)).unwrap()
 }
 
 /// `renderAstWithSourceReference(source, ctx)`.
@@ -426,7 +426,7 @@ pub fn render(
     host: &mut MemoryHost,
 ) -> Rendered {
     let template = engine.compile(source).unwrap();
-    block_on(engine.render(&template, context, state, host)).unwrap()
+    block_on(engine.render_message(&template, context, state, host)).unwrap()
 }
 
 pub fn text(evaluated: &Evaluated) -> String {
@@ -480,7 +480,7 @@ pub fn deliver(
     block_on(async {
         let template = engine.compile(source).unwrap();
         let top = engine
-            .render(&template, context, State::default(), host)
+            .render_message(&template, context, State::default(), host)
             .await
             .unwrap();
         let budget = top.budget.clone();

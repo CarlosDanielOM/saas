@@ -69,11 +69,11 @@ fn measure(text_bytes: usize, source: &str) -> (String, usize) {
     let warm = engine
         .compile("%(w a) $(upper %(w)) $(title %(w)) $(replace a b %(w)) %(l %[%(w)])")
         .unwrap();
-    drop(runtime.block_on(engine.render(&warm, &context, State::default(), &mut host)));
+    drop(runtime.block_on(engine.render_message(&warm, &context, State::default(), &mut host)));
     reset_peak();
     let before = peak_resident();
     let rendered = runtime
-        .block_on(engine.render(&template, &context, State::default(), &mut host))
+        .block_on(engine.render_message(&template, &context, State::default(), &mut host))
         .unwrap();
     let growth = peak_resident().saturating_sub(before);
     (rendered.text, growth)
