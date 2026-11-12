@@ -16,6 +16,8 @@
 //! - Recovery of answers MongoDB has not taken (`recovery.rs`): [`Twitch::start_recovery`] once
 //!   per process, [`Twitch::reconcile_recovery`] on a tick and before a rollback, and the last
 //!   step of [`Twitch::shutdown`].
+//! - [`eventsub`]: EventSub subscriptions: the table, create, list, delete, the bits migration
+//!   and the reconciliation.
 //! - [`keys`]: every Dragonfly key and what happens to it at the cutover.
 //! - [`config`]: the typed configuration and every pause, lease and timeout ([`Timings`]).
 //!
@@ -67,6 +69,7 @@ mod drain;
 pub mod emotes;
 mod error;
 pub mod events;
+pub mod eventsub;
 mod flight;
 pub mod functions;
 pub mod helix;
