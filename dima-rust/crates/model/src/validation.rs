@@ -138,6 +138,13 @@ pub enum ValidatorKind {
     MaxLength,
     /// `user defined`.
     UserDefined,
+    /// Not Mongoose's: a value of the wrong BSON type for its path (`dima-model` refuses what
+    /// the store would send uncast; see `shape.rs`).
+    Type,
+    /// Not Mongoose's: `null` where the read type has no null.
+    Null,
+    /// Not Mongoose's: a path the read type needs, removed or left out.
+    Missing,
 }
 
 impl ValidatorKind {
@@ -150,6 +157,9 @@ impl ValidatorKind {
             Self::Max => "max",
             Self::MaxLength => "maxlength",
             Self::UserDefined => "user defined",
+            Self::Type => "type",
+            Self::Null => "null",
+            Self::Missing => "missing",
         }
     }
 }

@@ -13,13 +13,14 @@
 use crate::collection::{CollectionInfo, Hooks};
 use crate::error::ModelError;
 use crate::loaded::LoadedForSave;
+use crate::shape::Against;
 use crate::validation::validate_ordered;
 use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
 use dima_store::mongo::save::{Change, PreparedSave, prepare_save};
 use dima_store::mongo::schema::{DefaultValue, Field, Kind, Schema};
 use dima_store::mongo::update::{
-    PreparedFindAndModify, PreparedUpdate, Returned, Update, UpdateOptions,
+    PreparedFindAndModify, PreparedUpdate, Returned, Update, UpdateDoc, UpdateOptions,
     prepare_find_one_and_update, prepare_update,
 };
 
@@ -33,7 +34,7 @@ impl CollectionInfo {
         ctx: &mut WriteContext,
     ) -> Result<PreparedUpdate, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "update")?;
-        update_unchecked(self.schema, filter, update.into(), options, ctx)
+        update_unchecked(self, filter, update.into(), options, ctx)
     }
 
     /// `Model.findOneAndUpdate` of a collection without hooks.
@@ -46,7 +47,7 @@ impl CollectionInfo {
         ctx: &mut WriteContext,
     ) -> Result<PreparedFindAndModify, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "findOneAndUpdate")?;
-        find_and_update_unchecked(self.schema, filter, update.into(), options, returned, ctx)
+        find_and_update_unchecked(self, filter, update.into(), options, returned, ctx)
     }
 
     /// `doc.save()` of a document of a collection without hooks, loaded whole with
@@ -85,29 +86,48 @@ impl CollectionInfo {
 
 /// [`CollectionInfo::prepare_update`] without the hooks check (for the modules' adapters).
 pub(crate) fn update_unchecked(
-    schema: &Schema,
+    info: &CollectionInfo,
     filter: &Document,
     update: Update,
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, ModelError> {
-    let update = immutable_mixed_children(schema, update, options.upsert);
-    Ok(prepare_update(schema, filter, update, options, ctx)?)
+    let update = immutable_mixed_children(info.schema, update, options.upsert);
+    let prepared = prepare_update(info.schema, filter, update, options, ctx)?;
+    if let Some(update) = &prepared.update {
+        info.check_update(
+            update,
+            Against::Filter {
+                filter: &prepared.filter,
+                upsert: prepared.upsert,
+            },
+        )?;
+    }
+    Ok(prepared)
 }
 
 /// [`CollectionInfo::prepare_find_one_and_update`] without the hooks check.
 pub(crate) fn find_and_update_unchecked(
-    schema: &Schema,
+    info: &CollectionInfo,
     filter: &Document,
     update: Update,
     options: UpdateOptions,
     returned: Returned,
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, ModelError> {
-    let update = immutable_mixed_children(schema, update, options.upsert);
-    Ok(prepare_find_one_and_update(
-        schema, filter, update, options, returned, ctx,
-    )?)
+    let update = immutable_mixed_children(info.schema, update, options.upsert);
+    let prepared =
+        prepare_find_one_and_update(info.schema, filter, update, options, returned, ctx)?;
+    if let Some(update) = &prepared.update {
+        info.check_update(
+            update,
+            Against::Filter {
+                filter: &prepared.filter,
+                upsert: prepared.upsert,
+            },
+        )?;
+    }
+    Ok(prepared)
 }
 
 /// Every save of `info` (the generic one and the modules' adapters): checks that `loaded` was
@@ -132,7 +152,14 @@ pub(crate) fn save_with_hooks(
     validate_save(info, loaded.document(), &changes, ctx)?;
     let mut all = changes.clone();
     all.extend(hooks(loaded.document(), &changes, ctx)?);
-    Ok(prepare_save(schema, loaded.document(), &all, ctx)?)
+    let prepared = prepare_save(schema, loaded.document(), &all, ctx)?;
+    if let Some(update) = &prepared.update {
+        info.check_update(
+            &UpdateDoc::Document(update.clone()),
+            Against::Loaded(loaded.document()),
+        )?;
+    }
+    Ok(prepared)
 }
 
 /// `validateBeforeSave`, as Mongoose 8.24.3 runs it (recorded: the `save_*` cases with errors):
@@ -310,7 +337,7 @@ fn apply_update(document: &mut Document, update: &Document) {
 }
 
 /// The value at a dotted path through documents and array positions.
-fn at<'a>(document: &'a Document, path: &str) -> Option<&'a Bson> {
+pub(crate) fn at<'a>(document: &'a Document, path: &str) -> Option<&'a Bson> {
     let mut segments = path.split('.');
     let mut current = document.get(segments.next()?)?;
     for segment in segments {
@@ -338,7 +365,7 @@ fn at_mut<'a>(document: &'a mut Document, path: &str) -> Option<&'a mut Bson> {
 
 /// `$set` of one dotted path: missing objects on the way are created, array positions are
 /// followed.
-fn put(document: &mut Document, path: &str, value: Bson) {
+pub(crate) fn put(document: &mut Document, path: &str, value: Bson) {
     let Some((head, rest)) = path.split_once('.') else {
         document.insert(path, value);
         return;
@@ -501,6 +528,7 @@ mod tests {
             hidden: &[],
             indexes: &[],
             rules: RULES,
+            read_needs: &[],
             hooks: Hooks::Save,
             decode: |_| Ok(()),
         };

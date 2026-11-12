@@ -5,6 +5,10 @@
 //! hand-written `createdAt` and `updatedAt` with `Date.now` defaults, and a `pre('save')` hook
 //! that sets `updatedAt = new Date()` on every save (creates included). Updates do not run the
 //! hook, so `updateOne` leaves `updatedAt` alone, as in the reference. `__v`, no index.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
@@ -14,6 +18,7 @@ use crate::error::ModelError;
 use crate::hooks::{save_stamping, stamp_insert};
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
@@ -59,6 +64,17 @@ static SCHEMA: Schema = Schema::new(&[
 /// The validators.
 pub const RULES: &[Rule] = &[Rule::one_of("role", AdminRole::STRINGS)];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("adminName"),
+    ReadNeed::not_null("adminID"),
+    ReadNeed::not_null("channelName"),
+    ReadNeed::not_null("channelID"),
+    ReadNeed::not_null("role"),
+    ReadNeed::not_null("actived"),
+    ReadNeed::not_null("permissions"),
+];
+
 /// The registry entry. Saves go through [`prepare_save`] (the `updatedAt` hook).
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -69,6 +85,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::Save,
     decode: |raw: &RawDocument| decode::<Admin>(raw).map(drop),
 };

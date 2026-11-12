@@ -4,12 +4,17 @@
 //! hooks; `name` and `message` are trimmed. Unique `{channelID, name}`. The validators (lengths,
 //! a whole frequency of 1 to 1440 minutes) are the only ones in this package with ranges, so the
 //! input type checks them in its constructor.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::{Rule, ValidationError};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocument};
@@ -81,6 +86,16 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("name"),
+    ReadNeed::value("message"),
+    ReadNeed::value("frequency"),
+    ReadNeed::value("channel"),
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("active"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -91,6 +106,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<CustomTimer>(raw).map(drop),
 };

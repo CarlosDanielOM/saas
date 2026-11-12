@@ -3,12 +3,17 @@
 //! Reference: `dimabot/src/schemas/command_timer.schema.ts` (model `timer_command`). No
 //! timestamps (a hand-written `createdAt` with `Date.now`), `__v`, no hooks, no index. Empty in
 //! the production copy.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{utc_day, utc_month, utc_year};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
@@ -54,6 +59,14 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("command"),
+    ReadNeed::value("timer"),
+    ReadNeed::value("channel"),
+    ReadNeed::value("channelID"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -64,6 +77,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<TimerCommand>(raw).map(drop),
 };

@@ -151,6 +151,7 @@ pub mod error;
 mod hooks;
 pub mod index;
 pub mod loaded;
+pub mod shape;
 pub mod validation;
 pub mod values;
 mod writes;
@@ -179,6 +180,7 @@ pub use enums::{Open, StrEnum};
 pub use error::ModelError;
 pub use index::{IndexFailure, IndexSpec, ensure_indexes};
 pub use loaded::LoadedForSave;
+pub use shape::ReadNeed;
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
 
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its

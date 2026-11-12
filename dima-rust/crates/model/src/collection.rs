@@ -4,6 +4,7 @@
 use crate::decode::DecodeError;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::{Rule, ValidationError, validate, validate_given};
 use bson::{Document, RawDocument};
 use dima_store::mongo::filter::prepare_filter;
@@ -35,6 +36,8 @@ pub struct CollectionInfo {
     pub indexes: &'static [IndexSpec],
     /// The validators, in schema path order.
     pub rules: &'static [Rule],
+    /// What the read type cannot decode: the write helpers refuse to store it (`shape.rs`).
+    pub read_needs: &'static [ReadNeed],
     /// The Mongoose middleware the module's adapters reproduce.
     pub hooks: Hooks,
     /// Decodes a stored document with the module's read type (used by the real-data check).
@@ -87,6 +90,7 @@ impl CollectionInfo {
             &prepared.document,
             Some(given),
         )?;
+        self.check_insert(&prepared.document)?;
         Ok(prepared)
     }
 
@@ -188,6 +192,7 @@ mod tests {
         hidden: &["secret", "deep.token"],
         indexes: &[],
         rules: &[],
+        read_needs: &[],
         hooks: Hooks::None,
         decode: |_| Ok(()),
     };

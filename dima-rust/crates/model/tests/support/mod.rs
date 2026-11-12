@@ -62,3 +62,100 @@ where
         Err(panic) => std::panic::resume_unwind(panic),
     }
 }
+
+/// The write entry points of each registered collection: the module's adapter for a collection
+/// with hooks, the generic one otherwise. A new collection with hooks adds its adapter here.
+pub mod entry {
+    use bson::Document;
+    use dima_core::Random;
+    use dima_model::availability::Writer;
+    use dima_model::{
+        CollectionInfo, LoadedForSave, ModelError, admins, app_configs, commands, events,
+        redemption_rewards,
+    };
+    use dima_store::mongo::WriteContext;
+    use dima_store::mongo::save::{Change, PreparedSave};
+    use dima_store::mongo::update::{
+        PreparedFindAndModify, PreparedUpdate, Returned, UpdateOptions,
+    };
+
+    /// `Model.updateOne` / `updateMany`.
+    pub fn update(
+        info: &CollectionInfo,
+        filter: &Document,
+        update: Document,
+        options: UpdateOptions,
+        writer: Writer,
+        ctx: &mut WriteContext,
+        random: &dyn Random,
+    ) -> Result<PreparedUpdate, ModelError> {
+        match info.name {
+            commands::COLLECTION => {
+                commands::prepare_update(filter, update, options, writer, ctx, random)
+            }
+            redemption_rewards::COLLECTION => {
+                redemption_rewards::prepare_update(filter, update, options, writer, ctx, random)
+            }
+            _ => info.prepare_update(filter, update, options, ctx),
+        }
+    }
+
+    /// `Model.findOneAndUpdate`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn find_one_and_update(
+        info: &CollectionInfo,
+        filter: &Document,
+        update: Document,
+        options: UpdateOptions,
+        returned: Returned,
+        writer: Writer,
+        ctx: &mut WriteContext,
+        random: &dyn Random,
+    ) -> Result<PreparedFindAndModify, ModelError> {
+        match info.name {
+            commands::COLLECTION => commands::prepare_find_one_and_update(
+                filter, update, options, returned, writer, ctx, random,
+            ),
+            redemption_rewards::COLLECTION => redemption_rewards::prepare_find_one_and_update(
+                filter, update, options, returned, writer, ctx, random,
+            ),
+            _ => info.prepare_find_one_and_update(filter, update, options, returned, ctx),
+        }
+    }
+
+    /// `doc.save()`.
+    pub fn save(
+        info: &CollectionInfo,
+        loaded: &LoadedForSave,
+        changes: &[Change],
+        ctx: &mut WriteContext,
+        random: &dyn Random,
+    ) -> Result<PreparedSave, ModelError> {
+        match info.name {
+            admins::COLLECTION => admins::prepare_save(loaded, changes, ctx),
+            app_configs::COLLECTION => app_configs::prepare_save(loaded, changes, ctx),
+            events::COLLECTION => events::prepare_save(loaded, changes, ctx),
+            commands::COLLECTION => commands::prepare_save(loaded, changes, ctx, random),
+            redemption_rewards::COLLECTION => {
+                redemption_rewards::prepare_save(loaded, changes, ctx, random)
+            }
+            _ => info.prepare_save(loaded, changes, ctx),
+        }
+    }
+
+    /// Random bytes from a counter: distinct, reproducible UUIDs for the hooks' tokens.
+    #[derive(Debug, Default)]
+    pub struct CountingRandom(std::sync::atomic::AtomicU64);
+
+    impl Random for CountingRandom {
+        fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
+            for chunk in buf.chunks_mut(8) {
+                let next = self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                for (slot, byte) in chunk.iter_mut().zip(next.to_le_bytes()) {
+                    *slot = byte;
+                }
+            }
+            Ok(())
+        }
+    }
+}

@@ -10,6 +10,12 @@
 //! Domain content stays raw until its package types it: the block tree ([`CommandBlocks`],
 //! engine), the tag permission expression ([`PermissionExpression`], permissions), the response
 //! table ([`CommandResponses`]) and the per-action permissions ([`CommandPermissions`]).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! `permissions` (`Mixed`) is read as raw BSON ([`CommandPermissions`]): a client may store any
+//! value there.
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
@@ -19,6 +25,7 @@ use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::shape::ReadNeed;
 use crate::timer_commands::{CREATION_DATE, CreationDate};
 use crate::validation::Rule;
 use crate::values::StringMap;
@@ -125,6 +132,27 @@ pub const RULES: &[Rule] = &[
     Rule::required("channelID"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("activation"),
+    ReadNeed::not_null("keywordSettings.matchMode"),
+    ReadNeed::not_null("message"),
+    ReadNeed::not_null("authoring"),
+    ReadNeed::not_null("responses"),
+    ReadNeed::not_null("type"),
+    ReadNeed::not_null("platform"),
+    ReadNeed::not_null("reserved"),
+    ReadNeed::not_null("cooldown"),
+    ReadNeed::not_null("count"),
+    ReadNeed::not_null("userLevelName"),
+    ReadNeed::not_null("userLevel"),
+    ReadNeed::not_null("enabled"),
+    ReadNeed::not_null("paused"),
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("premiumRequired"),
+    ReadNeed::not_null("premiumLevelRequired"),
+];
+
 /// The registry entry. Every write goes through this module (the availability hook).
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -135,6 +163,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
     decode: |raw: &RawDocument| decode::<Command>(raw).map(drop),
 };
@@ -295,10 +324,17 @@ pub struct PermissionExpression(pub Bson);
 #[serde(transparent)]
 pub struct CommandResponses(pub Vec<Bson>);
 
-/// Per-action permission levels (`{play: 7, skip: 7}`), kept as stored.
-#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+/// Per-action permission levels (`{play: 7, skip: 7}`), kept as stored. The path is `Mixed`
+/// (`type: Object`), so any value may be stored there; missing reads as the default `{}`.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct CommandPermissions(pub Document);
+pub struct CommandPermissions(pub Bson);
+
+impl Default for CommandPermissions {
+    fn default() -> Self {
+        Self(Bson::Document(Document::new()))
+    }
+}
 
 /// A new command (`new CommandsSchema({...})` in `command_mutations.service.ts`). Unset fields
 /// take the schema defaults.
@@ -423,7 +459,7 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&SCHEMA, filter, update.into(), options, ctx)
+    update_unchecked(&INFO, filter, update.into(), options, ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
@@ -439,7 +475,7 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&SCHEMA, filter, update.into(), options, returned, ctx)
+    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
 }
 
 /// `doc.save()` of a loaded command (read without projection) after `changes`, with the save hook.

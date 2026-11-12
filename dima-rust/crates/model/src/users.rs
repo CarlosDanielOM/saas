@@ -4,6 +4,10 @@
 //! Reference: `dimabot/src/schemas/users.schema.ts`. Snake-case timestamps, `__v`, no hooks and no
 //! declared index (the reference queries `accounts.type` + `accounts.id` without one).
 //! `polar_credit_snapshot` and `applied_credit_transaction_ids` are `select: false`.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
@@ -11,6 +15,7 @@ use crate::defaults::{yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocument, doc};
@@ -172,6 +177,27 @@ pub const RULES: &[Rule] = &[
     Rule::required("free_credit_reset.updatedAt"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("accounts"),
+    ReadNeed::not_null("accounts.$.type"),
+    ReadNeed::not_null("accounts.$.actived"),
+    ReadNeed::not_null("accounts.$.chat_enabled"),
+    ReadNeed::not_null("accounts.$.has_permissions"),
+    ReadNeed::not_null("accounts.$.up_to_date_permissions"),
+    ReadNeed::value("polar_credit_snapshot.occurredAt"),
+    ReadNeed::value("polar_credit_snapshot.eventKey"),
+    ReadNeed::not_null("polar_credit_snapshot.meters"),
+    ReadNeed::not_null("plan_tier"),
+    ReadNeed::not_null("token_balance"),
+    ReadNeed::value("free_credit_reset.periodStart"),
+    ReadNeed::value("free_credit_reset.periodEnd"),
+    ReadNeed::value("free_credit_reset.status"),
+    ReadNeed::value("free_credit_reset.credits"),
+    ReadNeed::value("free_credit_reset.externalId"),
+    ReadNeed::value("free_credit_reset.updatedAt"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -182,6 +208,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<User>(raw).map(drop),
 };

@@ -4,12 +4,18 @@
 //! Reference: `dimabot/src/schemas/countdown_timer.schema.ts` (model `Countdowntimer`) and
 //! `countdown_timer_config.schema.ts` (`Countdowntimerconfig`). No timestamps, `__v`, no hooks,
 //! no index.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] and [`CONFIG_READ_NEEDS`] say the read types has
+//! none; the census of the production copy shows none stored there, so Mongoose's acceptance of
+//! them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::zero;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Document, RawDocument};
@@ -45,6 +51,16 @@ pub const RULES: &[Rule] = &[
     Rule::required("startTime"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("channel"),
+    ReadNeed::value("channelID"),
+    ReadNeed::value("startTime"),
+    ReadNeed::not_null("time"),
+    ReadNeed::not_null("paused"),
+    ReadNeed::not_null("active"),
+];
+
 /// The countdown registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -55,6 +71,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<Countdown>(raw).map(drop),
 };
@@ -87,6 +104,20 @@ pub const CONFIG_RULES: &[Rule] = &[
     Rule::required("donations"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const CONFIG_READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("channel"),
+    ReadNeed::value("channelID"),
+    ReadNeed::value("bits"),
+    ReadNeed::value("tier1"),
+    ReadNeed::value("tier2"),
+    ReadNeed::value("tier3"),
+    ReadNeed::value("follows"),
+    ReadNeed::value("raids"),
+    ReadNeed::value("viewers"),
+    ReadNeed::value("donations"),
+];
+
 /// The configuration registry entry.
 pub static CONFIG_INFO: CollectionInfo = CollectionInfo {
     name: CONFIG_COLLECTION,
@@ -97,6 +128,7 @@ pub static CONFIG_INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: CONFIG_RULES,
+    read_needs: CONFIG_READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<CountdownConfig>(raw).map(drop),
 };

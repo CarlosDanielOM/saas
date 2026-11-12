@@ -14,8 +14,8 @@ mod support;
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
-use dima_model::admins::{self, NewAdmin};
-use dima_model::app_configs::{self, NewAppConfig};
+use dima_model::admins::NewAdmin;
+use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
 use dima_model::command_user_variables::NewCommandUserVariables;
@@ -25,9 +25,9 @@ use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
 use dima_model::domain_event_deliveries::NewDelivery;
 use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
-use dima_model::events::{self, ControlType, Localized, NewControl, NewEvent, ReleaseStage};
+use dima_model::events::{ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
-use dima_model::redemption_rewards::{self, NewRedemptionReward};
+use dima_model::redemption_rewards::NewRedemptionReward;
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
@@ -195,24 +195,6 @@ fn same_values(a: &Bson, b: &Bson) -> bool {
             (Some(x), Some(y)) => x == y,
             _ => a == b,
         },
-    }
-}
-
-// ---------------------------------------------------------------------------- deterministic ids
-
-/// Random bytes from a counter: distinct, reproducible UUIDs for the hooks' tokens.
-#[derive(Debug, Default)]
-struct CountingRandom(std::sync::atomic::AtomicU64);
-
-impl dima_core::Random for CountingRandom {
-    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
-        for chunk in buf.chunks_mut(8) {
-            let next = self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-            for (slot, byte) in chunk.iter_mut().zip(next.to_le_bytes()) {
-                *slot = byte;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -696,7 +678,7 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
     let info = info(collection)?;
     let mut ctx = WriteContext::with_sequential_ids(now_ms, 1);
     let mut writes = store.writes(collection);
-    let random = CountingRandom::default();
+    let random = support::entry::CountingRandom::default();
     let writer = if intent.get("internal").and_then(Value::as_bool) == Some(true) {
         Writer::Internal
     } else {
@@ -747,14 +729,15 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let update = document_of(intent.get("update").context("update")?)?;
             let options = update_options(intent)?;
-            let prepared = match collection {
-                "commands" => {
-                    commands::prepare_update(&filter, update, options, writer, &mut ctx, &random)?
+            let prepared =
+                support::entry::update(info, &filter, update, options, writer, &mut ctx, &random);
+            let prepared = match prepared {
+                Ok(prepared) => prepared,
+                Err(ModelError::Validation(error)) => {
+                    outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
                 }
-                "redemptionrewards" => redemption_rewards::prepare_update(
-                    &filter, update, options, writer, &mut ctx, &random,
-                )?,
-                _ => info.prepare_update(&filter, update, options, &mut ctx)?,
+                Err(other) => return Err(other.into()),
             };
             if let Some(update) = &prepared.update {
                 outcome.sent.push(sent_update(
@@ -784,17 +767,9 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 Returned::Before
             };
             let options = update_options(intent)?;
-            let prepared = match collection {
-                "commands" => commands::prepare_find_one_and_update(
-                    &filter, update, options, returned, writer, &mut ctx, &random,
-                )?,
-                "redemptionrewards" => redemption_rewards::prepare_find_one_and_update(
-                    &filter, update, options, returned, writer, &mut ctx, &random,
-                )?,
-                _ => {
-                    info.prepare_find_one_and_update(&filter, update, options, returned, &mut ctx)?
-                }
-            };
+            let prepared = support::entry::find_one_and_update(
+                info, &filter, update, options, returned, writer, &mut ctx, &random,
+            )?;
             if let Some(update) = &prepared.update {
                 let mut sent = doc! {
                     "op": "findAndModify",
@@ -821,16 +796,7 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 .await?
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
-            let prepared = match collection {
-                "admins" => admins::prepare_save(&loaded, &changes, &mut ctx),
-                "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx),
-                "events" => events::prepare_save(&loaded, &changes, &mut ctx),
-                "commands" => commands::prepare_save(&loaded, &changes, &mut ctx, &random),
-                "redemptionrewards" => {
-                    redemption_rewards::prepare_save(&loaded, &changes, &mut ctx, &random)
-                }
-                _ => info.prepare_save(&loaded, &changes, &mut ctx),
-            };
+            let prepared = support::entry::save(info, &loaded, &changes, &mut ctx, &random);
             let prepared = match prepared {
                 Ok(prepared) => prepared,
                 Err(ModelError::Validation(error)) => {
@@ -1066,6 +1032,30 @@ async fn writes_match_mongoose() -> Result<()> {
                     continue;
                 }
             };
+            // A case marked `refused` is one Rust refuses on purpose (the write guard): a
+            // refusal, nothing sent, the seed unchanged.
+            if let Some(reason) = case.get("refused") {
+                let kinds: Vec<&str> = error
+                    .as_ref()
+                    .and_then(|e| e.get("errors"))
+                    .and_then(Value::as_array)
+                    .map(|errors| {
+                        errors
+                            .iter()
+                            .filter_map(|e| e.get("kind").and_then(Value::as_str))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let guard = !kinds.is_empty()
+                    && kinds.iter().all(|k| matches!(*k, "type" | "null" | "missing"));
+                let after = stored(&store, collection).await?;
+                if !guard || !sent.is_empty() || after != seed {
+                    problems.push(format!(
+                        "{collection}/{name}: must be refused ({reason}), got {error:?}, sent {sent:?}"
+                    ));
+                }
+                continue;
+            }
             // The error (if any) the reference reported.
             let expected_error =
                 case.get("error")

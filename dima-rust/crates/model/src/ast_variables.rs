@@ -5,11 +5,16 @@
 //! hooks. Two unique indexes (by user id and by user login within a scope). The reference writes
 //! it with upserts only; note that `userId` and `userLogin` default to `''` and are required, so
 //! `create` without them fails validation, as it does in Mongoose.
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use crate::values::StringMap;
 use bson::oid::ObjectId;
@@ -66,6 +71,15 @@ pub const RULES: &[Rule] = &[
     Rule::required("userLogin"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("channelID"),
+    ReadNeed::not_null("scopeType"),
+    ReadNeed::not_null("scopeName"),
+    ReadNeed::not_null("userId"),
+    ReadNeed::not_null("userLogin"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -76,6 +90,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<AstVariables>(raw).map(drop),
 };

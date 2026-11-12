@@ -11,12 +11,18 @@
 //! `toObject()` with the raw driver and `{w: 1, j: true}` (`utils/domain_events.ts:101-129`):
 //! [`NewDomainEvent::prepare_journal`] builds that document and [`journal_write_concern`] is the
 //! write concern. An empty `payload` or `metadata` is not stored at all (`minimize`).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! `metadata` (`Mixed`) is read as raw BSON ([`DomainEventMetadata`]).
 
 use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocument, doc};
@@ -151,6 +157,21 @@ pub const RULES: &[Rule] = &[
     Rule::required("expiresAt"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("eventKey"),
+    ReadNeed::value("source"),
+    ReadNeed::value("sourceEventId"),
+    ReadNeed::value("type"),
+    ReadNeed::value("topic"),
+    ReadNeed::not_null("schemaVersion"),
+    ReadNeed::value("subject.provider"),
+    ReadNeed::value("subject.kind"),
+    ReadNeed::value("subject.id"),
+    ReadNeed::value("occurredAt"),
+    ReadNeed::value("expiresAt"),
+];
+
 /// The registry entry.
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -161,6 +182,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<DomainEvent>(raw).map(drop),
 };
@@ -239,15 +261,23 @@ pub struct Subject {
 #[serde(transparent)]
 pub struct DomainEventPayload(pub Bson);
 
-/// Event metadata (`originalEventType`, `durableChatHandled`, `observability`...), kept as stored.
-#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+/// Event metadata (`originalEventType`, `durableChatHandled`, `observability`...), kept as
+/// stored. The path is `Mixed`, so any value may be stored there; missing reads as the default
+/// `{}`.
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct DomainEventMetadata(pub Document);
+pub struct DomainEventMetadata(pub Bson);
+
+impl Default for DomainEventMetadata {
+    fn default() -> Self {
+        Self(Bson::Document(Document::new()))
+    }
+}
 
 impl DomainEventMetadata {
     /// `true` only when `key` is stored as `true` (the reference tests `=== true`).
     pub fn flag(&self, key: &str) -> bool {
-        matches!(self.0.get(key), Some(Bson::Boolean(true)))
+        matches!(&self.0, Bson::Document(metadata) if matches!(metadata.get(key), Some(Bson::Boolean(true))))
     }
 }
 

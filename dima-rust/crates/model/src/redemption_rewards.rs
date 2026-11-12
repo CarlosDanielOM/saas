@@ -5,6 +5,10 @@
 //! the availability fields and hooks on `isEnabled` (`crate::availability`). No timestamps,
 //! `__v`. Writes go through this module ([`prepare_update`], [`prepare_find_one_and_update`],
 //! [`prepare_save`], [`NewRedemptionReward::prepare`]).
+//!
+//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
+//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
 use crate::collection::{CollectionInfo, Hooks};
@@ -13,6 +17,7 @@ use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
 use crate::loaded::LoadedForSave;
+use crate::shape::ReadNeed;
 use crate::validation::Rule;
 use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
 use bson::oid::ObjectId;
@@ -70,6 +75,27 @@ pub const RULES: &[Rule] = &[
     Rule::required("cost"),
 ];
 
+/// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
+pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::value("eventsubID"),
+    ReadNeed::value("channelID"),
+    ReadNeed::value("channel"),
+    ReadNeed::value("rewardID"),
+    ReadNeed::value("title"),
+    ReadNeed::not_null("type"),
+    ReadNeed::not_null("prompt"),
+    ReadNeed::value("originalCost"),
+    ReadNeed::value("cost"),
+    ReadNeed::not_null("isEnabled"),
+    ReadNeed::not_null("message"),
+    ReadNeed::not_null("costChange"),
+    ReadNeed::not_null("returnToOriginalCost"),
+    ReadNeed::not_null("duration"),
+    ReadNeed::not_null("cooldown"),
+    ReadNeed::not_null("createdFrom"),
+    ReadNeed::not_null("createdFor"),
+];
+
 /// The registry entry. Every write goes through this module (the availability hook).
 pub static INFO: CollectionInfo = CollectionInfo {
     name: COLLECTION,
@@ -80,6 +106,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: availability::HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
     decode: |raw: &RawDocument| decode::<RedemptionReward>(raw).map(drop),
 };
@@ -217,7 +244,7 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&SCHEMA, filter, update.into(), options, ctx)
+    update_unchecked(&INFO, filter, update.into(), options, ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
@@ -233,7 +260,7 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&SCHEMA, filter, update.into(), options, returned, ctx)
+    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
 }
 
 /// `doc.save()` of a loaded reward (read without projection) after `changes`, with the save hook.
