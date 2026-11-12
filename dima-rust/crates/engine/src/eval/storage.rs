@@ -7,7 +7,7 @@
 
 use super::EvalError;
 use super::coerce::resolve_array_index;
-use super::run::Run;
+use super::run::{Kept, Run};
 use crate::host::HostFuture;
 use crate::syntax::{ArrayAccessor, AstNode, VariableStorage};
 use crate::value::Value;
@@ -33,11 +33,15 @@ fn normalize_login(login: &str) -> String {
 }
 
 /// `JSON.parse` of a stored value as a list (`getArrayFromStorage`): a JSON list's items, any
-/// other JSON value as one item of its text, nothing for invalid JSON.
+/// other JSON value as one item of its text, nothing for invalid JSON. An object `String()`
+/// cannot convert is nothing too: the reference converts it inside its `try`.
 fn parse_list(raw: &str) -> Vec<Value> {
     match Value::parse_json(raw) {
         Some(Value::List(items)) => items,
-        Some(other) => vec![Value::Text(other.into_text())],
+        Some(other) => match other.into_text() {
+            Ok(text) => vec![Value::Text(text)],
+            Err(_) => Vec::new(),
+        },
         None => Vec::new(),
     }
 }
@@ -148,9 +152,7 @@ impl Run<'_> {
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
-                self.state
-                    .command_variables
-                    .insert(stripped.to_owned(), loaded.clone());
+                self.put(Kept::ChannelMemo, stripped.to_owned(), loaded.clone())?;
                 Ok(loaded)
             }
             VariableStorage::DbUser => {
@@ -163,9 +165,7 @@ impl Run<'_> {
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
-                self.state
-                    .user_command_variables
-                    .insert(memo, loaded.clone());
+                self.put(Kept::UserMemo, memo, loaded.clone())?;
                 Ok(loaded)
             }
         }
@@ -250,7 +250,7 @@ impl Run<'_> {
             return Ok(());
         }
         match storage {
-            VariableStorage::Memory => self.state.variables.insert(stripped.to_owned(), value),
+            VariableStorage::Memory => self.put(Kept::Variables, stripped.to_owned(), value)?,
             VariableStorage::Cache | VariableStorage::CacheUser => {
                 for key in self.cache_keys(name, storage, target) {
                     self.host_op()?;
@@ -260,19 +260,21 @@ impl Run<'_> {
                 }
             }
             VariableStorage::Db => {
+                // The memo is written after the save, as the reference does; whether it fits
+                // is known before.
+                self.can_put(Kept::ChannelMemo, stripped, &value)?;
                 self.host_op()?;
                 self.host.save_channel_variable(stripped, &value).await?;
-                self.state
-                    .command_variables
-                    .insert(stripped.to_owned(), value);
+                self.put(Kept::ChannelMemo, stripped.to_owned(), value)?;
             }
             VariableStorage::DbUser => {
+                let memo = self.user_memo_key(stripped, target);
+                self.can_put(Kept::UserMemo, &memo, &value)?;
                 self.host_op()?;
                 self.host
                     .save_user_variable(stripped, &value, target)
                     .await?;
-                let memo = self.user_memo_key(stripped, target);
-                self.state.user_command_variables.insert(memo, value);
+                self.put(Kept::UserMemo, memo, value)?;
             }
         }
         Ok(())
@@ -298,7 +300,7 @@ impl Run<'_> {
         let stripped = strip(name, storage);
         match (storage, accessor) {
             (VariableStorage::Memory, None | Some(ArrayAccessor::Clear)) => {
-                self.state.variables.remove(stripped);
+                self.forget(Kept::Variables, stripped);
                 self.state.arrays.remove(stripped);
                 Box::pin(async { Ok(()) })
             }
@@ -333,10 +335,10 @@ impl Run<'_> {
             _ => Vec::new(),
         };
         let index = self.child(index).await?;
-        if let Some(at) = resolve_array_index(&index, list.len()) {
+        if let Some(at) = resolve_array_index(&index, list.len())? {
             list.remove(at);
             let json = self.write_json(&list)?;
-            self.state.variables.insert(name.to_owned(), json);
+            self.put(Kept::Variables, name.to_owned(), json)?;
         }
         Ok(())
     }
@@ -376,7 +378,9 @@ impl Run<'_> {
             let Some(Value::List(mut list)) = Value::parse_json(&raw) else {
                 continue;
             };
-            let Some(at) = resolve_array_index(&index, list.len()) else {
+            // The reference resolves the index inside its per-key `try`: a conversion that
+            // throws skips the key.
+            let Ok(Some(at)) = resolve_array_index(&index, list.len()) else {
                 continue;
             };
             list.remove(at);
@@ -400,11 +404,11 @@ impl Run<'_> {
         self.host_op()?;
         if storage == VariableStorage::Db {
             self.host.delete_channel_variable(name).await?;
-            self.state.command_variables.remove(name);
+            self.forget(Kept::ChannelMemo, name);
         } else {
             self.host.delete_user_variable(name, target).await?;
             let memo = self.user_memo_key(name, target);
-            self.state.user_command_variables.remove(&memo);
+            self.forget(Kept::UserMemo, &memo);
         }
         Ok(())
     }
@@ -450,7 +454,8 @@ impl Run<'_> {
         match accessor {
             Some(ArrayAccessor::Remove { index }) => {
                 let index = self.child(index).await?;
-                if let Some(at) = resolve_array_index(&index, list.len()) {
+                // A conversion that throws here is caught with the rest (`delete_db_item`).
+                if let Some(at) = resolve_array_index(&index, list.len())? {
                     list.remove(at);
                 }
             }

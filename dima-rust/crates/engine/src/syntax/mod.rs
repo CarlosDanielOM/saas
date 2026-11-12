@@ -10,10 +10,11 @@
 //!   text parsing gets has viewer arguments substituted already and may be longer, up to
 //!   [`MAX_INPUT_CHARS`]. Token, node and work budgets are derived from each program's length
 //!   ([`TOKENS_PER_INPUT_BYTE`], [`NODES_PER_INPUT_BYTE`], [`WORK_BASE`]) so that no text within
-//!   the source limit reaches them; nesting stops at [`MAX_NESTING`], above what the reference
-//!   can parse. A budget hit fails that program only: in a template, its segment shows
-//!   `[Parse error: …]`; inside an interpolation, a nesting limit shows the interpolation's text,
-//!   as the reference does for its stack overflow;
+//!   the source limit reaches them; nesting stops at [`MAX_NESTING`] (32), where the reference
+//!   parses until its stack ends, so that parsing fits a fixed stack ([`crate::stack`]). A
+//!   budget hit fails that program only: in a template, its segment shows `[Parse error: …]`;
+//!   inside an interpolation, a nesting limit shows the interpolation's text, as the reference
+//!   does for its stack overflow;
 //! - where the reference throws a `TypeError` that nothing catches (a variable introducer, or a
 //!   per-viewer selector, left open at the very end of an array item) this port reports
 //!   [`DiagnosticCode::MissingVariableName`] or [`DiagnosticCode::MissingUserSelector`]. Inside an
@@ -30,7 +31,6 @@ mod parser;
 mod persistence;
 mod scanner;
 mod source;
-mod stack;
 mod types;
 
 pub use grammar::{
@@ -88,30 +88,25 @@ impl SyntaxEngine {
     }
 
     /// One program with its own budget, derived from its length. It is parsed on the caller's
-    /// stack up to [`HARD_NESTING_CEILING`]; a deeper one is parsed again on a thread whose
-    /// stack fits [`Limits::nesting`].
+    /// stack when the caller's thread has [`crate::stack::PARSE_STACK_BYTES`] left, else on a
+    /// short-lived thread with a stack for it (the stack contract, [`crate::stack`]).
     fn program(&self, view: &View, bytes: Range<usize>) -> Result<CompiledProgram, Diagnostic> {
-        let inline = {
-            let mut budget = Budget::new(self.limits, bytes.len(), HARD_NESTING_CEILING);
-            let result = self.parse_range(view, bytes.clone(), &mut budget);
-            if !budget.needs_stack() {
-                return result;
-            }
-            result
-        };
-        drop(inline);
-        let nesting = self.limits.nesting;
-        let deep = stack::run(nesting, || {
-            let mut budget = Budget::new(self.limits, bytes.len(), nesting);
+        let parse = || {
+            let mut budget = Budget::new(self.limits, bytes.len());
             self.parse_range(view, bytes.clone(), &mut budget)
-        });
-        deep.unwrap_or_else(|| {
-            Err(Diagnostic::new(
-                DiagnosticCode::NestingLimit,
-                "Nesting limit exceeded",
-                view.span(bytes.clone()),
-            ))
-        })
+        };
+        if crate::stack::remaining().is_some_and(|room| room >= crate::stack::PARSE_STACK_BYTES) {
+            return parse();
+        }
+        crate::stack::run_on_thread(crate::stack::PARSE_THREAD_STACK_BYTES, parse).unwrap_or_else(
+            || {
+                Err(Diagnostic::new(
+                    DiagnosticCode::NestingLimit,
+                    "Nesting limit exceeded",
+                    view.span(bytes.clone()),
+                ))
+            },
+        )
     }
 
     fn parse_range(
@@ -128,11 +123,14 @@ impl SyntaxEngine {
             budget,
         };
         let root = parser.root(range, 0)?;
+        let mut stats = parser.budget.stats;
+        stats.stack_bytes = parser.budget.stack_used();
+        stats.nesting = parser.budget.deepest();
         Ok(CompiledProgram {
             source: view.text.clone(),
             span: view.span(bytes),
             root: Arc::new(root.node),
-            stats: parser.budget.stats,
+            stats,
         })
     }
 

@@ -4,7 +4,6 @@ use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
 use super::frame::{Frames, Scalars};
-use super::stack::StackBase;
 use super::{Engine, EvalError, EvalStats, LimitKind};
 use crate::context::{
     BudgetSnapshot, CommandReference, Context, LoopExit, Origin, ReferenceAuthorization,
@@ -13,12 +12,13 @@ use crate::context::{
 use crate::functions::{self, Counters};
 use crate::host::{Host, HostCall, HostFuture};
 use crate::map::OrderedMap;
+use crate::permissions;
 use crate::registry::{Builtin, FunctionKind};
 use crate::syntax::{
     ArrayAccessor, AstNode, BinaryOp, LoopAssignOp, LoopMode, TemplateSegment, UnaryOp,
     VariableStorage,
 };
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use dima_text::{to_lower, trim};
 
 /// `MAX_TIMER_DEPTH`.
@@ -27,6 +27,29 @@ const MAX_TIMER_DEPTH: u32 = 5;
 const MAX_TIMER_SECONDS: f64 = 604_800.0;
 /// Command references nest at most this deep (`depth >= 5`).
 const MAX_REFERENCE_DEPTH: u32 = 5;
+
+/// The maps of what a run keeps, charged to [`super::EvalLimits::memory_bytes`].
+#[derive(Clone, Copy)]
+pub(super) enum Kept {
+    /// Memory variables.
+    Variables,
+    /// The database read memo of channel variables.
+    ChannelMemo,
+    /// The database read memo of viewer variables.
+    UserMemo,
+    /// Loop variables.
+    LoopVars,
+}
+
+fn entry_size(key: &str, value: &str) -> usize {
+    key.len().saturating_add(value.len())
+}
+
+fn map_size(map: &OrderedMap<String, String>) -> usize {
+    map.iter().fold(0usize, |total, (k, v)| {
+        total.saturating_add(entry_size(k, v))
+    })
+}
 
 /// How a loop body ended.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -45,8 +68,10 @@ pub(super) struct Run<'a> {
     pub(super) stats: EvalStats,
     /// How deep the evaluation recursion is.
     depth: usize,
-    /// Where the current poll's stack started.
-    stack: StackBase,
+    /// Bytes this run added to what it keeps ([`Kept`], command reference arguments).
+    memory: usize,
+    /// The stack left where the evaluation started (at its first level).
+    stack_start: Option<usize>,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -57,162 +82,69 @@ pub(super) fn depth_exceeds(node: &AstNode, limit: usize) -> bool {
         if depth > limit {
             return true;
         }
-        children(node, |child| pending.push((child, depth + 1)));
+        node.for_each_child(|child| pending.push((child, depth + 1)));
     }
     false
 }
 
-fn accessor_index(accessor: Option<&ArrayAccessor>) -> Option<&AstNode> {
-    match accessor {
-        Some(
-            ArrayAccessor::Index { index }
-            | ArrayAccessor::SetIndex { index }
-            | ArrayAccessor::Remove { index },
-        ) => Some(index),
-        _ => None,
-    }
-}
-
-/// Calls `visit` with each child of `node`.
-fn children<'a>(node: &'a AstNode, mut visit: impl FnMut(&'a AstNode)) {
-    match node {
-        AstNode::Root { children: nodes }
-        | AstNode::Function { args: nodes, .. }
-        | AstNode::CommandRef { args: nodes, .. } => nodes.iter().for_each(visit),
-        AstNode::ArrayLiteral { items, accessor } => {
-            items.iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::SetVar {
-            value,
-            accessor,
-            user_selector,
-            ..
-        } => {
-            visit(value);
-            user_selector.as_deref().into_iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::GetVar {
-            accessor,
-            user_selector,
-            ..
-        }
-        | AstNode::Exists {
-            accessor,
-            user_selector,
-            ..
-        }
-        | AstNode::DeleteVar {
-            accessor,
-            user_selector,
-            ..
-        } => {
-            user_selector.as_deref().into_iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::Binary { left, right, .. } => {
-            visit(left);
-            visit(right);
-        }
-        AstNode::Unary { argument, .. } => visit(argument),
-        AstNode::Ternary {
-            test,
-            consequent,
-            alternate,
-        } => {
-            visit(test);
-            visit(consequent);
-            visit(alternate);
-        }
-        AstNode::Template { segments } => {
-            for segment in segments {
-                if let TemplateSegment::Expr { node } = segment {
-                    visit(node);
-                }
-            }
-        }
-        AstNode::LoopAssign { value, .. } => value.as_deref().into_iter().for_each(visit),
-        AstNode::ForLoop {
-            init,
-            condition,
-            update,
-            iterable,
-            body,
-            ..
-        } => {
-            for part in [init, condition, update, iterable].into_iter().flatten() {
-                visit(part);
-            }
-            body.iter().for_each(visit);
-        }
-        AstNode::Literal { .. } | AstNode::LoopVar { .. } | AstNode::Custom { .. } => {}
-    }
+/// `String(item ?? '')` of each item.
+fn item_texts(items: &[Value]) -> Result<Vec<String>, CoercionError> {
+    items
+        .iter()
+        .map(|item| item.to_text_or_empty().map(std::borrow::Cow::into_owned))
+        .collect()
 }
 
 /// `parseIterableValue`: a list's items, a JSON list's items, otherwise the text as one item
-/// (none for empty text, `null` and `undefined`).
-fn iterable_values(value: Value) -> Vec<String> {
-    match value {
-        Value::List(items) => items
-            .iter()
-            .map(|item| item.to_text_or_empty().into_owned())
-            .collect(),
+/// (none for empty text, `null` and `undefined`). A JSON list whose items `String()` cannot
+/// convert is one item, its text: the reference converts them inside its `try`.
+fn iterable_values(value: Value) -> Result<Vec<String>, CoercionError> {
+    Ok(match value {
+        Value::List(items) => item_texts(&items)?,
         Value::Text(text) => match Value::parse_json(&text) {
-            Some(Value::List(items)) => items
-                .iter()
-                .map(|item| item.to_text_or_empty().into_owned())
-                .collect(),
+            Some(Value::List(items)) => item_texts(&items).unwrap_or_else(|_| vec![text]),
             Some(_) => vec![text],
             None if text.is_empty() => Vec::new(),
             None => vec![text],
         },
         Value::Undefined | Value::Null => Vec::new(),
-        other => vec![other.into_text()],
-    }
+        other => vec![other.into_text()?],
+    })
 }
 
 /// `String(value ?? '')`, reusing text.
-fn text_of(value: Value) -> String {
+fn text_of(value: Value) -> Result<String, CoercionError> {
     match value {
-        Value::Text(text) => text,
-        other => other.to_text_or_empty().into_owned(),
+        Value::Text(text) => Ok(text),
+        other => Ok(other.to_text_or_empty()?.into_owned()),
     }
 }
 
 /// Arithmetic or comparison of two evaluated operands.
-fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Value {
-    match operator {
+fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Result<Value, CoercionError> {
+    Ok(match operator {
         BinaryOp::Add
         | BinaryOp::Subtract
         | BinaryOp::Multiply
         | BinaryOp::Divide
-        | BinaryOp::Modulo => Value::Text(arithmetic(
-            operator,
-            to_number_safe(left),
-            to_number_safe(right),
-        )),
-        _ => Value::flag(compare(&left.to_text(), operator, &right.to_text())),
-    }
+        | BinaryOp::Modulo => {
+            let left = to_number_safe(left)?;
+            Value::Text(arithmetic(operator, left, to_number_safe(right)?))
+        }
+        _ => {
+            let left = left.to_text()?;
+            Value::flag(compare(&left, operator, &right.to_text()?))
+        }
+    })
 }
 
 /// A root keeps every value but `undefined` and empty text, joined by spaces.
-fn push_root_value(out: &mut String, first: &mut bool, value: &Value) -> bool {
+/// The text a root adds for `value`, if any.
+fn root_text(value: &Value) -> Result<Option<std::borrow::Cow<'_, str>>, CoercionError> {
     if matches!(value, Value::Undefined) || value.as_str() == Some("") {
-        return false;
+        return Ok(None);
     }
-    if !*first {
-        out.push(' ');
-    }
-    *first = false;
-    out.push_str(&value.to_text());
-    true
+    value.to_text().map(Some)
 }
 
 /// `snapshotTimerContext`.
@@ -270,7 +202,6 @@ impl<'a> Run<'a> {
         context: &'a Context,
         mut state: State,
         host: &'a mut dyn Host,
-        stack: StackBase,
     ) -> Self {
         let scalars = Scalars {
             count: state.count,
@@ -288,7 +219,8 @@ impl<'a> Run<'a> {
             frames: Frames::new(scalars, loop_vars),
             stats: EvalStats::default(),
             depth: 0,
-            stack,
+            memory: 0,
+            stack_start: None,
         }
     }
 
@@ -316,7 +248,7 @@ impl<'a> Run<'a> {
 
     fn charge(&mut self, units: u64) -> Result<(), EvalError> {
         self.stats.steps = self.stats.steps.saturating_add(units);
-        if self.stats.steps > self.engine.limits.steps {
+        if self.stats.steps > self.engine.limits.steps.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::Steps));
         }
         Ok(())
@@ -329,10 +261,79 @@ impl<'a> Run<'a> {
 
     pub(super) fn host_op(&mut self) -> Result<(), EvalError> {
         self.stats.host_calls = self.stats.host_calls.saturating_add(1);
-        if self.stats.host_calls > self.engine.limits.host_calls {
+        if self.stats.host_calls > self.engine.limits.host_calls.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
         self.step()
+    }
+
+    /// Charges what the run keeps: `added` bytes in, `removed` bytes out.
+    fn keep(&mut self, added: usize, removed: usize) -> Result<(), EvalError> {
+        let memory = self.memory.saturating_sub(removed).saturating_add(added);
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        self.memory = memory;
+        Ok(())
+    }
+
+    fn kept(&mut self, which: Kept) -> &mut OrderedMap<String, String> {
+        match which {
+            Kept::Variables => &mut self.state.variables,
+            Kept::ChannelMemo => &mut self.state.command_variables,
+            Kept::UserMemo => &mut self.state.user_command_variables,
+            Kept::LoopVars => &mut self.frames.loop_vars,
+        }
+    }
+
+    /// Whether [`Run::put`] of this entry would fit, without inserting it.
+    pub(super) fn can_put(&mut self, which: Kept, key: &str, value: &str) -> Result<(), EvalError> {
+        let old = self
+            .kept(which)
+            .get(key)
+            .map_or(0, |old| entry_size(key, old));
+        let memory = self
+            .memory
+            .saturating_sub(old)
+            .saturating_add(entry_size(key, value));
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        Ok(())
+    }
+
+    /// Inserts into a kept map, within the memory budget (checked before the insert).
+    pub(super) fn put(&mut self, which: Kept, key: String, value: String) -> Result<(), EvalError> {
+        let old = self
+            .kept(which)
+            .get(&key)
+            .map_or(0, |old| entry_size(&key, old));
+        self.keep(entry_size(&key, &value), old)?;
+        self.kept(which).insert(key, value);
+        Ok(())
+    }
+
+    /// Removes from a kept map.
+    pub(super) fn forget(&mut self, which: Kept, key: &str) {
+        if let Some(old) = self.kept(which).remove(key) {
+            self.memory = self.memory.saturating_sub(entry_size(key, &old));
+        }
+    }
+
+    /// Restores the loop variables a loop started with.
+    fn restore_loop_vars(&mut self, outer: OrderedMap<String, String>) {
+        let inner = map_size(&self.frames.loop_vars);
+        self.memory = self
+            .memory
+            .saturating_sub(inner)
+            .saturating_add(map_size(&outer));
+        self.frames.loop_vars = outer;
+    }
+
+    /// Adds `bytes` to a running total of one step's gathered values, within the text budget.
+    fn gather(&self, total: &mut usize, bytes: usize) -> Result<(), EvalError> {
+        *total = total.saturating_add(bytes);
+        self.check_size(*total)
     }
 
     pub(super) fn check_size(&self, bytes: usize) -> Result<(), EvalError> {
@@ -371,7 +372,9 @@ impl<'a> Run<'a> {
 
     /// Evaluates a child. Leaves are evaluated in place; any other node runs as its own boxed
     /// future (one allocation per non-leaf node), whose depth is checked against the nesting
-    /// limit as a guard (the stack grows with it: every level polls the one below).
+    /// limit as a guard (the stack grows with it: every level polls the one below), and so is
+    /// the stack left: within the contract ([`crate::stack`]) neither check fires before the
+    /// nesting limit does.
     pub(super) async fn child(&mut self, node: &AstNode) -> Result<Value, EvalError> {
         self.step()?;
         match node {
@@ -379,8 +382,14 @@ impl<'a> Run<'a> {
             AstNode::LoopVar { name } => return Ok(Value::Text(self.loop_var(name))),
             _ => {}
         }
+        let room = crate::stack::remaining();
+        if let Some(room) = room {
+            let start = *self.stack_start.get_or_insert(room);
+            let used = start.saturating_sub(room);
+            self.stats.stack_bytes = self.stats.stack_bytes.max(used);
+        }
         if self.depth >= self.engine.limits.nesting
-            || self.stack.used() > self.engine.limits.stack_bytes
+            || room.is_none_or(|room| room < crate::stack::HOST_STACK_BYTES)
         {
             return Err(EvalError::Limit(LimitKind::Nesting));
         }
@@ -501,7 +510,7 @@ impl<'a> Run<'a> {
 
     /// `String(value ?? '')` of a child.
     async fn child_text(&mut self, node: &AstNode) -> Result<String, EvalError> {
-        Ok(text_of(self.child(node).await?))
+        Ok(text_of(self.child(node).await?)?)
     }
 
     /// A child whose returned context the reference throws away.
@@ -550,11 +559,9 @@ impl<'a> Run<'a> {
             None => Value::Undefined,
         };
         let current = self.frames.loop_vars.get(name).map(String::as_str);
-        let resolved = loop_assignment(current, operator, &next);
-        self.check_size(resolved.len())?;
-        self.frames
-            .loop_vars
-            .insert(name.to_owned(), resolved.clone());
+        let resolved = loop_assignment(current, operator, &next, self.engine.limits.text_bytes)
+            .map_err(failure)?;
+        self.put(Kept::LoopVars, name.to_owned(), resolved.clone())?;
         Ok(Value::Text(resolved))
     }
 
@@ -583,11 +590,11 @@ impl<'a> Run<'a> {
     ) -> Result<Value, EvalError> {
         let left = self.child(left).await?;
         let right = self.child(right).await?;
-        Ok(binary_result(operator, &left, &right))
+        Ok(binary_result(operator, &left, &right)?)
     }
 
     async fn unary(&mut self, operator: UnaryOp, argument: &AstNode) -> Result<Value, EvalError> {
-        let number = to_number_safe(&self.child(argument).await?);
+        let number = to_number_safe(&self.child(argument).await?)?;
         let result = match operator {
             UnaryOp::Plus => number,
             UnaryOp::Minus => -number,
@@ -602,7 +609,7 @@ impl<'a> Run<'a> {
         alternate: &AstNode,
     ) -> Result<Value, EvalError> {
         let test = self.child(test).await?;
-        let branch = if is_truthy(&test) {
+        let branch = if is_truthy(&test)? {
             consequent
         } else {
             alternate
@@ -614,13 +621,17 @@ impl<'a> Run<'a> {
         let mut out = String::new();
         for segment in segments {
             match segment {
-                TemplateSegment::Text { value } => out.push_str(value),
+                TemplateSegment::Text { value } => {
+                    self.check_size(out.len().saturating_add(value.len()))?;
+                    out.push_str(value);
+                }
                 TemplateSegment::Expr { node } => {
                     let value = self.child(node).await?;
-                    out.push_str(&value.to_text_or_empty());
+                    let text = value.to_text_or_empty()?;
+                    self.check_size(out.len().saturating_add(text.len()))?;
+                    out.push_str(&text);
                 }
             }
-            self.check_size(out.len())?;
         }
         Ok(Value::Text(out))
     }
@@ -631,14 +642,16 @@ impl<'a> Run<'a> {
         accessor: Option<&ArrayAccessor>,
     ) -> Result<Value, EvalError> {
         let mut values = Vec::with_capacity(items.len());
+        let mut total = 0usize;
         for item in items {
-            let value = self.child(item).await?;
-            values.push(text_of(value));
+            let value = text_of(self.child(item).await?)?;
+            self.gather(&mut total, value.len())?;
+            values.push(value);
         }
         Ok(match accessor {
             Some(ArrayAccessor::Index { index }) => {
                 let index = self.child(index).await?;
-                match resolve_array_index(&index, values.len()) {
+                match resolve_array_index(&index, values.len())? {
                     Some(at) => Value::Text(values.swap_remove(at)),
                     None => Value::empty(),
                 }
@@ -657,10 +670,15 @@ impl<'a> Run<'a> {
         let mut first = true;
         for child in children {
             let value = self.child(child).await?;
-            if !push_root_value(&mut out, &mut first, &value) {
+            let Some(text) = root_text(&value)? else {
                 continue;
+            };
+            self.check_size(out.len().saturating_add(text.len()).saturating_add(1))?;
+            if !first {
+                out.push(' ');
             }
-            self.check_size(out.len())?;
+            first = false;
+            out.push_str(&text);
         }
         Ok(Value::Text(out))
     }
@@ -679,11 +697,19 @@ impl<'a> Run<'a> {
         if Self::responses(name, storage) {
             let responses = &self.state.command_responses;
             return Ok(match accessor {
-                None | Some(ArrayAccessor::Array) => Value::Text(json_of_texts(responses)),
+                None | Some(ArrayAccessor::Array) => {
+                    let size = responses
+                        .iter()
+                        .fold(responses.len().saturating_add(1), |total, item| {
+                            total.saturating_add(crate::value::json_string_size(item))
+                        });
+                    self.check_size(size)?;
+                    Value::Text(json_of_texts(&self.state.command_responses))
+                }
                 Some(ArrayAccessor::Index { index }) => {
                     let index = self.discarded(index).await?;
                     let responses = &self.state.command_responses;
-                    resolve_array_index(&index, responses.len())
+                    resolve_array_index(&index, responses.len())?
                         .and_then(|at| responses.get(at).cloned())
                         .map_or_else(Value::empty, Value::Text)
                 }
@@ -704,7 +730,7 @@ impl<'a> Run<'a> {
             ArrayAccessor::Array => Value::Text(self.write_json(&list)?),
             ArrayAccessor::Index { index } => {
                 let index = self.discarded(index).await?;
-                match resolve_array_index(&index, list.len()) {
+                match resolve_array_index(&index, list.len())? {
                     Some(at) => list.swap_remove(at),
                     None => Value::empty(),
                 }
@@ -727,26 +753,31 @@ impl<'a> Run<'a> {
         let target = target.as_deref();
         let value = self.child(value).await?;
         // `String(value)`: `undefined` is the text "undefined" here.
-        let text = value.to_text().into_owned();
+        let text = value.to_text()?.into_owned();
         let appended: Vec<String> = match &value {
             Value::List(items) => items
                 .iter()
-                .map(|item| item.to_text().into_owned())
-                .collect(),
+                .map(|item| item.to_text().map(std::borrow::Cow::into_owned))
+                .collect::<Result<_, _>>()?,
             _ => vec![text.clone()],
         };
         if Self::responses(name, storage) {
             match accessor {
                 Some(ArrayAccessor::Append) => {
-                    self.state.command_responses.extend(appended);
-                    let total: usize = self.state.command_responses.iter().map(String::len).sum();
+                    let total = self
+                        .state
+                        .command_responses
+                        .iter()
+                        .chain(&appended)
+                        .fold(0usize, |total, item| total.saturating_add(item.len()));
                     self.check_size(total)?;
+                    self.state.command_responses.extend(appended);
                     self.save_responses().await?;
                 }
                 Some(ArrayAccessor::SetIndex { index }) => {
                     let index = self.child(index).await?;
                     if let Some(at) =
-                        resolve_array_index(&index, self.state.command_responses.len())
+                        resolve_array_index(&index, self.state.command_responses.len())?
                     {
                         if let Some(slot) = self.state.command_responses.get_mut(at) {
                             *slot = text;
@@ -772,7 +803,7 @@ impl<'a> Run<'a> {
             ArrayAccessor::SetIndex { index } => {
                 let index = self.child(index).await?;
                 if let Some(slot) =
-                    resolve_array_index(&index, list.len()).and_then(|at| list.get_mut(at))
+                    resolve_array_index(&index, list.len())?.and_then(|at| list.get_mut(at))
                 {
                     *slot = Value::Text(text);
                     let json = self.write_json(&list)?;
@@ -799,7 +830,7 @@ impl<'a> Run<'a> {
                 None | Some(ArrayAccessor::Array | ArrayAccessor::Random) => any,
                 Some(ArrayAccessor::Index { index }) => {
                     let index = self.child(index).await?;
-                    resolve_array_index(&index, self.state.command_responses.len()).is_some()
+                    resolve_array_index(&index, self.state.command_responses.len())?.is_some()
                 }
                 Some(ArrayAccessor::Length) => true,
                 Some(_) => false,
@@ -815,7 +846,7 @@ impl<'a> Run<'a> {
                 if exists {
                     let list = self.read_list(name, storage, target).await?;
                     let index = self.child(index).await?;
-                    resolve_array_index(&index, list.len()).is_some()
+                    resolve_array_index(&index, list.len())?.is_some()
                 } else {
                     false
                 }
@@ -829,18 +860,21 @@ impl<'a> Run<'a> {
 
     /// `JSON.stringify` of a list, within the size limit.
     pub(super) fn write_json(&mut self, list: &[Value]) -> Result<String, EvalError> {
-        let json = Value::list_to_json(list);
-        self.charge_bytes(json.len())?;
-        self.check_size(json.len())?;
-        Ok(json)
+        let size = Value::list_json_size(list);
+        self.check_size(size)?;
+        self.charge_bytes(size)?;
+        Ok(Value::list_to_json(list))
     }
 
     // ---- functions ----
 
     async fn args(&mut self, nodes: &[AstNode]) -> Result<Vec<Value>, EvalError> {
         let mut values = Vec::with_capacity(nodes.len());
+        let mut total = 0usize;
         for node in nodes {
-            values.push(self.child(node).await?);
+            let value = self.child(node).await?;
+            self.gather(&mut total, value.weight())?;
+            values.push(value);
         }
         Ok(values)
     }
@@ -872,7 +906,7 @@ impl<'a> Run<'a> {
             }
         }
         match spec.kind {
-            FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args) {
+            FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args)? {
                 Ok(millis) => {
                     self.host_op()?;
                     self.host.sleep(millis).await;
@@ -884,6 +918,8 @@ impl<'a> Run<'a> {
             FunctionKind::Builtin(builtin) => {
                 let mut draw: Option<f64> = None;
                 if builtin == Builtin::Random {
+                    // The bound is read (and may fail) before the draw.
+                    functions::random_max(&args)?;
                     draw = Some(self.random()?);
                 }
                 let scalars = &mut self.frames.scalars;
@@ -893,13 +929,15 @@ impl<'a> Run<'a> {
                     loop_exit: &mut scalars.loop_exit,
                 };
                 let mut random = || draw.unwrap_or(0.0);
-                Ok(functions::run(
+                functions::run(
                     builtin,
                     &args,
                     self.context,
                     counters,
                     &mut random,
-                ))
+                    self.engine.limits.text_bytes,
+                )
+                .map_err(failure)
             }
             FunctionKind::Host(function) => {
                 self.host_op()?;
@@ -941,7 +979,7 @@ impl<'a> Run<'a> {
         );
         self.frames.switch();
         self.frames.scalars.effect = effect;
-        let seconds = duration?.to_number();
+        let seconds = duration?.to_number()?;
         if !seconds.is_finite() || !(1.0..=MAX_TIMER_SECONDS).contains(&seconds) {
             return Ok(fail("seconds must be between 1 and 604800"));
         }
@@ -981,7 +1019,7 @@ impl<'a> Run<'a> {
                 plan.max_loop_iterations(),
             )
             .await;
-        self.frames.loop_vars = outer_vars;
+        self.restore_loop_vars(outer_vars);
         self.frames.scalars.loop_depth = depth;
         result?;
         // { ...activeContext, loopDepth: context.loopDepth, loopExit: undefined, loopVars: context.loopVars }
@@ -1016,11 +1054,11 @@ impl<'a> Run<'a> {
             if let Value::Text(text) = &value {
                 self.charge_bytes(text.len())?;
             }
-            for item in iterable_values(value) {
+            for item in iterable_values(value)? {
                 if iterations >= max {
                     break;
                 }
-                self.frames.loop_vars.insert(loop_var.to_owned(), item);
+                self.put(Kept::LoopVars, loop_var.to_owned(), item)?;
                 let end = self.body(body, depth).await?;
                 iterations += 1;
                 if end == BodyEnd::Break {
@@ -1037,7 +1075,7 @@ impl<'a> Run<'a> {
             if let Some(condition) = condition {
                 let test = self.child(condition).await?;
                 self.next_active(depth);
-                if !is_truthy(&test) {
+                if !is_truthy(&test)? {
                     break;
                 }
             }
@@ -1114,8 +1152,12 @@ impl<'a> Run<'a> {
             return Ok(Value::empty());
         }
         let mut values = Vec::with_capacity(args.len());
+        let mut total = 0usize;
         for arg in args {
-            values.push(self.child_text(arg).await?);
+            let value = self.child_text(arg).await?;
+            // The argument is the values joined by spaces.
+            self.gather(&mut total, value.len().saturating_add(1))?;
+            values.push(value);
         }
         if !budget.take() {
             return Ok(Value::empty());
@@ -1131,7 +1173,7 @@ impl<'a> Run<'a> {
             _ => None,
         };
         let argument = values.join(" ");
-        self.check_size(argument.len())?;
+        self.keep(argument.len(), 0)?;
         let mut visited = context.visited_commands.clone();
         if !visited.contains(&key) {
             visited.push(key);
@@ -1154,33 +1196,40 @@ impl<'a> Run<'a> {
         Ok(Value::empty())
     }
 
-    /// `resolveCommandRefAuthorization`.
+    /// `resolveCommandRefAuthorization`, with `dima-commands`' identity rules.
     fn reference_authorization(&self) -> ReferenceAuthorization {
         let context = self.context;
-        let permissions = &self.engine.permissions;
         if !context.enforce_function_permissions {
             return ReferenceAuthorization {
                 origin: ReferenceOrigin::Authored,
-                identity: permissions.broadcaster_identity(),
+                identity: permissions::create_broadcaster_identity(),
             };
         }
         let fallback = if context.user_level.is_finite() {
-            context.user_level.trunc().clamp(1.0, 10.0) as u8
+            context.user_level.trunc().clamp(1.0, 10.0)
         } else {
-            1
+            1.0
         };
         let identity = match context
             .authorization
             .as_ref()
             .and_then(|a| a.identity.as_ref())
         {
-            Some(raw) if raw.js_truthy() => permissions.parse_identity(raw, fallback),
-            _ => permissions.user_identity(fallback),
+            Some(raw) if raw.js_truthy() => permissions::parse_identity(raw, fallback),
+            _ => permissions::user_identity(fallback),
         };
         ReferenceAuthorization {
             origin: ReferenceOrigin::Llm,
             identity,
         }
+    }
+}
+
+/// A builtin's failure as the evaluation's error.
+fn failure(failure: functions::Failure) -> EvalError {
+    match failure {
+        functions::Failure::TooLong => EvalError::Limit(LimitKind::TextSize),
+        functions::Failure::Coercion => EvalError::Coercion(CoercionError),
     }
 }
 

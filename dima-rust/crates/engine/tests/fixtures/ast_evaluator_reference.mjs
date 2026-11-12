@@ -1,13 +1,20 @@
 // Source-parity oracle only. No services, function barrels, env, clock or IO handlers.
 // node dima-rust/tests/fixtures/ast_evaluator_reference.mjs [--check]
+// DIMABOT_DIR names the dimabot checkout to record from (its src/ and its installed packages);
+// by default, the dimabot directory of this repository. Record with TZ=UTC.
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
 
-const repo = new URL('../../../../../', import.meta.url);
+const dimabot = process.env.DIMABOT_DIR
+  ? pathToFileURL(`${resolve(process.env.DIMABOT_DIR)}/`)
+  : new URL('../../../../../dimabot/', import.meta.url);
+export const ts = createRequire(new URL('package.json', dimabot))('typescript');
+export const repo = new URL('../', dimabot);
 const output = new URL('ast_evaluator_cases.json', import.meta.url);
 const base = 'dimabot/src/utils/ast_parser/';
 const modules = ['types', 'evaluator', 'parser', 'tokenizer', 'registry', 'render', 'timer', 'effects'].map(n => `${base}${n}.ts`);
@@ -96,6 +103,15 @@ export async function buildSourceBundle(options = {}) {
 }
 
 const sourceBundle = () => buildSourceBundle();
+
+// The Rust port's JSON reader (`dima_engine::json`) refuses lists and objects nested deeper than
+// MAX_JSON_NESTING; V8's JSON.parse has no bound. For a case marked `boundedJson`, the generator
+// also records the same source with every JSON.parse refusing such text (all of them sit inside
+// a try), which is what the port does on purpose.
+const RUST_JSON_NESTING = 256;
+const boundedJsonSource = (path, text) => path !== 'dimabot/src/utils/ast_parser/evaluator.ts' ? text
+  : `const boundedJsonParse = (raw: string): any => { const value = JSON.parse(raw); const pending: [unknown, number][] = [[value, 0]]; while (pending.length) { const [item, depth] = pending.pop()!; if (item && typeof item === 'object') { if (depth + 1 > ${RUST_JSON_NESTING}) throw new SyntaxError('nesting'); for (const child of Object.values(item)) pending.push([child, depth + 1]); } } return value; };\n`
+    + text.replaceAll('JSON.parse(', 'boundedJsonParse(');
 
 // Self-contained runtime shared by ordinary generator and serialized offline loader.
 // Only actual source is transpiled. Host adapters below are deterministic test fakes.
@@ -386,25 +402,19 @@ export const TWINS = [
 ];
 const TWIN_OF = new Map(TWINS);
 const astralIn = text => [...text].filter(ch => ch.codePointAt(0) > 0xFFFF);
-// Also twinned: an object with an own `toString` key. JavaScript's String() then throws (the
-// key shadows Object.prototype.toString); in Rust an object is data and prints [object Object].
-// The twin renames the key, which the Rust test maps back.
-const TO_STRING_TWIN = ['toString', 'toStringKey'];
-const hasOwnToString = value => Array.isArray(value) ? value.some(hasOwnToString)
-  : value && typeof value === 'object' ? Object.keys(value).includes('toString') || Object.values(value).some(hasOwnToString) : false;
+// An object with an own `toString` key is not twinned: JavaScript's String() throws on it (the
+// key shadows Object.prototype.toString) and so does the Rust port, so those cases compare with
+// the recording itself.
 export function twinInput(input) {
   const text = JSON.stringify(input);
   const astral = [...new Set(astralIn(text))];
-  const toString = hasOwnToString(input);
-  if (!astral.length && !toString) return undefined;
+  if (!astral.length) return undefined;
   for (const ch of astral) assert(TWIN_OF.has(ch), `no BMP twin for U+${ch.codePointAt(0).toString(16)}`);
   for (const [, bmp] of TWINS) assert(!text.includes(bmp), `twin ${bmp} already occurs in the case`);
-  assert(!text.includes(TO_STRING_TWIN[1]), 'toString twin key already occurs in the case');
   // Case pairs travel together: a case with one of them can produce the other.
   const map = TWINS.filter(([ch]) => astral.includes(ch) || (ch === '\u{10428}' && astral.includes('\u{10400}')) || (ch === '\u{10400}' && astral.includes('\u{10428}')));
-  if (toString) map.push(TO_STRING_TWIN);
   const swapText = value => [...value].map(ch => TWIN_OF.get(ch) ?? ch).join('');
-  const swapKey = key => toString && key === 'toString' ? TO_STRING_TWIN[1] : swapText(key);
+  const swapKey = key => swapText(key);
   const swap = value => typeof value === 'string' ? swapText(value)
     : Array.isArray(value) ? value.map(swap)
     : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [swapKey(k), swap(v)])) : value;
@@ -549,7 +559,117 @@ function caseDefinitions() {
   appendBuiltinCases(cases);
   appendRepeatedPrefixCases(cases);
   appendUtf16BoundaryCases(cases);
+  appendToStringBoundaryCases(cases);
+  appendJsonReaderCases(cases);
   return cases;
+}
+
+// Stored values read as JSON: numbers beyond the double range, the JSON grammar's edges, and
+// nesting up to and past the Rust reader's bound.
+function appendJsonReaderCases(cases) {
+  const add = (name, input, extra = {}) => cases.push({id:`json-reader-${String(cases.length).padStart(4,'0')}-${name}`,category:'json-reader',input,...extra});
+  const nested = (depth, inner = '1') => `${'['.repeat(depth)}${inner}${']'.repeat(depth)}`;
+  const texts = [
+    ['overflow','[1e400]'], ['overflow-negative','[-1e400]'], ['underflow','[1e-400,-0]'],
+    ['numbers','[12345678901234567890,0.1,1E+2,1e21,1.7976931348623157e308,1.7976931348623159e308]'],
+    ['overflow-nested','{"a":[1e400]}'], ['overflow-bare','1e400'], ['object-repeated','{"a":1,"a":2}'],
+    ['string-bare','"text"'], ['literals','[true,false,null]'], ['escapes','["\\u00e9\\ud83d\\ude00\\/\\b"]'],
+    ['padded',' \t[ 1 ,\r\n2 ] '], ['raw-tab','["a\tb"]'], ['leading-zero','[01]'], ['bare-point','[1.]'],
+    ['plus','[+1]'], ['trailing-comma','[1,]'], ['trailing-text','[1] x'], ['empty-key','{"":1}'],
+    ...[128,255,256,257,300,1000].map(depth => [`nested-${depth}`,nested(depth)]),
+    ['objects-257',`${'{"a":'.repeat(257)}1${'}'.repeat(257)}`],
+    ['nested-empty-257',nested(257,'')]
+  ];
+  const depthOf = text => { let depth = 0, max = 0; for (const ch of text) { if (ch === '[' || ch === '{') max = Math.max(max, ++depth); else if (ch === ']' || ch === '}') depth--; } return max; };
+  const reads = [
+    ['index',root(lit('a'),get('memory','items',index('0')))],
+    ['length',get('memory','items',{type:'length'})],
+    ['array',get('memory','items',{type:'array'})],
+    ['foreach',root(foreach(get('memory','items'),[set('memory',loopVar('item'),'out',{type:'append'})]),get('memory','out',{type:'length'}))],
+    ['append',root(set('memory',lit('z'),'items',{type:'append'}),get('memory','items',{type:'length'}))]
+  ];
+  for (const [tname,text] of texts) for (const [rname,ast] of reads) {
+    const extra = depthOf(text) > RUST_JSON_NESTING ? {boundedJson:true} : {};
+    add(`${rname}-${tname}`,{operation:'evaluate',ast,context:{variables:[['items',text]]},host:{}},extra);
+  }
+  // The same reader serves the database and the cache.
+  for (const [tname,text] of [['overflow','[1e400]'],['nested-300',nested(300)]]) {
+    const extra = depthOf(text) > RUST_JSON_NESTING ? {boundedJson:true} : {};
+    add(`db-${tname}`,{operation:'evaluate',ast:root(lit('a'),get('db','items',index('0')),get('db','items',{type:'length'})),context:{},host:{db:[['items',text]]}},extra);
+    add(`cache-${tname}`,{operation:'evaluate',ast:root(lit('a'),get('cache','items',index('0')),get('cache','items',{type:'length'})),context:{},host:{cache:[['twitch:123:variable:items',text]]}},extra);
+  }
+}
+
+// Values that String() or Number() cannot convert (an own `toString` key, also inside a list
+// that is joined) and their neighbours (`valueOf`, a nested object), through every place the
+// evaluator converts a value, and stored JSON through the reference's catch boundaries.
+function appendToStringBoundaryCases(cases) {
+  const add = (name, input) => cases.push({id:`tostring-boundary-${String(cases.length).padStart(4,'0')}-${name}`,category:'tostring-boundary',input});
+  const values = [
+    ['own-number',{toString:0}], ['own-text',{toString:'x'}], ['own-null',{toString:null}],
+    ['value-of',{valueOf:0}], ['both',{valueOf:0,toString:0}], ['nested-object',{a:{toString:0}}],
+    ['list',[{toString:0}]], ['list-nested',[null,[{toString:1}]]], ['list-value-of',[{valueOf:0}]]
+  ];
+  const value = () => fn('fixture.value');
+  const shapes = [
+    ['root',() => root(lit('a'),value(),lit('b'))],
+    ['template',() => template('a',value(),'b')],
+    ['compare',() => binary('==',value(),lit('x'))],
+    ['compare-right',() => binary('<',lit('x'),value())],
+    ['arithmetic',() => binary('+',value(),lit('1'))],
+    ['arithmetic-right',() => binary('*',lit('2'),value())],
+    ['unary',() => ({type:'unary',operator:'-',argument:value()})],
+    ['truthy',() => ({type:'ternary',test:value(),consequent:lit('yes'),alternate:lit('no')})],
+    ['array-item',() => array(value(),lit('z'))],
+    ['array-index',() => ({...array(lit('p'),lit('q')),accessor:{type:'index',index:value()}})],
+    ['set',() => root(set('memory',value(),'v'),get('memory','v'))],
+    ['append',() => root(set('memory',value(),'l',{type:'append'}),get('memory','l'))],
+    ['set-index',() => root(set('memory',lit('[1,2]'),'l'),set('memory',lit('n'),'l',{type:'setIndex',index:value()}),get('memory','l'))],
+    ['get-index',() => root(set('memory',lit('[1,2]'),'l'),get('memory','l',{type:'index',index:value()}))],
+    ['exists-index',() => root(set('memory',lit('[1,2]'),'l'),exists('memory','l',{type:'index',index:value()}))],
+    ['foreach',() => root(foreach(value(),[set('memory',loopVar('item'),'out',{type:'append'})]),get('memory','out'))],
+    ['range-condition',() => ({type:'forLoop',mode:'range',loopVar:'i',init:assign('i','=',lit('0')),condition:value(),update:assign('i','++'),body:[fn('break')]})],
+    ['loop-assign',() => root(assign('i','=',value()),loopVar('i'))],
+    ['loop-add',() => root(assign('i','+=',value()),loopVar('i'))],
+    ['loop-subtract',() => root(assign('i','-=',value()),loopVar('i'))],
+    ['reference',() => ref('other',value())],
+    ['selector',() => get('dbUser','items',undefined,value())],
+    ['timer',() => fn('timer',value(),lit('body'))],
+    ['echo',() => fn('fixture.echo',value())],
+    ['delete-memory',() => root(set('memory',lit('[1,2]'),'l'),del('memory','l',{type:'remove',index:value()}),get('memory','l'))],
+    ['delete-cache',() => root(del('cache','l',{type:'remove',index:value()}),get('cache','l'))],
+    ['delete-db',() => root(del('db','l',{type:'remove',index:value()}),get('db','l'))],
+    ['responses-index',() => root(set('memory',lit('r'),'responses',{type:'append'}),get('memory','responses',{type:'index',index:value()}))]
+  ];
+  const host = returnValue => ({returnValue,cache:[['twitch:123:variable:l','[1,2]']],db:[['l','[1,2]']]});
+  for (const [vname,v] of values) for (const [sname,shape] of shapes) add(`${sname}-${vname}`,{operation:'evaluate',ast:shape(),context:{userPlan:'pro'},host:host(v)});
+  // Stored JSON: read as a list (getArrayFromStorage's try), iterated (parseIterableValue's try),
+  // or an item converted outside any try.
+  const stored = [['own','{"toString":0}'],['list','[{"toString":0}]'],['list-nested','[[{"toString":"x"}],1]'],['value-of','[{"valueOf":0}]'],['nested-object','[{"a":{"toString":0}}]']];
+  const reads = storage => [
+    ['get',() => root(lit('a'),get(storage,'items'))],
+    ['index',() => root(lit('a'),get(storage,'items',index('0')))],
+    ['index-raw',() => get(storage,'items',index('0'))],
+    ['random',() => root(lit('a'),get(storage,'items',{type:'random'}))],
+    ['length',() => get(storage,'items',{type:'length'})],
+    ['array',() => get(storage,'items',{type:'array'})],
+    ['exists-index',() => exists(storage,'items',index('0'))],
+    ['append',() => root(set(storage,lit('z'),'items',{type:'append'}),get(storage,'items'))],
+    ['set-index',() => root(set(storage,lit('z'),'items',index('0')),get(storage,'items'))],
+    ['foreach-text',() => root(foreach(get(storage,'items'),[set('memory',loopVar('item'),'out',{type:'append'})]),get('memory','out'))],
+    ['foreach-list',() => root(foreach(get(storage,'items',{type:'array'}),[set('memory',loopVar('item'),'out',{type:'append'})]),get('memory','out'))],
+    ['delete-index',() => root(del(storage,'items',index('0')),get(storage,'items'))]
+  ];
+  for (const [vname,text] of stored) for (const storage of ['memory','cache','db']) for (const [rname,read] of reads(storage)) {
+    const context = storage === 'memory' ? {userPlan:'pro',variables:[['items',text]]} : {userPlan:'pro'};
+    const seeded = storage === 'cache' ? {cache:[['twitch:123:variable:items',text]]} : storage === 'db' ? {db:[['items',text]]} : {};
+    add(`stored-${storage}-${rname}-${vname}`,{operation:'evaluate',ast:read(),context,host:seeded});
+  }
+  // The renderer catches nothing: a conversion that throws stops the whole command.
+  for (const [vname,text] of stored) {
+    add(`render-${vname}`,{operation:'render',text:'before %(*items[0]) after',context:{userPlan:'pro'},host:{db:[['items',text]]}});
+    add(`render-later-${vname}`,{operation:'render',text:'%(v kept) before %(*items[0]) %(v lost)',context:{userPlan:'pro'},host:{db:[['items',text]]}});
+  }
 }
 
 // Additional source-backed optional context builtins. Original case names and
@@ -660,12 +780,19 @@ export async function buildCorpus() {
   const bundle = await sourceBundle();
   const oracle = runtimeFactory(bundle.code, vm);
   const definitions = caseDefinitions();
-  assert.ok(definitions.length >= 1000 && definitions.length <= 4000, `bounded corpus: ${definitions.length}`);
+  assert.ok(definitions.length >= 1000 && definitions.length <= 5000, `bounded corpus: ${definitions.length}`);
   const cases = [];
+  let boundedOracle;
   for (const definition of definitions) {
     const source = await oracle.execute(definition.input);
     if (definition.invariant) assert.deepEqual(source.value, definition.invariant, `source test invariant ${definition.id}`);
-    cases.push(await withTwin(oracle, definition, source));
+    const recorded = await withTwin(oracle, definition, source);
+    if (definition.boundedJson) {
+      assert(!recorded.twin, `bounded JSON case with another twin: ${definition.id}`);
+      boundedOracle ??= runtimeFactory((await buildSourceBundle({transformSource:boundedJsonSource})).code, vm);
+      recorded.twin = {map:[],jsonNesting:RUST_JSON_NESTING,source:await boundedOracle.execute(definition.input)};
+    }
+    cases.push(recorded);
   }
   const benchmarks = [];
   for (const definition of benchmarkDefinitions()) {

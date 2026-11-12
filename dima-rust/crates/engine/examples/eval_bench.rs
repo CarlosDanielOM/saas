@@ -192,6 +192,11 @@ fn time(iterations: u32, mut operation: impl FnMut() -> usize) -> f64 {
 }
 
 fn main() {
+    // On a registered thread with room for parsing and evaluation (`dima_engine::stack`).
+    let _ = dima_engine::stack::run_on_thread(8 * 1024 * 1024, run);
+}
+
+fn run() {
     let iterations: u32 = std::env::args()
         .nth(1)
         .and_then(|arg| arg.parse().ok())

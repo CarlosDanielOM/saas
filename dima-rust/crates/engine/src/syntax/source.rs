@@ -94,15 +94,16 @@ pub(crate) struct Budget {
     work: usize,
     /// What the parser's own scans visited.
     scanned: usize,
-    /// The nesting this attempt may use on the current thread's stack.
-    stack_nesting: usize,
-    /// Set when the stack, not the nesting limit, refused a level: the program is parsed again
-    /// on a thread with a stack for [`Limits::nesting`].
-    needs_stack: Cell<bool>,
+    /// The stack left when the program started, on a registered thread ([`crate::stack`]).
+    stack_start: Option<usize>,
+    /// The most stack used below the start, seen at the level checks.
+    stack_used: Cell<usize>,
+    /// The deepest level checked.
+    deepest: Cell<usize>,
 }
 
 impl Budget {
-    pub fn new(mut limits: Limits, bytes: usize, stack_nesting: usize) -> Self {
+    pub fn new(mut limits: Limits, bytes: usize) -> Self {
         limits.nesting = limits.nesting.min(MAX_NESTING);
         limits.tokens = limits.tokens.min(
             bytes
@@ -119,23 +120,36 @@ impl Budget {
             stats: ParseStats::default(),
             work: bytes.saturating_mul(WORK_PER_INPUT_BYTE).max(WORK_BASE),
             scanned: 0,
-            stack_nesting: stack_nesting.min(limits.nesting),
-            needs_stack: Cell::new(false),
+            stack_start: crate::stack::remaining(),
+            stack_used: Cell::new(0),
+            deepest: Cell::new(0),
         }
     }
 
-    /// Whether the stack refused a level that the nesting limit allows.
-    pub fn needs_stack(&self) -> bool {
-        self.needs_stack.get()
+    /// The deepest level of recursion or tree height the parse reached.
+    pub fn deepest(&self) -> usize {
+        self.deepest.get()
+    }
+
+    /// The most stack the parse used below its start, seen at the level checks (0 on a thread
+    /// that is not registered).
+    pub fn stack_used(&self) -> usize {
+        self.stack_used.get()
     }
 
     /// Checks a level of recursion. Only recursive calls check: an iterative counter (open
     /// braces in a quoted string, open delimiters in the tokenizer) needs no stack.
     pub fn depth(&self, depth: usize, span: Span) -> Result<(), Diagnostic> {
-        if depth > self.stack_nesting {
-            if depth <= self.limits.nesting {
-                self.needs_stack.set(true);
+        if let (Some(start), Some(now)) = (self.stack_start, crate::stack::remaining()) {
+            let used = start.saturating_sub(now);
+            if used > self.stack_used.get() {
+                self.stack_used.set(used);
             }
+        }
+        if depth > self.deepest.get() {
+            self.deepest.set(depth);
+        }
+        if depth > self.limits.nesting {
             return Err(Diagnostic::new(
                 DiagnosticCode::NestingLimit,
                 "Nesting limit exceeded",

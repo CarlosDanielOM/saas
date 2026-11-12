@@ -13,17 +13,18 @@
 
 use dima_core::{Clock, ManualClock, Random, RandomError};
 use dima_engine::context::{
-    Authorization, Budget, CommandReference, Context, Effect, Identity, LoopExit, Origin, Plan,
-    State, TimerSnapshot,
+    Authorization, Budget, CommandReference, Context, Effect, LoopExit, Origin, Plan, State,
+    TimerSnapshot,
 };
 use dima_engine::eval::{Engine, EvalError, EvalLimits};
 use dima_engine::host::{Host, HostCall, HostError, HostFunction, HostFuture};
 use dima_engine::map::OrderedMap;
-use dima_engine::permissions::ReferencePermissions;
+use dima_engine::permissions::UserIdentity;
 use dima_engine::registry::{Builtin, FunctionKind, Metadata, Registry};
 use dima_engine::syntax::AstNode;
 use dima_engine::value::Value;
 use serde_json::{Value as Json, json};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
@@ -476,7 +477,9 @@ impl CorpusHost {
     fn stored(value: Option<&Value>) -> String {
         match value {
             Some(Value::Text(text)) => text.clone(),
-            Some(other) if !other.is_nullish() => other.to_text().into_owned(),
+            Some(other) if !other.is_nullish() => {
+                other.to_text().map(Cow::into_owned).unwrap_or_default()
+            }
             _ => String::new(),
         }
     }
@@ -546,13 +549,14 @@ impl Host for CorpusHost {
         let args = typed(&Value::List(call.args.clone()));
         let event = self.event("handler", vec![s(call.name), args]);
         let result = event.and_then(|()| match call.name {
-            "fixture.echo" => Ok(Value::Text(
-                call.args
-                    .iter()
-                    .map(|v| v.to_text_or_empty().into_owned())
-                    .collect::<Vec<_>>()
-                    .join("|"),
-            )),
+            // `String(v ?? '')` throws as the reference's handler does.
+            "fixture.echo" => call
+                .args
+                .iter()
+                .map(|v| v.to_text_or_empty().map(Cow::into_owned))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|texts| Value::Text(texts.join("|")))
+                .map_err(|error| HostError::new(error.to_string())),
             "fixture.value" => Ok(call
                 .args
                 .first()
@@ -866,18 +870,18 @@ pub fn typed_snapshot(snap: &TimerSnapshot) -> Json {
     ])
 }
 
-fn typed_identity(identity: &Identity) -> Json {
+fn typed_identity(identity: &UserIdentity) -> Json {
     let mut entries = vec![
-        ("level", number(f64::from(identity.level))),
+        ("level", number(identity.level())),
         (
             "tags",
-            array(identity.tags.iter().map(|t| s(t.as_str())).collect()),
+            array(identity.tags().iter().map(|t| s(t.as_str())).collect()),
         ),
     ];
-    if let Some(id) = &identity.user_id {
+    if let Some(id) = identity.user_id() {
         entries.push(("userId", s(id)));
     }
-    if let Some(login) = &identity.login {
+    if let Some(login) = identity.login() {
         entries.push(("login", s(login)));
     }
     object(entries)
@@ -1049,12 +1053,8 @@ pub fn observe(outcome: &Outcome, initial: &State, context: &Context, host: &Cor
 // Running a case.
 
 pub fn engine_for(registry: Registry) -> Engine {
-    Engine::new(
-        Arc::new(registry),
-        Arc::new(ReferencePermissions),
-        dima_engine::syntax::Limits::default(),
-    )
-    .with_limits(EvalLimits::default())
+    Engine::new(Arc::new(registry), dima_engine::syntax::Limits::default())
+        .with_limits(EvalLimits::default())
 }
 
 pub fn runtime() -> tokio::runtime::Runtime {
@@ -1176,10 +1176,11 @@ pub enum Difference {
     /// A timer's snapshot is a copy at scheduling (the reference shares the responses array with
     /// the live context until the scheduler serialises it, immediately in production).
     SnapshotCopy,
-    /// An object whose own `toString` key is not a function makes JavaScript's `String()` throw;
-    /// a Rust object is data and prints `[object Object]`. The generator records the twin with
-    /// the key renamed.
-    OwnToStringKey,
+    /// A stored value nested deeper than `MAX_JSON_NESTING` reads as invalid JSON (V8 reads any
+    /// depth; the Rust reader keeps the values it builds shallow enough for the stack contract).
+    /// The expectation is the generator's second recording of the same case, with the
+    /// reference's `JSON.parse` refusing such text.
+    JsonNesting,
 }
 
 /// Replaces every occurrence of the twins' BMP characters (values and keys) by the originals.
@@ -1302,7 +1303,20 @@ pub fn expected(case: &Json) -> (Json, Vec<Difference>) {
     let mut differences = Vec::new();
     let input = &case["input"];
     let mut source = case["source"].clone();
-    if let Some(twin) = case.get("twin") {
+    if let Some(twin) = case
+        .get("twin")
+        .filter(|twin| twin.get("jsonNesting").is_some())
+    {
+        assert_eq!(
+            twin["jsonNesting"].as_u64(),
+            Some(dima_engine::json::MAX_JSON_NESTING as u64),
+            "the corpus was recorded for another JSON nesting bound"
+        );
+        if comparable(&twin["source"]) != comparable(&source) {
+            differences.push(Difference::JsonNesting);
+        }
+        source = twin["source"].clone();
+    } else if let Some(twin) = case.get("twin") {
         let map: Vec<(String, String)> = twin["map"]
             .as_array()
             .unwrap()
@@ -1315,13 +1329,8 @@ pub fn expected(case: &Json) -> (Json, Vec<Difference>) {
             })
             .collect();
         let twinned = untwin(&twin["source"], &map);
-        let to_string_twin = map.iter().any(|(original, _)| original == "toString");
         if comparable(&twinned) != comparable(&source) {
-            differences.push(if to_string_twin {
-                Difference::OwnToStringKey
-            } else {
-                Difference::CharacterCount
-            });
+            differences.push(Difference::CharacterCount);
         }
         source = twinned;
     }
@@ -1567,6 +1576,11 @@ pub struct Tally {
 }
 
 pub fn run_corpus(name: &str) -> Tally {
+    // On a registered thread: the evaluator's stack contract (`dima_engine::stack`).
+    dima_engine::stack::run_on_thread(8 * 1024 * 1024, || run_corpus_here(name)).unwrap()
+}
+
+fn run_corpus_here(name: &str) -> Tally {
     let corpus = load(name);
     let rt = runtime();
     let mut tally = Tally::default();

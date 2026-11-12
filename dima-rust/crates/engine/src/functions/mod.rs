@@ -9,8 +9,33 @@ pub(crate) mod user;
 
 use crate::context::{Context, LoopExit};
 use crate::registry::Builtin;
-use crate::value::Value;
+use crate::value::{CoercionError, Value};
 use dima_text::{Radix, number_to_string, parse_int};
+
+/// A builtin's result would be over its budget; nothing of its size was allocated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct TooLong;
+
+/// Why a builtin (or a conversion of the evaluator) gave no result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Failure {
+    /// Over the budget ([`TooLong`]).
+    TooLong,
+    /// A conversion threw ([`CoercionError`]).
+    Coercion,
+}
+
+impl From<TooLong> for Failure {
+    fn from(_: TooLong) -> Self {
+        Self::TooLong
+    }
+}
+
+impl From<CoercionError> for Failure {
+    fn from(_: CoercionError) -> Self {
+        Self::Coercion
+    }
+}
 
 /// The per-run scalars a builtin may change (`count`, `countModified`, `loopExit`).
 pub(crate) struct Counters<'a> {
@@ -34,38 +59,45 @@ fn first_truthy(args: &[Value]) -> Option<&Value> {
     args.first().filter(|arg| arg.js_truthy())
 }
 
+/// `$(random [max])`'s bound: `parseInt(String(args[0] || '100'), 10) || 100`, read before the
+/// draw (its conversion can throw).
+pub(crate) fn random_max(args: &[Value]) -> Result<f64, CoercionError> {
+    Ok(match first_truthy(args) {
+        Some(arg) => int_or(&arg.to_text()?, 100.0),
+        None => 100.0,
+    })
+}
+
 /// Runs a builtin that needs neither the host nor the evaluator. `random` is a draw in
-/// `[0, 1)` (`Math.random()`), taken only by `$(random)`.
+/// `[0, 1)` (`Math.random()`), taken only by `$(random)`. `max` is the budget for the result,
+/// in bytes: a function whose result grows with its arguments (the text functions, `user` and
+/// `touser`) computes the result's size first and returns [`TooLong`] instead of building a
+/// larger one. The others build text from the run's context (the event accessors, `bits`,
+/// `user` without a filter) or a number, never larger than what the host supplied.
 pub(crate) fn run(
     builtin: Builtin,
     args: &[Value],
     context: &Context,
     counters: Counters<'_>,
     random: &mut dyn FnMut() -> f64,
-) -> Value {
+    max: usize,
+) -> Result<Value, Failure> {
     let text = match builtin {
-        Builtin::Upper => strings::upper(args),
-        Builtin::Lower => strings::lower(args),
-        Builtin::Title => strings::title(args),
-        Builtin::Capitalize => strings::capitalize(args),
-        Builtin::Trim => strings::trim_text(args),
-        Builtin::Length => strings::length(args),
-        Builtin::Slice => strings::slice(args),
-        Builtin::Replace => strings::replace(args),
-        Builtin::User => user::user(args, context),
-        Builtin::ToUser => user::touser(args, context),
-        Builtin::Random => {
-            // parseInt(String(args[0] || '100'), 10) || 100
-            let max = match first_truthy(args) {
-                Some(arg) => int_or(&arg.to_text(), 100.0),
-                None => 100.0,
-            };
-            number_to_string((random() * max).floor())
-        }
+        Builtin::Upper => strings::upper(args, max)?,
+        Builtin::Lower => strings::lower(args, max)?,
+        Builtin::Title => strings::title(args, max)?,
+        Builtin::Capitalize => strings::capitalize(args, max)?,
+        Builtin::Trim => strings::trim_text(args, max)?,
+        Builtin::Length => strings::length(args)?,
+        Builtin::Slice => strings::slice(args, max)?,
+        Builtin::Replace => strings::replace(args, max)?,
+        Builtin::User => user::user(args, context)?,
+        Builtin::ToUser => user::touser(args, context, max)?,
+        Builtin::Random => number_to_string((random() * random_max(args)?).floor()),
         Builtin::Count => {
             // String(args[0] || ctx.argument || '0'), every '+' removed unless it is '0'.
             let raw = match first_truthy(args) {
-                Some(arg) => arg.to_text().into_owned(),
+                Some(arg) => arg.to_text()?.into_owned(),
                 None => match context.argument.as_deref() {
                     Some(argument) if !argument.is_empty() => argument.to_owned(),
                     _ => "0".to_owned(),
@@ -88,7 +120,7 @@ pub(crate) fn run(
         }
         Builtin::Bits => match context.extra_context.get("bits") {
             Some(Value::Undefined) | None => "0".into(),
-            Some(bits) => bits.to_text().into_owned(),
+            Some(bits) => bits.to_text()?.into_owned(),
         },
         Builtin::Break => {
             *counters.loop_exit = Some(LoopExit::Break);
@@ -98,7 +130,7 @@ pub(crate) fn run(
             *counters.loop_exit = Some(LoopExit::Continue);
             String::new()
         }
-        Builtin::AdTime => eventsub::ad_time(context),
+        Builtin::AdTime => eventsub::ad_time(context)?,
         Builtin::BanTime => eventsub::ban_time(context),
         Builtin::Modiversary => eventsub::modiversary(context),
         Builtin::WatchStreak => eventsub::watch_streak(context),
@@ -118,25 +150,26 @@ pub(crate) fn run(
         // Run by the evaluator.
         Builtin::Delay | Builtin::Timer => String::new(),
     };
-    Value::Text(text)
+    Ok(Value::Text(text))
 }
 
 /// `$(delay seconds)` before the pause: the milliseconds to wait, or the answer to give.
-pub(crate) fn delay_millis(args: &[Value]) -> Result<u64, String> {
+/// `Number(raw)` and the text of the answer can throw ([`CoercionError`]).
+pub(crate) fn delay_millis(args: &[Value]) -> Result<Result<u64, String>, CoercionError> {
     const MAX_DELAY_SECONDS: f64 = 60.0;
     let Some(raw) = args.first() else {
-        return Err("delay: missing argument (seconds)".into());
+        return Ok(Err("delay: missing argument (seconds)".into()));
     };
-    let seconds = raw.to_number();
+    let seconds = raw.to_number()?;
     if !seconds.is_finite() {
-        return Err(format!(
+        return Ok(Err(format!(
             "delay: \"{}\" is not a valid number",
-            raw.to_text()
-        ));
+            raw.to_text()?
+        )));
     }
     if !(0.0..=MAX_DELAY_SECONDS).contains(&seconds) {
-        return Err("delay: must be between 0 and 60 seconds".into());
+        return Ok(Err("delay: must be between 0 and 60 seconds".into()));
     }
     // Math.round(seconds * 1000), at most 60,000.
-    Ok(dima_text::math_round(seconds * 1000.0).max(0.0) as u64)
+    Ok(Ok(dima_text::math_round(seconds * 1000.0).max(0.0) as u64))
 }

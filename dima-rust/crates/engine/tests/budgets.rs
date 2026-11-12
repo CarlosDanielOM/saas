@@ -7,8 +7,9 @@
 mod placeholders;
 
 use dima_engine::syntax::{
-    BUDGET_BASE, DiagnosticCode, MAX_ARGUMENT_CHARS, MAX_INPUT_CHARS, MAX_SOURCE_CHARS,
-    NODES_PER_INPUT_BYTE, SegmentStep, SyntaxEngine, TOKENS_PER_INPUT_BYTE, WORK_BASE,
+    BUDGET_BASE, DiagnosticCode, MAX_ARGUMENT_CHARS, MAX_INPUT_CHARS, MAX_NESTING,
+    MAX_SOURCE_CHARS, NODES_PER_INPUT_BYTE, SegmentStep, SyntaxEngine, TOKENS_PER_INPUT_BYTE,
+    WORK_BASE,
 };
 
 #[test]
@@ -174,8 +175,9 @@ fn dense_text_under_the_source_limit_never_hits_a_budget() {
 }
 
 /// The work budget covers the quadratic shapes within the source limit: templates nested in
-/// templates (each level is lexed again) and loops nested in loop bodies (each body is scanned
-/// again), the worst with an emoji payload that makes every level long in bytes.
+/// templates (each level is lexed again, to the nesting limit) and loops nested in loop bodies
+/// (each body is scanned again), the worst with an emoji payload that makes every level long in
+/// bytes.
 #[test]
 fn nested_templates_and_loops_under_the_source_limit_fit_the_work_budget() {
     let engine = SyntaxEngine::default();
@@ -200,7 +202,10 @@ fn nested_templates_and_loops_under_the_source_limit_fit_the_work_budget() {
             assert!(failures(&engine, &source).is_empty());
         }
     }
-    assert!(worst > 10_000_000 && worst < WORK_BASE / 2, "{worst}");
+    // Interpolations past the nesting limit show their text instead of being parsed, which
+    // bounds the relexing: about 1.2 million bytes at worst (19 million when the reference's
+    // depth was allowed).
+    assert!(worst > 1_000_000 && worst < WORK_BASE / 2, "{worst}");
     let loops = |levels: usize| {
         format!(
             "*(for #i in %(x) {{ {}x{} }})",
@@ -208,11 +213,16 @@ fn nested_templates_and_loops_under_the_source_limit_fit_the_work_budget() {
             " })".repeat(levels)
         )
     };
+    // Loops nested to the limit parse; nested as deep as the source limit allows, the nesting
+    // limit stops them before the work budget would.
+    assert!(engine.parse(&loops(MAX_NESTING / 2)).is_ok());
     let levels = (MAX_SOURCE_CHARS - 30) / 22;
     let source = loops(levels);
     assert!(dima_text::char_len(&source) <= MAX_SOURCE_CHARS);
-    assert!(engine.parse(&source).is_ok());
-    assert!(failures(&engine, &source).is_empty());
+    assert_eq!(
+        engine.parse(&source).unwrap_err().code,
+        DiagnosticCode::NestingLimit
+    );
 }
 
 /// Longer, substituted text gets a work budget linear in its length: deep templates around a

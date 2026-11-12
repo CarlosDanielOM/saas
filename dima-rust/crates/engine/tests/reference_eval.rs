@@ -23,7 +23,7 @@ fn host() -> MemoryHost {
         .answer("say", |args, _| {
             Value::Text(
                 args.iter()
-                    .map(|a| a.to_text_or_empty().into_owned())
+                    .map(|a| a.to_text_or_empty().unwrap().into_owned())
                     .collect::<Vec<_>>()
                     .join(" "),
             )
@@ -757,8 +757,8 @@ fn llm_references_retain_the_requesting_chatters_authority() {
         &mut host(),
     );
     let authorization = &done.state.command_references[0].authorization;
-    assert_eq!(authorization.identity.level, 1);
-    assert_eq!(authorization.identity.tags, [RoleTag::Everyone]);
+    assert_eq!(authorization.identity.level(), 1.0);
+    assert_eq!(authorization.identity.tags(), [RoleTag::Everyone]);
     let authored = Context {
         enforce_function_permissions: false,
         ..context
@@ -774,8 +774,8 @@ fn llm_references_retain_the_requesting_chatters_authority() {
         done.state.command_references[0]
             .authorization
             .identity
-            .level,
-        10
+            .level(),
+        10.0
     );
 }
 

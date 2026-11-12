@@ -18,7 +18,8 @@ mod placeholders;
 use anyhow::{Result, bail};
 use bson::{Bson, Document, doc};
 use dima_engine::syntax::{
-    CompiledProgram, Diagnostic, MAX_ARGUMENT_CHARS, MAX_SOURCE_CHARS, SegmentStep, SyntaxEngine,
+    CompiledProgram, Diagnostic, MAX_ARGUMENT_CHARS, MAX_NESTING, MAX_SOURCE_CHARS, SegmentStep,
+    SyntaxEngine,
 };
 use futures_util::TryStreamExt;
 use mongodb::Database;
@@ -130,12 +131,16 @@ struct Seen {
     largest_input: usize,
     most_nodes: usize,
     deepest_json: usize,
+    deepest_nesting: usize,
+    deepest_tree: usize,
     segment_errors: usize,
 }
 
 impl Seen {
     fn program(&mut self, program: &CompiledProgram) {
         self.most_nodes = self.most_nodes.max(program.stats().nodes);
+        self.deepest_nesting = self.deepest_nesting.max(program.stats().nesting);
+        self.deepest_tree = self.deepest_tree.max(program.root().height());
         if program.check_json_depth().is_ok() {
             self.deepest_json = self.deepest_json.max(json_depth(&program.to_value()));
         }
@@ -229,14 +234,25 @@ async fn every_stored_command_text_compiles_within_the_limits() -> Result<()> {
     eprintln!(
         "real data: {} ({} texts); over the {MAX_SOURCE_CHARS}-character source limit: {}; \
          largest input {} characters; most nodes in one program {}; deepest tree {} JSON \
-         containers; segments with ordinary parse errors {}",
+         containers; deepest nesting {} (tree height {}); segments with ordinary parse errors {}",
         per_collection.join(", "),
         seen.texts,
         seen.over_source_limit,
         seen.largest_input,
         seen.most_nodes,
         seen.deepest_json,
+        seen.deepest_nesting,
+        seen.deepest_tree,
         seen.segment_errors,
+    );
+    // The deepest stored text nests 11 levels (tree height 10) in the local copy; the limit
+    // keeps at least twice the room.
+    const DEEPEST_REAL: usize = 16;
+    const _: () = assert!(DEEPEST_REAL * 2 <= MAX_NESTING);
+    assert!(
+        seen.deepest_nesting <= DEEPEST_REAL && seen.deepest_tree <= DEEPEST_REAL,
+        "a stored command nests {} levels",
+        seen.deepest_nesting
     );
     if seen.texts < 1_000 {
         bail!(
