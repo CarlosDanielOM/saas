@@ -11871,6 +11871,26 @@
     "headers": {}
    }
   },
+  "upgrade races": {
+   "opened": [
+    "open",
+    "open"
+   ],
+   "answers": [
+    "3probe",
+    "close 1005"
+   ],
+   "connect": "40/norec,{\"sid\":\"<sid>\",\"pid\":\"<pid>\"}",
+   "welcome": "42/norec,[\"welcome\",{\"recovered\":false,\"nsp\":\"/norec\",\"x\":null,\"token\":null,\"tag\":null}]",
+   "echo": "42/norec,[\"echo\",\"over the winner\"]",
+   "late opened": "open",
+   "late answer": "close 1005",
+   "echo after": "42/norec,[\"echo\",\"still\"]",
+   "poll after": {
+    "status": 400,
+    "body": "{\"code\":3,\"message\":\"Bad request\"}"
+   }
+  },
   "the app and other upgrades": {
    "hello": {
     "status": 200,

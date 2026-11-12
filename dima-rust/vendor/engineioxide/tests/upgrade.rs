@@ -229,3 +229,99 @@ async fn polls_during_the_upgrade_get_a_noop_at_the_check_interval() {
         start.elapsed()
     );
 }
+
+/// Reads the next text frame, or how the WebSocket ended.
+async fn next_frame<S>(ws: &mut tokio_tungstenite::WebSocketStream<S>) -> String
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    loop {
+        match tokio::time::timeout(Duration::from_secs(2), ws.next()).await {
+            Ok(Some(Ok(Message::Text(text)))) => return text.as_str().to_owned(),
+            Ok(Some(Ok(Message::Close(_)))) | Ok(None) | Ok(Some(Err(_))) => {
+                return "closed".into();
+            }
+            Ok(Some(Ok(_))) => continue,
+            Err(_) => return "timeout".into(),
+        }
+    }
+}
+
+/// Upgrades over `ws` (probe answered already) and checks the session works over it.
+async fn finish_upgrade<S>(ws: &mut tokio_tungstenite::WebSocketStream<S>)
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    ws.send(Message::Text("5".into())).await.unwrap();
+    ws.send(Message::Text("4over ws".into())).await.unwrap();
+    loop {
+        match next_frame(ws).await.as_str() {
+            "4over ws" => return,
+            "6" | "2" => continue,
+            other => panic!("unexpected frame after the upgrade: {other}"),
+        }
+    }
+}
+
+/// `engine.io` server.js 616-618: a WebSocket for a session that is already upgrading is closed
+/// (after its handshake); the running upgrade and the session are untouched.
+#[tokio::test]
+async fn a_second_probe_during_an_upgrade_is_refused() {
+    let (mut svc, mut rx) = server(Duration::from_secs(5));
+    let sid = create_polling_connection(&mut svc).await;
+    let mut first = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+    first.send(Message::Text("2probe".into())).await.unwrap();
+    assert_eq!(next_frame(&mut first).await, "3probe");
+
+    let mut second = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+    second.send(Message::Text("2probe".into())).await.ok();
+    assert_eq!(next_frame(&mut second).await, "closed");
+
+    finish_upgrade(&mut first).await;
+    assert_eq!(rx.try_recv().ok(), None, "the session was closed");
+}
+
+/// `engine.io` server.js 620-622: a WebSocket for a session that has upgraded is closed.
+#[tokio::test]
+async fn a_probe_after_the_upgrade_is_refused() {
+    let (mut svc, mut rx) = server(Duration::from_secs(5));
+    let sid = create_polling_connection(&mut svc).await;
+    let mut first = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+    first.send(Message::Text("2probe".into())).await.unwrap();
+    assert_eq!(next_frame(&mut first).await, "3probe");
+    finish_upgrade(&mut first).await;
+
+    let mut late = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+    late.send(Message::Text("2probe".into())).await.ok();
+    assert_eq!(next_frame(&mut late).await, "closed");
+
+    first.send(Message::Text("4still".into())).await.unwrap();
+    let mut frame = next_frame(&mut first).await;
+    while frame == "2" {
+        frame = next_frame(&mut first).await;
+    }
+    assert_eq!(frame, "4still");
+    assert_eq!(rx.try_recv().ok(), None, "the session was closed");
+}
+
+/// Two probes at once: exactly one owns the upgrade (a single compare-and-set, where upstream
+/// let both pass its `is_ws()` check), the other is closed, and the session upgrades over the
+/// winner.
+#[tokio::test]
+async fn simultaneous_probes_upgrade_once() {
+    for _ in 0..20 {
+        let (mut svc, mut rx) = server(Duration::from_secs(5));
+        let sid = create_polling_connection(&mut svc).await;
+        let mut a = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+        let mut b = create_ws_upgrade_connection(&mut svc, sid.parse().unwrap()).await;
+        a.send(Message::Text("2probe".into())).await.ok();
+        b.send(Message::Text("2probe".into())).await.ok();
+        let (first, second) = tokio::join!(next_frame(&mut a), next_frame(&mut b));
+        let mut outcomes = [first.as_str(), second.as_str()];
+        outcomes.sort_unstable();
+        assert_eq!(outcomes, ["3probe", "closed"]);
+        let winner = if first == "3probe" { &mut a } else { &mut b };
+        finish_upgrade(winner).await;
+        assert_eq!(rx.try_recv().ok(), None, "the session was closed");
+    }
+}

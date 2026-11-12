@@ -200,6 +200,10 @@ where
     /// Whether the socket is currently upgrading to a new transport.
     upgrading: AtomicBool,
 
+    /// [dima-rust patch 2] An upgrade owns the session, from its WebSocket handshake until it
+    /// fails, or for good once it succeeded. Claimed with a single compare-and-set.
+    upgrade_owned: AtomicBool,
+
     /// Channel to send [`PacketBuf`] to the connection
     ///
     /// It is used and managed by the [`EngineIo`](crate::engine) struct depending on the transport type
@@ -264,6 +268,7 @@ where
             protocol,
             transport: AtomicU8::new(transport as u8),
             upgrading: AtomicBool::new(false),
+            upgrade_owned: AtomicBool::new(false),
 
             internal_rx: Mutex::new(InternalRx::new(internal_rx, volatile_rx)),
             internal_tx,
@@ -305,6 +310,15 @@ where
     /// [dima-rust patch 1] The upgrade failed: polls are answered as usual again.
     pub(crate) fn cancel_upgrade(&self) {
         self.upgrading.store(false, Ordering::Relaxed);
+        // [dima-rust patch 2] and another upgrade may try.
+        self.upgrade_owned.store(false, Ordering::Release);
+    }
+    /// [dima-rust patch 2] Claims the upgrade of this session; `false` when another upgrade owns
+    /// it or one has succeeded (engine.io server.js 616-623 refuses those).
+    pub(crate) fn claim_upgrade(&self) -> bool {
+        self.upgrade_owned
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
     }
 
     /// Spawn the heartbeat job
@@ -619,6 +633,7 @@ where
             protocol: ProtocolVersion::V4,
             transport: AtomicU8::new(TransportType::Websocket as u8),
             upgrading: AtomicBool::new(false),
+            upgrade_owned: AtomicBool::new(false),
 
             internal_rx: Mutex::new(InternalRx::new(internal_rx, volatile_rx)),
             internal_tx,

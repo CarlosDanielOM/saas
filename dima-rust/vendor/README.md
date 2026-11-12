@@ -98,3 +98,16 @@ git diff <that commit> -- dima-rust/vendor
    is still reclaimed by the heartbeat (the leak they guard against, upstream issue 731);
    `dima-socketio`'s differential cases `short: upgrade probe lost on the way up` and `… answer
    lost on the way down`. `tests/upgrade.rs` is declared in `Cargo.toml` (`autotests = false`).
+
+2. **One upgrade at a time.** `socket.rs` (`upgrade_owned`, `claim_upgrade`; `cancel_upgrade`
+   releases it), `transport/ws.rs` (`on_init`). Two simultaneous probes could both pass the
+   `is_ws()` check, because starting an upgrade was an unconditional store; both answered the
+   probe, then contended for the packet buffer (the WebSocket writer's `try_lock().unwrap()`
+   panicked) or one closed a session the other had upgraded. Upgrade ownership is now a single
+   compare-and-set, held from the WebSocket handshake until the upgrade fails, and kept once it
+   succeeded. Another WebSocket for the session gets a close frame after its handshake and the
+   session is untouched (engine.io server.js 616-618 "already been trying to upgrade", 620-622
+   "already been upgraded").
+   Tests: `tests/upgrade.rs` (`a_second_probe_during_an_upgrade_is_refused`,
+   `a_probe_after_the_upgrade_is_refused`, `simultaneous_probes_upgrade_once`); `dima-socketio`'s
+   differential case `upgrade races`.

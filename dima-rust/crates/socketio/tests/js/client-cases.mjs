@@ -597,6 +597,82 @@ async function handshake(base, headers = {}) {
   return { response, open, sid: open.sid };
 }
 
+// A raw WebSocket: its frames and its end, in order, as text.
+class RawWs {
+  constructor(url) {
+    this.events = [];
+    this.waiters = [];
+    this.ws = new WebSocket(url);
+    this.ws.on('message', (data, binary) => this.push(binary ? `binary ${data.length}` : String(data)));
+    this.ws.on('close', (code) => this.push(`close ${code}`));
+    this.ws.on('error', () => {});
+    this.opened = new Promise((done) => {
+      this.ws.on('open', () => done('open'));
+      this.ws.on('unexpected-response', (_req, res) => done(`status ${res.statusCode}`));
+      this.ws.on('error', (error) => done(`error ${error.code ?? error.message}`));
+    });
+  }
+
+  push(event) {
+    const waiter = this.waiters.shift();
+    if (waiter) waiter(event);
+    else this.events.push(event);
+  }
+
+  // The next frame or the close; heartbeat pings are answered and skipped unless `pings`.
+  async next(timeout = 2000, { pings = false } = {}) {
+    for (;;) {
+      const event = this.events.length
+        ? this.events.shift()
+        : await new Promise((done) => {
+            const waiter = (e) => {
+              clearTimeout(timer);
+              done(e);
+            };
+            const timer = setTimeout(() => {
+              this.waiters = this.waiters.filter((w) => w !== waiter);
+              done('timeout');
+            }, timeout);
+            this.waiters.push(waiter);
+          });
+      if (event === '2' && !pings) {
+        this.send('3');
+        continue;
+      }
+      return event;
+    }
+  }
+
+  send(text) {
+    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(text);
+  }
+
+  close() {
+    this.ws.terminate();
+  }
+}
+
+// A polling session opened with raw requests; its packets, heartbeat pings answered.
+async function rawPolling(base) {
+  const { sid } = await handshake(base);
+  const path = `/socket.io/?EIO=4&transport=polling&sid=${sid}`;
+  const text = { 'content-type': 'text/plain;charset=UTF-8' };
+  return {
+    sid,
+    path,
+    post: (body) => request(base, path, { method: 'POST', body, headers: text }),
+    // One poll: its packets, pings answered and left out.
+    async poll() {
+      const response = await request(base, path);
+      if (response.error) return { error: response.error };
+      if (response.status !== 200) return { status: response.status, body: response.body.toString() };
+      const packets = decode(response).toString('utf8').split('\x1e');
+      if (packets.includes('2')) await request(base, path, { method: 'POST', body: '3', headers: text });
+      return { packets: packets.filter((p) => p !== '2') };
+    },
+  };
+}
+
 const httpCases = {
   async 'client files'(base) {
     const out = {};
@@ -657,6 +733,38 @@ const httpCases = {
     out['first message'] = packets.find((p) => p.startsWith('4'))?.replace(/"sid":"[^"]+","pid":"[^"]+"/, '<ids>');
     const big = await request(base, path, { method: 'POST', body: 'x'.repeat(1_000_001), headers: text });
     out['oversized post'] = describe(big, { body: 'none' });
+    return out;
+  },
+  // engine.io server.js 616-623: a second WebSocket for a session that is upgrading, or has
+  // upgraded, is closed after its handshake; the session goes on over the one that won.
+  async 'upgrade races'() {
+    const base = SHORT;
+    const out = {};
+    const session = await rawPolling(base);
+    const url = `${base.replace('http', 'ws')}${session.path.replace('polling', 'websocket')}`;
+    const probes = [new RawWs(url), new RawWs(url)];
+    out.opened = (await Promise.all(probes.map((p) => p.opened))).sort();
+    for (const probe of probes) probe.send('2probe');
+    const answers = await Promise.all(probes.map((p) => p.next()));
+    out.answers = [...answers].sort();
+    const winner = probes[answers.indexOf('3probe')];
+    if (winner) {
+      winner.send('5');
+      winner.send('40/norec,');
+      out.connect = (await winner.next()).replace(/"sid":"[^"]+"/, '"sid":"<sid>"').replace(/"pid":"[^"]+"/, '"pid":"<pid>"');
+      out.welcome = await winner.next();
+      winner.send('42/norec,["echo","over the winner"]');
+      out.echo = await winner.next();
+      const late = new RawWs(url);
+      out['late opened'] = await late.opened;
+      late.send('2probe');
+      out['late answer'] = await late.next();
+      late.close();
+      winner.send('42/norec,["echo","still"]');
+      out['echo after'] = await winner.next();
+    }
+    out['poll after'] = await session.poll();
+    for (const probe of probes) probe.close();
     return out;
   },
   async 'the app and other upgrades'(base) {

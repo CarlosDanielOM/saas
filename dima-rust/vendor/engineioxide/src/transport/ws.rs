@@ -125,7 +125,13 @@ where
     let (socket, ws) = if let Some(sid) = sid {
         match engine.get_socket(sid) {
             None => return Err(Error::UnknownSessionID(sid)),
-            Some(socket) if socket.is_ws() => return Err(Error::MultipleWebsocketRequests),
+            // [dima-rust patch 2] One upgrade at a time, and none after one succeeded: the new
+            // WebSocket is closed after its handshake, the session is untouched (engine.io
+            // server.js 616-623).
+            Some(socket) if socket.is_ws() || !socket.claim_upgrade() => {
+                close_unused_ws(&mut ws_init().await).await;
+                return Err(Error::MultipleWebsocketRequests);
+            }
             Some(socket) => {
                 let mut ws = ws_init().await;
 
