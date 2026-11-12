@@ -1,0 +1,88 @@
+{
+  "rig_target": 1,
+  "description": "dimabot cron host (dima-cron): the frozen TypeScript cron supervisor and its TypeScript workers at 0c71108e in image dimabot-ref:0c71108e, production command and variable names with test values only; the preload is inherited by every worker process through NODE_OPTIONS. The image has no native Rust binaries, so node/cron_index_stub.sh stands in for /usr/local/bin/cron_index (the seven native workers' reference is the Rust in dima-rust/src at 0c71108e). No listening port: ready when the domain-events dispatcher worker has connected to MongoDB; the start-up settle then waits until the other workers' index builds and locks are done (about 1.5 GiB for the 18 worker processes). Candidate: not ported yet.",
+  "ports": [
+    "unused"
+  ],
+  "qdrant": true,
+  "mock": {
+    "startup": "ignore",
+    "startup_reason": "Start-up traffic (the AST catalog embedded into Qdrant, the docs site fetched for the assistant, OTLP logs) is the same for every scenario and large; it is compared by its own scenario, not stored in each capture.",
+    "settle_ms": 30000,
+    "routes": [],
+    "twitch": {
+      "client_id": "rigclientid0c71108e00000000001"
+    }
+  },
+  "reference": {
+    "container": {
+      "image": "dimabot-ref:0c71108e",
+      "command": [
+        "node",
+        "dist/workers/cron.index.js"
+      ],
+      "mounts": [
+        [
+          "{rig_dir}/node/preload.mjs",
+          "/rig/preload.mjs",
+          "ro"
+        ],
+        [
+          "{rig_dir}/node/cron_index_stub.sh",
+          "/usr/local/bin/cron_index",
+          "ro"
+        ]
+      ],
+      "memory_mb": 3072,
+      "cpus": 2
+    },
+    "env": {
+      "NODE_OPTIONS": "--import=/rig/preload.mjs",
+      "RIG_MOCK": "127.0.0.1:{mock_port}",
+      "RIG_DIRECT": "{mongo_hostport},{dragonfly_host}:{dragonfly_port},127.0.0.1:{qdrant_port}",
+      "RIG_SIDE": "{side}",
+      "MONGO_URI": "{mongo_uri}",
+      "DRAGONFLY_HOST": "{dragonfly_host}",
+      "DRAGONFLY_PORT": "{dragonfly_port}/{dragonfly_db}",
+      "QDRANT_HOST": "127.0.0.1",
+      "QDRANT_PORT": "{qdrant_port}",
+      "QDRANT_API_KEY": "{qdrant_api_key}",
+      "SECRET_KEY": "rigtestsecretkey0c71108e00000001",
+      "CLIENT_ID": "rigclientid0c71108e00000000001",
+      "CLIENT_SECRET": "rigclientsecret0c71108e000001",
+      "TWITCH_EVENTSUB_SECRET": "rig-eventsub-secret-0c71108e-01",
+      "POLARSH_OAT": "polar_oat_rig_0c71108e",
+      "POLARSH_WEBHOOK_SECRET": "rig-polar-webhook-secret-0c71108e",
+      "POLARSH_REFERRAL_DISCOUNT_ID": "rig-referral-discount",
+      "OPENROUTER_API_KEY": "sk-or-v1-rig-0c71108e",
+      "RESEND_API_KEY": "re_rig_0c71108e",
+      "FISH_AUDIO_API_KEY": "fish-rig-0c71108e",
+      "MINI_TOKEN_PLAN_API_KEY": "mm-rig-0c71108e",
+      "MOCK_LOGIN_TOKEN": "rig-mock-login-token-0c71108e",
+      "DIMAFX_SERVICE_TOKEN": "rig-dimafx-service-token-0c71108e",
+      "S3_ACCESS_KEY": "RIGACCESSKEY0C71108E",
+      "S3_SECRET_KEY": "rigsecretkey0c71108e",
+      "S3_BUCKET": "rig-media",
+      "S3_REGION": "nyc3",
+      "S3_ENDPOINT": "digitaloceanspaces.com",
+      "S3_ENDPOINT_URL": "{mock_url}/nyc3.digitaloceanspaces.com",
+      "LFM2_EMBEDDINGS_URL": "{mock_url}/lfm2.5-embeddings:8080/v1/embeddings",
+      "LFM2_EMBEDDINGS_RETRIES": "2",
+      "LFM2_EMBEDDINGS_TIMEOUT_MS": "10000",
+      "EVENTSUB_RECONCILIATION_ENABLED": "false",
+      "NODE_ENV": "production"
+    },
+    "ready": {
+      "log": "Connected to MongoDB from DomainEventsWorker:dispatcher",
+      "port": "unused",
+      "timeout_ms": 120000
+    },
+    "stop": {
+      "signal": "SIGTERM",
+      "grace_ms": 8000
+    }
+  },
+  "candidate": {
+    "unavailable": "The Rust binary (dima-cron) does not exist yet: record only."
+  }
+}

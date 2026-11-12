@@ -1,0 +1,103 @@
+{
+  "rig_target": 1,
+  "description": "dimabot API (dima-server): the frozen TypeScript backend at 0c71108e, image dimabot-ref:0c71108e built from dimabot/dockerfile, run with the production command and the production variable names with test values only. The Node preload (node/preload.mjs, loaded with NODE_OPTIONS) sends every outbound request to the side's mock and refuses any other destination; S3 and the embeddings sidecar are pointed at the mock through S3_ENDPOINT_URL and LFM2_EMBEDDINGS_URL. The API listens on 3000 inside, remapped to the rig's port. Internal calls to dima-server:3000 and self-calls to api.domdimabot.com are forwarded to the side's own port, as production routes them. Candidate: not ported yet.",
+  "ports": [
+    "http"
+  ],
+  "qdrant": true,
+  "mock": {
+    "startup": "ignore",
+    "startup_reason": "Start-up traffic (the AST catalog embedded into Qdrant, the docs site fetched for the assistant, OTLP logs) is the same for every scenario and large; it is compared by its own scenario, not stored in each capture.",
+    "settle_ms": 20000,
+    "routes": [
+      {
+        "host": "dima-server:3000",
+        "proxy": "port.http",
+        "reason": "INTERNAL_API_URL defaults to http://dima-server:3000 in production: the API calling itself."
+      },
+      {
+        "host": "api.domdimabot.com",
+        "proxy": "port.http",
+        "reason": "Self-calls through the public URL reach this API in production."
+      }
+    ],
+    "twitch": {
+      "client_id": "rigclientid0c71108e00000000001"
+    }
+  },
+  "reference": {
+    "container": {
+      "image": "dimabot-ref:0c71108e",
+      "command": [
+        "node",
+        "dist/server/index.js"
+      ],
+      "mounts": [
+        [
+          "{rig_dir}/node/preload.mjs",
+          "/rig/preload.mjs",
+          "ro"
+        ]
+      ],
+      "memory_mb": 1536,
+      "cpus": 2
+    },
+    "env": {
+      "NODE_OPTIONS": "--import=/rig/preload.mjs",
+      "RIG_MOCK": "127.0.0.1:{mock_port}",
+      "RIG_DIRECT": "{mongo_hostport},{dragonfly_host}:{dragonfly_port},127.0.0.1:{qdrant_port}",
+      "RIG_SIDE": "{side}",
+      "MONGO_URI": "{mongo_uri}",
+      "DRAGONFLY_HOST": "{dragonfly_host}",
+      "DRAGONFLY_PORT": "{dragonfly_port}/{dragonfly_db}",
+      "QDRANT_HOST": "127.0.0.1",
+      "QDRANT_PORT": "{qdrant_port}",
+      "QDRANT_API_KEY": "{qdrant_api_key}",
+      "SECRET_KEY": "rigtestsecretkey0c71108e00000001",
+      "CLIENT_ID": "rigclientid0c71108e00000000001",
+      "CLIENT_SECRET": "rigclientsecret0c71108e000001",
+      "TWITCH_EVENTSUB_SECRET": "rig-eventsub-secret-0c71108e-01",
+      "POLARSH_OAT": "polar_oat_rig_0c71108e",
+      "POLARSH_WEBHOOK_SECRET": "rig-polar-webhook-secret-0c71108e",
+      "POLARSH_REFERRAL_DISCOUNT_ID": "rig-referral-discount",
+      "OPENROUTER_API_KEY": "sk-or-v1-rig-0c71108e",
+      "RESEND_API_KEY": "re_rig_0c71108e",
+      "FISH_AUDIO_API_KEY": "fish-rig-0c71108e",
+      "MINI_TOKEN_PLAN_API_KEY": "mm-rig-0c71108e",
+      "MOCK_LOGIN_TOKEN": "rig-mock-login-token-0c71108e",
+      "DIMAFX_SERVICE_TOKEN": "rig-dimafx-service-token-0c71108e",
+      "S3_ACCESS_KEY": "RIGACCESSKEY0C71108E",
+      "S3_SECRET_KEY": "rigsecretkey0c71108e",
+      "S3_BUCKET": "rig-media",
+      "S3_REGION": "nyc3",
+      "S3_ENDPOINT": "digitaloceanspaces.com",
+      "S3_ENDPOINT_URL": "{mock_url}/nyc3.digitaloceanspaces.com",
+      "LFM2_EMBEDDINGS_URL": "{mock_url}/lfm2.5-embeddings:8080/v1/embeddings",
+      "LFM2_EMBEDDINGS_RETRIES": "2",
+      "LFM2_EMBEDDINGS_TIMEOUT_MS": "10000",
+      "EVENTSUB_RECONCILIATION_ENABLED": "false",
+      "NODE_ENV": "production",
+      "PIPER_HTTP_URL": "{mock_url}/piper-tts:5000",
+      "PUBLIC_API_URL": "https://api.domdimabot.com",
+      "RIG_LISTEN": "3000={port.http}"
+    },
+    "ready": {
+      "http": "/config/commands/reserved",
+      "timeout_ms": 120000
+    },
+    "stop": {
+      "signal": "SIGTERM",
+      "grace_ms": 8000
+    }
+  },
+  "candidate": {
+    "unavailable": "The Rust binary (dima-server) does not exist yet: record only."
+  },
+  "webhooks": {
+    "polar": {
+      "secret": "rig-polar-webhook-secret-0c71108e",
+      "port": "http",
+      "path": "/polar/webhook"
+    }
+  }
+}

@@ -111,6 +111,7 @@ struct SideRunner<'s> {
     /// The side's mock of the outside world (and Qdrant proxy).
     mock: Mock,
     qdrant: Option<qdrant::Upstream>,
+    reg: Registry,
 }
 
 impl<'s> SideRunner<'s> {
@@ -168,6 +169,7 @@ impl<'s> SideRunner<'s> {
             run_id: run_id(),
             mock,
             qdrant,
+            reg: reg.clone(),
         })
     }
 
@@ -197,6 +199,7 @@ impl<'s> SideRunner<'s> {
     async fn launch(&mut self, mock: &MockSpec) -> std::result::Result<(), SideFailure> {
         let spec = self.spec();
         let s = self.settings;
+        self.launches += 1;
         let mut ports = BTreeMap::new();
         for name in &self.target.ports {
             let p = side::free_port().map_err(|e| self.fail(format!("no free port: {e}")))?;
@@ -221,6 +224,7 @@ impl<'s> SideRunner<'s> {
         vars.insert("repo".into(), s.repo_dir.display().to_string());
         vars.insert("rig_dir".into(), s.rig_dir.display().to_string());
         vars.insert("cargo_target_dir".into(), s.cargo_target_dir.clone());
+        vars.insert("mongo_hostport".into(), mongo_hostport(&s.stores.mongo_uri));
         vars.insert("mock_url".into(), self.mock.url());
         vars.insert("mock_port".into(), self.mock.port.to_string());
         vars.insert(
@@ -238,7 +242,7 @@ impl<'s> SideRunner<'s> {
             template::render(t, &vars)
                 .map_err(|e| self.fail(format!("{e} (pass var.<name> with --set name=value)")))
         };
-        let command = spec
+        let mut command = spec
             .command
             .iter()
             .map(|c| render(c))
@@ -263,7 +267,81 @@ impl<'s> SideRunner<'s> {
                 env.push((k.clone(), v.clone()));
             }
         }
-        self.launches += 1;
+        let mut container_name = None;
+        if let Some(c) = &spec.container {
+            // `docker run`: the side's environment reaches the container by name (`-e NAME`,
+            // read from the docker client's environment), so no value is on a command line.
+            let name = format!(
+                "rig-{}-{}-{}-{}",
+                std::process::id(),
+                self.stores.df_index,
+                self.label,
+                self.launches
+            );
+            self.reg.add_container(&name);
+            let mut cmd = vec![
+                "docker".to_string(),
+                "run".into(),
+                "--rm".into(),
+                "--init".into(),
+                "--name".into(),
+                name.clone(),
+                "--network".into(),
+                "host".into(),
+                "--memory".into(),
+                format!("{}m", c.memory_mb),
+                "--memory-swap".into(),
+                format!("{}m", c.memory_mb),
+                "--cpus".into(),
+                format!("{}", c.cpus),
+                "--label".into(),
+                format!("dima-rig={}", std::process::id()),
+            ];
+            if let Some(w) = &c.workdir {
+                cmd.push("--workdir".into());
+                cmd.push(render(w)?);
+            }
+            for (from, to, ro) in &c.mounts {
+                let from = PathBuf::from(render(from)?);
+                let from = if from.is_absolute() {
+                    from
+                } else {
+                    s.repo_dir.join(from)
+                };
+                let from = from.canonicalize().unwrap_or(from);
+                cmd.push("--volume".into());
+                cmd.push(format!(
+                    "{}:{}{}",
+                    from.display(),
+                    render(to)?,
+                    if *ro { ":ro" } else { "" }
+                ));
+            }
+            for (k, _) in &env {
+                cmd.push("--env".into());
+                cmd.push(k.clone());
+            }
+            cmd.push(render(&c.image)?);
+            for x in &c.command {
+                cmd.push(render(x)?);
+            }
+            command = cmd;
+            // The docker client itself needs these (they are not passed into the container).
+            for k in [
+                "PATH",
+                "HOME",
+                "DOCKER_HOST",
+                "DOCKER_CONFIG",
+                "XDG_RUNTIME_DIR",
+            ] {
+                if !env.iter().any(|(n, _)| n == k)
+                    && let Some(v) = s.env.get(k)
+                {
+                    env.push((k.into(), v.clone()));
+                }
+            }
+            container_name = Some(name);
+        }
         let log_path = s.out_dir.join("logs").join(&self.target.name).join(format!(
             "{}-{}-{}.log",
             self.run_id, self.label, self.launches
@@ -280,10 +358,57 @@ impl<'s> SideRunner<'s> {
             ready: spec.ready.clone(),
             stop_signal: spec.stop_signal,
             grace_ms: spec.grace_ms,
+            container: container_name,
         };
         let p = SideProcess::launch(ls, s.env.get("PATH").map(String::as_str)).await?;
         self.proc = Some(p);
-        Ok(())
+        self.wait_store_ready().await
+    }
+
+    /// Readiness that the stores show (a document, a key), after the process is up.
+    async fn wait_store_ready(&mut self) -> std::result::Result<(), SideFailure> {
+        let ready = &self.spec().ready;
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(ready.timeout_ms);
+        let filter = match &ready.probe {
+            target::Probe::Mongo { filter, .. } => Some(
+                scenario::to_doc(filter, scenario::ExtMode::Filter, 0, "ready.mongo.filter")
+                    .map_err(|e| self.fail(e))?,
+            ),
+            target::Probe::Key(_) => None,
+            _ => return Ok(()),
+        };
+        loop {
+            if let Some(p) = self.proc.as_mut()
+                && let Err(why) = p.check_alive()
+            {
+                return Err(self.fail_with_log(format!("did not become ready: {why}")));
+            }
+            let done = match (&ready.probe, &filter) {
+                (
+                    target::Probe::Mongo {
+                        collection, count, ..
+                    },
+                    Some(f),
+                ) => self
+                    .stores
+                    .count(collection, f.clone())
+                    .await
+                    .is_ok_and(|n| n >= *count),
+                (target::Probe::Key(k), _) => self.stores.key_exists(k).await.unwrap_or(false),
+                _ => true,
+            };
+            if done {
+                return Ok(());
+            }
+            if tokio::time::Instant::now() >= deadline {
+                let _ = self.stop_process().await;
+                return Err(self.fail_with_log(format!(
+                    "not ready after {} ms (the stores never showed the ready condition)",
+                    ready.timeout_ms
+                )));
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
     }
 
     async fn stop_process(&mut self) -> Option<String> {
@@ -506,6 +631,32 @@ impl<'s> SideRunner<'s> {
     }
 }
 
+/// `host:port` of the first MongoDB host in a URI (`127.0.0.1:27017` by default).
+fn mongo_hostport(uri: &str) -> String {
+    let rest = uri.split_once("://").map_or(uri, |(_, r)| r);
+    let authority = rest.split(['/', '?']).next().unwrap_or("");
+    let hosts = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+    let first = hosts.split(',').next().unwrap_or("");
+    if first.is_empty() {
+        "127.0.0.1:27017".into()
+    } else if first.contains(':') {
+        first.to_string()
+    } else {
+        format!("{first}:27017")
+    }
+}
+
+/// The target's candidate does not exist yet: only `record` and `check` can run.
+fn require_candidate(target: &Target) -> Result<()> {
+    match &target.candidate.unavailable {
+        Some(why) => Err(config(format!(
+            "target {}: the candidate is not available ({why}); this target is record only: run `dima-rig record {}`",
+            target.name, target.name
+        ))),
+        None => Ok(()),
+    }
+}
+
 /// An existing database a side reads (`diff-get`), and the URI it gets for it.
 pub struct Existing {
     pub db: String,
@@ -707,7 +858,12 @@ fn read_capture(path: &FsPath) -> std::result::Result<CaptureFile, String> {
 pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Result<Report> {
     let mut report = Report::new("check", target_name);
     let p = patterns()?;
-    target::load(&settings.rig_dir, target_name)?;
+    let target = target::load(&settings.rig_dir, target_name)?;
+    if let Some(why) = &target.candidate.unavailable {
+        report
+            .warnings
+            .push(format!("candidate not available ({why}): record only"));
+    }
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     for sc in scenarios {
         let mut r = ScenarioReport::new(&sc.name, &sc.description);
@@ -737,6 +893,7 @@ pub async fn compare_live(
 ) -> Result<Report> {
     let mut report = Report::new("compare", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     let refs = run_side(
@@ -793,6 +950,7 @@ pub async fn verify(
 ) -> Result<Report> {
     let mut report = Report::new("verify", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     let mut runnable = Vec::new();
@@ -1009,6 +1167,7 @@ pub async fn diff_get(
 ) -> Result<Report> {
     let mut report = Report::new("diff-get", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let list = getlist::load(list_file)?;
     if db.is_empty() || db.contains(['/', '\\', '.', ' ', '"', '$']) {

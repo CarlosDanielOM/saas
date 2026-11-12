@@ -1,0 +1,24 @@
+{
+  "rig_target": 1,
+  "description": "Confinement proof: probe.mjs in the reference image with the rig's preload, trying every way out. Pass --set image=dimabot-ref:0c71108e.",
+  "ports": ["http"],
+  "reference": {
+    "container": {
+      "image": "{var.image}",
+      "command": ["node", "/rig/probe.mjs"],
+      "mounts": [["{rig_dir}/../../node/preload.mjs", "/rig/preload.mjs", "ro"], ["{rig_dir}/probe.mjs", "/rig/probe.mjs", "ro"]],
+      "memory_mb": 256,
+      "cpus": 1
+    },
+    "env": {
+      "NODE_OPTIONS": "--import=/rig/preload.mjs",
+      "RIG_MOCK": "127.0.0.1:{mock_port}",
+      "RIG_DIRECT": "",
+      "RIG_LISTEN": "8080={port}",
+      "RIG_SIDE": "{side}"
+    },
+    "ready": { "http": "/", "timeout_ms": 60000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
+  },
+  "candidate": { "unavailable": "Only the reference side is probed for confinement." }
+}

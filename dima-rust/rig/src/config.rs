@@ -104,6 +104,8 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         .clone()
         .or_else(|| get("DIMA_RIG_DIR").map(PathBuf::from))
         .unwrap_or_else(default_rig_dir);
+    // Templates join paths onto it, and a container mount needs an absolute path.
+    let rig_dir = rig_dir.canonicalize().unwrap_or(rig_dir);
     let repo_dir = default_rig_dir()
         .join("../..")
         .canonicalize()

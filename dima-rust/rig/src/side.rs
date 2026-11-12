@@ -31,6 +31,8 @@ pub struct LaunchSpec {
     pub ready: Ready,
     pub stop_signal: StopSignal,
     pub grace_ms: u64,
+    /// The container the command runs (`docker run --name <this>`): removed on every exit path.
+    pub container: Option<String>,
 }
 
 pub struct SideProcess {
@@ -47,6 +49,7 @@ pub struct SideProcess {
     exited: Option<ExitStatus>,
     /// The whole process group is known to be gone (nothing left to kill).
     group_gone: bool,
+    container: Option<String>,
 }
 
 /// `docker rm -f <name>`: `Ok(true)` when a container was removed, `Ok(false)` when there was
@@ -62,12 +65,12 @@ pub async fn remove_container(name: &str) -> Result<bool, String> {
     .await
     .map_err(|_| format!("docker rm -f {name} timed out"))?
     .map_err(|e| format!("docker rm -f {name}: {e}"))?;
-    if out.status.success() {
-        return Ok(true);
-    }
+    // `docker rm -f` exits 0 for a container that does not exist; only stderr tells.
     let err = String::from_utf8_lossy(&out.stderr);
     if err.contains("No such container") {
         Ok(false)
+    } else if out.status.success() {
+        Ok(true)
     } else {
         Err(format!("docker rm -f {name}: {}", err.trim()))
     }
@@ -220,10 +223,12 @@ impl SideProcess {
             grace_ms: spec.grace_ms,
             exited: None,
             group_gone: false,
+            container: spec.container.clone(),
         };
         if let Err(f) = p.wait_ready(&spec.ready).await {
             // The leader may have exited already while what it started lives on in its group.
             p.kill_group().await;
+            p.remove_container().await;
             return Err(f);
         }
         Ok(p)
@@ -278,6 +283,17 @@ impl SideProcess {
                     Ok(_) => return Ok(()),
                     Err(e) => last = e.to_string(),
                 },
+                Probe::Log(re) => {
+                    let text = std::fs::read(&self.log_path)
+                        .map(|b| String::from_utf8_lossy(&b).to_string())
+                        .unwrap_or_default();
+                    if re.is_match(&text) {
+                        return Ok(());
+                    }
+                    last = format!("no line matches `{re}` yet");
+                }
+                // Checked by the run against the side's stores once the process is up.
+                Probe::Mongo { .. } | Probe::Key(_) => return Ok(()),
                 Probe::Http { path, status } => {
                     if let Ok(c) = &client {
                         match c.get(format!("http://127.0.0.1:{port}{path}")).send().await {
@@ -343,6 +359,16 @@ impl SideProcess {
         }
     }
 
+    /// Remove the side's container, if it runs one (bounded; a failure is left to the
+    /// registry's cleanup, which tries again).
+    async fn remove_container(&mut self) {
+        if let Some(name) = &self.container
+            && remove_container(name).await.is_ok()
+        {
+            self.container = None;
+        }
+    }
+
     /// Stop the process group. Returns `Some(description)` when the process had already exited
     /// on its own before the rig asked it to stop (always a failure).
     pub async fn stop(&mut self) -> Option<String> {
@@ -363,6 +389,8 @@ impl SideProcess {
         }
         // Anything the process started in its group goes too (also when the leader is gone).
         self.kill_group().await;
+        // `docker run` forwards the stop signal to the container; whatever is left of it goes.
+        self.remove_container().await;
         let _ = std::fs::OpenOptions::new()
             .append(true)
             .open(&self.log_path)
@@ -384,6 +412,15 @@ impl Drop for SideProcess {
     /// when the leader has already exited and only what it started is left.
     fn drop(&mut self) {
         self.signal_group(Signal::SIGKILL);
+        if let Some(name) = &self.container {
+            // An interrupted run: the registry's cleanup removes it too, if this fails.
+            let _ = std::process::Command::new("docker")
+                .args(["rm", "-f", name.as_str()])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
     }
 }
 
@@ -418,6 +455,7 @@ mod tests {
             },
             stop_signal: StopSignal::Term,
             grace_ms: 500,
+            container: None,
         }
     }
 
