@@ -13,9 +13,15 @@
 //! source makes one clock read cost 1.2 µs): a filtered log call 1.6 ns (one comparison); a
 //! counter increment or an observation about 125 ns (a stack key, an uncontended shard lock, an
 //! existing series; the bucket comes from a coarse clock the probe task refreshes every 20 ms);
-//! a span that is not kept about 230 ns plus two monotonic clock reads. None of them allocates:
-//! eight million such calls leave the resident size unchanged. At the reference's bounds (2000
-//! series, 300 spans, 100 logs) about 1.2 MB stays live, and refilling after a flush adds nothing.
+//! a span that is not kept about 230 ns plus two monotonic clock reads. On an existing series
+//! none of them allocates (eight million such calls leave the resident size unchanged; that
+//! bounds the growth, it is not an allocation count); the first observation of a series after a
+//! flush allocates its key. At the reference's bounds (2000 series, 300 spans, 100 logs) about
+//! 1.2 MB stays live; with a flush's merge on top the resident size settles about 5 MB above the
+//! empty process in a test build and does not grow over repeated flushes. A flush holds each shard's
+//! lock only for a swap (`tests/contention.rs`: four recording threads and a flush every few
+//! milliseconds, worst recording 0.6 ms in a test build, against 4.2 ms when a flush merged under
+//! the lock).
 //!
 //! **Wiring** a binary (API shown; the bot is the same without the web parts, the cron binary
 //! adds a [`Worker`] per supervised task):

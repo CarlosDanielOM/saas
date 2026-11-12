@@ -124,20 +124,26 @@ fn memory_at_the_reference_bounds_is_bounded() {
     fill(&telemetry);
     assert_eq!(telemetry.stats().series, 2000);
     let held = rss().saturating_sub(before);
-    // Steady state: a flush empties the rows and keeps the series; filling again reuses them.
-    let _ = telemetry.take_snapshot();
-    let refilled = rss();
-    fill(&telemetry);
-    let regrown = rss().saturating_sub(refilled);
+    // Steady state: a flush frees the rows and the series, and the next fill allocates them
+    // again. The first cycles grow the heap (a flush merges while the taken series are alive);
+    // after that the cycles reuse what was freed: no trend over ten cycles.
+    let mut cycles = Vec::new();
+    for _ in 0..10 {
+        let _ = telemetry.take_snapshot();
+        fill(&telemetry);
+        cycles.push(rss().saturating_sub(before) / 1024);
+    }
+    let early = cycles[..5].iter().copied().max().unwrap();
+    let late = cycles[5..].iter().copied().max().unwrap();
     eprintln!(
-        "held at the bounds (2000 series, 300 spans, 100 logs): {} KiB resident; \
-         a second fill after a flush: +{} KiB",
-        held / 1024,
-        regrown / 1024
+        "held at the bounds (2000 series, 300 spans, 100 logs): {} KiB resident; after each \
+         flush and refill: {cycles:?} KiB",
+        held / 1024
     );
     // The first fill also counts transient allocations (names built with `format!`, JSON values,
     // redaction) and the allocator touching fresh pages; what stays live at these bounds is about
     // 1.2 MB (2000 series of ~300 bytes plus their hash table, 300 span rows, 100 log rows).
     assert!(held < 4 * 1024 * 1024, "{held}");
-    assert!(regrown < 512 * 1024, "{regrown}");
+    assert!(late * 1024 < 3 * held, "{cycles:?}");
+    assert!(late <= early + 256, "{cycles:?}");
 }

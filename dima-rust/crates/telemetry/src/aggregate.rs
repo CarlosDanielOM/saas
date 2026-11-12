@@ -2,10 +2,11 @@
 //!
 //! **Metrics** are counted per series (kind, name, channel, outcome) and 10-second bucket. Series
 //! live in a few shards, each behind its own mutex; a thread always uses the same shard, so in
-//! practice a lock is uncontended. A series keeps its key across flushes and is only forgotten
-//! after [`IDLE_FLUSHES`] flushes without data, so a steady observation never allocates. At most
-//! [`MAX_SERIES`] series exist at once (the reference's 2000 keys); beyond that new series are
-//! dropped and counted. A series holds two bucket slots: the exporter flushes one second after each
+//! practice a lock is uncontended. A flush swaps each shard's map for an empty one under the lock
+//! and does everything else outside it, so recording waits at most for that swap; the price is
+//! that the first observation of a series after a flush allocates its key again (once per series
+//! per 10 seconds). At most [`MAX_SERIES`] series exist at once (the reference's 2000 keys),
+//! counting those a running flush still holds; beyond that new series are dropped and counted. A series holds two bucket slots: the exporter flushes one second after each
 //! 10-second boundary, so between two flushes at most two buckets receive data.
 //!
 //! **Spans** (at most 300 per flush) and **telemetry logs** (at most 100) are kept as rows.
@@ -42,8 +43,6 @@ pub const BATCH_LOGS: usize = 25;
 pub const MAX_PAYLOAD_BYTES: usize = 256_000;
 /// The bucket width in milliseconds.
 pub const BUCKET_MS: u64 = 10_000;
-/// Flushes without data after which a series is forgotten.
-pub const IDLE_FLUSHES: u8 = 3;
 /// The consumer's numeric ceiling (`number(v)`: at most 1e15).
 pub const MAX_NUMBER: f64 = 1e15;
 /// The consumer's count ceiling per row.
@@ -90,7 +89,6 @@ impl Slot {
 #[derive(Default)]
 struct Series {
     slots: [Slot; 2],
-    idle: u8,
 }
 
 #[derive(Default)]
@@ -110,7 +108,13 @@ pub(crate) enum Rejected {
 /// The metric store.
 pub(crate) struct Metrics {
     shards: Box<[Mutex<Shard>]>,
+    /// Per shard, how many series the last flush took: the next map is allocated with that
+    /// capacity before the lock is taken, so refilling does not regrow it under the lock.
+    capacity: Box<[AtomicUsize]>,
     series: AtomicUsize,
+    /// The longest time a flush held one shard's lock, in nanoseconds (tests).
+    #[cfg(test)]
+    longest_hold_ns: std::sync::atomic::AtomicU64,
 }
 
 thread_local! {
@@ -150,7 +154,10 @@ impl Metrics {
     pub(crate) fn new() -> Self {
         Self {
             shards: (0..SHARDS).map(|_| Mutex::new(Shard::default())).collect(),
+            capacity: (0..SHARDS).map(|_| AtomicUsize::new(0)).collect(),
             series: AtomicUsize::new(0),
+            #[cfg(test)]
+            longest_hold_ns: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
@@ -204,30 +211,43 @@ impl Metrics {
         }
     }
 
-    /// Takes every counted bucket, merged across shards, and forgets idle series.
+    /// Takes every counted bucket, merged across shards. Each shard's lock is held only to swap
+    /// its map for an empty one allocated beforehand: copying, merging and freeing happen outside it,
+    /// so a recording thread never waits for more than that swap. The taken series stay counted
+    /// against [`MAX_SERIES`] until they are merged and freed, so the bound on resident series
+    /// holds while a flush runs.
     pub(crate) fn take(&self) -> Vec<MetricRow> {
-        let mut merged: HashMap<(Box<[u8]>, u64), Slot> = HashMap::new();
-        for shard in self.shards.iter() {
-            let mut shard = shard.lock().unwrap_or_else(PoisonError::into_inner);
-            let before = shard.map.len();
-            shard.map.retain(|key, series| {
-                let mut had_data = false;
-                for slot in &mut series.slots {
-                    if slot.count > 0 {
-                        had_data = true;
-                        merged
-                            .entry((key.clone(), slot.at))
-                            .or_default()
-                            .merge(slot);
-                        *slot = Slot::default();
-                    }
-                }
-                series.idle = if had_data { 0 } else { series.idle + 1 };
-                series.idle < IDLE_FLUSHES
-            });
-            let removed = before - shard.map.len();
-            self.series.fetch_sub(removed, Ordering::Relaxed);
+        let mut taken = Vec::with_capacity(SHARDS);
+        for (shard, capacity) in self.shards.iter().zip(self.capacity.iter()) {
+            let mut map = HashMap::with_capacity(capacity.load(Ordering::Relaxed));
+            let mut guard = shard.lock().unwrap_or_else(PoisonError::into_inner);
+            #[cfg(test)]
+            let held = std::time::Instant::now();
+            std::mem::swap(&mut guard.map, &mut map);
+            drop(guard);
+            #[cfg(test)]
+            self.held(held);
+            capacity.store(map.len(), Ordering::Relaxed);
+            taken.push(map);
         }
+        let held: usize = taken.iter().map(HashMap::len).sum();
+        let mut merged: HashMap<(Box<[u8]>, u64), Slot> = HashMap::new();
+        for map in taken {
+            for (key, series) in map {
+                // The key moves into the merged row; it is copied only for a second bucket.
+                let [first, second] = series.slots;
+                if second.count > 0 {
+                    merged
+                        .entry((key.clone(), second.at))
+                        .or_default()
+                        .merge(&second);
+                }
+                if first.count > 0 {
+                    merged.entry((key, first.at)).or_default().merge(&first);
+                }
+            }
+        }
+        self.series.fetch_sub(held, Ordering::Relaxed);
         let mut rows: Vec<MetricRow> = merged
             .into_iter()
             .map(|((key, at), slot)| {
@@ -247,6 +267,12 @@ impl Metrics {
             .collect();
         rows.sort_by(|a, b| (a.at, &a.kind, &a.name).cmp(&(b.at, &b.kind, &b.name)));
         rows
+    }
+
+    #[cfg(test)]
+    fn held(&self, since: std::time::Instant) {
+        let nanos = u64::try_from(since.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        self.longest_hold_ns.fetch_max(nanos, Ordering::Relaxed);
     }
 
     /// Series currently held.
@@ -573,7 +599,7 @@ mod tests {
     }
 
     #[test]
-    fn series_bound_drops_and_idle_series_are_forgotten() {
+    fn series_bound_drops_and_a_flush_frees_the_series() {
         let metrics = Metrics::new();
         let mut dropped = 0;
         for index in 0..2500 {
@@ -587,14 +613,10 @@ mod tests {
         assert_eq!(dropped, 500);
         assert_eq!(metrics.series(), MAX_SERIES);
         assert_eq!(metrics.take().len(), MAX_SERIES);
-        // Kept (no allocation) for IDLE_FLUSHES flushes, then forgotten.
-        assert_eq!(metrics.series(), MAX_SERIES);
-        for _ in 1..IDLE_FLUSHES {
-            assert!(metrics.take().is_empty());
-            assert_eq!(metrics.series(), MAX_SERIES);
-        }
-        assert!(metrics.take().is_empty());
         assert_eq!(metrics.series(), 0);
+        assert!(metrics.take().is_empty());
+        assert!(metrics.record(0, &key("name2400"), 1.0).is_ok());
+        assert_eq!(metrics.series(), 1);
     }
 
     #[test]
@@ -633,6 +655,32 @@ mod tests {
         let rows = metrics.take();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].count, 1600);
+    }
+
+    #[test]
+    fn a_flush_holds_a_shard_lock_only_for_a_swap() {
+        let metrics = Metrics::new();
+        let names: Vec<String> = (0..MAX_SERIES)
+            .map(|index| format!("{index:0>90}"))
+            .collect();
+        let mut holds = Vec::new();
+        for _ in 0..40 {
+            // Every series lands in this thread's shard: the worst case for one lock.
+            for name in &names {
+                metrics.record(0, &key(name), 1.0).ok();
+            }
+            metrics.longest_hold_ns.store(0, Ordering::Relaxed);
+            assert_eq!(metrics.take().len(), MAX_SERIES);
+            holds.push(metrics.longest_hold_ns.load(Ordering::Relaxed));
+        }
+        holds.sort_unstable();
+        let median = holds[holds.len() / 2];
+        eprintln!(
+            "longest shard-lock hold per flush of {MAX_SERIES} series: median {median} ns, worst {} ns",
+            holds[holds.len() - 1]
+        );
+        // A swap is a few pointer moves; copying and merging 2000 series takes hundreds of µs.
+        assert!(median < 20_000, "median hold {median} ns");
     }
 
     #[test]
