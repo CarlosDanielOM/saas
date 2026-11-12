@@ -24,12 +24,12 @@ and none is read by the TypeScript. The lead keeps it current at each merge.
 |---|---|---|
 | `accounts:twitch:{id}:data` (hash), fields `access_token` and `refresh_token` | plain text | sealed with the credential cipher, as in MongoDB |
 | `app:twitch:token` | plain text | sealed |
+| `twitch:{id}:last_app_activity_touch` | value and 24 h expiry set by two commands | one command |
 
 ## Keys the reference has and Rust does not write
 
 | Key | Why |
 |---|---|
 | `cron:jobs:dedupe:*` for the clip-recommendation and stream-memory jobs | The durable job intents in MongoDB hold the dedupe deadline; only the permanent `cron:jobs:accepted:*` marker is written |
-| `twitch:{id}:last_app_activity_touch` | value and 24 h expiry set by two commands | one command |
 
 Unchanged in format and rebuilt at the cutover: `oauth:request` (600 s), `oauth:code` (60 s), `oauth:access` (600 s), `oauth:rate` (60 s). Access tokens the TypeScript issued end with the cutover and the desktop app refreshes; sessions and refresh tokens are in MongoDB and carry over.
