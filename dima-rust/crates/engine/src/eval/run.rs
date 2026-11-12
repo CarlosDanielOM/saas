@@ -64,6 +64,43 @@ fn map_size(map: &OrderedMap<String, String>) -> usize {
     })
 }
 
+/// What one entry of the response list keeps, in bytes: its serialised size.
+fn response_kept(item: &str) -> usize {
+    crate::value::json_string_size(item)
+}
+
+/// Running totals of the response list, kept as it changes (never rescanned).
+#[derive(Clone, Copy, Default)]
+struct ResponseTotals {
+    /// Bytes of text of every entry together, within [`super::EvalLimits::text_bytes`].
+    text: usize,
+    /// What the entries keep ([`response_kept`]) together.
+    kept: usize,
+    /// [`Self::kept`] when the run started: the run is charged only for growth past it.
+    kept_at_start: usize,
+}
+
+impl ResponseTotals {
+    fn of(items: &[String]) -> Self {
+        let (text, kept) = items.iter().fold((0usize, 0usize), |(text, kept), item| {
+            (
+                text.saturating_add(item.len()),
+                kept.saturating_add(response_kept(item)),
+            )
+        });
+        Self {
+            text,
+            kept,
+            kept_at_start: kept,
+        }
+    }
+
+    /// What the run is charged for the list when it keeps `kept` bytes.
+    fn charge(&self, kept: usize) -> usize {
+        kept.saturating_sub(self.kept_at_start)
+    }
+}
+
 /// How a loop body ended.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum BodyEnd {
@@ -91,6 +128,8 @@ pub(super) struct Run<'a> {
     lease: u64,
     /// Bytes of output charged to the message's budget.
     output: usize,
+    /// The response list's running totals.
+    responses: ResponseTotals,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -231,6 +270,7 @@ impl<'a> Run<'a> {
             effect: context.effect.clone(),
         };
         let loop_vars = std::mem::take(&mut state.loop_vars);
+        let responses = ResponseTotals::of(&state.command_responses);
         Self {
             engine,
             host,
@@ -244,6 +284,7 @@ impl<'a> Run<'a> {
             budget,
             lease: 0,
             output: 0,
+            responses,
         }
     }
 
@@ -883,6 +924,11 @@ impl<'a> Run<'a> {
                         .chain(&appended)
                         .fold(0usize, |total, item| total.saturating_add(item.len()));
                     self.check_size(total)?;
+                    for item in &appended {
+                        self.responses.text = self.responses.text.saturating_add(item.len());
+                        self.responses.kept =
+                            self.responses.kept.saturating_add(response_kept(item));
+                    }
                     self.state.command_responses.extend(appended);
                     self.save_responses().await?;
                 }
@@ -891,9 +937,7 @@ impl<'a> Run<'a> {
                     if let Some(at) =
                         resolve_array_index(&index, self.state.command_responses.len())?
                     {
-                        if let Some(slot) = self.state.command_responses.get_mut(at) {
-                            *slot = text;
-                        }
+                        self.replace_response(at, text)?;
                         self.save_responses().await?;
                     }
                 }
@@ -968,6 +1012,34 @@ impl<'a> Run<'a> {
             }
             _ => false,
         }))
+    }
+
+    /// Replaces the response at `at` with `text`. The list's size afterwards is computed
+    /// first: its text must stay within the text budget and what it keeps more is reserved
+    /// against the run's and the message's memory, or nothing changes.
+    fn replace_response(&mut self, at: usize, text: String) -> Result<(), EvalError> {
+        let Some(old) = self.state.command_responses.get(at) else {
+            return Ok(());
+        };
+        let totals = self.responses;
+        let text_total = totals
+            .text
+            .checked_sub(old.len())
+            .and_then(|rest| rest.checked_add(text.len()))
+            .ok_or(EvalError::Limit(LimitKind::TextSize))?;
+        self.check_size(text_total)?;
+        let kept = totals
+            .kept
+            .checked_sub(response_kept(old))
+            .and_then(|rest| rest.checked_add(response_kept(&text)))
+            .ok_or(EvalError::Limit(LimitKind::Memory))?;
+        self.keep(totals.charge(kept), totals.charge(totals.kept))?;
+        if let Some(slot) = self.state.command_responses.get_mut(at) {
+            *slot = text;
+        }
+        self.responses.text = text_total;
+        self.responses.kept = kept;
+        Ok(())
     }
 
     /// `JSON.stringify` of a list, within the size limit.
