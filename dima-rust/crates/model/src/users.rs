@@ -18,6 +18,7 @@ use crate::index::IndexSpec;
 use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::validation::Rule;
+use crate::values::Nullable;
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
 use dima_store::mongo::WriteContext;
@@ -465,9 +466,9 @@ pub struct NewUser {
     /// Plan tier (default `free`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan_tier: Option<PlanTier>,
-    /// End of a time-limited plan.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub plan_tier_until: Option<JsDate>,
+    /// End of a time-limited plan (sign-up passes `null`).
+    #[serde(skip_serializing_if = "Nullable::is_unset")]
+    pub plan_tier_until: Nullable<JsDate>,
     /// Last activity.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_app_activity_at: Option<JsDate>,

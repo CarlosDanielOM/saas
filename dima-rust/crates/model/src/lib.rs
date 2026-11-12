@@ -35,7 +35,10 @@
 //!    [`CollectionInfo::prepare_create`]): required fields are not `Option`, enumerations are the
 //!    closed enums, ranges and lengths are checked by a constructor that returns
 //!    [`ValidationError`] (see `custom_timers`). Unset optional fields are left out so the schema
-//!    defaults apply, as in `Model.create`.
+//!    defaults apply, as in `Model.create`. Where a create path of the reference passes an
+//!    explicit `null` through (check every call site of the model in `dimabot/src`: the command
+//!    restore passes a stored `description: null`, sign-up passes `plan_tier_until: null`), the
+//!    field is a [`values::Nullable`] (unset, `null`, value); nowhere else.
 //! 8. Adapters for hooks (see below) and the few accessors several features need (a user's Twitch
 //!    account, the user owning an account). No query repository: features own their queries.
 //!

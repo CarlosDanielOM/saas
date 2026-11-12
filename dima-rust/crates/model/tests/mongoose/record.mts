@@ -180,6 +180,8 @@ const CASES: Record<string, any[]> = {
             blocks: null, responses: [], type: 'command', reserved: false, description: '', cooldown: 10, enabled: true,
             userLevelName: 'everyone', userLevel: 0, permissionExpression: null, channelID: '111', channel: 'seed',
         } },
+        // `command_mutations.service.ts:371` restores a deleted command with `create({ ...raw })`: a stored null passes through.
+        { name: 'create_restored_null', op: 'create', rust: 'restored', doc: { cmd: '!old', description: null, channelID: '111' } },
         { name: 'create_keyword', op: 'create', rust: 'keyword', doc: { cmd: 'gg', activation: 'keyword', keywordSettings: { matchMode: 'anywhere' }, func: 'custom', channelID: '111' } },
         { name: 'validate_enums', op: 'validate', doc: { activation: 'button', authoring: 'voice', keywordSettings: { matchMode: 'regex' } } },
         { name: 'update_enabled_set', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { $set: { enabled: false, cooldown: 5 } } },
@@ -348,6 +350,8 @@ const CASES: Record<string, any[]> = {
             accounts: [{ type: 'twitch', id: '222', name: TEXT, email: 'new@example.com', refresh_token: TOKEN, access_token: TOKEN, actived: false, chat_enabled: false, has_permissions: false, up_to_date_permissions: false }],
             plan_tier: 'free', plan_tier_until: T2, last_app_activity_at: T1, token_balance: 0,
         } },
+        // Sign-up (`auth.route.ts:1061`) passes `plan_tier_until: null`.
+        { name: 'create_until_null', op: 'create', rust: 'signup_until_null', doc: { name: 'n', plan_tier: 'free', plan_tier_until: null } },
         { name: 'create_referred', op: 'create', rust: 'referred', doc: { name: 'r', accounts: [{ type: 'kick', id: '9' }], referrerId: OID(1), referralCodeUsed: 'CODE', plan_tier: 'pro' } },
         { name: 'validate_enums', op: 'validate', doc: { plan_tier: 'gold', language: 'fr', tts_default_provider: 'x', accounts: [{ type: 'myspace', id: '1' }, { id: '2' }] } },
         { name: 'validate_reset', op: 'validate', doc: { free_credit_reset: { status: 'nope', credits: -1, externalId: '' } } },

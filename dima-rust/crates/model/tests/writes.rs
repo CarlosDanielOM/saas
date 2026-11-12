@@ -34,6 +34,7 @@ use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
 };
+use dima_model::values::Nullable;
 use dima_model::{
     CollectionInfo, IndexPolicy, ModelError, REGISTRY, ensure_indexes, preflight_indexes,
 };
@@ -244,7 +245,7 @@ fn typed_create(
                 language: Some(Language::En),
                 accounts: vec![account],
                 plan_tier: Some(PlanTier::Free),
-                plan_tier_until: Some(ms("2021-06-07T08:09:10.011Z")?),
+                plan_tier_until: ms("2021-06-07T08:09:10.011Z")?.into(),
                 last_app_activity_at: Some(ms("2020-01-02T03:04:05.006Z")?),
                 token_balance: Some(JsNumber(0.0)),
                 ..NewUser::default()
@@ -510,7 +511,7 @@ fn typed_create(
             command.responses = Some(Vec::new());
             command.kind = Some("command".into());
             command.reserved = Some(false);
-            command.description = Some(String::new());
+            command.description = String::new().into();
             command.cooldown = Some(JsNumber(10.0));
             command.enabled = Some(true);
             command.user_level_name = Some("everyone".into());
@@ -518,6 +519,22 @@ fn typed_create(
             command.permission_expression = Some(Bson::Null);
             command.channel = Some("seed".into());
             pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("commands", "restored") => {
+            // The restore path (`command_mutations.service.ts:371`) passes a stored null through.
+            let mut command = NewCommand::new("111");
+            command.cmd = Some("!old".into());
+            command.description = Nullable::Null;
+            pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("users", "signup_until_null") => {
+            let user = NewUser {
+                name: Some("n".into()),
+                plan_tier: Some(PlanTier::Free),
+                plan_tier_until: Nullable::Null,
+                ..NewUser::default()
+            };
+            pair(user.to_document()?, user.prepare(ctx))
         }
         ("commands", "keyword") => {
             let mut command = NewCommand::new("111");

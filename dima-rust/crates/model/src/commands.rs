@@ -29,7 +29,7 @@ use crate::private::Private;
 use crate::shape::ReadNeed;
 use crate::timer_commands::{CREATION_DATE, CreationDate};
 use crate::validation::Rule;
-use crate::values::StringMap;
+use crate::values::{Nullable, StringMap};
 use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
 use bson::oid::ObjectId;
 use bson::{Bson, Document};
@@ -384,9 +384,9 @@ pub struct NewCommand {
     /// Built-in (default `false`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reserved: Option<bool>,
-    /// Description.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// Description (the restore path passes a stored `null` through: 49 commands have it).
+    #[serde(skip_serializing_if = "Nullable::is_unset")]
+    pub description: Nullable<String>,
     /// Cooldown in seconds (default 20).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cooldown: Option<JsNumber>,
@@ -432,7 +432,7 @@ impl NewCommand {
             responses: None,
             kind: None,
             reserved: None,
-            description: None,
+            description: Nullable::Unset,
             cooldown: None,
             enabled: None,
             user_level_name: None,
