@@ -1,5 +1,8 @@
 # Analytics Rust candidate
 
+The initial author report below is historical. The dated parity follow-up at the end records
+subsequent verification and supersedes its claims about unavailable dependencies or rig support.
+
 This is an implementation candidate, **not yet certified as a drop-in replacement**. The Node
 reference packages are absent at `/home/dom/Projects/saas/dima-analytics/node_modules` and in this
 checkout. No packages were installed, reference captures fabricated, containers built, services
@@ -145,3 +148,43 @@ There are no unallowed differences. The four ingestion allowances above account 
 UTC quantization of independent run clocks. The only note is non-contract object-key order
 in `channelNames`. PostgreSQL catalogue definitions and rows compare without structural
 allowances, including schema creation from empty databases in access/routes/ingestion.
+
+Part 4: ten additional scenarios were recorded with Node's default double-run stability check.
+All 13 scenarios / 2426 steps now verify against Rust, with no unallowed differences:
+
+- `validation` (90): all allowed range values, malformed/out-of-range values for each query
+  route, numeric coercions, unknown fields, grant ID/role/list/expiry failures, encoded IDs
+  and query values. `access-rules` (12): expired grants, role/owner guards on all methods,
+  oversized bearer tokens, and service-scoped exclusion of infrastructure.
+- `body-errors` (2): invalid JSON gives 400; >16 KiB gives 413. Only parser syntax-error prose
+  is ignored (charter §3); statuses and headers compare. Node's parser runs before its
+  cache-control middleware, so Rust now omits that header on parser failures too.
+- `ordering-rounding` (5): 505 spans prove ascending detail truncation at 500 plus `partial`,
+  descending list truncation at 100; 105 logs prove descending truncation and escaped search;
+  505 grants prove descending truncation at 500. These endpoints expose caps, not cursor
+  pagination. Four-significant-digit ties exposed a real defect: Rust's ties-to-even gave
+  12340 for 12345, while Node gives 12350. Exact decimal rounding now follows Node, including
+  binary64 1.2345 rounding to 1.234. Shared text has `to_fixed`, but no `toPrecision` helper;
+  the bounded local trend formatter fills that gap without changing shared crates.
+- `invalid-batches` (15): invalid envelope/each kind, oversized arrays/256001-byte raw payload,
+  eight discards, no receipts, empty inbox/processing and producer overflow counter still 7.
+- `retry-uuid` / `retry-partial` (5 each): permissive UUID and missing `partial` pass validation,
+  fail PostgreSQL, roll back receipts and retain the processing head. Retry attempt counts
+  alone are ignored because they depend on timer ticks; retention and receipt counts are exact.
+- `revoke-failure` (4): an injected audit CHECK failure returns 503 after deletion commits;
+  access is revoked and no audit exists. This reference data-integrity defect is deliberately
+  retained and marked in code. Missing-partial head blocking and permissive UUID behavior are
+  also marked; no leak was observed. An invalid span can eventually age out and be discarded.
+- `rate-window` (122): first 120 requests pass, later requests get 429. `rate-saturation` (2005):
+  2000 keys fill the map, new keys get 429, existing keys work; after 61 seconds new keys
+  remain refused. The unreachable `>2000` expiry sweep is retained and marked.
+
+Encoded parameters now use dima-web's URI decoder before validation/database operations.
+Additional ordering allowances cover only fixture clock anchors (minute for ordering, hour for
+resource fixtures and their plotted times). All ordered arrays and numeric values stay exact.
+There are 11 allowances total: four ingestion quantization, four ordering fixture anchors,
+two timer-dependent retry counters, one parser error message. No catalogue allowance exists.
+
+Rig limitation found: two simultaneous recordings restricted to Dragonfly DB4/5 can each
+reserve one database and wait for the other. Extra runs were interrupted with cleanup, and
+remaining runs were serialized. No rig/shared-crate source was modified.

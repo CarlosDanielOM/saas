@@ -1,0 +1,2513 @@
+{
+  "rig_capture": 5,
+  "target": "analytics",
+  "scenario": "retry-partial",
+  "provenance": {
+    "side": "reference",
+    "label": null,
+    "recorded_at": "2026-11-12T07:42:26.660Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:615fb0ccadfa9757",
+    "files": {
+      "retry-partial.json": "fnv1a64:615fb0ccadfa9757"
+    }
+  },
+  "run": {
+    "seeded_at": 1794469308847,
+    "start": 1794469309833,
+    "end": 1794469311446,
+    "process_start": 1794469309124,
+    "ports": {
+      "http": 37087
+    },
+    "mongo_db": "rig_1756740_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_1756740_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 4,
+    "dragonfly_url": "redis://127.0.0.1:6379/4",
+    "mock_port": 42589,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "postgres": {
+    "public.analytics_audit": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "actor",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "subject",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        }
+      ],
+      "indexes": [],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_batches": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_batches_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_batches_pkey ON public.analytics_batches USING btree (id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_batches_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_grants": {
+      "kind": "r",
+      "partition_bound": null,
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channels",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "services",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 5,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "granted_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_grants_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_grants_pkey ON public.analytics_grants USING btree (user_id)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_grants_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (user_id)"
+        },
+        {
+          "name": "analytics_grants_role_check",
+          "validated": true,
+          "definition": "CHECK ((role = ANY (ARRAY['viewer'::text, 'investigator'::text])))"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_logs": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_scope",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_scope ON ONLY public.analytics_logs USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261111_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261111_channel_at_idx ON public.analytics_logs_20261111 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261112_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261112_channel_at_idx ON public.analytics_logs_20261112 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261113_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261113_channel_at_idx ON public.analytics_logs_20261113 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_logs_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "fields",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_logs_20261114_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_logs_20261114_channel_at_idx ON public.analytics_logs_20261114 USING btree (channel, at)"
+        }
+      ],
+      "constraints": [],
+      "rows": []
+    },
+    "public.analytics_metrics": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_pkey ON ONLY public.analytics_metrics USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261111_pkey ON public.analytics_metrics_20261111 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261112_pkey ON public.analytics_metrics_20261112 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261113_pkey ON public.analytics_metrics_20261113 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_metrics_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "resolution",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "count",
+          "type": "bigint",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "sum",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "max",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "histogram",
+          "type": "bigint[]",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_metrics_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_metrics_20261114_pkey ON public.analytics_metrics_20261114 USING btree (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_metrics_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_pkey ON ONLY public.analytics_resources USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261111_pkey ON public.analytics_resources_20261111 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261112_pkey ON public.analytics_resources_20261112 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261113_pkey ON public.analytics_resources_20261113 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_resources_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 4,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_resources_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_resources_20261114_pkey ON public.analytics_resources_20261114 USING btree (at, service, name)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_resources_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, service, name)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans": {
+      "kind": "p",
+      "partition_bound": null,
+      "partition_key": "RANGE (at)",
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_lookup",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_lookup ON ONLY public.analytics_spans USING btree (trace_id, at)"
+        },
+        {
+          "name": "analytics_spans_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_pkey ON ONLY public.analytics_spans USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_scope",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_scope ON ONLY public.analytics_spans USING btree (channel, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261111": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-11 00:00:00+00') TO ('2026-11-12 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261111_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261111_channel_at_idx ON public.analytics_spans_20261111 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261111_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261111_pkey ON public.analytics_spans_20261111 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261111_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261111_trace_id_at_idx ON public.analytics_spans_20261111 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261111_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261112": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-12 00:00:00+00') TO ('2026-11-13 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261112_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261112_channel_at_idx ON public.analytics_spans_20261112 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261112_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261112_pkey ON public.analytics_spans_20261112 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261112_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261112_trace_id_at_idx ON public.analytics_spans_20261112 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261112_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261113": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-13 00:00:00+00') TO ('2026-11-14 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261113_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261113_channel_at_idx ON public.analytics_spans_20261113 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261113_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261113_pkey ON public.analytics_spans_20261113 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261113_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261113_trace_id_at_idx ON public.analytics_spans_20261113 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261113_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    },
+    "public.analytics_spans_20261114": {
+      "kind": "r",
+      "partition_bound": "FOR VALUES FROM ('2026-11-14 00:00:00+00') TO ('2026-11-15 00:00:00+00')",
+      "partition_key": null,
+      "view": null,
+      "columns": [
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 1,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "trace_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 2,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "span_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 3,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "parent_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "position": 4,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "service",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 5,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "channel",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 6,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 7,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 8,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 9,
+          "collation": "default",
+          "generated": ""
+        },
+        {
+          "name": "duration",
+          "type": "double precision",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 10,
+          "collation": null,
+          "generated": ""
+        },
+        {
+          "name": "partial",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "position": 11,
+          "collation": null,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        {
+          "name": "analytics_spans_20261114_channel_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261114_channel_at_idx ON public.analytics_spans_20261114 USING btree (channel, at)"
+        },
+        {
+          "name": "analytics_spans_20261114_pkey",
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX analytics_spans_20261114_pkey ON public.analytics_spans_20261114 USING btree (at, span_id)"
+        },
+        {
+          "name": "analytics_spans_20261114_trace_id_at_idx",
+          "valid": true,
+          "definition": "CREATE INDEX analytics_spans_20261114_trace_id_at_idx ON public.analytics_spans_20261114 USING btree (trace_id, at)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "analytics_spans_20261114_pkey",
+          "validated": true,
+          "definition": "PRIMARY KEY (at, span_id)"
+        }
+      ],
+      "rows": []
+    }
+  },
+  "steps": [
+    {
+      "dragonfly": {
+        "at": 1794469309833,
+        "command": [
+          "LPUSH",
+          "observability:v1:inbox",
+          "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [{\"at\": 1794469309833, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 1}], \"logs\": []}"
+        ],
+        "reply": {
+          "int": 1
+        }
+      }
+    },
+    {
+      "pause_ms": {}
+    },
+    {
+      "http": {
+        "at": 1794469311344,
+        "status": 200,
+        "headers": [
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "content-length",
+            "121"
+          ],
+          [
+            "etag",
+            "W/\"79-9RHrE0FIB0z5EBe6xTgAT8C23Zg\""
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 07:41:51 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": "{\"samples\":[],\"limited\":false,\"status\":{\"ingestedAt\":null,\"invalidBatches\":0,\"ingestionErrors\":1,\"collectorError\":false}}"
+      }
+    },
+    {
+      "dragonfly": {
+        "at": 1794469311344,
+        "command": [
+          "LLEN",
+          "observability:v1:processing"
+        ],
+        "reply": {
+          "int": 1
+        }
+      }
+    },
+    {
+      "sql": {
+        "at": 1794469311446,
+        "rows": [
+          {
+            "receipts": 0
+          }
+        ]
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "observability:v1:processing",
+      "type": "list",
+      "pttl": -1,
+      "pttl_at": 1794469311452,
+      "value": [
+        "{\"version\": 1, \"id\": \"12345678-1234-1234-1234-123456789012\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [{\"at\": 1794469309833, \"traceId\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"spanId\": \"bbbbbbbbbbbbbbbb\", \"parentId\": null, \"channel\": \"allowed\", \"kind\": \"chat\", \"name\": \"message\", \"outcome\": \"ok\", \"duration\": 1}], \"logs\": []}"
+      ]
+    },
+    {
+      "key": "token:analytics-rig-investigator",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469311454,
+      "value": [
+        [
+          "id",
+          "3"
+        ],
+        [
+          "login",
+          "investigator"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-owner",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469311455,
+      "value": [
+        [
+          "id",
+          "1"
+        ],
+        [
+          "login",
+          "owner"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-stranger",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469311456,
+      "value": [
+        [
+          "id",
+          "4"
+        ],
+        [
+          "login",
+          "stranger"
+        ]
+      ]
+    },
+    {
+      "key": "token:analytics-rig-viewer",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794469311457,
+      "value": [
+        [
+          "id",
+          "2"
+        ],
+        [
+          "login",
+          "viewer"
+        ]
+      ]
+    }
+  ],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}

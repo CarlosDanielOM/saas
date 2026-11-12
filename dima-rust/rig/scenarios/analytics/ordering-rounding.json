@@ -1,0 +1,136 @@
+{
+  "rig_scenario": 3,
+  "description": "505 trace spans (ascending detail capped at 500 with partial=true, descending list capped at 100), 105 encoded searchable logs, 505 grants capped at 500, and four significant digit rounding ties.",
+  "seed": {
+    "dragonfly": [
+      [
+        "HSET",
+        "token:analytics-rig-owner",
+        "id",
+        "1",
+        "login",
+        "owner"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-viewer",
+        "id",
+        "2",
+        "login",
+        "viewer"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-investigator",
+        "id",
+        "3",
+        "login",
+        "investigator"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-stranger",
+        "id",
+        "4",
+        "login",
+        "stranger"
+      ]
+    ],
+    "postgres": [
+      "CREATE TABLE IF NOT EXISTS analytics_batches (id uuid PRIMARY KEY, received_at timestamptz NOT NULL DEFAULT now());\n    CREATE TABLE IF NOT EXISTS analytics_metrics (\n      resolution integer NOT NULL, at timestamptz NOT NULL, service text NOT NULL, kind text NOT NULL,\n      name text NOT NULL, channel text NOT NULL, outcome text NOT NULL,\n      count bigint NOT NULL, sum double precision NOT NULL, max double precision NOT NULL, histogram bigint[] NOT NULL,\n      PRIMARY KEY (resolution, at, service, kind, name, channel, outcome)\n    ) PARTITION BY RANGE (at);\n    CREATE TABLE IF NOT EXISTS analytics_spans (\n      at timestamptz NOT NULL, trace_id text NOT NULL, span_id text NOT NULL, parent_id text,\n      service text NOT NULL, channel text NOT NULL, kind text NOT NULL, name text NOT NULL,\n      outcome text NOT NULL, duration double precision NOT NULL, partial boolean NOT NULL,\n      PRIMARY KEY(at, span_id)\n    ) PARTITION BY RANGE (at);\n    CREATE INDEX IF NOT EXISTS analytics_spans_lookup ON analytics_spans(trace_id, at);\n    CREATE INDEX IF NOT EXISTS analytics_spans_scope ON analytics_spans(channel, at);\n    CREATE TABLE IF NOT EXISTS analytics_logs (\n      at timestamptz NOT NULL, service text NOT NULL, channel text NOT NULL, level text NOT NULL,\n      name text NOT NULL, trace_id text, fields jsonb NOT NULL\n    ) PARTITION BY RANGE (at);\n    CREATE INDEX IF NOT EXISTS analytics_logs_scope ON analytics_logs(channel, at);\n    CREATE TABLE IF NOT EXISTS analytics_resources (\n      at timestamptz NOT NULL, service text NOT NULL, name text NOT NULL, value double precision NOT NULL,\n      PRIMARY KEY(at, service, name)\n    ) PARTITION BY RANGE (at);\n    CREATE TABLE IF NOT EXISTS analytics_grants (\n      user_id text PRIMARY KEY, role text NOT NULL CHECK(role IN ('viewer','investigator')),\n      channels text[] NOT NULL DEFAULT '{}', services text[] NOT NULL DEFAULT '{}',\n      expires_at timestamptz, granted_by text NOT NULL, updated_at timestamptz NOT NULL DEFAULT now()\n    );\n    CREATE TABLE IF NOT EXISTS analytics_audit (\n      at timestamptz NOT NULL DEFAULT now(), actor text NOT NULL, action text NOT NULL, subject text NOT NULL\n    );\n",
+      "DO $$ DECLARE d date; t text; BEGIN FOR d IN SELECT current_date+i FROM generate_series(-1,2) i LOOP FOREACH t IN ARRAY ARRAY['metrics','spans','logs','resources'] LOOP EXECUTE format('CREATE TABLE analytics_%s_%s PARTITION OF analytics_%s FOR VALUES FROM (%L) TO (%L)',t,to_char(d,'YYYYMMDD'),t,d,d+1); END LOOP; END LOOP; END $$",
+      "INSERT INTO analytics_spans SELECT date_trunc('minute',now())-interval '1 minute'-i*interval '1 millisecond',repeat('a',32),lpad(to_hex(i),16,'0'),NULL,'rig','allowed','chat','row-'||i,'ok',i,false FROM generate_series(1,505) i",
+      "INSERT INTO analytics_logs SELECT date_trunc('minute',now())-interval '1 minute'-i*interval '1 millisecond','rig','allowed','error','percent%_ + \\ '||i,NULL,'[]'::jsonb FROM generate_series(1,105) i",
+      "INSERT INTO analytics_grants(user_id,role,granted_by,updated_at) SELECT i::text,'viewer','1',date_trunc('minute',now())-i*interval '1 millisecond' FROM generate_series(10,514) i",
+      "INSERT INTO analytics_resources SELECT date_trunc('hour',now())+interval '1 second','host','cpu_pct',1.2345 UNION ALL SELECT date_trunc('hour',now())+interval '2 seconds','host','mem_used_bytes',12345"
+    ]
+  },
+  "steps": [
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/traces/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/logs?search=percent%25%5F%20%2B%20%5C",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/grants",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources?include=infra&container=a%2Eb",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "postgres[\"public.analytics_resources*\"].rows[*].at",
+      "kind": "tolerance",
+      "ms": 3600000,
+      "reason": "Resource fixture is anchored to date_trunc(hour, now()); run-relative normalization varies within an hour. Values and schema remain exact; this fixture tests rounding, not time bucketing."
+    },
+    {
+      "path": "**.at",
+      "kind": "tolerance",
+      "ms": 60000,
+      "reason": "Seed rows share a minute-aligned clock anchor; independent runs may straddle a minute. Row order and all non-time values remain exact."
+    },
+    {
+      "path": "**.updated_at",
+      "kind": "tolerance",
+      "ms": 60000,
+      "reason": "Seed grant order uses a minute-aligned anchor and distinct millisecond offsets; only the absolute anchor varies."
+    },
+    {
+      "path": "steps[4].body.infrastructure.series[*].points[*][0]",
+      "kind": "tolerance",
+      "ms": 3600000,
+      "reason": "Hourly seed anchor varies; only bucket time varies, rounded values compare exactly."
+    }
+  ]
+}

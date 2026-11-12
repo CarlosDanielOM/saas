@@ -1,0 +1,80 @@
+{
+  "rig_scenario": 3,
+  "description": "Reference defect: permissive UUID envelope passes validation but PostgreSQL rejects it; batch remains pending, no receipt commits.",
+  "seed": {
+    "dragonfly": [
+      [
+        "HSET",
+        "token:analytics-rig-owner",
+        "id",
+        "1",
+        "login",
+        "owner"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-viewer",
+        "id",
+        "2",
+        "login",
+        "viewer"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-investigator",
+        "id",
+        "3",
+        "login",
+        "investigator"
+      ],
+      [
+        "HSET",
+        "token:analytics-rig-stranger",
+        "id",
+        "4",
+        "login",
+        "stranger"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "dragonfly": [
+        "LPUSH",
+        "observability:v1:inbox",
+        "{\"version\": 1, \"id\": \"------------------------------------\", \"service\": \"rig\", \"instance\": \"fixture\", \"metrics\": [], \"spans\": [], \"logs\": []}"
+      ]
+    },
+    {
+      "pause_ms": 1500
+    },
+    {
+      "http": {
+        "method": "GET",
+        "path": "/api/resources",
+        "headers": {
+          "authorization": "Bearer analytics-rig-owner"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "dragonfly": [
+        "LLEN",
+        "observability:v1:processing"
+      ]
+    },
+    {
+      "sql": "SELECT count(*) AS receipts FROM analytics_batches"
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[2].body.status.ingestionErrors",
+      "kind": "ignore",
+      "reason": "Retry attempts count timer ticks; processing-list retention and zero committed receipts are compared exactly."
+    }
+  ]
+}
