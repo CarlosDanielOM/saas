@@ -228,7 +228,7 @@
    ]
   },
   "4.7.5 polling family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -238,19 +238,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -278,18 +286,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -308,7 +334,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -319,19 +352,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -370,32 +396,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -461,7 +461,7 @@
    ]
   },
   "4.7.5 polling malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -510,54 +510,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -678,6 +630,54 @@
      "disconnect",
      null,
      1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
     ],
     [
      "disconnect",
@@ -881,31 +881,6 @@
    ]
   },
   "4.7.5 polling recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -974,6 +949,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -1304,31 +1304,6 @@
    ]
   },
   "4.7.5 polling recovery: only this socket and the namespace": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -1408,6 +1383,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",
@@ -2070,7 +2070,7 @@
    ]
   },
   "4.7.5 upgrade family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -2080,19 +2080,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -2120,18 +2128,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -2150,7 +2176,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -2161,19 +2194,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -2212,32 +2238,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -2303,7 +2303,7 @@
    ]
   },
   "4.7.5 upgrade malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -2352,54 +2352,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -2520,6 +2472,54 @@
      "disconnect",
      null,
      1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
     ],
     [
      "disconnect",
@@ -2723,31 +2723,6 @@
    ]
   },
   "4.7.5 upgrade recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -2816,6 +2791,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -3146,31 +3146,6 @@
    ]
   },
   "4.7.5 upgrade recovery: only this socket and the namespace": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -3250,6 +3225,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",
@@ -3912,7 +3912,7 @@
    ]
   },
   "4.7.5 websocket family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -3922,19 +3922,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -3962,18 +3970,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -3992,7 +4018,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -4003,19 +4036,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -4054,32 +4080,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -4145,7 +4145,7 @@
    ]
   },
   "4.7.5 websocket malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -4194,54 +4194,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -4367,6 +4319,54 @@
      "disconnect",
      "io client disconnect"
     ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
    ]
   },
   "4.7.5 websocket multiplexed namespaces": {
@@ -4470,37 +4470,6 @@
    ]
   },
   "4.7.5 websocket namespace broadcast": {
-   "b": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/bc_t475websocket11",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "event",
-     "broadcast",
-     "hi",
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -4530,6 +4499,37 @@
     [
      "ack",
      2
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "b": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/bc_t475websocket11",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "event",
+     "broadcast",
+     "hi",
+     "<offset>"
     ],
     [
      "disconnect",
@@ -4565,31 +4565,6 @@
    ]
   },
   "4.7.5 websocket recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -4658,6 +4633,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -4988,31 +4988,6 @@
    ]
   },
   "4.7.5 websocket recovery: only this socket and the namespace": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -5092,6 +5067,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",
@@ -5754,7 +5754,7 @@
    ]
   },
   "4.8.3 polling family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -5764,19 +5764,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -5804,18 +5812,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -5834,7 +5860,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -5845,19 +5878,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -5896,32 +5922,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -5987,7 +5987,7 @@
    ]
   },
   "4.8.3 polling malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -6036,54 +6036,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -6204,6 +6156,54 @@
      "disconnect",
      null,
      1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
     ],
     [
      "disconnect",
@@ -6407,31 +6407,6 @@
    ]
   },
   "4.8.3 polling recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -6500,6 +6475,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -6830,31 +6830,6 @@
    ]
   },
   "4.8.3 polling recovery: only this socket and the namespace": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -6934,6 +6909,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",
@@ -7596,7 +7596,7 @@
    ]
   },
   "4.8.3 upgrade family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -7606,19 +7606,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -7646,18 +7654,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -7676,7 +7702,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -7687,19 +7720,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -7738,32 +7764,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -7829,7 +7829,7 @@
    ]
   },
   "4.8.3 upgrade malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -7878,54 +7878,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -8046,6 +7998,54 @@
      "disconnect",
      null,
      1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
     ],
     [
      "disconnect",
@@ -8249,31 +8249,6 @@
    ]
   },
   "4.8.3 upgrade recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -8342,6 +8317,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -8672,31 +8672,6 @@
    ]
   },
   "4.8.3 upgrade recovery: only this socket and the namespace": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -8776,6 +8751,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",
@@ -9438,7 +9438,7 @@
    ]
   },
   "4.8.3 websocket family names": {
-   "/fam/abc": [
+   "/digits/123": [
     [
      "connect",
      {
@@ -9448,19 +9448,27 @@
     ],
     [
      "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/fam/abc",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
+     "which",
+     3,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
+    ]
+   ],
+   "/digits/1234": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/fam/": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
     ]
    ],
    "/fam/ABC_123": [
@@ -9488,18 +9496,36 @@
      "io client disconnect"
     ]
    ],
-   "/fam/": [
+   "/fam/ab-c": [
     [
      "connect_error",
      "Invalid namespace",
      null
     ]
    ],
-   "/fam/ab-c": [
+   "/fam/abc": [
     [
-     "connect_error",
-     "Invalid namespace",
-     null
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/fam/abc",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
     ]
    ],
    "/fam/abc/def": [
@@ -9518,7 +9544,14 @@
      }
     ]
    ],
-   "/digits/123": [
+   "/fam/é": [
+    [
+     "connect_error",
+     "Invalid namespace",
+     null
+    ]
+   ],
+   "/pick/abc": [
     [
      "connect",
      {
@@ -9529,19 +9562,12 @@
     [
      "event",
      "which",
-     3,
+     2,
      "<offset>"
     ],
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/digits/1234": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ],
    "/pick/abcd": [
@@ -9580,32 +9606,6 @@
     [
      "disconnect",
      "io client disconnect"
-    ]
-   ],
-   "/pick/abc": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "which",
-     2,
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "/fam/é": [
-    [
-     "connect_error",
-     "Invalid namespace",
-     null
     ]
    ]
   },
@@ -9671,7 +9671,7 @@
    ]
   },
   "4.8.3 websocket malformed packets close the connection": {
-   "garbage": [
+   "0/basic,": [
     [
      "connect",
      {
@@ -9720,54 +9720,6 @@
     ]
    ],
    "2/basic,[\"connect\"]": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": false,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "transport close"
-    ],
-    [
-     "connect",
-     {
-      "recovered": true,
-      "id": "string"
-     }
-    ],
-    [
-     "event",
-     "welcome",
-     {
-      "recovered": true,
-      "nsp": "/basic",
-      "x": null,
-      "token": null,
-      "tag": null
-     },
-     "<offset>"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
-   "0/basic,": [
     [
      "connect",
      {
@@ -9888,6 +9840,54 @@
      "disconnect",
      null,
      1
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "garbage": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": false,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
+    ],
+    [
+     "disconnect",
+     "transport close"
+    ],
+    [
+     "connect",
+     {
+      "recovered": true,
+      "id": "string"
+     }
+    ],
+    [
+     "event",
+     "welcome",
+     {
+      "recovered": true,
+      "nsp": "/basic",
+      "x": null,
+      "token": null,
+      "tag": null
+     },
+     "<offset>"
     ],
     [
      "disconnect",
@@ -10091,31 +10091,6 @@
    ]
   },
   "4.8.3 websocket recovery: missed events are replayed": {
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "a": [
     [
      "connect",
@@ -10184,6 +10159,31 @@
     [
      "ack",
      "after"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
     ],
     [
      "disconnect",
@@ -10568,31 +10568,6 @@
      "io client disconnect"
     ]
    ],
-   "control": [
-    [
-     "connect",
-     {
-      "recovered": false,
-      "id": "string"
-     }
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "done"
-    ],
-    [
-     "ack",
-     "operation has timed out"
-    ],
-    [
-     "disconnect",
-     "io client disconnect"
-    ]
-   ],
    "b": [
     [
      "connect",
@@ -10618,6 +10593,31 @@
      "direct",
      "for-b",
      "<offset>"
+    ],
+    [
+     "disconnect",
+     "io client disconnect"
+    ]
+   ],
+   "control": [
+    [
+     "connect",
+     {
+      "recovered": false,
+      "id": "string"
+     }
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "done"
+    ],
+    [
+     "ack",
+     "operation has timed out"
     ],
     [
      "disconnect",

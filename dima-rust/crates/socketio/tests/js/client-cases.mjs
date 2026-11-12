@@ -620,7 +620,10 @@ await Promise.all(
       }
       r.close();
       await sleep(50);
-      results.client[`${version} ${transport} ${name}`] = r.logs;
+      // Labels sorted: which socket logged first is timing, not behaviour.
+      results.client[`${version} ${transport} ${name}`] = Object.fromEntries(
+        Object.entries(r.logs).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+      );
     }
   }),
 );
