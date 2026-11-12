@@ -123,6 +123,33 @@ pub enum PrepareError {
         /// `contain "."` or `start with "$"`.
         rule: &'static str,
     },
+    /// A filter value Mongoose cannot cast to its path's type (its `CastError`; the reference's
+    /// HTTP layer usually turns it into a 400 or a 500). `kind` is Mongoose's name for the cast
+    /// (`ObjectId`, `Number`, `date`, `string`, `Boolean`, `boolean` for `$exists`, `Array`,
+    /// `Object`). The value is not kept: it may be a secret.
+    #[error("Cast to {kind} failed at path \"{path}\"")]
+    Cast {
+        /// The cast.
+        kind: &'static str,
+        /// The path.
+        path: String,
+    },
+    /// A path the schema does not know in the filter of an upsert (Mongoose's
+    /// `StrictModeError`: it would be copied into the new document).
+    #[error("Path \"{path}\" is not in schema, strict mode is `true`, and upsert is `true`.")]
+    StrictFilter {
+        /// The path.
+        path: String,
+    },
+    /// A query operator Mongoose refuses for the path (its plain `Error`, such as `Can't use
+    /// $foo with String.`).
+    #[error("{message}")]
+    QueryOperator {
+        /// The operator.
+        operator: String,
+        /// Mongoose's message.
+        message: String,
+    },
     /// The loaded document of a save has no `_id`.
     #[error("the loaded document has no _id")]
     MissingId,
@@ -624,7 +651,7 @@ impl<'c> Caster<'c> {
     ) -> Result<Bson, PrepareError> {
         Ok(match (target.kind, value) {
             (_, Bson::Null) => Bson::Null,
-            (TargetKind::Value, Bson::String(text)) if target.trim => {
+            (TargetKind::Value(_), Bson::String(text)) if target.trim => {
                 Bson::String(dima_text::trim(&text).to_owned())
             }
             (TargetKind::Subdocument(schema), Bson::Document(given)) => {
@@ -651,13 +678,13 @@ impl<'c> Caster<'c> {
                     "",
                 )?)])
             }
-            (TargetKind::Array, Bson::Array(items)) => Bson::Array(
+            (TargetKind::Array(_), Bson::Array(items)) => Bson::Array(
                 items
                     .into_iter()
                     .map(|item| trim_if(item, target.trim))
                     .collect(),
             ),
-            (TargetKind::Array, other) if !matches!(other, Bson::Document(_)) => {
+            (TargetKind::Array(_), other) if !matches!(other, Bson::Document(_)) => {
                 Bson::Array(vec![trim_if(other, target.trim)])
             }
             (_, other) => other,
@@ -704,7 +731,7 @@ impl<'c> Caster<'c> {
             (TargetKind::DocumentArray(schema), Bson::Document(given)) => {
                 Bson::Document(self.construct(schema, Some(&given), "")?)
             }
-            (TargetKind::Array, other) => trim_if(other, target.trim),
+            (TargetKind::Array(_), other) => trim_if(other, target.trim),
             (_, other) => other,
         })
     }

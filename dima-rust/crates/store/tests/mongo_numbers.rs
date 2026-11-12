@@ -6,7 +6,7 @@
 use bson::{Bson, Document, doc, oid::ObjectId};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     BulkUpdate, Returned, UpdateDoc, UpdateOptions, prepare_bulk_update,
     prepare_find_one_and_update, prepare_update,
@@ -14,10 +14,10 @@ use dima_store::mongo::update::{
 use dima_store::mongo::{PrepareError, WriteContext};
 
 static S: Schema = Schema::new(&[
-    Field::value("n"),
-    Field::value("count").default(D::Int(0)),
+    Field::number("n"),
+    Field::number("count").default(D::Int(0)),
     Field::mixed("free"),
-    Field::array("list"),
+    Field::array("list", ValueType::Number),
 ])
 .timestamps(Timestamps::CAMEL);
 
@@ -146,7 +146,7 @@ fn updates_type_numbers_in_filter_operators_and_pipelines() -> Result<(), Prepar
             check(get(sent, "$push.list.$position"), &stored, "$position");
         }
         // An empty upsert sends `{$setOnInsert: <filter>}`: the copy is typed too.
-        static PLAIN: Schema = Schema::new(&[Field::value("n")]).no_version_key();
+        static PLAIN: Schema = Schema::new(&[Field::number("n")]).no_version_key();
         let out = prepare_update(
             &PLAIN,
             &doc! { "n": given.clone() },

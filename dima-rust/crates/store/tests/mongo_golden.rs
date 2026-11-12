@@ -6,8 +6,8 @@
 //!    helper call, with its values as given: the helpers type numbers as Node does. Every case
 //!    runs three times, with the intent's numbers as recorded (int32, int64 for large integers,
 //!    double), as int64 wherever they are integral, and as doubles everywhere: the commands and
-//!    stored documents must equal Mongoose's in all three. String ids in filters are cast as a
-//!    Rust caller must (`parse_object_id`);
+//!    stored documents must equal Mongoose's in all three. Filters are passed as the
+//!    TypeScript passed them (string ids, date text): the helpers cast them;
 //! 3. the helper output is put in the shape of the command Mongoose sent and compared with the
 //!    recorded command, **key order included**;
 //! 4. the write is executed with the Rust driver and the whole collection (and the
@@ -27,10 +27,10 @@
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, DateTime, Document, doc};
-use dima_store::mongo::id::parse_object_id;
+use dima_store::mongo::filter::prepare_filter;
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     BulkUpdate, Returned, Update, UpdateDoc, UpdateOptions, prepare_bulk_update,
     prepare_find_one_and_update, prepare_update,
@@ -43,19 +43,19 @@ use std::collections::{HashMap, HashSet};
 // ---------------------------------------------------------------- the recorder's schemas
 
 static ITEM: Schema = Schema::subdocument(&[
-    Field::value("label").trim(),
-    Field::value("n").default(D::Int(1)),
-    Field::value("at"),
+    Field::string("label").trim(),
+    Field::number("n").default(D::Int(1)),
+    Field::date("at"),
 ]);
 static PLAIN_SUB: Schema = Schema::subdocument(&[
-    Field::value("label"),
-    Field::value("on").default(D::Bool(false)),
+    Field::string("label"),
+    Field::boolean("on").default(D::Bool(false)),
 ])
 .no_id();
 static OPTS: Schema = Schema::subdocument(&[
-    Field::value("enabled").default(D::Bool(true)),
-    Field::value("mode").default(D::Str("start")),
-    Field::array("list").default_fn(D::Strings(&["a", "b"])),
+    Field::boolean("enabled").default(D::Bool(true)),
+    Field::string("mode").default(D::Str("start")),
+    Field::array("list", ValueType::String).default_fn(D::Strings(&["a", "b"])),
 ])
 .no_id();
 
@@ -64,88 +64,94 @@ fn opts_default(_now: i64) -> Bson {
 }
 
 static CAMEL: Schema = Schema::new(&[
-    Field::value("name").trim(),
-    Field::value("key").immutable(),
-    Field::value("count").default(D::Int(0)),
-    Field::value("score"),
-    Field::array("tags"),
+    Field::string("name").trim(),
+    Field::string("key").immutable(),
+    Field::number("count").default(D::Int(0)),
+    Field::number("score"),
+    Field::array("tags", ValueType::String),
     Field::document_array("items", &ITEM),
     Field::document_array("plain", &PLAIN_SUB),
     Field::nested(
         "nested",
         &[
-            Field::value("a").default(D::Str("x")),
-            Field::value("b"),
-            Field::nested("deep", &[Field::value("c").default(D::Bool(false))]),
+            Field::string("a").default(D::Str("x")),
+            Field::number("b"),
+            Field::nested("deep", &[Field::boolean("c").default(D::Bool(false))]),
         ],
     ),
     Field::subdocument("opts", &OPTS).default_fn(D::With(opts_default)),
     Field::mixed("meta").default_fn(D::EmptyDocument),
     Field::mixed("blob"),
-    Field::map("vars", MapOf::Values),
-    Field::value("leaseUntil").default_fn(D::DateMs(0)),
-    Field::value("seenAt").default_fn(D::Now),
-    Field::value("flag").default(D::Null),
-    Field::value("rank").default(D::Int(5)),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::date("leaseUntil").default_fn(D::DateMs(0)),
+    Field::date("seenAt").default_fn(D::Now),
+    Field::boolean("flag").default(D::Null),
+    Field::number("rank").default(D::Int(5)),
 ])
 .timestamps(Timestamps::CAMEL);
 
 static ACCOUNT: Schema = Schema::subdocument(&[
-    Field::value("type").default(D::Str("twitch")),
-    Field::value("id").default(D::Null),
+    Field::string("type").default(D::Str("twitch")),
+    Field::string("id").default(D::Null),
     Field::nested(
         "token",
         &[
-            Field::value("iv").default(D::Null),
-            Field::value("content").default(D::Null),
+            Field::string("iv").default(D::Null),
+            Field::string("content").default(D::Null),
         ],
     ),
-    Field::value("active").default(D::Bool(true)),
+    Field::boolean("active").default(D::Bool(true)),
 ]);
-static HISTORY: Schema = Schema::subdocument(&[Field::value("at"), Field::value("v")]).no_id();
+static HISTORY: Schema = Schema::subdocument(&[Field::date("at"), Field::number("v")]).no_id();
 static SNAKE: Schema = Schema::new(&[
-    Field::value("channelID"),
-    Field::value("status").default(D::Str("active")),
-    Field::value("total").default(D::Int(0)),
-    Field::value("ended_at").default(D::Null),
+    Field::string("channelID"),
+    Field::string("status").default(D::Str("active")),
+    Field::number("total").default(D::Int(0)),
+    Field::date("ended_at").default(D::Null),
     Field::nested(
         "settings",
         &[
-            Field::value("enabled").default(D::Bool(true)),
-            Field::value("mode").default(D::Str("auto")),
+            Field::boolean("enabled").default(D::Bool(true)),
+            Field::string("mode").default(D::Str("auto")),
         ],
     ),
     Field::document_array("history", &HISTORY),
     Field::document_array("accounts", &ACCOUNT),
     Field::mixed_array("responses").default(D::EmptyArray),
-    Field::map("variables", MapOf::Values).default(D::EmptyDocument),
+    Field::map("variables", MapOf::Values(ValueType::String)).default(D::EmptyDocument),
 ])
 .timestamps(Timestamps::SNAKE);
 
 static PLAIN: Schema = Schema::new(&[
-    Field::value("_id"),
-    Field::value("channelID").immutable(),
-    Field::value("dueAt").default(D::Int(0)),
+    Field::string("_id"),
+    Field::string("channelID").immutable(),
+    Field::number("dueAt").default(D::Int(0)),
     Field::mixed("payload"),
     Field::nested(
         "state",
-        &[Field::value("seq").default(D::Int(0)), Field::array("ids")],
+        &[
+            Field::number("seq").default(D::Int(0)),
+            Field::array("ids", ValueType::String),
+        ],
     ),
-    Field::value("expiresAt"),
-    Field::value("label").trim().default(D::Str("")),
+    Field::date("expiresAt"),
+    Field::string("label").trim().default(D::Str("")),
 ])
 .declared_id()
 .no_version_key();
 
 static NOMIN: Schema = Schema::new(&[
-    Field::value("_id"),
+    Field::string("_id"),
     Field::mixed("config").default_fn(D::EmptyDocument),
     Field::mixed("extra").default(D::EmptyDocument),
     Field::nested(
         "meta",
-        &[Field::value("a"), Field::nested("b", &[Field::value("c")])],
+        &[
+            Field::string("a"),
+            Field::nested("b", &[Field::string("c")]),
+        ],
     ),
-    Field::array("list"),
+    Field::array("list", ValueType::String),
 ])
 .declared_id()
 .no_version_key()
@@ -153,61 +159,63 @@ static NOMIN: Schema = Schema::new(&[
 .timestamps(Timestamps::CAMEL);
 
 static TYPED_ONE: Schema = Schema::subdocument(&[
-    Field::value("when"),
-    Field::value("k").default(D::Int(1)),
-    Field::value("code").immutable(),
+    Field::date("when"),
+    Field::number("k").default(D::Int(1)),
+    Field::string("code").immutable(),
 ])
 .no_id();
 static TYPED_ENTRY: Schema = Schema::subdocument(&[
-    Field::value("who"),
-    Field::value("at"),
-    Field::value("n"),
-    Field::value("code").immutable(),
+    Field::object_id("who"),
+    Field::date("at"),
+    Field::number("n"),
+    Field::string("code").immutable(),
 ]);
 static TYPED: Schema = Schema::new(&[
-    Field::value("owner"),
-    Field::value("label").trim(),
-    Field::value("n"),
-    Field::value("at"),
-    Field::value("on"),
-    Field::value("key").immutable(),
+    Field::object_id("owner"),
+    Field::string("label").trim(),
+    Field::number("n"),
+    Field::date("at"),
+    Field::boolean("on"),
+    Field::string("key").immutable(),
     Field::nested(
         "info",
-        &[Field::value("since"), Field::value("tag").immutable()],
+        &[Field::date("since"), Field::string("tag").immutable()],
     ),
     Field::subdocument("one", &TYPED_ONE),
     Field::document_array("entries", &TYPED_ENTRY),
     Field::map("steps", MapOf::Subdocuments(&TYPED_STEP)).default(D::EmptyDocument),
     Field::map("marks", MapOf::Subdocuments(&TYPED_MARK)),
-    Field::map("vars", MapOf::Values),
-    Field::map("counts", MapOf::Values),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::map("counts", MapOf::Values(ValueType::Number)),
+    Field::array("refs", ValueType::ObjectId),
+    Field::array("nums", ValueType::Number),
+    Field::mixed("free"),
 ])
 .timestamps(Timestamps::CAMEL);
 static TYPED_STEP: Schema = Schema::subdocument(&[
-    Field::value("status"),
-    Field::value("reason"),
-    Field::value("at"),
+    Field::string("status"),
+    Field::string("reason"),
+    Field::date("at"),
 ])
 .no_id();
 static TYPED_MARK: Schema =
-    Schema::subdocument(&[Field::value("v"), Field::value("d").default(D::Int(0))]);
+    Schema::subdocument(&[Field::number("v"), Field::number("d").default(D::Int(0))]);
 
 static HAND: Schema = Schema::new(&[
-    Field::value("name"),
-    Field::value("enabled").default(D::Bool(true)),
-    Field::value("createdAt").default_fn(D::Now),
-    Field::value("updatedAt").default_fn(D::Now),
+    Field::string("name"),
+    Field::boolean("enabled").default(D::Bool(true)),
+    Field::date("createdAt").default_fn(D::Now),
+    Field::date("updatedAt").default_fn(D::Now),
 ]);
 
-fn schema_for(name: &str) -> Result<(&'static Schema, bool)> {
-    // (schema, `_id` is an ObjectId)
+fn schema_for(name: &str) -> Result<&'static Schema> {
     Ok(match name {
-        "camel" => (&CAMEL, true),
-        "snake" => (&SNAKE, true),
-        "plain" => (&PLAIN, false),
-        "nomin" => (&NOMIN, false),
-        "hand" => (&HAND, true),
-        "typed" => (&TYPED, true),
+        "camel" => &CAMEL,
+        "snake" => &SNAKE,
+        "plain" => &PLAIN,
+        "nomin" => &NOMIN,
+        "hand" => &HAND,
+        "typed" => &TYPED,
         other => bail!("unknown schema {other}"),
     })
 }
@@ -448,32 +456,29 @@ impl Upsert {
     }
 }
 
-/// Every upsert of the case (one statement, or each upserting `bulkWrite` operation).
-fn upserts_of(intent: &Document) -> Vec<Upsert> {
-    let mut filters: Vec<&Document> = Vec::new();
-    let upsert = intent
-        .get_document("options")
-        .ok()
-        .and_then(|o| o.get_bool("upsert").ok())
-        .unwrap_or(false);
-    if upsert {
-        filters.extend(intent.get_document("filter").ok());
-    }
-    for op in intent
-        .get_array("ops")
-        .map(|ops| ops.as_slice())
-        .unwrap_or(&[])
-    {
-        if let Some(body) = op
-            .as_document()
-            .and_then(|o| o.values().next())
-            .and_then(Bson::as_document)
-            && body.get_bool("upsert").unwrap_or(false)
+/// Every upsert Mongoose sent in the case (`update` statements and `findAndModify` commands
+/// with `upsert: true`), with the filter as sent: those are the fields the server copied.
+fn upserts_of(commands: &Bson) -> Vec<Upsert> {
+    let mut out = Vec::new();
+    for command in commands.as_array().map(Vec::as_slice).unwrap_or(&[]) {
+        let Some(command) = command.as_document() else {
+            continue;
+        };
+        if let Ok(statements) = command.get_array("updates") {
+            for statement in statements.iter().filter_map(Bson::as_document) {
+                if statement.get_bool("upsert").unwrap_or(false)
+                    && let Ok(filter) = statement.get_document("q")
+                {
+                    out.push(Upsert::new(filter));
+                }
+            }
+        } else if command.get_bool("upsert").unwrap_or(false)
+            && let Ok(filter) = command.get_document("query")
         {
-            filters.extend(body.get_document("filter").ok());
+            out.push(Upsert::new(filter));
         }
     }
-    filters.into_iter().map(Upsert::new).collect()
+    out
 }
 
 fn sort_by_id(stored: Bson) -> Bson {
@@ -531,40 +536,15 @@ fn expected_failure(case: &Value) -> Option<Failure> {
 fn prepare_failure(error: &anyhow::Error) -> Option<Failure> {
     match error.downcast_ref::<PrepareError>()? {
         PrepareError::InvalidMapKey { .. } => Some(Failure::Mongoose("InvalidMapKey".into())),
+        PrepareError::Cast { .. } => Some(Failure::Mongoose("CastError".into())),
+        PrepareError::StrictFilter { .. } => Some(Failure::Mongoose("StrictModeError".into())),
+        PrepareError::QueryOperator { .. } => Some(Failure::Mongoose("Error".into())),
         _ => None,
     }
 }
 
 fn now_ms() -> i64 {
     DateTime::now().timestamp_millis()
-}
-
-fn cast_filter(filter: &Document, object_ids: bool) -> Result<Document> {
-    let mut out = filter.clone();
-    if !object_ids {
-        return Ok(out);
-    }
-    match out.get("_id").cloned() {
-        Some(Bson::String(text)) => {
-            out.insert("_id", parse_object_id(&text)?);
-        }
-        Some(Bson::Document(cond)) => {
-            if let Some(Bson::Array(items)) = cond.get("$in") {
-                let ids = items
-                    .iter()
-                    .map(|item| match item {
-                        Bson::String(text) => parse_object_id(text)
-                            .map(Bson::ObjectId)
-                            .map_err(anyhow::Error::from),
-                        other => Ok(other.clone()),
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                out.insert("_id", doc! { "$in": ids });
-            }
-        }
-        _ => {}
-    }
-    Ok(out)
 }
 
 fn update_of(value: &Bson) -> Result<Update> {
@@ -680,7 +660,7 @@ fn error_code(error: &mongodb::error::Error) -> Option<i32> {
 }
 
 async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Result<Outcome> {
-    let (schema, object_ids) = schema_for(case["schema"].as_str().context("schema")?)?;
+    let schema = schema_for(case["schema"].as_str().context("schema")?)?;
     let collection = case["collection"].as_str().context("collection")?;
     let coll: Collection<Document> = db.collection(collection);
     let intent = match retype(&to_bson(&case["intent"])?, numbers) {
@@ -721,7 +701,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
             }
         }
         "updateOne" | "updateMany" => {
-            let filter = cast_filter(intent.get_document("filter")?, object_ids)?;
+            let filter = intent.get_document("filter")?.clone();
             let update = update_of(intent.get("update").context("update")?)?;
             let opts = update_options(options);
             let upsert = opts.upsert;
@@ -741,10 +721,11 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
             }
         }
         "findOneAndUpdate" | "findByIdAndUpdate" => {
+            // `findByIdAndUpdate(id)` is `findOneAndUpdate({_id: id})`: the helper casts it.
             let filter = if op == "findByIdAndUpdate" {
-                doc! { "_id": parse_object_id(intent.get_str("id")?)? }
+                doc! { "_id": intent.get("id").context("id")?.clone() }
             } else {
-                cast_filter(intent.get_document("filter")?, object_ids)?
+                intent.get_document("filter")?.clone()
             };
             let update = update_of(intent.get("update").context("update")?)?;
             let opts = update_options(options);
@@ -810,7 +791,7 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                 if !inserts.is_empty() {
                     commands.push(insert_command(collection, std::mem::take(&mut inserts)));
                 }
-                let filter = cast_filter(body.get_document("filter")?, object_ids)?;
+                let filter = body.get_document("filter")?.clone();
                 let upsert = body.get_bool("upsert").unwrap_or(false);
                 let bulk = if kind == "updateMany" {
                     BulkUpdate::UpdateMany
@@ -1025,7 +1006,7 @@ async fn check_case(
         stored.into_iter().map(Bson::Document).collect(),
     ))?);
 
-    let upserts = upserts_of(&to_doc(&case["intent"])?);
+    let upserts = upserts_of(&to_bson(&case["commands"])?);
     let result = canonical_upsert_fields(result, &upserts);
     let stored = canonical_upsert_fields(stored, &upserts);
     let mut problems = Vec::new();
@@ -1128,6 +1109,87 @@ async fn mongoose_write_cases_match() -> Result<()> {
         "{} Mongoose cases compared, {compared} replays (numbers as recorded, as int64, as \
          doubles): commands, results and stored documents identical",
         cases.len()
+    );
+    Ok(())
+}
+
+/// Every recorded filter (`golden.json`, `filters`) through `prepare_filter`, in the three
+/// number modes: the cast filter must equal what Mongoose sent (key order and BSON types
+/// included; ObjectIds generated for a sub-document compared by position), or fail as Mongoose
+/// failed. No database needed.
+#[test]
+fn mongoose_filter_casts_match() -> Result<()> {
+    let golden = golden()?;
+    let rows = golden["filters"].as_array().context("filters")?;
+    let mut problems = Vec::new();
+    for numbers in NUMBER_MODES {
+        for row in rows {
+            let name = format!("{} ({numbers:?})", row["name"].as_str().context("name")?);
+            let schema = schema_for(row["schema"].as_str().context("schema")?)?;
+            let filter = match retype(&to_bson(&row["filter"])?, numbers) {
+                Bson::Document(filter) => filter,
+                other => bail!("{name}: filter {other:?}"),
+            };
+            let mut ctx = WriteContext::with_sequential_ids(0, 1);
+            let outcome = prepare_filter(schema, &filter, &mut ctx);
+            let expected = if row.get("error").is_some() {
+                Err(expected_failure(row))
+            } else {
+                Ok(to_bson(&row["cast"])?)
+            };
+            let mut inputs = HashSet::new();
+            collect_ids(&Bson::Document(filter.clone()), &mut inputs);
+            let normalise = |value: &Bson| -> Result<Bson> {
+                Normaliser {
+                    inputs: inputs.clone(),
+                    generated: HashMap::new(),
+                    window: (i64::MAX, i64::MAX),
+                    now: 0,
+                }
+                .walk(value)
+            };
+            match (outcome, expected) {
+                (Ok(cast), Ok(expected)) => {
+                    let (cast, expected) =
+                        (normalise(&Bson::Document(cast))?, normalise(&expected)?);
+                    if !same(&cast, &expected) {
+                        problems.push(format!(
+                            "{name}\n  rust:     {}\n  mongoose: {}",
+                            show(&cast),
+                            show(&expected)
+                        ));
+                    }
+                }
+                (Err(error), Err(expected)) => {
+                    let found = prepare_failure(&anyhow::Error::new(error.clone()));
+                    if found != expected {
+                        problems.push(format!(
+                            "{name}: failed with {error} ({found:?}), mongoose {expected:?}"
+                        ));
+                    }
+                }
+                (Ok(cast), Err(expected)) => problems.push(format!(
+                    "{name}: cast to {}, mongoose failed with {expected:?}",
+                    show(&Bson::Document(cast))
+                )),
+                (Err(error), Ok(expected)) => problems.push(format!(
+                    "{name}: failed with {error}, mongoose sent {}",
+                    show(&expected)
+                )),
+            }
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "{} of {} filter casts differ:\n{}",
+        problems.len(),
+        rows.len() * NUMBER_MODES.len(),
+        problems.join("\n")
+    );
+    eprintln!(
+        "{} Mongoose filters compared in {} number modes: identical",
+        rows.len(),
+        NUMBER_MODES.len()
     );
     Ok(())
 }

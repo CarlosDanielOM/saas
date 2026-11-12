@@ -27,13 +27,18 @@
 //!   writer types a JavaScript number ([`crate::mongo::number::js_number`]), whatever BSON type
 //!   the caller used: an int64 `5` or a double `5.0` goes out as int32 `5`.
 //!
+//! The filter and the `arrayFilters` are cast to the schema types first, as Mongoose casts them
+//! ([`crate::mongo::filter`]): the prepared write carries them as they are sent, and a value
+//! that cannot be cast fails the whole write before anything is sent, as in the reference.
+//!
 //! Not covered: `overwrite`/`replaceOne` (no Mongoose call site), `timestamps: false` per query
-//! (none in the reference), dotted timestamp names, and casting of filter values (callers build
-//! filters with the right BSON types; see [`crate::mongo::id`]).
+//! (none in the reference), dotted timestamp names, and casting of the update's own values to
+//! the schema types (a Rust caller passes the right types; numbers are retyped as above).
 
 use crate::mongo::cast::{
     Caster, PrepareError, WriteContext, check_document_depth, get_path, truthy,
 };
+use crate::mongo::filter::{FilterStyle, cast_array_filters, cast_write_filter};
 use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Leaf, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
@@ -187,8 +192,20 @@ pub fn prepare_update(
 ) -> Result<PreparedUpdate, PrepareError> {
     let update = update.into();
     check_inputs(filter, &update, &options)?;
-    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Query,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
     let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
@@ -212,7 +229,7 @@ pub fn prepare_update(
         filter: filter.clone(),
         update: prepared.map(UpdateDoc::node_numbers),
         upsert: options.upsert,
-        array_filters: node_array_filters(options.array_filters),
+        array_filters,
         dropped_paths: caster.dropped,
     })
 }
@@ -276,8 +293,20 @@ pub fn prepare_find_one_and_update(
 ) -> Result<PreparedFindAndModify, PrepareError> {
     let update = update.into();
     check_inputs(filter, &update, &options)?;
-    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Query,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
     let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
@@ -307,7 +336,7 @@ pub fn prepare_find_one_and_update(
     Ok(PreparedFindAndModify {
         filter: filter.clone(),
         update: prepared.map(UpdateDoc::node_numbers),
-        array_filters: node_array_filters(options.array_filters),
+        array_filters,
         returned,
         upsert: options.upsert,
         dropped_paths: caster.dropped,
@@ -336,8 +365,20 @@ pub fn prepare_bulk_update(
 ) -> Result<PreparedUpdate, PrepareError> {
     let update = update.into();
     check_inputs(filter, &update, &options)?;
-    let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
+    let filter = &cast_write_filter(
+        schema,
+        filter,
+        FilterStyle::Bulk,
+        options.upsert,
+        &mut caster,
+    )?;
+    let array_filters = match (&update, options.array_filters) {
+        (Update::Document(raw), Some(filters)) => {
+            Some(cast_array_filters(schema, raw, filters, &mut caster)?)
+        }
+        (_, filters) => node_array_filters(filters),
+    };
     let prepared = match update {
         Update::Pipeline(stages) => {
             UpdateDoc::Pipeline(timestamps_on_pipeline(schema, stages, caster.ctx.now()))
@@ -374,7 +415,7 @@ pub fn prepare_bulk_update(
         filter: filter.clone(),
         update: Some(prepared.node_numbers()),
         upsert: options.upsert,
-        array_filters: node_array_filters(options.array_filters),
+        array_filters,
         dropped_paths: caster.dropped,
     })
 }
@@ -617,7 +658,7 @@ fn walk_update_path(
             let caster_type = target.filter(|t| {
                 matches!(
                     t.kind,
-                    TargetKind::Array
+                    TargetKind::Array(_)
                         | TargetKind::MixedArray
                         | TargetKind::DocumentArray(_)
                         | TargetKind::Subdocument(_)
@@ -697,7 +738,7 @@ fn walk_update_path(
             && key != "$each"
             && matches!(
                 target.kind,
-                TargetKind::Array | TargetKind::DocumentArray(_)
+                TargetKind::Array(_) | TargetKind::DocumentArray(_)
             );
         if wrap {
             let mut each = Document::new();
@@ -785,7 +826,7 @@ fn cast_update_value(
         },
         "$set" | "$setOnInsert" => caster.cast_value(target, value, path)?,
         _ => match (target.kind, value) {
-            (TargetKind::Value, Bson::String(text)) if target.trim => {
+            (TargetKind::Value(_), Bson::String(text)) if target.trim => {
                 Bson::String(dima_text::trim(&text).to_owned())
             }
             (_, other) => other,
@@ -875,18 +916,18 @@ fn path_exists_in_update(update: &Document, path: &str, pieces: &[&str]) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps};
+    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps, ValueType};
     use bson::doc;
 
     static SUB: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(D::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(D::Int(1)),
     ]);
     static S: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("key").immutable(),
-        Field::value("count").default(D::Int(0)),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::string("key").immutable(),
+        Field::number("count").default(D::Int(0)),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &SUB),
     ])
     .timestamps(Timestamps::CAMEL);
@@ -936,7 +977,7 @@ mod tests {
 
     #[test]
     fn empty_update_without_timestamps_is_not_sent() -> Result<(), PrepareError> {
-        static PLAIN: Schema = Schema::new(&[Field::value("a")]).no_version_key();
+        static PLAIN: Schema = Schema::new(&[Field::string("a")]).no_version_key();
         let mut ctx = WriteContext::new(NOW);
         let empty = prepare_update(
             &PLAIN,

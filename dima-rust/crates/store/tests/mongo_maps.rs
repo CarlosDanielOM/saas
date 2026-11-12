@@ -5,23 +5,23 @@
 use bson::{Bson, DateTime, doc, oid::ObjectId};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, ValueType};
 use dima_store::mongo::update::{UpdateDoc, UpdateOptions, prepare_update};
 use dima_store::mongo::{PrepareError, WriteContext};
 
 /// The shape of `stream_operations_receipts` (`dimabot/src/schemas/stream_operations_receipt.schema.ts`).
 static STEP: Schema = Schema::subdocument(&[
-    Field::value("status"),
-    Field::value("reason"),
-    Field::value("at"),
+    Field::string("status"),
+    Field::string("reason"),
+    Field::date("at"),
 ])
 .no_id();
 static RECEIPTS: Schema = Schema::new(&[
-    Field::value("_id"),
-    Field::value("channelID").immutable(),
-    Field::value("expiresAt").immutable(),
+    Field::string("_id"),
+    Field::string("channelID").immutable(),
+    Field::date("expiresAt").immutable(),
     Field::map("steps", MapOf::Subdocuments(&STEP)).default(D::EmptyDocument),
-    Field::map("variables", MapOf::Values),
+    Field::map("variables", MapOf::Values(ValueType::String)),
 ])
 .declared_id()
 .no_version_key();

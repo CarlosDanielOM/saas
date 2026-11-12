@@ -269,7 +269,9 @@ pub fn prepare_save(
                 let target = resolve(schema, path).filter(|t| {
                     matches!(
                         t.kind,
-                        TargetKind::Array | TargetKind::MixedArray | TargetKind::DocumentArray(_)
+                        TargetKind::Array(_)
+                            | TargetKind::MixedArray
+                            | TargetKind::DocumentArray(_)
                     )
                 });
                 let Some(target) = target else {
@@ -461,7 +463,7 @@ fn commit(
     tracker.modify(path);
     if matches!(
         target.kind,
-        TargetKind::Array | TargetKind::MixedArray | TargetKind::DocumentArray(_)
+        TargetKind::Array(_) | TargetKind::MixedArray | TargetKind::DocumentArray(_)
     ) {
         tracker.replace_array(path);
     }
@@ -766,17 +768,17 @@ fn minimize_fields(fields: Option<&'static [Field]>, doc: &mut Document) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mongo::schema::{DefaultValue as D, Timestamps};
+    use crate::mongo::schema::{DefaultValue as D, Timestamps, ValueType};
     use bson::{DateTime, doc, oid::ObjectId};
 
     static SUB: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(D::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(D::Int(1)),
     ]);
     static S: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("count").default(D::Int(0)),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::number("count").default(D::Int(0)),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &SUB),
         Field::mixed("meta").default_fn(D::EmptyDocument),
     ])

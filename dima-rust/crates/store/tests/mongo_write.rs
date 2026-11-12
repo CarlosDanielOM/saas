@@ -8,7 +8,7 @@ use anyhow::{Context, Result, bail};
 use bson::{Bson, Document, doc, oid::ObjectId};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     Returned, UpdateOptions, prepare_find_one_and_update, prepare_update,
 };
@@ -21,9 +21,9 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 static ITEMS: Schema = Schema::new(&[
-    Field::value("name"),
-    Field::value("count").default(D::Int(0)),
-    Field::array("tags"),
+    Field::string("name"),
+    Field::number("count").default(D::Int(0)),
+    Field::array("tags", ValueType::String),
 ])
 .timestamps(Timestamps::CAMEL);
 
@@ -222,7 +222,7 @@ async fn outcomes_of_updates_upserts_finds_and_saves() -> Result<()> {
         assert!(outcome.sent && outcome.matched == 0 && outcome.upserted_id.is_some());
 
         // Without timestamps an empty update is not sent; Mongoose reports zero counts.
-        static PLAIN: Schema = Schema::new(&[Field::value("name")]).no_version_key();
+        static PLAIN: Schema = Schema::new(&[Field::string("name")]).no_version_key();
         let empty = prepare_update(
             &PLAIN,
             &doc! {},

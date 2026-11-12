@@ -11,6 +11,9 @@
 //! - [`number`], [`date`], [`id`]: BSON numbers, dates and ids as the Node driver writes and
 //!   Mongoose reads them; ObjectId casting.
 //! - [`schema`]: the per-collection description the write helpers work from.
+//! - [`filter`]: filters cast to the schema types as Mongoose casts them (string ids to
+//!   ObjectIds, date text to dates…), for reads ([`filter::prepare_filter`]) and inside every
+//!   write helper.
 //! - [`update`], [`insert`], [`save`]: the update or document Mongoose would really send for
 //!   the caller's intent (timestamps, `__v`, defaults on insert and upsert, `minimize`, `trim`,
 //!   immutable paths, sub-document ids, the save delta). They take the time and id source as a
@@ -27,6 +30,7 @@ mod cast;
 pub mod connection;
 pub mod date;
 pub mod error;
+pub mod filter;
 pub mod id;
 pub mod insert;
 pub mod json;

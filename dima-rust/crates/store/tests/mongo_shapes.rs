@@ -7,7 +7,7 @@ use bson::{Bson, DateTime, Document, doc};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::number::JsNumber;
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps};
+use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, Timestamps, ValueType};
 use dima_store::mongo::update::{
     Returned, UpdateDoc, UpdateOptions, prepare_find_one_and_update, prepare_update,
 };
@@ -19,15 +19,15 @@ const RTL: &str = "مرحبا שלום";
 const NOW: i64 = 1_794_391_200_123;
 
 static ITEM: Schema = Schema::subdocument(&[
-    Field::value("label").trim(),
-    Field::value("n").default(D::Int(1)),
+    Field::string("label").trim(),
+    Field::number("n").default(D::Int(1)),
 ]);
 static S: Schema = Schema::new(&[
-    Field::value("name").trim(),
-    Field::value("count").default(D::Int(0)),
+    Field::string("name").trim(),
+    Field::number("count").default(D::Int(0)),
     Field::mixed("meta"),
-    Field::map("vars", MapOf::Values),
-    Field::array("tags").trim(),
+    Field::map("vars", MapOf::Values(ValueType::String)),
+    Field::array("tags", ValueType::String).trim(),
     Field::document_array("items", &ITEM),
 ])
 .timestamps(Timestamps::CAMEL);
@@ -232,7 +232,7 @@ fn save_with_unicode_values_and_pushes() -> Result<(), PrepareError> {
 
 #[test]
 fn find_one_and_update_defaults() -> Result<(), PrepareError> {
-    static PLAIN: Schema = Schema::new(&[Field::value("_id"), Field::value("n")])
+    static PLAIN: Schema = Schema::new(&[Field::string("_id"), Field::number("n")])
         .declared_id()
         .no_version_key();
     let mut ctx = WriteContext::new(NOW);

@@ -3,16 +3,19 @@
 use bson::{Bson, Document, doc, oid::ObjectId};
 use dima_store::mongo::insert::{InsertStyle, prepare_insert};
 use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::schema::{DefaultValue as D, Field, Schema};
+use dima_store::mongo::schema::{DefaultValue as D, Field, Schema, ValueType};
 use dima_store::mongo::update::{UpdateOptions, prepare_update};
 use dima_store::mongo::{MAX_DEPTH, PrepareError, WriteContext};
 use std::time::{Duration, Instant};
 
-static S: Schema = Schema::new(&[Field::mixed("meta"), Field::array("tags")]);
+static S: Schema = Schema::new(&[
+    Field::mixed("meta"),
+    Field::array("tags", ValueType::String),
+]);
 
 /// A schema whose sub-document defaults to itself: building a new document never ends.
 static NODE: Schema = Schema::subdocument(&[
-    Field::value("v"),
+    Field::number("v"),
     Field::subdocument("child", &NODE).default_fn(D::EmptyDocument),
 ]);
 static TREE: Schema =
@@ -111,9 +114,9 @@ fn a_schema_that_defaults_to_itself_stops_at_the_limit() {
 #[test]
 fn many_pushes_and_changes_stay_linear() -> Result<(), PrepareError> {
     static ARRAYS: Schema = Schema::new(&[
-        Field::array("tags"),
+        Field::array("tags", ValueType::String),
         Field::mixed("meta"),
-        Field::value("n"),
+        Field::number("n"),
     ]);
     let loaded: Document = doc! {
         "_id": ObjectId::from_bytes([1; 12]),

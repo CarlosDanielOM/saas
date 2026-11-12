@@ -107,27 +107,27 @@ pub fn prepare_insert(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps};
+    use crate::mongo::schema::{DefaultValue as D, Field, Timestamps, ValueType};
     use bson::{DateTime, doc};
 
     static SUB: Schema = Schema::subdocument(&[
-        Field::value("label").trim(),
-        Field::value("n").default(D::Int(1)),
+        Field::string("label").trim(),
+        Field::number("n").default(D::Int(1)),
     ]);
     static S: Schema = Schema::new(&[
-        Field::value("name").trim(),
-        Field::value("count").default(D::Int(0)),
-        Field::array("tags"),
+        Field::string("name").trim(),
+        Field::number("count").default(D::Int(0)),
+        Field::array("tags", ValueType::String),
         Field::document_array("items", &SUB),
         Field::nested(
             "nested",
             &[
-                Field::value("a").default(D::Str("x")),
-                Field::nested("deep", &[Field::value("c").default(D::Bool(false))]),
+                Field::string("a").default(D::Str("x")),
+                Field::nested("deep", &[Field::boolean("c").default(D::Bool(false))]),
             ],
         ),
         Field::mixed("meta").default_fn(D::EmptyDocument),
-        Field::value("seenAt").default_fn(D::Now),
+        Field::date("seenAt").default_fn(D::Now),
     ])
     .timestamps(Timestamps::CAMEL);
 

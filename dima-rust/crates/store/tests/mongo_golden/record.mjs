@@ -167,6 +167,9 @@ const schemas = {
         marks: { type: Map, of: new Schema({ v: Number, d: { type: Number, default: 0 } }) },
         vars: { type: Map, of: String },
         counts: { type: Map, of: Number },
+        refs: [Schema.Types.ObjectId],
+        nums: [Number],
+        free: Schema.Types.Mixed,
     }, { timestamps: true }),
 
     // no timestamps option, hand-written createdAt/updatedAt with Date.now defaults (admins, events).
@@ -476,6 +479,24 @@ const cases = [
     { name: 'save_map_key_dollar', schema: 'typed', seed: [typedMapSeed()], op: 'save', id: oid3, changes: [{ set: 'vars.$x', value: 'x' }] },
     { name: 'save_map_on_doc_without_maps', schema: 'typed', seed: [typedSeed()], op: 'save', id: oid1, changes: [{ set: 'vars.a', value: 'x' }] },
 
+    // ---- filters cast to the schema types inside write operations
+    { name: 'update_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1.toHexString(), owner: OID(0x50).toHexString(), n: '1', at: T1.toISOString(), on: 'true', label: ' l ' }, update: { $inc: { n: 1 } } },
+    { name: 'upsert_filter_cast_copied', schema: 'typed', op: 'updateOne', filter: { owner: OID(0x52).toHexString(), n: '5', at: T2.toISOString(), on: 'yes', label: '  pad ', 'info.since': T1.toISOString() }, update: { $set: { key: 'k' } }, options: { upsert: true } },
+    { name: 'upsert_unknown_filter_path', schema: 'typed', op: 'updateOne', filter: { zz: 1 }, update: { $set: { n: 1 } }, options: { upsert: true } },
+    { name: 'upsert_unknown_filter_path_in_or', schema: 'typed', op: 'updateOne', filter: { $or: [{ n: 1 }, { 'info.zz': 1 }] }, update: { $set: { n: 1 } }, options: { upsert: true } },
+    { name: 'update_unknown_filter_path_without_upsert', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { zz: 1, _id: oid1.toHexString() }, update: { $set: { n: 3 } } },
+    { name: 'update_filter_cast_error', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: 'not-an-id' }, update: { $set: { n: 3 } } },
+    { name: 'update_many_filter_in_cast', schema: 'typed', seed: [typedSeed(), typedSparseSeed()], op: 'updateMany', filter: { _id: { $in: [oid1.toHexString(), oid2] }, at: { $not: { $gt: T2.toISOString() } } }, update: { $set: { on: false } } },
+    { name: 'update_array_filters_cast', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'entries.$[e].n': 2, 'entries.$[f].at': T2 } }, options: { arrayFilters: [{ 'e.who': OID(0x51).toHexString() }, { 'f.at': { $lt: T2.toISOString() }, 'f.n': '1' }] } },
+    { name: 'update_array_filters_unknown', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'entries.$[e].n': 4 } }, options: { arrayFilters: [{ 'e.zz': '1' }, { 'g.n': '1' }] } },
+    { name: 'update_array_filters_values', schema: 'typed', seed: [typedSeed()], op: 'updateOne', filter: { _id: oid1 }, update: { $set: { 'nums.$[x]': 9 } }, options: { arrayFilters: [{ x: { $gte: '2' } }] } },
+    { name: 'find_one_and_update_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'findOneAndUpdate', filter: { _id: oid1.toHexString(), 'entries.who': OID(0x51).toHexString() }, update: { $set: { 'entries.$.n': 8 } }, options: { new: true } },
+    { name: 'find_by_id_and_update_invalid', schema: 'typed', seed: [typedSeed()], op: 'findByIdAndUpdate', id: 'zzzzzzzzzzzzzzzzzzzzzzzz', update: { $set: { n: 9 } } },
+    { name: 'bulk_write_filter_cast', schema: 'typed', seed: [typedSeed()], op: 'bulkWrite', ops: [
+        { updateOne: { filter: { _id: oid1.toHexString() }, update: { $set: { n: 5 } } } },
+        { updateMany: { filter: { owner: OID(0x53).toHexString(), n: '7' }, update: { $set: { label: 'b' } }, upsert: true } },
+    ] },
+
     // ---- save with compare-and-set predicates (`doc.$where`) and a document that went away
     { name: 'save_where_match', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T1, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
     { name: 'save_where_stale', schema: 'camel', seed: [camelSeed()], op: 'save', id: oid1, where: { updatedAt: T2, __v: 3 }, changes: [{ set: 'score', value: 2 }] },
@@ -495,6 +516,8 @@ const cases = [
 const WRITE_COMMANDS = new Set(['insert', 'update', 'findAndModify', 'delete']);
 const ENVELOPE = new Set(['lsid', '$db', '$clusterTime', 'txnNumber', '$readPreference', 'writeConcern', 'startTransaction', 'autocommit', 'apiVersion', 'readConcern']);
 let capturing = null;
+// `find` commands of the filter cases (kept apart: the write cases record write commands only).
+let findCapture = null;
 
 const exact = (value) => BSON.deserialize(BSON.serialize({ v: value }), { promoteValues: false, promoteLongs: false, promoteBuffers: false }).v;
 
@@ -611,6 +634,158 @@ async function runCase(spec) {
         stored: ejson(normalised.stored),
         ...(error ? { error } : {}),
     };
+}
+
+// ---------------------------------------------------------------- filter casting
+//
+// What `Model.find(filter)` sends after Mongoose casts the filter to the schema types (the `find`
+// command's `filter`), or the error it raises instead. All on the `typed` schema.
+
+const HEX = oid1.toHexString();
+const HEX2 = oid2.toHexString();
+const ISO = '2026-11-11T10:00:00.123Z';
+const F = (name, filter) => ({ name, schema: 'typed', filter });
+const filterCases = [
+    // ObjectId
+    F('id_string', { _id: HEX }),
+    F('id_upper_case', { owner: '0123456789ABCDEF01234567' }),
+    F('id_object_id', { _id: oid1 }),
+    F('id_invalid', { _id: 'nope' }),
+    F('id_twelve_chars', { _id: 'aaaaaaaaaaaa' }),
+    F('id_number', { _id: 5 }),
+    F('id_boolean', { owner: true }),
+    F('id_in', { _id: { $in: [HEX, oid2] } }),
+    F('id_in_invalid', { _id: { $in: [HEX, 'bad'] } }),
+    F('id_in_not_array', { _id: { $in: HEX } }),
+    F('id_nin_ne', { owner: { $nin: [HEX] }, _id: { $ne: HEX2 } }),
+    F('id_array_equality', { _id: [HEX, HEX2] }),
+    F('id_document_with_id', { owner: { _id: HEX } }),
+    F('id_null', { owner: null }),
+    F('id_comparisons', { _id: { $gt: HEX, $lte: HEX2 } }),
+    F('id_exists', { owner: { $exists: 'true' }, _id: { $exists: 1 } }),
+    F('id_exists_invalid', { owner: { $exists: 'maybe' } }),
+    F('id_eq', { owner: { $eq: HEX } }),
+    F('id_all', { owner: { $all: [HEX] } }),
+    F('id_unknown_operator', { owner: { $regex: 'a' } }),
+    // String
+    F('string_trim', { label: '  x ' }),
+    F('string_from_number', { label: 5, key: 1.5, 'info.tag': -0 }),
+    F('string_from_boolean', { label: true }),
+    F('string_from_object_id', { label: oid1 }),
+    F('string_from_object', { label: { a: 1 } }),
+    F('string_document_with_id', { label: { _id: 'x' } }),
+    F('string_in_trim', { label: { $in: [' a ', 7, null] } }),
+    F('string_regex', { label: { $regex: '^ a', $options: 'i' } }),
+    F('string_regex_literal', { label: /^x\s/i }),
+    F('string_comparisons', { label: { $gt: 5, $lte: ' z ' } }),
+    F('string_not_regex', { label: { $not: /x/ } }),
+    F('string_not_operators', { label: { $not: { $in: [' a ', 1] } } }),
+    F('string_unknown_operator', { label: { $foo: 1 } }),
+    F('string_text', { label: TEXT }),
+    // Number
+    F('number_from_strings', { n: '5', 'one.k': ' 7 ', 'entries.n': '0x10' }),
+    F('number_empty_string', { n: '' }),
+    F('number_invalid', { n: 'abc' }),
+    F('number_boolean', { n: true }),
+    F('number_date', { n: T1 }),
+    F('number_nan', { n: NaN }),
+    F('number_infinity', { n: 'Infinity' }),
+    F('number_operators', { n: { $gte: '1', $lt: '10.5', $ne: null } }),
+    F('number_in', { n: { $in: ['1', 2, '3e2', []] } }),
+    F('number_mod', { n: { $mod: ['4', 0] } }),
+    F('number_bits', { n: { $bitsAllSet: ['1', 2] } }),
+    F('number_object', { n: { a: 1 } }),
+    // Date
+    F('date_iso', { at: ISO }),
+    F('date_operators', { at: { $lt: '2026-11-11', $gte: ISO } }),
+    F('date_number', { at: 1700000000000, 'one.when': 1.7 }),
+    F('date_numeric_string', { at: '1700000000000' }),
+    F('date_small_numeric_string', { at: '2026' }),
+    F('date_invalid', { at: 'not a date' }),
+    F('date_empty', { at: '' }),
+    F('date_boolean', { at: true }),
+    F('date_out_of_range', { at: 8.64e15 + 1 }),
+    F('date_in', { at: { $in: [ISO, 0] } }),
+    F('date_http', { at: 'Sun, 06 Nov 1994 08:49:37 GMT' }),
+    // Boolean
+    F('boolean_strings', { on: 'true' }),
+    F('boolean_no', { on: 'no' }),
+    F('boolean_numbers', { on: 1, 'info.since': { $exists: 0 } }),
+    F('boolean_zero', { on: 0 }),
+    F('boolean_invalid', { on: 'maybe' }),
+    F('boolean_comparison', { on: { $gt: true } }),
+    F('boolean_in', { on: { $in: ['true', 0, 'yes'] } }),
+    // Logical operators
+    F('logical', { $or: [{ _id: HEX }, { n: '2' }], $and: [{ at: { $gt: ISO } }], $nor: [{ on: 'false' }] }),
+    F('logical_not_array', { $or: { n: 1 } }),
+    F('logical_empty_array', { $or: [], n: '1' }),
+    F('logical_empty_element', { $and: [{}, { n: '1' }] }),
+    F('logical_element_not_object', { $or: [1] }),
+    F('logical_unknown_paths', { $and: [{ zz: '1' }, { n: '1' }] }),
+    F('logical_nested', { $or: [{ $and: [{ n: '1' }, { on: 'no' }] }, { 'entries.who': HEX }] }),
+    // Nested objects, sub-documents, arrays
+    F('nested_dotted', { 'info.since': ISO }),
+    F('nested_whole', { info: { since: ISO } }),
+    F('nested_unknown', { 'info.zz': '1' }),
+    F('subdocument_dotted', { 'one.when': ISO, 'one.k': '3' }),
+    F('subdocument_whole', { one: { k: '2' } }),
+    F('subdocument_null', { one: null }),
+    F('document_array_dotted', { 'entries.who': HEX, 'entries.n': { $gt: '1' } }),
+    F('document_array_positional', { 'entries.0.at': ISO, 'entries.$.n': '2' }),
+    F('document_array_elem_match', { entries: { $elemMatch: { who: HEX, at: { $gte: ISO }, zz: '1' } } }),
+    F('document_array_elem_match_logical', { entries: { $elemMatch: { $or: [{ n: '1' }, { code: 5 }] } } }),
+    F('document_array_size', { entries: { $size: '0' } }),
+    F('document_array_unknown', { 'entries.zz': 1 }),
+    F('document_array_equality', { entries: { n: '1' } }),
+    F('document_array_exists', { entries: { $exists: true, $ne: [] } }),
+    F('value_array_element', { refs: HEX, nums: '3' }),
+    F('value_array_whole', { refs: [HEX], nums: ['1', 2] }),
+    F('value_array_all', { refs: { $all: [HEX, HEX2] } }),
+    F('value_array_in', { refs: { $in: [HEX] }, nums: { $nin: ['1', ['2']] } }),
+    F('value_array_elem_match', { nums: { $elemMatch: { $gt: '1', $lt: 5 } }, refs: { $elemMatch: { $eq: HEX } } }),
+    F('value_array_comparison', { nums: { $gt: '1' } }),
+    F('value_array_positional', { 'refs.0': HEX, 'nums.1': '2' }),
+    F('value_array_size', { nums: { $size: '1' } }),
+    // Maps
+    F('map_values', { 'vars.a': 5, 'counts.c': '3' }),
+    F('map_subdocuments', { 'steps.k1.at': ISO, 'steps.k1.status': 7 }),
+    F('map_deeper_than_value', { 'vars.a.b': 1 }),
+    F('map_whole', { vars: { a: 'x' } }),
+    // Unknown paths, Mixed, timestamps, special operators
+    F('unknown_paths', { zz: '1', 'free.x': '2', free: { y: '3' } }),
+    F('timestamps_and_version', { createdAt: ISO, __v: '0', updatedAt: { $gt: 0 } }),
+    F('where_and_comment', { $where: 'this.n > 1', $comment: 5 }),
+    F('expr', { $expr: { $lt: ['$n', '5'] } }),
+    F('exists_and_type', { at: { $exists: 0 }, n: { $type: 'number' }, on: { $type: [1, 'bool'] } }),
+    F('type_invalid', { n: { $type: true } }),
+    F('empty', {}),
+    F('regex_on_number', { n: /1/ }),
+];
+
+async function recordFilters() {
+    const rows = [];
+    for (const spec of filterCases) {
+        const sent = [];
+        let error = null;
+        // Recorded before Mongoose casts (and mutates) it. Not cloned through Extended JSON,
+        // which would turn `{$regex, $options}` into a regular expression.
+        const filter = ejson(spec.filter);
+        findCapture = sent;
+        try {
+            await models[spec.schema].find(spec.filter).lean();
+        } catch (caught) {
+            if (caught instanceof mongoose.mongo.MongoServerError) error = { code: caught.code };
+            else if (caught instanceof mongoose.Error || caught?.name === 'Error' || caught?.name === 'MongooseError') error = { name: caught.name, message: caught.message };
+            else throw caught;
+        } finally {
+            findCapture = null;
+        }
+        const row = { name: spec.name, schema: spec.schema, filter };
+        if (error) row.error = error;
+        else row.cast = ejson(sent[0].filter);
+        rows.push(row);
+    }
+    return rows;
 }
 
 // ---------------------------------------------------------------- ObjectId casting (rule 3)
@@ -867,6 +1042,7 @@ await mongoose.connect(uri, { monitorCommands: true, dbName, autoIndex: false })
 const client = mongoose.connection.getClient();
 client.on('commandStarted', (event) => {
     if (capturing && WRITE_COMMANDS.has(event.commandName)) capturing.push(strip(exact(event.command)));
+    if (findCapture && event.commandName === 'find') findCapture.push(strip(exact(event.command)));
 });
 for (const [name, schema] of Object.entries(schemas)) models[name] = mongoose.model(`Golden_${name}`, schema, collections[name]);
 
@@ -883,6 +1059,7 @@ try {
         generatedPrefix: GENERATED_PREFIX,
     };
     for (const spec of cases) output.cases.push(await runCase(spec));
+    output.filters = await recordFilters();
     output.objectIdCasts = await recordCasts();
     output.numbers = await recordNumbers();
     output.json = await recordJson();
@@ -897,4 +1074,4 @@ const lines = Object.entries(output).map(([key, value]) => {
     return ` ${JSON.stringify(key)}: ${body}`;
 });
 writeFileSync(join(here, 'golden.json'), `{\n${lines.join(',\n')}\n}\n`);
-console.log(`recorded ${output.cases.length} cases, ${output.cases.reduce((n, c) => n + c.commands.length, 0)} commands`);
+console.log(`recorded ${output.cases.length} cases, ${output.cases.reduce((n, c) => n + c.commands.length, 0)} commands, ${output.filters.length} filters`);
