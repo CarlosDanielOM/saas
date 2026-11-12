@@ -13,6 +13,7 @@ fn payload() -> RenderedEmailPayload {
         text: "hi".into(),
     }
 }
+#[allow(clippy::unwrap_used)] // Test fixture setup only.
 async fn service(server: &MockServer) -> EmailService {
     let config = Config {
         api_key: "secret-api-key".into(),
@@ -71,7 +72,11 @@ async fn requests_for_every_email() {
         assert_eq!(r.header("idempotency-key"), Some("stable-id"));
         assert_eq!(
             serde_json::from_slice::<serde_json::Value>(&r.body).unwrap(),
-            serde_json::to_value(payload).unwrap()
+            serde_json::json!({
+                "from": "DomDimaBot <noreply@notifications.domdimabot.com>",
+                "to": ["private@example.invalid"],
+                "subject": c["subject"], "html": c["html"], "text": c["text"]
+            })
         );
     }
 }

@@ -144,13 +144,19 @@ impl<L: Log> EmailService<L> {
         if let Some(key) = key.filter(|s| !s.is_empty()) {
             request = request.header("idempotency-key", key);
         }
-        let response = request.send().await.map_err(|_| Error::Transport)?;
+        let response = request.send().await.map_err(|_| {
+            self.log.event("[EmailService] Failed to send email");
+            Error::Transport
+        })?;
         let status = response.status().as_u16();
         if !(200..300).contains(&status) {
             self.log.event("[EmailService] Failed to send email");
             return Err(Error::Rejected(status));
         }
-        let data: SendResponse = response.json().await.map_err(|_| Error::Malformed)?;
+        let data: SendResponse = response.json().await.map_err(|_| {
+            self.log.event("[EmailService] Failed to send email");
+            Error::Malformed
+        })?;
         self.log.event("[EmailService] Email sent successfully");
         Ok(data)
     }

@@ -109,8 +109,13 @@ caller persistence, worker timing or JWT signing is duplicated in this crate.
 ## Validation
 
 Gate: `CARGO_NET_OFFLINE=true dima-rust/tools/check dima-email` from repository root (the gate
-changes to the workspace). Reviewed owned-path diff and `git diff --check`. Gate status is recorded
-in the final implementation report, not inferred from a successful build.
+changes to the workspace). Reviewed owned-path diff and `git diff --check`. Final gate passed (exit 0): format, all-target Clippy with warnings denied, and tests.
+Golden test: 208 input/output cases, 52 per template, exact subject/compact HTML/plain text.
+Transport: three tests passed, including all four wire bodies and all required error cases.
+Last gate lines: `Doc-tests dima_email`, `running 0 tests`,
+`test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out`.
+No tests were skipped. No real email was sent. The ledger is outside this package's owned paths
+and remains the lead's integration responsibility.
 
 Open integration question: the owning binaries must wire configuration, real log sink and the
 existing core activation-token signer, and port the caller-owned date formatting in its own package.

@@ -3,6 +3,7 @@ use serde_json::Value;
 #[test]
 fn reference_templates() {
     let corpus: Value = serde_json::from_str(include_str!("golden.json")).unwrap();
+    let mut failures = Vec::new();
     for (i, case) in corpus["cases"].as_array().unwrap().iter().enumerate() {
         let p = case["input"].clone();
         let email = match case["kind"].as_str().unwrap() {
@@ -24,7 +25,7 @@ fn reference_templates() {
                     .zip(expected.chars())
                     .position(|(a, b)| a != b)
                     .unwrap_or(actual.chars().count().min(expected.chars().count()));
-                panic!(
+                failures.push(format!(
                     "case {i} {} {field} at {mismatch}: actual {:?} expected {:?}",
                     case["kind"],
                     actual
@@ -37,8 +38,9 @@ fn reference_templates() {
                         .skip(mismatch.saturating_sub(50))
                         .take(180)
                         .collect::<String>()
-                );
+                ));
             }
         }
     }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

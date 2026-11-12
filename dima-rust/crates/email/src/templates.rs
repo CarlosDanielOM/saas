@@ -366,7 +366,6 @@ fn plain_text(s: &str) -> String {
     s.split('\n')
         .map(collapse)
         .map(|s| s.trim_matches(' ').to_owned())
-        .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
-        .join("\n\n")
+        .join("\n")
 }

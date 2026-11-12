@@ -58,6 +58,8 @@ async function main() {
     dashboardUrl: 'https://dima.clips.invalid/TOKEN',
     approvedCount: 678,
   };
+  // Normalization: omit only the optional Prettier pass. Every case also records
+  // the reference service’s prettyHtml; Rust emits this compact renderer output.
   async function output(i: number, p: any) {
     const el = React.createElement(mods[i][defs[i][1]], p);
     return {
