@@ -76,13 +76,21 @@ package that ports a key family says which, and only *carried* families need a f
 TypeScript format.
 
 **Rollback.** Going back to TypeScript after the cutover stays possible because MongoDB writes stay
-compatible. It needs the same steps in reverse: stop the Rust producers, let the queues drain, clear
-Dragonfly, start TypeScript, which repopulates its caches. Whatever is still queued at that moment is
-lost; nobody is logged out.
+compatible and Dragonfly database 0 was never touched: stop the Rust bot and API, start the TypeScript
+ones, let the Rust cron drain, start the TypeScript cron. TypeScript's caches in database 0 are stale by
+then and are cleared first so it repopulates them. Nobody is logged out.
 
-**Queues and handoff.** The cutover procedure stops the TypeScript producers first, lets the
-TypeScript workers drain their queues (money-bearing queues such as AI usage receipts must be empty),
-then starts Rust. No job is owned by both sides.
+**Cutover sequence** (the owner's, 2026-11-11). Stop the TypeScript bot and API and start the Rust bot
+and API; let the TypeScript workers finish the work already queued; then stop them and start the Rust
+cron. To make the overlap safe without matching formats, Rust uses its own Dragonfly logical database
+(the port value `6379/1`, which the address builder already supports) while TypeScript keeps database
+0: the TypeScript workers see no new work and simply drain, the Rust bot and API queue their work in
+database 1 where it waits for the Rust cron, and neither side reads the other's keys. MongoDB is
+shared throughout and stays compatible. Before the TypeScript workers are stopped, the queues that hold
+money (AI usage receipts) and work scheduled for later (delayed command timers, pending moderator
+restores) must be empty, or be moved across by a small one-off step. Pub/sub channels are server-wide,
+so every Rust channel name differs from the TypeScript one. Database 0 is left untouched, which is also
+the rollback path.
 
 **Behaviour-preserving port.** Port what the reference does, including odd behaviour users may depend on.
 Do not fix bugs silently: record them under "quirks" in the package report. Exceptions: the text rules
