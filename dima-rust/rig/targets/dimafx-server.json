@@ -1,0 +1,64 @@
+{
+  "rig_target": 1,
+  "description": "DimaFX gateway; Node dist/index.js as npm start, requires existing compiled reference and packages. No dependency installation by this task.",
+  "reference": {
+    "command": [
+      "node",
+      "dist/index.js"
+    ],
+    "cwd": "/home/dom/Projects/saas/dimafx/server",
+    "env": {
+      "PORT": "{port}",
+      "TWITCH_EXTENSION_SECRET": "c2VjcmV0",
+      "DIMAFX_SERVICE_TOKEN": "fixture-service-token",
+      "DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT": "false",
+      "DIMABOT_INTERNAL_API_URL": "{mock_url}/dima-server:3000",
+      "DIMABOT_PUBLIC_API_URL": "{mock_url}/api.domdimabot.com",
+      "NODE_ENV": "production"
+    },
+    "pass_env": [
+      "PATH"
+    ],
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  },
+  "candidate": {
+    "command": [
+      "{cargo_target_dir}/debug/dimafx-server"
+    ],
+    "env": {
+      "PORT": "{port}",
+      "TWITCH_EXTENSION_SECRET": "c2VjcmV0",
+      "DIMAFX_SERVICE_TOKEN": "fixture-service-token",
+      "DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT": "false",
+      "DIMABOT_INTERNAL_API_URL": "{mock_url}/dima-server:3000",
+      "DIMABOT_PUBLIC_API_URL": "{mock_url}/api.domdimabot.com",
+      "NODE_ENV": "production"
+    },
+    "ready": {
+      "http": "/health",
+      "timeout_ms": 10000
+    }
+  },
+  "mock": {
+    "routes": [
+      {
+        "host": "*",
+        "path": "/**",
+        "provider": "dimabot-api",
+        "respond": {
+          "json": {
+            "error": false,
+            "status": 200,
+            "data": {
+              "balance": "12",
+              "connected": false
+            }
+          }
+        }
+      }
+    ]
+  }
+}

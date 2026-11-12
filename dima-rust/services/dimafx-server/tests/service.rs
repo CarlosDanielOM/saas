@@ -249,3 +249,95 @@ async fn parser_cors_and_unknown_route_order() {
     assert_eq!(response.status(), 204);
     assert_eq!(response.headers()["access-control-allow-origin"], "*");
 }
+
+#[tokio::test]
+async fn forwarding_json_types_missing_token_and_path_spelling() {
+    let mock = MockServer::start().await.unwrap();
+    mock.fallback(|_| MockResponse::json(200, r#"{"error":false,"data":{}}"#));
+    let app = app(&mock.url(), &mock.url());
+    let jwt = token(true);
+    for value in [
+        json!(null),
+        json!(false),
+        json!(1),
+        json!("👋"),
+        json!([1]),
+        json!({"x":null}),
+    ] {
+        let body = json!({"action":value,"ttsText":value}).to_string();
+        assert_eq!(
+            request(
+                &app,
+                "POST",
+                "/V1/channels/555777/items/a!~*'()%2Fb/PURCHASE/",
+                Some(&jwt),
+                &body
+            )
+            .await
+            .0,
+            200
+        );
+        let call = mock.requests().last().unwrap().clone();
+        assert_eq!(
+            call.target,
+            "/extensions/dimafx/internal/channels/555777/items/a!~*'()%2Fb/purchase"
+        );
+        let body: Value = serde_json::from_slice(&call.body).unwrap();
+        assert_eq!(body["action"], value);
+        assert_eq!(body["ttsText"], value);
+        assert!(body.get("sku").is_none());
+    }
+    let unavailable = dimafx_server::build(
+        Config {
+            internal_url: mock.url(),
+            public_url: mock.url(),
+            service_token: SecretString::from(""),
+            signing_secret: SecretString::from("c2VjcmV0"),
+            allow_unverified: false,
+        },
+        Arc::new(ManualClock::new(0)),
+        Shutdown::new(),
+    )
+    .unwrap();
+    assert_eq!(
+        request(
+            &unavailable,
+            "GET",
+            "/v1/channels/555777/items",
+            Some(&jwt),
+            ""
+        )
+        .await
+        .0,
+        503
+    );
+    assert_eq!(mock.requests().len(), 6);
+}
+
+#[tokio::test]
+async fn null_upstream_preserves_route_exception_answers() {
+    let mock = MockServer::start().await.unwrap();
+    mock.fallback(|_| MockResponse::json(200, "null"));
+    let app = app(&mock.url(), &mock.url());
+    let jwt = token(true);
+    assert_eq!(
+        request(
+            &app,
+            "GET",
+            "/v1/channels/555777/overlay-status",
+            Some(&jwt),
+            ""
+        )
+        .await
+        .0,
+        503
+    );
+    assert_eq!(
+        request(&app, "GET", "/v1/channels/555777/items", Some(&jwt), "")
+            .await
+            .0,
+        500
+    );
+    assert_eq!(request(&app, "GET", "/v1/me", Some(&jwt), "").await.0, 500);
+    assert_eq!(mock.requests().len(), 3);
+}

@@ -1,0 +1,38 @@
+{
+  "rig_scenario": 1,
+  "description": "upstream-error-status",
+  "steps": [
+    {
+      "http": {
+        "method": "POST",
+        "path": "/v1/channels/555777/items/i/purchase",
+        "expect": {
+          "status": 400
+        },
+        "headers": {
+          "authorization": "Bearer eyJhbGciOiAiSFMyNTYifQ.eyJjaGFubmVsX2lkIjogIjU1NTc3NyIsICJ1c2VyX2lkIjogInUtMSIsICJvcGFxdWVfdXNlcl9pZCI6ICJvcC0xIiwgImV4cCI6IDk5OTk5OTk5OTl9.p97n2Tq4GUQ4jkA4PkaVjP6PsQgpbyK30mXR-UZctak"
+        },
+        "json": {
+          "transactionID": "same-on-replay"
+        }
+      }
+    }
+  ],
+  "mock": {
+    "routes": [
+      {
+        "host": "dima-server:3000",
+        "path": "/**",
+        "provider": "dimabot-api",
+        "respond": {
+          "status": 400,
+          "json": {
+            "error": true,
+            "status": 400,
+            "message": "bad"
+          }
+        }
+      }
+    ]
+  }
+}

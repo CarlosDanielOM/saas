@@ -21,6 +21,7 @@ pub struct State {
     http: HttpClient,
     primary: Provider,
     fallback: Provider,
+    outbound: tokio::sync::Semaphore,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -51,10 +52,14 @@ pub fn build(
             .build()
     };
     let state = State {
+        outbound: tokio::sync::Semaphore::new(128),
         primary: provider("dimafx-internal", &config.internal_url)?,
         fallback: provider("dimafx-public", &config.public_url)?,
         keys: auth::keys(config.signing_secret.expose()),
-        http: HttpClient::builder().shutdown(shutdown).build()?,
+        http: HttpClient::builder()
+            .connect_timeout(Duration::from_secs(30))
+            .shutdown(shutdown)
+            .build()?,
         config,
         clock,
     };
@@ -141,11 +146,14 @@ impl State {
         // Compatibility workaround: dima-http Path accepts only static paths or its own
         // stricter RFC3986 escaping. Put the already encodeURIComponent-escaped path
         // in a request-local provider so punctuation keeps the Node wire spelling.
-        let endpoint = format!(
-            "{}{}",
-            provider.base_url().as_str().trim_end_matches('/'),
-            path
-        );
+        // Concatenate exactly like fetch(`${baseUrl}${path}`), including an
+        // operator-configured trailing slash rather than silently normalizing it.
+        let base = if provider.name() == "dimafx-internal" {
+            &self.config.internal_url
+        } else {
+            &self.config.public_url
+        };
+        let endpoint = format!("{base}{path}");
         let endpoint = Provider::builder(provider.name(), &endpoint)
             .internal(true)
             .timeout(Duration::from_secs(30))
@@ -166,10 +174,24 @@ impl State {
         let result = async {
             let response = request.send().await?;
             let code = response.status().as_u16();
-            let mut payload: Value = response
-                .json()
+            let mut payload = response
+                .bytes()
                 .await
-                .unwrap_or_else(|_| json!({"error":true,"message":"Invalid API response"}));
+                .ok()
+                .and_then(|bytes| {
+                    dima_text::parse_js_json(
+                        &String::from_utf8_lossy(&bytes),
+                        dima_text::JsonLimits {
+                            max_depth: 128,
+                            max_bytes: 8 * 1024 * 1024,
+                        },
+                    )
+                    .ok()
+                })
+                .unwrap_or_else(|| json!({"error":true,"message":"Invalid API response"}));
+            if !(200..300).contains(&code) && payload.is_null() {
+                return Ok(json!({"error":true,"status":503,"message":"Cannot read properties of null (reading 'error')"}));
+            }
             if !(200..300).contains(&code) && !dima_text::js_truthy(&payload["error"]) {
                 if !payload.is_object() {
                     payload = json!({});
@@ -187,6 +209,9 @@ impl State {
         if self.config.service_token.is_empty() {
             return json!({"error":true,"message":"DimaFX service token is not configured","status":503});
         }
+        let Ok(_permit) = self.outbound.acquire().await else {
+            return json!({"error":true,"message":"fetch failed","status":503});
+        };
         let first = self
             .request_from(&self.primary, path, method.clone(), &body)
             .await;
@@ -309,6 +334,13 @@ async fn proxy(req: &mut Req<State>) -> Result<Response, dima_web::Error> {
         Method::POST
     };
     let payload = req.state().request(&path, method, body).await;
+    if payload.is_null() {
+        return Ok(if overlay {
+            fail(503, "DimaFX connection status unavailable")
+        } else {
+            fail(500, "Internal server error")
+        });
+    }
     let default = if dima_text::js_truthy(&payload["error"]) {
         500
     } else {

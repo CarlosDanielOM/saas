@@ -21,6 +21,7 @@ async fn main() -> anyhow::Result<()> {
         signing_secret: SecretString::new(value("TWITCH_EXTENSION_SECRET", "")),
         allow_unverified: value("DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT", "") == "true",
     };
+    drop(env);
     let shutdown = Shutdown::new();
     let app = dimafx_server::build(config, Arc::new(SystemClock), shutdown.clone())?;
     let signal = shutdown.clone();
