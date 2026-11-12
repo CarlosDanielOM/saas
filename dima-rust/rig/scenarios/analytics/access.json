@@ -1,6 +1,6 @@
 {
   "rig_scenario": 1,
-  "description": "Unauthenticated access across every route; health is public. PostgreSQL fixture comparisons live in crate tests until the rig can isolate PostgreSQL.",
+  "description": "Unauthenticated access across every route; health is public. PostgreSQL catalogue and rows are compared by the rig.",
   "steps": [
     {
       "http": {

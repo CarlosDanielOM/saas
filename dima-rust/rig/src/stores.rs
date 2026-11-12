@@ -35,6 +35,7 @@ static SEQ: AtomicU32 = AtomicU32::new(0);
 pub struct StoreConfig {
     /// Root MongoDB URI (no database in the path).
     pub mongo_uri: String,
+    pub postgres_uri: Option<String>,
     pub dragonfly_host: String,
     pub dragonfly_port: u16,
     /// Logical databases the rig may use (never 0).
@@ -203,6 +204,7 @@ pub struct Registry(Arc<Mutex<Held>>);
 
 #[derive(Default)]
 struct Held {
+    postgres: Vec<(String, String)>,
     mongo_dbs: Vec<String>,
     /// Users defined in the `admin` database.
     users: Vec<String>,
@@ -219,6 +221,7 @@ struct Held {
 #[derive(Debug, Default)]
 pub struct Cleanup {
     pub dropped_dbs: Vec<String>,
+    pub dropped_postgres: Vec<String>,
     pub kept_dbs: Vec<String>,
     pub dropped_users: Vec<String>,
     pub flushed: Vec<u8>,
@@ -232,6 +235,12 @@ impl Cleanup {
     /// One line for stderr, or `None` when there was nothing to release.
     pub fn summary(&self) -> Option<String> {
         let mut parts = Vec::new();
+        if !self.dropped_postgres.is_empty() {
+            parts.push(format!(
+                "dropped PostgreSQL databases {}",
+                self.dropped_postgres.join(", ")
+            ));
+        }
         if !self.dropped_dbs.is_empty() {
             parts.push(format!(
                 "dropped MongoDB databases {}",
@@ -280,6 +289,10 @@ impl Registry {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    pub fn add_postgres(&self, uri: &str, name: &str) {
+        self.held().postgres.push((uri.into(), name.into()));
+    }
+
     pub fn add_db(&self, name: &str) {
         self.held().mongo_dbs.push(name.to_string());
     }
@@ -321,12 +334,21 @@ impl Registry {
             )
         };
         let mut out = Cleanup::default();
+        let postgres = std::mem::take(&mut self.held().postgres);
         // Containers first: nothing may write to the stores while they are released.
         for name in containers {
             match crate::side::remove_container(&name).await {
                 Ok(true) => out.removed_containers.push(name),
                 Ok(false) => {}
                 Err(e) => out.errors.push(format!("removing container {name}: {e}")),
+            }
+        }
+        for (uri, name) in postgres {
+            match crate::postgres::drop_database(&uri, &name).await {
+                Ok(()) => out.dropped_postgres.push(name),
+                Err(e) => out
+                    .errors
+                    .push(format!("dropping PostgreSQL database {name}: {e}")),
             }
         }
         for dir in data_dirs {
@@ -477,6 +499,7 @@ pub struct SideStores {
     pub redis: MultiplexedConnection,
     /// The URI the side process gets instead of the rig's own (a read-only user).
     pub side_uri: Option<String>,
+    pub postgres: Option<crate::postgres::Database>,
 }
 
 fn redis_err(e: redis::RedisError) -> RigError {
@@ -577,7 +600,14 @@ impl SideStores {
         } else {
             None
         };
+        let postgres = match &cfg.postgres_uri {
+            Some(uri) if owned => {
+                Some(crate::postgres::Database::create(uri, &db_name, reg).await?)
+            }
+            _ => None,
+        };
         let mut s = SideStores {
+            postgres,
             cfg: cfg.clone(),
             client,
             db_name,
@@ -620,6 +650,9 @@ impl SideStores {
     pub async fn reset_empty(&mut self) -> Result<()> {
         if self.owned {
             timed("MongoDB drop", self.db().drop()).await?;
+        }
+        if let Some(pg) = &self.postgres {
+            pg.reset().await?;
         }
         self.flushdb().await
     }
@@ -919,6 +952,15 @@ impl SideStores {
 
     /// Write the scenario's seed.
     pub async fn seed(&mut self, s: &Scenario, now: i64) -> Result<()> {
+        if !s.seed_postgres.is_empty() {
+            let pg = self
+                .postgres
+                .as_ref()
+                .ok_or_else(|| config("seed.postgres requires DIMA_TEST_POSTGRES_URI"))?;
+            for sql in &s.seed_postgres {
+                pg.execute(sql).await?;
+            }
+        }
         let db = self.db();
         for (coll, docs) in &s.seed_mongo {
             let mut converted = Vec::with_capacity(docs.len());

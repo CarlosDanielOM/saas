@@ -177,6 +177,7 @@ fn collect_ids(v: &Val, out: &mut Vec<Key>) {
 
 /// One unit of content for ordering and labelling.
 enum Item<'a> {
+    Postgres(&'a Val),
     Step(usize, &'a StepCap),
     Options(&'a str, &'a Val),
     Indexes(&'a str, &'a [(String, Val)]),
@@ -188,6 +189,7 @@ enum Item<'a> {
 impl Item<'_> {
     fn group(&self) -> String {
         match self {
+            Item::Postgres(_) => "postgres".into(),
             Item::Step(i, _) => format!("step{i}"),
             Item::Options(c, _) => format!("mongo:{c}:options"),
             Item::Indexes(c, _) => format!("mongo:{c}:indexes"),
@@ -212,7 +214,7 @@ impl Item<'_> {
             }
             Item::Step(_, StepCap::Reply(v)) => collect_ids(v, &mut out),
             Item::Step(_, StepCap::Done(_)) => {}
-            Item::Options(_, v) | Item::Doc(_, _, v) | Item::Call(_, _, v) => {
+            Item::Postgres(v) | Item::Options(_, v) | Item::Doc(_, _, v) | Item::Call(_, _, v) => {
                 collect_ids(v, &mut out)
             }
             Item::Indexes(_, specs) => specs.iter().for_each(|(_, v)| collect_ids(v, &mut out)),
@@ -226,6 +228,7 @@ impl Item<'_> {
 
     fn render(&self, ctx: &Ctx<'_>) -> String {
         match self {
+            Item::Postgres(v) => render(v, &mut Path::root("postgres"), ctx, false),
             Item::Step(
                 i,
                 StepCap::Http {
@@ -333,6 +336,9 @@ fn items(cap: &Capture) -> Vec<Item<'_>> {
                 .enumerate()
                 .map(|(i, d)| Item::Doc(name, i, d)),
         );
+    }
+    if let Some(v) = &cap.postgres {
+        out.push(Item::Postgres(v));
     }
     out.extend(cap.dragonfly.iter().map(Item::Entry));
     for c in &cap.calls {
@@ -536,6 +542,11 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
         focus: None,
     };
 
+    if let Some(v) = &mut cap.postgres {
+        sort_sets(v, &mut Path::root("postgres"), &ctx, false);
+        sort_postgres_rows(v, &ctx);
+    }
+
     // Set-like arrays first: document and key order depend on their sorted form.
     for (i, s) in cap.steps.iter_mut().enumerate() {
         let mut p = Path::root("steps").with_index(i);
@@ -618,6 +629,9 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
             StepCap::Done(_) => {}
         }
     }
+    if let Some(v) = &cap.postgres {
+        num.val(v, &ctx);
+    }
     for c in cap.mongo.values() {
         c.docs.iter().for_each(|d| num.val(d, &ctx));
         c.indexes.iter().for_each(|(_, v)| num.val(v, &ctx));
@@ -648,6 +662,9 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
             StepCap::Done(_) => {}
         }
     }
+    if let Some(v) = &mut cap.postgres {
+        apply(v, &map);
+    }
     for c in cap.mongo.values_mut() {
         c.docs.iter_mut().for_each(|d| apply(d, &map));
         c.indexes.iter_mut().for_each(|(_, v)| apply(v, &map));
@@ -659,5 +676,31 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     }
     for c in cap.calls.iter_mut() {
         c.calls.iter_mut().for_each(|v| apply(v, &map));
+    }
+}
+
+fn sort_postgres_rows(v: &mut Val, ctx: &Ctx<'_>) {
+    if let Val::Obj(tables) = v {
+        for (table, value) in tables {
+            if let Val::Obj(fields) = value {
+                for (key, value) in fields {
+                    if key.display() == "rows"
+                        && let Val::Arr(rows) = value
+                    {
+                        rows.sort_by_cached_key(|row| {
+                            render(
+                                row,
+                                &mut Path::root("postgres")
+                                    .with_key(table.display())
+                                    .with_key("rows")
+                                    .with_index(0),
+                                ctx,
+                                false,
+                            )
+                        });
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 {
   "rig_scenario": 1,
-  "description": "Route successes, parameter validation and owner/viewer/investigator boundaries. Requires fresh per-side PostgreSQL databases supplied by caller.",
+  "description": "Route successes, parameter validation and owner/viewer/investigator boundaries using rig-managed per-side PostgreSQL databases.",
   "seed": {
     "dragonfly": [
       [

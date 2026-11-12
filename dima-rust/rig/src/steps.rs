@@ -707,6 +707,19 @@ impl Runner<'_> {
         for (i, s) in steps.iter().enumerate() {
             self.alive(i, "before the step")?;
             let r = match &s.kind {
+                StepKind::Sql(sql) => {
+                    let pg = self
+                        .stores
+                        .postgres
+                        .as_ref()
+                        .ok_or_else(|| err(i, "sql requires DIMA_TEST_POSTGRES_URI"))?;
+                    let sql = self.fill(i, sql, timefmt::now_ms())?;
+                    let value = pg.read(&sql).await.map_err(|e| err(i, e.to_string()))?;
+                    RawStep::Sql {
+                        at: timefmt::now_ms(),
+                        value,
+                    }
+                }
                 StepKind::Socketio(a) => {
                     if socketio.is_none() {
                         *socketio = Some(crate::socketio::Client::start().map_err(|e| err(i, e))?);

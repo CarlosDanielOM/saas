@@ -137,6 +137,9 @@ async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Repo
         Cmd::Mock { .. } => return Ok(None),
         Cmd::Gc => {
             let mut dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
+            if let Some(uri) = &s.stores.postgres_uri {
+                dropped.extend(dima_rig::postgres::gc(uri).await?);
+            }
             match config::qdrant_store(&s.env) {
                 Ok(q) => match dima_rig::stores::gc_qdrant(&q).await {
                     Ok(names) => dropped.extend(names),

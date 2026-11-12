@@ -6,7 +6,7 @@
   "mongo_user_reason": "The console shows each connection's user name in its responses (mongodb://root:***@...), and these captures were recorded when every side used the rig's own credentials; re-record with a side user before switching to the default.",
   "reference": {
     "command": ["sh", "-c", "rm -rf \"$DATA_DIR\" && exec node server/index.mjs"],
-    "cwd": "dimadb",
+    "cwd": "/home/dom/Projects/saas/dimadb",
     "env": {
       "PORT": "{port}",
       "DATA_DIR": "/tmp/dimadb-rig/{mongo_db}",

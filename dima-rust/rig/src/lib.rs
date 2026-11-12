@@ -17,6 +17,7 @@ pub mod getlist;
 pub mod mock;
 pub mod msgpack;
 pub mod path;
+pub mod postgres;
 pub mod report;
 pub mod run;
 pub mod scenario;

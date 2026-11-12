@@ -162,6 +162,7 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         rig_dir,
         repo_dir,
         stores: StoreConfig {
+            postgres_uri: get("DIMA_TEST_POSTGRES_URI"),
             mongo_uri,
             dragonfly_host: host.to_string(),
             dragonfly_port: port,

@@ -672,6 +672,23 @@ async fn main() -> Result<()> {
         Some(v) => Variant::parse(v)?,
         None => Variant::Good,
     };
+    if let Ok(uri) = std::env::var("FIXTURE_POSTGRES_URI") {
+        let pg = dima_rig::postgres::Database::observer(uri);
+        match std::env::var("FIXTURE_POSTGRES_DEFECT").as_deref() {
+            Ok("precise-number") => {
+                pg.execute("UPDATE amounts SET n=0.123456789012345678902")
+                    .await?
+            }
+            Ok("changed-row") => pg.execute("UPDATE items SET qty=99 WHERE id=1").await?,
+            Ok("missing-row") => pg.execute("DELETE FROM items WHERE id=1").await?,
+            Ok("column-type") => {
+                pg.execute("ALTER TABLE items ALTER COLUMN qty TYPE bigint")
+                    .await?
+            }
+            Ok("missing-index") => pg.execute("DROP INDEX items_name").await?,
+            _ => {}
+        }
+    }
     let port: u16 = env("PORT")?.parse()?;
     // One connection, authenticated at start-up before the fixture reports ready: a new pooled
     // connection costs a SCRAM handshake, slow in debug builds under load, which would move a

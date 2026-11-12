@@ -41,7 +41,8 @@ redis = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-postgres = { workspace = true }
 uuid = { workspace = true }

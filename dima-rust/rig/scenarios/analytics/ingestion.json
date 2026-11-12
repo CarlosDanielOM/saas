@@ -1,6 +1,6 @@
 {
   "rig_scenario": 1,
-  "description": "Each telemetry kind through inbox, receipt replay and invalid batch discard. PostgreSQL state must be compared separately.",
+  "description": "Each telemetry kind through inbox, receipt replay and invalid batch discard, including final PostgreSQL catalogue and rows.",
   "seed": {
     "dragonfly": [
       [
