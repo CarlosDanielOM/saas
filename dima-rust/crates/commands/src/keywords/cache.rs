@@ -14,7 +14,8 @@
 //! Bounds the reference does not have (see [`KeywordCacheLimits`]): at most 1,000 keywords and
 //! 1 MiB per channel (a channel over either is refused, the refusal cached for the time to live,
 //! and its messages are handled as if it had no keywords), 64 MiB for all indexes (whole
-//! channels evicted, oldest first), and 256 loads in flight.
+//! channels evicted, oldest first), 256 loads in flight, and a lookup that gives up after 5
+//! discarded loads or 10 s with "settings are changing" instead of retrying for ever.
 
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -62,6 +63,10 @@ pub const MAX_CACHED_KEYWORD_BYTES: usize = 64 * 1024 * 1024;
 /// The most channels loading at the same time (callers waiting on a load in flight do not
 /// count).
 pub const MAX_KEYWORD_LOADS_IN_FLIGHT: usize = 256;
+/// The most loads one lookup starts or waits for while each is discarded by a settings change.
+pub const MAX_LOOKUP_ATTEMPTS: usize = 5;
+/// The longest a lookup keeps retrying after a discarded load, in milliseconds (injected clock).
+pub const MAX_LOOKUP_MS: i64 = 10_000;
 /// The largest shared index read from Dragonfly, in bytes, before it is parsed.
 pub const MAX_SHARED_INDEX_JSON_BYTES: usize = 1024 * 1024;
 
@@ -130,6 +135,10 @@ pub enum KeywordCacheError<E> {
     /// A bound was reached.
     #[error("keyword cache overloaded: {0}")]
     Overloaded(Overload),
+    /// Every load was discarded by a settings change, [`KeywordCacheLimits::lookup_attempts`]
+    /// times or for [`KeywordCacheLimits::lookup_ms`]; the next message tries again.
+    #[error("keyword settings are changing")]
+    SettingsChanging,
 }
 
 impl<E> Clone for KeywordCacheError<E> {
@@ -137,6 +146,7 @@ impl<E> Clone for KeywordCacheError<E> {
         match self {
             Self::Load(error) => Self::Load(Arc::clone(error)),
             Self::Overloaded(overload) => Self::Overloaded(*overload),
+            Self::SettingsChanging => Self::SettingsChanging,
         }
     }
 }
@@ -159,6 +169,10 @@ pub struct KeywordCacheLimits {
     pub total_bytes: usize,
     /// The most channels loading at once.
     pub loads_in_flight: usize,
+    /// The most discarded loads one lookup goes through.
+    pub lookup_attempts: usize,
+    /// The longest one lookup keeps retrying discarded loads, in milliseconds.
+    pub lookup_ms: i64,
 }
 
 impl Default for KeywordCacheLimits {
@@ -170,6 +184,8 @@ impl Default for KeywordCacheLimits {
             index_bytes: MAX_KEYWORD_INDEX_BYTES,
             total_bytes: MAX_CACHED_KEYWORD_BYTES,
             loads_in_flight: MAX_KEYWORD_LOADS_IN_FLIGHT,
+            lookup_attempts: MAX_LOOKUP_ATTEMPTS,
+            lookup_ms: MAX_LOOKUP_MS,
         }
     }
 }
@@ -228,7 +244,8 @@ impl<E> CacheState<E> {
 ///
 /// Concurrent cold loads of a channel share one load, and an empty channel is cached like any
 /// other. [`invalidate`](Self::invalidate) detaches a load in flight: when it succeeds its
-/// result is discarded and the callers get a fresh load instead; when it fails they get the failure. A caller that drops its future wakes
+/// result is discarded and the callers get a fresh load instead, within the lookup's attempt
+/// and time bounds; when it fails they get the failure. A caller that drops its future wakes
 /// the others, which then load again. Entries expire after their time to live by the injected
 /// clock; beyond the channel count or the byte budget the oldest insertions are evicted, whole
 /// channels at a time. A channel over its keyword or byte limit is refused (and the refusal
@@ -352,9 +369,19 @@ impl<L: KeywordLoader> KeywordIndexCache<L> {
     /// The channel's compiled index.
     pub async fn get(&self, channel_id: &str) -> LoadResult<L::Error> {
         // Callers of a load that was invalidated keep waiting for its successor, as callers of
-        // the reference's shared promise do.
+        // the reference's shared promise do, but only so many times and for so long: a channel
+        // whose settings keep changing must not hold a chat message (`loadSharedIndex` gives
+        // up after 5 attempts the same way). Giving up answers every relay it holds.
+        let started = self.clock.now_ms();
         let mut relays = Vec::new();
+        let mut attempts = 0;
         loop {
+            if attempts >= self.limits.lookup_attempts
+                || self.clock.now_ms().saturating_sub(started) >= self.limits.lookup_ms
+            {
+                return publish(&relays, Err(KeywordCacheError::SettingsChanging));
+            }
+            attempts += 1;
             match self.next_action(channel_id) {
                 Action::Done(result) => return publish(&relays, result),
                 Action::Wait(mut receiver) => loop {

@@ -34,10 +34,11 @@ pub use cache::{
     BODY_SCRIPT, BODY_TTL_SECONDS, KEYWORD_TOPIC, KeywordCacheError, KeywordCacheLimits,
     KeywordIndexCache, KeywordLoader, KeywordRow, KeywordStorage, KeywordStorageError,
     MAX_CACHED_KEYWORD_BYTES, MAX_KEYWORD_INDEX_BYTES, MAX_KEYWORD_LOADS_IN_FLIGHT,
-    MAX_KEYWORDS_PER_CHANNEL, MAX_REVISION_ATTEMPTS, MAX_SHARED_INDEX_JSON_BYTES, Overload,
-    SHARED_INDEX_SCRIPT, SHARED_INDEX_TTL_SECONDS, SharedKeywordLoader, apply_keyword_change,
-    get_keyword_body, keyword_body_key, keyword_index_key, keyword_revision_key, load_shared_index,
-    refresh_keyword_index, save_keyword_count,
+    MAX_KEYWORDS_PER_CHANNEL, MAX_LOOKUP_ATTEMPTS, MAX_LOOKUP_MS, MAX_REVISION_ATTEMPTS,
+    MAX_SHARED_INDEX_JSON_BYTES, Overload, SHARED_INDEX_SCRIPT, SHARED_INDEX_TTL_SECONDS,
+    SharedKeywordLoader, apply_keyword_change, get_keyword_body, keyword_body_key,
+    keyword_index_key, keyword_revision_key, load_shared_index, refresh_keyword_index,
+    save_keyword_count,
 };
 
 /// The longest keyword, in characters (the reference counts UTF-16 units).

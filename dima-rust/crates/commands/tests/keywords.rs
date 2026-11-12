@@ -748,3 +748,63 @@ async fn the_shared_index_never_reads_or_publishes_more_than_the_limit() {
         Err(KeywordStorageError::SharedIndexTooLarge { .. })
     ));
 }
+
+/// A loader whose every load is discarded by a settings change before it finishes.
+async fn churn(limits: KeywordCacheLimits, advance_ms: i64) -> (usize, Vec<String>) {
+    let (senders, receivers): (Vec<_>, Vec<_>) =
+        (0..20).map(|_| tokio::sync::oneshot::channel()).unzip();
+    let receivers = Mutex::new(receivers.into_iter().map(Some).collect::<Vec<_>>());
+    let loader = Loader {
+        reads: AtomicUsize::new(0),
+        plan: Box::new(move |read| {
+            LoadPlan::Wait(receivers.lock().unwrap()[read - 1].take().unwrap())
+        }),
+    };
+    let (manual, clock) = clock();
+    let cache = Arc::new(KeywordIndexCache::with_limits(loader, clock, limits));
+    let lookups: Vec<_> = (0..2)
+        .map(|_| {
+            let cache = Arc::clone(&cache);
+            tokio::spawn(async move { cache.get("c").await })
+        })
+        .collect();
+    let mut senders = senders.into_iter();
+    let outcome = tokio::time::timeout(Duration::from_secs(10), async {
+        let mut released = 0;
+        loop {
+            if lookups.iter().all(tokio::task::JoinHandle::is_finished) {
+                break;
+            }
+            if cache.loader().reads.load(Ordering::SeqCst) > released {
+                released += 1;
+                cache.invalidate("c");
+                manual.advance(advance_ms);
+                let _ = senders.next().unwrap().send(vec![entry("x", Start)]);
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await;
+    assert!(outcome.is_ok(), "a lookup kept retrying");
+    let mut results = Vec::new();
+    for lookup in lookups {
+        results.push(match lookup.await.unwrap() {
+            Err(KeywordCacheError::SettingsChanging) => "settings changing".to_owned(),
+            other => format!("{other:?}"),
+        });
+    }
+    assert_eq!(cache.loads_in_flight(), 0, "nothing is left retained");
+    (cache.loader().reads.load(Ordering::SeqCst), results)
+}
+
+#[tokio::test]
+async fn a_lookup_gives_up_when_every_load_is_discarded() {
+    let (reads, results) = churn(KeywordCacheLimits::default(), 0).await;
+    assert_eq!(results, ["settings changing", "settings changing"]);
+    assert!(reads <= keywords::MAX_LOOKUP_ATTEMPTS, "{reads}");
+
+    // The time bound: each discarded load takes 6 s of the injected clock.
+    let (reads, results) = churn(KeywordCacheLimits::default(), 6_000).await;
+    assert_eq!(results, ["settings changing", "settings changing"]);
+    assert_eq!(reads, 2, "10 s are over after the second load");
+}
