@@ -86,10 +86,10 @@
 use crate::base::{Inner, Twitch};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
-use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
+use crate::oauth::{Field, RefreshContext, RefreshFailureKind, RefreshFailureReason, parse_answer};
 use crate::secret::{AccessToken, RefreshToken, open_cached, seal};
 use dima_store::dragonfly::SetOptions;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::sync::Arc;
 
 /// The key of one refresh in a process: the streamer and a digest of the rejected token.
@@ -175,17 +175,6 @@ pub fn is_access_token_usable(
         dima_text::parse_int(raw, dima_text::Radix::Decimal)
     });
     expiration.is_finite() && (now_secs as f64) < expiration - skew_secs as f64
-}
-
-/// JavaScript truthiness of a JSON value (`Boolean(x)`).
-pub(crate) fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) => false,
-        Some(Value::Bool(flag)) => *flag,
-        Some(Value::Number(number)) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Some(Value::String(text)) => !text.is_empty(),
-        Some(Value::Array(_) | Value::Object(_)) => true,
-    }
 }
 
 impl Inner {
@@ -316,42 +305,48 @@ impl Inner {
             Ok(answer) => answer,
             Err(error) => return internal_error(error.to_string()),
         };
-        // The text never reaches a log: it may echo the app token.
-        let sanitized = dima_text::sanitize_lone_surrogates(answer.text.as_bytes());
-        let data: Value = match serde_json::from_slice(&sanitized) {
+        // The text never reaches a log: it may echo the app token. It is read into wiping
+        // buffers (`oauth::AnswerBody`).
+        if answer.body.is_empty() {
+            return internal_error("the answer is not JSON".to_owned());
+        }
+        let status = answer.status;
+        let mut data = match parse_answer(&answer.body).0 {
             Ok(data) => data,
             Err(_) => return internal_error("the answer is not JSON".to_owned()),
         };
-        if !truthy(data.get("access_token")) {
+        drop(answer);
+        if !data.access_token.truthy() {
             // The reference logs Twitch's `message`; only its category is logged here.
-            let (_, reason) = classify_refusal(answer.status, &data);
+            let (_, reason) = data.classify(status);
             self.log(
                 Level::Error,
                 Destination::Console,
                 None,
                 json!({
                     "message": format!("Error getting new Twitch app token: {}", reason.as_str()),
-                    "status": answer.status,
+                    "status": status,
                 }),
             );
             return None;
         }
-        let token = data
-            .get("access_token")
-            .map(dima_text::string_of)
-            .unwrap_or_default();
+        // A truthy access token that is not a string (the reference would use it as it is)
+        // is no token here.
+        let Some(token) = data.access_token.take_text() else {
+            return internal_error("access_token is not a string".to_owned());
+        };
         // `{EX: Number(expires_in)}`: the server refuses anything but a positive integer, and
         // the reference's `SET` then throws into the same catch.
-        let seconds = match data.get("expires_in") {
-            Some(Value::Number(number)) => number.as_f64().unwrap_or(f64::NAN),
-            Some(Value::String(text)) => dima_text::parse_number(text),
+        let seconds = match &data.expires_in {
+            Field::Number(number) => *number,
+            Field::Text(text) => dima_text::parse_number(text.expose()),
             _ => f64::NAN,
         };
         if !(seconds.is_finite() && seconds >= 1.0 && seconds.fract() == 0.0 && seconds < 9e15) {
             return internal_error("expires_in is not a positive integer".to_owned());
         }
         let seconds = seconds as u64;
-        let sealed = match seal(&self.cipher, &*self.random, &token) {
+        let sealed = match seal(&self.cipher, &*self.random, token.expose()) {
             Ok(sealed) => sealed,
             Err(error) => return internal_error(error.to_string()),
         };
@@ -366,7 +361,7 @@ impl Inner {
         {
             return internal_error(error.to_string());
         }
-        Some(AccessToken::new(token))
+        Some(AccessToken::from_secret(token))
     }
 }
 
@@ -535,18 +530,5 @@ mod tests {
         assert!(!usable(None, 300));
         assert!(!is_access_token_usable(Some(""), Some("9999"), 1000, 300));
         assert!(!is_access_token_usable(None, Some("9999"), 1000, 300));
-    }
-
-    #[test]
-    fn truthiness_is_javascripts() {
-        assert!(!truthy(None));
-        assert!(!truthy(Some(&json!(null))));
-        assert!(!truthy(Some(&json!(""))));
-        assert!(!truthy(Some(&json!(0))));
-        assert!(!truthy(Some(&json!(false))));
-        assert!(truthy(Some(&json!("x"))));
-        assert!(truthy(Some(&json!(1))));
-        assert!(truthy(Some(&json!([]))));
-        assert!(truthy(Some(&json!({}))));
     }
 }

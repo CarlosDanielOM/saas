@@ -21,10 +21,10 @@ use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields, wi
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::lease::Lease;
-use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
+use crate::oauth::{Field, RefreshContext, RefreshFailureKind, RefreshFailureReason, parse_answer};
 use crate::secret::{AccessToken, RefreshToken, open_cached};
 use crate::streamers::decrypt_envelope;
-use crate::tokens::{RefreshOutcome, TokenError, is_access_token_usable, truthy};
+use crate::tokens::{RefreshOutcome, TokenError, is_access_token_usable};
 use dima_core::SecretString;
 use dima_core::crypto::{CredentialCipher, StoredCredential};
 use dima_model::users::EncryptedToken;
@@ -244,14 +244,12 @@ impl Inner {
             };
         };
         let status = answer.status;
-        let data: Value = if answer.text.is_empty() {
-            json!({})
-        } else {
-            let sanitized = dima_text::sanitize_lone_surrogates(answer.text.as_bytes());
-            match serde_json::from_slice(&sanitized) {
-                Ok(data) => data,
-                Err(error) => {
-                    self.refresh_log(
+        let (parsed, body_length) = parse_answer(&answer.body);
+        drop(answer);
+        let mut data = match parsed {
+            Ok(data) => data,
+            Err(error) => {
+                self.refresh_log(
                         Level::Error,
                         Destination::Both,
                         user_id,
@@ -263,25 +261,24 @@ impl Inner {
                             "reason": "unparseable_refresh_response",
                             "parseError": format!("{:?} at line {} column {}", error.classify(), error.line(), error.column()),
                             "status": status,
-                            "bodyLength": dima_text::utf16_len(&answer.text),
+                            "bodyLength": body_length,
                         }),
                     );
-                    return Exchange::Failed {
-                        outcome: failure(
-                            RefreshFailureKind::Transient,
-                            Some(status),
-                            RefreshFailureReason::Unparseable,
-                        ),
-                        // A 2xx that cannot be read may carry a rotation that is now lost.
-                        uncertain: answer.ok(),
-                    };
-                }
+                return Exchange::Failed {
+                    outcome: failure(
+                        RefreshFailureKind::Transient,
+                        Some(status),
+                        RefreshFailureReason::Unparseable,
+                    ),
+                    // A 2xx that cannot be read may carry a rotation that is now lost.
+                    uncertain: (200..300).contains(&status),
+                };
             }
         };
 
-        if !answer.ok() || truthy(data.get("error")) {
+        if !(200..300).contains(&status) || data.error.truthy() {
             // Twitch's text is classified and dropped here: it can echo the refresh token.
-            let (kind, reason) = classify_refusal(status, &data);
+            let (kind, reason) = data.classify(status);
             self.refresh_log(
                 if kind == RefreshFailureKind::Permanent {
                     Level::Error
@@ -307,17 +304,13 @@ impl Inner {
             };
         }
 
-        let text_of = |name: &str| {
-            data.get(name)
-                .and_then(Value::as_str)
-                .filter(|text| !text.is_empty())
+        let access = data.access_token.take_text();
+        let refresh = data.refresh_token.take_text();
+        let expires_in = match data.expires_in {
+            Field::Number(seconds) => seconds,
+            _ => 7200.0,
         };
-        let access = text_of("access_token");
-        let refresh = text_of("refresh_token");
-        let expires_in = data
-            .get("expires_in")
-            .and_then(Value::as_f64)
-            .unwrap_or(7200.0);
+        let (has_access, has_refresh) = (access.is_some(), refresh.is_some());
         let (Some(access), Some(refresh)) = (access, refresh) else {
             self.refresh_log(
                 Level::Error,
@@ -330,8 +323,8 @@ impl Inner {
                     "action": "token_refresh_failed",
                     "reason": "incomplete_payload",
                     "status": status,
-                    "hasAccessToken": access.is_some(),
-                    "hasRefreshToken": refresh.is_some(),
+                    "hasAccessToken": has_access,
+                    "hasRefreshToken": has_refresh,
                 }),
             );
             return Exchange::Failed {
@@ -343,8 +336,8 @@ impl Inner {
                 uncertain: true,
             };
         };
-        let access = AccessToken::new(access);
-        let refresh = RefreshToken::new(refresh);
+        let access = AccessToken::from_secret(access);
+        let refresh = RefreshToken::from_secret(refresh);
 
         #[cfg(any(test, feature = "test-util"))]
         self.fault(crate::base::FaultPoint::AfterTwitchAnswer, user_id)

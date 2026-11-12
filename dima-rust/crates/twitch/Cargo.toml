@@ -16,6 +16,9 @@ test-util = []
 
 [dependencies]
 bson = { workspace = true }
+# `Bytes::from_owner`: the OAuth form body lives in a buffer that is wiped when the HTTP stack
+# drops its last reference.
+bytes = { workspace = true }
 dima-core = { workspace = true }
 dima-http = { workspace = true }
 dima-model = { workspace = true }
@@ -29,6 +32,10 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+# Encoding the OAuth form body into a wiping buffer (as `URLSearchParams` does).
+url = { workspace = true }
+# Wiping the OAuth answer and form buffers this crate owns.
+zeroize = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -36,5 +43,3 @@ dima-core = { workspace = true, features = ["test-util"] }
 dima-http = { workspace = true, features = ["test-util"] }
 dima-twitch = { path = ".", features = ["test-util"] }
 tokio = { workspace = true, features = ["test-util"] }
-# Reading the form bodies the mock receives.
-url = { workspace = true }

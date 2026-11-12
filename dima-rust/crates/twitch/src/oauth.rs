@@ -5,12 +5,29 @@
 //! application/x-www-form-urlencoded`, body `client_id`, `client_secret`, `grant_type` and (for
 //! a refresh) `refresh_token`, in that order, encoded as `URLSearchParams` does. Credentials go
 //! in the body, never in the URL.
+//!
+//! # Secrets in memory (review finding 7)
+//!
+//! The buffers this crate owns are wiped when dropped: the form body (built once, sized up
+//! front, released through `Bytes::from_owner`), the answer's body (read chunk by chunk into a
+//! wiping buffer), the strings parsed from it ([`AnswerBody`]: tokens and Twitch's messages),
+//! the tokens themselves ([`crate::AccessToken`], [`crate::RefreshToken`]) and the directory's
+//! decrypted tokens. Not wiped, because the libraries own them: hyper's and reqwest's read and
+//! write buffers and the `Bytes` chunks they hand over, rustls's TLS records, serde_json's
+//! scratch buffer for strings with escapes, the `Authorization` header value
+//! (`http::HeaderValue`, marked sensitive but not wiped), and the drivers' buffers for MongoDB
+//! and Dragonfly (which only ever see envelopes).
 
 use crate::base::Inner;
 use crate::events::{Destination, Level};
 use crate::secret::RefreshToken;
+use bytes::Bytes;
+use dima_core::SecretString;
 use dima_http::RetryPolicy;
+use serde::de::{Deserialize, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde_json::{Value, json};
+use std::borrow::Cow;
+use zeroize::{Zeroize, Zeroizing};
 
 /// The token endpoint, relative to the OAuth provider's base (`https://id.twitch.tv/oauth2`).
 pub(crate) const TOKEN_PATH: &str = "/token";
@@ -157,8 +174,12 @@ pub fn classify_refusal(
     status: u16,
     payload: &Value,
 ) -> (RefreshFailureKind, RefreshFailureReason) {
-    let message = dima_text::to_lower(&refresh_failure_message(payload));
-    if is_permanent_refresh_failure(status, payload) {
+    let message = Zeroizing::new(dima_text::to_lower(&refresh_failure_message(payload)));
+    classify_message(status, &message)
+}
+
+fn classify_message(status: u16, message: &str) -> (RefreshFailureKind, RefreshFailureReason) {
+    if is_permanent_message(status, message) {
         let reason = if message.contains("revoked") {
             RefreshFailureReason::Revoked
         } else {
@@ -194,13 +215,17 @@ pub fn refresh_failure_message(payload: &Value) -> String {
 /// `isPermanentRefreshFailure`: status 400 or 401 and the message (lower case) contains one of
 /// the fragments of a dead refresh token.
 pub fn is_permanent_refresh_failure(status: u16, payload: &Value) -> bool {
-    if !(status == 400 || status == 401) {
-        return false;
-    }
-    let message = dima_text::to_lower(&refresh_failure_message(payload));
-    PERMANENT_FRAGMENTS
-        .iter()
-        .any(|fragment| message.contains(fragment))
+    is_permanent_message(
+        status,
+        &dima_text::to_lower(&refresh_failure_message(payload)),
+    )
+}
+
+fn is_permanent_message(status: u16, lower: &str) -> bool {
+    (status == 400 || status == 401)
+        && PERMANENT_FRAGMENTS
+            .iter()
+            .any(|fragment| lower.contains(fragment))
 }
 
 /// Who asked for a refresh (`RefreshContext`), for the log entries.
@@ -244,19 +269,257 @@ fn may_have_reached_twitch(class: dima_http::FailureClass) -> bool {
     )
 }
 
-/// One answer of the token endpoint.
-#[derive(Clone)]
-pub(crate) struct TokenAnswer {
-    pub(crate) status: u16,
-    /// The body text (it can hold new tokens: never logged).
-    pub(crate) text: String,
+/// One value of Twitch's answer, kept only as far as the pipeline reads it.
+#[derive(Default)]
+pub(crate) enum Field {
+    /// Not in the answer.
+    #[default]
+    Absent,
+    /// A JSON string (wiped when dropped: it can be a token, or echo one).
+    Text(SecretString),
+    /// A JSON number.
+    Number(f64),
+    /// Anything else, with its JavaScript truthiness.
+    Other(bool),
 }
 
-impl TokenAnswer {
-    /// `response.ok`.
-    pub(crate) fn ok(&self) -> bool {
-        (200..300).contains(&self.status)
+impl Field {
+    /// `Boolean(value)`.
+    pub(crate) fn truthy(&self) -> bool {
+        match self {
+            Self::Absent => false,
+            Self::Text(text) => !text.is_empty(),
+            Self::Number(number) => *number != 0.0 && !number.is_nan(),
+            Self::Other(truthy) => *truthy,
+        }
     }
+
+    /// The string, when the value is one.
+    pub(crate) fn text(&self) -> Option<&str> {
+        match self {
+            Self::Text(text) => Some(text.expose()),
+            _ => None,
+        }
+    }
+
+    /// Moves a non-empty string out (no copy).
+    pub(crate) fn take_text(&mut self) -> Option<SecretString> {
+        match std::mem::take(self) {
+            Self::Text(text) if !text.is_empty() => Some(text),
+            _ => None,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Field {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visit;
+        impl<'de> Visitor<'de> for Visit {
+            type Value = Field;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a JSON value")
+            }
+            fn visit_bool<E>(self, value: bool) -> Result<Field, E> {
+                Ok(Field::Other(value))
+            }
+            fn visit_i64<E>(self, value: i64) -> Result<Field, E> {
+                Ok(Field::Number(value as f64))
+            }
+            fn visit_u64<E>(self, value: u64) -> Result<Field, E> {
+                Ok(Field::Number(value as f64))
+            }
+            fn visit_f64<E>(self, value: f64) -> Result<Field, E> {
+                Ok(Field::Number(value))
+            }
+            fn visit_str<E>(self, value: &str) -> Result<Field, E> {
+                Ok(Field::Text(SecretString::new(value.to_owned())))
+            }
+            fn visit_string<E>(self, value: String) -> Result<Field, E> {
+                Ok(Field::Text(SecretString::new(value)))
+            }
+            fn visit_unit<E>(self) -> Result<Field, E> {
+                Ok(Field::Other(false))
+            }
+            fn visit_none<E>(self) -> Result<Field, E> {
+                Ok(Field::Other(false))
+            }
+            fn visit_some<D: Deserializer<'de>>(self, inner: D) -> Result<Field, D::Error> {
+                Field::deserialize(inner)
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Field, A::Error> {
+                while seq.next_element::<IgnoredAny>()?.is_some() {}
+                Ok(Field::Other(true))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Field, A::Error> {
+                while map.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
+                Ok(Field::Other(true))
+            }
+        }
+        deserializer.deserialize_any(Visit)
+    }
+}
+
+/// Twitch's answer to a token request: the fields the pipeline reads, each string in a wiping
+/// buffer; everything else is skipped without being kept. An answer that is not a JSON object
+/// has none of them (the reference reads properties of whatever `JSON.parse` gave).
+#[derive(Default)]
+pub(crate) struct AnswerBody {
+    pub(crate) access_token: Field,
+    pub(crate) refresh_token: Field,
+    pub(crate) expires_in: Field,
+    pub(crate) message: Field,
+    pub(crate) error_description: Field,
+    pub(crate) error: Field,
+}
+
+impl<'de> Deserialize<'de> for AnswerBody {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visit;
+        impl<'de> Visitor<'de> for Visit {
+            type Value = AnswerBody;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a JSON value")
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<AnswerBody, A::Error> {
+                let mut body = AnswerBody::default();
+                // A repeated key keeps its last value, as `JSON.parse` does.
+                while let Some(key) = map.next_key::<String>()? {
+                    let slot = match key.as_str() {
+                        "access_token" => &mut body.access_token,
+                        "refresh_token" => &mut body.refresh_token,
+                        "expires_in" => &mut body.expires_in,
+                        "message" => &mut body.message,
+                        "error_description" => &mut body.error_description,
+                        "error" => &mut body.error,
+                        _ => {
+                            map.next_value::<IgnoredAny>()?;
+                            continue;
+                        }
+                    };
+                    *slot = map.next_value()?;
+                }
+                Ok(body)
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<AnswerBody, A::Error> {
+                while seq.next_element::<IgnoredAny>()?.is_some() {}
+                Ok(AnswerBody::default())
+            }
+            fn visit_bool<E>(self, _: bool) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+            fn visit_i64<E>(self, _: i64) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+            fn visit_u64<E>(self, _: u64) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+            fn visit_f64<E>(self, _: f64) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+            fn visit_str<E>(self, _: &str) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+            fn visit_unit<E>(self) -> Result<AnswerBody, E> {
+                Ok(AnswerBody::default())
+            }
+        }
+        deserializer.deserialize_any(Visit)
+    }
+}
+
+impl AnswerBody {
+    /// [`refresh_failure_message`] of this answer, in a wiping buffer.
+    fn failure_message(&self) -> Zeroizing<String> {
+        let mut joined = Zeroizing::new(String::new());
+        for part in [&self.message, &self.error_description, &self.error] {
+            let Some(text) = part.text().filter(|text| !dima_text::trim(text).is_empty()) else {
+                continue;
+            };
+            if !joined.is_empty() {
+                joined.push_str(" | ");
+            }
+            joined.push_str(text);
+        }
+        joined
+    }
+
+    /// [`classify_refusal`] of this answer; the text never leaves a wiping buffer.
+    pub(crate) fn classify(&self, status: u16) -> (RefreshFailureKind, RefreshFailureReason) {
+        let lower = Zeroizing::new(dima_text::to_lower(&self.failure_message()));
+        classify_message(status, &lower)
+    }
+}
+
+/// Parses an answer's bytes as the reference does (`text()`, lossy UTF-8, then `JSON.parse`;
+/// empty text is `{}`), and the UTF-16 length of the text (for the log). Every copy made on the
+/// way is wiped.
+pub(crate) fn parse_answer(body: &[u8]) -> (Result<AnswerBody, serde_json::Error>, usize) {
+    let text = String::from_utf8_lossy(body);
+    let length = dima_text::utf16_len(&text);
+    let parsed = if text.is_empty() {
+        Ok(AnswerBody::default())
+    } else {
+        let sanitized = dima_text::sanitize_lone_surrogates(text.as_bytes());
+        let parsed = serde_json::from_slice(&sanitized);
+        if let Cow::Owned(mut copy) = sanitized {
+            copy.zeroize();
+        }
+        parsed
+    };
+    if let Cow::Owned(mut copy) = text {
+        copy.zeroize();
+    }
+    (parsed, length)
+}
+
+/// `URLSearchParams` encoding of `pairs`, in a buffer sized up front (no reallocation leaves a
+/// copy behind) and wiped when the HTTP stack drops its last reference to it.
+pub(crate) fn form_body(pairs: &[(&str, &str)]) -> Bytes {
+    use url::form_urlencoded::byte_serialize;
+    let encoded_len = |text: &str| byte_serialize(text.as_bytes()).map(str::len).sum::<usize>();
+    let size = pairs
+        .iter()
+        .map(|(name, value)| encoded_len(name) + encoded_len(value) + 2)
+        .sum();
+    let mut out = Zeroizing::new(Vec::with_capacity(size));
+    for (index, (name, value)) in pairs.iter().enumerate() {
+        if index > 0 {
+            out.push(b'&');
+        }
+        for piece in byte_serialize(name.as_bytes()) {
+            out.extend_from_slice(piece.as_bytes());
+        }
+        out.push(b'=');
+        for piece in byte_serialize(value.as_bytes()) {
+            out.extend_from_slice(piece.as_bytes());
+        }
+    }
+    Bytes::from_owner(out)
+}
+
+/// Reads a response body into a wiping buffer; when it must grow, the old buffer is wiped.
+async fn read_body(
+    mut response: dima_http::Response,
+) -> Result<Zeroizing<Vec<u8>>, dima_http::Error> {
+    let hint = usize::try_from(response.content_length().unwrap_or(0).min(64 * 1024)).unwrap_or(0);
+    let mut body = Zeroizing::new(Vec::with_capacity(hint));
+    while let Some(chunk) = response.chunk().await? {
+        let needed = body.len() + chunk.len();
+        if needed > body.capacity() {
+            let mut bigger = Zeroizing::new(Vec::with_capacity(needed.max(body.capacity() * 2)));
+            bigger.extend_from_slice(&body);
+            body = bigger;
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+/// One answer of the token endpoint.
+pub(crate) struct TokenAnswer {
+    pub(crate) status: u16,
+    /// The body (it can hold new tokens: never logged), wiped when dropped.
+    pub(crate) body: Zeroizing<Vec<u8>>,
 }
 
 impl Inner {
@@ -276,14 +539,15 @@ impl Inner {
             self.http.post(&self.oauth, TOKEN_PATH)
         };
         let response = request
-            .form(pairs)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(form_body(pairs))
             .timeout(self.config.timings.oauth_timeout)
             .retry(RetryPolicy::none())
             .send()
             .await?;
         let status = response.status().as_u16();
-        let text = response.text().await?;
-        Ok(TokenAnswer { status, text })
+        let body = read_body(response).await?;
+        Ok(TokenAnswer { status, body })
     }
 
     /// The reference's refresh loop: up to [`crate::Timings::refresh_attempts`] attempts, a
@@ -384,6 +648,71 @@ mod tests {
             refresh_failure_message(&json!({"message": "\u{a0}\u{feff}"})),
             ""
         );
+    }
+
+    #[test]
+    fn field_truthiness_is_javascripts() {
+        let field = |json: &str| {
+            let (body, _) = parse_answer(format!(r#"{{"error":{json}}}"#).as_bytes());
+            body.unwrap().error.truthy()
+        };
+        assert!(!AnswerBody::default().error.truthy());
+        for falsy in ["null", "\"\"", "0", "false", "0.0"] {
+            assert!(!field(falsy), "{falsy}");
+        }
+        for truthy in ["\"x\"", "1", "-1", "true", "[]", "{}"] {
+            assert!(field(truthy), "{truthy}");
+        }
+    }
+
+    #[test]
+    fn the_form_body_is_encoded_like_url_search_params_in_a_wiping_buffer() {
+        let body = form_body(&[
+            ("client_id", "id"),
+            ("client_secret", "s e/c+r&t=é"),
+            ("grant_type", "refresh_token"),
+            ("refresh_token", "r👋"),
+        ]);
+        assert_eq!(
+            &body[..],
+            b"client_id=id&client_secret=s+e%2Fc%2Br%26t%3D%C3%A9&grant_type=refresh_token&refresh_token=r%F0%9F%91%8B"
+        );
+        fn wiped<T: zeroize::ZeroizeOnDrop>() {}
+        wiped::<Zeroizing<Vec<u8>>>();
+        wiped::<SecretString>();
+    }
+
+    #[test]
+    fn answers_are_parsed_into_wiping_fields_only() {
+        let (body, length) = parse_answer(
+            br#"{"access_token":"a-1","refresh_token":"r-1","expires_in":3600,"scope":["x"],"token_type":"bearer","error":null}"#,
+        );
+        let mut body = body.unwrap();
+        assert_eq!(length, 111);
+        assert!(!body.error.truthy());
+        assert!(matches!(body.expires_in, Field::Number(n) if n == 3600.0));
+        assert_eq!(
+            body.access_token
+                .take_text()
+                .map(|t| t.expose().to_owned())
+                .as_deref(),
+            Some("a-1")
+        );
+        assert!(body.access_token.text().is_none(), "moved out");
+        // Repeated keys keep the last value; a non-object is an empty answer; a string
+        // `expires_in` is not a number.
+        let (body, _) = parse_answer(br#"{"error":"x","error":"","expires_in":"3600"}"#);
+        let body = body.unwrap();
+        assert!(!body.error.truthy());
+        assert!(matches!(body.expires_in, Field::Text(_)));
+        let (body, _) = parse_answer(br#"["access_token"]"#);
+        assert!(body.unwrap().access_token.text().is_none());
+        let (body, _) = parse_answer(b"");
+        assert!(body.unwrap().refresh_token.text().is_none());
+        assert!(parse_answer(br#"{"access_token":"a-"#).0.is_err());
+        // Invalid UTF-8 is replaced, as `Response.text()` does.
+        let (body, _) = parse_answer(b"{\"message\":\"\xff invalid refresh token\"}");
+        assert_eq!(body.unwrap().classify(400).0, RefreshFailureKind::Permanent);
     }
 
     #[test]

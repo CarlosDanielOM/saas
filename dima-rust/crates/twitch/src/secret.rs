@@ -53,6 +53,10 @@ macro_rules! token_type {
 token_type!(AccessToken);
 token_type!(RefreshToken);
 
+// Both wrap a `SecretString`, which wipes its text when dropped.
+impl zeroize::ZeroizeOnDrop for AccessToken {}
+impl zeroize::ZeroizeOnDrop for RefreshToken {}
+
 impl AccessToken {
     /// `Authorization: Bearer <token>`, marked sensitive for the HTTP stack. `None` when the
     /// token holds characters a header cannot carry.
@@ -158,6 +162,13 @@ mod tests {
             content: None,
         };
         assert_eq!(cache_text_of(&empty), "");
+    }
+
+    #[test]
+    fn tokens_are_wiped_when_dropped() {
+        fn wiped<T: zeroize::ZeroizeOnDrop>() {}
+        wiped::<AccessToken>();
+        wiped::<RefreshToken>();
     }
 
     #[test]

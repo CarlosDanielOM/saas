@@ -1829,6 +1829,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bson",
+ "bytes",
  "dima-core",
  "dima-http",
  "dima-model",
@@ -1844,6 +1845,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
+ "zeroize",
 ]
 
 [[package]]
