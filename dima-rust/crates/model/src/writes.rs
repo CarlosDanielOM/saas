@@ -14,9 +14,10 @@ use crate::collection::{CollectionInfo, Hooks};
 use crate::error::ModelError;
 use crate::loaded::LoadedForSave;
 use crate::shape::Against;
-use crate::validation::validate_ordered;
+use crate::validation::{validate_given, validate_ordered};
 use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
+use dima_store::mongo::insert::{InsertStyle, PreparedInsert, prepare_insert};
 use dima_store::mongo::save::{Change, PreparedSave, prepare_save};
 use dima_store::mongo::schema::{DefaultValue, Field, Kind, Schema};
 use dima_store::mongo::update::{
@@ -160,6 +161,49 @@ pub(crate) fn save_with_hooks(
         )?;
     }
     Ok(prepared)
+}
+
+/// `Model.create(given)` of a collection with document middleware: `pre_validate` changes the
+/// new document (defaults and `trim` applied) before it is validated, as `pre('validate')`
+/// does, and `pre_save` after, as `pre('save')` does (what it sets is not validated); then the
+/// write guard. Either may refuse the write.
+pub(crate) fn create_with_hooks(
+    info: &CollectionInfo,
+    given: &Document,
+    pre_validate: impl FnOnce(&mut Document, &mut WriteContext) -> Result<(), ModelError>,
+    pre_save: impl FnOnce(&mut Document, &mut WriteContext) -> Result<(), ModelError>,
+    ctx: &mut WriteContext,
+) -> Result<PreparedInsert, ModelError> {
+    let mut prepared = prepare_insert(info.schema, given, InsertStyle::Create, ctx)?;
+    pre_validate(&mut prepared.document, ctx)?;
+    validate_given(
+        info.model,
+        info.schema,
+        info.rules,
+        &prepared.document,
+        Some(given),
+    )?;
+    pre_save(&mut prepared.document, ctx)?;
+    info.check_insert(&prepared.document)?;
+    Ok(prepared)
+}
+
+/// The document a save of `loaded` after `changes` leaves, as the collection's middleware sees
+/// it: the delta the store prepares for them (casts, `trim`, defaults of missing paths) applied,
+/// and the `default: null` paths hydration adds.
+pub(crate) fn document_after(
+    info: &CollectionInfo,
+    loaded: &Document,
+    changes: &[Change],
+    ctx: &WriteContext,
+) -> Result<Document, ModelError> {
+    let delta = prepare_save(info.schema, loaded, changes, &mut ctx.clone())?;
+    let mut after = loaded.clone();
+    if let Some(update) = &delta.update {
+        apply_update(&mut after, update);
+    }
+    fill_null_defaults(info.schema.fields, &mut after);
+    Ok(after)
 }
 
 /// `validateBeforeSave`, as Mongoose 8.24.3 runs it (recorded: the `save_*` cases with errors):

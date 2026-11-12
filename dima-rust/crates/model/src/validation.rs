@@ -97,6 +97,25 @@ impl Rule {
             check: Check::Custom { message, valid },
         }
     }
+
+    /// `validate: { validator, message: (props) => ... }`: a message built from the value
+    /// (`message` gets it as JavaScript's template literal shows it). `declared` is the message
+    /// function's text as Mongoose reports it (`String(validator.message)`), for the drift test.
+    pub const fn custom_with(
+        path: &'static str,
+        declared: &'static str,
+        message: fn(&str) -> String,
+        valid: fn(&Bson) -> bool,
+    ) -> Self {
+        Self {
+            path,
+            check: Check::CustomWith {
+                declared,
+                message,
+                valid,
+            },
+        }
+    }
 }
 
 /// What a [`Rule`] checks.
@@ -118,6 +137,15 @@ pub enum Check {
     Custom {
         /// The message (Mongoose's `{PATH}`/`{VALUE}` placeholders are not used by the schemas).
         message: &'static str,
+        /// The validator; it is not called for a missing value.
+        valid: fn(&Bson) -> bool,
+    },
+    /// A user-defined validator whose message is a function of the value.
+    CustomWith {
+        /// The message function's text as Mongoose reports it (for the drift test).
+        declared: &'static str,
+        /// The message, given the value as text.
+        message: fn(&str) -> String,
         /// The validator; it is not called for a missing value.
         valid: fn(&Bson) -> bool,
     },
@@ -404,7 +432,8 @@ fn validate_level(
     let mut missing: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
     // With an order: the same errors with their sort keys.
     let mut ordered: Vec<((u8, Vec<usize>), ValidatorError)> = Vec::new();
-    let mut present: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
+    // (sort key, schema position, error).
+    let mut present: Vec<(Vec<usize>, Vec<usize>, ValidatorError)> = Vec::new();
     let mut children: Vec<ChildRules<'_>> = Vec::new();
     // An empty-object default (`default: () => ({})`) is present when Mongoose validates, and
     // removed by `minimize` afterwards.
@@ -416,10 +445,9 @@ fn validate_level(
                 position,
                 field,
             }) => {
-                let failed = |list: &[(Vec<usize>, ValidatorError)]| {
-                    list.iter().any(|(p, _)| *p == position)
-                };
-                if failed(&missing) || failed(&present) {
+                if missing.iter().any(|(p, _)| *p == position)
+                    || present.iter().any(|(_, p, _)| *p == position)
+                {
                     continue;
                 }
                 let value = effective_value(document, given, &local).or_else(|| {
@@ -441,7 +469,13 @@ fn validate_level(
                     if value.is_none() {
                         missing.push((position, error));
                     } else {
-                        present.push((position, error));
+                        // A new document's paths a default filled come after the given ones
+                        // (Mongoose validates its `modify` state before its `default` state).
+                        let defaulted =
+                            given.is_some_and(|g| value_at(g, &local).is_none()) && order.is_none();
+                        let mut key = vec![usize::from(defaulted)];
+                        key.extend(position.iter().copied());
+                        present.push((key, position, error));
                     }
                 }
             }
@@ -471,8 +505,9 @@ fn validate_level(
     // A sub-document whose own path failed (a user-defined validator on it) is not validated.
     let failed: Vec<Vec<usize>> = missing
         .iter()
-        .chain(present.iter())
-        .map(|(position, _)| position.clone())
+        .map(|(position, _)| position)
+        .chain(present.iter().map(|(_, position, _)| position))
+        .cloned()
         .collect();
     if order.is_some() {
         // The sort is stable: errors with equal keys keep the order they were found in.
@@ -482,9 +517,25 @@ fn validate_level(
         missing.sort_by(|a, b| b.0.cmp(&a.0));
         present.sort_by(|a, b| a.0.cmp(&b.0));
         errors.extend(missing.into_iter().map(|(_, e)| e));
-        errors.extend(present.into_iter().map(|(_, e)| e));
+        errors.extend(present.into_iter().map(|(_, _, e)| e));
     }
-    children.sort_by(|a, b| a.position.cmp(&b.position));
+    // Mongoose runs a path's validators one after the other, each asynchronously, and a
+    // sub-document's own errors come from its last one: those of a `required` sub-document
+    // arrive after those of the others (recorded: `channelaimemories/validate_enums`).
+    let required_here: Vec<Vec<usize>> = rules
+        .iter()
+        .filter(|rule| matches!(rule.check, Check::Required | Check::RequiredWhen(_)))
+        .filter_map(|rule| match locate(fields, rule.segments) {
+            Some(Located::Leaf { position, .. }) => Some(position),
+            _ => None,
+        })
+        .collect();
+    children.sort_by_key(|child| {
+        (
+            required_here.contains(&child.position),
+            child.position.clone(),
+        )
+    });
     for child in children {
         if failed.contains(&child.position) {
             continue;
@@ -603,6 +654,10 @@ fn check(
         },
         Check::Custom { message, valid } => match value {
             Some(v) if !valid(v) => Some((ValidatorKind::UserDefined, message.to_owned())),
+            _ => None,
+        },
+        Check::CustomWith { message, valid, .. } => match value {
+            Some(v) if !valid(v) => Some((ValidatorKind::UserDefined, message(&js_string(v)))),
             _ => None,
         },
     }

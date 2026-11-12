@@ -26,6 +26,15 @@ pub enum ModelError {
         /// The collection the document was loaded from.
         found: &'static str,
     },
+    /// The collection's middleware refused the write (a reference hook that throws: a plan
+    /// limit, a missing owner); the message is the reference's.
+    #[error("{message}")]
+    Refused {
+        /// The collection.
+        collection: &'static str,
+        /// The reference's error message.
+        message: String,
+    },
     /// A generic write to a collection whose Mongoose middleware would be skipped: use the
     /// collection module's adapter.
     #[error("{operation} on {collection} must go through its module (Mongoose hooks)")]
