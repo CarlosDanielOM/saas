@@ -860,6 +860,10 @@
    "sha256": "a2e0fb433741aacd1f9b42de6a603814986ad99bf4198b65b8b7a0edcc9b8657"
   },
   {
+   "path": "src/schemas/trigger_file.schema.ts",
+   "sha256": "4ce0751c6232be1088ef05707dee271efea1157e93821c431c01bfb3a0545bd4"
+  },
+  {
    "path": "src/schemas/user_extension_inventory.schema.ts",
    "sha256": "5567a112c7bedb38e17d04696e20a2b30a0d63d0f14c2883b7d238a16918cb43"
   },
@@ -1629,6 +1633,2546 @@
   }
  ],
  "models": {
+  "channel_moderation_settings": {
+   "model": "channel_moderation_settings",
+   "file": "src/schemas/channel_moderation_settings.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "spamProtection",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "enabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "reviewAllMessages",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": false
+         }
+        },
+        {
+         "name": "categories",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": [
+           "spam",
+           "ads",
+           "self_promotion"
+          ]
+         }
+        },
+        {
+         "name": "exemptTags",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": [
+           "mod",
+           "editor",
+           "admin"
+          ]
+         }
+        },
+        {
+         "name": "thresholdPercent",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "85"
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "enabled": true,
+        "reviewAllMessages": false,
+        "categories": [
+         "spam",
+         "ads",
+         "self_promotion"
+        ],
+        "exemptTags": [
+         "mod",
+         "editor",
+         "admin"
+        ],
+        "thresholdPercent": {
+         "$numberInt": "85"
+        }
+       }
+      }
+     },
+     {
+      "name": "offenseWindowSeconds",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "3600"
+       }
+      }
+     },
+     {
+      "name": "rules",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "id",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "type",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "enabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "firstOffense",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "action",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "warn"
+            }
+           },
+           {
+            "name": "timeoutSeconds",
+            "kind": "value",
+            "type": "Number",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": {
+              "$numberInt": "60"
+             }
+            }
+           }
+          ]
+         },
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "action": "warn",
+           "timeoutSeconds": {
+            "$numberInt": "60"
+           }
+          }
+         }
+        },
+        {
+         "name": "secondOffense",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "action",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "warn"
+            }
+           },
+           {
+            "name": "timeoutSeconds",
+            "kind": "value",
+            "type": "Number",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": {
+              "$numberInt": "60"
+             }
+            }
+           }
+          ]
+         },
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "action": "delete",
+           "timeoutSeconds": {
+            "$numberInt": "60"
+           }
+          }
+         }
+        },
+        {
+         "name": "thirdOffense",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "action",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "warn"
+            }
+           },
+           {
+            "name": "timeoutSeconds",
+            "kind": "value",
+            "type": "Number",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": {
+              "$numberInt": "60"
+             }
+            }
+           }
+          ]
+         },
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "action": "timeout",
+           "timeoutSeconds": {
+            "$numberInt": "60"
+           }
+          }
+         }
+        },
+        {
+         "name": "reason",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "Message blocked by channel moderation"
+         }
+        },
+        {
+         "name": "exemptUserLevel",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "7"
+          }
+         }
+        },
+        {
+         "name": "exemptExpression",
+         "kind": "mixed",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "capsThresholdMode",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "count"
+         }
+        },
+        {
+         "name": "minCapsCount",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "8"
+          }
+         }
+        },
+        {
+         "name": "maxCapsPercentage",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "70"
+          }
+         }
+        },
+        {
+         "name": "minMessageLength",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "10"
+          }
+         }
+        },
+        {
+         "name": "allowlistDomains",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        },
+        {
+         "name": "maxEmoteCount",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "10"
+          }
+         }
+        },
+        {
+         "name": "terms",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        },
+        {
+         "name": "variations",
+         "kind": "mixed",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "mode": "off",
+           "entries": []
+          }
+         }
+        },
+        {
+         "name": "patterns",
+         "kind": "documentArray",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "id",
+            "kind": "value",
+            "type": "String"
+           },
+           {
+            "name": "source",
+            "kind": "value",
+            "type": "String"
+           },
+           {
+            "name": "boundary",
+            "kind": "value",
+            "type": "String"
+           },
+           {
+            "name": "ignoreCase",
+            "kind": "value",
+            "type": "Boolean"
+           }
+          ]
+         },
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        },
+        {
+         "name": "semantic",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "enabled",
+            "kind": "value",
+            "type": "Boolean",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": false
+            }
+           },
+           {
+            "name": "thresholdPercent",
+            "kind": "value",
+            "type": "Number",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": {
+              "$numberInt": "85"
+             }
+            }
+           },
+           {
+            "name": "policy",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": ""
+            }
+           },
+           {
+            "name": "examples",
+            "kind": "documentArray",
+            "schema": {
+             "id": "none",
+             "timestamps": null,
+             "versionKey": null,
+             "minimize": true,
+             "fields": [
+              {
+               "name": "message",
+               "kind": "value",
+               "type": "String"
+              },
+              {
+               "name": "label",
+               "kind": "value",
+               "type": "String"
+              }
+             ]
+            },
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": []
+            }
+           },
+           {
+            "name": "onUncertain",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "allow_and_log"
+            }
+           }
+          ]
+         },
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "enabled": false,
+           "policy": "",
+           "examples": [],
+           "onUncertain": "allow_and_log",
+           "thresholdPercent": {
+            "$numberInt": "85"
+           }
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "settingsVersion",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "spamProtection.thresholdPercent",
+     "type": "min",
+     "min": 80
+    },
+    {
+     "path": "spamProtection.thresholdPercent",
+     "type": "max",
+     "max": 100
+    },
+    {
+     "path": "offenseWindowSeconds",
+     "type": "min",
+     "min": 60
+    },
+    {
+     "path": "offenseWindowSeconds",
+     "type": "max",
+     "max": 86400
+    },
+    {
+     "path": "rules.$.id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "rules.$.type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "rules.$.type",
+     "type": "enum",
+     "values": [
+      "caps",
+      "links",
+      "emote_spam",
+      "blacklist"
+     ]
+    },
+    {
+     "path": "rules.$.firstOffense.action",
+     "type": "enum",
+     "values": [
+      "off",
+      "warn",
+      "delete",
+      "timeout",
+      "ban"
+     ]
+    },
+    {
+     "path": "rules.$.firstOffense.timeoutSeconds",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.firstOffense.timeoutSeconds",
+     "type": "max",
+     "max": 1209600
+    },
+    {
+     "path": "rules.$.secondOffense.action",
+     "type": "enum",
+     "values": [
+      "off",
+      "warn",
+      "delete",
+      "timeout",
+      "ban"
+     ]
+    },
+    {
+     "path": "rules.$.secondOffense.timeoutSeconds",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.secondOffense.timeoutSeconds",
+     "type": "max",
+     "max": 1209600
+    },
+    {
+     "path": "rules.$.thirdOffense.action",
+     "type": "enum",
+     "values": [
+      "off",
+      "warn",
+      "delete",
+      "timeout",
+      "ban"
+     ]
+    },
+    {
+     "path": "rules.$.thirdOffense.timeoutSeconds",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.thirdOffense.timeoutSeconds",
+     "type": "max",
+     "max": 1209600
+    },
+    {
+     "path": "rules.$.reason",
+     "type": "maxlength",
+     "maxlength": 500
+    },
+    {
+     "path": "rules.$.exemptUserLevel",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.exemptUserLevel",
+     "type": "max",
+     "max": 10
+    },
+    {
+     "path": "rules.$.capsThresholdMode",
+     "type": "enum",
+     "values": [
+      "count",
+      "percentage"
+     ]
+    },
+    {
+     "path": "rules.$.minCapsCount",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.minCapsCount",
+     "type": "max",
+     "max": 500
+    },
+    {
+     "path": "rules.$.maxCapsPercentage",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.maxCapsPercentage",
+     "type": "max",
+     "max": 100
+    },
+    {
+     "path": "rules.$.minMessageLength",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.minMessageLength",
+     "type": "max",
+     "max": 500
+    },
+    {
+     "path": "rules.$.maxEmoteCount",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "rules.$.maxEmoteCount",
+     "type": "max",
+     "max": 100
+    },
+    {
+     "path": "rules.$.semantic.thresholdPercent",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "rules.$.semantic.thresholdPercent",
+     "type": "max",
+     "max": 100
+    },
+    {
+     "path": "rules.$.semantic.policy",
+     "type": "maxlength",
+     "maxlength": 2000
+    },
+    {
+     "path": "rules.$.semantic.onUncertain",
+     "type": "enum",
+     "values": [
+      "allow_and_log"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "moderation_decisions": {
+   "model": "moderation_decision",
+   "file": "src/schemas/moderation_decision.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "username",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "messageID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "messageText",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ruleID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "rule",
+      "kind": "mixed"
+     },
+     {
+      "name": "settingsVersion",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "matches",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "context",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "mode",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "reviewSource",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "rule"
+      }
+     },
+     {
+      "name": "state",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "verdict",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "uncertain"
+      }
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "model",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "provider",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "decisionPolicyVersion",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "scores",
+      "kind": "mixed",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "providerRequestID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "inputTokens",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "cost",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "latencyMs",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "charge",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "status": "none",
+        "credits": {
+         "$numberInt": "0"
+        },
+        "externalID": "",
+        "customerID": ""
+       }
+      }
+     },
+     {
+      "name": "consequence",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "status": "none"
+       }
+      }
+     },
+     {
+      "name": "feedback",
+      "kind": "mixed",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "deadline",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "reviewSource",
+     "type": "enum",
+     "values": [
+      "rule",
+      "first_message",
+      "spam_continuous"
+     ]
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "createdAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "state",
+       1
+      ],
+      [
+       "deadline",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "charge.status",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "pet_requests": {
+   "model": "PetRequest",
+   "file": "src/schemas/pet_runtime.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ownerId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "operation",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "text",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "origin",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "kind",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "id",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "occurredAt",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "sessionId",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     },
+     {
+      "name": "actionKey",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "actor",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "userId",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "displayName",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "chat",
+        "kind": "nested",
+        "fields": [
+         {
+          "name": "login",
+          "kind": "value",
+          "type": "String"
+         },
+         {
+          "name": "message",
+          "kind": "value",
+          "type": "String"
+         },
+         {
+          "name": "badges",
+          "kind": "documentArray",
+          "schema": {
+           "id": "none",
+           "timestamps": null,
+           "versionKey": null,
+           "minimize": true,
+           "fields": [
+            {
+             "name": "set_id",
+             "kind": "value",
+             "type": "String"
+            },
+            {
+             "name": "id",
+             "kind": "value",
+             "type": "String"
+            },
+            {
+             "name": "info",
+             "kind": "value",
+             "type": "String"
+            }
+           ]
+          },
+          "default": {
+           "function": false,
+           "implicit": true,
+           "value": []
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "payloadHash",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "admitted",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "startBefore",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "generation",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "settingsRevision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "version",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "deliveryAttempted",
+      "kind": "value",
+      "type": "Boolean"
+     },
+     {
+      "name": "audioFetched",
+      "kind": "value",
+      "type": "Boolean"
+     },
+     {
+      "name": "playbackStarted",
+      "kind": "value",
+      "type": "Boolean"
+     },
+     {
+      "name": "lane",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ttsSpeechId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "privateDir",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "outputText",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "errorCode",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "phaseDeadline",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "emoteNames",
+      "kind": "array",
+      "type": "String"
+     },
+     {
+      "name": "mood",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "moodText",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "audio",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "path",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "mimeType",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "durationMs",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "ownerId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "queued",
+      "accepted",
+      "generating",
+      "synthesizing",
+      "ready",
+      "playing",
+      "completed",
+      "cancelled",
+      "failed",
+      "expired"
+     ]
+    },
+    {
+     "path": "lane",
+     "type": "enum",
+     "values": [
+      "independent",
+      "tts"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "ownerId",
+       1
+      ],
+      [
+       "origin.kind",
+       1
+      ],
+      [
+       "origin.id",
+       1
+      ],
+      [
+       "actionKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ],
+      [
+       "phaseDeadline",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "ownerId",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "pet_runtimes": {
+   "model": "PetRuntime",
+   "file": "src/schemas/pet_runtime.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "generation",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "activeRequestId",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "lease",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "leaseId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "holderPeerId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "expiresAt",
+         "kind": "value",
+         "type": "Date"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "notBefore",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "lastAcceptedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "admissionClaimId",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "ttsReservation",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "speechId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "token",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "expiresAt",
+         "kind": "value",
+         "type": "Date"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "tokenHash",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "overlayToken",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "iv",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "content",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "tokenHash",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "partialFilterExpression": {
+       "tokenHash": {
+        "$type": "string"
+       }
+      },
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "lease.expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "pet_settings": {
+   "model": "pet_settings",
+   "file": "src/schemas/pet_settings.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "userId",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "settings",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "moods",
+         "kind": "mixed"
+        },
+        {
+         "name": "appearance",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "kind",
+           "kind": "value",
+           "type": "String"
+          },
+          {
+           "name": "idleAssetId",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          },
+          {
+           "name": "talkingAssetId",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          }
+         ]
+        },
+        {
+         "name": "playback",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "target",
+           "kind": "value",
+           "type": "String"
+          },
+          {
+           "name": "desktopSessionId",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          },
+          {
+           "name": "vtsSessionId",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": null
+           }
+          }
+         ]
+        },
+        {
+         "name": "sources",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "independent",
+           "kind": "value",
+           "type": "Boolean",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": true
+           }
+          },
+          {
+           "name": "readTts",
+           "kind": "value",
+           "type": "Boolean",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": false
+           }
+          }
+         ]
+        },
+        {
+         "name": "ttsAudio",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "pet"
+         }
+        },
+        {
+         "name": "enabled",
+         "kind": "value",
+         "type": "Boolean"
+        },
+        {
+         "name": "name",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "tts",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "enabled",
+           "kind": "value",
+           "type": "Boolean"
+          },
+          {
+           "name": "provider",
+           "kind": "value",
+           "type": "String"
+          },
+          {
+           "name": "language",
+           "kind": "value",
+           "type": "String"
+          },
+          {
+           "name": "voice",
+           "kind": "value",
+           "type": "String"
+          }
+         ]
+        },
+        {
+         "name": "personality",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "source",
+           "kind": "value",
+           "type": "String"
+          },
+          {
+           "name": "profileId",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": ""
+           }
+          },
+          {
+           "name": "prompt",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": ""
+           }
+          }
+         ]
+        },
+        {
+         "name": "rules",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        },
+        {
+         "name": "behavior",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "respondToChat",
+           "kind": "value",
+           "type": "Boolean"
+          },
+          {
+           "name": "respondToEvents",
+           "kind": "value",
+           "type": "Boolean"
+          },
+          {
+           "name": "cooldownSeconds",
+           "kind": "value",
+           "type": "Number"
+          },
+          {
+           "name": "maxReplyLength",
+           "kind": "value",
+           "type": "Number"
+          },
+          {
+           "name": "queueSize",
+           "kind": "value",
+           "type": "Number",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": {
+             "$numberInt": "5"
+            }
+           }
+          },
+          {
+           "name": "askLane",
+           "kind": "value",
+           "type": "String",
+           "default": {
+            "function": false,
+            "implicit": false,
+            "value": "independent"
+           }
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "userId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.appearance.kind",
+     "type": "enum",
+     "values": [
+      "png",
+      "vts"
+     ]
+    },
+    {
+     "path": "settings.playback.target",
+     "type": "enum",
+     "values": [
+      "browser",
+      "desktop"
+     ]
+    },
+    {
+     "path": "settings.ttsAudio",
+     "type": "enum",
+     "values": [
+      "pet",
+      "overlay"
+     ]
+    },
+    {
+     "path": "settings.enabled",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.name",
+     "type": "maxlength",
+     "maxlength": 40
+    },
+    {
+     "path": "settings.tts.enabled",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.tts.provider",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.tts.provider",
+     "type": "enum",
+     "values": [
+      "piper",
+      "kokoro",
+      "fish"
+     ]
+    },
+    {
+     "path": "settings.tts.language",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.tts.language",
+     "type": "enum",
+     "values": [
+      "en",
+      "es"
+     ]
+    },
+    {
+     "path": "settings.tts.voice",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.tts.voice",
+     "type": "maxlength",
+     "maxlength": 100
+    },
+    {
+     "path": "settings.personality.source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.personality.source",
+     "type": "enum",
+     "values": [
+      "custom",
+      "profile"
+     ]
+    },
+    {
+     "path": "settings.personality.prompt",
+     "type": "maxlength",
+     "maxlength": 4000
+    },
+    {
+     "path": "settings.behavior.respondToChat",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.behavior.respondToEvents",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.behavior.cooldownSeconds",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.behavior.cooldownSeconds",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "settings.behavior.cooldownSeconds",
+     "type": "max",
+     "max": 3600
+    },
+    {
+     "path": "settings.behavior.maxReplyLength",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "settings.behavior.maxReplyLength",
+     "type": "min",
+     "min": 30
+    },
+    {
+     "path": "settings.behavior.maxReplyLength",
+     "type": "max",
+     "max": 500
+    },
+    {
+     "path": "settings.behavior.queueSize",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "settings.behavior.queueSize",
+     "type": "max",
+     "max": 10
+    },
+    {
+     "path": "settings.behavior.askLane",
+     "type": "enum",
+     "values": [
+      "independent",
+      "tts"
+     ]
+    },
+    {
+     "path": "revision",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "revision",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "updatedAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "userId",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "triggers": {
+   "model": "Trigger",
+   "file": "src/schemas/trigger.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "rewardID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "file",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fileID",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "assetID",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "libraryItemID",
+      "kind": "value",
+      "type": "ObjectId",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "trigger"
+      }
+     },
+     {
+      "name": "mediaType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "isEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "volume",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "100"
+       }
+      }
+     },
+     {
+      "name": "cost",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "cooldown",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "prompt",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "date",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "day",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "11"
+         }
+        }
+       },
+       {
+        "name": "month",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "11"
+         }
+        }
+       },
+       {
+        "name": "year",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "2026"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "file",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mediaType",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "triggerfiles": {
+   "model": "TriggerFile",
+   "file": "src/schemas/trigger_file.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fileName",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fileSize",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "fileType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fileUrl",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "date",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "day",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "11"
+         }
+        }
+       },
+       {
+        "name": "month",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "11"
+         }
+        }
+       },
+       {
+        "name": "year",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "2026"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fileName",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fileSize",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fileType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fileUrl",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
   "moderation_variation_jobs": {
    "model": "moderation_variation_job",
    "file": "src/schemas/moderation_variation.schema.ts",
@@ -14906,7 +17450,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416efdc4e94c26066412"
+          "value": "6af4416eaf8561d427e6d20b"
          }
         },
         {

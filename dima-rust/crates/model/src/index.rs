@@ -189,6 +189,11 @@ impl IndexPolicy {
 /// - `userextensioninventories` (unique): nothing awaits it, but the first purchase upserts the
 ///   viewer's wallet on `{platform, userID, channelID}`, and two wallets would split a balance.
 ///
+/// - `pet_requests` / `pet_runtimes` (unique): `pets/admission.ts:49` and
+///   `pets/state.ts:18` await init; origin/action dedupe and capability uniqueness must hold;
+/// - `pet_settings` (unique): `server/services/pet_settings.service.ts:184` awaits init
+///   before create/CAS, keeping one settings revision per account.
+///
 /// `extensionwallettransactions.twitchTransactionID` guards money too, but production holds a
 /// conflicting plain index of that name, so it cannot be built there; it stays best effort (see
 /// that module).
@@ -210,6 +215,9 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
         | crate::credit_transactions::COLLECTION
         | crate::ai_usage_receipts::COLLECTION
         | crate::temporary_moderators::COLLECTION
+        | crate::pet_requests::COLLECTION
+        | crate::pet_runtimes::COLLECTION
+        | crate::pet_settings::COLLECTION
         | crate::user_extension_inventories::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION
         | crate::oauth_grants::COLLECTION

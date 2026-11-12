@@ -10,6 +10,7 @@
 //! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set.
 
 mod support;
+use dima_model::Private;
 
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
@@ -348,6 +349,584 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("moderation_decisions", "nullable") => {
+            use dima_model::moderation_decisions::*;
+            let mut input = NewModerationDecision {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                user_id: Some("seed".into()),
+                username: Some("seed".into()),
+                message_id: Some("seed".into()),
+                message_text: Some(Private::new("seed".into())),
+                rule_id: Some("seed".into()),
+                rule: Some(Private::new(ModerationDecisionRule(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                settings_version: Some(JsNumber(1.0)),
+                matches: Some(Private::new(ModerationDecisionMatches(vec![
+                    Bson::Document(doc! {"message": text}),
+                ]))),
+                context: Some(Private::new(ModerationDecisionContext(vec![
+                    Bson::Document(doc! {"message": text}),
+                ]))),
+                mode: Some("seed".into()),
+                review_source: Some(ModerationDecisionReviewSourceValue::Rule),
+                state: Some("seed".into()),
+                verdict: Some("seed".into()),
+                status: Some("seed".into()),
+                model: Some("seed".into()),
+                provider: Some("seed".into()),
+                decision_policy_version: Some("seed".into()),
+                scores: Some(Private::new(ModerationDecisionScores(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                provider_request_id: Some("seed".into()),
+                input_tokens: Some(JsNumber(1.0)),
+                cost: Some(JsNumber(1.0)),
+                latency_ms: Some(JsNumber(1.0)),
+                charge: Some(Private::new(ModerationDecisionCharge(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                consequence: Some(Private::new(ModerationDecisionConsequence(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                feedback: Some(Private::new(ModerationDecisionFeedback(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                deadline: Some(JsDate(1623053350011)),
+                created_at: Some(JsDate(1623053350011)),
+                expires_at: JsDate(1623053350011),
+            };
+            input.scores = Some(Private::new(ModerationDecisionScores(Bson::Null)));
+            input.feedback = Some(Private::new(ModerationDecisionFeedback(Bson::Null)));
+
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_requests", "nullable") => {
+            use dima_model::pet_requests::*;
+            let mut input = NewPetRequest {
+                id: "seed".into(),
+                owner_id: "seed".into(),
+                channel_id: Some("seed".into()),
+                operation: Some("seed".into()),
+                text: Some(Private::new("seed".into())),
+                origin: Some(NewPetRequestOrigin {
+                    kind: Some("seed".into()),
+                    id: Some("seed".into()),
+                    occurred_at: Some("seed".into()),
+                    session_id: Some("seed".into()),
+                }),
+                action_key: Some("seed".into()),
+                actor: Some(NewPetRequestActor {
+                    user_id: Some("seed".into()),
+                    display_name: Some("seed".into()),
+                    chat: Some(NewPetRequestActorChat {
+                        login: Some("seed".into()),
+                        message: Some(Private::new("seed".into())),
+                        badges: Some(vec![NewPetRequestActorChatBadges {
+                            set_id: Some("seed".into()),
+                            id: Some("seed".into()),
+                            info: Some("seed".into()),
+                        }]),
+                    }),
+                }),
+                payload_hash: Some("seed".into()),
+                admitted: Some(true),
+                start_before: Some(JsDate(1623053350011)),
+                generation: Some(JsNumber(1.0)),
+                settings_revision: Some(JsNumber(1.0)),
+                status: Some(PetRequestStatusValue::Queued),
+                version: Some(JsNumber(1.0)),
+                delivery_attempted: Some(true),
+                audio_fetched: Some(true),
+                playback_started: Some(true),
+                lane: Some(PetRequestLaneValue::Independent),
+                tts_speech_id: Some("seed".into()),
+                private_dir: Some(Private::new("seed".into())),
+                output_text: Some(Private::new("seed".into())),
+                error_code: Some("seed".into()),
+                phase_deadline: Some(JsDate(1623053350011)),
+                emote_names: Some(vec![Some("seed".into())]),
+                mood: Some("seed".into()),
+                mood_text: Some(Private::new("seed".into())),
+                audio: Nullable::Value(NewPetRequestAudio {
+                    path: Some(Private::new("seed".into())),
+                    mime_type: Some("seed".into()),
+                    duration_ms: Some(JsNumber(1.0)),
+                }),
+                created_at: Some(JsDate(1623053350011)),
+                expires_at: Some(JsDate(1623053350011)),
+            };
+            input.audio = Nullable::Null;
+
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_runtimes", "nullable") => {
+            use dima_model::pet_runtimes::*;
+            let mut input = NewPetRuntime {
+                id: "seed".into(),
+                channel_id: Some("seed".into()),
+                generation: Some(JsNumber(1.0)),
+                active_request_id: Nullable::Value("seed".into()),
+                lease: Nullable::Value(NewPetRuntimeLease {
+                    lease_id: Some("seed".into()),
+                    holder_peer_id: Some("seed".into()),
+                    expires_at: Some(JsDate(1623053350011)),
+                }),
+                not_before: Some(JsDate(1623053350011)),
+                last_accepted_at: Nullable::Value(JsDate(1623053350011)),
+                admission_claim_id: Nullable::Value("seed".into()),
+                tts_reservation: Nullable::Value(NewPetRuntimeTtsReservation {
+                    speech_id: Some("seed".into()),
+                    token: Some(Private::new("seed".into())),
+                    expires_at: Some(JsDate(1623053350011)),
+                }),
+                token_hash: Nullable::Value(Private::new("seed".into())),
+                overlay_token: Nullable::Value(Private::new(NewPetRuntimeOverlayToken {
+                    iv: Some("seed".into()),
+                    content: Some("seed".into()),
+                })),
+            };
+            input.active_request_id = Nullable::Null;
+            input.lease = Nullable::Null;
+            input.last_accepted_at = Nullable::Null;
+            input.admission_claim_id = Nullable::Null;
+            input.tts_reservation = Nullable::Null;
+            input.token_hash = Nullable::Null;
+            input.overlay_token = Nullable::Null;
+
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_settings", "nullable") => {
+            use dima_model::pet_settings::*;
+            let mut input = NewPetSettingsRecord {
+                user_id: ObjectId::from_bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]),
+                settings: NewPetSettingsRecordSettings {
+                    moods: Some(Private::new(PetSettingsRecordSettingsMoods(
+                        Bson::Document(doc! {"message": text}),
+                    ))),
+                    appearance: Some(NewPetSettingsRecordSettingsAppearance {
+                        kind: Some(PetSettingsRecordSettingsAppearanceKindValue::Png),
+                        idle_asset_id: Nullable::Value("seed".into()),
+                        talking_asset_id: Nullable::Value("seed".into()),
+                    }),
+                    playback: Some(NewPetSettingsRecordSettingsPlayback {
+                        target: Some(PetSettingsRecordSettingsPlaybackTargetValue::Browser),
+                        desktop_session_id: Nullable::Value("seed".into()),
+                        vts_session_id: Nullable::Value("seed".into()),
+                    }),
+                    sources: Some(NewPetSettingsRecordSettingsSources {
+                        independent: Some(true),
+                        read_tts: Some(true),
+                    }),
+                    tts_audio: Some(PetSettingsRecordSettingsTtsAudioValue::Pet),
+                    enabled: true,
+                    name: "seed".into(),
+                    tts: Some(NewPetSettingsRecordSettingsTts {
+                        enabled: true,
+                        provider: PetSettingsRecordSettingsTtsProviderValue::Piper,
+                        language: PetSettingsRecordSettingsTtsLanguageValue::En,
+                        voice: "seed".into(),
+                    }),
+                    personality: Some(NewPetSettingsRecordSettingsPersonality {
+                        source: PetSettingsRecordSettingsPersonalitySourceValue::Custom,
+                        profile_id: Some("seed".into()),
+                        prompt: Some(Private::new("seed".into())),
+                    }),
+                    rules: Some(Private::new(vec![Some("seed".into())])),
+                    behavior: Some(NewPetSettingsRecordSettingsBehavior {
+                        respond_to_chat: true,
+                        respond_to_events: true,
+                        cooldown_seconds: JsNumber(1.0),
+                        max_reply_length: JsNumber(30.0),
+                        queue_size: Some(JsNumber(1.0)),
+                        ask_lane: Some(PetSettingsRecordSettingsBehaviorAskLaneValue::Independent),
+                    }),
+                },
+                revision: JsNumber(1.0),
+                updated_at: JsDate(1623053350011),
+            };
+            input
+                .settings
+                .appearance
+                .as_mut()
+                .context("appearance")?
+                .idle_asset_id = Nullable::Null;
+            input
+                .settings
+                .appearance
+                .as_mut()
+                .context("appearance")?
+                .talking_asset_id = Nullable::Null;
+            input
+                .settings
+                .playback
+                .as_mut()
+                .context("playback")?
+                .desktop_session_id = Nullable::Null;
+            input
+                .settings
+                .playback
+                .as_mut()
+                .context("playback")?
+                .vts_session_id = Nullable::Null;
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("triggers", "nullable") => {
+            use dima_model::triggers::*;
+            let mut input = NewTrigger {
+                name: "seed".into(),
+                channel: "seed".into(),
+                channel_id: "seed".into(),
+                reward_id: Some("seed".into()),
+                file: "seed".into(),
+                file_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                asset_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                library_item_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                r#type: Some("seed".into()),
+                media_type: "seed".into(),
+                is_enabled: Some(true),
+                volume: Some(JsNumber(1.0)),
+                cost: Some(JsNumber(1.0)),
+                cooldown: Some(JsNumber(1.0)),
+                prompt: Some(Private::new(TriggerPrompt("seed".into()))),
+                created_at: Some(JsDate(1623053350011)),
+                date: Some(NewTriggerDate {
+                    day: Some(JsNumber(1.0)),
+                    month: Some(JsNumber(1.0)),
+                    year: Some(JsNumber(1.0)),
+                }),
+            };
+            input.file_id = Nullable::Null;
+            input.asset_id = Nullable::Null;
+            input.library_item_id = Nullable::Null;
+
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("channel_moderation_settings", "typed" | "nullable") => {
+            use dima_model::channel_moderation_settings::*;
+            let mut input = NewChannelModerationSettings {
+                channel_id: "seed".into(),
+                channel: Some("seed".into()),
+                enabled: Some(true),
+                spam_protection: Some(NewChannelModerationSettingsSpamProtection {
+                    enabled: Some(true),
+                    review_all_messages: Some(true),
+                    categories: Some(vec![Some("spam".into())]),
+                    exempt_tags: Some(vec![Some("mod".into())]),
+                    threshold_percent: Some(JsNumber(80.0)),
+                }),
+                offense_window_seconds: Some(JsNumber(60.0)),
+                rules: Some(vec![NewChannelModerationSettingsRules {
+                    id: "seed".into(),
+                    r#type: ChannelModerationSettingsRulesTypeValue::Caps,
+                    enabled: Some(true),
+                    first_offense: Some(NewChannelModerationSettingsRulesFirstOffense {
+                        action: Some(ChannelModerationSettingsRulesFirstOffenseActionValue::Off),
+                        timeout_seconds: Some(JsNumber(1.0)),
+                    }),
+                    second_offense: Some(NewChannelModerationSettingsRulesSecondOffense {
+                        action: Some(ChannelModerationSettingsRulesSecondOffenseActionValue::Off),
+                        timeout_seconds: Some(JsNumber(1.0)),
+                    }),
+                    third_offense: Some(NewChannelModerationSettingsRulesThirdOffense {
+                        action: Some(ChannelModerationSettingsRulesThirdOffenseActionValue::Off),
+                        timeout_seconds: Some(JsNumber(1.0)),
+                    }),
+                    reason: Some(Private::new("seed".into())),
+                    exempt_user_level: Some(JsNumber(1.0)),
+                    exempt_expression: Some(ChannelModerationSettingsRulesExemptExpression(
+                        Bson::Document(doc! {"message": text}),
+                    )),
+                    caps_threshold_mode: Some(
+                        ChannelModerationSettingsRulesCapsThresholdModeValue::Count,
+                    ),
+                    min_caps_count: Some(JsNumber(1.0)),
+                    max_caps_percentage: Some(JsNumber(1.0)),
+                    min_message_length: Some(JsNumber(1.0)),
+                    allowlist_domains: Some(vec![Some("seed".into())]),
+                    max_emote_count: Some(JsNumber(1.0)),
+                    terms: Some(Private::new(vec![Some("seed".into())])),
+                    variations: Some(Private::new(ChannelModerationSettingsRulesVariations(
+                        Bson::Document(doc! {"message": text}),
+                    ))),
+                    patterns: Some(vec![NewChannelModerationSettingsRulesPatterns {
+                        id: Some("seed".into()),
+                        source: Some(Private::new("seed".into())),
+                        boundary: Some("seed".into()),
+                        ignore_case: Some(true),
+                    }]),
+                    semantic: Some(NewChannelModerationSettingsRulesSemantic {
+                        enabled: Some(true),
+                        threshold_percent: Some(JsNumber(1.0)),
+                        policy: Some(Private::new("seed".into())),
+                        examples: Some(vec![NewChannelModerationSettingsRulesSemanticExamples {
+                            message: Some(Private::new("seed".into())),
+                            label: Some("seed".into()),
+                        }]),
+                        on_uncertain: Some(
+                            ChannelModerationSettingsRulesSemanticOnUncertainValue::AllowAndLog,
+                        ),
+                    }),
+                }]),
+                settings_version: Some(JsNumber(1.0)),
+            };
+            if key == "nullable" {
+                input
+                    .rules
+                    .as_mut()
+                    .context("rules")?
+                    .first_mut()
+                    .context("rule")?
+                    .exempt_expression =
+                    Some(ChannelModerationSettingsRulesExemptExpression(Bson::Null));
+            }
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("moderation_decisions", "typed") => {
+            use dima_model::moderation_decisions::*;
+            let input = NewModerationDecision {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                user_id: Some("seed".into()),
+                username: Some("seed".into()),
+                message_id: Some("seed".into()),
+                message_text: Some(Private::new("seed".into())),
+                rule_id: Some("seed".into()),
+                rule: Some(Private::new(ModerationDecisionRule(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                settings_version: Some(JsNumber(1.0)),
+                matches: Some(Private::new(ModerationDecisionMatches(vec![
+                    Bson::Document(doc! {"message": text}),
+                ]))),
+                context: Some(Private::new(ModerationDecisionContext(vec![
+                    Bson::Document(doc! {"message": text}),
+                ]))),
+                mode: Some("seed".into()),
+                review_source: Some(ModerationDecisionReviewSourceValue::Rule),
+                state: Some("seed".into()),
+                verdict: Some("seed".into()),
+                status: Some("seed".into()),
+                model: Some("seed".into()),
+                provider: Some("seed".into()),
+                decision_policy_version: Some("seed".into()),
+                scores: Some(Private::new(ModerationDecisionScores(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                provider_request_id: Some("seed".into()),
+                input_tokens: Some(JsNumber(1.0)),
+                cost: Some(JsNumber(1.0)),
+                latency_ms: Some(JsNumber(1.0)),
+                charge: Some(Private::new(ModerationDecisionCharge(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                consequence: Some(Private::new(ModerationDecisionConsequence(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                feedback: Some(Private::new(ModerationDecisionFeedback(Bson::Document(
+                    doc! {"message": text},
+                )))),
+                deadline: Some(JsDate(1623053350011)),
+                created_at: Some(JsDate(1623053350011)),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_requests", "typed") => {
+            use dima_model::pet_requests::*;
+            let input = NewPetRequest {
+                id: "seed".into(),
+                owner_id: "seed".into(),
+                channel_id: Some("seed".into()),
+                operation: Some("seed".into()),
+                text: Some(Private::new("seed".into())),
+                origin: Some(NewPetRequestOrigin {
+                    kind: Some("seed".into()),
+                    id: Some("seed".into()),
+                    occurred_at: Some("seed".into()),
+                    session_id: Some("seed".into()),
+                }),
+                action_key: Some("seed".into()),
+                actor: Some(NewPetRequestActor {
+                    user_id: Some("seed".into()),
+                    display_name: Some("seed".into()),
+                    chat: Some(NewPetRequestActorChat {
+                        login: Some("seed".into()),
+                        message: Some(Private::new("seed".into())),
+                        badges: Some(vec![NewPetRequestActorChatBadges {
+                            set_id: Some("seed".into()),
+                            id: Some("seed".into()),
+                            info: Some("seed".into()),
+                        }]),
+                    }),
+                }),
+                payload_hash: Some("seed".into()),
+                admitted: Some(true),
+                start_before: Some(JsDate(1623053350011)),
+                generation: Some(JsNumber(1.0)),
+                settings_revision: Some(JsNumber(1.0)),
+                status: Some(PetRequestStatusValue::Queued),
+                version: Some(JsNumber(1.0)),
+                delivery_attempted: Some(true),
+                audio_fetched: Some(true),
+                playback_started: Some(true),
+                lane: Some(PetRequestLaneValue::Independent),
+                tts_speech_id: Some("seed".into()),
+                private_dir: Some(Private::new("seed".into())),
+                output_text: Some(Private::new("seed".into())),
+                error_code: Some("seed".into()),
+                phase_deadline: Some(JsDate(1623053350011)),
+                emote_names: Some(vec![Some("seed".into())]),
+                mood: Some("seed".into()),
+                mood_text: Some(Private::new("seed".into())),
+                audio: Nullable::Value(NewPetRequestAudio {
+                    path: Some(Private::new("seed".into())),
+                    mime_type: Some("seed".into()),
+                    duration_ms: Some(JsNumber(1.0)),
+                }),
+                created_at: Some(JsDate(1623053350011)),
+                expires_at: Some(JsDate(1623053350011)),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_runtimes", "typed") => {
+            use dima_model::pet_runtimes::*;
+            let input = NewPetRuntime {
+                id: "seed".into(),
+                channel_id: Some("seed".into()),
+                generation: Some(JsNumber(1.0)),
+                active_request_id: Nullable::Value("seed".into()),
+                lease: Nullable::Value(NewPetRuntimeLease {
+                    lease_id: Some("seed".into()),
+                    holder_peer_id: Some("seed".into()),
+                    expires_at: Some(JsDate(1623053350011)),
+                }),
+                not_before: Some(JsDate(1623053350011)),
+                last_accepted_at: Nullable::Value(JsDate(1623053350011)),
+                admission_claim_id: Nullable::Value("seed".into()),
+                tts_reservation: Nullable::Value(NewPetRuntimeTtsReservation {
+                    speech_id: Some("seed".into()),
+                    token: Some(Private::new("seed".into())),
+                    expires_at: Some(JsDate(1623053350011)),
+                }),
+                token_hash: Nullable::Value(Private::new("seed".into())),
+                overlay_token: Nullable::Value(Private::new(NewPetRuntimeOverlayToken {
+                    iv: Some("seed".into()),
+                    content: Some("seed".into()),
+                })),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_settings", "typed") => {
+            use dima_model::pet_settings::*;
+            let input = NewPetSettingsRecord {
+                user_id: ObjectId::from_bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]),
+                settings: NewPetSettingsRecordSettings {
+                    moods: Some(Private::new(PetSettingsRecordSettingsMoods(
+                        Bson::Document(doc! {"message": text}),
+                    ))),
+                    appearance: Some(NewPetSettingsRecordSettingsAppearance {
+                        kind: Some(PetSettingsRecordSettingsAppearanceKindValue::Png),
+                        idle_asset_id: Nullable::Value("seed".into()),
+                        talking_asset_id: Nullable::Value("seed".into()),
+                    }),
+                    playback: Some(NewPetSettingsRecordSettingsPlayback {
+                        target: Some(PetSettingsRecordSettingsPlaybackTargetValue::Browser),
+                        desktop_session_id: Nullable::Value("seed".into()),
+                        vts_session_id: Nullable::Value("seed".into()),
+                    }),
+                    sources: Some(NewPetSettingsRecordSettingsSources {
+                        independent: Some(true),
+                        read_tts: Some(true),
+                    }),
+                    tts_audio: Some(PetSettingsRecordSettingsTtsAudioValue::Pet),
+                    enabled: true,
+                    name: "seed".into(),
+                    tts: Some(NewPetSettingsRecordSettingsTts {
+                        enabled: true,
+                        provider: PetSettingsRecordSettingsTtsProviderValue::Piper,
+                        language: PetSettingsRecordSettingsTtsLanguageValue::En,
+                        voice: "seed".into(),
+                    }),
+                    personality: Some(NewPetSettingsRecordSettingsPersonality {
+                        source: PetSettingsRecordSettingsPersonalitySourceValue::Custom,
+                        profile_id: Some("seed".into()),
+                        prompt: Some(Private::new("seed".into())),
+                    }),
+                    rules: Some(Private::new(vec![Some("seed".into())])),
+                    behavior: Some(NewPetSettingsRecordSettingsBehavior {
+                        respond_to_chat: true,
+                        respond_to_events: true,
+                        cooldown_seconds: JsNumber(1.0),
+                        max_reply_length: JsNumber(30.0),
+                        queue_size: Some(JsNumber(1.0)),
+                        ask_lane: Some(PetSettingsRecordSettingsBehaviorAskLaneValue::Independent),
+                    }),
+                },
+                revision: JsNumber(1.0),
+                updated_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("triggers", "typed") => {
+            use dima_model::triggers::*;
+            let input = NewTrigger {
+                name: "seed".into(),
+                channel: "seed".into(),
+                channel_id: "seed".into(),
+                reward_id: Some("seed".into()),
+                file: "seed".into(),
+                file_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                asset_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                library_item_id: Nullable::Value(ObjectId::from_bytes([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+                ])),
+                r#type: Some("seed".into()),
+                media_type: "seed".into(),
+                is_enabled: Some(true),
+                volume: Some(JsNumber(1.0)),
+                cost: Some(JsNumber(1.0)),
+                cooldown: Some(JsNumber(1.0)),
+                prompt: Some(Private::new(TriggerPrompt("seed".into()))),
+                created_at: Some(JsDate(1623053350011)),
+                date: Some(NewTriggerDate {
+                    day: Some(JsNumber(1.0)),
+                    month: Some(JsNumber(1.0)),
+                    year: Some(JsNumber(1.0)),
+                }),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("triggerfiles", "typed") => {
+            use dima_model::triggerfiles::*;
+            let input = NewTriggerFile {
+                name: "seed".into(),
+                file_name: "seed".into(),
+                file_size: JsNumber(1.0),
+                file_type: "seed".into(),
+                file_url: "seed".into(),
+                channel: "seed".into(),
+                channel_id: "seed".into(),
+                created_at: Some(JsDate(1623053350011)),
+                date: Some(NewTriggerFileDate {
+                    day: Some(JsNumber(1.0)),
+                    month: Some(JsNumber(1.0)),
+                    year: Some(JsNumber(1.0)),
+                }),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("moderation_variation_jobs", "typed") => {
             use dima_model::moderation_variation_jobs::*;
             let input = NewModerationVariationJob {
@@ -1974,7 +2553,8 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         }
         "findOneAndUpdate" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
-            let update = document_of(intent.get("update").context("update")?)?;
+            let raw_update = intent.get("update").context("update")?;
+            let pipeline = raw_update.is_array();
             let returned = if intent.pointer("/options/new").and_then(Value::as_bool) == Some(true)
             {
                 Returned::After
@@ -1982,9 +2562,34 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 Returned::Before
             };
             let options = update_options(intent)?;
-            let prepared = match support::entry::find_one_and_update(
-                info, &filter, update, options, returned, writer, &mut ctx, &random,
-            ) {
+            let candidate = if let Some(stages) = raw_update.as_array() {
+                info.prepare_pipeline_update_unchecked(
+                    &filter,
+                    stages.iter().map(document_of).collect::<Result<Vec<_>>>()?,
+                    options.store,
+                    &mut ctx,
+                )
+                .map(|p| dima_store::mongo::update::PreparedFindAndModify {
+                    filter: p.filter,
+                    update: p.update,
+                    array_filters: p.array_filters,
+                    returned,
+                    upsert: p.upsert,
+                    dropped_paths: p.dropped_paths,
+                })
+            } else {
+                support::entry::find_one_and_update(
+                    info,
+                    &filter,
+                    document_of(raw_update)?,
+                    options,
+                    returned,
+                    writer,
+                    &mut ctx,
+                    &random,
+                )
+            };
+            let prepared = match candidate {
                 Ok(prepared) => prepared,
                 Err(ModelError::Validation(error)) => {
                     outcome.error = Some(validation_json(&error));
@@ -2005,6 +2610,14 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 outcome.sent.push(Bson::Document(sent));
             }
             let found = writes.find_one_and_update(&prepared).await?;
+            if pipeline {
+                for document in stored(store, collection).await? {
+                    let raw = bson::RawDocumentBuf::try_from(&document)?;
+                    (info.decode)(&raw).map_err(|e| {
+                        anyhow::anyhow!("{collection}: pipeline left an unreadable document: {e}")
+                    })?;
+                }
+            }
             outcome.result = found.map(|mut document| {
                 // Mongoose's command projects the hidden paths out; the result is the same.
                 dima_store::mongo::json::remove_paths(&mut document, info.hidden);
