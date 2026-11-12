@@ -48,7 +48,7 @@
 //! Callers supply typed configuration (no environment is read here) and the randomness for run
 //! directory names. Errors carry the program's captured output; the caller logs it, as the
 //! reference did. Directories are created and checked once at startup in [`Clips::new`].
-use crate::process::{self, Invocation, Program};
+use crate::process::{self, Invocation, Program, RunDir};
 use dima_core::Random;
 use std::ffi::OsString;
 use std::os::unix::fs::MetadataExt as _;
@@ -270,7 +270,7 @@ impl Clips {
     pub async fn download_clip(&self, url: &str, channel_id: &str) -> Result<PathBuf, Error> {
         let url = ClipUrl::parse(url)?;
         let channel = ChannelId::parse(channel_id)?;
-        let run = RunDir::create(&self.temp_dir, self.random.as_ref()).await?;
+        let run = RunDir::create(&self.temp_dir, "clip", self.random.as_ref()).await?;
         let result = self.download_in(&run, &url, &channel).await;
         run.remove().await;
         result
@@ -377,52 +377,4 @@ async fn directory_bytes(dir: &Path) -> u64 {
         }
     }
     total
-}
-
-/// A private run directory, removed when the download ends or its future is dropped.
-#[derive(Debug)]
-pub(crate) struct RunDir {
-    pub(crate) path: PathBuf,
-    removed: bool,
-}
-
-impl RunDir {
-    /// `<parent>/<prefix>-<24 hex>`, mode 0700; fails if the name exists (never reuses or
-    /// follows anything already there).
-    pub(crate) async fn create_named(
-        parent: &Path,
-        prefix: &str,
-        random: &dyn Random,
-    ) -> Result<Self, std::io::Error> {
-        let token = random
-            .hex_token(12)
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-        let path = parent.join(format!("{prefix}-{token}"));
-        let mut builder = tokio::fs::DirBuilder::new();
-        builder.mode(0o700);
-        builder.create(&path).await?;
-        Ok(Self {
-            path,
-            removed: false,
-        })
-    }
-
-    async fn create(parent: &Path, random: &dyn Random) -> Result<Self, Error> {
-        Ok(Self::create_named(parent, "clip", random).await?)
-    }
-
-    /// Removes the directory and everything in it (symlinks inside are removed, not followed).
-    pub(crate) async fn remove(mut self) {
-        let _ = tokio::fs::remove_dir_all(&self.path).await;
-        self.removed = true;
-    }
-}
-
-impl Drop for RunDir {
-    fn drop(&mut self) {
-        if !self.removed {
-            // Cancellation only (the async path removes it otherwise): a few small files.
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
 }

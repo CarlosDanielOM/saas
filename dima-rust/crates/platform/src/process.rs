@@ -17,6 +17,7 @@
 //! is killed: if the program left processes behind they keep the group id alive and are the ones
 //! killed; if it left none, the id is free and Linux only reuses it for a new process that makes
 //! itself a group leader within that instant, which this accepts.
+use dima_core::Random;
 use nix::sys::signal::{Signal, killpg};
 use nix::unistd::Pid;
 use std::ffi::{OsStr, OsString};
@@ -278,4 +279,48 @@ pub fn tail_text(bytes: &[u8], max: usize) -> String {
         start += 1;
     }
     text.get(start..).unwrap_or_default().to_owned()
+}
+
+/// A private run directory, removed when the run ends or its future is dropped.
+#[derive(Debug)]
+pub(crate) struct RunDir {
+    pub(crate) path: PathBuf,
+    removed: bool,
+}
+
+impl RunDir {
+    /// `<parent>/<prefix>-<24 hex>`, mode 0700; fails if the name exists (never reuses or
+    /// follows anything already there).
+    pub(crate) async fn create(
+        parent: &Path,
+        prefix: &str,
+        random: &dyn Random,
+    ) -> Result<Self, std::io::Error> {
+        let token = random
+            .hex_token(12)
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        let path = parent.join(format!("{prefix}-{token}"));
+        let mut builder = tokio::fs::DirBuilder::new();
+        builder.mode(0o700);
+        builder.create(&path).await?;
+        Ok(Self {
+            path,
+            removed: false,
+        })
+    }
+
+    /// Removes the directory and everything in it (symlinks inside are removed, not followed).
+    pub(crate) async fn remove(mut self) {
+        let _ = tokio::fs::remove_dir_all(&self.path).await;
+        self.removed = true;
+    }
+}
+
+impl Drop for RunDir {
+    fn drop(&mut self) {
+        if !self.removed {
+            // Cancellation only (the async path removes it otherwise): a few small files.
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
 }

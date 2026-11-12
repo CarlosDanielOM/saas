@@ -8,4 +8,5 @@ pub mod media_library;
 pub mod oauth;
 pub mod process;
 pub mod s3;
+pub mod thumbnails;
 pub mod tts_usage;
