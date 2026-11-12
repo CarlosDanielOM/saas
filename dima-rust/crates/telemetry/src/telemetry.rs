@@ -161,6 +161,9 @@ pub struct Stats {
     pub cache_written: u64,
     /// Log calls whose data's `Serialize` failed or panicked (logged as `[unserializable]`).
     pub unserializable: u64,
+    /// Log platforms and channel ids that were not valid identifiers and were replaced by
+    /// [`crate::logger::INVALID_IDENTIFIER`] (not a loss: the entry is still written).
+    pub log_metadata_replaced: u64,
 }
 
 impl Stats {
@@ -767,6 +770,7 @@ impl Telemetry {
             payloads_sent: self.0.payloads_sent.load(Ordering::Relaxed),
             cache_written: self.0.cache_written.load(Ordering::Relaxed),
             unserializable: self.0.unserializable.load(Ordering::Relaxed),
+            log_metadata_replaced: self.0.sinks.replaced.load(Ordering::Relaxed),
         }
     }
 

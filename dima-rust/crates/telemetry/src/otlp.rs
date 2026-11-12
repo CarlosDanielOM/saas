@@ -121,10 +121,10 @@ fn record_json(record: &LogRecord) -> LogRecordJson {
     // The reference passes the call's options as attributes.
     let mut attributes = vec![
         attribute("destination", record.destination.as_str()),
-        attribute("platform", &record.platform),
+        attribute("platform", record.platform.as_str()),
     ];
     if let Some(channel) = &record.channel_id {
-        attributes.push(attribute("channelId", channel));
+        attributes.push(attribute("channelId", channel.as_str()));
     }
     LogRecordJson {
         time: nanos.clone(),
