@@ -542,6 +542,16 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
+/// The headers that describe a request body (fetch's "request-body-header names", plus the
+/// length): dropped when a redirect turns the request into a GET without its body.
+pub(crate) const BODY_HEADERS: [HeaderName; 5] = [
+    http::header::CONTENT_ENCODING,
+    http::header::CONTENT_LANGUAGE,
+    http::header::CONTENT_LOCATION,
+    CONTENT_TYPE,
+    http::header::CONTENT_LENGTH,
+];
+
 fn method_is_idempotent(method: &Method) -> bool {
     matches!(
         *method,
@@ -853,24 +863,34 @@ impl<'a> Sender<'a> {
             bytes_sent,
         );
         let headers_deadline = self.headers_timeout.map(|t| Instant::now() + t);
+        // Redirect state belongs to this attempt: the request itself is never changed, so a
+        // retry after a POST was redirected to a GET sends the original POST with its body.
         let mut url = self.url.clone();
         let mut method = self.method.clone();
+        let mut as_get = false;
         let mut hops: u8 = 0;
         loop {
-            let headers = self.headers_for_attempt();
+            let mut headers = self.headers_for_attempt();
+            if as_get {
+                for name in BODY_HEADERS {
+                    headers.remove(name);
+                }
+            }
             let mut builder = self
                 .client
                 .http
                 .request(method.clone(), url.clone())
                 .headers(headers);
             match &mut self.body {
+                _ if as_get => {}
                 Body::Empty => {}
                 Body::Bytes(bytes) => builder = builder.body(bytes.clone()),
                 Body::Stream(_) => {
                     if let Body::Stream(stream) = std::mem::take(&mut self.body) {
                         builder = builder.body(stream);
                     }
-                    // The stream is consumed: a later attempt or hop has no body to send.
+                    // The stream is consumed: a later attempt or hop has no body to send (and
+                    // the retry policy never sends a stream twice).
                     self.body = Body::Stream(reqwest::Body::from(Bytes::new()));
                 }
             }
@@ -910,8 +930,8 @@ impl<'a> Sender<'a> {
             // same-origin rule already implies them, they are checked anyway so that a looser
             // mode added later cannot drop them.
             let to_get = crate::guard::redirect_to_get(status, &method);
-            let replay_ok = to_get || !matches!(self.body, Body::Stream(_));
-            let carries_body = !to_get && !matches!(self.body, Body::Empty);
+            let replay_ok = to_get || as_get || !matches!(self.body, Body::Stream(_));
+            let carries_body = !to_get && !as_get && !matches!(self.body, Body::Empty);
             let origin = self.url.origin();
             match next {
                 Some(next)
@@ -922,8 +942,7 @@ impl<'a> Sender<'a> {
                 {
                     if to_get {
                         method = Method::GET;
-                        self.body = Body::Empty;
-                        self.headers.remove(CONTENT_TYPE);
+                        as_get = true;
                     }
                     url = next;
                     hops += 1;

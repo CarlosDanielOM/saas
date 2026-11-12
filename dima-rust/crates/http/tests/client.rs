@@ -1259,3 +1259,61 @@ async fn a_stalled_refresh_is_bounded_by_its_deadline_and_by_shutdown() {
         .unwrap_err();
     assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
 }
+
+/// A redirect that turns a POST into a GET changes that attempt only: a retry sends the
+/// original POST with its body and body headers again, and the GET hop carries neither.
+#[tokio::test]
+async fn a_redirect_to_get_does_not_strip_the_body_from_a_retry() {
+    let server = MockServer::start().await.unwrap();
+    let provider = Provider::builder("f", &server.url())
+        .redirects(Redirects::SameOrigin { max: 2 })
+        .retry(
+            RetryPolicy::fixed(&[ms(1)])
+                .retry_statuses(StatusSet::new().with(503))
+                .retry_non_idempotent(true),
+        )
+        .build()
+        .unwrap();
+    server.push(MockResponse::new(302).header("location", "/two"));
+    server.push(MockResponse::new(503));
+    server.push(MockResponse::new(200));
+    let response = client()
+        .post(&provider, "/one")
+        .header("content-language", "es")
+        .header("content-length", "7")
+        .json(&serde_json::json!({"a": 1}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!((response.status().as_u16(), response.attempts()), (200, 2));
+    let requests = server.requests();
+    let seen: Vec<_> = requests
+        .iter()
+        .map(|r| {
+            (
+                r.method.as_str(),
+                r.path(),
+                r.body_text(),
+                r.header("content-type"),
+                r.header("content-language"),
+                r.header("content-length"),
+            )
+        })
+        .collect();
+    let post = (
+        "POST",
+        "/one",
+        r#"{"a":1}"#.to_owned(),
+        Some("application/json"),
+        Some("es"),
+        Some("7"),
+    );
+    assert_eq!(
+        seen,
+        [
+            post.clone(),
+            ("GET", "/two", String::new(), None, None, None),
+            post
+        ]
+    );
+}

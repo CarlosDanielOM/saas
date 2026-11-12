@@ -573,8 +573,9 @@ impl GuardedRequest<'_> {
                 if to_get {
                     method = Method::GET;
                     body = Body::Empty;
-                    headers.remove(http::header::CONTENT_TYPE);
-                    headers.remove(http::header::CONTENT_LENGTH);
+                    for name in client::BODY_HEADERS {
+                        headers.remove(name);
+                    }
                 }
                 url = next;
                 hop += 1;
