@@ -7,11 +7,18 @@
 //! EventSub chat messages (follow, raid, ban, ad break, online/offline, cheer tiers,
 //! modiversary), bits rules, channel-point rewards, roulette winner actions and goal actions.
 //!
+//! Every stored command, timer, event message and reward also runs as one message on every
+//! plan, its command references followed to the channel's stored commands the way the bot
+//! delivers them, with an in-memory host: none that runs within each run's limits stops at the
+//! message's shared budget (`dima_engine::eval::MessageBudget`), and the share of that budget
+//! they use is printed.
+//!
 //! Skipped with a message when `DIMA_TEST_MONGO_URI` is not set or `domdimabot` is absent,
 //! unless `DIMA_TEST_REQUIRE_STORES=1` (`tools/test-env`), which makes either a failure.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod memory;
 #[path = "support/placeholders.rs"]
 mod placeholders;
 
@@ -259,6 +266,171 @@ async fn every_stored_command_text_compiles_within_the_limits() -> Result<()> {
             "expected the local copy's command texts, found {}",
             seen.texts
         );
+    }
+    Ok(())
+}
+
+/// The command texts of `collection` with their channel, and (for commands) the names a
+/// reference finds them by.
+async fn channel_texts(
+    db: &Database,
+    collection: &str,
+    field: &str,
+) -> Result<Vec<(String, Vec<String>, String)>> {
+    let mut cursor = db
+        .collection::<Document>(collection)
+        .find(doc! {})
+        .projection(doc! { "channelID": 1, "name": 1, "cmd": 1, field: 1 })
+        .await?;
+    let mut out = Vec::new();
+    while let Some(document) = cursor.try_next().await? {
+        let (Ok(channel), Ok(text)) = (document.get_str("channelID"), document.get_str(field))
+        else {
+            continue;
+        };
+        let names = ["name", "cmd"]
+            .iter()
+            .filter_map(|key| document.get_str(key).ok())
+            .map(str::to_lowercase)
+            .collect();
+        out.push((channel.to_owned(), names, text.to_owned()));
+    }
+    Ok(out)
+}
+
+#[test]
+fn every_stored_message_runs_within_the_shared_budget() -> Result<()> {
+    use dima_engine::context::{Context, Plan};
+    use dima_engine::eval::{EvalLimits, LimitKind, MessageLimits, MessageUsage};
+    use std::collections::HashMap;
+    use std::time::{Duration, Instant};
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    let Some(texts) = runtime.block_on(async {
+        let Some(db) = database().await? else {
+            return Ok::<_, anyhow::Error>(None);
+        };
+        let mut commands = channel_texts(&db, "commands", "message").await?;
+        let commands_len = commands.len();
+        commands.extend(channel_texts(&db, "custom_timers", "message").await?);
+        commands.extend(channel_texts(&db, "eventsubs", "message").await?);
+        commands.extend(channel_texts(&db, "redemptionrewards", "message").await?);
+        Ok(Some((commands, commands_len)))
+    })?
+    else {
+        return Ok(());
+    };
+    let (texts, commands_len) = texts;
+    // The channel's commands by name, as a reference looks them up.
+    let mut by_channel: HashMap<String, HashMap<String, String>> = HashMap::new();
+    for (channel, names, text) in &texts[..commands_len] {
+        let commands = by_channel.entry(channel.clone()).or_default();
+        for name in names {
+            commands.entry(name.clone()).or_insert_with(|| text.clone());
+        }
+    }
+    let no_commands = HashMap::new();
+    let shared = EvalLimits::default();
+    let unshared = EvalLimits {
+        message_factor: 1_000,
+        ..shared
+    };
+    let share = |usage: MessageUsage, limits: MessageLimits| {
+        [
+            usage.steps as f64 / limits.steps as f64,
+            usage.host_calls as f64 / limits.host_calls as f64,
+            usage.memory_bytes as f64 / limits.memory_bytes as f64,
+            usage.output_bytes as f64 / limits.output_bytes as f64,
+        ]
+        .into_iter()
+        .fold(0.0f64, f64::max)
+    };
+    let limit_marker = |text: &str| text.contains("[Parse error: This command");
+    let (mut messages, mut with_references, mut near, mut stopped) = (0, 0, 0, 0);
+    let (mut largest, mut largest_with_references) = (0.0f64, 0.0f64);
+    let mut most_runs = 0;
+    let mut slowest = Duration::ZERO;
+    for (channel, _, text) in &texts {
+        let Some(source) = placeholders::resolve(text, "a b c", false) else {
+            continue;
+        };
+        if source.trim().is_empty() {
+            continue;
+        }
+        let commands = by_channel.get(channel).unwrap_or(&no_commands);
+        for plan in [Plan::Free, Plan::Premium, Plan::Pro] {
+            let context = Context {
+                broadcaster_id: channel.clone(),
+                user_id: "1".into(),
+                user_login: "caller".into(),
+                user_plan: plan,
+                enforce_function_permissions: false,
+                ..Context::default()
+            };
+            let engine = memory::engine_with(&[]).with_limits(shared);
+            if engine.compile(&source).is_err() {
+                continue;
+            }
+            let started = Instant::now();
+            let delivery = memory::deliver(
+                &engine,
+                commands,
+                &source,
+                &context,
+                &mut memory::MemoryHost::new(1),
+            );
+            slowest = slowest.max(started.elapsed());
+            messages += 1;
+            most_runs = most_runs.max(delivery.runs.len());
+            let used = share(delivery.budget.usage(), delivery.budget.limits());
+            largest = largest.max(used);
+            if delivery.runs.len() > 1 {
+                with_references += 1;
+                largest_with_references = largest_with_references.max(used);
+                if used > 0.5 {
+                    near += 1;
+                }
+            }
+            if delivery.budget.stopped().is_some() {
+                stopped += 1;
+                // It stopped at the message's budget: it must also stop with fresh limits for
+                // every reference (as before), or the shared budget broke it.
+                let engine = memory::engine_with(&[]).with_limits(unshared);
+                let before = memory::deliver(
+                    &engine,
+                    commands,
+                    &source,
+                    &context,
+                    &mut memory::MemoryHost::new(1),
+                );
+                assert!(
+                    before.runs.iter().any(|(_, outcome)| outcome
+                        .as_ref()
+                        .map_or(true, |text| limit_marker(text))),
+                    "{plan:?} {channel}: {} passes with fresh limits per reference and stops at \
+                     the message's budget ({:?})",
+                    dima_text::truncate_chars(text, 80),
+                    delivery.budget.stopped()
+                );
+            }
+        }
+    }
+    let _ = LimitKind::Steps;
+    eprintln!(
+        "real data: {messages} messages (texts x plans); {with_references} started command \
+         references (at most {} runs in one message); largest share of the message budget: \
+         {largest:.6} (with references {largest_with_references:.6}); over half of it: {near}; \
+         stopped at the shared budget: {stopped}; slowest message {slowest:?} (in-memory host)",
+        most_runs
+    );
+    assert_eq!(
+        near, 0,
+        "a stored message with references uses over half of the budget"
+    );
+    if messages < 1_000 {
+        bail!("expected the local copy's command texts, found {messages}");
     }
     Ok(())
 }

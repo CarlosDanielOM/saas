@@ -17,6 +17,12 @@ fn pure_corpus_matches_the_reference() {
             .collect(),
         "the intended differences changed"
     );
+    // The message's shared budget changes no recorded outcome: every case is one run.
+    assert_eq!(
+        tally.message_budget_stops, 0,
+        "cases stopped by the message budget"
+    );
+    assert_eq!(tally.references_outside_their_message, 0);
     assert!(
         tally.failures.is_empty(),
         "{} cases differ:\n{}",

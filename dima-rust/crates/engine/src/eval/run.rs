@@ -1,5 +1,6 @@
 //! One evaluation: `evaluate()` of `evaluator.ts`, node by node.
 
+use super::budget::{MessageBudget, STEP_LEASE};
 use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
@@ -27,6 +28,18 @@ const MAX_TIMER_DEPTH: u32 = 5;
 const MAX_TIMER_SECONDS: f64 = 604_800.0;
 /// Command references nest at most this deep (`depth >= 5`).
 const MAX_REFERENCE_DEPTH: u32 = 5;
+
+/// One host call: counted ([`Run::host_op`]), raced against the message's deadline (when the
+/// host's alarm ends first, the call in flight is dropped) and the clock read again after it.
+/// The value is the call's own answer.
+macro_rules! host_call {
+    ($run:ident, $call:expr) => {{
+        let alarm = $run.host_op()?;
+        let done = super::budget::within(alarm, $call).await;
+        $run.host_returned(done)?
+    }};
+}
+pub(super) use host_call;
 
 /// The maps of what a run keeps, charged to [`super::EvalLimits::memory_bytes`].
 #[derive(Clone, Copy)]
@@ -72,6 +85,12 @@ pub(super) struct Run<'a> {
     memory: usize,
     /// The stack left where the evaluation started (at its first level).
     stack_start: Option<usize>,
+    /// The budget of the message this run belongs to.
+    pub(super) budget: MessageBudget,
+    /// Work units taken from the message's budget and not spent yet.
+    lease: u64,
+    /// Bytes of output charged to the message's budget.
+    output: usize,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -202,6 +221,7 @@ impl<'a> Run<'a> {
         context: &'a Context,
         mut state: State,
         host: &'a mut dyn Host,
+        budget: MessageBudget,
     ) -> Self {
         let scalars = Scalars {
             count: state.count,
@@ -221,23 +241,33 @@ impl<'a> Run<'a> {
             depth: 0,
             memory: 0,
             stack_start: None,
+            budget,
+            lease: 0,
+            output: 0,
         }
     }
 
-    /// The state with the final scalars.
-    pub(super) fn finish(mut self) -> (State, EvalStats) {
-        self.state.count = self.frames.scalars.count;
-        self.state.count_modified = self.frames.scalars.count_modified;
-        self.state.loop_exit = self.frames.scalars.loop_exit;
-        self.state.loop_depth = self.frames.scalars.loop_depth;
-        self.state.loop_vars = std::mem::take(&mut self.frames.loop_vars);
-        (self.state, self.stats)
+    /// The state with the final scalars, the run's counters and the message's budget (the
+    /// work units the run took and did not spend go back to it).
+    pub(super) fn finish(mut self) -> (State, EvalStats, MessageBudget) {
+        let mut state = std::mem::take(&mut self.state);
+        state.count = self.frames.scalars.count;
+        state.count_modified = self.frames.scalars.count_modified;
+        state.loop_exit = self.frames.scalars.loop_exit;
+        state.loop_depth = self.frames.scalars.loop_depth;
+        state.loop_vars = std::mem::take(&mut self.frames.loop_vars);
+        (state, self.stats, self.budget.clone())
     }
 
-    /// After a limit stopped an expression midway: forget the watches it left open.
+    /// After a limit stopped an expression midway: forget the watches it left open. When the
+    /// message has stopped, the run gives back its unspent work, so its next expression hits
+    /// the message's limit at once.
     pub(super) fn after_limit(&mut self) {
         self.frames.abandon_from(0);
         self.depth = 0;
+        if self.budget.stopped().is_some() {
+            self.budget.return_steps(std::mem::take(&mut self.lease));
+        }
     }
 
     // ---- limits ----
@@ -251,6 +281,16 @@ impl<'a> Run<'a> {
         if self.stats.steps > self.engine.limits.steps.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::Steps));
         }
+        if units > self.lease {
+            // Every lease (1,024 units) the clock is read once.
+            self.on_time()?;
+            let least = units - self.lease;
+            self.lease += self
+                .budget
+                .draw_steps(least.max(STEP_LEASE), least)
+                .map_err(EvalError::Limit)?;
+        }
+        self.lease -= units;
         Ok(())
     }
 
@@ -259,22 +299,91 @@ impl<'a> Run<'a> {
         self.charge((bytes / 256) as u64)
     }
 
-    pub(super) fn host_op(&mut self) -> Result<(), EvalError> {
+    /// The milliseconds left before the message's deadline, or [`LimitKind::Deadline`].
+    fn on_time(&mut self) -> Result<u64, EvalError> {
+        let now = self.host.clock().now_ms();
+        self.budget.time_left(now).map_err(EvalError::Limit)
+    }
+
+    /// Counts a host call about to be made and returns the alarm it races: the host's alarm
+    /// for the time left before the message's deadline. Use [`host_call!`].
+    pub(super) fn host_op(&mut self) -> Result<HostFuture<'static, ()>, EvalError> {
         self.stats.host_calls = self.stats.host_calls.saturating_add(1);
         if self.stats.host_calls > self.engine.limits.host_calls.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
-        self.step()
+        self.budget.host_call().map_err(EvalError::Limit)?;
+        self.step()?;
+        let left = self.on_time()?;
+        Ok(self.host.alarm(left))
+    }
+
+    /// After a host call: its answer, unless the alarm cut it short or the deadline passed
+    /// while it ran.
+    pub(super) fn host_returned<T>(&mut self, done: Option<T>) -> Result<T, EvalError> {
+        let Some(value) = done else {
+            return Err(EvalError::Limit(self.budget.stop(LimitKind::Deadline)));
+        };
+        self.on_time()?;
+        Ok(value)
+    }
+
+    /// Charges the run's output up to `len` bytes in all. When the message's output is spent,
+    /// returns how many bytes of the run's output fit.
+    pub(super) fn output_to(&mut self, len: usize) -> Result<(), usize> {
+        let more = len.saturating_sub(self.output);
+        if more == 0 {
+            return Ok(());
+        }
+        match self.budget.output(more as u64) {
+            Ok(()) => {
+                self.output = len;
+                Ok(())
+            }
+            Err(taken) => {
+                self.output = self.output.saturating_add(taken as usize);
+                Err(self.output)
+            }
+        }
+    }
+
+    /// Charges an evaluated program's value as output.
+    pub(super) fn output_value(&mut self, value: &Value) -> Result<(), EvalError> {
+        match self.output_to(value.weight()) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(EvalError::Limit(LimitKind::TextSize)),
+        }
+    }
+
+    /// Sets what the run keeps to `memory` bytes, within the run's limit and the message's.
+    fn keep_total(&mut self, memory: usize) -> Result<(), EvalError> {
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        if memory > self.memory {
+            self.budget
+                .reserve_memory((memory - self.memory) as u64)
+                .map_err(EvalError::Limit)?;
+        } else {
+            self.budget.release_memory((self.memory - memory) as u64);
+        }
+        self.memory = memory;
+        Ok(())
+    }
+
+    /// Sets what the run keeps to `memory` bytes without a check (what it had before).
+    fn restore_total(&mut self, memory: usize) {
+        if memory > self.memory {
+            self.budget.add_memory((memory - self.memory) as u64);
+        } else {
+            self.budget.release_memory((self.memory - memory) as u64);
+        }
+        self.memory = memory;
     }
 
     /// Charges what the run keeps: `added` bytes in, `removed` bytes out.
     fn keep(&mut self, added: usize, removed: usize) -> Result<(), EvalError> {
-        let memory = self.memory.saturating_sub(removed).saturating_add(added);
-        if memory > self.engine.limits.memory_bytes {
-            return Err(EvalError::Limit(LimitKind::Memory));
-        }
-        self.memory = memory;
-        Ok(())
+        self.keep_total(self.memory.saturating_sub(removed).saturating_add(added))
     }
 
     fn kept(&mut self, which: Kept) -> &mut OrderedMap<String, String> {
@@ -299,7 +408,9 @@ impl<'a> Run<'a> {
         if memory > self.engine.limits.memory_bytes {
             return Err(EvalError::Limit(LimitKind::Memory));
         }
-        Ok(())
+        self.budget
+            .memory_fits(memory.saturating_sub(self.memory) as u64)
+            .map_err(EvalError::Limit)
     }
 
     /// Inserts into a kept map, within the memory budget (checked before the insert).
@@ -316,17 +427,18 @@ impl<'a> Run<'a> {
     /// Removes from a kept map.
     pub(super) fn forget(&mut self, which: Kept, key: &str) {
         if let Some(old) = self.kept(which).remove(key) {
-            self.memory = self.memory.saturating_sub(entry_size(key, &old));
+            self.restore_total(self.memory.saturating_sub(entry_size(key, &old)));
         }
     }
 
     /// Restores the loop variables a loop started with.
     fn restore_loop_vars(&mut self, outer: OrderedMap<String, String>) {
         let inner = map_size(&self.frames.loop_vars);
-        self.memory = self
-            .memory
-            .saturating_sub(inner)
-            .saturating_add(map_size(&outer));
+        self.restore_total(
+            self.memory
+                .saturating_sub(inner)
+                .saturating_add(map_size(&outer)),
+        );
         self.frames.loop_vars = outer;
     }
 
@@ -883,8 +995,7 @@ impl<'a> Run<'a> {
         // Timer bodies are programs to run later, never eager arguments.
         if name == "timer" {
             if self.context.simulation {
-                self.host_op()?;
-                let value = self.host.simulate("timer", &[], self.context).await?;
+                let value = host_call!(self, self.host.simulate("timer", &[], self.context))?;
                 return Ok(value.unwrap_or_else(Value::empty));
             }
             return self.timer(nodes).await;
@@ -900,16 +1011,15 @@ impl<'a> Run<'a> {
             return Ok(Value::Text(permission_denied(name, required, actual)));
         }
         if self.context.simulation {
-            self.host_op()?;
-            if let Some(value) = self.host.simulate(name, &args, self.context).await? {
+            let simulated = host_call!(self, self.host.simulate(name, &args, self.context))?;
+            if let Some(value) = simulated {
                 return Ok(value);
             }
         }
         match spec.kind {
             FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args)? {
                 Ok(millis) => {
-                    self.host_op()?;
-                    self.host.sleep(millis).await;
+                    host_call!(self, self.host.sleep(millis));
                     Ok(Value::empty())
                 }
                 Err(answer) => Ok(Value::Text(answer)),
@@ -940,7 +1050,7 @@ impl<'a> Run<'a> {
                 .map_err(failure)
             }
             FunctionKind::Host(function) => {
-                self.host_op()?;
+                let alarm = self.host_op()?;
                 let call = HostCall {
                     function,
                     name,
@@ -949,7 +1059,8 @@ impl<'a> Run<'a> {
                     effect: self.frames.scalars.effect.as_ref(),
                     random_user: &mut self.state.random_user,
                 };
-                Ok(self.host.call(call).await?)
+                let done = super::budget::within(alarm, self.host.call(call)).await;
+                Ok(self.host_returned(done)??)
             }
         }
     }
@@ -983,8 +1094,7 @@ impl<'a> Run<'a> {
         if !seconds.is_finite() || !(1.0..=MAX_TIMER_SECONDS).contains(&seconds) {
             return Ok(fail("seconds must be between 1 and 604800"));
         }
-        self.host_op()?;
-        match self.host.schedule_timer(seconds, body, snapshot).await {
+        match host_call!(self, self.host.schedule_timer(seconds, body, snapshot)) {
             Ok(()) => Ok(Value::empty()),
             Err(_) => Ok(fail("could not schedule timer")),
         }
@@ -1189,6 +1299,7 @@ impl<'a> Run<'a> {
                 visited_commands: visited,
                 command_ref_depth: depth + 1,
                 budget,
+                message: self.budget.clone(),
                 timer_depth: context.timer_depth,
             },
         };
@@ -1301,4 +1412,11 @@ pub(crate) fn permission_denied(name: &str, required: f64, actual: f64) -> Strin
         dima_text::number_to_string(required),
         dima_text::number_to_string(actual)
     )
+}
+
+impl Drop for Run<'_> {
+    /// The work units the run took and did not spend go back to the message.
+    fn drop(&mut self) {
+        self.budget.return_steps(self.lease);
+    }
 }

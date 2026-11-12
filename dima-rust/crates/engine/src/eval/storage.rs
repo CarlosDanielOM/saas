@@ -7,7 +7,7 @@
 
 use super::EvalError;
 use super::coerce::resolve_array_index;
-use super::run::{Kept, Run};
+use super::run::{Kept, Run, host_call};
 use crate::host::HostFuture;
 use crate::syntax::{ArrayAccessor, AstNode, VariableStorage};
 use crate::value::Value;
@@ -136,8 +136,7 @@ impl Run<'_> {
             }
             VariableStorage::Cache | VariableStorage::CacheUser => {
                 for key in self.cache_keys(name, storage, target) {
-                    self.host_op()?;
-                    if let Some(found) = self.host.cache_get(&key).await? {
+                    if let Some(found) = host_call!(self, self.host.cache_get(&key))? {
                         return Ok(found);
                     }
                 }
@@ -147,8 +146,7 @@ impl Run<'_> {
                 if let Some(value) = self.state.command_variables.get(stripped) {
                     return Ok(value.clone());
                 }
-                self.host_op()?;
-                let loaded = self.host.load_channel_variable(stripped).await?;
+                let loaded = host_call!(self, self.host.load_channel_variable(stripped))?;
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
@@ -160,8 +158,7 @@ impl Run<'_> {
                 if let Some(value) = self.state.user_command_variables.get(&memo) {
                     return Ok(value.clone());
                 }
-                self.host_op()?;
-                let loaded = self.host.load_user_variable(stripped, target).await?;
+                let loaded = host_call!(self, self.host.load_user_variable(stripped, target))?;
                 if loaded.is_empty() {
                     return Ok(String::new());
                 }
@@ -207,8 +204,7 @@ impl Run<'_> {
                 || self.state.arrays.contains_key(stripped)),
             VariableStorage::Cache | VariableStorage::CacheUser => {
                 for key in self.cache_keys(name, storage, target) {
-                    self.host_op()?;
-                    if self.host.cache_exists(&key).await? {
+                    if host_call!(self, self.host.cache_exists(&key))? {
                         return Ok(true);
                     }
                 }
@@ -253,27 +249,21 @@ impl Run<'_> {
             VariableStorage::Memory => self.put(Kept::Variables, stripped.to_owned(), value)?,
             VariableStorage::Cache | VariableStorage::CacheUser => {
                 for key in self.cache_keys(name, storage, target) {
-                    self.host_op()?;
-                    self.host.cache_set(&key, &value).await?;
-                    self.host_op()?;
-                    self.host.cache_expire(&key, CACHE_TTL_SECONDS).await?;
+                    host_call!(self, self.host.cache_set(&key, &value))?;
+                    host_call!(self, self.host.cache_expire(&key, CACHE_TTL_SECONDS))?;
                 }
             }
             VariableStorage::Db => {
                 // The memo is written after the save, as the reference does; whether it fits
                 // is known before.
                 self.can_put(Kept::ChannelMemo, stripped, &value)?;
-                self.host_op()?;
-                self.host.save_channel_variable(stripped, &value).await?;
+                host_call!(self, self.host.save_channel_variable(stripped, &value))?;
                 self.put(Kept::ChannelMemo, stripped.to_owned(), value)?;
             }
             VariableStorage::DbUser => {
                 let memo = self.user_memo_key(stripped, target);
                 self.can_put(Kept::UserMemo, &memo, &value)?;
-                self.host_op()?;
-                self.host
-                    .save_user_variable(stripped, &value, target)
-                    .await?;
+                host_call!(self, self.host.save_user_variable(stripped, &value, target))?;
                 self.put(Kept::UserMemo, memo, value)?;
             }
         }
@@ -281,10 +271,10 @@ impl Run<'_> {
     }
 
     pub(super) async fn save_responses(&mut self) -> Result<(), EvalError> {
-        self.host_op()?;
-        self.host
-            .save_responses(&self.state.command_responses)
-            .await?;
+        host_call!(
+            self,
+            self.host.save_responses(&self.state.command_responses)
+        )?;
         Ok(())
     }
 
@@ -350,8 +340,7 @@ impl Run<'_> {
         target: Option<&str>,
     ) -> Result<(), EvalError> {
         for key in self.cache_keys(name, storage, target) {
-            self.host_op()?;
-            self.host.cache_delete(&key).await?;
+            host_call!(self, self.host.cache_delete(&key))?;
         }
         Ok(())
     }
@@ -365,12 +354,8 @@ impl Run<'_> {
     ) -> Result<(), EvalError> {
         let index = self.child(index).await?;
         for key in self.cache_keys(name, storage, target) {
-            self.host_op()?;
-            let Some(raw) = self
-                .host
-                .cache_get(&key)
-                .await?
-                .filter(|raw| !raw.is_empty())
+            let Some(raw) =
+                host_call!(self, self.host.cache_get(&key))?.filter(|raw| !raw.is_empty())
             else {
                 continue;
             };
@@ -386,10 +371,8 @@ impl Run<'_> {
             list.remove(at);
             let json = self.write_json(&list)?;
             // The reference ignores failures from here on (`catch {}`).
-            self.host_op()?;
-            if self.host.cache_set(&key, &json).await.is_ok() {
-                self.host_op()?;
-                let _ = self.host.cache_expire(&key, CACHE_TTL_SECONDS).await;
+            if host_call!(self, self.host.cache_set(&key, &json)).is_ok() {
+                let _ = host_call!(self, self.host.cache_expire(&key, CACHE_TTL_SECONDS));
             }
         }
         Ok(())
@@ -401,12 +384,11 @@ impl Run<'_> {
         storage: VariableStorage,
         target: Option<&str>,
     ) -> Result<(), EvalError> {
-        self.host_op()?;
         if storage == VariableStorage::Db {
-            self.host.delete_channel_variable(name).await?;
+            host_call!(self, self.host.delete_channel_variable(name))?;
             self.forget(Kept::ChannelMemo, name);
         } else {
-            self.host.delete_user_variable(name, target).await?;
+            host_call!(self, self.host.delete_user_variable(name, target))?;
             let memo = self.user_memo_key(name, target);
             self.forget(Kept::UserMemo, &memo);
         }

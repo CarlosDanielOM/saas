@@ -71,8 +71,41 @@ pub struct MemoryHost {
     /// When set, `simulate` answers every function not in this list (the simulation host).
     pub simulate_except: Option<Vec<&'static str>>,
     pub schedule_fails: bool,
-    clock: ManualClock,
+    pub clock: TestClock,
     random: Seeded,
+    /// `$(delay)` moves the clock by the time slept.
+    pub sleep_moves_clock: bool,
+    /// A host function that never answers: its call moves the clock by the milliseconds given
+    /// and stays pending; `hung_call_dropped` is set when the engine drops it.
+    pub hang: Option<(&'static str, i64)>,
+    pub hung_call_dropped: Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// The host's clock: a [`ManualClock`] that can also move by `tick` milliseconds at every
+/// read, and counts its reads.
+#[derive(Debug, Default)]
+pub struct TestClock {
+    pub now: ManualClock,
+    pub tick: std::sync::atomic::AtomicI64,
+    pub reads: std::sync::atomic::AtomicU64,
+}
+
+impl Clock for TestClock {
+    fn now_ms(&self) -> i64 {
+        use std::sync::atomic::Ordering::SeqCst;
+        self.reads.fetch_add(1, SeqCst);
+        self.now.advance(self.tick.load(SeqCst));
+        self.now.now_ms()
+    }
+}
+
+/// Sets a flag when dropped.
+struct DropFlag(Arc<std::sync::atomic::AtomicBool>);
+
+impl Drop for DropFlag {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 impl MemoryHost {
@@ -87,8 +120,14 @@ impl MemoryHost {
             caller: "caller".into(),
             simulate_except: None,
             schedule_fails: false,
-            clock: ManualClock::new(1_767_225_600_000),
+            clock: TestClock {
+                now: ManualClock::new(1_767_225_600_000),
+                ..TestClock::default()
+            },
             random: Seeded::new(seed),
+            sleep_moves_clock: false,
+            hang: None,
+            hung_call_dropped: Arc::default(),
         }
     }
 
@@ -149,6 +188,17 @@ impl Host for MemoryHost {
             .map(|v| v.to_text_or_empty().unwrap().into_owned())
             .collect();
         self.recorded.calls.push((call.name.to_owned(), args));
+        if let Some((name, millis)) = self.hang
+            && name == call.name
+        {
+            self.clock.now.advance(millis);
+            let flag = DropFlag(self.hung_call_dropped.clone());
+            return Box::pin(async move {
+                let _flag = flag;
+                std::future::pending::<()>().await;
+                Ok(Value::empty())
+            });
+        }
         let answer = self
             .answers
             .get(call.name)
@@ -181,8 +231,27 @@ impl Host for MemoryHost {
         ready(Ok(answer))
     }
 
+    fn alarm(&self, millis: u64) -> HostFuture<'static, ()> {
+        // Ends once the clock has moved `millis` on (polled again whenever the call it races
+        // is; the hung call moves the clock before its first poll returns).
+        let clock = self.clock.now.clone();
+        let at = clock
+            .now_ms()
+            .saturating_add(i64::try_from(millis).unwrap());
+        Box::pin(std::future::poll_fn(move |_| {
+            if clock.now_ms() >= at {
+                std::task::Poll::Ready(())
+            } else {
+                std::task::Poll::Pending
+            }
+        }))
+    }
+
     fn sleep(&mut self, millis: u64) -> HostFuture<'_, ()> {
         self.recorded.sleeps.push(millis);
+        if self.sleep_moves_clock {
+            self.clock.now.advance(i64::try_from(millis).unwrap());
+        }
         Box::pin(async {})
     }
 
@@ -345,7 +414,7 @@ pub fn evaluate(
     let program = engine
         .parse(source)
         .unwrap_or_else(|e| panic!("{source}: {}", e.message));
-    block_on(engine.evaluate_program(&program, context, state, host)).unwrap()
+    block_on(engine.evaluate_program_message(&program, context, state, host)).unwrap()
 }
 
 /// `renderAstWithSourceReference(source, ctx)`.
@@ -357,7 +426,7 @@ pub fn render(
     host: &mut MemoryHost,
 ) -> Rendered {
     let template = engine.compile(source).unwrap();
-    block_on(engine.render(&template, context, state, host)).unwrap()
+    block_on(engine.render_message(&template, context, state, host)).unwrap()
 }
 
 pub fn text(evaluated: &Evaluated) -> String {
@@ -368,4 +437,87 @@ pub fn with_variable(name: &str, value: &str) -> State {
     let mut state = State::default();
     state.variables.insert(name.into(), value.into());
     state
+}
+
+/// What one message produced, run the way the bot delivers it.
+#[derive(Debug)]
+pub struct Delivery {
+    /// Each run's outcome, the message's command first, then its references depth first
+    /// (`deliverAstMessage`).
+    pub runs: Vec<(String, Result<String, dima_engine::eval::EvalError>)>,
+    /// The message's budget.
+    pub budget: dima_engine::eval::MessageBudget,
+}
+
+/// The context a referenced command runs with (`commandHandler` with the reference's state).
+pub fn reference_context(
+    base: &Context,
+    reference: &dima_engine::context::CommandReference,
+) -> Context {
+    Context {
+        argument: Some(reference.argument.clone()),
+        event_data: reference.event_data.clone(),
+        command_name: reference.command_name.clone(),
+        budget: reference.state.budget.clone(),
+        visited_commands: reference.state.visited_commands.clone(),
+        command_ref_depth: Some(reference.state.command_ref_depth),
+        timer_depth: reference.state.timer_depth,
+        ..base.clone()
+    }
+}
+
+/// Runs `source` as one message: the command, then every command reference it starts, depth
+/// first, each referenced command's text taken from `commands` (by name; an unknown name is
+/// skipped, as the bot skips a command it does not find). A reference refused because the
+/// message stopped ends the delivery.
+pub fn deliver(
+    engine: &Engine,
+    commands: &HashMap<String, String>,
+    source: &str,
+    context: &Context,
+    host: &mut MemoryHost,
+) -> Delivery {
+    block_on(async {
+        let template = engine.compile(source).unwrap();
+        let top = engine
+            .render_message(&template, context, State::default(), host)
+            .await
+            .unwrap();
+        let budget = top.budget.clone();
+        let mut runs = vec![(context.command_name.clone(), Ok(top.text))];
+        let mut pending: Vec<_> = top.state.command_references.into_iter().rev().collect();
+        while let Some(reference) = pending.pop() {
+            assert!(reference.state.message.same(&budget));
+            let Some(source) = commands.get(&reference.command_name) else {
+                continue;
+            };
+            let Ok(template) = engine.compile(source) else {
+                continue;
+            };
+            let context = reference_context(context, &reference);
+            match engine
+                .render_reference(
+                    &template,
+                    &context,
+                    State::default(),
+                    host,
+                    &reference.state.message,
+                )
+                .await
+            {
+                Ok(rendered) => {
+                    runs.push((reference.command_name.clone(), Ok(rendered.text)));
+                    pending.extend(rendered.state.command_references.into_iter().rev());
+                }
+                Err(error) => {
+                    let stop = matches!(error, dima_engine::eval::EvalError::Limit(_));
+                    runs.push((reference.command_name.clone(), Err(error)));
+                    if stop {
+                        break;
+                    }
+                }
+            }
+        }
+        Delivery { runs, budget }
+    })
 }

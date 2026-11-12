@@ -274,7 +274,7 @@ fn render_at(
     let before = host.channel["deep"].clone();
     let context = eval_context();
     let future = AtStackLeft {
-        inner: Box::pin(engine.render(template, &context, State::default(), &mut host)),
+        inner: Box::pin(engine.render_message(template, &context, State::default(), &mut host)),
         left,
     };
     let rendered = tokio::runtime::Builder::new_current_thread()
@@ -342,7 +342,7 @@ fn evaluation_fits_its_stack_at_the_nesting_limit() {
             tokio::runtime::Builder::new_current_thread()
                 .build()
                 .unwrap()
-                .block_on(engine.evaluate(
+                .block_on(engine.evaluate_message(
                     &tower(height),
                     &eval_context(),
                     State::default(),

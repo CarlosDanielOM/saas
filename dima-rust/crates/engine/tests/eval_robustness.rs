@@ -207,7 +207,7 @@ fn arbitrary_text_and_stored_values_never_panic_or_exceed_limits_and_are_determi
             let mut host = host(&mut rng);
             let outcome = catch_unwind(AssertUnwindSafe(|| {
                 let template = engine.compile(&source)?;
-                Ok::<_, dima_engine::syntax::Diagnostic>(block_on(engine.render(
+                Ok::<_, dima_engine::syntax::Diagnostic>(block_on(engine.render_message(
                     &template,
                     &context,
                     State::default(),
@@ -307,7 +307,7 @@ fn deep_nodes_are_refused_not_recursed() {
             argument: Box::new(node),
         };
     }
-    let result = block_on(engine.evaluate(
+    let result = block_on(engine.evaluate_message(
         &node,
         &Context::default(),
         State::default(),
@@ -337,7 +337,7 @@ fn evaluations_are_send_and_run_concurrently() {
     {
         let context = Context::default();
         let mut host = MemoryHost::new(1);
-        let future = engine.render(&template, &context, State::default(), &mut host);
+        let future = engine.render_message(&template, &context, State::default(), &mut host);
         assert_send(&future);
     }
     const STACK: usize = 2 * 1024 * 1024;
@@ -360,7 +360,7 @@ fn evaluations_are_send_and_run_concurrently() {
                 let mut host = MemoryHost::new(n);
                 host.channel.insert("n".into(), n.to_string());
                 engine
-                    .render(&template, &context, State::default(), &mut host)
+                    .render_message(&template, &context, State::default(), &mut host)
                     .await
                     .unwrap()
                     .text
@@ -451,7 +451,7 @@ fn a_tree_too_deep_is_an_error_text_not_a_stack_overflow() {
             args: vec![node],
         };
     }
-    let result = block_on(engine.evaluate(
+    let result = block_on(engine.evaluate_message(
         &node,
         &Context::default(),
         State::default(),
@@ -506,7 +506,7 @@ fn a_tree_too_deep_is_an_error_text_not_a_stack_overflow() {
 
 fn render_template(engine: &Engine, template: &dima_engine::syntax::CompiledTemplate) -> String {
     let mut host = MemoryHost::new(1);
-    block_on(engine.render(template, &Context::default(), State::default(), &mut host))
+    block_on(engine.render_message(template, &Context::default(), State::default(), &mut host))
         .unwrap()
         .text
 }

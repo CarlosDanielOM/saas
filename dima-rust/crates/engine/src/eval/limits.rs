@@ -8,6 +8,32 @@
 //! count (Free 25, Premium 50, Pro 100) with [`SUPPORTED_STATEMENTS`] statements in the inner
 //! body, each a read or a write of a variable of any storage (memory, `#`, `##`, `*`, `**`).
 //! It completes; ten times that (ten times the statements) does not (`tests/workload.rs`).
+//!
+//! # One message
+//!
+//! A message (a chat message, a timer, a redemption) runs one command, which may start up to
+//! fifty command references, at any depth. Each run has the limits above; all of them together
+//! draw from one budget of [`EvalLimits::message_factor`] (2) times those figures, and the
+//! message ends at [`EvalLimits::deadline_ms`] (`super::MessageBudget`). The worst one message
+//! can cost, by default:
+//!
+//! | Plan    | Work units | Host calls | Kept       | Output  | Seconds |
+//! |---------|-----------:|-----------:|-----------:|--------:|--------:|
+//! | Free    |    375,000 |    187,500 | 8 MiB      | 512 KiB |     120 |
+//! | Premium |  1,500,000 |    750,000 | 8 MiB      | 512 KiB |     120 |
+//! | Pro     |  6,000,000 |  3,000,000 | 8 MiB      | 512 KiB |     120 |
+//!
+//! Computed from the limits (`super::MessageLimits::of`) and measured
+//! (`tests/workload.rs`, `the_worst_message_is_bounded`): a command that starts fifty
+//! references to the worst command spends exactly the work units, or the host calls, of its
+//! row and stops; on a debug build with an in-memory host the Pro message takes 4.5 s (work)
+//! and 4.8 s (host calls), about twice the worst single command. *Kept* is what the runs keep
+//! (variables, memos, loop variables, reference arguments), each value within
+//! [`EvalLimits::text_bytes`]; *output* is every run's rendered text together. *Seconds* is the
+//! deadline on the host's clock: past it the message stops within one lease of work (1,024
+//! units: well under a millisecond) or, during a host call, when the host's alarm fires
+//! (`crate::host::Host::alarm`; a host without one lets that call finish, so its own timeout
+//! is the overrun).
 
 use crate::context::Plan;
 
@@ -95,7 +121,30 @@ pub struct EvalLimits {
     /// checked again as a guard. The deepest stored command in the production copy has 10
     /// levels.
     pub nesting: usize,
+    /// How many times one command's figures a whole message may spend
+    /// ([`super::MessageLimits`]): the command a chat message (or a timer, or a redemption)
+    /// runs and every command reference it starts, at any depth, draw their work, host calls,
+    /// memory and output from one budget of [`Self::steps`], [`Self::host_calls`],
+    /// [`Self::memory_bytes`] and [`Self::text_bytes`] times this. Each run still has its own
+    /// limits. Two: a command with a few references runs as before, fifty heavy ones do not
+    /// (the stored commands of the production copy use at most a small share of it,
+    /// `tests/real_commands.rs`).
+    pub message_factor: u64,
+    /// How long one message may take, from its start to the end of its last command
+    /// reference, in milliseconds of the host's clock, by plan ([`super::MessageBudget`]).
+    /// Ten seconds: the supported workload takes well under a second in a debug build with an
+    /// in-memory host (`tests/workload.rs`); waits and slow host calls are what reaches it.
+    pub deadline_ms: PerPlan,
 }
+
+/// The default [`EvalLimits::message_factor`].
+pub const MESSAGE_FACTOR: u64 = 2;
+
+/// The default [`EvalLimits::deadline_ms`] of every plan: two minutes. It has to leave room for
+/// what the language itself lets a command wait for (`$(delay)` up to 60 s, an AI answer with
+/// its 30 s timeout and a retry); the work a message can do is bounded by the step and host-call
+/// budgets, which a debug build spends in under five seconds. The bot may set it lower per plan.
+pub const DEADLINE_MS: u64 = 120_000;
 
 /// The deepest nesting [`EvalLimits::nesting`] may allow: the depth the stack contract is
 /// proven for ([`crate::stack::EVAL_STACK_BYTES`]).
@@ -109,6 +158,8 @@ impl Default for EvalLimits {
             text_bytes: 256 * 1024,
             memory_bytes: 4 * 1024 * 1024,
             nesting: MAX_EVAL_NESTING,
+            message_factor: MESSAGE_FACTOR,
+            deadline_ms: PerPlan::all(DEADLINE_MS),
         }
     }
 }
@@ -116,16 +167,18 @@ impl Default for EvalLimits {
 /// Which limit was hit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LimitKind {
-    /// [`EvalLimits::steps`].
+    /// [`EvalLimits::steps`], or the message's ([`super::MessageLimits::steps`]).
     Steps,
-    /// [`EvalLimits::host_calls`].
+    /// [`EvalLimits::host_calls`], or the message's.
     HostCalls,
-    /// [`EvalLimits::text_bytes`].
+    /// [`EvalLimits::text_bytes`], or the message's output.
     TextSize,
     /// [`EvalLimits::nesting`].
     Nesting,
-    /// [`EvalLimits::memory_bytes`].
+    /// [`EvalLimits::memory_bytes`], or the message's.
     Memory,
+    /// The message's deadline ([`EvalLimits::deadline_ms`]).
+    Deadline,
 }
 
 impl LimitKind {
@@ -137,6 +190,7 @@ impl LimitKind {
             Self::TextSize => "This command builds text that is too long",
             Self::Nesting => "Nesting limit exceeded",
             Self::Memory => "This command keeps too much data",
+            Self::Deadline => "This command took too long",
         }
     }
 }
