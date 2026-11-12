@@ -30,6 +30,12 @@ struct TargetFile {
     /// Where the signed-webhook steps deliver, and with which test secret.
     #[serde(default)]
     webhooks: Option<WebhooksFile>,
+    /// `side` (default): each side gets a MongoDB user that may only use its own database.
+    /// `rig`: the side gets the rig's own credentials (needs `mongo_user_reason`).
+    #[serde(default)]
+    mongo_user: Option<String>,
+    #[serde(default)]
+    mongo_user_reason: Option<String>,
     reference: SideFile,
     candidate: SideFile,
 }
@@ -218,6 +224,8 @@ pub struct Target {
     /// The target's `mock` section as written (its values are known inputs).
     pub mock_json: serde_json::Value,
     pub qdrant: bool,
+    /// Each side connects with a user limited to its own database.
+    pub own_mongo_user: bool,
     pub eventsub: Option<Webhook>,
     pub polar: Option<Webhook>,
     pub reference: SideSpec,
@@ -239,6 +247,7 @@ pub const PLACEHOLDERS: &[&str] = &[
     "rig_dir",
     "cargo_target_dir",
     "mongo_hostport",
+    "data_dir",
     "mock_url",
     "mock_port",
     "qdrant_port",
@@ -523,6 +532,23 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
             path: w.path,
         }))
     };
+    let own_mongo_user = match f.mongo_user.as_deref() {
+        None | Some("side") => true,
+        Some("rig") => {
+            if f.mongo_user_reason
+                .as_deref()
+                .is_none_or(|r| r.trim().chars().count() < 8)
+            {
+                return Err(config(format!(
+                    "{at}: mongo_user_reason: say why the sides need the rig's own MongoDB credentials"
+                )));
+            }
+            false
+        }
+        Some(other) => {
+            return Err(config(format!("{at}: mongo_user: `{other}` (side or rig)")));
+        }
+    };
     let hooks = f.webhooks.unwrap_or_default();
     let eventsub = webhook(hooks.eventsub, "eventsub")?;
     let polar = webhook(hooks.polar, "polar")?;
@@ -543,6 +569,7 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
         mock,
         mock_json,
         qdrant: f.qdrant,
+        own_mongo_user,
         eventsub,
         polar,
         reference,

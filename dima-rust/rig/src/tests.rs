@@ -1436,7 +1436,7 @@ fn byte_sensitive_values_compare_as_exact_text() {
         raw(
             vec![RawStep::Reply(crate::capture::RawReplyStep {
                 at: START + 10,
-                command: vec!["GET".into(), key.into()],
+                command: vec![b"GET".to_vec(), key.as_bytes().to_vec()],
                 reply: crate::capture::RawReply::Bulk(v.as_bytes().to_vec()),
             })],
             vec![],
@@ -2054,4 +2054,85 @@ fn call_bodies_by_content_type() {
         &Default::default(),
     );
     assert_one(&o, "calls.piper[0].text", "text differs");
+}
+
+// ---------------------------------------------------------------------------------------------
+// From the first service port.
+
+#[test]
+fn ttl_fields_compare_as_the_moment_they_end() {
+    let body = |ttl: i64, at: i64| {
+        RawStep::Http(RawHttp {
+            at,
+            status: 200,
+            headers: vec![("content-type".into(), b"application/json".to_vec())],
+            body: format!(r#"{{"ttl":{ttl},"none":-1}}"#).into_bytes(),
+        })
+    };
+    let al = allow(&[("steps[*].body.ttl", AllowKind::Ttl { seconds: true })]);
+    // The reference read 59 s left at +1.0 s, the candidate 58 s left at +1.6 s: the same end.
+    let a = raw(vec![body(59, START + 1000)], vec![], vec![]);
+    let b = raw(vec![body(58, START + MIN + 1600)], vec![], vec![]);
+    let o = diff_w(&a, window(), &b, shifted(MIN), &al);
+    assert_match(&o);
+    // An expiry an hour off is a difference; -1 (no TTL) stays a number.
+    let c = raw(vec![body(3659, START + MIN + 1600)], vec![], vec![]);
+    let o = diff_w(&a, window(), &c, shifted(MIN), &al);
+    assert_one(&o, "steps[0].body.ttl", "run-relative times differ");
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+}
+
+#[test]
+fn date_only_and_epoch_second_inputs_are_known() {
+    let p = Patterns::new().unwrap();
+    let mut known = Known::default();
+    let day = crate::timefmt::format_day(START.div_euclid(DAY));
+    p.collect_known(&format!("{{\"day\":\"{day}\"}}"), &mut known);
+    crate::detect::collect_known_json(&p, &json!({"at": START / 1000}), &mut known);
+    let midnight = START.div_euclid(DAY) * DAY;
+    assert!(known.times.contains(&midnight), "the date's midnight");
+    assert!(
+        known.times.contains(&(START / 1000 * 1000)),
+        "epoch seconds as ms"
+    );
+    // The application stores that date: a run a day later still matches, because the value
+    // is known from the request (without it, it would read as a run time a day off).
+    let d = raw(
+        vec![],
+        vec![("days", coll(vec![doc! {"_id": 1, "day": date(midnight)}]))],
+        vec![],
+    );
+    let ca = norm_w(&d, window(), &known, &Allowances::default());
+    let cb = norm_w(&d, shifted(DAY), &known, &Allowances::default());
+    assert_match(&compare::compare(
+        &ca,
+        &cb,
+        &Allowances::default(),
+        compare::Tolerances::default(),
+    ));
+    let none = Known::default();
+    let ca = norm_w(&d, window(), &none, &Allowances::default());
+    let cb = norm_w(&d, shifted(DAY), &none, &Allowances::default());
+    let o = compare::compare(
+        &ca,
+        &cb,
+        &Allowances::default(),
+        compare::Tolerances::default(),
+    );
+    assert_one(&o, "mongo.days[0].day", "run-relative times differ");
+}
+
+#[test]
+fn binary_command_arguments() {
+    let cmd =
+        crate::scenario::tests_command(&[json!("SET"), json!("k"), json!({"$rigBytes": "/wA="})]);
+    assert!(matches!(cmd.get(2), Some(crate::scenario::Arg::Bytes(b)) if b == &vec![0xff, 0x00]));
+    assert!(
+        crate::scenario::tests_command_err(&[
+            json!("SET"),
+            json!("k"),
+            json!({"$rigBytes": "/wA=", "x": 1})
+        ])
+        .contains("$rigBytes")
+    );
 }

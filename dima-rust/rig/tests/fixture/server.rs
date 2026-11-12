@@ -85,6 +85,7 @@ impl Variant {
 
 struct App {
     v: Variant,
+    client: mongodb::Client,
     db: mongodb::Database,
     redis: redis::aio::MultiplexedConnection,
     posts: AtomicU32,
@@ -598,6 +599,34 @@ impl App {
             ("POST", ["items", id, "touch"]) => self.touch_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
             ("POST", ["eventsub"]) => self.eventsub(&req).await,
+            // A file the scenario seeded into the side's data directory.
+            ("GET", ["file", name]) => {
+                let dir = env("FIXTURE_DATA_DIR")?;
+                match std::fs::read(std::path::Path::new(&dir).join(name)) {
+                    Ok(b) => Ok(Response {
+                        status: 200,
+                        content_type: "text/plain; charset=utf-8",
+                        body: b,
+                        headers: Vec::new(),
+                    }),
+                    Err(_) => Ok(json_resp(404, &json!({"error": "no such file"}))),
+                }
+            }
+            // Try to write to a database that is not the side's own.
+            ("POST", ["other-db"]) => {
+                let other = self.client.database("rig_other_db_probe");
+                match other
+                    .collection::<Document>("probe")
+                    .insert_one(doc! {"x": 1})
+                    .await
+                {
+                    Ok(_) => {
+                        let _ = other.drop().await;
+                        Ok(json_resp(200, &json!({"refused": false})))
+                    }
+                    Err(_) => Ok(json_resp(200, &json!({"refused": true}))),
+                }
+            }
             ("POST", ["polar", "webhook"]) => self.polar(&req),
             // Echo one word (a scenario saves it and uses it in a later step).
             ("GET", ["word", w]) => Ok(json_resp(200, &json!({"word": w}))),
@@ -707,6 +736,7 @@ async fn main() -> Result<()> {
     );
     let app = Arc::new(App {
         v: variant,
+        client,
         db,
         redis,
         posts: AtomicU32::new(0),

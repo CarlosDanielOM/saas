@@ -1,0 +1,16 @@
+{
+  "rig_scenario": 1,
+  "description": "A file seeded into the side's data directory is there when the side starts (and a missing one is not); writing to a database other than the side's own is refused; a side value in a step string; a binary Dragonfly argument without a script.",
+  "seed": {
+    "files": { "hello.txt": { "text": "hola 👋 from the seed" }, "conf/app.json": { "json": { "day": "2026-11-11" } } },
+    "dragonfly": [["SET", "bin:raw", { "$rigBytes": "/wDvvw==" }]]
+  },
+  "steps": [
+    { "name": "seeded file", "http": { "method": "GET", "path": "/file/hello.txt", "expect": { "status": 200 } } },
+    { "name": "missing file", "http": { "method": "GET", "path": "/file/nope.txt", "expect": { "status": 404 } } },
+    { "name": "another database", "http": { "method": "POST", "path": "/other-db", "expect": { "status": 200 } } },
+    { "name": "a side value", "http": { "method": "GET", "path": "/word/${mongo_db}" } },
+    { "name": "binary argument", "dragonfly": ["APPEND", "bin:raw", { "$rigBytes": "AQ==" }] },
+    { "name": "read it back", "dragonfly": ["GET", "bin:raw"] }
+  ]
+}

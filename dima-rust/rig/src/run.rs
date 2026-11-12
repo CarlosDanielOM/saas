@@ -116,6 +116,8 @@ struct SideRunner<'s> {
     hooks: crate::steps::Hooks,
     /// `${mongo_db}`, `${port.http}` ... for step strings.
     side_values: BTreeMap<String, String>,
+    /// `{data_dir}`: emptied before each launch, filled from `seed.files`.
+    data_dir: PathBuf,
 }
 
 impl<'s> SideRunner<'s> {
@@ -132,9 +134,14 @@ impl<'s> SideRunner<'s> {
             reg,
             label,
             existing.map(|e| e.db.as_str()),
+            target.own_mongo_user,
         )
         .await?;
-        stores.side_uri = existing.and_then(|e| e.side_uri.clone());
+        if let Some(e) = existing {
+            stores.side_uri = e.side_uri.clone();
+        }
+        let data_dir = settings.out_dir.join("data").join(&stores.db_name);
+        reg.add_data_dir(&data_dir);
         let qdrant = if target.qdrant {
             let q = crate::config::qdrant_store(&settings.env)?;
             let up = qdrant::Upstream {
@@ -176,6 +183,7 @@ impl<'s> SideRunner<'s> {
             reg: reg.clone(),
             hooks: crate::steps::Hooks::default(),
             side_values: BTreeMap::new(),
+            data_dir,
         })
     }
 
@@ -231,6 +239,7 @@ impl<'s> SideRunner<'s> {
         vars.insert("rig_dir".into(), s.rig_dir.display().to_string());
         vars.insert("cargo_target_dir".into(), s.cargo_target_dir.clone());
         vars.insert("mongo_hostport".into(), mongo_hostport(&s.stores.mongo_uri));
+        vars.insert("data_dir".into(), self.data_dir.display().to_string());
         vars.insert("mock_url".into(), self.mock.url());
         vars.insert("mock_port".into(), self.mock.port.to_string());
         vars.insert(
@@ -469,6 +478,31 @@ impl<'s> SideRunner<'s> {
         mock.settle_ms.unwrap_or(3000)
     }
 
+    /// The side's data directory: emptied (when `wipe`), then the scenario's `seed.files`.
+    fn seed_files(&self, sc: &Scenario, wipe: bool) -> std::result::Result<(), SideFailure> {
+        let dir = &self.data_dir;
+        if wipe && dir.exists() {
+            std::fs::remove_dir_all(dir).map_err(|e| {
+                self.fail(format!(
+                    "emptying the data directory {}: {e}",
+                    dir.display()
+                ))
+            })?;
+        }
+        std::fs::create_dir_all(dir)
+            .map_err(|e| self.fail(format!("creating {}: {e}", dir.display())))?;
+        for (rel, bytes) in &sc.seed_files {
+            let path = dir.join(rel);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| self.fail(format!("creating {}: {e}", parent.display())))?;
+            }
+            std::fs::write(&path, bytes)
+                .map_err(|e| self.fail(format!("seed file {}: {e}", path.display())))?;
+        }
+        Ok(())
+    }
+
     /// Each own-process scenario starts with an empty Qdrant, like the other stores.
     async fn reset_qdrant(&self) -> std::result::Result<(), SideFailure> {
         if let Some(up) = &self.qdrant {
@@ -491,6 +525,10 @@ impl<'s> SideRunner<'s> {
             .await
             .map_err(|e| self.fail(e.to_string()))?;
         self.reset_qdrant().await?;
+        if self.data_dir.exists() {
+            let _ = std::fs::remove_dir_all(&self.data_dir);
+        }
+        let _ = std::fs::create_dir_all(&self.data_dir);
         let target_mock = self.target.mock.clone();
         self.launch(&target_mock).await?;
         self.settle(self.settle_ms(&target_mock)).await;
@@ -520,6 +558,7 @@ impl<'s> SideRunner<'s> {
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
+            self.seed_files(sc, true)?;
             self.launch(&mock_spec).await?;
             self.settle(self.settle_ms(&mock_spec)).await;
         } else {
@@ -534,6 +573,7 @@ impl<'s> SideRunner<'s> {
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
+            self.seed_files(sc, false)?;
             let ports = self
                 .proc
                 .as_ref()
@@ -1243,6 +1283,7 @@ pub async fn diff_get(
         mock: MockSpec::default(),
         call_rules: crate::detect::CallRules::default(),
         share_process: false,
+        seed_files: Vec::new(),
     };
     if allow_writes {
         report.warnings.push(format!(

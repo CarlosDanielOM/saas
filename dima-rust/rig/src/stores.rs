@@ -49,17 +49,37 @@ fn without_credentials(uri: &str) -> String {
     crate::capture::redact_uri(uri)
 }
 
-/// The URI with these credentials (defined in `admin`) and `db` as its path.
+/// The URI with these credentials (defined in `admin`) and `db` as its path. The options keep
+/// their order (`authSource` set to `admin` where it was, or appended).
 pub fn uri_with_user(uri: &str, user: &str, password: &str, db: &str) -> String {
     let base = uri_with_db(&without_credentials(uri), db);
     let (scheme, rest) = base.split_once("://").unwrap_or(("mongodb", base.as_str()));
     let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
-    let mut params: Vec<&str> = query
-        .split('&')
-        .filter(|p| !p.is_empty() && !p.starts_with("authSource="))
-        .collect();
-    params.push("authSource=admin");
+    let mut params: Vec<&str> = query.split('&').filter(|p| !p.is_empty()).collect();
+    match params.iter_mut().find(|p| p.starts_with("authSource=")) {
+        Some(p) => *p = "authSource=admin",
+        None => params.push("authSource=admin"),
+    }
     format!("{scheme}://{user}:{password}@{path}?{}", params.join("&"))
+}
+
+/// A temporary user, defined in `admin`, that may read, write and index the side's own
+/// database and nothing else. Registered for [`Registry::cleanup`] before it exists.
+pub async fn create_side_user(cfg: &StoreConfig, reg: &Registry, db: &str) -> Result<String> {
+    let name = format!("{db}_rw");
+    let password = uuid::Uuid::new_v4().simple().to_string();
+    let client = mongo_client(&cfg.mongo_uri).await?;
+    reg.add_user(&name);
+    timed(
+        "MongoDB createUser",
+        client.database("admin").run_command(doc! {
+            "createUser": &name,
+            "pwd": &password,
+            "roles": [{"role": "readWrite", "db": db}, {"role": "dbAdmin", "db": db}],
+        }),
+    )
+    .await?;
+    Ok(uri_with_user(&cfg.mongo_uri, &name, &password, db))
 }
 
 /// A temporary user, defined in `admin`, with the `read` role on `db` only. Registered for
@@ -191,6 +211,8 @@ struct Held {
     qdrant: Vec<crate::mock::qdrant::Upstream>,
     /// Containers started for sides (`docker rm -f` on cleanup).
     containers: Vec<String>,
+    /// The sides' data directories (removed on cleanup).
+    data_dirs: Vec<PathBuf>,
 }
 
 /// What [`Registry::cleanup`] did.
@@ -279,11 +301,15 @@ impl Registry {
         self.held().containers.push(name.to_string());
     }
 
+    pub fn add_data_dir(&self, dir: &std::path::Path) {
+        self.held().data_dirs.push(dir.to_path_buf());
+    }
+
     /// Release everything: drop the MongoDB databases (unless `keep`) and the temporary users
     /// (always), flush each claimed logical database (unless `keep`), then release its lock.
     /// Idempotent: what was released is forgotten.
     pub async fn cleanup(&self, cfg: &StoreConfig, keep: bool) -> Cleanup {
-        let (dbs, users, dragonfly, qdrant, containers) = {
+        let (dbs, users, dragonfly, qdrant, containers, data_dirs) = {
             let mut h = self.held();
             (
                 std::mem::take(&mut h.mongo_dbs),
@@ -291,6 +317,7 @@ impl Registry {
                 std::mem::take(&mut h.dragonfly),
                 std::mem::take(&mut h.qdrant),
                 std::mem::take(&mut h.containers),
+                std::mem::take(&mut h.data_dirs),
             )
         };
         let mut out = Cleanup::default();
@@ -300,6 +327,17 @@ impl Registry {
                 Ok(true) => out.removed_containers.push(name),
                 Ok(false) => {}
                 Err(e) => out.errors.push(format!("removing container {name}: {e}")),
+            }
+        }
+        for dir in data_dirs {
+            if keep || !dir.exists() {
+                continue;
+            }
+            if let Err(e) = std::fs::remove_dir_all(&dir) {
+                out.errors.push(format!(
+                    "removing the data directory {}: {e} (files a container wrote as root?)",
+                    dir.display()
+                ));
             }
         }
         for up in qdrant {
@@ -508,6 +546,7 @@ impl SideStores {
         reg: &Registry,
         label: &str,
         existing_db: Option<&str>,
+        own_user: bool,
     ) -> Result<SideStores> {
         let (df_index, lock) = lock_index(cfg).await?;
         reg.add_dragonfly(df_index, lock);
@@ -532,6 +571,12 @@ impl SideStores {
         );
         let rc = redis::Client::open(url).map_err(redis_err)?;
         let redis = timed("Dragonfly connect", rc.get_multiplexed_async_connection()).await?;
+        // The side reaches only its own database (record, verify, compare).
+        let side_uri = if owned && own_user {
+            Some(create_side_user(cfg, reg, &db_name).await?)
+        } else {
+            None
+        };
         let mut s = SideStores {
             cfg: cfg.clone(),
             client,
@@ -539,7 +584,7 @@ impl SideStores {
             owned,
             df_index,
             redis,
-            side_uri: None,
+            side_uri,
         };
         s.reset_empty().await?;
         Ok(s)
@@ -898,11 +943,12 @@ impl SideStores {
                 .map(|a| a.render(&empty, now))
                 .collect::<std::result::Result<Vec<_>, _>>()
                 .map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
-            crate::dfcmd::check(&args, s.allow_scripts)
-                .map_err(|e| config(format!("seed.dragonfly[{i}] {args:?}: {e}")))?;
+            let words = crate::dfcmd::words(&args);
+            crate::dfcmd::check(&words, s.allow_scripts)
+                .map_err(|e| config(format!("seed.dragonfly[{i}] {words:?}: {e}")))?;
             match self.command(&args).await? {
                 RawReply::Error(e) => {
-                    return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}")));
+                    return Err(config(format!("seed.dragonfly[{i}] {words:?} failed: {e}")));
                 }
                 _ => continue,
             }
@@ -911,13 +957,13 @@ impl SideStores {
     }
 
     /// Run one command on the side's logical database. Error replies are values, not failures.
-    pub async fn command(&mut self, args: &[String]) -> Result<RawReply> {
+    pub async fn command(&mut self, args: &[Vec<u8>]) -> Result<RawReply> {
         let Some((name, rest)) = args.split_first() else {
             return Err(config("empty command"));
         };
-        let mut cmd = redis::cmd(name);
+        let mut cmd = redis::cmd(&String::from_utf8_lossy(name));
         for a in rest {
-            cmd.arg(a);
+            cmd.arg(a.as_slice());
         }
         match tokio::time::timeout(
             STORE_TIMEOUT,
@@ -1186,7 +1232,7 @@ mod tests {
                 "abc",
                 "domdimabot"
             ),
-            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?directConnection=true&authSource=admin"
+            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?authSource=admin&directConnection=true"
         );
         assert_eq!(
             uri_with_user("mongodb://h:1", "u", "p", "d"),

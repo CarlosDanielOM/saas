@@ -87,8 +87,8 @@ pub struct RawCall {
 pub struct RawReplyStep {
     /// When the reply arrived (rig clock, epoch ms).
     pub at: i64,
-    /// The command as sent (rendered).
-    pub command: Vec<String>,
+    /// The command as sent (rendered; arguments may be bytes that are not UTF-8).
+    pub command: Vec<Vec<u8>>,
     pub reply: RawReply,
 }
 
@@ -650,7 +650,7 @@ fn enc_step(s: &RawStep) -> Value {
         }}),
         RawStep::Reply(r) => json!({ "dragonfly": {
             "at": r.at,
-            "command": r.command.iter().map(|a| enc_bytes(a.as_bytes())).collect::<Vec<_>>(),
+            "command": r.command.iter().map(|a| enc_bytes(a)).collect::<Vec<_>>(),
             "reply": enc_reply(&r.reply),
         }}),
         RawStep::Done(kind) => json!({ kind.clone(): {} }),
@@ -686,7 +686,7 @@ fn dec_step(v: &Value, i: usize) -> Result<RawStep, String> {
                 at: int(field(d, "at", &ctx)?, &ctx)?,
                 command: arr(field(d, "command", &ctx)?, &ctx)?
                     .iter()
-                    .map(|a| dec_bytes(a, &ctx).map(|b| String::from_utf8_lossy(&b).to_string()))
+                    .map(|a| dec_bytes(a, &ctx))
                     .collect::<Result<_, _>>()?,
                 reply: dec_reply(field(d, "reply", &ctx)?, &format!("{ctx}.reply"))?,
             }))
@@ -999,7 +999,7 @@ mod tests {
                 }),
                 RawStep::Reply(RawReplyStep {
                     at: 1_794_400_000_200,
-                    command: vec!["HGETALL".into(), "h".into()],
+                    command: vec![b"HGETALL".to_vec(), vec![b'h', 0xff]],
                     reply: RawReply::Array(vec![
                         RawReply::Bulk(vec![0x80]),
                         RawReply::Nil,

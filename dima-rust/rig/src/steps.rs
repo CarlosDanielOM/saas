@@ -704,8 +704,9 @@ impl Runner<'_> {
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|e| err(i, e))?;
                     // The rendered command: a saved value can become a command name or option.
-                    crate::dfcmd::check(&rendered, self.allow_scripts)
-                        .map_err(|e| err(i, format!("dragonfly {rendered:?}: {e}")))?;
+                    let words = crate::dfcmd::words(&rendered);
+                    crate::dfcmd::check(&words, self.allow_scripts)
+                        .map_err(|e| err(i, format!("dragonfly {words:?}: {e}")))?;
                     let reply = self
                         .stores
                         .command(&rendered)

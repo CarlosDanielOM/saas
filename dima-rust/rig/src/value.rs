@@ -232,6 +232,9 @@ pub enum NumRepr {
     Int64Secs,
     DoubleSecs,
     JsonSecs,
+    /// A JSON number holding a remaining duration (`ttl` allowance), in seconds or ms.
+    JsonTtlSecs,
+    JsonTtlMs,
 }
 
 impl NumRepr {
@@ -245,6 +248,8 @@ impl NumRepr {
             NumRepr::Int64Secs => "int64 epoch-s",
             NumRepr::DoubleSecs => "double epoch-s",
             NumRepr::JsonSecs => "JSON number epoch-s",
+            NumRepr::JsonTtlSecs => "JSON number TTL-s",
+            NumRepr::JsonTtlMs => "JSON number TTL-ms",
         }
     }
 
@@ -252,7 +257,7 @@ impl NumRepr {
     pub fn fine(self) -> bool {
         matches!(
             self,
-            NumRepr::Date | NumRepr::Int64 | NumRepr::Double | NumRepr::Json
+            NumRepr::Date | NumRepr::Int64 | NumRepr::Double | NumRepr::Json | NumRepr::JsonTtlMs
         )
     }
 }
@@ -404,9 +409,10 @@ pub fn encode(v: &Val) -> Value {
         Val::Time(NumRepr::Double | NumRepr::DoubleSecs, m) => {
             single("$numberDouble", Value::String(marker(m)))
         }
-        Val::Time(NumRepr::Json | NumRepr::JsonSecs, m) => {
-            single("$rigNumber", Value::String(marker(m)))
-        }
+        Val::Time(
+            NumRepr::Json | NumRepr::JsonSecs | NumRepr::JsonTtlSecs | NumRepr::JsonTtlMs,
+            m,
+        ) => single("$rigNumber", Value::String(marker(m))),
         Val::Oid(id) => single("$oid", encode_id_value(id)),
         Val::Uuid(id) => single("$uuid", encode_id_value(id)),
         Val::Str(t) => encode_text_value(t),

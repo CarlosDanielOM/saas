@@ -71,6 +71,21 @@ struct SeedBody {
     mongo: Map<String, Value>,
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
+    /// Files written into the side's data directory (`{data_dir}`) before it starts.
+    #[serde(default)]
+    files: BTreeMap<String, FileSeed>,
+}
+
+/// One seeded file: exactly one of `text`, `base64`, `json`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileSeed {
+    #[serde(default)]
+    text: Option<String>,
+    #[serde(default)]
+    base64: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    json: Option<Value>,
 }
 
 #[derive(Deserialize)]
@@ -85,6 +100,8 @@ struct SeedFile {
     mongo: Map<String, Value>,
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
+    #[serde(default)]
+    files: BTreeMap<String, FileSeed>,
 }
 
 #[derive(Deserialize)]
@@ -368,6 +385,8 @@ impl Selection {
 pub enum Arg {
     /// Text with `${...}` expressions.
     Text(String),
+    /// Bytes given as `{"$rigBytes": "<base64>"}` (values that are not UTF-8, without `EVAL`).
+    Bytes(Vec<u8>),
     Now {
         offset_ms: i64,
         fmt: NowFmt,
@@ -379,10 +398,13 @@ impl Arg {
         &self,
         saved: &BTreeMap<String, String>,
         now: i64,
-    ) -> std::result::Result<String, String> {
+    ) -> std::result::Result<Vec<u8>, String> {
         match self {
-            Arg::Text(t) => template::interpolate(t, saved, now),
-            Arg::Now { offset_ms, fmt } => Ok(template::format_now(now, *offset_ms, *fmt)),
+            Arg::Text(t) => template::interpolate(t, saved, now).map(String::into_bytes),
+            Arg::Bytes(b) => Ok(b.clone()),
+            Arg::Now { offset_ms, fmt } => {
+                Ok(template::format_now(now, *offset_ms, *fmt).into_bytes())
+            }
         }
     }
 }
@@ -553,6 +575,8 @@ pub struct Scenario {
     /// The scenario's `mock` section (merged over the target's when it runs).
     pub mock: crate::mock::MockSpec,
     pub call_rules: crate::detect::CallRules,
+    /// Files for the side's data directory: (relative path, bytes).
+    pub seed_files: Vec<(String, Vec<u8>)>,
 }
 
 impl Scenario {
@@ -801,6 +825,7 @@ struct Loader<'a> {
     seed_offsets: Vec<(i64, bool)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
+    data_files: Vec<(String, Vec<u8>)>,
 }
 
 fn read_json(file: &FsPath) -> Result<Value> {
@@ -863,6 +888,18 @@ fn command(
                 Arg::Text(s.clone())
             }
             Value::Number(n) => Arg::Text(n.to_string()),
+            Value::Object(m) if m.contains_key("$rigBytes") => {
+                let b = m
+                    .get("$rigBytes")
+                    .and_then(Value::as_str)
+                    .filter(|_| m.len() == 1)
+                    .ok_or_else(|| config(format!("{here}: {{\"$rigBytes\": \"<base64>\"}} and nothing else")))?;
+                Arg::Bytes(
+                    base64::engine::general_purpose::STANDARD
+                        .decode(b)
+                        .map_err(|e| config(format!("{here}: $rigBytes: {e}")))?,
+                )
+            }
             Value::Object(m) if m.contains_key("$rigNow") => {
                 let (offset_ms, fmt) = rig_now(m, &here).map_err(config)?;
                 let fmt = match fmt.as_str() {
@@ -873,7 +910,7 @@ fn command(
                 };
                 Arg::Now { offset_ms, fmt }
             }
-            _ => return Err(config(format!("{here}: command arguments are strings, numbers or {{\"$rigNow\": ...}}"))),
+            _ => return Err(config(format!("{here}: command arguments are strings, numbers, {{\"$rigNow\": ...}} or {{\"$rigBytes\": \"<base64>\"}}"))),
         });
     }
     if !matches!(out.first(), Some(Arg::Text(_))) {
@@ -887,6 +924,7 @@ fn command(
         .map(|a| match a {
             Arg::Text(t) if !t.contains("${") => Some(t.clone()),
             Arg::Now { .. } => Some("0".into()),
+            Arg::Bytes(b) => Some(String::from_utf8_lossy(b).to_string()),
             Arg::Text(_) => None,
         })
         .collect();
@@ -899,6 +937,7 @@ fn command(
                 .iter()
                 .map(|a| match a {
                     Arg::Text(t) => t.clone(),
+                    Arg::Bytes(b) => String::from_utf8_lossy(b).to_string(),
                     Arg::Now { .. } => "0".into(),
                 })
                 .collect();
@@ -950,6 +989,7 @@ impl Loader<'_> {
                     include: sf.include,
                     mongo: sf.mongo,
                     dragonfly: sf.dragonfly,
+                    files: sf.files,
                 },
                 depth + 1,
             )?;
@@ -988,6 +1028,35 @@ impl Loader<'_> {
                 Some((_, list)) => list.extend(docs),
                 None => self.mongo.push((coll, docs)),
             }
+        }
+        for (rel, f) in body.files {
+            let here = format!("{at}: seed.files[{rel:?}]");
+            let path = FsPath::new(&rel);
+            if rel.is_empty()
+                || path.is_absolute()
+                || path
+                    .components()
+                    .any(|c| !matches!(c, std::path::Component::Normal(_)))
+            {
+                return Err(config(format!(
+                    "{here}: a relative path inside the data directory (no .., no leading /)"
+                )));
+            }
+            let bytes = match (f.text, f.base64, f.json) {
+                (Some(t), None, None) => t.into_bytes(),
+                (None, Some(b), None) => base64::engine::general_purpose::STANDARD
+                    .decode(b)
+                    .map_err(|e| config(format!("{here}.base64: {e}")))?,
+                (None, None, Some(j)) => serde_json::to_vec_pretty(&j)
+                    .map_err(|e| config(format!("{here}.json: {e}")))?,
+                _ => {
+                    return Err(config(format!("{here}: exactly one of text, base64, json")));
+                }
+            };
+            self.patterns
+                .collect_known(&String::from_utf8_lossy(&bytes), &mut self.known);
+            self.data_files.retain(|(p, _)| *p != rel);
+            self.data_files.push((rel, bytes));
         }
         for (i, c) in body.dragonfly.iter().enumerate() {
             let cmd = command(
@@ -1564,6 +1633,13 @@ pub(crate) fn allowances(
                 None => AllowKind::Generated(None),
             },
             "exact" => AllowKind::Exact,
+            "ttl" => match a.unit.as_deref() {
+                None | Some("s") => AllowKind::Ttl { seconds: true },
+                Some("ms") => AllowKind::Ttl { seconds: false },
+                Some(other) => {
+                    return Err(config(format!("{here}.unit: `{other}` (use s or ms)")));
+                }
+            },
             "time" => match a.unit.as_deref() {
                 None | Some("ms") => AllowKind::Time { seconds: false },
                 Some("s") => AllowKind::Time { seconds: true },
@@ -1573,12 +1649,14 @@ pub(crate) fn allowances(
             },
             other => {
                 return Err(config(format!(
-                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact or time)"
+                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact, time or ttl)"
                 )));
             }
         };
-        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. }) {
-            return Err(config(format!("{here}: \"unit\" only goes with kind time")));
+        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. } | AllowKind::Ttl { .. }) {
+            return Err(config(format!(
+                "{here}: \"unit\" only goes with kind time or ttl"
+            )));
         }
         if a.ms.is_some() && !matches!(kind, AllowKind::Tolerance(_)) {
             return Err(config(format!(
@@ -1651,6 +1729,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         )],
         mongo: Vec::new(),
         dragonfly: Vec::new(),
+        data_files: Vec::new(),
     };
     if let Ok(c) = file.canonicalize() {
         loader.seen_files.insert(c);
@@ -1853,6 +1932,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         known: loader.known,
         mock,
         call_rules,
+        seed_files: loader.data_files,
     })
 }
 
@@ -1908,6 +1988,20 @@ pub fn select(all: &[String], filters: &[String]) -> Vec<String> {
         })
         .cloned()
         .collect()
+}
+
+/// `command` for the crate's tests.
+#[cfg(test)]
+pub(crate) fn tests_command(args: &[Value]) -> Vec<Arg> {
+    command(args, "c", &BTreeSet::new(), false).unwrap_or_default()
+}
+
+#[cfg(test)]
+pub(crate) fn tests_command_err(args: &[Value]) -> String {
+    command(args, "c", &BTreeSet::new(), false)
+        .err()
+        .map(|e| e.to_string())
+        .unwrap_or_default()
 }
 
 #[cfg(test)]

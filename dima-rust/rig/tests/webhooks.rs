@@ -42,6 +42,15 @@ fn rig(work: &Path, variant: &str, args: &[&str]) -> (i32, Value, String) {
     (out.status.code().unwrap_or(-1), v, text)
 }
 
+fn scenario<'v>(r: &'v Value, name: &str) -> &'v Value {
+    r["scenarios"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["scenario"] == name)
+        .unwrap_or_else(|| panic!("no {name} in {r}"))
+}
+
 #[test]
 fn webhooks_wait_call_and_outbound_comparison() {
     if std::env::var("DIMA_TEST_MONGO_URI").is_err() {
@@ -56,7 +65,29 @@ fn webhooks_wait_call_and_outbound_comparison() {
     // Recorded twice and stable.
     let (code, r, text) = rig(&work, "good", &["record", "hooks"]);
     assert_eq!(code, 0, "{text}");
-    assert_eq!(r["scenarios"][0]["status"], "recorded", "{text}");
+    assert_eq!(
+        scenario(&r, "webhooks/chat")["status"],
+        "recorded",
+        "{text}"
+    );
+    assert_eq!(
+        scenario(&r, "isolation/files")["status"],
+        "recorded",
+        "{text}"
+    );
+    // The side's data directory had the seeded file; its MongoDB user could not write to
+    // another database; a binary Dragonfly argument went through without a script.
+    let iso: Value = serde_json::from_str(
+        &std::fs::read_to_string(work.join("captures/hooks/isolation/files.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(iso["steps"][0]["http"]["body"], "hola 👋 from the seed");
+    assert_eq!(iso["steps"][1]["http"]["status"], 404);
+    assert_eq!(iso["steps"][2]["http"]["body"], r#"{"refused":true}"#);
+    assert_eq!(
+        iso["steps"][5]["dragonfly"]["reply"]["bulk"]["$rigBytes"],
+        "/wDvvwE="
+    );
     let cap: Value = serde_json::from_str(
         &std::fs::read_to_string(work.join("captures/hooks/webhooks/chat.json")).unwrap(),
     )
@@ -102,16 +133,20 @@ fn webhooks_wait_call_and_outbound_comparison() {
     // An equivalent candidate matches; a different chat answer is one difference, at its path.
     let (code, r, text) = rig(&work, "good", &["verify", "hooks"]);
     assert_eq!(code, 0, "{text}");
-    assert_eq!(r["scenarios"][0]["status"], "match", "{text}");
+    assert_eq!(scenario(&r, "webhooks/chat")["status"], "match", "{text}");
+    assert_eq!(scenario(&r, "isolation/files")["status"], "match", "{text}");
     let (code, r, text) = rig(&work, "chat-text", &["verify", "hooks"]);
     assert_eq!(code, 1, "{text}");
-    let diffs = r["scenarios"][0]["differences"].as_array().unwrap();
+    assert_eq!(scenario(&r, "isolation/files")["status"], "match", "{text}");
+    let diffs = scenario(&r, "webhooks/chat")["differences"]
+        .as_array()
+        .unwrap();
     assert_eq!(diffs.len(), 1, "{text}");
     assert_eq!(diffs[0]["path"], "calls.twitch[0].body.message", "{text}");
     // No answer at all: the wait for the call fails the scenario, naming the call.
     let (code, r, text) = rig(&work, "no-chat", &["verify", "hooks"]);
     assert_eq!(code, 1, "{text}");
-    let sc = &r["scenarios"][0];
+    let sc = scenario(&r, "webhooks/chat");
     assert_eq!(sc["status"], "error", "{text}");
     let msg = sc["errors"][0]["message"].as_str().unwrap();
     assert!(

@@ -123,8 +123,10 @@ impl Patterns {
             }
             if let Some(ms) = timefmt::parse_iso(m.as_str()) {
                 known.times.insert(ms);
-            } else if timefmt::parse_day(m.as_str()).is_some() {
+            } else if let Some(day) = timefmt::parse_day(m.as_str()) {
                 known.days.insert(m.as_str().to_string());
+                // A date-only constant the application turns into a date (UTC midnight).
+                known.times.insert(day.saturating_mul(MS_PER_DAY));
             }
         }
         for m in self.ms13.find_iter(s) {
@@ -149,8 +151,12 @@ pub fn collect_known_json(p: &Patterns, v: &Value, known: &mut Known) {
     match v {
         Value::String(s) => p.collect_known(s, known),
         Value::Number(n) => {
-            if let Some(ms) = integral(n) {
-                known.times.insert(ms);
+            if let Some(v) = integral(n) {
+                known.times.insert(v);
+                // Epoch seconds the application may turn into milliseconds.
+                if (1_000_000_000..10_000_000_000).contains(&v) {
+                    known.times.insert(v.saturating_mul(1000));
+                }
             }
         }
         Value::Array(a) => a.iter().for_each(|x| collect_known_json(p, x, known)),
@@ -284,6 +290,8 @@ struct Detector<'a, 'b> {
     found: Vec<String>,
     /// Inside the value of a byte-sensitive key (or the reply to a command on one).
     exact_text: bool,
+    /// When the answer being read arrived (a `ttl` value ends this long after it).
+    read_at: Option<i64>,
 }
 
 #[derive(Clone)]
@@ -577,6 +585,17 @@ impl Detector<'_, '_> {
     }
 
     fn json_number(&self, path: &Path, n: &Number) -> Val {
+        if let (Some(at), Some(v)) = (self.read_at, integral(n))
+            && v >= 0
+            && let Some(secs) = self.ctx.allow.ttl_unit(path)
+        {
+            let (ms, repr) = if secs {
+                (v.saturating_mul(1000), NumRepr::JsonTtlSecs)
+            } else {
+                (v, NumRepr::JsonTtlMs)
+            };
+            return Val::Time(repr, self.moment(at.saturating_add(ms)));
+        }
         integral(n)
             .and_then(|v| self.num_time(path, v, NumRepr::Json, NumRepr::JsonSecs))
             .unwrap_or_else(|| Val::Num(n.clone()))
@@ -772,18 +791,17 @@ impl Detector<'_, '_> {
         match s {
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
+                self.read_at = Some(r.at);
                 path.push_key("reply");
                 // A reply about a byte-sensitive key is exact text too.
-                self.exact_text = r
-                    .command
-                    .iter()
-                    .skip(1)
-                    .any(|a| self.byte_sensitive_key(a.as_bytes()));
+                self.exact_text = r.command.iter().skip(1).any(|a| self.byte_sensitive_key(a));
                 let v = self.reply(&mut path, &r.reply);
                 self.exact_text = false;
+                self.read_at = None;
                 StepCap::Reply(v)
             }
             RawStep::Http(h) => {
+                self.read_at = Some(h.at);
                 let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
                 for (name, value) in &h.headers {
                     if self.ctx.skip_headers.iter().any(|n| n == name) {
@@ -832,6 +850,7 @@ impl Detector<'_, '_> {
                     (_, _, Ok(text)) => Body::Text(self.text(&bp, text)),
                     _ => Body::Bytes(h.body.clone()),
                 };
+                self.read_at = None;
                 StepCap::Http {
                     status: h.status,
                     headers,
@@ -1210,6 +1229,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         extra: None,
         found: Vec::new(),
         exact_text: false,
+        read_at: None,
     };
     let cap = first.run(raw);
     let mut found: Vec<String> = first
@@ -1239,6 +1259,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         extra: Some(extra),
         found: Vec::new(),
         exact_text: false,
+        read_at: None,
     };
     second.run(raw)
 }
@@ -1287,6 +1308,7 @@ pub(crate) mod tests {
             extra: None,
             found: Vec::new(),
             exact_text: false,
+            read_at: None,
         };
         d.text(&Path::root("x"), raw)
     }
