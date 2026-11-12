@@ -28,6 +28,7 @@ use super::credits::{
 use crate::Observer;
 use crate::products::AI_CREDITS_METER_ID;
 use dima_core::Clock;
+use dima_model::Private;
 use dima_store::dragonfly::plan_cache_fence::{
     Acceptance, CreditMode, FenceError, PlanCacheFence, TtlSeconds, credits_cache_key,
     exhaustion_cache_keys, plan_cache_fence_key, plan_cache_version,
@@ -52,8 +53,8 @@ pub const USAGE_MARKER_TTL_SECONDS: u64 = 31 * 24 * 60 * 60;
 pub struct PlanOwner {
     /// `plan_tier` as stored (`None` when a lean read had none).
     pub plan_tier: Option<String>,
-    /// `polar_sh_customer_id`.
-    pub polar_sh_customer_id: Option<String>,
+    /// `polar_sh_customer_id` ([`Private`]: never in `Debug`).
+    pub polar_sh_customer_id: Option<Private<String>>,
     /// `polar_plan_event_at` (epoch ms).
     pub polar_plan_event_at: Option<i64>,
     /// `polar_plan_event_key`.
@@ -65,10 +66,7 @@ impl PlanOwner {
     pub fn of(user: &dima_model::users::User) -> Self {
         Self {
             plan_tier: Some(user.plan_tier.as_str().to_owned()),
-            polar_sh_customer_id: user
-                .polar_sh_customer_id
-                .as_ref()
-                .map(|id| id.expose().clone()),
+            polar_sh_customer_id: user.polar_sh_customer_id.clone(),
             polar_plan_event_at: user.polar_plan_event_at.map(|at| at.0),
             polar_plan_event_key: user.polar_plan_event_key.clone(),
         }
@@ -76,7 +74,8 @@ impl PlanOwner {
 
     fn customer_id(&self) -> Option<&str> {
         self.polar_sh_customer_id
-            .as_deref()
+            .as_ref()
+            .map(|id| id.expose().as_str())
             .filter(|id| !id.is_empty())
     }
 }
@@ -147,6 +146,7 @@ impl MongoPlanLookup {
             Some(bson::Bson::String(text)) => Ok(Some(text.clone())),
             Some(_) => Err(LookupError(format!("{key} is not text"))),
         };
+        let customer = text("polar_sh_customer_id")?.map(Private::new);
         let at = match document.get("polar_plan_event_at") {
             None | Some(bson::Bson::Null) => None,
             Some(bson::Bson::DateTime(date)) => Some(date.timestamp_millis()),
@@ -154,7 +154,7 @@ impl MongoPlanLookup {
         };
         Ok(PlanOwner {
             plan_tier: text("plan_tier")?,
-            polar_sh_customer_id: text("polar_sh_customer_id")?,
+            polar_sh_customer_id: customer,
             polar_plan_event_at: at,
             polar_plan_event_key: text("polar_plan_event_key")?,
         })
@@ -388,7 +388,12 @@ impl CreditsCache {
             let mut version = String::new();
             if let Some(fence) = &fence {
                 let Some(current) = plans
-                    .current_plan(twitch_id, user.polar_sh_customer_id.as_deref())
+                    .current_plan(
+                        twitch_id,
+                        user.polar_sh_customer_id
+                            .as_ref()
+                            .map(|id| id.expose().as_str()),
+                    )
                     .await
                     .map_err(|e| e.to_string())?
                 else {

@@ -30,6 +30,7 @@ use crate::Observer;
 use crate::plans::credits_cache::CreditsCache;
 use crate::usage::AiUsageContext;
 use dima_core::Random;
+use dima_model::Private;
 use dima_store::dragonfly::{Dragonfly, SetCondition, SetExpiry, SetOptions, SetOutcome};
 use futures_util::future::BoxFuture;
 use serde_json::{Map, Value};
@@ -60,7 +61,7 @@ pub struct AcceptedUsage<'a> {
     /// Twitch channel id.
     pub channel_id: &'a str,
     /// Polar customer id.
-    pub customer_id: &'a str,
+    pub customer_id: &'a Private<String>,
     /// The usage context.
     pub context: &'a AiUsageContext,
     /// Credits (negative for a grant).
@@ -129,7 +130,10 @@ fn queue_key(channel: &str) -> String {
 fn queued_text(event: &IngestEvent) -> String {
     let mut map = Map::new();
     map.insert("name".into(), Value::from(event.name.as_str()));
-    map.insert("customerId".into(), Value::from(event.customer_id.as_str()));
+    map.insert(
+        "customerId".into(),
+        Value::from(event.customer_id.expose().as_str()),
+    );
     map.insert("externalId".into(), Value::from(event.external_id.as_str()));
     map.insert("metadata".into(), Value::Object(event.metadata.clone()));
     dima_text::to_js_json(&Value::Object(map))
@@ -141,7 +145,7 @@ fn queued_event(text: &[u8]) -> Option<IngestEvent> {
     let text = |key: &str| object.get(key).and_then(Value::as_str).map(str::to_owned);
     Some(IngestEvent {
         name: text("name")?,
-        customer_id: text("customerId")?,
+        customer_id: Private::new(text("customerId")?),
         external_id: text("externalId")?,
         metadata: object
             .get("metadata")
@@ -219,7 +223,7 @@ impl Ingest<'_> {
 
     /// `ingestPolarSHEvent(options)`.
     pub async fn ingest_usage(&self, input: &UsageEventInput, mode: IngestMode) -> IngestOutcome {
-        if input.customer_id.is_empty() {
+        if input.customer_id.expose().is_empty() {
             return failed("customerId is required");
         }
         let channel = input.channel_id.as_deref().filter(|c| !c.is_empty());

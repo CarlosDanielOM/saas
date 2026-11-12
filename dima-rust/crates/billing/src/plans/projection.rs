@@ -26,8 +26,8 @@ use crate::js;
 use crate::products::{AI_CREDITS_METER_ID, LEGACY_USAGE_METER_ID};
 use bson::oid::ObjectId;
 use bson::{Bson, doc};
-use dima_model::StrEnum;
 use dima_model::users::{AccountType, User};
+use dima_model::{Private, StrEnum};
 use dima_store::dragonfly::Dragonfly;
 use dima_store::dragonfly::plan_cache_fence::{
     Acceptance, Exhaustion, FenceError, PlanCacheFence, TtlSeconds, plan_cache_version,
@@ -96,8 +96,8 @@ pub struct ProjectionStores<'a> {
 pub struct PlanOwnerState {
     /// `_id`.
     pub id: ObjectId,
-    /// `polar_sh_customer_id || null`.
-    pub customer_id: Option<String>,
+    /// `polar_sh_customer_id || null` ([`Private`]: never in `Debug`).
+    pub customer_id: Option<Private<String>>,
     /// `plan_tier` as stored.
     pub plan_tier: String,
     /// `plan_tier_until` (epoch ms).
@@ -128,9 +128,8 @@ impl PlanOwnerState {
             id: user.id,
             customer_id: user
                 .polar_sh_customer_id
-                .as_ref()
-                .map(|id| id.expose().clone())
-                .filter(|id| !id.is_empty()),
+                .clone()
+                .filter(|id| !id.expose().is_empty()),
             plan_tier: user.plan_tier.as_str().to_owned(),
             plan_tier_until: user.plan_tier_until.map(|at| at.0),
             effects_pending: user.polar_plan_effects_pending == Some(true),
@@ -190,7 +189,10 @@ pub async fn project_polar_plan(
     let needs_effects = owner.effects_pending
         || owner.plan_tier != plan.plan_tier.as_str()
         || owner.plan_tier_until != plan.until_ms;
-    let customer = owner.customer_id.as_deref().map_or(Bson::Null, Bson::from);
+    let customer = owner
+        .customer_id
+        .as_ref()
+        .map_or(Bson::Null, |id| Bson::from(id.expose().as_str()));
     let filter = doc! {
         "_id": owner.id,
         "polar_sh_customer_id": customer,

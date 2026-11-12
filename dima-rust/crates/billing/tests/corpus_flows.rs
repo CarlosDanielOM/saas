@@ -411,7 +411,11 @@ async fn credit_pack_flows_match_the_reference() {
     {
         let input = &case["input"];
         let buyer = user(&input["user"]);
-        let customer = buyer.polar_sh_customer_id.clone().filter(|c| !c.is_empty());
+        let customer = buyer
+            .polar_sh_customer_id
+            .as_ref()
+            .map(|c| c.expose().clone())
+            .filter(|c| !c.is_empty());
         let key = customer.as_deref().map(plans_key);
         if let Some(key) = &key {
             dragonfly.del(&[key]).await.unwrap();

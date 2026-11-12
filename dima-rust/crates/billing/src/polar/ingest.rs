@@ -19,19 +19,32 @@ use crate::usage::{
     AiUsageContext, AiUsageContextInput, Unit, create_ai_usage_context, enrich_polar_usage_metadata,
 };
 use dima_core::{Random, RandomError};
+use dima_model::Private;
 use serde_json::{Map, Value};
 
-/// One event for `events.ingest`.
-#[derive(Clone, Debug, PartialEq)]
+/// One event for `events.ingest`. `Debug` prints the metadata's keys, not its values (a grant
+/// names the admin who made it), and no customer id.
+#[derive(Clone, PartialEq)]
 pub struct IngestEvent {
     /// Event name (`ai_usage` for credits).
     pub name: String,
     /// Polar customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Polar's dedupe key.
     pub external_id: String,
     /// Metadata, keys in the reference's order.
     pub metadata: Map<String, Value>,
+}
+
+impl std::fmt::Debug for IngestEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IngestEvent")
+            .field("name", &self.name)
+            .field("customer_id", &self.customer_id)
+            .field("external_id", &self.external_id)
+            .field("metadata_keys", &self.metadata.keys().collect::<Vec<_>>())
+            .finish()
+    }
 }
 
 fn is_safe_int(value: &Value) -> bool {
@@ -114,7 +127,10 @@ impl IngestEvent {
         event.insert("name".into(), Value::from(self.name.as_str()));
         event.insert("external_id".into(), Value::from(self.external_id.as_str()));
         event.insert("metadata".into(), Value::Object(metadata));
-        event.insert("customer_id".into(), Value::from(self.customer_id.as_str()));
+        event.insert(
+            "customer_id".into(),
+            Value::from(self.customer_id.expose().as_str()),
+        );
         Ok(Value::Object(event))
     }
 }
@@ -143,7 +159,7 @@ pub struct LlmUsage {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UsageEventInput {
     /// Polar customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Twitch channel id.
     pub channel_id: Option<String>,
     /// Stable id for Polar's dedupe.
@@ -310,7 +326,7 @@ pub fn build_usage_event(
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GrantInput {
     /// Polar customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Twitch channel id (for the receipt).
     pub channel_id: Option<String>,
     /// `Number(options.credits)`.
@@ -318,7 +334,7 @@ pub struct GrantInput {
     /// The legacy reason.
     pub reason: String,
     /// The admin who granted them.
-    pub admin_login: Option<String>,
+    pub admin_login: Option<Private<String>>,
     /// Stable id.
     pub external_id: Option<String>,
     /// Source label.
@@ -359,7 +375,7 @@ pub fn build_grant_event(
     random: &dyn Random,
 ) -> Result<Result<(IngestEvent, AiUsageContext, f64), GrantRefused>, RandomError> {
     let credits = input.credits.floor();
-    if input.customer_id.is_empty() {
+    if input.customer_id.expose().is_empty() {
         return Ok(Err(GrantRefused::MissingCustomer));
     }
     if !credits.is_finite() || credits <= 0.0 {
@@ -382,7 +398,8 @@ pub fn build_grant_event(
     )?;
     let admin = input
         .admin_login
-        .as_deref()
+        .as_ref()
+        .map(|login| login.expose().as_str())
         .filter(|login| !login.is_empty())
         .unwrap_or("unknown");
     let accounting = object(vec![
@@ -413,7 +430,10 @@ pub fn check_named_events(events: &[IngestEvent]) -> Result<(), &'static str> {
         if event.name == "ai_usage" || event.metadata.contains_key("credits") {
             return Err("ingestPolarNamedEvents must not send AI credit usage");
         }
-        if event.name.is_empty() || event.customer_id.is_empty() || event.external_id.is_empty() {
+        if event.name.is_empty()
+            || event.customer_id.expose().is_empty()
+            || event.external_id.is_empty()
+        {
             return Err("name, customerId and externalId are required");
         }
     }

@@ -1,5 +1,7 @@
-//! Polar answers. Unknown fields are ignored everywhere.
+//! Polar answers. Unknown fields are ignored everywhere. Customer ids and session or checkout
+//! URLs are [`Private`]: `Debug` prints a placeholder (item 9 of P2-BILLING-01b).
 
+use dima_model::Private;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
@@ -84,8 +86,8 @@ pub struct Discount {
 pub struct Checkout {
     /// Id.
     pub id: String,
-    /// Where the customer pays.
-    pub url: String,
+    /// Where the customer pays (it carries the checkout's secret).
+    pub url: Private<String>,
 }
 
 /// A created customer portal session.
@@ -93,8 +95,8 @@ pub struct Checkout {
 pub struct CustomerSession {
     /// Id.
     pub id: String,
-    /// The portal URL.
-    pub customer_portal_url: String,
+    /// The portal URL (it carries the session token).
+    pub customer_portal_url: Private<String>,
     /// Expiry.
     #[serde(default)]
     pub expires_at: Option<String>,
@@ -104,7 +106,7 @@ pub struct CustomerSession {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct EntitlementState {
     /// The customer id.
-    pub id: String,
+    pub id: Private<String>,
     /// Active subscriptions.
     pub active_subscriptions: Vec<EntitlementSubscription>,
     /// Granted benefits.
@@ -173,7 +175,7 @@ pub struct BenefitGrant {
     /// Benefit id.
     pub benefit_id: String,
     /// Customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Granted.
     #[serde(default)]
     pub is_granted: bool,
@@ -191,7 +193,7 @@ pub struct SdkSubscription {
     /// Id.
     pub id: String,
     /// Customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Product id.
     pub product_id: String,
     /// Status.

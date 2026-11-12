@@ -32,25 +32,26 @@ use crate::plans::pack_context::PackContextCache;
 use crate::polar::{Discount, PolarClient, PolarError, Subscription};
 use crate::products::{AI_CREDITS_METER_ID, FREE_PRODUCT_ID, PREMIUM_PRODUCT_ID, PRO_PRODUCT_ID};
 use dima_core::Clock;
-use dima_model::StrEnum;
+use dima_model::{Private, StrEnum};
 use serde_json::{Map, Value};
 
 /// `WINBACK_MONTHS`.
 pub const WINBACK_MONTHS: i64 = 6;
 
-/// The user fields the billing flows read (`IUsers`).
+/// The user fields the billing flows read (`IUsers`). The e-mail, the name and the customer id
+/// are [`Private`]: `Debug` prints a placeholder.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BillingUser {
     /// `_id.toString()`.
     pub id: String,
     /// `email` (absent when not stored).
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// `name`.
-    pub name: Option<String>,
+    pub name: Option<Private<String>>,
     /// `plan_tier` as stored.
     pub plan_tier: String,
     /// `polar_sh_customer_id`.
-    pub polar_sh_customer_id: Option<String>,
+    pub polar_sh_customer_id: Option<Private<String>>,
     /// `last_app_activity_at` (epoch ms).
     pub last_app_activity_at: Option<i64>,
     /// `updated_at` (epoch ms).
@@ -64,13 +65,10 @@ impl BillingUser {
     pub fn of(user: &dima_model::users::User) -> Self {
         Self {
             id: user.id.to_hex(),
-            email: user.email.as_ref().map(|email| email.expose().clone()),
-            name: user.name.clone(),
+            email: user.email.clone(),
+            name: user.name.clone().map(Private::new),
             plan_tier: user.plan_tier.as_str().to_owned(),
-            polar_sh_customer_id: user
-                .polar_sh_customer_id
-                .as_ref()
-                .map(|id| id.expose().clone()),
+            polar_sh_customer_id: user.polar_sh_customer_id.clone(),
             last_app_activity_at: user.last_app_activity_at.map(|at| at.0),
             updated_at: user.updated_at.map(|at| at.0),
             referral_code_used: user.referral_code_used.clone(),
@@ -79,8 +77,17 @@ impl BillingUser {
 
     fn customer_id(&self) -> Option<&str> {
         self.polar_sh_customer_id
-            .as_deref()
+            .as_ref()
+            .map(|id| id.expose().as_str())
             .filter(|id| !id.is_empty())
+    }
+
+    /// The customer id when it is a UUID v4 (`isUuidV4`), as the checkout body sends it.
+    fn uuid_customer_id(&self) -> Option<&str> {
+        self.polar_sh_customer_id
+            .as_ref()
+            .map(|id| id.expose().as_str())
+            .filter(|c| is_uuid_v4(Some(c)))
     }
 }
 
@@ -629,8 +636,8 @@ pub fn is_valid_configured_redirect(value: &str, allowed_hosts: Option<&str>) ->
 pub struct PortalSession {
     /// Id.
     pub session_id: String,
-    /// URL.
-    pub url: String,
+    /// URL (it carries the session token).
+    pub url: Private<String>,
     /// Expiry.
     pub expires_at: Option<String>,
 }
@@ -673,8 +680,8 @@ pub struct CheckoutDecision {
     pub checkout_id: Option<String>,
     /// The portal session.
     pub portal_session_id: Option<String>,
-    /// Where to send the user.
-    pub checkout_url: String,
+    /// Where to send the user (a checkout or portal session URL).
+    pub checkout_url: Private<String>,
     /// Whether Polar's form takes codes.
     pub allow_discount_codes: bool,
 }
@@ -882,10 +889,7 @@ impl Billing<'_> {
             context.scenario.as_str(),
             self.clock.now_ms()
         );
-        let customer_id = user
-            .polar_sh_customer_id
-            .as_deref()
-            .filter(|c| is_uuid_v4(Some(c)));
+        let customer_id = user.uuid_customer_id();
         #[allow(clippy::cast_precision_loss)]
         let metadata = compact_metadata(vec![
             ("source", MetaValue::Text("dimabot_billing".into())),
@@ -928,10 +932,10 @@ impl Billing<'_> {
         }
         payload.insert("external_customer_id".into(), Value::from(user.id.as_str()));
         if let Some(email) = &user.email {
-            payload.insert("customer_email".into(), optional_text(Some(email)));
+            payload.insert("customer_email".into(), optional_text(Some(email.expose())));
         }
         if let Some(name) = &user.name {
-            payload.insert("customer_name".into(), optional_text(Some(name)));
+            payload.insert("customer_name".into(), optional_text(Some(name.expose())));
         }
         payload.insert(
             "allow_discount_codes".into(),
@@ -1064,10 +1068,7 @@ impl Billing<'_> {
             sanitize_redirect_url(success_url, self.redirects.success_url.as_deref(), allowed);
         let return_url =
             sanitize_redirect_url(return_url, self.redirects.return_url.as_deref(), allowed);
-        let customer_id = user
-            .polar_sh_customer_id
-            .as_deref()
-            .filter(|c| is_uuid_v4(Some(c)));
+        let customer_id = user.uuid_customer_id();
         let idempotency_key = format!(
             "credit-pack:{}:{product_id}:{}",
             user.id,
@@ -1097,10 +1098,10 @@ impl Billing<'_> {
         }
         payload.insert("external_customer_id".into(), Value::from(user.id.as_str()));
         if let Some(email) = &user.email {
-            payload.insert("customer_email".into(), optional_text(Some(email)));
+            payload.insert("customer_email".into(), optional_text(Some(email.expose())));
         }
         if let Some(name) = &user.name {
-            payload.insert("customer_name".into(), optional_text(Some(name)));
+            payload.insert("customer_name".into(), optional_text(Some(name.expose())));
         }
         payload.insert("allow_discount_codes".into(), Value::Bool(false));
         payload.insert("metadata".into(), Value::Object(metadata));
@@ -1139,8 +1140,8 @@ pub struct CreditPackCatalog {
 pub struct CreditPackCheckout {
     /// Id.
     pub checkout_id: String,
-    /// URL.
-    pub checkout_url: String,
+    /// URL (it carries the checkout's secret).
+    pub checkout_url: Private<String>,
     /// The offer bought.
     pub offer: CreditPackOffer,
 }
