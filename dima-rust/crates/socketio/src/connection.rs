@@ -437,6 +437,11 @@ impl Connection {
         }
     }
 
+    /// A socket of this connection is created: its packets may be sent from now on.
+    pub fn open_socket(&self, key: u64) {
+        self.outbox().open_socket(key);
+    }
+
     pub fn forget_socket(&self, key: u64) {
         self.outbox().forget_socket(key);
     }

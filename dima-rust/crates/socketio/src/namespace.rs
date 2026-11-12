@@ -482,12 +482,14 @@ async fn run_socket<N: Namespace>(
         me: OnceLock::new(),
     });
     let _ = core.me.set(Arc::downgrade(&core));
+    conn.open_socket(core.key);
 
     let joined = match cursor {
         Some(cursor) => replay(&def, &child, &core, cursor, &ticket).await,
         None => register(&child, &core, &ticket),
     };
     if !joined {
+        conn.forget_socket(core.key);
         def.abandon(&child, &conn, &nsp, &ticket);
         return;
     }

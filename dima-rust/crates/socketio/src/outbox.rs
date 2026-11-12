@@ -63,6 +63,8 @@ struct Waiting {
 struct Usage {
     packets: usize,
     bytes: usize,
+    /// The socket has left: the entry goes once its last packet is released.
+    retired: bool,
 }
 
 /// One packet to send.
@@ -180,7 +182,23 @@ impl Outbox {
         {
             usage.packets = usage.packets.saturating_sub(1);
             usage.bytes = usage.bytes.saturating_sub(tracked.len);
+            if usage.retired && usage.packets == 0 {
+                self.sockets.remove(&socket);
+            }
         }
+    }
+
+    /// A socket of this connection starts sending (before its first packet: the missed events
+    /// of a restore, or its CONNECT). Packets of a socket that is not open are refused, so a
+    /// send racing with the socket's departure cannot bring its entry back.
+    pub fn open_socket(&mut self, socket: u64) {
+        self.sockets.entry(socket).or_default();
+    }
+
+    /// Entries in the usage map: open sockets, and retired ones whose packets still wait.
+    #[cfg(test)]
+    pub fn tracked_sockets(&self) -> usize {
+        self.sockets.len()
     }
 
     /// Forgets everything (the connection closed).
@@ -192,15 +210,16 @@ impl Outbox {
         self.sockets.clear();
     }
 
-    /// Forgets a socket's waiting events and usage entry once it has nothing queued.
+    /// The socket has left: its waiting events are dropped and its usage entry is removed now,
+    /// or, while packets of it are still queued, when the last of them is released.
     pub fn forget_socket(&mut self, socket: u64) {
         self.waiting.retain(|w| w.socket != socket);
-        if self
-            .sockets
-            .get(&socket)
-            .is_some_and(|usage| usage.packets == 0)
-        {
-            self.sockets.remove(&socket);
+        match self.sockets.get_mut(&socket) {
+            Some(usage) if usage.packets > 0 => usage.retired = true,
+            Some(_) => {
+                self.sockets.remove(&socket);
+            }
+            None => {}
         }
     }
 
@@ -245,8 +264,7 @@ impl Outbox {
         }
         self.bytes += len;
         total.fetch_add(len, Ordering::AcqRel);
-        if let Some(socket) = socket {
-            let usage = self.sockets.entry(socket).or_default();
+        if let Some(usage) = socket.and_then(|socket| self.sockets.get_mut(&socket)) {
             usage.packets += 1;
             usage.bytes += len;
         }
@@ -265,6 +283,9 @@ impl Outbox {
         self.sweep(total);
         let len = outgoing.packet.len();
         let socket_key = outgoing.socket.map(|(key, _)| key);
+        if socket_key.is_some_and(|key| self.sockets.get(&key).is_none_or(|usage| usage.retired)) {
+            return Err(NotSent::Closed);
+        }
         if self.fits(outgoing.socket, len, total, max_total) {
             // A newer replaceable event makes a waiting one with the same key obsolete.
             if let (Delivery::Replaceable(key), Some(socket)) = (outgoing.delivery, socket_key) {
@@ -392,6 +413,7 @@ mod tests {
         let channel = Channel::new(100);
         let total = AtomicUsize::new(0);
         let mut outbox = Outbox::new(100);
+        outbox.open_socket(1);
         let reliable = Delivery::Reliable;
         for packet in ["aaa", "bbb", "ccc"] {
             assert_eq!(
@@ -432,6 +454,7 @@ mod tests {
         let channel = Channel::new(100);
         let total = AtomicUsize::new(0);
         let mut outbox = Outbox::new(100);
+        outbox.open_socket(1);
         let reliable = Delivery::Reliable;
         assert_eq!(
             outbox.push(&channel, out("0123456789AB", &reliable), &total, 1000),
@@ -456,6 +479,7 @@ mod tests {
         let channel = Channel::new(100);
         let total = AtomicUsize::new(0);
         let mut outbox = Outbox::new(100);
+        outbox.open_socket(1);
         let reliable = Delivery::Reliable;
         for packet in ["a", "b", "c"] {
             assert_eq!(
@@ -508,6 +532,9 @@ mod tests {
         let channel = Channel::new(HEADROOM + 2);
         let total = AtomicUsize::new(0);
         let mut outbox = Outbox::new(HEADROOM + 2);
+        for socket in 1..=3 {
+            outbox.open_socket(socket);
+        }
         let lossy = Delivery::Lossy;
         let big = QueueLimits {
             packets: 100,
@@ -538,5 +565,59 @@ mod tests {
             outbox.push(&channel, control, &total, 1000),
             Err(NotSent::Dropped)
         );
+    }
+
+    /// Finding 1: a socket that leaves takes its usage entry with it in every order of events
+    /// (leaving with packets queued and draining afterwards, draining first, leaving before
+    /// sending anything), and a send racing with the departure cannot bring it back. The map
+    /// never holds more than the live sockets plus the retired ones with packets queued.
+    #[test]
+    fn retired_sockets_leave_the_usage_map_in_every_order() {
+        let channel = Channel::new(10_000);
+        let total = AtomicUsize::new(0);
+        let mut outbox = Outbox::new(10_000);
+        let reliable = Delivery::Reliable;
+        let send = |outbox: &mut Outbox, socket: u64| {
+            outbox.push(
+                &channel,
+                Outgoing {
+                    socket: Some((socket, LIMITS)),
+                    packet: "p".to_owned(),
+                    delivery: &reliable,
+                },
+                &total,
+                1 << 20,
+            )
+        };
+        for round in 0..1000_u64 {
+            let key = round * 3;
+            // Leaves with its packet queued (a CONNECT the client has not polled yet).
+            outbox.open_socket(key);
+            assert_eq!(send(&mut outbox, key), Ok(()));
+            outbox.forget_socket(key);
+            assert_eq!(send(&mut outbox, key), Err(NotSent::Closed));
+            // Leaves before it sent anything.
+            outbox.open_socket(key + 1);
+            outbox.forget_socket(key + 1);
+            assert_eq!(send(&mut outbox, key + 1), Err(NotSent::Closed));
+            // Drains first, then leaves.
+            outbox.open_socket(key + 2);
+            assert_eq!(send(&mut outbox, key + 2), Ok(()));
+            channel.take(10);
+            outbox.sweep(&total);
+            outbox.forget_socket(key + 2);
+            assert_eq!(outbox.tracked_sockets(), 0, "round {round}");
+        }
+        // Many leave with packets queued: entries stay only until those are released.
+        for key in 0..100 {
+            outbox.open_socket(10_000 + key);
+            assert_eq!(send(&mut outbox, 10_000 + key), Ok(()));
+            outbox.forget_socket(10_000 + key);
+        }
+        assert_eq!(outbox.tracked_sockets(), 100);
+        channel.take(1000);
+        outbox.sweep(&total);
+        assert_eq!(outbox.tracked_sockets(), 0);
+        assert_eq!(total.load(Ordering::Acquire), 0);
     }
 }
