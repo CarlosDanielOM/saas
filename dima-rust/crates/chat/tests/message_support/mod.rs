@@ -345,8 +345,8 @@ fn identity_json(identity: &UserIdentity) -> Value {
 pub struct FakeModeration {
     pub calls: Calls,
     pub verdict: ModerationVerdict,
-    /// Held until notified (ordering tests).
-    pub gate: Option<Arc<tokio::sync::Semaphore>>,
+    /// The messages of this channel wait for a permit (ordering and limit tests).
+    pub gate: Option<(String, Arc<tokio::sync::Semaphore>)>,
 }
 
 impl ChatModeration for FakeModeration {
@@ -357,7 +357,9 @@ impl ChatModeration for FakeModeration {
                 json!({"channelID": input.channel_id, "messageID": input.message.message_id,
                     "identity": identity_json(input.identity), "receivedAt": input.received_at_ms}),
             );
-            if let Some(gate) = &self.gate {
+            if let Some((channel, gate)) = &self.gate
+                && channel == input.channel_id
+            {
                 let _ = gate.acquire().await.map(|permit| permit.forget());
             }
             self.verdict
@@ -730,7 +732,7 @@ pub struct Process {
 #[derive(Clone)]
 pub struct Seams {
     pub moderation: ModerationVerdict,
-    pub moderation_gate: Option<Arc<tokio::sync::Semaphore>>,
+    pub moderation_gate: Option<(String, Arc<tokio::sync::Semaphore>)>,
     pub ai: Value,
     pub builtins: Value,
 }
@@ -1084,4 +1086,95 @@ pub fn normalized(value: &Value) -> Value {
 /// A seeded generator for the command language.
 pub fn seeded(seed: u64) -> Arc<dyn Random> {
     Arc::new(SeededRandom::new(seed))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Seeds and events for the behaviour tests.
+
+/// A streamer with one Twitch account, as sign-up stores it.
+pub async fn seed_channel(stores: &Stores, id: &str, plan: &str, live: bool) -> Result<()> {
+    stores
+        .mongo
+        .documents("users")
+        .insert_one(doc! {
+            "_id": bson::oid::ObjectId::new(), "name": format!("Canal{id}"), "email": format!("canal{id}@example.invalid"),
+            "accounts": [{ "_id": bson::oid::ObjectId::new(), "type": "twitch", "id": id, "name": format!("canal{id}"),
+                "email": format!("canal{id}@example.invalid"), "actived": true, "chat_enabled": true,
+                "has_permissions": true, "up_to_date_permissions": true }],
+            "plan_tier": plan, "language": "es", "__v": 0,
+            "created_at": bson::DateTime::from_millis(NOW_MS - 86_400_000),
+            "updated_at": bson::DateTime::from_millis(NOW_MS - 86_400_000),
+        })
+        .await?;
+    if live {
+        stores
+            .mongo
+            .documents("streamsessions")
+            .insert_one(doc! {
+                "_id": bson::oid::ObjectId::new(), "channelID": id, "status": "live",
+                "started_at": bson::DateTime::from_millis(NOW_MS - 3_600_000), "ended_at": Bson::Null,
+                "messages": 0, "commands": 0, "__v": 0,
+            })
+            .await?;
+    }
+    Ok(())
+}
+
+/// A custom command as the dashboard stores it.
+pub async fn seed_command(
+    stores: &Stores,
+    channel: &str,
+    cmd: &str,
+    message: &str,
+    cooldown: i32,
+) -> Result<bson::oid::ObjectId> {
+    let id = bson::oid::ObjectId::new();
+    stores
+        .mongo
+        .documents("commands")
+        .insert_one(doc! {
+            "_id": id, "channelID": channel, "channel": format!("canal{channel}"), "name": cmd, "cmd": cmd,
+            "func": "custom", "message": message, "type": "command", "platform": "twitch", "reserved": false,
+            "cooldown": cooldown, "count": 0, "userLevelName": "everyone", "userLevel": 0, "enabled": true, "__v": 0,
+        })
+        .await?;
+    Ok(id)
+}
+
+/// A chat message of a viewer (`chatter` is `(id, login)`), with a fresh message id.
+pub fn chat_event(channel: &str, chatter: (&str, &str), text: &str) -> Value {
+    json!({
+        "broadcaster_user_id": channel, "broadcaster_user_login": format!("canal{channel}"),
+        "broadcaster_user_name": format!("Canal{channel}"),
+        "chatter_user_id": chatter.0, "chatter_user_login": chatter.1, "chatter_user_name": chatter.1,
+        "message_id": format!("m-{}", random_suffix()),
+        "message": {"text": text, "fragments": [{"type": "text", "text": text}]},
+        "color": "", "badges": [], "message_type": "text", "cheer": null, "reply": null,
+        "source_broadcaster_user_id": null,
+    })
+}
+
+/// The stored count of a command.
+pub async fn count_of(stores: &Stores, id: bson::oid::ObjectId) -> Result<Option<Bson>> {
+    Ok(stores
+        .mongo
+        .documents("commands")
+        .find_one(doc! { "_id": id })
+        .await?
+        .and_then(|document| document.get("count").cloned()))
+}
+
+/// Waits until `check` holds (every 5 ms, at most 60 s, so a busy machine cannot fail it).
+pub async fn eventually<F>(what: &str, mut check: F) -> Result<()>
+where
+    F: FnMut() -> bool,
+{
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+    while !check() {
+        if tokio::time::Instant::now() >= deadline {
+            bail!("timed out waiting until {what}");
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    Ok(())
 }
