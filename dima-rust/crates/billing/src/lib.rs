@@ -46,8 +46,11 @@
 //!
 //! # Intended differences
 //!
-//! - One Polar provider for every call: its host follows `POLARSH_ENVIRONMENT`;
-//!   `POLARSH_API_BASE_URL` is honoured only as a test-mode override ([`config`]).
+//! - One Polar provider for every call: its host follows `POLARSH_ENVIRONMENT`, or
+//!   `POLARSH_API_BASE_URL` when that is one of Polar's own hosts over https; any other value is
+//!   honoured only as a test-mode override ([`config`]).
+//! - Redirect targets must be `https` (or `http` to a loopback host) without credentials, and
+//!   configured fallbacks are checked at start-up ([`plans::checkout::is_safe_redirect`]).
 //! - Redirects from Polar are errors (the reference's `polarRequest` followed them); calls with
 //!   no timeout in the reference get `dima-http`'s 60 s.
 //! - Polar error bodies are never kept (the reference put them in messages and logs; Polar echoes

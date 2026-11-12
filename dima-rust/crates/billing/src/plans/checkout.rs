@@ -17,8 +17,9 @@
 //!   has none (the copy stores a text or nothing, never `null`).
 //! - Idempotency keys end with the injected clock's epoch milliseconds, as `Date.now()`.
 //!
-//! Security note (reported, not changed): with `BILLING_ALLOWED_REDIRECT_HOSTS` unset, as in
-//! production, any parsed URL is accepted as a success or return URL.
+//! Redirect targets (success, return and portal URLs) must be `https`, or `http` to a loopback
+//! host, without credentials ([`is_safe_redirect`]), whatever the allowlist says; the reference
+//! accepted any parsed URL with `BILLING_ALLOWED_REDIRECT_HOSTS` unset, as in production.
 
 use super::{PaidTier, PlanTier, plan_rank};
 use crate::config::{PolarConfig, RedirectConfig};
@@ -569,14 +570,37 @@ fn is_allowed_host(url: &url::Url, allowed: Option<&str>) -> bool {
     hosts.is_empty() || hosts.contains(&dima_text::to_lower(&url_host(url)))
 }
 
-/// `getDefaultUrl(envVar)`: the configured URL, normalised, when it parses.
+/// Whether `url` may be a redirect target at all: `https`, or `http` to `localhost` or a
+/// loopback address, with no user name or password. Intended difference (item 8 of
+/// P2-BILLING-01b, a security fix): the reference accepted any URL that parsed, `javascript:`
+/// among them, when `BILLING_ALLOWED_REDIRECT_HOSTS` was unset (as in production).
+pub fn is_safe_redirect(url: &url::Url) -> bool {
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+    match url.scheme() {
+        "https" => url.host().is_some(),
+        "http" => match url.host() {
+            Some(url::Host::Domain(name)) => name == "localhost",
+            Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+            Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+            None => false,
+        },
+        _ => false,
+    }
+}
+
+/// `getDefaultUrl(envVar)`: the configured URL, normalised, when it parses and is a safe
+/// redirect target (start-up already refuses an unsafe one: [`RedirectConfig::validate`]).
 fn default_url(value: Option<&str>) -> Option<String> {
     url::Url::parse(value.filter(|v| !v.is_empty())?)
         .ok()
+        .filter(is_safe_redirect)
         .map(String::from)
 }
 
-/// `sanitizeRedirectUrl(rawUrl, fallbackEnv)`.
+/// `sanitizeRedirectUrl(rawUrl, fallbackEnv)`, with [`is_safe_redirect`] required of the raw
+/// URL before the host allowlist (which stays optional, as in the reference).
 pub fn sanitize_redirect_url(
     raw: Option<&str>,
     fallback: Option<&str>,
@@ -584,11 +608,20 @@ pub fn sanitize_redirect_url(
 ) -> Option<String> {
     if let Some(raw) = raw.filter(|r| !r.is_empty()) {
         match url::Url::parse(raw) {
-            Ok(parsed) if is_allowed_host(&parsed, allowed_hosts) => return Some(parsed.into()),
+            Ok(parsed) if is_safe_redirect(&parsed) && is_allowed_host(&parsed, allowed_hosts) => {
+                return Some(parsed.into());
+            }
             _ => return default_url(fallback),
         }
     }
     default_url(fallback)
+}
+
+/// Whether a configured fallback is acceptable at start-up: it parses, is a safe redirect
+/// target and, when the allowlist is set, names an allowed host.
+pub fn is_valid_configured_redirect(value: &str, allowed_hosts: Option<&str>) -> bool {
+    url::Url::parse(value)
+        .is_ok_and(|url| is_safe_redirect(&url) && is_allowed_host(&url, allowed_hosts))
 }
 
 /// `PortalSessionResponse`.
@@ -1193,6 +1226,63 @@ mod tests {
             Some("https://x.test/ok".into())
         );
         assert!(is_uuid_v4(Some(" 55C8D1D0-5cb8-405c-bcf2-d8dbb9ba0134\n")));
+    }
+
+    // Item 8 of P2-BILLING-01b: a redirect target is https (or http to a loopback host), with no
+    // user name or password, whatever the allowlist says; an unsafe one falls back.
+    #[test]
+    fn unsafe_redirect_targets_fall_back() {
+        let fallback = Some("https://domdimabot.com/billing");
+        for raw in [
+            "javascript:alert(1)",
+            "JavaScript:alert(document.cookie)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+            "file:///etc/passwd",
+            "ftp://domdimabot.com/",
+            "http://domdimabot.com/billing",
+            "HTTP://WWW.DomDimaBot.com:80/",
+            "http://localhost.evil.test/",
+            "https://user:pass@domdimabot.com/",
+            "https://user@domdimabot.com/",
+            "https://:pass@domdimabot.com/",
+        ] {
+            for allowed in [None, Some("domdimabot.com,www.domdimabot.com")] {
+                assert_eq!(
+                    sanitize_redirect_url(Some(raw), fallback, allowed),
+                    Some("https://domdimabot.com/billing".to_owned()),
+                    "{raw} {allowed:?}"
+                );
+                assert_eq!(
+                    sanitize_redirect_url(Some(raw), None, allowed),
+                    None,
+                    "{raw}"
+                );
+            }
+        }
+        for (raw, expected) in [
+            (
+                "http://localhost:4200/billing",
+                "http://localhost:4200/billing",
+            ),
+            ("http://127.0.0.1:4200/x", "http://127.0.0.1:4200/x"),
+            ("http://[::1]:4200/x", "http://[::1]:4200/x"),
+            ("https://domdimabot.com/ok", "https://domdimabot.com/ok"),
+        ] {
+            assert_eq!(
+                sanitize_redirect_url(Some(raw), None, None).as_deref(),
+                Some(expected)
+            );
+        }
+        // An unsafe configured fallback is never used either (start-up refuses it).
+        assert_eq!(
+            sanitize_redirect_url(None, Some("javascript:alert(1)"), None),
+            None
+        );
+        assert_eq!(
+            sanitize_redirect_url(Some("javascript:x"), Some("http://evil.test/"), None),
+            None
+        );
         assert!(!is_uuid_v4(Some("55c8d1d0-5cb8-305c-bcf2-d8dbb9ba0134")));
         let meta = compact_metadata(vec![
             ("a", MetaValue::Text("  ".into())),

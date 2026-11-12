@@ -491,20 +491,53 @@ fn billing_helpers_match_the_reference() {
     tally.finish();
 
     let mut tally = Tally::new("sanitize_redirect");
-    for case in cases("sanitize_redirect") {
+    let redirects = cases("sanitize_redirect");
+    // Intended difference (item 8 of P2-BILLING-01b, a security fix): a raw URL that parses but
+    // is not https (or http to a loopback host), or carries a user name or password, is treated
+    // as if it were absent, whatever the allowlist says. The expectation for such a case is the
+    // recorded answer of the case with no raw URL and the same fallback and allowlist.
+    let unsafe_raw = |raw: Option<&str>| {
+        raw.and_then(|raw| url::Url::parse(raw).ok())
+            .is_some_and(|url| !checkout::is_safe_redirect(&url))
+    };
+    let without_raw = |case: &Value| -> Option<Value> {
+        let i = &case["input"];
+        redirects
+            .iter()
+            .find(|other| {
+                let o = &other["input"];
+                field(o, "raw").is_none()
+                    && o["fallback"] == i["fallback"]
+                    && o["allowed"] == i["allowed"]
+            })
+            .map(|other| other["expected"].clone())
+    };
+    let mut changed = 0;
+    for case in &redirects {
         let i = &case["input"];
         let actual = checkout::sanitize_redirect_url(
             text(i, "raw"),
             text(i, "fallback"),
             text(i, "allowed"),
         );
-        tally.check(
-            case["expected"].as_str() == actual.as_deref(),
-            &case,
-            || format!("{actual:?}"),
-        );
+        let expected = if unsafe_raw(text(i, "raw")) {
+            let expected = without_raw(case).expect("a recorded case without a raw URL");
+            if expected != case["expected"] {
+                changed += 1;
+            }
+            expected
+        } else {
+            case["expected"].clone()
+        };
+        tally.check(expected.as_str() == actual.as_deref(), case, || {
+            format!("{actual:?}")
+        });
     }
     tally.finish();
+    // Where the reference accepted the raw URL (the allowlist unset or empty, or the host on
+    // it) and the fallback differs from it: `javascript:alert(1)` 12, `https://user:pass@…` 16,
+    // `HTTP://WWW.DomDimaBot.com:80/` 16.
+    assert_eq!(changed, 44, "cases whose redirect changed on purpose");
 
     let mut tally = Tally::new("is_uuid_v4");
     for case in cases("is_uuid_v4") {

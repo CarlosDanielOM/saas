@@ -129,12 +129,12 @@ impl std::fmt::Debug for PolarClient {
 }
 
 impl PolarClient {
-    /// The provider declaration for the binary's registry: the host of
-    /// [`PolarConfig::environment`], redirects refused, no retries, the id-carrying query
+    /// The provider declaration for the binary's registry: [`PolarConfig::declared_base_url`],
+    /// redirects refused, no retries, the id-carrying query
     /// parameters redacted. A test-mode registry may override the base URL
     /// ([`PolarConfig::base_url_override`]).
     pub fn provider(config: &PolarConfig) -> ProviderBuilder {
-        Provider::builder(PROVIDER_NAME, config.environment.base_url()).secret_query_params(&[
+        Provider::builder(PROVIDER_NAME, config.declared_base_url()).secret_query_params(&[
             "customer_id",
             "external_customer_id",
             "query",
