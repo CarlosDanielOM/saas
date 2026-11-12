@@ -30,6 +30,10 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/schemas/title_config.schema.ts', 'titleConfig'],
+    ['src/schemas/randomuser_settings.schema.ts', 'random_user_settings'],
+    ['src/schemas/vip.schema.ts', 'vip'],
+    ['src/schemas/temporary_moderator.schema.ts', 'temporary_moderator'],
     ['src/schemas/users.schema.ts', 'users'],
     ['src/schemas/eventsub.schema.ts', 'eventsub'],
     ['src/schemas/ast_variables.schema.ts', 'AstVariables'],

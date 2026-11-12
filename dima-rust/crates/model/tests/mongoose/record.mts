@@ -60,6 +60,10 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/title_config.schema.ts', 'titleConfig'],
+    ['src/schemas/randomuser_settings.schema.ts', 'random_user_settings'],
+    ['src/schemas/vip.schema.ts', 'vip'],
+    ['src/schemas/temporary_moderator.schema.ts', 'temporary_moderator'],
     ['src/schemas/users.schema.ts', 'users'],
     ['src/schemas/eventsub.schema.ts', 'eventsub'],
     ['src/schemas/ast_variables.schema.ts', 'AstVariables'],
@@ -376,6 +380,34 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+    temporary_moderators: [
+        { name: 'duplicate_role', op: 'create', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2 }], doc: { channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 3, expireTimestamp: T2 } },
+        { name: 'create_role', op: 'create', rust: 'role', doc: { channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2 } },
+        { name: 'update_expiry', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', userID: '222', username: TEXT, durationDays: 2, expireTimestamp: T2, createdAt: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { durationDays: 3, expireTimestamp: T1 } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+    vips: [
+        { name: 'save_invalid_change', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'username', value: '' }] },
+        { name: 'save_invalid_untouched', op: 'save', seed: [{ _id: OID(1), username: '', userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+        { name: 'save_missing_required', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+        { name: 'save_multiple_errors', op: 'save', seed: [{ _id: OID(1), username: '', userID: '', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, __v: 0 }], id: OID(1), changes: [{ set: 'channel', value: '' }] },
+        { name: 'create_role', op: 'create', rust: 'role', doc: { username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2 } },
+        { name: 'update_role', op: 'updateOne', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { duration: 3 } } },
+        { name: 'redemption_missing_expiry', op: 'validate', doc: { username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 } } },
+        { name: 'save_role', op: 'save', seed: [{ _id: OID(1), username: TEXT, userID: '222', channel: 'seed', channelID: '111', duration: 2, expireDate: { day: 7, month: 5, year: 2021 }, expireTimestamp: T2, __v: 0 }], id: OID(1), changes: [{ set: 'duration', value: 3 }] },
+    ],
+    random_user_settings: [
+        { name: 'duplicate_channel', op: 'create', seed: [{ _id: OID(1), channelID: '111', blacklist: [] }], doc: { channelID: '111' } },
+        { name: 'create_settings', op: 'create', rust: 'settings', doc: { channelID: '111', blacklist: ['seed'] } },
+        { name: 'update_settings', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', blacklist: ['seed'], createdAt: T1, updatedAt: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { blacklist: ['other'] } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+    titleconfigs: [
+        { name: 'create_settings', op: 'create', rust: 'settings', doc: { channelID: '111', channel: 'seed', pretitle: TEXT } },
+        { name: 'update_settings', op: 'updateOne', seed: [{ _id: OID(1), channelID: '111', channel: 'seed', pretitle: TEXT, active: true, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { active: false } } },
+        { name: 'invalid_required', op: 'validate', doc: {} },
+    ],
+
     mediaassets: [
         { name: 'create_upload', op: 'create', rust: 'upload', doc: uploadAsset() },
         // `thumbnail_generator.ts:112`: the thumbnail is an asset of its own.

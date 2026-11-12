@@ -184,6 +184,8 @@ impl IndexPolicy {
 ///   paid-order reward is reserved, and a duplicate `idempotencyKey` would credit twice;
 /// - `ai_usage_receipts` (unique): nothing awaits it, but the upsert on `{channelID, customerId,
 ///   entryId}` is what makes a receipt idempotent, and a duplicate would count its credits twice;
+/// - `temporary_moderators` (unique): duplicate channel/user records would let role-expiry
+///   workers remove the same person's role twice;
 /// - `userextensioninventories` (unique): nothing awaits it, but the first purchase upserts the
 ///   viewer's wallet on `{platform, userID, channelID}`, and two wallets would split a balance.
 ///
@@ -204,6 +206,7 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
         | crate::cron_job_intents::COLLECTION
         | crate::credit_transactions::COLLECTION
         | crate::ai_usage_receipts::COLLECTION
+        | crate::temporary_moderators::COLLECTION
         | crate::user_extension_inventories::COLLECTION => IndexPolicy::RequireUnique,
         crate::oauth_clients::COLLECTION
         | crate::oauth_grants::COLLECTION

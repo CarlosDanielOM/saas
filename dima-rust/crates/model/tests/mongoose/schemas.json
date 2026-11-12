@@ -832,6 +832,10 @@
    "sha256": "1eeab71be86ccb0df0ff7c8404cce8580d27fd280853293175433e72155ef146"
   },
   {
+   "path": "src/schemas/title_config.schema.ts",
+   "sha256": "5a2886025ab6ca4bd75c54f623ec732a13c392185945a967e372360e4ccb9a97"
+  },
+  {
    "path": "src/schemas/trigger.schema.ts",
    "sha256": "a2e0fb433741aacd1f9b42de6a603814986ad99bf4198b65b8b7a0edcc9b8657"
   },
@@ -1605,6 +1609,432 @@
   }
  ],
  "models": {
+  "titleconfigs": {
+   "model": "titleConfig",
+   "file": "src/schemas/title_config.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "pretitle",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "posttitle",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "active",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "random_user_settings": {
+   "model": "random_user_settings",
+   "file": "src/schemas/randomuser_settings.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "blacklist",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "vips": {
+   "model": "vip",
+   "file": "src/schemas/vip.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "username",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "duration",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "vip",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "date",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "day",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "11"
+         }
+        }
+       },
+       {
+        "name": "month",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "10"
+         }
+        }
+       },
+       {
+        "name": "year",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": true,
+         "implicit": false,
+         "value": {
+          "$numberInt": "2026"
+         }
+        }
+       }
+      ]
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "expireDate",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "day",
+        "kind": "value",
+        "type": "Number"
+       },
+       {
+        "name": "month",
+        "kind": "value",
+        "type": "Number"
+       },
+       {
+        "name": "year",
+        "kind": "value",
+        "type": "Number"
+       }
+      ]
+     },
+     {
+      "name": "expireTimestamp",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "username",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "userID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "duration",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expireDate.day",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expireDate.month",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expireDate.year",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expireTimestamp",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "temporary_moderators": {
+   "model": "temporary_moderator",
+   "file": "src/schemas/temporary_moderator.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "username",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "durationDays",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "expireTimestamp",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "userID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "username",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "durationDays",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expireTimestamp",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "userID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expireTimestamp",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "userID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
   "users": {
    "model": "users",
    "file": "src/schemas/users.schema.ts",
@@ -11369,7 +11799,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416e6888e34e2d2f17a1"
+          "value": "6af4416ed747cc3d15685a01"
          }
         },
         {

@@ -338,14 +338,18 @@ pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
 pub mod oauth_sessions;
+pub mod random_user_settings;
 pub mod redemption_rewards;
 pub mod referral_codes;
 pub mod site_analytics;
 pub mod stream_sessions;
+pub mod temporary_moderators;
 pub mod timer_commands;
+pub mod titleconfigs;
 pub mod user_extension_inventories;
 pub mod user_media_library_items;
 pub mod users;
+pub mod vips;
 
 pub use collection::{ClientNulls, CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
@@ -364,6 +368,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &temporary_moderators::INFO,
+    &vips::INFO,
+    &random_user_settings::INFO,
+    &titleconfigs::INFO,
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,

@@ -348,6 +348,55 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("temporary_moderators", "role") => {
+            let input = dima_model::temporary_moderators::NewTemporaryModerator {
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                user_id: "222".into(),
+                username: text.into(),
+                duration_days: JsNumber(2.0),
+                expire_timestamp: ms("2021-06-07T08:09:10.011Z")?,
+                created_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("vips", "role") => {
+            let input = dima_model::vips::NewVip {
+                username: text.into(),
+                user_id: "222".into(),
+                channel: "seed".into(),
+                channel_id: "111".into(),
+                duration: JsNumber(2.0),
+                vip: None,
+                created_at: None,
+                expire_date: dima_model::vips::NewVipExpireDate {
+                    day: JsNumber(7.0),
+                    month: JsNumber(5.0),
+                    year: JsNumber(2021.0),
+                },
+                expire_timestamp: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            let given = input.to_document()?;
+            pair(given, input.prepare(ctx))
+        }
+        ("random_user_settings", "settings") => {
+            let input = dima_model::random_user_settings::NewRandomUserSettings {
+                channel_id: "111".into(),
+                blacklist: Some(vec!["seed".into()]),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("titleconfigs", "settings") => {
+            let input = dima_model::titleconfigs::NewTitleConfig {
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                pretitle: Some(text.into()),
+                posttitle: None,
+                active: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
         ("users", "empty") => {
             let user = NewUser::default();
             pair(user.to_document()?, user.prepare(ctx))
