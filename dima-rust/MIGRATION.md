@@ -1,5 +1,11 @@
 # Rust migration charter
 
+> **Status: paused on 2026-11-12 by the owner.** `master` stays TypeScript and is what runs in production;
+> this branch (`rust-v2`) is left as it is, with every merged package passing its gate. Where things stand,
+> what was stopped unfinished and how to pick the work up again: `ledger/PAUSED.md`. What the migration
+> found in the running TypeScript, which no cutover will now close: `ledger/typescript-findings.md`.
+
+
 Approved by the owner on 2026-11-11. This file is the rulebook for everyone working on the migration
 (lead, implementation agents, reviewers). Where it differs from the root `CLAUDE.md` / `AGENTS.md`
 delivery workflow, this file wins **for migration work**: build and verify, never deploy.
