@@ -95,7 +95,9 @@ pub struct Limits {
     /// [`Budget::Body`].
     pub body_size: Option<u64>,
     /// Not in multer: bytes of all text fields together, names included ([`DEFAULT_FIELDS_SIZE`]
-    /// by default). Past it the upload fails with [`Budget::Fields`].
+    /// by default), counted as the UTF-8 text that is kept: a value is charged as it is read and
+    /// then again at its decoded size, which is larger for latin1 and for invalid UTF-8 (each
+    /// bad byte becomes a three-byte U+FFFD). Past it the upload fails with [`Budget::Fields`].
     pub fields_size: u64,
     /// Not in multer: parts of any kind (text fields, files, skipped parts) one form may have
     /// ([`DEFAULT_MAX_PARTS`] by default). One more fails the upload with [`Budget::Parts`].
@@ -832,12 +834,18 @@ impl Single {
                                 progress.fail(limit(MulterCode::LimitFieldKey, None))?;
                                 continue;
                             }
-                            progress
-                                .fields
-                                .append(&name, parse::decode_bytes(&bytes, &charset))
-                                .map_err(|_| {
-                                    progress.settle(UploadError::Budget(Budget::FieldName))
-                                })?;
+                            // What is kept is the decoded text, which can be larger than the
+                            // bytes read (latin1 doubles, invalid UTF-8 triples).
+                            let text = parse::decode_bytes(&bytes, &charset);
+                            progress.recharge_fields(
+                                bytes.len() as u64,
+                                text.len() as u64,
+                                limits.fields_size,
+                            )?;
+                            drop(bytes);
+                            progress.fields.append(&name, text).map_err(|_| {
+                                progress.settle(UploadError::Budget(Budget::FieldName))
+                            })?;
                         }
                     }
                 }
@@ -991,6 +999,12 @@ impl Progress {
     /// A fatal error, unless an earlier one is waiting to be reported.
     fn settle(&mut self, error: UploadError) -> UploadError {
         self.first_error.take().unwrap_or(error)
+    }
+
+    /// Replaces the charge for `read` bytes buffered with the `kept` bytes of their decoded text.
+    fn recharge_fields(&mut self, read: u64, kept: u64, budget: u64) -> Result<(), UploadError> {
+        self.fields_bytes = self.fields_bytes.saturating_sub(read);
+        self.charge_fields(kept, budget)
     }
 
     /// Counts text field bytes before they are buffered.
@@ -1191,6 +1205,24 @@ mod tests {
         );
         let parts: Vec<Vec<u8>> = (0..3).map(|i| field(&format!("f{i}"), &value)).collect();
         assert!(upload(Limits::default(), form(&parts)).await.is_ok());
+    }
+
+    /// Review finding: fields were charged before decoding, and invalid UTF-8 decodes to three
+    /// bytes per byte (U+FFFD), so accepted fields held nearly three times the budget.
+    #[tokio::test]
+    async fn the_fields_budget_counts_decoded_text() {
+        let value = vec![0xFF; 1024 * 1024 - 1];
+        let parts: Vec<Vec<u8>> = (0..2).map(|i| field(&format!("f{i}"), &value)).collect();
+        assert_eq!(
+            budget(upload(Limits::default(), form(&parts)).await),
+            Some(Budget::Fields)
+        );
+        // One such field decodes to 3 MiB and fits.
+        assert!(
+            upload(Limits::default(), form(&[field("f", &value)]))
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
