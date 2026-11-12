@@ -64,6 +64,47 @@ pub fn min(a: f64, b: f64) -> f64 {
     }
 }
 
+/// `Number.isSafeInteger(x)`.
+pub fn is_safe_integer(x: f64) -> bool {
+    x.is_finite() && x.trunc() == x && x.abs() <= 9_007_199_254_740_991.0
+}
+
+/// A JavaScript number as a JSON value: a safe integer as an integer (`25000`, as recorded
+/// JSON holds it), any other finite number as a double, a non-finite one as `null`
+/// (`JSON.stringify`), `-0` as `0`.
+pub fn json_number(x: f64) -> Value {
+    if is_safe_integer(x) {
+        #[allow(clippy::cast_possible_truncation)]
+        return Value::from(x as i64);
+    }
+    serde_json::Number::from_f64(x).map_or(Value::Null, Value::Number)
+}
+
+/// `value[key]` when it is text.
+pub fn str_at<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    value.get(key).and_then(Value::as_str)
+}
+
+/// Truthiness of `value[key]`.
+pub fn truthy_at(value: &Value, key: &str) -> bool {
+    truthy(value.get(key))
+}
+
+/// `a >= value` with JavaScript's coercion of `value` (`undefined` is `NaN`: false).
+pub fn ge_number(a: f64, value: Option<&Value>) -> bool {
+    a >= number(value)
+}
+
+/// `value <= b` with JavaScript's coercion of `value` (`undefined` is `NaN`: false; `null` is 0).
+pub fn le_number(value: Option<&Value>, b: f64) -> bool {
+    number(value) <= b
+}
+
+/// `value === n` for a JSON number (`-0 === 0`).
+pub fn number_is(value: Option<&Value>, n: f64) -> bool {
+    value.and_then(Value::as_f64) == Some(n)
+}
+
 /// `Math.round`.
 pub fn round(x: f64) -> f64 {
     dima_text::math_round(x)

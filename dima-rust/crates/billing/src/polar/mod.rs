@@ -524,6 +524,118 @@ impl PolarClient {
         self.get(path, &[], Profile::Gift).await
     }
 
+    // --------------------------------------------- credit_gift_provider.ts (gift profile, 15 s)
+
+    /// `GET /v1/customers/{id}` (`verifyGiftCustomer`).
+    pub async fn get_customer(&self, customer_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/customers/{}", customer_id)?;
+        self.get(path, &[], Profile::Gift).await
+    }
+
+    /// `GET /v1/products/{id}` (`loadGiftPair`; no trailing slash, unlike `billing.ts`).
+    pub async fn get_gift_product(&self, product_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/products/{}", product_id)?;
+        self.get(path, &[], Profile::Gift).await
+    }
+
+    /// `GET /v1/checkouts/{id}`. The answer carries the checkout's `client_secret` and `url`:
+    /// never log it.
+    pub async fn get_checkout(&self, checkout_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/checkouts/{}", checkout_id)?;
+        self.get(path, &[], Profile::Gift).await
+    }
+
+    /// `GET /v1/checkouts/?product_id=…&external_customer_id=…&limit=100&page=…&sorting=-created_at`
+    /// (`recoverGiftCheckout`): one page, as Polar sent it.
+    pub async fn list_checkouts_page(
+        &self,
+        product_id: &str,
+        external_customer_id: &str,
+        page: u32,
+    ) -> Result<Value, PolarError> {
+        let page = page.to_string();
+        self.get(
+            Path::fixed("/v1/checkouts/"),
+            &[
+                ("product_id", product_id),
+                ("external_customer_id", external_customer_id),
+                ("limit", "100"),
+                ("page", &page),
+                ("sorting", "-created_at"),
+            ],
+            Profile::Gift,
+        )
+        .await
+    }
+
+    /// `GET /v1/orders/?checkout_id=…&limit=2` (`getGiftCheckoutOrder`), as Polar sent it.
+    pub async fn list_orders_for_checkout(&self, checkout_id: &str) -> Result<Value, PolarError> {
+        self.get(
+            Path::fixed("/v1/orders/"),
+            &[("checkout_id", checkout_id), ("limit", "2")],
+            Profile::Gift,
+        )
+        .await
+    }
+
+    /// `POST /v1/checkouts/` with an `Idempotency-Key` (`createCreditGiftCheckout`, the gift
+    /// worker's fulfillment checkout), as Polar answered it.
+    pub async fn create_gift_checkout(
+        &self,
+        body: &Value,
+        idempotency_key: &str,
+    ) -> Result<Value, PolarError> {
+        self.post(
+            Path::fixed("/v1/checkouts/"),
+            body,
+            Some(idempotency_key),
+            Profile::Gift,
+        )
+        .await
+    }
+
+    /// `POST /v1/checkouts/client/{client_secret}/confirm` with the body `{}` (the gift
+    /// worker's confirmation of a free fulfillment checkout). The path holds a secret: the
+    /// provider records the template only.
+    pub async fn confirm_checkout(&self, client_secret: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/checkouts/client/{}/confirm", client_secret)?;
+        self.post(path, &serde_json::json!({}), None, Profile::Gift)
+            .await
+    }
+
+    // --------------------------------------------- polar_account_cancellation.ts (fetch)
+
+    /// `GET /v1/subscriptions/?{filter}=…&limit=100&page=N` (`listBillableSubscriptionIds`):
+    /// one page, as Polar sent it. `filter` is `customer_id` or `external_customer_id`.
+    pub async fn list_subscriptions_page_by(
+        &self,
+        filter: SubscriptionFilter,
+        value: &str,
+        page: u32,
+    ) -> Result<Value, PolarError> {
+        let page = page.to_string();
+        self.get(
+            Path::fixed("/v1/subscriptions/"),
+            &[(filter.as_str(), value), ("limit", "100"), ("page", &page)],
+            Profile::Fetch,
+        )
+        .await
+    }
+
+    /// `DELETE /v1/subscriptions/{id}` (revoke: ends now, no further charges). A failure
+    /// after the request may have been sent counts as a mutation ([`PolarError::outcome_unknown`]).
+    pub async fn revoke_subscription(&self, subscription_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/subscriptions/{}", subscription_id)?;
+        let builder = self.request(Method::DELETE, path, Profile::Fetch, false)?;
+        self.send(builder, true).await
+    }
+
+    /// `GET /v1/subscriptions/{id}` through `polarRequest` (the cancellation's re-check).
+    pub async fn get_subscription_fetch(&self, subscription_id: &str) -> Result<Value, PolarError> {
+        let path = segment_path("/v1/subscriptions/{}", subscription_id)?;
+        self.get(path, &[], Profile::Fetch).await
+    }
+
     // -------------------------------------------------------- polar_entitlements.ts (SDK, 10 s)
 
     /// `customers.getState({id})` with the entitlement timeout.
@@ -636,6 +748,25 @@ impl PolarClient {
             Profile::Sdk(None),
         )
         .await
+    }
+}
+
+/// Which id a subscription list is filtered on (`polar_account_cancellation.ts`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubscriptionFilter {
+    /// `customer_id`: the stored Polar customer.
+    CustomerId,
+    /// `external_customer_id`: our user id.
+    ExternalCustomerId,
+}
+
+impl SubscriptionFilter {
+    /// The query parameter.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::CustomerId => "customer_id",
+            Self::ExternalCustomerId => "external_customer_id",
+        }
     }
 }
 

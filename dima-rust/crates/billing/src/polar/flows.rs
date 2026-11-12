@@ -121,6 +121,15 @@ fn polar_failure(error: &PolarError) -> IngestOutcome {
     }
 }
 
+/// What [`Ingest::grant_ai_credits_report`] did.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GrantReport {
+    /// What `grantPolarAiCredits` answers.
+    pub outcome: IngestOutcome,
+    /// Polar's counts, when it answered that it stored the grant.
+    pub stored: Option<super::IngestResult>,
+}
+
 /// Why `ingestPolarNamedEvents` failed (the reference threw with these messages).
 #[derive(Debug, thiserror::Error)]
 pub enum NamedIngestError {
@@ -334,14 +343,25 @@ impl Ingest<'_> {
     /// ([`IngestOutcome::OutcomeUnknown`]), or after a restart, repeats the same grant, which
     /// Polar deduplicates by `external_id`.
     pub async fn grant_ai_credits(&self, input: &GrantInput) -> IngestOutcome {
+        self.grant_ai_credits_report(input).await.outcome
+    }
+
+    /// [`Self::grant_ai_credits`] with Polar's counts when it stored the grant (P2-BILLING-02b):
+    /// `duplicates` above 0 means Polar already held this operation id, so its figures may
+    /// already show the grant (the admin top-up then adds nothing locally).
+    pub async fn grant_ai_credits_report(&self, input: &GrantInput) -> GrantReport {
+        let report = |outcome| GrantReport {
+            outcome,
+            stored: None,
+        };
         let (event, context, credits) = match build_grant_event(input) {
             Ok(built) => built,
             Err(refused @ (GrantRefused::MissingCustomer | GrantRefused::NotPositive)) => {
-                return failed(refused.to_string());
+                return report(failed(refused.to_string()));
             }
         };
-        match self.polar.ingest_events(std::slice::from_ref(&event)).await {
-            Ok(result) if result.is_complete(1) => {}
+        let stored = match self.polar.ingest_events(std::slice::from_ref(&event)).await {
+            Ok(result) if result.is_complete(1) => result,
             // Item 4 of P2-BILLING-01c (re-check finding N5): Polar may have stored the grant;
             // the caller retries with the same operation id, never with a new one.
             Ok(_) => {
@@ -349,16 +369,16 @@ impl Ingest<'_> {
                     "grantPolarAiCredits",
                     "PolarSH grant credits ingest incomplete; outcome unknown",
                 );
-                return IngestOutcome::OutcomeUnknown {
+                return report(IngestOutcome::OutcomeUnknown {
                     message: "PolarSH grant credits ingest incomplete".into(),
-                };
+                });
             }
             Err(error) => {
                 self.observer
                     .error("grantPolarAiCredits", &polar_message(&error));
-                return polar_failure(&error);
+                return report(polar_failure(&error));
             }
-        }
+        };
         let channel = input.channel_id.as_deref().filter(|c| !c.is_empty());
         let usage = AcceptedUsage {
             channel_id: channel.unwrap_or(""),
@@ -372,7 +392,10 @@ impl Ingest<'_> {
         {
             self.observer.error("grantPolarAiCredits.receipt", &error);
         }
-        IngestOutcome::Done { message: None }
+        GrantReport {
+            outcome: IngestOutcome::Done { message: None },
+            stored: Some(stored),
+        }
     }
 
     /// `ingestPolarNamedEvents(events)`: `(inserted, duplicates)`.
