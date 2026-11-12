@@ -118,7 +118,10 @@
 //!   their next await) when the socket leaves, and every handler has a deadline
 //!   ([`HandlerDeadlines`]: 60 s, 120 s, 10 s); `on_disconnect` runs afterwards under its own.
 //!   Work that must outlive the socket belongs in a task of the feature, not in a handler. A
-//!   recovered socket starts once the old socket's handlers have all ended.
+//!   recovered socket starts once the old socket's handlers have all ended (waited for at most
+//!   `recovery_wait`, 15 s; past it the client connects fresh). Handlers are async and never
+//!   block their thread; heavy work is offloaded (see [`Namespace`]): a deadline cannot stop a
+//!   handler that never yields.
 //! - **Socket data implements [`RetainedSize`]** (add up the fields), so a recovery session is
 //!   measured by what it really keeps. It is compacted first (JSON maps rebuilt at their length,
 //!   spare capacity given back): measuring takes the locks inside the data, never while the

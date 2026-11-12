@@ -2217,6 +2217,68 @@ async fn a_failed_recovery_runs_the_check_once_and_answers_as_an_unknown_session
     server.stop().await;
 }
 
+/// `/l`: an `on_disconnect` that does not end (a handler stuck in work that never yields
+/// would hold the same way: no deadline can stop it).
+struct Lingering;
+
+impl Namespace for Lingering {
+    type Data = ();
+
+    async fn check(&self, _handshake: &Handshake, _nsp: &str) -> Result<(), ConnectError> {
+        Ok(())
+    }
+
+    async fn on_connect(&self, socket: Socket<()>) {
+        let _ = socket.emit("hello", &[]);
+    }
+
+    async fn on_disconnect(&self, _socket: Socket<()>, _reason: DisconnectReason) {
+        std::future::pending::<()>().await;
+    }
+}
+
+/// H6 (re-check of 2026-11-12): a recovery waits for the old socket's handlers under a
+/// deadline of its own. Past it the recovery fails as one that cannot be served, and the
+/// client connects fresh at once, instead of waiting for a handler that may never end.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovery_does_not_wait_for_old_handlers_past_its_deadline() {
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let server = TestServer::start_with(Options::default(), runtime, |builder| {
+        let options = NamespaceOptions {
+            deadlines: Some(dima_socketio::HandlerDeadlines {
+                disconnect: Duration::from_secs(60),
+                recovery_wait: Duration::from_millis(300),
+                ..dima_socketio::HandlerDeadlines::default()
+            }),
+            ..NamespaceOptions::default()
+        };
+        builder.namespace("/l", options, Lingering).unwrap();
+    })
+    .await;
+    let io = server.io.clone();
+    let mut client = Ws::open(server.addr).await;
+    let (sid, pid, offset) = join_owned(&mut client, "/l", &ok()).await;
+    client.drop_connection();
+    eventually("the session kept", || io.stats().sessions == 1).await;
+    let mut back = Ws::open(server.addr).await;
+    let started = std::time::Instant::now();
+    let connect = back
+        .join("/l", &json!({"pid": pid, "offset": offset}))
+        .await
+        .unwrap();
+    assert!(started.elapsed() < 3 * SECOND, "{:?}", started.elapsed());
+    assert_ne!(connect["sid"], json!(sid), "a fresh socket");
+    assert_ne!(connect["pid"], json!(pid));
+    assert_eq!(telemetry.get("recovery:NotReleased"), 1);
+    assert_eq!(telemetry.get("connected:false"), 2);
+    back.close().await;
+    server.stop().await;
+}
+
 /// Finding 14: shutdown has one deadline and proves it: with a client that stopped reading
 /// (output queued in the transport), handlers that never end on their own, and a polling
 /// session, it returns within `shutdown_drain` (no extra second), and its report says every

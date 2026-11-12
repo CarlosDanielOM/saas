@@ -67,6 +67,9 @@ pub enum RecoveryOutcome {
     /// (`Namespace::owner`): the session was dropped and a fresh socket answered, as for an
     /// unknown session.
     OwnerChanged,
+    /// A handler of the socket that left the session was still running at the end of
+    /// `HandlerDeadlines::recovery_wait`: the session was dropped and a fresh socket answered.
+    NotReleased,
 }
 
 /// Something the stores had to drop to stay within their bounds.

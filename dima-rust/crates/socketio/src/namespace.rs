@@ -30,6 +30,18 @@ use crate::telemetry::{Handler, RecoveryOutcome, Refusal, SendOutcome};
 /// `connection` handler in the reference). Every method is async and runs in a task the server
 /// owns; a panic is contained (and counted), it never takes the connection down.
 ///
+/// # Handlers must not block
+///
+/// The handlers run on the server's async threads, beside every other connection. A handler
+/// is async all the way: it awaits I/O and timers and never blocks its thread (no
+/// `std::thread::sleep`, no blocking file, network or database call, no lock held while it
+/// waits for something slow), and it offloads CPU-heavy work (`tokio::task::spawn_blocking`,
+/// or a worker of the feature with its own bounds). Its deadlines
+/// ([`crate::HandlerDeadlines`]) and the cancellation when its socket leaves take effect at its
+/// next `.await`: they cannot stop a handler that never yields. Such a handler keeps its
+/// thread and its socket's data for as long as it runs; a client recovering that socket stops
+/// waiting for it after `recovery_wait` and connects fresh.
+///
 /// Order, for one socket: [`Namespace::check`] (once, recovering or not, unless
 /// [`NamespaceOptions::recheck_recovery`] is off for a recovery), then
 /// [`Namespace::on_connect`], then [`Namespace::on_event`] for each client event (events that
@@ -687,12 +699,16 @@ async fn run_socket<N: Namespace>(
         };
         if accepted {
             // The socket that left the session may still be finishing its handlers (its
-            // `on_disconnect`, at most its deadline): the new one starts once they ended.
+            // `on_disconnect`, at most its deadline): the new one starts once they ended. A
+            // handler stuck where no deadline reaches it (blocking, never yielding) would hold
+            // the client for ever, so the wait has a deadline of its own (H6): past it the
+            // session is not given back and the client connects fresh.
             let released = tokio::select! {
                 biased;
                 () = ticket.cancel.cancelled() => None,
                 () = shared.hard_stop.cancelled() => None,
                 () = session.released.cancelled() => Some(true),
+                () = tokio::time::sleep(def.deadlines.recovery_wait) => Some(false),
             };
             let Some(released) = released.filter(|_| !conn.is_closed()) else {
                 return;
@@ -705,6 +721,10 @@ async fn run_socket<N: Namespace>(
                     session.owner,
                     session.cursor,
                 ));
+            } else {
+                shared
+                    .telemetry
+                    .recovery(&nsp, RecoveryOutcome::NotReleased);
             }
         }
     }

@@ -165,7 +165,11 @@ impl Default for Options {
 /// Besides its deadline, every `on_connect` and `on_event` of a socket is cancelled when the
 /// socket leaves its namespace; `on_disconnect` then runs once, under its own deadline only.
 /// A recovered socket starts only once every handler of the socket it replaces has ended, so
-/// no work of the old socket can run beside the new one on the data they share.
+/// no work of the old socket can run beside the new one on the data they share; a recovery
+/// waits for that at most `recovery_wait`, then connects the client fresh.
+///
+/// A deadline drops a handler at its next `.await`: a handler that blocks its thread or loops
+/// without awaiting cannot be stopped by it (see [`crate::Namespace`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandlerDeadlines {
     /// [`crate::Namespace::on_connect`] (60 s).
@@ -175,6 +179,12 @@ pub struct HandlerDeadlines {
     pub event: Duration,
     /// [`crate::Namespace::on_disconnect`] (10 s). A client recovering the socket waits for it.
     pub disconnect: Duration,
+    /// How long a recovery waits for the handlers of the socket it replaces to end (15 s,
+    /// longer than `disconnect`, so an `on_disconnect` that keeps its deadline always ends
+    /// first). Past it, the session is not given back: the client connects fresh
+    /// (`recovered` false; telemetry `RecoveryOutcome::NotReleased`), and the old socket's
+    /// stuck work keeps the old data, never the new socket's.
+    pub recovery_wait: Duration,
 }
 
 impl Default for HandlerDeadlines {
@@ -183,6 +193,7 @@ impl Default for HandlerDeadlines {
             connect: Duration::from_secs(60),
             event: Duration::from_secs(120),
             disconnect: Duration::from_secs(10),
+            recovery_wait: Duration::from_secs(15),
         }
     }
 }
