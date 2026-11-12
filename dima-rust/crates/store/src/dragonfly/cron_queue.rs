@@ -23,7 +23,9 @@ use super::commands::reply;
 use super::error::DragonflyError;
 use super::queue::QueueItem;
 use super::script::Script;
-use dima_text::{js_key_order, number_to_string, parse_number, string_of, to_js_json, trim};
+use dima_text::{
+    js_key_order, js_number, js_truthy as truthy, number_to_string, parse_number, to_js_json, trim,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -473,7 +475,7 @@ pub fn get_job_attempt(job: &CronQueueJob) -> f64 {
         .data
         .as_ref()
         .and_then(|data| data.get("attempt"))
-        .filter(|value| truthy(value))
+        .filter(|value| truthy(*value))
         .map(js_number)
         .unwrap_or(1.0);
     if attempt.is_finite() && attempt > 0.0 {
@@ -503,28 +505,6 @@ pub fn with_next_attempt(job: &CronQueueJob) -> CronQueueJob {
     );
     next.data = Some(Value::Object(data));
     next
-}
-
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(value) => *value,
-        Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.0),
-        Value::String(value) => !value.is_empty(),
-        Value::Array(_) | Value::Object(_) => true,
-    }
-}
-
-/// `Number(value)` for a JSON value.
-fn js_number(value: &Value) -> f64 {
-    match value {
-        Value::Null => 0.0,
-        Value::Bool(value) => f64::from(u8::from(*value)),
-        Value::Number(value) => value.as_f64().unwrap_or(f64::NAN),
-        Value::String(text) => parse_number(text),
-        Value::Array(_) => parse_number(&string_of(value)),
-        Value::Object(_) => f64::NAN,
-    }
 }
 
 /// `Math.max(60, x)`: NaN stays NaN.
@@ -562,6 +542,55 @@ mod tests {
             EnqueuePlan::Deduplicated { job, keys, args } => (job, keys, args),
             other => panic!("expected the deduplicated route, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parsed_job_number_copy_baseline() {
+        let item = QueueItem::from_popped(
+            br#"{"job":"test","data":{"b":1,"2":2,"b":3,"1":9007199254740993}}"#.to_vec(),
+        );
+        let raw = item.as_bytes().to_vec();
+        let job = parse_cron_queue_job(&item, NOW, "fresh").unwrap().unwrap();
+        let data = job.data.unwrap();
+        assert_eq!(data["1"].as_u64(), Some(9007199254740993));
+        assert_eq!(
+            data.as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            ["b", "2", "1"]
+        );
+        assert_eq!(item.as_bytes(), raw);
+    }
+
+    #[test]
+    fn coercion_contract() {
+        for (value, expected) in [
+            (serde_json::json!(null), false),
+            (serde_json::json!(false), false),
+            (serde_json::json!(-0.0), false),
+            (serde_json::json!(""), false),
+            (serde_json::json!([]), true),
+            (serde_json::json!({}), true),
+            (serde_json::json!("😀"), true),
+            (serde_json::json!(1e30), true),
+        ] {
+            assert_eq!(truthy(&value), expected);
+        }
+        for (value, expected) in [
+            (serde_json::json!(null), 0.0),
+            (serde_json::json!(true), 1.0),
+            (serde_json::json!("0x10"), 16.0),
+            (serde_json::json!([null]), 0.0),
+            (serde_json::json!([["1e2"]]), 100.0),
+            (serde_json::json!(9007199254740993_u64), 9007199254740992.0),
+        ] {
+            assert_eq!(js_number(&value), expected);
+        }
+        assert!(js_number(&serde_json::json!({})).is_nan());
+        assert!(js_number(&serde_json::json!([1, 2])).is_nan());
+        assert!(js_number(&serde_json::json!("-0")).is_sign_negative());
     }
 
     #[test]
