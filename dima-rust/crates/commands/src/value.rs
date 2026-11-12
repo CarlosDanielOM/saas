@@ -166,6 +166,19 @@ pub(crate) fn js_string<V: JsView>(value: &V) -> String {
     out
 }
 
+/// `Number(value)`: strings through [`dima_text::parse_number`], booleans 0 or 1, `null` 0,
+/// arrays through their text, other objects and `undefined` NaN.
+pub(crate) fn js_number<V: JsView>(value: &V) -> f64 {
+    match value.js() {
+        Js::Number(number) => number,
+        Js::Null => 0.0,
+        Js::Bool(flag) => f64::from(u8::from(flag)),
+        Js::String(text) => dima_text::parse_number(text),
+        Js::Array(_) => dima_text::parse_number(&js_string(value)),
+        Js::Undefined | Js::Object | Js::Other => f64::NAN,
+    }
+}
+
 /// JavaScript truthiness (`!value` is false).
 pub(crate) fn js_truthy<V: JsView>(value: &V) -> bool {
     match value.js() {
