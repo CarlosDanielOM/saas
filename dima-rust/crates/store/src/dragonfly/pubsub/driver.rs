@@ -8,13 +8,32 @@
 //! ([`super::super::DragonflyConfig::response_timeout`]) discards the connection, and the
 //! subscriber reconnects and subscribes again.
 //!
+//! # Per-topic state
+//!
+//! On a connection every topic the server knows about has a [`Link`]: the server's state as of
+//! the last confirmation (subscribed or not) and the one command sent for it whose confirmation
+//! has not arrived, if any. At most one command per topic is in flight; when a subscription is
+//! added, replaced or dropped meanwhile, nothing is sent until that confirmation arrives, and
+//! then the next command, if one is still needed, is sent ([`Connection::reconcile`]). So a
+//! confirmation always belongs to the latest command for its topic, and:
+//!
+//! - a subscription is **live** only when its topic's link is settled (nothing in flight) and
+//!   subscribed: the server is then sending its messages;
+//! - messages are delivered only to a live subscription (anything before is from the time
+//!   before it was subscribed), so an unsubscribe in between can never open a silent hole;
+//! - a link without a subscription is unsubscribed, then forgotten.
+//!
+//! A reconnect starts with no links: every subscription is sent again and is owed a gap marker
+//! (`Gap` subscriptions) until it is live again.
+//!
 //! Bytes go from the socket into one buffer, are cut into frames ([`super::resp::Framer`], which
 //! keeps its progress through an incomplete frame between reads, so a frame arriving in many
 //! reads is not parsed again each time; every bulk string bounded by
 //! `subscription_max_message_bytes`, the whole frame by that plus a small overhead) and handed
-//! to the subscriptions at once, which never wait ([`super::Inbox`]). So the stage between the socket and the subscriptions holds at
-//! most one frame being received plus one read; the socket is read only as fast as frames are
-//! dispatched, and a frame over the limit discards the connection instead of growing the buffer.
+//! to the subscriptions at once, which never wait ([`super::Inbox`]). So the stage between the
+//! socket and the subscriptions holds at most one frame being received plus one read; the socket
+//! is read only as fast as frames are dispatched, and a frame over the limit discards the
+//! connection instead of growing the buffer.
 //!
 //! A connection that stays silent for the ping interval is sent `PING`, under the same deadline,
 //! so a peer that stops answering is noticed even without control traffic.
@@ -94,8 +113,15 @@ struct Pending {
     kind: Kind,
     topic: Option<Topic>,
     deadline: Instant,
-    /// One of the subscriptions sent when the connection opened.
-    initial: bool,
+}
+
+/// What the server has been asked about one topic on this connection (see the module docs).
+#[derive(Debug, Default)]
+struct Link {
+    /// The server's state as of the last confirmation.
+    subscribed: bool,
+    /// The command sent for the topic whose confirmation has not arrived (at most one).
+    in_flight: Option<Kind>,
 }
 
 struct Connection {
@@ -107,10 +133,12 @@ struct Connection {
     framer: resp::Framer,
     output: Vec<u8>,
     pending: VecDeque<Pending>,
+    /// Every topic the server knows about on this connection; a superset of the subscriptions.
+    links: HashMap<Topic, Link>,
+    /// Links with a command in flight; the connection is ready the first time it is 0.
+    unsettled: usize,
     ping_pending: bool,
     last_heard: Instant,
-    /// Initial subscriptions still unconfirmed; the connection is ready at 0.
-    initial: usize,
     ready: bool,
 }
 
@@ -201,10 +229,7 @@ pub(super) async fn run(
                 continue;
             }
         };
-        connection.resubscribe(&entries, limits);
-        if connection.initial == 0 {
-            connection.become_ready(&state);
-        }
+        connection.open(&mut entries, &state, limits);
 
         let lost = serve(&mut connection, &mut control, &mut entries, &state, limits).await;
         if connection.ready {
@@ -252,7 +277,7 @@ fn offline(
             mut entry,
             ack,
         }) => {
-            let Some(ack) = admit(&topic, entries, ack, limits) else {
+            let Some(ack) = admit(entries.len(), entries.contains_key(&topic), ack, limits) else {
                 return Flow::Continue;
             };
             // A replacement takes over a gap its predecessor was owed.
@@ -279,9 +304,11 @@ fn offline(
 }
 
 /// Refuses a new topic beyond the cap (the request's entry is dropped, its stream ends);
-/// otherwise hands the acknowledgement back.
-fn admit(topic: &Topic, entries: &HashMap<Topic, Entry>, ack: Ack, limits: Limits) -> Option<Ack> {
-    if !entries.contains_key(topic) && entries.len() >= limits.max_subscriptions {
+/// otherwise hands the acknowledgement back. `held` counts the topics that occupy a place
+/// (on a connection, also those still being unsubscribed); `known` says whether this topic is
+/// one of them.
+fn admit(held: usize, known: bool, ack: Ack, limits: Limits) -> Option<Ack> {
+    if !known && held >= limits.max_subscriptions {
         let _ = ack.send(Err(DragonflyError::TooManySubscriptions {
             limit: limits.max_subscriptions,
         }));
@@ -309,13 +336,10 @@ async fn serve(
                 None => return Ok(None),
                 Some(Control::Shutdown { ack }) => return Ok(Some(ack)),
                 Some(Control::Subscribe { topic, entry, ack }) => {
-                    connection.subscribe_request(topic, entry, ack, entries, limits);
+                    connection.subscribe_request(topic, entry, ack, entries, state, limits);
                 }
                 Some(Control::Unsubscribe { topic, id }) => {
-                    if entries.get(&topic).is_some_and(|entry| entry.id == id) {
-                        entries.remove(&topic);
-                        connection.queue(Kind::Unsubscribe, Some(topic), limits);
-                    }
+                    connection.unsubscribe_request(&topic, id, entries, limits);
                 }
             },
             read = connection.reader.read_buf(&mut connection.input) => match read {
@@ -343,7 +367,8 @@ async fn serve(
                 if !connection.ping_pending
                     && connection.last_heard + limits.ping_interval <= now
                 {
-                    connection.queue(Kind::Ping, None, limits);
+                    connection.ping_pending = true;
+                    connection.send(Kind::Ping, None, limits);
                 }
             }
         }
@@ -364,51 +389,87 @@ impl Connection {
     }
 
     /// Writes the command and records the confirmation it waits for.
-    fn queue(&mut self, kind: Kind, topic: Option<Topic>, limits: Limits) {
-        self.queue_marked(kind, topic, limits, false);
-    }
-
-    fn queue_marked(&mut self, kind: Kind, topic: Option<Topic>, limits: Limits, initial: bool) {
-        match (&kind, &topic) {
-            (Kind::Subscribe, Some(Topic::Channel(name))) => {
-                resp::command(&mut self.output, &[b"SUBSCRIBE", name.as_bytes()]);
-            }
-            (Kind::Subscribe, Some(Topic::Pattern(name))) => {
-                resp::command(&mut self.output, &[b"PSUBSCRIBE", name.as_bytes()]);
-            }
-            (Kind::Unsubscribe, Some(Topic::Channel(name))) => {
-                resp::command(&mut self.output, &[b"UNSUBSCRIBE", name.as_bytes()]);
-            }
-            (Kind::Unsubscribe, Some(Topic::Pattern(name))) => {
-                resp::command(&mut self.output, &[b"PUNSUBSCRIBE", name.as_bytes()]);
-            }
-            (Kind::Ping, _) => {
-                resp::command(&mut self.output, &[b"PING"]);
-                self.ping_pending = true;
-            }
+    fn send(&mut self, kind: Kind, topic: Option<&Topic>, limits: Limits) {
+        let (name, bytes): (&[u8], &[u8]) = match (kind, topic) {
+            (Kind::Subscribe, Some(Topic::Channel(name))) => (b"SUBSCRIBE", name.as_bytes()),
+            (Kind::Subscribe, Some(Topic::Pattern(name))) => (b"PSUBSCRIBE", name.as_bytes()),
+            (Kind::Unsubscribe, Some(Topic::Channel(name))) => (b"UNSUBSCRIBE", name.as_bytes()),
+            (Kind::Unsubscribe, Some(Topic::Pattern(name))) => (b"PUNSUBSCRIBE", name.as_bytes()),
+            (Kind::Ping, _) => (b"PING", b""),
             // Subscribe and unsubscribe always name a topic.
             (_, None) => return,
+        };
+        if kind == Kind::Ping {
+            resp::command(&mut self.output, &[name]);
+        } else {
+            resp::command(&mut self.output, &[name, bytes]);
         }
         self.pending.push_back(Pending {
             kind,
-            topic,
+            topic: topic.cloned(),
             deadline: Instant::now() + limits.control_timeout,
-            initial,
         });
     }
 
-    /// Subscribes to everything registered, as the connection opens.
-    fn resubscribe(&mut self, entries: &HashMap<Topic, Entry>, limits: Limits) {
-        for topic in entries.keys() {
-            self.queue_marked(Kind::Subscribe, Some(topic.clone()), limits, true);
+    /// The connection opened: every registered subscription is sent.
+    fn open(&mut self, entries: &mut HashMap<Topic, Entry>, state: &State, limits: Limits) {
+        let topics: Vec<Topic> = entries.keys().cloned().collect();
+        for topic in &topics {
+            self.reconcile(topic, entries, limits);
         }
-        self.initial = entries.len();
+        self.check_ready(state);
     }
 
-    fn become_ready(&mut self, state: &State) {
-        self.ready = true;
-        state.connection_id.store(self.id, Ordering::Relaxed);
-        state.connections.fetch_add(1, Ordering::Relaxed);
+    /// Brings the server's state for `topic` towards what is wanted (subscribed while it has a
+    /// subscription), one command at a time, and makes the subscription live once the server
+    /// is subscribed with nothing in flight.
+    fn reconcile(&mut self, topic: &Topic, entries: &mut HashMap<Topic, Entry>, limits: Limits) {
+        loop {
+            let wanted = entries.contains_key(topic);
+            let link = match self.links.get_mut(topic) {
+                Some(link) => link,
+                None if wanted => self.links.entry(topic.clone()).or_default(),
+                None => return,
+            };
+            if link.in_flight.is_some() {
+                return;
+            }
+            if link.subscribed != wanted {
+                let kind = if wanted {
+                    Kind::Subscribe
+                } else {
+                    Kind::Unsubscribe
+                };
+                link.in_flight = Some(kind);
+                self.unsettled += 1;
+                self.send(kind, Some(topic), limits);
+                return;
+            }
+            if !wanted {
+                self.links.remove(topic);
+                return;
+            }
+            // Settled and subscribed: the subscription is live.
+            match entries.get_mut(topic) {
+                Some(entry) if !entry.live => {
+                    if !entry.go_live() {
+                        // Its receiver is gone: unsubscribe.
+                        entries.remove(topic);
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+            return;
+        }
+    }
+
+    fn check_ready(&mut self, state: &State) {
+        if !self.ready && self.unsettled == 0 {
+            self.ready = true;
+            state.connection_id.store(self.id, Ordering::Relaxed);
+            state.connections.fetch_add(1, Ordering::Relaxed);
+        }
     }
 
     fn subscribe_request(
@@ -417,18 +478,19 @@ impl Connection {
         mut entry: Entry,
         ack: Ack,
         entries: &mut HashMap<Topic, Entry>,
+        state: &State,
         limits: Limits,
     ) {
-        let Some(ack) = admit(&topic, entries, ack, limits) else {
+        let known = entries.contains_key(&topic) || self.links.contains_key(&topic);
+        let Some(ack) = admit(self.links.len(), known, ack, limits) else {
             return;
         };
         match entries.remove(&topic) {
-            // Replacing a topic keeps its server subscription: the new subscription is live as
-            // soon as that one is (the old stream ends).
+            // A replacement keeps the server's subscription: it is live when that one is (the
+            // old stream ends), and takes over a gap the old one was owed.
             Some(mut old) => {
                 old.release_waiters(false);
                 entry.live = old.live;
-                // Not live yet after a reconnect: the gap it was owed is the new one's.
                 entry.owe_gap = old.owe_gap;
                 if entry.live {
                     let _ = ack.send(Ok(true));
@@ -436,12 +498,25 @@ impl Connection {
                     entry.waiters.push(ack);
                 }
             }
-            None => {
-                entry.waiters.push(ack);
-                self.queue(Kind::Subscribe, Some(topic.clone()), limits);
-            }
+            None => entry.waiters.push(ack),
         }
-        entries.insert(topic, entry);
+        entries.insert(topic.clone(), entry);
+        self.reconcile(&topic, entries, limits);
+        self.check_ready(state);
+    }
+
+    /// A subscription was dropped: unsubscribe unless it was replaced meanwhile.
+    fn unsubscribe_request(
+        &mut self,
+        topic: &Topic,
+        id: u64,
+        entries: &mut HashMap<Topic, Entry>,
+        limits: Limits,
+    ) {
+        if entries.get(topic).is_some_and(|entry| entry.id == id) {
+            entries.remove(topic);
+            self.reconcile(topic, entries, limits);
+        }
     }
 
     /// Parses and dispatches every complete frame in the input buffer.
@@ -508,19 +583,19 @@ impl Connection {
                 Ok(())
             }
             b"subscribe" => {
-                let topic = next().map(|name| channel_topic(name, false));
+                let topic = next().and_then(|name| channel_topic(name, false));
                 self.confirm(Kind::Subscribe, topic, entries, state, limits)
             }
             b"psubscribe" => {
-                let topic = next().map(|name| channel_topic(name, true));
+                let topic = next().and_then(|name| channel_topic(name, true));
                 self.confirm(Kind::Subscribe, topic, entries, state, limits)
             }
             b"unsubscribe" => {
-                let topic = next().map(|name| channel_topic(name, false));
+                let topic = next().and_then(|name| channel_topic(name, false));
                 self.confirm(Kind::Unsubscribe, topic, entries, state, limits)
             }
             b"punsubscribe" => {
-                let topic = next().map(|name| channel_topic(name, true));
+                let topic = next().and_then(|name| channel_topic(name, true));
                 self.confirm(Kind::Unsubscribe, topic, entries, state, limits)
             }
             b"pong" => self.confirm(Kind::Ping, None, entries, state, limits),
@@ -528,11 +603,12 @@ impl Connection {
         }
     }
 
-    /// Matches a confirmation with the oldest command that waits for one.
+    /// Matches a confirmation with the oldest command that waits for one; it must be that
+    /// command's, and (for a topic) the one command in flight for the topic.
     fn confirm(
         &mut self,
         kind: Kind,
-        topic: Option<Option<Topic>>,
+        topic: Option<Topic>,
         entries: &mut HashMap<Topic, Entry>,
         state: &State,
         limits: Limits,
@@ -542,36 +618,34 @@ impl Connection {
                 "a subscriber confirmation arrived that nothing waits for",
             ));
         };
-        let topic = topic.flatten();
-        if front.kind != kind || (kind != Kind::Ping && front.topic != topic) {
+        if front.kind != kind || front.topic != topic {
             return Err(Lost::Protocol(
                 "subscriber confirmations arrived out of order",
             ));
         }
-        match kind {
-            Kind::Ping => self.ping_pending = false,
-            Kind::Unsubscribe => {}
-            Kind::Subscribe => {
-                if let Some(topic) = &topic
-                    && let Some(entry) = entries.get_mut(topic)
-                    && !entry.live
-                    && !entry.go_live()
-                {
-                    entries.remove(topic);
-                    self.queue(Kind::Unsubscribe, Some(topic.clone()), limits);
-                }
-                if front.initial {
-                    self.initial = self.initial.saturating_sub(1);
-                    if self.initial == 0 && !self.ready {
-                        self.become_ready(state);
-                    }
-                }
-            }
-        }
+        let Some(topic) = topic else {
+            self.ping_pending = false;
+            return Ok(());
+        };
+        let Some(link) = self
+            .links
+            .get_mut(&topic)
+            .filter(|link| link.in_flight == Some(kind))
+        else {
+            return Err(Lost::Protocol(
+                "a subscriber confirmation names a topic with no command in flight",
+            ));
+        };
+        link.in_flight = None;
+        link.subscribed = kind == Kind::Subscribe;
+        self.unsettled = self.unsettled.saturating_sub(1);
+        self.reconcile(&topic, entries, limits);
+        self.check_ready(state);
         Ok(())
     }
 
-    /// Hands one message to its subscription; one whose receiver is gone is unsubscribed.
+    /// Hands one message to its subscription if it is live; one whose receiver is gone is
+    /// unsubscribed.
     fn deliver(
         &mut self,
         channel: Vec<u8>,
@@ -591,7 +665,9 @@ impl Connection {
                 Err(_) => return,
             },
         };
-        let Some(entry) = entries.get(&topic) else {
+        // A subscription that is not live yet was requested after the server last subscribed
+        // the topic: what arrives now predates it.
+        let Some(entry) = entries.get(&topic).filter(|entry| entry.live) else {
             return;
         };
         let message = Message {
@@ -601,7 +677,7 @@ impl Connection {
         };
         if entry.inbox.push_message(message) == Push::Closed {
             entries.remove(&topic);
-            self.queue(Kind::Unsubscribe, Some(topic), limits);
+            self.reconcile(&topic, entries, limits);
         }
     }
 }
@@ -701,9 +777,10 @@ async fn connect(shared: &Shared) -> Result<Connection, ConnectError> {
                 framer: resp::Framer::default(),
                 output: Vec::new(),
                 pending: VecDeque::new(),
+                links: HashMap::new(),
+                unsettled: 0,
                 ping_pending: false,
                 last_heard: Instant::now(),
-                initial: 0,
                 ready: false,
             })
         }

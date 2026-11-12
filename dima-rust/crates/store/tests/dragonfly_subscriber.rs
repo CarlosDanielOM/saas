@@ -484,10 +484,19 @@ async fn subscriptions_beyond_the_cap_are_refused() -> Result<()> {
         .await?;
     ensure!(replaced.confirmed());
     drop(a);
-    // Dropping "b" frees a place.
+    // Dropping "b" frees a place once the server confirms the unsubscribe: until then "b"
+    // still holds state on the server.
     drop(b);
     ensure!(peer.command().await? == ["UNSUBSCRIBE", "b"]);
+    let early = subscriber
+        .subscribe(Topic::Channel("c".into()), Overflow::Gap)
+        .await;
+    ensure!(
+        matches!(early, Err(DragonflyError::TooManySubscriptions { .. })),
+        "{early:?}"
+    );
     peer.send(&confirmation("unsubscribe", "b", 1)).await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     let c = subscribed(&subscriber, &mut peer, "c").await?;
     ensure!(c.confirmed());
     drop(replaced);
@@ -751,5 +760,126 @@ async fn a_subscription_replaced_while_reconnecting_still_reports_the_gap() -> R
     script?;
     let mut new = new?;
     ensure!(next(&mut new).await? == RESUBSCRIBED);
+    Ok(())
+}
+
+/// Plays a server for one channel: confirms the commands read so far plus any that follow, one
+/// every `gap`, and records after each confirmation whether the server is then subscribed with
+/// nothing outstanding (the only state in which a subscription may be reported live).
+async fn confirm_like_a_server(
+    peer: &mut Peer,
+    mut queue: std::collections::VecDeque<Vec<String>>,
+    gap: Duration,
+    settled: &std::sync::atomic::AtomicBool,
+) -> Result<bool> {
+    use std::sync::atomic::Ordering;
+    let mut subscribed = false;
+    loop {
+        if queue.is_empty() {
+            match tokio::time::timeout(gap * 3, peer.commands.recv()).await {
+                Ok(Some(command)) => queue.push_back(command),
+                Ok(None) => bail!("the connection closed"),
+                Err(_) => return Ok(subscribed),
+            }
+        }
+        let Some(command) = queue.pop_front() else {
+            continue;
+        };
+        tokio::time::sleep(gap).await;
+        // Commands that arrived meanwhile are outstanding when this confirmation goes out.
+        while let Ok(more) = peer.commands.try_recv() {
+            queue.push_back(more);
+        }
+        let name = command.get(1).cloned().unwrap_or_default();
+        match command.first().map(String::as_str) {
+            Some("SUBSCRIBE") => {
+                subscribed = true;
+                settled.store(queue.is_empty(), Ordering::SeqCst);
+                peer.send(&confirmation("subscribe", &name, 1)).await?;
+            }
+            Some("UNSUBSCRIBE") => {
+                subscribed = false;
+                settled.store(false, Ordering::SeqCst);
+                peer.send(&confirmation("unsubscribe", &name, 0)).await?;
+            }
+            other => bail!("unexpected {other:?}"),
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_late_confirmation_does_not_make_a_newer_subscription_live() -> Result<()> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let mut mock = Mock::start().await?;
+    let subscriber = setup(mock.config(Duration::from_secs(10))).await?;
+    let mut peer = mock.peer().await?;
+    let old = subscribed(&subscriber, &mut peer, "a").await?;
+    // Reconnect: the subscriber sends SUBSCRIBE a again, unconfirmed for now.
+    drop(peer);
+    let mut fresh = mock.peer().await?;
+    ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    // The old subscription goes, and a new one on the same channel is requested before the
+    // server answers anything.
+    drop(old);
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let settled = AtomicBool::new(false);
+    let mut queue = std::collections::VecDeque::from([vec!["SUBSCRIBE".into(), "a".into()]]);
+    let server = async {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        while let Ok(more) = fresh.commands.try_recv() {
+            queue.push_back(more);
+        }
+        confirm_like_a_server(&mut fresh, queue, Duration::from_millis(100), &settled).await
+    };
+    let new = async {
+        let subscription = subscriber
+            .subscribe(Topic::Channel("a".into()), Overflow::Gap)
+            .await?;
+        // Live only once the server is subscribed with nothing outstanding for the channel.
+        let settled_now = settled.load(Ordering::SeqCst);
+        Ok::<_, anyhow::Error>((subscription, settled_now))
+    };
+    let (new, server) = tokio::join!(new, server);
+    let (mut new, settled_when_live) = new?;
+    ensure!(
+        server?,
+        "the server ends unsubscribed while a subscription exists"
+    );
+    ensure!(new.confirmed());
+    ensure!(
+        settled_when_live,
+        "reported live while the server still had a command to process for the channel"
+    );
+    fresh.send(&message("a", "after")).await?;
+    match next(&mut new).await? {
+        Event::Message(message) => ensure!(message.payload == b"after"),
+        other => bail!("{other:?}"),
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn churn_on_one_channel_never_reports_live_early() -> Result<()> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let mut mock = Mock::start().await?;
+    let subscriber = setup(mock.config(Duration::from_secs(10))).await?;
+    let mut peer = mock.peer().await?;
+    let first = subscribed(&subscriber, &mut peer, "a").await?;
+    // Unsubscribe in flight, then a new subscription on the same channel.
+    drop(first);
+    ensure!(peer.command().await? == ["UNSUBSCRIBE", "a"]);
+    let settled = AtomicBool::new(false);
+    let queue = std::collections::VecDeque::from([vec!["UNSUBSCRIBE".into(), "a".into()]]);
+    let server = confirm_like_a_server(&mut peer, queue, Duration::from_millis(100), &settled);
+    let new = async {
+        let subscription = subscriber
+            .subscribe(Topic::Channel("a".into()), Overflow::Gap)
+            .await?;
+        Ok::<_, anyhow::Error>((subscription, settled.load(Ordering::SeqCst)))
+    };
+    let (new, server) = tokio::join!(new, server);
+    let (new, settled_when_live) = new?;
+    ensure!(server?);
+    ensure!(new.confirmed() && settled_when_live);
     Ok(())
 }

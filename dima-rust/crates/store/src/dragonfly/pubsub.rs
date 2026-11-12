@@ -32,8 +32,8 @@
 //! # Memory bound
 //!
 //! - At most [`super::DragonflyConfig::max_subscriptions`] topics per subscriber (default
-//!   [`super::config::DEFAULT_MAX_SUBSCRIPTIONS`]); one more is refused with
-//!   [`DragonflyError::TooManySubscriptions`].
+//!   [`super::config::DEFAULT_MAX_SUBSCRIPTIONS`]), counting the topics still being
+//!   unsubscribed; one more is refused with [`DragonflyError::TooManySubscriptions`].
 //! - At most `subscription_buffer + 1` buffered events per subscription (above).
 //! - Between the socket and the subscriptions, one buffer holding the frame being received:
 //!   frames are dispatched as soon as they are complete, dispatch never waits, and the socket is
@@ -451,7 +451,9 @@ impl Subscriber {
     ///
     /// A new topic beyond [`super::DragonflyConfig::max_subscriptions`] is refused with
     /// [`DragonflyError::TooManySubscriptions`]; replacing a topic that is already subscribed is
-    /// always allowed.
+    /// always allowed. A dropped subscription keeps its place until the server confirms the
+    /// unsubscribe (normally well under a millisecond; at most the response timeout, after which
+    /// the connection is replaced), since the server still holds it until then.
     pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
