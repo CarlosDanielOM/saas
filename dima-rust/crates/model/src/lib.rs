@@ -303,6 +303,9 @@ pub mod cliprecommendations;
 pub mod collection;
 pub mod decode;
 mod defaults;
+pub mod duel_moderator_restores;
+pub mod duel_results;
+pub mod duel_widgets;
 pub mod enums;
 pub mod error;
 pub mod goal_contributions;
@@ -311,6 +314,7 @@ mod hooks;
 pub mod index;
 pub mod loaded;
 pub mod private;
+pub mod roulette_channels;
 pub mod shape;
 pub mod update_validation;
 pub mod validation;
@@ -418,6 +422,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &duel_moderator_restores::INFO,
+    &duel_results::INFO,
+    &duel_widgets::INFO,
+    &roulette_channels::INFO,
     &widget_channels::INFO,
     &goal_custom_receipts::INFO,
     &goal_contributions::INFO,

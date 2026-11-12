@@ -108,6 +108,10 @@
    "sha256": "09179f7e6b620e96f18a26370156447515daacc91c191c42a333823861f05895"
   },
   {
+   "path": "src/duel/completion.ts",
+   "sha256": "853a2914af781fa422be45c6f111d8a6c8949f23ef8edb561ef1713ed55a735d"
+  },
+  {
    "path": "src/duel/model.ts",
    "sha256": "08b5f2ec4720385ed76badcd90cbc6b8056069d6ff2b77970b8d91fd60100066"
   },
@@ -1669,6 +1673,522 @@
   }
  ],
  "models": {
+  "duel_moderator_restores": {
+   "model": "DuelModeratorRestore",
+   "file": "src/duel/completion.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userId",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "dueAt",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "dueAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "duel_results": {
+   "model": "DuelResult",
+   "file": "src/duel/stats.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "winner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "loser",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "streamer",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "at",
+      "kind": "value",
+      "type": "Number"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "winner",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "loser",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "at",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channel",
+       1
+      ],
+      [
+       "winner",
+       1
+      ],
+      [
+       "loser",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "duel_widgets": {
+   "model": "DuelWidget",
+   "file": "src/duel/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "settings",
+      "kind": "mixed"
+     },
+     {
+      "name": "challenge",
+      "kind": "mixed",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "run",
+      "kind": "mixed",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "tokenHash",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "overlayToken",
+      "kind": "mixed"
+     },
+     {
+      "name": "dueAt",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "statsRevision",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "languageConfigured",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "receipts",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "key",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "fingerprint",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "at",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "overlayToken"
+   ],
+   "validators": [
+    {
+     "path": "settings",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "dueAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "roulette_channels": {
+   "model": "RouletteChannel",
+   "file": "src/roulette/service.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "actions",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "drawId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "rouletteId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "itemId",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "label",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "source",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "dueAt",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "status",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "actor",
+         "kind": "mixed"
+        },
+        {
+         "name": "startedAt",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "finishedAt",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "actionDueAt",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "revision",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "state",
+      "kind": "mixed"
+     },
+     {
+      "name": "tokenHash",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "overlayToken",
+      "kind": "mixed"
+     },
+     {
+      "name": "dueAt",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "receipts",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "key",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "fingerprint",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "result",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "at",
+         "kind": "value",
+         "type": "Number"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "overlayToken"
+   ],
+   "validators": [
+    {
+     "path": "revision",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "state",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "dueAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "actionDueAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
   "channel_goals": {
    "model": "ChannelGoals",
    "file": "src/goals/service.ts",
@@ -21764,7 +22284,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ef47a15ede798622f"
+          "value": "6af4416e94743c645422146b"
          }
         },
         {
