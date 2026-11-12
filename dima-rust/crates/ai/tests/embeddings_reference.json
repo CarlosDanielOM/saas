@@ -1,0 +1,578 @@
+[
+  {
+    "service": "lfm2",
+    "texts": [],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {}
+    },
+    "requests": [],
+    "expected": {
+      "error": true,
+      "message": "No texts provided"
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "rate"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "rateLimit": true,
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              1
+            ],
+            "index": 0
+          }
+        ]
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"rate\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"rate\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          1
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m"
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "hi 😀"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              0.1,
+              0.2
+            ],
+            "index": 0
+          }
+        ],
+        "usage": {
+          "total_tokens": 3.125
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"hi 😀\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          0.1,
+          0.2
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m",
+      "tokens": 3.125
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "a",
+      "b"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              2
+            ],
+            "index": 1
+          },
+          {
+            "embedding": [
+              1
+            ],
+            "index": 0
+          }
+        ],
+        "usage": {
+          "total_tokens": 42
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":[\"a\",\"b\"],\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          1
+        ],
+        [
+          2
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m",
+      "tokens": 42
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "status": 400,
+      "body": {
+        "error": {
+          "message": "bad"
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"x\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "LFM2 API error: 400 Bad Request"
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "error": {
+          "message": "bad model"
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"x\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "bad model"
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": []
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"x\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "Empty embedding returned from LFM2 service",
+      "model": "lfm2.5-embedding-350m"
+    }
+  },
+  {
+    "service": "lfm2",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "timeout": true
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"x\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/v1/embeddings",
+        "body": "{\"input\":\"x\",\"model\":\"lfm2.5-embedding-350m\",\"kind\":\"document\"}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "Failed to generate embedding"
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {}
+    },
+    "requests": [],
+    "expected": {
+      "error": true,
+      "message": "No texts provided"
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "rate"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "rateLimit": true,
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              1
+            ],
+            "index": 0
+          }
+        ]
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"rate\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"rate\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          1
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m"
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "hi 😀"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              0.1,
+              0.2
+            ],
+            "index": 0
+          }
+        ],
+        "usage": {
+          "total_tokens": 3.125
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"hi 😀\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          0.1,
+          0.2
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m",
+      "tokens": 3.125
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "a",
+      "b"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": [
+          {
+            "embedding": [
+              2
+            ],
+            "index": 1
+          },
+          {
+            "embedding": [
+              1
+            ],
+            "index": 0
+          }
+        ],
+        "usage": {
+          "total_tokens": 42
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":[\"a\",\"b\"],\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "embeddings": [
+        [
+          2
+        ],
+        [
+          1
+        ]
+      ],
+      "model": "lfm2.5-embedding-350m",
+      "tokens": 42
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "status": 400,
+      "body": {
+        "error": {
+          "message": "bad"
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"x\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "OpenRouter API error: 400 Bad Request"
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "error": {
+          "message": "bad model"
+        }
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"x\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "bad model"
+    }
+  },
+  {
+    "service": "openrouter",
+    "texts": [
+      "x"
+    ],
+    "model": "lfm2.5-embedding-350m",
+    "kind": "document",
+    "channel": "c",
+    "reply": {
+      "body": {
+        "data": []
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/api/v1/embeddings",
+        "body": "{\"model\":\"lfm2.5-embedding-350m\",\"user\":\"c\",\"input\":\"x\",\"dimensions\":1024}",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": "Bearer test-only",
+          "http-referer": "https://domdimabot.com",
+          "x-openrouter-title": "DomDimaBot",
+          "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+          "x-openrouter-categories": "general-chat, roleplay"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "message": "Failed to generate embedding"
+    }
+  }
+]

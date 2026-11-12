@@ -1,0 +1,470 @@
+{
+  "cases": [
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": true,
+        "data": {
+          "summary": {
+            "headline": "Stream summary for test_channel",
+            "recap": "A great stream with lots of chat engagement.",
+            "highlights": [
+              "First highlight",
+              "Second highlight"
+            ]
+          },
+          "actions": [
+            {
+              "action": "create",
+              "type": "channel_lore",
+              "targetMemoryId": "",
+              "summary": "",
+              "content": "",
+              "confidence": 0.85,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            },
+            {
+              "action": "archive",
+              "type": "preference",
+              "targetMemoryId": "mem_abc123",
+              "summary": "",
+              "content": "",
+              "confidence": 0.9,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"OK\",\"recap\":\"A recap.\",\"highlights\":[]},\"actions\":[]}",
+      "expected": {
+        "ok": true,
+        "data": {
+          "summary": {
+            "headline": "OK",
+            "recap": "A recap.",
+            "highlights": []
+          },
+          "actions": []
+        }
+      }
+    },
+    {
+      "raw": "{\"actions\":[]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: summary: Invalid input: expected object, received undefined",
+        "rawSnippet": "{\"actions\":[]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "[]",
+      "expected": {
+        "ok": false,
+        "error": "Response is not a JSON object",
+        "rawSnippet": "[]",
+        "phase": "json"
+      }
+    },
+    {
+      "raw": "null",
+      "expected": {
+        "ok": false,
+        "error": "Response is not a JSON object",
+        "rawSnippet": "null",
+        "phase": "json"
+      }
+    },
+    {
+      "raw": "",
+      "expected": {
+        "ok": false,
+        "error": "Empty response from LLM",
+        "rawSnippet": "",
+        "phase": "empty"
+      }
+    },
+    {
+      "raw": "```json\n{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}\n```",
+      "expected": {
+        "ok": true,
+        "data": {
+          "summary": {
+            "headline": "Stream summary for test_channel",
+            "recap": "A great stream with lots of chat engagement.",
+            "highlights": [
+              "First highlight",
+              "Second highlight"
+            ]
+          },
+          "actions": [
+            {
+              "action": "create",
+              "type": "channel_lore",
+              "targetMemoryId": "",
+              "summary": "",
+              "content": "",
+              "confidence": 0.85,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            },
+            {
+              "action": "archive",
+              "type": "preference",
+              "targetMemoryId": "mem_abc123",
+              "summary": "",
+              "content": "",
+              "confidence": 0.9,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "raw": "```\n{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}\n```",
+      "expected": {
+        "ok": true,
+        "data": {
+          "summary": {
+            "headline": "Stream summary for test_channel",
+            "recap": "A great stream with lots of chat engagement.",
+            "highlights": [
+              "First highlight",
+              "Second highlight"
+            ]
+          },
+          "actions": [
+            {
+              "action": "create",
+              "type": "channel_lore",
+              "targetMemoryId": "",
+              "summary": "",
+              "content": "",
+              "confidence": 0.85,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            },
+            {
+              "action": "archive",
+              "type": "preference",
+              "targetMemoryId": "mem_abc123",
+              "summary": "",
+              "content": "",
+              "confidence": 0.9,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":",
+      "expected": {
+        "ok": false,
+        "error": "JSON parse error: Unexpected end of JSON input",
+        "rawSnippet": "{\"summary\":{\"headline\":",
+        "phase": "json"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"Create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: actions.0.action: Invalid option: expected one of \"create\"|\"edit\"|\"archive\"|\"delete\"|\"noop\"",
+        "rawSnippet": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"Create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"merge\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: actions.0.action: Invalid option: expected one of \"create\"|\"edit\"|\"archive\"|\"delete\"|\"noop\"",
+        "rawSnippet": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"merge\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":1.5,\"risk\":\"low\"}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: actions.0.confidence: Too big: expected number to be <=1",
+        "rawSnippet": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":1.5,\"risk\":\"low\"}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":-0.5,\"risk\":\"low\"}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: actions.0.confidence: Too small: expected number to be >=0",
+        "rawSnippet": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":-0.5,\"risk\":\"low\"}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"extreme\"}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: actions.0.risk: Invalid option: expected one of \"low\"|\"medium\"|\"high\"",
+        "rawSnippet": "{\"summary\":{\"headline\":\"Stream summary for test_channel\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"extreme\"}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":12345,\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: summary.headline: Invalid input: expected string, received number",
+        "rawSnippet": "{\"summary\":{\"headline\":12345,\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: summary.headline: Too small: expected string to have >=1 characters",
+        "rawSnippet": "{\"summary\":{\"headline\":\"\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: summary.headline: Too big: expected string to have <=120 characters",
+        "rawSnippet": "{\"summary\":{\"headline\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+        "phase": "schema"
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": true,
+        "data": {
+          "summary": {
+            "headline": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "recap": "A great stream with lots of chat engagement.",
+            "highlights": [
+              "First highlight",
+              "Second highlight"
+            ]
+          },
+          "actions": [
+            {
+              "action": "create",
+              "type": "channel_lore",
+              "targetMemoryId": "",
+              "summary": "",
+              "content": "",
+              "confidence": 0.85,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            },
+            {
+              "action": "archive",
+              "type": "preference",
+              "targetMemoryId": "mem_abc123",
+              "summary": "",
+              "content": "",
+              "confidence": 0.9,
+              "risk": "low",
+              "reason": "",
+              "evidence": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "raw": "{\"summary\":{\"headline\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+      "expected": {
+        "ok": false,
+        "error": "Schema validation failed: summary.headline: Too big: expected string to have <=120 characters",
+        "rawSnippet": "{\"summary\":{\"headline\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"recap\":\"A great stream with lots of chat engagement.\",\"highlights\":[\"First highlight\",\"Second highlight\"]},\"actions\":[{\"action\":\"create\",\"type\":\"channel_lore\",\"confidence\":0.85,\"risk\":\"low\"},{\"action\":\"archive\",\"type\":\"preference\",\"targetMemoryId\":\"mem_abc123\",\"confidence\":0.9}]}",
+        "phase": "schema"
+      }
+    }
+  ],
+  "sanitized": [
+    {
+      "input": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": [
+            "h1"
+          ]
+        },
+        "actions": [
+          {
+            "action": "create"
+          }
+        ]
+      },
+      "fallback": {
+        "defaultHeadline": "FB HEADLINE",
+        "defaultRecap": "FB RECAP"
+      },
+      "expected": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": [
+            "h1"
+          ]
+        },
+        "actions": [
+          {
+            "action": "create",
+            "type": "",
+            "targetMemoryId": "",
+            "summary": "",
+            "content": "",
+            "confidence": 0,
+            "risk": "low",
+            "reason": "",
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": []
+        },
+        "actions": [
+          {
+            "action": "create",
+            "type": "",
+            "confidence": 5,
+            "risk": "low"
+          },
+          {
+            "action": "create",
+            "type": "",
+            "confidence": -2,
+            "risk": "low"
+          }
+        ]
+      },
+      "fallback": {
+        "defaultHeadline": "FB HEADLINE",
+        "defaultRecap": "FB RECAP"
+      },
+      "expected": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": []
+        },
+        "actions": [
+          {
+            "action": "create",
+            "type": "",
+            "targetMemoryId": "",
+            "summary": "",
+            "content": "",
+            "confidence": 1,
+            "risk": "low",
+            "reason": "",
+            "evidence": []
+          },
+          {
+            "action": "create",
+            "type": "",
+            "targetMemoryId": "",
+            "summary": "",
+            "content": "",
+            "confidence": 0,
+            "risk": "low",
+            "reason": "",
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": [
+            "a",
+            "",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i"
+          ]
+        },
+        "actions": []
+      },
+      "fallback": {
+        "defaultHeadline": "FB HEADLINE",
+        "defaultRecap": "FB RECAP"
+      },
+      "expected": {
+        "summary": {
+          "headline": "H",
+          "recap": "R",
+          "highlights": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h"
+          ]
+        },
+        "actions": []
+      }
+    },
+    {
+      "input": {
+        "summary": {
+          "headline": "",
+          "recap": "",
+          "highlights": []
+        },
+        "actions": []
+      },
+      "fallback": {
+        "defaultHeadline": "FB HEADLINE",
+        "defaultRecap": "FB RECAP"
+      },
+      "expected": {
+        "summary": {
+          "headline": "FB HEADLINE",
+          "recap": "FB RECAP",
+          "highlights": []
+        },
+        "actions": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+[
+  {
+    "query": "",
+    "reply": {},
+    "expected": {
+      "success": false,
+      "error": "Search query is required"
+    }
+  },
+  {
+    "query": "hello 😀 +&",
+    "reply": {
+      "results": [
+        {
+          "title": "a",
+          "url": "u",
+          "content": "c",
+          "score": 0.5
+        },
+        {},
+        {
+          "title": "third"
+        },
+        {
+          "title": "fourth"
+        }
+      ]
+    },
+    "target": "/search?q=hello+%F0%9F%98%80+%2B%26&format=json",
+    "expected": {
+      "success": true,
+      "results": [
+        {
+          "title": "a",
+          "url": "u",
+          "content": "c",
+          "score": 0.5
+        },
+        {
+          "title": "Untitled",
+          "url": "",
+          "content": "",
+          "score": 0
+        },
+        {
+          "title": "third",
+          "url": "",
+          "content": "",
+          "score": 0
+        }
+      ]
+    }
+  },
+  {
+    "query": "مرحبا é",
+    "reply": {
+      "results": []
+    },
+    "target": "/search?q=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7+e%CC%81&format=json",
+    "expected": {
+      "success": true,
+      "results": []
+    }
+  },
+  {
+    "query": "bad",
+    "reply": {
+      "error": "busy"
+    },
+    "target": "/search?q=bad&format=json",
+    "expected": {
+      "success": false,
+      "error": "Search failed: busy"
+    }
+  }
+]

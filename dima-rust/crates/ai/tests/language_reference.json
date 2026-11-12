@@ -1,0 +1,110 @@
+[
+  {
+    "text": "",
+    "expected": "unknown"
+  },
+  {
+    "text": "hello world",
+    "expected": "unknown"
+  },
+  {
+    "text": "the the the",
+    "expected": "english"
+  },
+  {
+    "text": "I am going to the store",
+    "expected": "english"
+  },
+  {
+    "text": "me gusta el canal",
+    "expected": "spanish"
+  },
+  {
+    "text": "je suis dans le canal",
+    "expected": "french"
+  },
+  {
+    "text": "eu gosto de jogar",
+    "expected": "spanish"
+  },
+  {
+    "text": "😀 é مرحبا",
+    "expected": "portuguese"
+  },
+  {
+    "text": "que que que que",
+    "expected": "spanish"
+  },
+  {
+    "text": "",
+    "expected": "unknown"
+  },
+  {
+    "text": "hello world",
+    "expected": "unknown"
+  },
+  {
+    "text": "the the the",
+    "expected": "english"
+  },
+  {
+    "text": "I am going to the store",
+    "expected": "english"
+  },
+  {
+    "text": "me gusta el canal",
+    "expected": "spanish"
+  },
+  {
+    "text": "je suis dans le canal",
+    "expected": "french"
+  },
+  {
+    "text": "eu gosto de jogar",
+    "expected": "spanish"
+  },
+  {
+    "text": "😀 é مرحبا",
+    "expected": "portuguese"
+  },
+  {
+    "text": "que que que que",
+    "expected": "spanish"
+  },
+  {
+    "text": "",
+    "expected": "unknown"
+  },
+  {
+    "text": "hello world",
+    "expected": "unknown"
+  },
+  {
+    "text": "the the the",
+    "expected": "english"
+  },
+  {
+    "text": "I am going to the store",
+    "expected": "english"
+  },
+  {
+    "text": "me gusta el canal",
+    "expected": "spanish"
+  },
+  {
+    "text": "je suis dans le canal",
+    "expected": "french"
+  },
+  {
+    "text": "eu gosto de jogar",
+    "expected": "spanish"
+  },
+  {
+    "text": "😀 é مرحبا",
+    "expected": "portuguese"
+  },
+  {
+    "text": "que que que que",
+    "expected": "spanish"
+  }
+]

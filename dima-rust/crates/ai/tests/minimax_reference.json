@@ -1,0 +1,332 @@
+[
+  {
+    "mode": "success",
+    "status": 200,
+    "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"MiniMax-M3.1-Flash\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":1,\"cache_read_input_tokens\":3}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello 😀\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":7,\"output_tokens_details\":{\"thinking_tokens\":2}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 120000
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [
+      "Hello 😀"
+    ],
+    "expected": {
+      "content": "Hello 😀",
+      "inputTokens": 12,
+      "outputTokens": 7,
+      "cacheReadTokens": 3,
+      "thinkingTokens": 2,
+      "cost": 0.000006045,
+      "stopReason": "end_turn",
+      "model": "MiniMax-M3.1-Flash",
+      "rounds": 1,
+      "toolCalls": []
+    }
+  },
+  {
+    "mode": "tools",
+    "status": 200,
+    "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"MiniMax-M3.1-Flash\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":1,\"cache_read_input_tokens\":3}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello 😀\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":7,\"output_tokens_details\":{\"thinking_tokens\":2}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 120000,
+      "tools": [
+        {
+          "definition": {
+            "name": "lookup",
+            "description": "lookup",
+            "input_schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      ],
+      "maxToolRounds": 2
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"tools\":[{\"name\":\"lookup\",\"description\":\"lookup\",\"input_schema\":{\"type\":\"object\",\"properties\":{}}}],\"tool_choice\":{\"type\":\"auto\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"secret thought\",\"signature\":\"sig\"},{\"type\":\"tool_use\",\"id\":\"tool_1\",\"name\":\"lookup\",\"input\":{\"q\":\"hello\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"tool_1\",\"content\":\"{\\\"ok\\\":true}\"},{\"type\":\"text\",\"text\":\"You have no more tool calls. Answer the user now, using what you already found.\"}]}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"tools\":[{\"name\":\"lookup\",\"description\":\"lookup\",\"input_schema\":{\"type\":\"object\",\"properties\":{}}}],\"tool_choice\":{\"type\":\"none\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [
+      "Hello 😀"
+    ],
+    "toolBody": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"MiniMax-M3.1-Flash\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":1,\"cache_read_input_tokens\":3}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"secret thought\",\"signature\":\"sig\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_1\",\"name\":\"lookup\",\"input\":{}}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"q\\\":\\\"hello\\\"}\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":2}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+    "expected": {
+      "content": "Hello 😀",
+      "inputTokens": 24,
+      "outputTokens": 9,
+      "cacheReadTokens": 6,
+      "thinkingTokens": 2,
+      "cost": 0.00000909,
+      "stopReason": "end_turn",
+      "model": "MiniMax-M3.1-Flash",
+      "rounds": 2,
+      "toolCalls": [
+        {
+          "name": "lookup",
+          "input": {
+            "q": "hello"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "mode": "bad_request",
+    "status": 400,
+    "body": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"bad\"}}",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 120000
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [],
+    "error": {
+      "kind": "bad_request",
+      "status": 400
+    }
+  },
+  {
+    "mode": "rate_limited",
+    "status": 429,
+    "body": "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"bad\"}}",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 120000
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      },
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [],
+    "error": {
+      "kind": "rate_limited",
+      "status": 429
+    }
+  },
+  {
+    "mode": "overloaded",
+    "status": 200,
+    "body": "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"busy\"}}\n\n",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 120000
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [],
+    "error": {
+      "kind": "overloaded"
+    }
+  },
+  {
+    "mode": "timeout",
+    "status": 200,
+    "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"MiniMax-M3.1-Flash\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":12,\"output_tokens\":1,\"cache_read_input_tokens\":3}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello 😀\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":7,\"output_tokens_details\":{\"thinking_tokens\":2}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+    "params": {
+      "messages": [
+        {
+          "role": "system",
+          "content": "ignored"
+        },
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ],
+      "system": [
+        {
+          "type": "text",
+          "text": "Be helpful"
+        }
+      ],
+      "effort": "high",
+      "idleTimeoutMs": 30
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "target": "/anthropic/v1/messages",
+        "body": "{\"model\":\"MiniMax-M3.1-Flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"system\":[{\"type\":\"text\",\"text\":\"Be helpful\"}],\"max_tokens\":524288,\"output_config\":{\"effort\":\"high\"},\"stream\":true}",
+        "headers": {
+          "content-type": "application/json",
+          "x-api-key": "test-only",
+          "anthropic-version": "2023-06-01",
+          "x-stainless-helper-method": "stream"
+        }
+      }
+    ],
+    "text": [],
+    "error": {
+      "kind": "timeout"
+    }
+  }
+]

@@ -1,0 +1,113 @@
+{
+  "name": "stream_summary_decision",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "summary",
+      "actions"
+    ],
+    "properties": {
+      "summary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "headline",
+          "recap",
+          "highlights"
+        ],
+        "properties": {
+          "headline": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "recap": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxItems": 8
+          }
+        }
+      },
+      "actions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "type",
+            "targetMemoryId",
+            "summary",
+            "content",
+            "confidence",
+            "risk",
+            "reason",
+            "evidence"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "create",
+                "edit",
+                "archive",
+                "delete",
+                "noop"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "channel_lore",
+                "running_joke",
+                "known_user_fact",
+                "preference",
+                "boundary",
+                ""
+              ]
+            },
+            "targetMemoryId": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "risk": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
