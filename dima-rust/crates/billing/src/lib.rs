@@ -84,6 +84,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod account_cancellation;
+pub mod admin_grant;
 pub mod config;
 pub mod credit_packs;
 pub mod credit_sources;
@@ -91,6 +93,7 @@ pub mod free_credit_reset;
 pub mod gifts;
 pub mod js;
 pub mod mongo_ops;
+pub mod order_rewards;
 pub mod plans;
 pub mod polar;
 pub mod products;
