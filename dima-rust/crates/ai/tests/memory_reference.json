@@ -1,0 +1,5351 @@
+[
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "😀😀😀😀 i love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "😀😀😀😀 i love",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "😀😀😀😀 i love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "!i love this game",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "!i love this game",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "!i love this game",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "short",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "short",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "short",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "https://example.test love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "https://example.test love",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "https://example.test love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "@user i love this game",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "@user i love this game",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "@user i love this game",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "I love playing chess",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "I love playing chess",
+      "summary": " Alice  preference: I love playing chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "I love playing chess",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "I love playing chess",
+      "summary": " Alice  preference: I love playing chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "I love playing chess",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "I love playing chess",
+      "summary": " Alice  preference: I love playing chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "my favorite game is chess",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.98,
+      "content": "my favorite game is chess",
+      "summary": " Alice  preference: my favorite game is chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "my favorite game is chess",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.93,
+      "content": "my favorite game is chess",
+      "summary": " Alice  preference: my favorite game is chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "my favorite game is chess",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "my favorite game is chess",
+      "summary": " Alice  preference: my favorite game is chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "no me gusta la lluvia",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "no me gusta la lluvia",
+      "summary": " Alice  preference: no me gusta la lluvia",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "no me gusta la lluvia",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "no me gusta la lluvia",
+      "summary": " Alice  preference: no me gusta la lluvia",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "no me gusta la lluvia",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "no me gusta la lluvia",
+      "summary": " Alice  preference: no me gusta la lluvia",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "never mention spoilers",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "boundary",
+      "risk": "medium",
+      "confidence": 0.84,
+      "content": "never mention spoilers",
+      "summary": "Boundary request from  Alice : never mention spoilers",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "never mention spoilers",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "boundary",
+      "risk": "medium",
+      "confidence": 0.79,
+      "content": "never mention spoilers",
+      "summary": "Boundary request from  Alice : never mention spoilers",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "never mention spoilers",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "boundary",
+      "risk": "medium",
+      "confidence": 0.74,
+      "content": "never mention spoilers",
+      "summary": "Boundary request from  Alice : never mention spoilers",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "en este canal siempre ganamos",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "channel_lore",
+      "risk": "low",
+      "confidence": 0.9,
+      "content": "en este canal siempre ganamos",
+      "summary": "Channel lore note: en este canal siempre ganamos",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "en este canal siempre ganamos",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "channel_lore",
+      "risk": "low",
+      "confidence": 0.8500000000000001,
+      "content": "en este canal siempre ganamos",
+      "summary": "Channel lore note: en este canal siempre ganamos",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "en este canal siempre ganamos",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "channel_lore",
+      "risk": "low",
+      "confidence": 0.8,
+      "content": "en este canal siempre ganamos",
+      "summary": "Channel lore note: en este canal siempre ganamos",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "lol this is so funny",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "running_joke",
+      "risk": "low",
+      "confidence": 0.7999999999999999,
+      "content": "lol this is so funny",
+      "summary": "Potential running joke: lol this is so funny",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "lol this is so funny",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "running_joke",
+      "risk": "low",
+      "confidence": 0.75,
+      "content": "lol this is so funny",
+      "summary": "Potential running joke: lol this is so funny",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "lol this is so funny",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "running_joke",
+      "risk": "low",
+      "confidence": 0.7,
+      "content": "lol this is so funny",
+      "summary": "Potential running joke: lol this is so funny",
+      "subject": {
+        "scope": "channel"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "I am a software developer",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "confidence": 0.83,
+      "content": "I am a software developer",
+      "summary": "Known user fact from  Alice : I am a software developer",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "I am a software developer",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "confidence": 0.78,
+      "content": "I am a software developer",
+      "summary": "Known user fact from  Alice : I am a software developer",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "I am a software developer",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "confidence": 0.73,
+      "content": "I am a software developer",
+      "summary": "Known user fact from  Alice : I am a software developer",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "ordinary unremarkable sentence",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "ordinary unremarkable sentence",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "ordinary unremarkable sentence",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": null
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "😀😀😀😀😀 i love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "😀😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "😀😀😀😀😀 i love",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "😀😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "😀😀😀😀😀 i love",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "😀😀😀😀😀 i love",
+      "summary": " Alice  preference: 😀😀😀😀😀 i love",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "é مرحبا me gusta el juego",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "é مرحبا me gusta el juego",
+      "summary": " Alice  preference: é مرحبا me gusta el juego",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "é مرحبا me gusta el juego",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "é مرحبا me gusta el juego",
+      "summary": " Alice  preference: é مرحبا me gusta el juego",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "é مرحبا me gusta el juego",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "é مرحبا me gusta el juego",
+      "summary": " Alice  preference: é مرحبا me gusta el juego",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "1",
+      "username": " Alice ",
+      "message": "﻿ i\n love\t chess ﻿",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.88,
+      "content": "i love chess",
+      "summary": " Alice  preference: i love chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "1"
+      },
+      "source": "streamer",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "﻿ i\n love\t chess ﻿",
+      "badges": [
+        {
+          "id": "LEAD_MOD"
+        }
+      ],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.8300000000000001,
+      "content": "i love chess",
+      "summary": " Alice  preference: i love chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "mod",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "extract",
+    "input": {
+      "channelID": "1",
+      "userID": "2",
+      "username": " Alice ",
+      "message": "﻿ i\n love\t chess ﻿",
+      "badges": [],
+      "timestamp": 123
+    },
+    "expected": {
+      "type": "preference",
+      "risk": "low",
+      "confidence": 0.78,
+      "content": "i love chess",
+      "summary": " Alice  preference: i love chess",
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "2"
+      },
+      "source": "chat",
+      "timestamp": 123
+    }
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "preference",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "boundary",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "known_user_fact",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "channel_lore",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "low",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "medium",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "channel",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": false
+      }
+    },
+    "expected": "Running joke memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": false,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "User memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": "Sensitive memories are disabled for this channel"
+  },
+  {
+    "operation": "policy",
+    "input": {
+      "type": "running_joke",
+      "risk": "high",
+      "scope": "user",
+      "policy": {
+        "allowSensitiveMemories": true,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+      }
+    },
+    "expected": null
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "subject": {
+        "scope": "channel",
+        "username": "",
+        "userID": ""
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "subject": {
+        "scope": "channel",
+        "username": "",
+        "userID": ""
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "subject": {
+        "scope": "channel",
+        "username": "",
+        "userID": ""
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "subject": {
+        "scope": "channel",
+        "username": "",
+        "userID": ""
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "alice",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "alice",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "alice",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "alice",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "123"
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "Bob",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "Bob",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "Bob",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "preference",
+      "requestedUsername": "Bob",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "Chat users can only create memories about themselves"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "123"
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "alice",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "alice",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "alice",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "alice",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "subject": {
+        "scope": "user",
+        "username": "Alice",
+        "userID": "123"
+      }
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "Bob",
+      "triggeringUsername": "",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "Bob",
+      "triggeringUsername": "",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "Bob",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": ""
+    },
+    "expected": {
+      "error": "A stable Twitch user identity is required for user-scoped memories"
+    }
+  },
+  {
+    "operation": "subject",
+    "input": {
+      "type": "known_user_fact",
+      "requestedUsername": "Bob",
+      "triggeringUsername": " Alice ",
+      "triggeringUserID": "123"
+    },
+    "expected": {
+      "error": "Chat users can only create memories about themselves"
+    }
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "chess is fun",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "chess is fun",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "chess is fun",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "chess is fun",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "hello world",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "hello world",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "hello world",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "hello world",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "مرحبا عالم",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "مرحبا عالم",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "مرحبا عالم",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "مرحبا عالم",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "test",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "test",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "test",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "what do you remember",
+      "summary": "test",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "chess is fun",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "chess is fun",
+      "score": 0.45
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "chess is fun",
+      "score": 0.71
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "chess is fun",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "hello world",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "hello world",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "hello world",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "hello world",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "مرحبا عالم",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "مرحبا عالم",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "مرحبا عالم",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "مرحبا عالم",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "test",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "test",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "test",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "I like chess",
+      "summary": "test",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "chess is fun",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "chess is fun",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "chess is fun",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "chess is fun",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "hello world",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "hello world",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "hello world",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "hello world",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "مرحبا عالم",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "مرحبا عالم",
+      "score": 0.45
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "مرحبا عالم",
+      "score": 0.71
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "مرحبا عالم",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "test",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "test",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "test",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "مرحبا عالم",
+      "summary": "test",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "chess is fun",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "chess is fun",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "chess is fun",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "chess is fun",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "hello world",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "hello world",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "hello world",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "hello world",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "مرحبا عالم",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "مرحبا عالم",
+      "score": 0.45
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "مرحبا عالم",
+      "score": 0.71
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "مرحبا عالم",
+      "score": 0.72
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "test",
+      "score": 0.44
+    },
+    "expected": false
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "test",
+      "score": 0.45
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "test",
+      "score": 0.71
+    },
+    "expected": true
+  },
+  {
+    "operation": "relevance",
+    "input": {
+      "query": "😀é Test",
+      "summary": "test",
+      "score": 0.72
+    },
+    "expected": true
+  }
+]
