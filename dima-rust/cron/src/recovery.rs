@@ -23,7 +23,7 @@
 //! generations, never a token. Log lines go to the Dragonfly debug log and the telemetry
 //! export only, so standard output holds the answer alone.
 
-use crate::app::{self, Stores};
+use crate::app;
 use crate::config::Config;
 use dima_core::runtime::Shutdown;
 use dima_telemetry::{ConsoleTarget, Telemetry};
@@ -172,7 +172,7 @@ pub async fn run(mut config: Config, command: RecoveryCommand) -> u8 {
     {
         Ok(Ok(stores)) => match app::twitch(&config, &stores, &telemetry, &shutdown) {
             Ok(twitch) => {
-                let status = execute(&twitch, &stores, command).await;
+                let status = execute(&twitch, command).await;
                 shutdown.trigger();
                 twitch.shutdown().await;
                 status
@@ -211,7 +211,7 @@ async fn list(twitch: &Twitch) -> Result<Vec<RecoveryRecord>, u8> {
     }
 }
 
-async fn execute(twitch: &Twitch, _stores: &Stores, command: RecoveryCommand) -> u8 {
+async fn execute(twitch: &Twitch, command: RecoveryCommand) -> u8 {
     match command {
         RecoveryCommand::Reconcile => {
             let report = match twitch.reconcile_recovery().await {

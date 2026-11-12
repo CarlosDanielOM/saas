@@ -145,8 +145,8 @@ fn signal_name(signal: StopSignal) -> &'static str {
     }
 }
 
-/// The signal, or an error if the listener could not be installed (then only a fatal worker
-/// ends the process; the container's SIGKILL remains).
+/// The signal's name. If the listener fails later (it was installed at start), this logs it and
+/// never resolves: then only a fatal worker or the container's SIGKILL ends the process.
 async fn wait_signal<F>(stop: F, telemetry: &Telemetry) -> &'static str
 where
     F: Future<Output = std::io::Result<StopSignal>>,
@@ -195,17 +195,25 @@ pub async fn run(config: Config) -> Exit {
         }),
         LogOptions::console(),
     );
-    if let Some(signal) = early {
-        let name = signal.map(signal_name).unwrap_or("signal");
-        telemetry.info(
-            &json!({ "function": "shutdown", "process": "cron", "signal": name }),
-            LogOptions::console(),
-        );
-        return if flush(host::TELEMETRY_FLUSH).await {
-            Exit::Clean
-        } else {
-            Exit::Unclean
-        };
+    match early {
+        None => {}
+        Some(Ok(signal)) => {
+            telemetry.info(
+                &json!({ "function": "shutdown", "process": "cron", "signal": signal_name(signal) }),
+                LogOptions::console(),
+            );
+            return if flush(host::TELEMETRY_FLUSH).await {
+                Exit::Clean
+            } else {
+                Exit::Unclean
+            };
+        }
+        // Without the listener SIGTERM would kill the process without a shutdown: do not start.
+        Some(Err(error)) => {
+            startup_error(&telemetry, "signals", &error.to_string());
+            flush(host::TELEMETRY_FLUSH).await;
+            return Exit::Startup;
+        }
     }
     let connected = tokio::select! {
         signal = wait_signal(&mut stop, &telemetry) => Err(Some(signal)),

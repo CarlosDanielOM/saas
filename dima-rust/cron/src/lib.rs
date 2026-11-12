@@ -14,6 +14,15 @@
 //! - [`app`]: start-up and shutdown in order.
 //! - [`recovery`]: `dima-cron recovery ...`, the operator commands of the rollback procedure.
 //!
+//! # Memory
+//!
+//! Resident size of the release build on the development laptop (2026-11-12; local MongoDB and
+//! Dragonfly, telemetry export on, four runtime threads): **18 MiB** idle with the four workers
+//! polling an empty database for a minute; **31 MiB** at most while the three projection
+//! workers ran for a minute on a backlog of 150,000 activity events, 300 raid summaries and 300
+//! due baselines. The cron container measured 3.10 GiB in production before the migration
+//! (`ledger/baseline-production.md`), its seven native workers and their index 29 MiB.
+//!
 //! # Obligations, and the package that discharges each
 //!
 //! Collected by `ledger/upper-layers.md` section 5 (5.1 and 5.4); `[x]` is done here.
