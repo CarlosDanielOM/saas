@@ -1,0 +1,9315 @@
+{
+ "reference": "0c71108ee6e5d537104ad26b10db9d558fac22ab",
+ "sources": {
+  "classes/command.class.ts": "60d7d36129e28605d18273013fdc1b277f363aadced7fafe68f9bd0d4226371c",
+  "classes/chat_history.ts": "f121a5eb00732c99ff335bcb4cdad442768e1dff57b11d73c9c85066706b2e82",
+  "classes/cooldown.class.ts": "9646ba75eb64f43633046221c542e6c9288f3b16b5663cde541349ec7f4d44b1",
+  "utils/availability/service.ts": "f97c839a11145208f884a1d04536a48acc20eaa6edc74046a83be7a49ee63a9c",
+  "utils/availability/schema.ts": "98785af1992534d8d723cd429626d4da268aa8bf41023b3e12b01b2bdc4a2b26",
+  "utils/cache.ts": "d47b434fb5b4783d4a98e173838472b03a16193180ecca3339233ef23c8b0e46",
+  "utils/permissions/roles.ts": "9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20",
+  "middleware/channel_permissions.ts": "2743fa9f21e3e0b441185382b9e2c412b707248627cc6cd879a65aeeb92ea17a",
+  "handlers/special_parser.userlevel.ts": "4df1c90d7b6386dd4c5f03754a2bcecfbaabe2a0a3247b56a1d5fe825ea2442e",
+  "utils/ast_parser/randomuser_settings.ts": "4673e15823551c7127e9bdc98ce300d9fc993de3dc0c61e54f9be383aebb2376",
+  "utils/ast_variable_migration.ts": "1e567deae509b307cd0fcca860245095cb5400c42870c36818c111b0c2c1cb07",
+  "schemas/commands.schema.ts": "1a6ed070b37a850b9d358a86b2f97ff0a5e6b977f41ac7b51f2b01e0d9bb7da3",
+  "schemas/redemption_reward.schema.ts": "acc13c1d532d1078bbbb3d8260c7815565e63cae003fbad00564930b6b53e5a2",
+  "schemas/admin.schema.ts": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0"
+ },
+ "now": 1794475800250,
+ "seed": {
+  "commands": [
+   {
+    "_id": {
+     "$oid": "64a000000000000000000001"
+    },
+    "name": "hola",
+    "cmd": "hola",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 1",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000002"
+    },
+    "name": "Mayus",
+    "cmd": "Mayus",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 2",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000003"
+    },
+    "name": "off",
+    "cmd": "off",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 3",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": false,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000004"
+    },
+    "name": "kw",
+    "cmd": "kw",
+    "activation": "keyword",
+    "func": "custom",
+    "message": "reply 4",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000005"
+    },
+    "name": "both",
+    "cmd": "both",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 5",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000006"
+    },
+    "name": "both",
+    "cmd": "both",
+    "activation": "keyword",
+    "func": "custom",
+    "message": "reply 6",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000007"
+    },
+    "name": "ñandú",
+    "cmd": "ñandú",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 7",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000008"
+    },
+    "name": "café",
+    "cmd": "café",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 8",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000009"
+    },
+    "name": "!bang",
+    "cmd": "!bang",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 9",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000010"
+    },
+    "name": "dup",
+    "cmd": "dup",
+    "activation": "command",
+    "func": "custom",
+    "message": "first",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000011"
+    },
+    "name": "dup",
+    "cmd": "dup",
+    "activation": "command",
+    "func": "custom",
+    "message": "second",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000012"
+    },
+    "name": "alias",
+    "cmd": "real",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 12",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000013"
+    },
+    "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "cmd": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 13",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000014"
+    },
+    "name": "日本語",
+    "cmd": "日本語",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 14",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000015"
+    },
+    "name": "مرحبا",
+    "cmd": "مرحبا",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 15",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000016"
+    },
+    "name": "🎉fiesta",
+    "cmd": "🎉fiesta",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 16",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000017"
+    },
+    "name": "x",
+    "cmd": [
+     "arr1",
+     "arr2"
+    ],
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 17",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000018"
+    },
+    "name": "legacy",
+    "cmd": "legacy",
+    "func": "custom",
+    "message": "reply 18",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000019"
+    },
+    "name": "nullact",
+    "cmd": "nullact",
+    "activation": null,
+    "func": "custom",
+    "message": "reply 19",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000020"
+    },
+    "name": "other",
+    "cmd": "other",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 20",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000002",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000021"
+    },
+    "name": "hola",
+    "cmd": "hola",
+    "activation": "command",
+    "func": "custom",
+    "message": "hola from B",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000002",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000022"
+    },
+    "name": "zw​j",
+    "cmd": "zw​j",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 22",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "10"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": true,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000000023"
+    },
+    "name": "disabled2",
+    "cmd": "disabled2",
+    "activation": "command",
+    "func": "custom",
+    "message": "reply 23",
+    "authoring": "text",
+    "responses": [],
+    "variables": {},
+    "type": "command",
+    "platform": "twitch",
+    "reserved": false,
+    "description": "d",
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "count": {
+     "$numberInt": "0"
+    },
+    "userLevelName": "everyone",
+    "userLevel": {
+     "$numberInt": "0"
+    },
+    "permissionExpression": null,
+    "permissions": {},
+    "enabled": false,
+    "paused": false,
+    "channel": "chan",
+    "channelID": "990000001",
+    "premiumRequired": false,
+    "premiumLevelRequired": {
+     "$numberInt": "0"
+    },
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794389400250"
+     }
+    },
+    "date": {
+     "day": {
+      "$numberInt": "11"
+     },
+     "month": {
+      "$numberInt": "11"
+     },
+     "year": {
+      "$numberInt": "2026"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   }
+  ],
+  "rewards": [
+   {
+    "_id": {
+     "$oid": "64a000000000000000001001"
+    },
+    "eventsubID": "sub-1",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-1",
+    "title": "Hydrate",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": true,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "createdFor": "twitch",
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000001002"
+    },
+    "eventsubID": "sub-2",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-2",
+    "title": "Stretch",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": true,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000001003"
+    },
+    "eventsubID": "sub-3",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-3",
+    "title": "Same",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": true,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "createdFor": "twitch",
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000001004"
+    },
+    "eventsubID": "sub-4",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-4",
+    "title": "Same",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": true,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "createdFor": "twitch",
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000001005"
+    },
+    "eventsubID": "sub-5",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-5",
+    "title": "Kick one",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": true,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "createdFor": "kick",
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000001006"
+    },
+    "eventsubID": "sub-6",
+    "channelID": "990000001",
+    "channel": "chan",
+    "rewardID": "reward-6",
+    "title": "Off reward",
+    "type": "custom",
+    "prompt": "",
+    "originalCost": {
+     "$numberInt": "100"
+    },
+    "cost": {
+     "$numberInt": "100"
+    },
+    "isEnabled": false,
+    "message": "",
+    "costChange": {
+     "$numberInt": "0"
+    },
+    "returnToOriginalCost": false,
+    "duration": {
+     "$numberInt": "0"
+    },
+    "cooldown": {
+     "$numberInt": "0"
+    },
+    "backgroundColor": "#000000",
+    "createdFrom": "domdimabot",
+    "createdFor": "twitch",
+    "__v": {
+     "$numberInt": "0"
+    }
+   }
+  ],
+  "admins": [
+   {
+    "_id": {
+     "$oid": "64a000000000000000002001"
+    },
+    "adminName": "Admin1",
+    "adminID": "a1",
+    "channelName": "chan",
+    "channelID": "990000003",
+    "role": "channel",
+    "actived": true,
+    "permissions": [
+     "chat:admin"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000002002"
+    },
+    "adminName": "ÉLODIE",
+    "adminID": "a2",
+    "channelName": "chan",
+    "channelID": "990000003",
+    "role": "channel",
+    "actived": true,
+    "permissions": [
+     "*"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000002003"
+    },
+    "adminName": "Admin3",
+    "adminID": "a3",
+    "channelName": "chan",
+    "channelID": "990000003",
+    "role": "channel",
+    "actived": true,
+    "permissions": [
+     "dashboard:view"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000002004"
+    },
+    "adminName": "Admin4",
+    "adminID": "a4",
+    "channelName": "chan",
+    "channelID": "990000003",
+    "role": "channel",
+    "actived": false,
+    "permissions": [
+     "chat:admin"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000002005"
+    },
+    "adminName": "Admin5",
+    "adminID": "",
+    "channelName": "chan",
+    "channelID": "990000003",
+    "role": "channel",
+    "actived": true,
+    "permissions": [
+     "chat:admin"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   },
+   {
+    "_id": {
+     "$oid": "64a000000000000000002006"
+    },
+    "adminName": "Admin6",
+    "adminID": "a6",
+    "channelName": "chan",
+    "channelID": "990000002",
+    "role": "channel",
+    "actived": true,
+    "permissions": [
+     "chat:admin"
+    ],
+    "createdAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "updatedAt": {
+     "$date": {
+      "$numberLong": "1794475799250"
+     }
+    },
+    "__v": {
+     "$numberInt": "0"
+    }
+   }
+  ]
+ },
+ "lookups": [
+  {
+   "channel": "990000001",
+   "name": "hola",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000001",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000001",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000001",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000001",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "Hola",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "HOLA",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "!hola",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "Mayus",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000002",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000002",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000002",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000002",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "mayus",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "off",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000003",
+     "enabled": false,
+     "cacheKey": {
+      "id": "64a000000000000000000003",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000003",
+     "enabled": false,
+     "cacheKey": {
+      "id": "64a000000000000000000003",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "kw",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "both",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000005",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000005",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000005",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000005",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "ñandú",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000007",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000007",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000007",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000007",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "Nándu",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "café",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000008",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000008",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000008",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000008",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "café",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "!bang",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000009",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000009",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000009",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000009",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "bang",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "dup",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000010",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000010",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000010",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000010",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "alias",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "real",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000012",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000012",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000012",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000012",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000013",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000013",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000013",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000013",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "日本語",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000014",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000014",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000014",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000014",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "مرحبا",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000015",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000015",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000015",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000015",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "🎉fiesta",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000016",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000016",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000016",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000016",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "arr1",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000017",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000017",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000017",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000017",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "arr2",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000017",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000017",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000017",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000017",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "arr",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "legacy",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000018",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000018",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000018",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000018",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "nullact",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000019",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000019",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000019",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000019",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "other",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "nope",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": " hola",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "hola ",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "zw​j",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000022",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000022",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000022",
+     "enabled": true,
+     "cacheKey": {
+      "id": "64a000000000000000000022",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "zwj",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "disabled2",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000023",
+     "enabled": false,
+     "cacheKey": {
+      "id": "64a000000000000000000023",
+      "ttl": 3600
+     }
+    },
+    {
+     "error": false,
+     "message": "Command retrieved from cache",
+     "id": "64a000000000000000000023",
+     "enabled": false,
+     "cacheKey": {
+      "id": "64a000000000000000000023",
+      "ttl": 3600
+     }
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "العربية́",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000001",
+   "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "steps": [
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null,
+     "enabled": null,
+     "cacheKey": null
+    }
+   ]
+  },
+  {
+   "channel": "990000002",
+   "name": "hola",
+   "steps": [
+    {
+     "error": false,
+     "message": "Command retrieved",
+     "id": "64a000000000000000000021"
+    }
+   ]
+  }
+ ],
+ "writes": [
+  {
+   "name": "count_update",
+   "results": [
+    {
+     "error": false,
+     "message": "Command updated"
+    },
+    {
+     "error": true,
+     "message": "Command does not exist"
+    },
+    {
+     "error": false,
+     "message": "Command updated"
+    },
+    {
+     "error": false,
+     "message": "Command updated"
+    }
+   ],
+   "afterLookup": {
+    "message": "Command retrieved",
+    "count": 5
+   },
+   "cacheKeyAfter": 1,
+   "documents": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000001"
+      },
+      "name": "hola",
+      "cmd": "hola",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 1",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "5"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     },
+     {
+      "_id": {
+       "$oid": "64a000000000000000000002"
+      },
+      "name": "Mayus",
+      "cmd": "Mayus",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 2",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberDouble": "2.5"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     },
+     {
+      "_id": {
+       "$oid": "64a000000000000000000007"
+      },
+      "name": "ñandú",
+      "cmd": "ñandú",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 7",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberDouble": "3000000000.0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "killed_writer",
+   "served": "reply 1",
+   "message": "Command retrieved from cache",
+   "ttl": 3600
+  },
+  {
+   "name": "delete_many",
+   "served": "64a000000000000000000001",
+   "message": "Command retrieved from cache"
+  },
+  {
+   "name": "read_write_race",
+   "update": "Command updated",
+   "served": false,
+   "stored": true,
+   "message": "Command retrieved from cache",
+   "ttl": 3600
+  },
+  {
+   "name": "delete",
+   "results": [
+    {
+     "error": false,
+     "message": "Command deleted successfully",
+     "id": "64a000000000000000000001"
+    },
+    {
+     "error": true,
+     "message": "Command does not exist",
+     "id": null
+    }
+   ],
+   "after": "Command does not exist",
+   "documents": {
+    "changed": [],
+    "deleted": [
+     "64a000000000000000000001"
+    ]
+   }
+  }
+ ],
+ "availability": [
+  {
+   "name": "disable_command",
+   "steps": [
+    {
+     "op": "lookup",
+     "name": "hola"
+    },
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false
+    },
+    {
+     "op": "lookup",
+     "name": "hola"
+    }
+   ],
+   "results": [
+    {
+     "lookup": "Command retrieved",
+     "enabled": true
+    },
+    {
+     "ok": true
+    },
+    {
+     "lookup": "Command retrieved",
+     "enabled": false
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000001"
+      },
+      "name": "hola",
+      "cmd": "hola",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 1",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": false,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "disable_command_case_and_bang",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "!HOLA",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000001"
+      },
+      "name": "hola",
+      "cmd": "hola",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 1",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": false,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "enable_command_timed",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "off",
+     "enabled": true,
+     "seconds": 300
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000003"
+      },
+      "name": "off",
+      "cmd": "off",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 3",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": false,
+       "restoreAt": {
+        "$date": {
+         "$numberLong": "1794476100250"
+        }
+       },
+       "pending": false,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794476100250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "enable_command_timed_twice",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "off",
+     "enabled": true,
+     "seconds": 300
+    },
+    {
+     "op": "advance",
+     "ms": 10000
+    },
+    {
+     "op": "set",
+     "target": "command",
+     "name": "off",
+     "enabled": true,
+     "seconds": 600
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    },
+    {
+     "now": 1794475810250
+    },
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000003"
+      },
+      "name": "off",
+      "cmd": "off",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 3",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": false,
+       "restoreAt": {
+        "$date": {
+         "$numberLong": "1794476410250"
+        }
+       },
+       "pending": false,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794476410250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "timed_then_untimed",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "off",
+     "enabled": true,
+     "seconds": 300
+    },
+    {
+     "op": "set",
+     "target": "command",
+     "name": "off",
+     "enabled": true
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    },
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000003"
+      },
+      "name": "off",
+      "cmd": "off",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 3",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": true,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "timed_restore",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": 60
+    },
+    {
+     "op": "advance",
+     "ms": 61000
+    },
+    {
+     "op": "recover"
+    },
+    {
+     "op": "lookup",
+     "name": "hola"
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    },
+    {
+     "now": 1794475861250
+    },
+    {
+     "recovered": true
+    },
+    {
+     "lookup": "Command retrieved",
+     "enabled": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "command_not_found",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "nope",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Command not found"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "command_ambiguous",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "dup",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Command name is ambiguous"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "command_keyword_ignored",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "kw",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Command not found"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "command_regex_characters",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "h.la",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Command not found"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "command_unicode_case",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "ÑANDÚ",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000007"
+      },
+      "name": "ñandú",
+      "cmd": "ñandú",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 7",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": false,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "duration_zero",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": 0
+    }
+   ],
+   "results": [
+    {
+     "error": "Duration must be a whole number of seconds from 1 to 604800"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "duration_fraction",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": 1.5
+    }
+   ],
+   "results": [
+    {
+     "error": "Duration must be a whole number of seconds from 1 to 604800"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "duration_too_long",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": 604801
+    }
+   ],
+   "results": [
+    {
+     "error": "Duration must be a whole number of seconds from 1 to 604800"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "duration_nan",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": "NaN"
+    }
+   ],
+   "results": [
+    {
+     "error": "Duration must be a whole number of seconds from 1 to 604800"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "duration_max",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "hola",
+     "enabled": false,
+     "seconds": 604800
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000000001"
+      },
+      "name": "hola",
+      "cmd": "hola",
+      "activation": "command",
+      "func": "custom",
+      "message": "reply 1",
+      "authoring": "text",
+      "responses": [],
+      "variables": {},
+      "type": "command",
+      "platform": "twitch",
+      "reserved": false,
+      "description": "d",
+      "cooldown": {
+       "$numberInt": "10"
+      },
+      "count": {
+       "$numberInt": "0"
+      },
+      "userLevelName": "everyone",
+      "userLevel": {
+       "$numberInt": "0"
+      },
+      "permissionExpression": null,
+      "permissions": {},
+      "enabled": false,
+      "paused": false,
+      "channel": "chan",
+      "channelID": "990000001",
+      "premiumRequired": false,
+      "premiumLevelRequired": {
+       "$numberInt": "0"
+      },
+      "createdAt": {
+       "$date": {
+        "$numberLong": "1794389400250"
+       }
+      },
+      "date": {
+       "day": {
+        "$numberInt": "11"
+       },
+       "month": {
+        "$numberInt": "11"
+       },
+       "year": {
+        "$numberInt": "2026"
+       }
+      },
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": true,
+       "restoreAt": {
+        "$date": {
+         "$numberLong": "1795080600250"
+        }
+       },
+       "pending": false,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1795080600250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "empty_name",
+   "steps": [
+    {
+     "op": "set",
+     "target": "command",
+     "name": "   ",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "A channel and target name are required"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "unknown_target",
+   "steps": [
+    {
+     "op": "set",
+     "target": "timer",
+     "name": "hola",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Unsupported availability target: timer"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_by_id",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "reward-1",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":false}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_by_title",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "hydrate",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":false}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_missing_created_for",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Stretch",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Only Twitch redemptions are supported"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_kick",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Kick one",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Only Twitch redemptions are supported"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_ambiguous",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "same",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Redemption name is ambiguous; use its reward ID"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_not_found",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Nothing",
+     "enabled": false
+    }
+   ],
+   "results": [
+    {
+     "error": "Redemption not found"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_twitch_error",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 404,
+       "body": "{\"error\":\"Not Found\",\"status\":404,\"message\":\"reward not found\"}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "error": "State saved; synchronization will retry automatically: reward not found"
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": true,
+       "restoreAt": null,
+       "pending": true,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794475830250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_twitch_error_no_message",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 500,
+       "body": "{\"error\":\"Internal Server Error\"}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "error": "State saved; synchronization will retry automatically: Twitch rejected the reward update"
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": true,
+       "restoreAt": null,
+       "pending": true,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794475830250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_not_confirmed",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":true}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "error": "State saved; synchronization will retry automatically: Twitch did not confirm the reward state"
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": true,
+       "restoreAt": null,
+       "pending": true,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794475830250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_no_credential",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "headerFailure": "[⚠️] Streamer not found for ID: {id} [/⚠️]"
+    }
+   ],
+   "results": [
+    {
+     "error": "State saved; synchronization will retry automatically: [⚠️] Streamer not found for ID: 990000001 [/⚠️]"
+    }
+   ],
+   "requests": [],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      },
+      "availability": {
+       "token": "uuid-1",
+       "previousEnabled": true,
+       "restoreAt": null,
+       "pending": true,
+       "nextAt": {
+        "$date": {
+         "$numberLong": "1794475830250"
+        }
+       }
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_retry_recovers",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "twitch": [
+      {
+       "status": 503,
+       "body": "{\"error\":\"Service Unavailable\",\"status\":503,\"message\":\"try later\"}"
+      }
+     ]
+    },
+    {
+     "op": "advance",
+     "ms": 10000
+    },
+    {
+     "op": "recover"
+    },
+    {
+     "op": "advance",
+     "ms": 21000
+    },
+    {
+     "op": "recover",
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":false}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "error": "State saved; synchronization will retry automatically: try later"
+    },
+    {
+     "now": 1794475810250
+    },
+    {
+     "recovered": true
+    },
+    {
+     "now": 1794475831250
+    },
+    {
+     "recovered": true
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    },
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001001"
+      },
+      "eventsubID": "sub-1",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-1",
+      "title": "Hydrate",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": false,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_timed_restore",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Hydrate",
+     "enabled": false,
+     "seconds": 60,
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":false}]}"
+      }
+     ]
+    },
+    {
+     "op": "advance",
+     "ms": 60000
+    },
+    {
+     "op": "recover",
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":true}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    },
+    {
+     "now": 1794475860250
+    },
+    {
+     "recovered": true
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":false}"
+    },
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-1",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":true}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [],
+    "deleted": []
+   }
+  },
+  {
+   "name": "reward_enable_disabled",
+   "steps": [
+    {
+     "op": "set",
+     "target": "redemption",
+     "name": "Off reward",
+     "enabled": true,
+     "twitch": [
+      {
+       "status": 200,
+       "body": "{\"data\":[{\"id\":\"x\",\"is_enabled\":true}]}"
+      }
+     ]
+    }
+   ],
+   "results": [
+    {
+     "ok": true
+    }
+   ],
+   "requests": [
+    {
+     "method": "PATCH",
+     "url": "https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=990000001&id=reward-6",
+     "headers": {
+      "client-id": "test-client-id",
+      "authorization": "Bearer streamer-token-990000001",
+      "content-type": "application/json"
+     },
+     "body": "{\"is_enabled\":true}"
+    }
+   ],
+   "commands": {
+    "changed": [],
+    "deleted": []
+   },
+   "rewards": {
+    "changed": [
+     {
+      "_id": {
+       "$oid": "64a000000000000000001006"
+      },
+      "eventsubID": "sub-6",
+      "channelID": "990000001",
+      "channel": "chan",
+      "rewardID": "reward-6",
+      "title": "Off reward",
+      "type": "custom",
+      "prompt": "",
+      "originalCost": {
+       "$numberInt": "100"
+      },
+      "cost": {
+       "$numberInt": "100"
+      },
+      "isEnabled": true,
+      "message": "",
+      "costChange": {
+       "$numberInt": "0"
+      },
+      "returnToOriginalCost": false,
+      "duration": {
+       "$numberInt": "0"
+      },
+      "cooldown": {
+       "$numberInt": "0"
+      },
+      "backgroundColor": "#000000",
+      "createdFrom": "domdimabot",
+      "createdFor": "twitch",
+      "__v": {
+       "$numberInt": "0"
+      }
+     }
+    ],
+    "deleted": []
+   }
+  }
+ ],
+ "history": {
+  "lengths": [
+   {
+    "after": 1,
+    "length": 1
+   },
+   {
+    "after": 100,
+    "length": 100
+   },
+   {
+    "after": 101,
+    "length": 100
+   },
+   {
+    "after": 105,
+    "length": 100
+   }
+  ],
+  "lengthAfterInvalid": 100,
+  "reads": {
+   "0": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User97",
+     "message": "message 97",
+     "timestamp": 1794475800347,
+     "messageID": "id-97",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User96",
+     "message": "message 96",
+     "timestamp": 1794475800346
+    },
+    {
+     "username": "User95",
+     "message": "مرحبا 95",
+     "timestamp": 1794475800345,
+     "messageID": "id-95",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User94",
+     "message": "message 94",
+     "timestamp": 1794475800344,
+     "messageID": "id-94",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User93",
+     "message": "message 93",
+     "timestamp": 1794475800343,
+     "messageID": "id-93"
+    },
+    {
+     "username": "User92",
+     "message": "message 92",
+     "timestamp": 1794475800342,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User91",
+     "message": "emoji 🎉 91",
+     "timestamp": 1794475800341,
+     "messageID": "id-91",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User90",
+     "message": "مرحبا 90",
+     "timestamp": 1794475800340,
+     "messageID": "id-90"
+    },
+    {
+     "username": "User89",
+     "message": "message 89",
+     "timestamp": 1794475800339,
+     "messageID": "id-89",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User88",
+     "message": "message 88",
+     "timestamp": 1794475800338,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User87",
+     "message": "message 87",
+     "timestamp": 1794475800337,
+     "messageID": "id-87"
+    },
+    {
+     "username": "User86",
+     "message": "message 86",
+     "timestamp": 1794475800336,
+     "messageID": "id-86",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User85",
+     "message": "مرحبا 85",
+     "timestamp": 1794475800335,
+     "messageID": "id-85",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User84",
+     "message": "emoji 🎉 84",
+     "timestamp": 1794475800334
+    },
+    {
+     "username": "User83",
+     "message": "message 83",
+     "timestamp": 1794475800333,
+     "messageID": "id-83",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User82",
+     "message": "message 82",
+     "timestamp": 1794475800332,
+     "messageID": "id-82",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User81",
+     "message": "message 81",
+     "timestamp": 1794475800331,
+     "messageID": "id-81"
+    },
+    {
+     "username": "User80",
+     "message": "مرحبا 80",
+     "timestamp": 1794475800330,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User79",
+     "message": "message 79",
+     "timestamp": 1794475800329,
+     "messageID": "id-79",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User78",
+     "message": "message 78",
+     "timestamp": 1794475800328,
+     "messageID": "id-78"
+    },
+    {
+     "username": "User77",
+     "message": "emoji 🎉 77",
+     "timestamp": 1794475800327,
+     "messageID": "id-77",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User76",
+     "message": "message 76",
+     "timestamp": 1794475800326,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User75",
+     "message": "مرحبا 75",
+     "timestamp": 1794475800325,
+     "messageID": "id-75"
+    },
+    {
+     "username": "User74",
+     "message": "message 74",
+     "timestamp": 1794475800324,
+     "messageID": "id-74",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User73",
+     "message": "message 73",
+     "timestamp": 1794475800323,
+     "messageID": "id-73",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User72",
+     "message": "message 72",
+     "timestamp": 1794475800322
+    },
+    {
+     "username": "User71",
+     "message": "message 71",
+     "timestamp": 1794475800321,
+     "messageID": "id-71",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User70",
+     "message": "emoji 🎉 70",
+     "timestamp": 1794475800320,
+     "messageID": "id-70",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User69",
+     "message": "message 69",
+     "timestamp": 1794475800319,
+     "messageID": "id-69"
+    },
+    {
+     "username": "User68",
+     "message": "message 68",
+     "timestamp": 1794475800318,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User67",
+     "message": "message 67",
+     "timestamp": 1794475800317,
+     "messageID": "id-67",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User66",
+     "message": "message 66",
+     "timestamp": 1794475800316,
+     "messageID": "id-66"
+    },
+    {
+     "username": "User65",
+     "message": "مرحبا 65",
+     "timestamp": 1794475800315,
+     "messageID": "id-65",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User64",
+     "message": "message 64",
+     "timestamp": 1794475800314,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User63",
+     "message": "emoji 🎉 63",
+     "timestamp": 1794475800313,
+     "messageID": "id-63"
+    },
+    {
+     "username": "User62",
+     "message": "message 62",
+     "timestamp": 1794475800312,
+     "messageID": "id-62",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User61",
+     "message": "message 61",
+     "timestamp": 1794475800311,
+     "messageID": "id-61",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User60",
+     "message": "مرحبا 60",
+     "timestamp": 1794475800310
+    },
+    {
+     "username": "User59",
+     "message": "message 59",
+     "timestamp": 1794475800309,
+     "messageID": "id-59",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User58",
+     "message": "message 58",
+     "timestamp": 1794475800308,
+     "messageID": "id-58",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User57",
+     "message": "message 57",
+     "timestamp": 1794475800307,
+     "messageID": "id-57"
+    },
+    {
+     "username": "User56",
+     "message": "emoji 🎉 56",
+     "timestamp": 1794475800306,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User55",
+     "message": "مرحبا 55",
+     "timestamp": 1794475800305,
+     "messageID": "id-55",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User54",
+     "message": "message 54",
+     "timestamp": 1794475800304,
+     "messageID": "id-54"
+    },
+    {
+     "username": "User53",
+     "message": "message 53",
+     "timestamp": 1794475800303,
+     "messageID": "id-53",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User52",
+     "message": "message 52",
+     "timestamp": 1794475800302,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User51",
+     "message": "message 51",
+     "timestamp": 1794475800301,
+     "messageID": "id-51"
+    },
+    {
+     "username": "User50",
+     "message": "مرحبا 50",
+     "timestamp": 1794475800300,
+     "messageID": "id-50",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User49",
+     "message": "emoji 🎉 49",
+     "timestamp": 1794475800299,
+     "messageID": "id-49",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User48",
+     "message": "message 48",
+     "timestamp": 1794475800298
+    },
+    {
+     "username": "User47",
+     "message": "message 47",
+     "timestamp": 1794475800297,
+     "messageID": "id-47",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User46",
+     "message": "message 46",
+     "timestamp": 1794475800296,
+     "messageID": "id-46",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User45",
+     "message": "مرحبا 45",
+     "timestamp": 1794475800295,
+     "messageID": "id-45"
+    },
+    {
+     "username": "User44",
+     "message": "message 44",
+     "timestamp": 1794475800294,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User43",
+     "message": "message 43",
+     "timestamp": 1794475800293,
+     "messageID": "id-43",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User42",
+     "message": "emoji 🎉 42",
+     "timestamp": 1794475800292,
+     "messageID": "id-42"
+    },
+    {
+     "username": "User41",
+     "message": "message 41",
+     "timestamp": 1794475800291,
+     "messageID": "id-41",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User40",
+     "message": "مرحبا 40",
+     "timestamp": 1794475800290,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User39",
+     "message": "message 39",
+     "timestamp": 1794475800289,
+     "messageID": "id-39"
+    },
+    {
+     "username": "User38",
+     "message": "message 38",
+     "timestamp": 1794475800288,
+     "messageID": "id-38",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User37",
+     "message": "message 37",
+     "timestamp": 1794475800287,
+     "messageID": "id-37",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User36",
+     "message": "message 36",
+     "timestamp": 1794475800286
+    },
+    {
+     "username": "User35",
+     "message": "emoji 🎉 35",
+     "timestamp": 1794475800285,
+     "messageID": "id-35",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User34",
+     "message": "message 34",
+     "timestamp": 1794475800284,
+     "messageID": "id-34",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User33",
+     "message": "message 33",
+     "timestamp": 1794475800283,
+     "messageID": "id-33"
+    },
+    {
+     "username": "User32",
+     "message": "message 32",
+     "timestamp": 1794475800282,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User31",
+     "message": "message 31",
+     "timestamp": 1794475800281,
+     "messageID": "id-31",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User30",
+     "message": "مرحبا 30",
+     "timestamp": 1794475800280,
+     "messageID": "id-30"
+    },
+    {
+     "username": "User29",
+     "message": "message 29",
+     "timestamp": 1794475800279,
+     "messageID": "id-29",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User28",
+     "message": "emoji 🎉 28",
+     "timestamp": 1794475800278,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User27",
+     "message": "message 27",
+     "timestamp": 1794475800277,
+     "messageID": "id-27"
+    },
+    {
+     "username": "User26",
+     "message": "message 26",
+     "timestamp": 1794475800276,
+     "messageID": "id-26",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User25",
+     "message": "مرحبا 25",
+     "timestamp": 1794475800275,
+     "messageID": "id-25",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User24",
+     "message": "message 24",
+     "timestamp": 1794475800274
+    },
+    {
+     "username": "User23",
+     "message": "message 23",
+     "timestamp": 1794475800273,
+     "messageID": "id-23",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User22",
+     "message": "message 22",
+     "timestamp": 1794475800272,
+     "messageID": "id-22",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User21",
+     "message": "emoji 🎉 21",
+     "timestamp": 1794475800271,
+     "messageID": "id-21"
+    },
+    {
+     "username": "User20",
+     "message": "مرحبا 20",
+     "timestamp": 1794475800270,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User19",
+     "message": "message 19",
+     "timestamp": 1794475800269,
+     "messageID": "id-19",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User18",
+     "message": "message 18",
+     "timestamp": 1794475800268,
+     "messageID": "id-18"
+    },
+    {
+     "username": "User17",
+     "message": "message 17",
+     "timestamp": 1794475800267,
+     "messageID": "id-17",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User16",
+     "message": "message 16",
+     "timestamp": 1794475800266,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User15",
+     "message": "مرحبا 15",
+     "timestamp": 1794475800265,
+     "messageID": "id-15"
+    },
+    {
+     "username": "User14",
+     "message": "emoji 🎉 14",
+     "timestamp": 1794475800264,
+     "messageID": "id-14",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User13",
+     "message": "message 13",
+     "timestamp": 1794475800263,
+     "messageID": "id-13",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User12",
+     "message": "message 12",
+     "timestamp": 1794475800262
+    },
+    {
+     "username": "User11",
+     "message": "message 11",
+     "timestamp": 1794475800261,
+     "messageID": "id-11",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User10",
+     "message": "مرحبا 10",
+     "timestamp": 1794475800260,
+     "messageID": "id-10",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User9",
+     "message": "message 9",
+     "timestamp": 1794475800259,
+     "messageID": "id-9"
+    },
+    {
+     "username": "User8",
+     "message": "message 8",
+     "timestamp": 1794475800258,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User7",
+     "message": "emoji 🎉 7",
+     "timestamp": 1794475800257,
+     "messageID": "id-7",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User6",
+     "message": "message 6",
+     "timestamp": 1794475800256,
+     "messageID": "id-6"
+    },
+    {
+     "username": "User5",
+     "message": "مرحبا 5",
+     "timestamp": 1794475800255,
+     "messageID": "id-5",
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ],
+   "1": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ],
+   "7": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ],
+   "30": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User97",
+     "message": "message 97",
+     "timestamp": 1794475800347,
+     "messageID": "id-97",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User96",
+     "message": "message 96",
+     "timestamp": 1794475800346
+    },
+    {
+     "username": "User95",
+     "message": "مرحبا 95",
+     "timestamp": 1794475800345,
+     "messageID": "id-95",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User94",
+     "message": "message 94",
+     "timestamp": 1794475800344,
+     "messageID": "id-94",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User93",
+     "message": "message 93",
+     "timestamp": 1794475800343,
+     "messageID": "id-93"
+    },
+    {
+     "username": "User92",
+     "message": "message 92",
+     "timestamp": 1794475800342,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User91",
+     "message": "emoji 🎉 91",
+     "timestamp": 1794475800341,
+     "messageID": "id-91",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User90",
+     "message": "مرحبا 90",
+     "timestamp": 1794475800340,
+     "messageID": "id-90"
+    },
+    {
+     "username": "User89",
+     "message": "message 89",
+     "timestamp": 1794475800339,
+     "messageID": "id-89",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User88",
+     "message": "message 88",
+     "timestamp": 1794475800338,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User87",
+     "message": "message 87",
+     "timestamp": 1794475800337,
+     "messageID": "id-87"
+    },
+    {
+     "username": "User86",
+     "message": "message 86",
+     "timestamp": 1794475800336,
+     "messageID": "id-86",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User85",
+     "message": "مرحبا 85",
+     "timestamp": 1794475800335,
+     "messageID": "id-85",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User84",
+     "message": "emoji 🎉 84",
+     "timestamp": 1794475800334
+    },
+    {
+     "username": "User83",
+     "message": "message 83",
+     "timestamp": 1794475800333,
+     "messageID": "id-83",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User82",
+     "message": "message 82",
+     "timestamp": 1794475800332,
+     "messageID": "id-82",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User81",
+     "message": "message 81",
+     "timestamp": 1794475800331,
+     "messageID": "id-81"
+    },
+    {
+     "username": "User80",
+     "message": "مرحبا 80",
+     "timestamp": 1794475800330,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User79",
+     "message": "message 79",
+     "timestamp": 1794475800329,
+     "messageID": "id-79",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User78",
+     "message": "message 78",
+     "timestamp": 1794475800328,
+     "messageID": "id-78"
+    },
+    {
+     "username": "User77",
+     "message": "emoji 🎉 77",
+     "timestamp": 1794475800327,
+     "messageID": "id-77",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User76",
+     "message": "message 76",
+     "timestamp": 1794475800326,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User75",
+     "message": "مرحبا 75",
+     "timestamp": 1794475800325,
+     "messageID": "id-75"
+    }
+   ],
+   "100": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User97",
+     "message": "message 97",
+     "timestamp": 1794475800347,
+     "messageID": "id-97",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User96",
+     "message": "message 96",
+     "timestamp": 1794475800346
+    },
+    {
+     "username": "User95",
+     "message": "مرحبا 95",
+     "timestamp": 1794475800345,
+     "messageID": "id-95",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User94",
+     "message": "message 94",
+     "timestamp": 1794475800344,
+     "messageID": "id-94",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User93",
+     "message": "message 93",
+     "timestamp": 1794475800343,
+     "messageID": "id-93"
+    },
+    {
+     "username": "User92",
+     "message": "message 92",
+     "timestamp": 1794475800342,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User91",
+     "message": "emoji 🎉 91",
+     "timestamp": 1794475800341,
+     "messageID": "id-91",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User90",
+     "message": "مرحبا 90",
+     "timestamp": 1794475800340,
+     "messageID": "id-90"
+    },
+    {
+     "username": "User89",
+     "message": "message 89",
+     "timestamp": 1794475800339,
+     "messageID": "id-89",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User88",
+     "message": "message 88",
+     "timestamp": 1794475800338,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User87",
+     "message": "message 87",
+     "timestamp": 1794475800337,
+     "messageID": "id-87"
+    },
+    {
+     "username": "User86",
+     "message": "message 86",
+     "timestamp": 1794475800336,
+     "messageID": "id-86",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User85",
+     "message": "مرحبا 85",
+     "timestamp": 1794475800335,
+     "messageID": "id-85",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User84",
+     "message": "emoji 🎉 84",
+     "timestamp": 1794475800334
+    },
+    {
+     "username": "User83",
+     "message": "message 83",
+     "timestamp": 1794475800333,
+     "messageID": "id-83",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User82",
+     "message": "message 82",
+     "timestamp": 1794475800332,
+     "messageID": "id-82",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User81",
+     "message": "message 81",
+     "timestamp": 1794475800331,
+     "messageID": "id-81"
+    },
+    {
+     "username": "User80",
+     "message": "مرحبا 80",
+     "timestamp": 1794475800330,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User79",
+     "message": "message 79",
+     "timestamp": 1794475800329,
+     "messageID": "id-79",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User78",
+     "message": "message 78",
+     "timestamp": 1794475800328,
+     "messageID": "id-78"
+    },
+    {
+     "username": "User77",
+     "message": "emoji 🎉 77",
+     "timestamp": 1794475800327,
+     "messageID": "id-77",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User76",
+     "message": "message 76",
+     "timestamp": 1794475800326,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User75",
+     "message": "مرحبا 75",
+     "timestamp": 1794475800325,
+     "messageID": "id-75"
+    },
+    {
+     "username": "User74",
+     "message": "message 74",
+     "timestamp": 1794475800324,
+     "messageID": "id-74",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User73",
+     "message": "message 73",
+     "timestamp": 1794475800323,
+     "messageID": "id-73",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User72",
+     "message": "message 72",
+     "timestamp": 1794475800322
+    },
+    {
+     "username": "User71",
+     "message": "message 71",
+     "timestamp": 1794475800321,
+     "messageID": "id-71",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User70",
+     "message": "emoji 🎉 70",
+     "timestamp": 1794475800320,
+     "messageID": "id-70",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User69",
+     "message": "message 69",
+     "timestamp": 1794475800319,
+     "messageID": "id-69"
+    },
+    {
+     "username": "User68",
+     "message": "message 68",
+     "timestamp": 1794475800318,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User67",
+     "message": "message 67",
+     "timestamp": 1794475800317,
+     "messageID": "id-67",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User66",
+     "message": "message 66",
+     "timestamp": 1794475800316,
+     "messageID": "id-66"
+    },
+    {
+     "username": "User65",
+     "message": "مرحبا 65",
+     "timestamp": 1794475800315,
+     "messageID": "id-65",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User64",
+     "message": "message 64",
+     "timestamp": 1794475800314,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User63",
+     "message": "emoji 🎉 63",
+     "timestamp": 1794475800313,
+     "messageID": "id-63"
+    },
+    {
+     "username": "User62",
+     "message": "message 62",
+     "timestamp": 1794475800312,
+     "messageID": "id-62",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User61",
+     "message": "message 61",
+     "timestamp": 1794475800311,
+     "messageID": "id-61",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User60",
+     "message": "مرحبا 60",
+     "timestamp": 1794475800310
+    },
+    {
+     "username": "User59",
+     "message": "message 59",
+     "timestamp": 1794475800309,
+     "messageID": "id-59",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User58",
+     "message": "message 58",
+     "timestamp": 1794475800308,
+     "messageID": "id-58",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User57",
+     "message": "message 57",
+     "timestamp": 1794475800307,
+     "messageID": "id-57"
+    },
+    {
+     "username": "User56",
+     "message": "emoji 🎉 56",
+     "timestamp": 1794475800306,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User55",
+     "message": "مرحبا 55",
+     "timestamp": 1794475800305,
+     "messageID": "id-55",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User54",
+     "message": "message 54",
+     "timestamp": 1794475800304,
+     "messageID": "id-54"
+    },
+    {
+     "username": "User53",
+     "message": "message 53",
+     "timestamp": 1794475800303,
+     "messageID": "id-53",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User52",
+     "message": "message 52",
+     "timestamp": 1794475800302,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User51",
+     "message": "message 51",
+     "timestamp": 1794475800301,
+     "messageID": "id-51"
+    },
+    {
+     "username": "User50",
+     "message": "مرحبا 50",
+     "timestamp": 1794475800300,
+     "messageID": "id-50",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User49",
+     "message": "emoji 🎉 49",
+     "timestamp": 1794475800299,
+     "messageID": "id-49",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User48",
+     "message": "message 48",
+     "timestamp": 1794475800298
+    },
+    {
+     "username": "User47",
+     "message": "message 47",
+     "timestamp": 1794475800297,
+     "messageID": "id-47",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User46",
+     "message": "message 46",
+     "timestamp": 1794475800296,
+     "messageID": "id-46",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User45",
+     "message": "مرحبا 45",
+     "timestamp": 1794475800295,
+     "messageID": "id-45"
+    },
+    {
+     "username": "User44",
+     "message": "message 44",
+     "timestamp": 1794475800294,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User43",
+     "message": "message 43",
+     "timestamp": 1794475800293,
+     "messageID": "id-43",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User42",
+     "message": "emoji 🎉 42",
+     "timestamp": 1794475800292,
+     "messageID": "id-42"
+    },
+    {
+     "username": "User41",
+     "message": "message 41",
+     "timestamp": 1794475800291,
+     "messageID": "id-41",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User40",
+     "message": "مرحبا 40",
+     "timestamp": 1794475800290,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User39",
+     "message": "message 39",
+     "timestamp": 1794475800289,
+     "messageID": "id-39"
+    },
+    {
+     "username": "User38",
+     "message": "message 38",
+     "timestamp": 1794475800288,
+     "messageID": "id-38",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User37",
+     "message": "message 37",
+     "timestamp": 1794475800287,
+     "messageID": "id-37",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User36",
+     "message": "message 36",
+     "timestamp": 1794475800286
+    },
+    {
+     "username": "User35",
+     "message": "emoji 🎉 35",
+     "timestamp": 1794475800285,
+     "messageID": "id-35",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User34",
+     "message": "message 34",
+     "timestamp": 1794475800284,
+     "messageID": "id-34",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User33",
+     "message": "message 33",
+     "timestamp": 1794475800283,
+     "messageID": "id-33"
+    },
+    {
+     "username": "User32",
+     "message": "message 32",
+     "timestamp": 1794475800282,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User31",
+     "message": "message 31",
+     "timestamp": 1794475800281,
+     "messageID": "id-31",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User30",
+     "message": "مرحبا 30",
+     "timestamp": 1794475800280,
+     "messageID": "id-30"
+    },
+    {
+     "username": "User29",
+     "message": "message 29",
+     "timestamp": 1794475800279,
+     "messageID": "id-29",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User28",
+     "message": "emoji 🎉 28",
+     "timestamp": 1794475800278,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User27",
+     "message": "message 27",
+     "timestamp": 1794475800277,
+     "messageID": "id-27"
+    },
+    {
+     "username": "User26",
+     "message": "message 26",
+     "timestamp": 1794475800276,
+     "messageID": "id-26",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User25",
+     "message": "مرحبا 25",
+     "timestamp": 1794475800275,
+     "messageID": "id-25",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User24",
+     "message": "message 24",
+     "timestamp": 1794475800274
+    },
+    {
+     "username": "User23",
+     "message": "message 23",
+     "timestamp": 1794475800273,
+     "messageID": "id-23",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User22",
+     "message": "message 22",
+     "timestamp": 1794475800272,
+     "messageID": "id-22",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User21",
+     "message": "emoji 🎉 21",
+     "timestamp": 1794475800271,
+     "messageID": "id-21"
+    },
+    {
+     "username": "User20",
+     "message": "مرحبا 20",
+     "timestamp": 1794475800270,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User19",
+     "message": "message 19",
+     "timestamp": 1794475800269,
+     "messageID": "id-19",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User18",
+     "message": "message 18",
+     "timestamp": 1794475800268,
+     "messageID": "id-18"
+    },
+    {
+     "username": "User17",
+     "message": "message 17",
+     "timestamp": 1794475800267,
+     "messageID": "id-17",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User16",
+     "message": "message 16",
+     "timestamp": 1794475800266,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User15",
+     "message": "مرحبا 15",
+     "timestamp": 1794475800265,
+     "messageID": "id-15"
+    },
+    {
+     "username": "User14",
+     "message": "emoji 🎉 14",
+     "timestamp": 1794475800264,
+     "messageID": "id-14",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User13",
+     "message": "message 13",
+     "timestamp": 1794475800263,
+     "messageID": "id-13",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User12",
+     "message": "message 12",
+     "timestamp": 1794475800262
+    },
+    {
+     "username": "User11",
+     "message": "message 11",
+     "timestamp": 1794475800261,
+     "messageID": "id-11",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User10",
+     "message": "مرحبا 10",
+     "timestamp": 1794475800260,
+     "messageID": "id-10",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User9",
+     "message": "message 9",
+     "timestamp": 1794475800259,
+     "messageID": "id-9"
+    },
+    {
+     "username": "User8",
+     "message": "message 8",
+     "timestamp": 1794475800258,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User7",
+     "message": "emoji 🎉 7",
+     "timestamp": 1794475800257,
+     "messageID": "id-7",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User6",
+     "message": "message 6",
+     "timestamp": 1794475800256,
+     "messageID": "id-6"
+    },
+    {
+     "username": "User5",
+     "message": "مرحبا 5",
+     "timestamp": 1794475800255,
+     "messageID": "id-5",
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ],
+   "200": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User97",
+     "message": "message 97",
+     "timestamp": 1794475800347,
+     "messageID": "id-97",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User96",
+     "message": "message 96",
+     "timestamp": 1794475800346
+    },
+    {
+     "username": "User95",
+     "message": "مرحبا 95",
+     "timestamp": 1794475800345,
+     "messageID": "id-95",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User94",
+     "message": "message 94",
+     "timestamp": 1794475800344,
+     "messageID": "id-94",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User93",
+     "message": "message 93",
+     "timestamp": 1794475800343,
+     "messageID": "id-93"
+    },
+    {
+     "username": "User92",
+     "message": "message 92",
+     "timestamp": 1794475800342,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User91",
+     "message": "emoji 🎉 91",
+     "timestamp": 1794475800341,
+     "messageID": "id-91",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User90",
+     "message": "مرحبا 90",
+     "timestamp": 1794475800340,
+     "messageID": "id-90"
+    },
+    {
+     "username": "User89",
+     "message": "message 89",
+     "timestamp": 1794475800339,
+     "messageID": "id-89",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User88",
+     "message": "message 88",
+     "timestamp": 1794475800338,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User87",
+     "message": "message 87",
+     "timestamp": 1794475800337,
+     "messageID": "id-87"
+    },
+    {
+     "username": "User86",
+     "message": "message 86",
+     "timestamp": 1794475800336,
+     "messageID": "id-86",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User85",
+     "message": "مرحبا 85",
+     "timestamp": 1794475800335,
+     "messageID": "id-85",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User84",
+     "message": "emoji 🎉 84",
+     "timestamp": 1794475800334
+    },
+    {
+     "username": "User83",
+     "message": "message 83",
+     "timestamp": 1794475800333,
+     "messageID": "id-83",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User82",
+     "message": "message 82",
+     "timestamp": 1794475800332,
+     "messageID": "id-82",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User81",
+     "message": "message 81",
+     "timestamp": 1794475800331,
+     "messageID": "id-81"
+    },
+    {
+     "username": "User80",
+     "message": "مرحبا 80",
+     "timestamp": 1794475800330,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User79",
+     "message": "message 79",
+     "timestamp": 1794475800329,
+     "messageID": "id-79",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User78",
+     "message": "message 78",
+     "timestamp": 1794475800328,
+     "messageID": "id-78"
+    },
+    {
+     "username": "User77",
+     "message": "emoji 🎉 77",
+     "timestamp": 1794475800327,
+     "messageID": "id-77",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User76",
+     "message": "message 76",
+     "timestamp": 1794475800326,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User75",
+     "message": "مرحبا 75",
+     "timestamp": 1794475800325,
+     "messageID": "id-75"
+    },
+    {
+     "username": "User74",
+     "message": "message 74",
+     "timestamp": 1794475800324,
+     "messageID": "id-74",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User73",
+     "message": "message 73",
+     "timestamp": 1794475800323,
+     "messageID": "id-73",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User72",
+     "message": "message 72",
+     "timestamp": 1794475800322
+    },
+    {
+     "username": "User71",
+     "message": "message 71",
+     "timestamp": 1794475800321,
+     "messageID": "id-71",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User70",
+     "message": "emoji 🎉 70",
+     "timestamp": 1794475800320,
+     "messageID": "id-70",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User69",
+     "message": "message 69",
+     "timestamp": 1794475800319,
+     "messageID": "id-69"
+    },
+    {
+     "username": "User68",
+     "message": "message 68",
+     "timestamp": 1794475800318,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User67",
+     "message": "message 67",
+     "timestamp": 1794475800317,
+     "messageID": "id-67",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User66",
+     "message": "message 66",
+     "timestamp": 1794475800316,
+     "messageID": "id-66"
+    },
+    {
+     "username": "User65",
+     "message": "مرحبا 65",
+     "timestamp": 1794475800315,
+     "messageID": "id-65",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User64",
+     "message": "message 64",
+     "timestamp": 1794475800314,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User63",
+     "message": "emoji 🎉 63",
+     "timestamp": 1794475800313,
+     "messageID": "id-63"
+    },
+    {
+     "username": "User62",
+     "message": "message 62",
+     "timestamp": 1794475800312,
+     "messageID": "id-62",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User61",
+     "message": "message 61",
+     "timestamp": 1794475800311,
+     "messageID": "id-61",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User60",
+     "message": "مرحبا 60",
+     "timestamp": 1794475800310
+    },
+    {
+     "username": "User59",
+     "message": "message 59",
+     "timestamp": 1794475800309,
+     "messageID": "id-59",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User58",
+     "message": "message 58",
+     "timestamp": 1794475800308,
+     "messageID": "id-58",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User57",
+     "message": "message 57",
+     "timestamp": 1794475800307,
+     "messageID": "id-57"
+    },
+    {
+     "username": "User56",
+     "message": "emoji 🎉 56",
+     "timestamp": 1794475800306,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User55",
+     "message": "مرحبا 55",
+     "timestamp": 1794475800305,
+     "messageID": "id-55",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User54",
+     "message": "message 54",
+     "timestamp": 1794475800304,
+     "messageID": "id-54"
+    },
+    {
+     "username": "User53",
+     "message": "message 53",
+     "timestamp": 1794475800303,
+     "messageID": "id-53",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User52",
+     "message": "message 52",
+     "timestamp": 1794475800302,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User51",
+     "message": "message 51",
+     "timestamp": 1794475800301,
+     "messageID": "id-51"
+    },
+    {
+     "username": "User50",
+     "message": "مرحبا 50",
+     "timestamp": 1794475800300,
+     "messageID": "id-50",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User49",
+     "message": "emoji 🎉 49",
+     "timestamp": 1794475800299,
+     "messageID": "id-49",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User48",
+     "message": "message 48",
+     "timestamp": 1794475800298
+    },
+    {
+     "username": "User47",
+     "message": "message 47",
+     "timestamp": 1794475800297,
+     "messageID": "id-47",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User46",
+     "message": "message 46",
+     "timestamp": 1794475800296,
+     "messageID": "id-46",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User45",
+     "message": "مرحبا 45",
+     "timestamp": 1794475800295,
+     "messageID": "id-45"
+    },
+    {
+     "username": "User44",
+     "message": "message 44",
+     "timestamp": 1794475800294,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User43",
+     "message": "message 43",
+     "timestamp": 1794475800293,
+     "messageID": "id-43",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User42",
+     "message": "emoji 🎉 42",
+     "timestamp": 1794475800292,
+     "messageID": "id-42"
+    },
+    {
+     "username": "User41",
+     "message": "message 41",
+     "timestamp": 1794475800291,
+     "messageID": "id-41",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User40",
+     "message": "مرحبا 40",
+     "timestamp": 1794475800290,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User39",
+     "message": "message 39",
+     "timestamp": 1794475800289,
+     "messageID": "id-39"
+    },
+    {
+     "username": "User38",
+     "message": "message 38",
+     "timestamp": 1794475800288,
+     "messageID": "id-38",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User37",
+     "message": "message 37",
+     "timestamp": 1794475800287,
+     "messageID": "id-37",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User36",
+     "message": "message 36",
+     "timestamp": 1794475800286
+    },
+    {
+     "username": "User35",
+     "message": "emoji 🎉 35",
+     "timestamp": 1794475800285,
+     "messageID": "id-35",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User34",
+     "message": "message 34",
+     "timestamp": 1794475800284,
+     "messageID": "id-34",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User33",
+     "message": "message 33",
+     "timestamp": 1794475800283,
+     "messageID": "id-33"
+    },
+    {
+     "username": "User32",
+     "message": "message 32",
+     "timestamp": 1794475800282,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User31",
+     "message": "message 31",
+     "timestamp": 1794475800281,
+     "messageID": "id-31",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User30",
+     "message": "مرحبا 30",
+     "timestamp": 1794475800280,
+     "messageID": "id-30"
+    },
+    {
+     "username": "User29",
+     "message": "message 29",
+     "timestamp": 1794475800279,
+     "messageID": "id-29",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User28",
+     "message": "emoji 🎉 28",
+     "timestamp": 1794475800278,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User27",
+     "message": "message 27",
+     "timestamp": 1794475800277,
+     "messageID": "id-27"
+    },
+    {
+     "username": "User26",
+     "message": "message 26",
+     "timestamp": 1794475800276,
+     "messageID": "id-26",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User25",
+     "message": "مرحبا 25",
+     "timestamp": 1794475800275,
+     "messageID": "id-25",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User24",
+     "message": "message 24",
+     "timestamp": 1794475800274
+    },
+    {
+     "username": "User23",
+     "message": "message 23",
+     "timestamp": 1794475800273,
+     "messageID": "id-23",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User22",
+     "message": "message 22",
+     "timestamp": 1794475800272,
+     "messageID": "id-22",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User21",
+     "message": "emoji 🎉 21",
+     "timestamp": 1794475800271,
+     "messageID": "id-21"
+    },
+    {
+     "username": "User20",
+     "message": "مرحبا 20",
+     "timestamp": 1794475800270,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User19",
+     "message": "message 19",
+     "timestamp": 1794475800269,
+     "messageID": "id-19",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User18",
+     "message": "message 18",
+     "timestamp": 1794475800268,
+     "messageID": "id-18"
+    },
+    {
+     "username": "User17",
+     "message": "message 17",
+     "timestamp": 1794475800267,
+     "messageID": "id-17",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User16",
+     "message": "message 16",
+     "timestamp": 1794475800266,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User15",
+     "message": "مرحبا 15",
+     "timestamp": 1794475800265,
+     "messageID": "id-15"
+    },
+    {
+     "username": "User14",
+     "message": "emoji 🎉 14",
+     "timestamp": 1794475800264,
+     "messageID": "id-14",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User13",
+     "message": "message 13",
+     "timestamp": 1794475800263,
+     "messageID": "id-13",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User12",
+     "message": "message 12",
+     "timestamp": 1794475800262
+    },
+    {
+     "username": "User11",
+     "message": "message 11",
+     "timestamp": 1794475800261,
+     "messageID": "id-11",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User10",
+     "message": "مرحبا 10",
+     "timestamp": 1794475800260,
+     "messageID": "id-10",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User9",
+     "message": "message 9",
+     "timestamp": 1794475800259,
+     "messageID": "id-9"
+    },
+    {
+     "username": "User8",
+     "message": "message 8",
+     "timestamp": 1794475800258,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User7",
+     "message": "emoji 🎉 7",
+     "timestamp": 1794475800257,
+     "messageID": "id-7",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User6",
+     "message": "message 6",
+     "timestamp": 1794475800256,
+     "messageID": "id-6"
+    },
+    {
+     "username": "User5",
+     "message": "مرحبا 5",
+     "timestamp": 1794475800255,
+     "messageID": "id-5",
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ],
+   "-5": [
+    {
+     "username": "User104",
+     "message": "message 104",
+     "timestamp": 1794475800354,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User103",
+     "message": "message 103",
+     "timestamp": 1794475800353,
+     "messageID": "id-103",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User102",
+     "message": "message 102",
+     "timestamp": 1794475800352,
+     "messageID": "id-102"
+    },
+    {
+     "username": "User101",
+     "message": "message 101",
+     "timestamp": 1794475800351,
+     "messageID": "id-101",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User100",
+     "message": "مرحبا 100",
+     "timestamp": 1794475800350,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User99",
+     "message": "message 99",
+     "timestamp": 1794475800349,
+     "messageID": "id-99"
+    },
+    {
+     "username": "User98",
+     "message": "emoji 🎉 98",
+     "timestamp": 1794475800348,
+     "messageID": "id-98",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User97",
+     "message": "message 97",
+     "timestamp": 1794475800347,
+     "messageID": "id-97",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User96",
+     "message": "message 96",
+     "timestamp": 1794475800346
+    },
+    {
+     "username": "User95",
+     "message": "مرحبا 95",
+     "timestamp": 1794475800345,
+     "messageID": "id-95",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User94",
+     "message": "message 94",
+     "timestamp": 1794475800344,
+     "messageID": "id-94",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User93",
+     "message": "message 93",
+     "timestamp": 1794475800343,
+     "messageID": "id-93"
+    },
+    {
+     "username": "User92",
+     "message": "message 92",
+     "timestamp": 1794475800342,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User91",
+     "message": "emoji 🎉 91",
+     "timestamp": 1794475800341,
+     "messageID": "id-91",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User90",
+     "message": "مرحبا 90",
+     "timestamp": 1794475800340,
+     "messageID": "id-90"
+    },
+    {
+     "username": "User89",
+     "message": "message 89",
+     "timestamp": 1794475800339,
+     "messageID": "id-89",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User88",
+     "message": "message 88",
+     "timestamp": 1794475800338,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User87",
+     "message": "message 87",
+     "timestamp": 1794475800337,
+     "messageID": "id-87"
+    },
+    {
+     "username": "User86",
+     "message": "message 86",
+     "timestamp": 1794475800336,
+     "messageID": "id-86",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User85",
+     "message": "مرحبا 85",
+     "timestamp": 1794475800335,
+     "messageID": "id-85",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User84",
+     "message": "emoji 🎉 84",
+     "timestamp": 1794475800334
+    },
+    {
+     "username": "User83",
+     "message": "message 83",
+     "timestamp": 1794475800333,
+     "messageID": "id-83",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User82",
+     "message": "message 82",
+     "timestamp": 1794475800332,
+     "messageID": "id-82",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User81",
+     "message": "message 81",
+     "timestamp": 1794475800331,
+     "messageID": "id-81"
+    },
+    {
+     "username": "User80",
+     "message": "مرحبا 80",
+     "timestamp": 1794475800330,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User79",
+     "message": "message 79",
+     "timestamp": 1794475800329,
+     "messageID": "id-79",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User78",
+     "message": "message 78",
+     "timestamp": 1794475800328,
+     "messageID": "id-78"
+    },
+    {
+     "username": "User77",
+     "message": "emoji 🎉 77",
+     "timestamp": 1794475800327,
+     "messageID": "id-77",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User76",
+     "message": "message 76",
+     "timestamp": 1794475800326,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User75",
+     "message": "مرحبا 75",
+     "timestamp": 1794475800325,
+     "messageID": "id-75"
+    },
+    {
+     "username": "User74",
+     "message": "message 74",
+     "timestamp": 1794475800324,
+     "messageID": "id-74",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User73",
+     "message": "message 73",
+     "timestamp": 1794475800323,
+     "messageID": "id-73",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User72",
+     "message": "message 72",
+     "timestamp": 1794475800322
+    },
+    {
+     "username": "User71",
+     "message": "message 71",
+     "timestamp": 1794475800321,
+     "messageID": "id-71",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User70",
+     "message": "emoji 🎉 70",
+     "timestamp": 1794475800320,
+     "messageID": "id-70",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User69",
+     "message": "message 69",
+     "timestamp": 1794475800319,
+     "messageID": "id-69"
+    },
+    {
+     "username": "User68",
+     "message": "message 68",
+     "timestamp": 1794475800318,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User67",
+     "message": "message 67",
+     "timestamp": 1794475800317,
+     "messageID": "id-67",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User66",
+     "message": "message 66",
+     "timestamp": 1794475800316,
+     "messageID": "id-66"
+    },
+    {
+     "username": "User65",
+     "message": "مرحبا 65",
+     "timestamp": 1794475800315,
+     "messageID": "id-65",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User64",
+     "message": "message 64",
+     "timestamp": 1794475800314,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User63",
+     "message": "emoji 🎉 63",
+     "timestamp": 1794475800313,
+     "messageID": "id-63"
+    },
+    {
+     "username": "User62",
+     "message": "message 62",
+     "timestamp": 1794475800312,
+     "messageID": "id-62",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User61",
+     "message": "message 61",
+     "timestamp": 1794475800311,
+     "messageID": "id-61",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User60",
+     "message": "مرحبا 60",
+     "timestamp": 1794475800310
+    },
+    {
+     "username": "User59",
+     "message": "message 59",
+     "timestamp": 1794475800309,
+     "messageID": "id-59",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User58",
+     "message": "message 58",
+     "timestamp": 1794475800308,
+     "messageID": "id-58",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User57",
+     "message": "message 57",
+     "timestamp": 1794475800307,
+     "messageID": "id-57"
+    },
+    {
+     "username": "User56",
+     "message": "emoji 🎉 56",
+     "timestamp": 1794475800306,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User55",
+     "message": "مرحبا 55",
+     "timestamp": 1794475800305,
+     "messageID": "id-55",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User54",
+     "message": "message 54",
+     "timestamp": 1794475800304,
+     "messageID": "id-54"
+    },
+    {
+     "username": "User53",
+     "message": "message 53",
+     "timestamp": 1794475800303,
+     "messageID": "id-53",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User52",
+     "message": "message 52",
+     "timestamp": 1794475800302,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User51",
+     "message": "message 51",
+     "timestamp": 1794475800301,
+     "messageID": "id-51"
+    },
+    {
+     "username": "User50",
+     "message": "مرحبا 50",
+     "timestamp": 1794475800300,
+     "messageID": "id-50",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User49",
+     "message": "emoji 🎉 49",
+     "timestamp": 1794475800299,
+     "messageID": "id-49",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User48",
+     "message": "message 48",
+     "timestamp": 1794475800298
+    },
+    {
+     "username": "User47",
+     "message": "message 47",
+     "timestamp": 1794475800297,
+     "messageID": "id-47",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User46",
+     "message": "message 46",
+     "timestamp": 1794475800296,
+     "messageID": "id-46",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User45",
+     "message": "مرحبا 45",
+     "timestamp": 1794475800295,
+     "messageID": "id-45"
+    },
+    {
+     "username": "User44",
+     "message": "message 44",
+     "timestamp": 1794475800294,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User43",
+     "message": "message 43",
+     "timestamp": 1794475800293,
+     "messageID": "id-43",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User42",
+     "message": "emoji 🎉 42",
+     "timestamp": 1794475800292,
+     "messageID": "id-42"
+    },
+    {
+     "username": "User41",
+     "message": "message 41",
+     "timestamp": 1794475800291,
+     "messageID": "id-41",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User40",
+     "message": "مرحبا 40",
+     "timestamp": 1794475800290,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User39",
+     "message": "message 39",
+     "timestamp": 1794475800289,
+     "messageID": "id-39"
+    },
+    {
+     "username": "User38",
+     "message": "message 38",
+     "timestamp": 1794475800288,
+     "messageID": "id-38",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User37",
+     "message": "message 37",
+     "timestamp": 1794475800287,
+     "messageID": "id-37",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User36",
+     "message": "message 36",
+     "timestamp": 1794475800286
+    },
+    {
+     "username": "User35",
+     "message": "emoji 🎉 35",
+     "timestamp": 1794475800285,
+     "messageID": "id-35",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User34",
+     "message": "message 34",
+     "timestamp": 1794475800284,
+     "messageID": "id-34",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User33",
+     "message": "message 33",
+     "timestamp": 1794475800283,
+     "messageID": "id-33"
+    },
+    {
+     "username": "User32",
+     "message": "message 32",
+     "timestamp": 1794475800282,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User31",
+     "message": "message 31",
+     "timestamp": 1794475800281,
+     "messageID": "id-31",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User30",
+     "message": "مرحبا 30",
+     "timestamp": 1794475800280,
+     "messageID": "id-30"
+    },
+    {
+     "username": "User29",
+     "message": "message 29",
+     "timestamp": 1794475800279,
+     "messageID": "id-29",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User28",
+     "message": "emoji 🎉 28",
+     "timestamp": 1794475800278,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User27",
+     "message": "message 27",
+     "timestamp": 1794475800277,
+     "messageID": "id-27"
+    },
+    {
+     "username": "User26",
+     "message": "message 26",
+     "timestamp": 1794475800276,
+     "messageID": "id-26",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User25",
+     "message": "مرحبا 25",
+     "timestamp": 1794475800275,
+     "messageID": "id-25",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User24",
+     "message": "message 24",
+     "timestamp": 1794475800274
+    },
+    {
+     "username": "User23",
+     "message": "message 23",
+     "timestamp": 1794475800273,
+     "messageID": "id-23",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User22",
+     "message": "message 22",
+     "timestamp": 1794475800272,
+     "messageID": "id-22",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User21",
+     "message": "emoji 🎉 21",
+     "timestamp": 1794475800271,
+     "messageID": "id-21"
+    },
+    {
+     "username": "User20",
+     "message": "مرحبا 20",
+     "timestamp": 1794475800270,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User19",
+     "message": "message 19",
+     "timestamp": 1794475800269,
+     "messageID": "id-19",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User18",
+     "message": "message 18",
+     "timestamp": 1794475800268,
+     "messageID": "id-18"
+    },
+    {
+     "username": "User17",
+     "message": "message 17",
+     "timestamp": 1794475800267,
+     "messageID": "id-17",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User16",
+     "message": "message 16",
+     "timestamp": 1794475800266,
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User15",
+     "message": "مرحبا 15",
+     "timestamp": 1794475800265,
+     "messageID": "id-15"
+    },
+    {
+     "username": "User14",
+     "message": "emoji 🎉 14",
+     "timestamp": 1794475800264,
+     "messageID": "id-14",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User13",
+     "message": "message 13",
+     "timestamp": 1794475800263,
+     "messageID": "id-13",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User12",
+     "message": "message 12",
+     "timestamp": 1794475800262
+    },
+    {
+     "username": "User11",
+     "message": "message 11",
+     "timestamp": 1794475800261,
+     "messageID": "id-11",
+     "badges": [
+      "moderator/1"
+     ]
+    },
+    {
+     "username": "User10",
+     "message": "مرحبا 10",
+     "timestamp": 1794475800260,
+     "messageID": "id-10",
+     "badges": [
+      "moderator/1"
+     ]
+    }
+   ]
+  },
+  "kick": [
+   {
+    "username": "KickUser",
+    "message": "on kick",
+    "timestamp": 1794475800250
+   }
+  ],
+  "empty": [],
+  "afterClear": 0,
+  "kickAfterClear": 1
+ },
+ "channelCache": {
+  "admins": {
+   "twitch:990000003:admins": {
+    "type": "set",
+    "ttl": -1,
+    "value": [
+     "admin1",
+     "élodie"
+    ]
+   },
+   "twitch:990000003:admins:a1": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a1",
+     "adminName": "admin1",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"chat:admin\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:a2": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a2",
+     "adminName": "élodie",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"*\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:a3": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a3",
+     "adminName": "admin3",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"dashboard:view\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:ids": {
+    "type": "set",
+    "ttl": -1,
+    "value": [
+     "a1",
+     "a2"
+    ]
+   }
+  },
+  "otherChannel": {
+   "twitch:990000002:admins": {
+    "type": "set",
+    "ttl": -1,
+    "value": [
+     "untouched"
+    ]
+   }
+  },
+  "adminsTwice": {
+   "twitch:990000003:admins": {
+    "type": "set",
+    "ttl": -1,
+    "value": [
+     "admin1",
+     "élodie"
+    ]
+   },
+   "twitch:990000003:admins:a1": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a1",
+     "adminName": "admin1",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"chat:admin\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:a2": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a2",
+     "adminName": "élodie",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"*\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:a3": {
+    "type": "hash",
+    "ttl": -1,
+    "value": {
+     "adminID": "a3",
+     "adminName": "admin3",
+     "channelID": "990000003",
+     "channelName": "chan",
+     "permissions": "[\"dashboard:view\"]",
+     "actived": "true"
+    }
+   },
+   "twitch:990000003:admins:ids": {
+    "type": "set",
+    "ttl": -1,
+    "value": [
+     "a1",
+     "a2"
+    ]
+   }
+  },
+  "afterResets": {
+   "a": {},
+   "b": {
+    "990000002:sumimetro:carol": {
+     "type": "string",
+     "ttl": -1,
+     "value": "1"
+    }
+   }
+  }
+ },
+ "userLevels": [
+  {
+   "event": {},
+   "level": null,
+   "expected": 10
+  },
+  {
+   "event": {
+    "chatter_user_id": "1"
+   },
+   "level": null,
+   "expected": 1
+  },
+  {
+   "event": {
+    "chatter_user_login": "x"
+   },
+   "level": null,
+   "expected": 1
+  },
+  {
+   "event": {
+    "chatter_user_name": ""
+   },
+   "level": null,
+   "expected": 10
+  },
+  {
+   "event": {
+    "chatter_user_id": 0
+   },
+   "level": null,
+   "expected": 10
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "moderator"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 7
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "MOD"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 7
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "",
+      "id": "lead_mod"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 7
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "id": "lead_moderator"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 7
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "vip"
+     },
+     {
+      "set_id": "broadcaster"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 1
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     null,
+     "moderator",
+     {
+      "set_id": [
+       "mod"
+      ]
+     }
+    ]
+   },
+   "level": null,
+   "expected": 7
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": "moderator"
+   },
+   "level": null,
+   "expected": 1
+  },
+  {
+   "event": {
+    "badges": [
+     {
+      "set_id": "moderator"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 10
+  },
+  {
+   "event": {
+    "badges": [
+     {
+      "set_id": "moderator"
+     }
+    ]
+   },
+   "level": 3,
+   "expected": 7
+  },
+  {
+   "event": {},
+   "level": 3,
+   "expected": 3
+  },
+  {
+   "event": {},
+   "level": 8.5,
+   "expected": 8.5
+  },
+  {
+   "event": {},
+   "level": -1,
+   "expected": 1
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "moderator"
+     }
+    ]
+   },
+   "level": 10,
+   "expected": 10
+  },
+  {
+   "event": {
+    "chatter_user_id": "1"
+   },
+   "level": "Infinity",
+   "expected": 1
+  },
+  {
+   "event": {},
+   "level": "NaN",
+   "expected": 10
+  },
+  {
+   "event": {
+    "chatter_user_id": "1"
+   },
+   "level": "9",
+   "expected": 1
+  },
+  {
+   "event": {
+    "chatter_user_id": "1",
+    "badges": [
+     {
+      "set_id": "MODERATORİ"
+     }
+    ]
+   },
+   "level": null,
+   "expected": 1
+  }
+ ],
+ "blacklists": [
+  {
+   "input": [],
+   "expected": []
+  },
+  {
+   "input": [
+    "Alice",
+    "@Bob",
+    " carol ",
+    "alice"
+   ],
+   "expected": [
+    "alice",
+    "bob",
+    "carol"
+   ]
+  },
+  {
+   "input": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaa"
+   ],
+   "expected": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaa"
+   ]
+  },
+  {
+   "input": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaaa"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    ""
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    "@"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    "@@x"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    "user name"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    "ñandú"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    "Kelvin"
+   ],
+   "expected": [
+    "kelvin"
+   ]
+  },
+  {
+   "input": [
+    "x-y"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    1
+   ],
+   "expected": null
+  },
+  {
+   "input": "alice",
+   "expected": null
+  },
+  {
+   "input": null,
+   "expected": null
+  },
+  {
+   "input": {
+    "0": "a"
+   },
+   "expected": null
+  },
+  {
+   "input": [
+    "u0",
+    "u1",
+    "u2",
+    "u3",
+    "u4",
+    "u5",
+    "u6",
+    "u7",
+    "u8",
+    "u9",
+    "u10",
+    "u11",
+    "u12",
+    "u13",
+    "u14",
+    "u15",
+    "u16",
+    "u17",
+    "u18",
+    "u19",
+    "u20",
+    "u21",
+    "u22",
+    "u23",
+    "u24",
+    "u25",
+    "u26",
+    "u27",
+    "u28",
+    "u29",
+    "u30",
+    "u31",
+    "u32",
+    "u33",
+    "u34",
+    "u35",
+    "u36",
+    "u37",
+    "u38",
+    "u39",
+    "u40",
+    "u41",
+    "u42",
+    "u43",
+    "u44",
+    "u45",
+    "u46",
+    "u47",
+    "u48",
+    "u49",
+    "u50",
+    "u51",
+    "u52",
+    "u53",
+    "u54",
+    "u55",
+    "u56",
+    "u57",
+    "u58",
+    "u59",
+    "u60",
+    "u61",
+    "u62",
+    "u63",
+    "u64",
+    "u65",
+    "u66",
+    "u67",
+    "u68",
+    "u69",
+    "u70",
+    "u71",
+    "u72",
+    "u73",
+    "u74",
+    "u75",
+    "u76",
+    "u77",
+    "u78",
+    "u79",
+    "u80",
+    "u81",
+    "u82",
+    "u83",
+    "u84",
+    "u85",
+    "u86",
+    "u87",
+    "u88",
+    "u89",
+    "u90",
+    "u91",
+    "u92",
+    "u93",
+    "u94",
+    "u95",
+    "u96",
+    "u97",
+    "u98",
+    "u99",
+    "u100",
+    "u101",
+    "u102",
+    "u103",
+    "u104",
+    "u105",
+    "u106",
+    "u107",
+    "u108",
+    "u109",
+    "u110",
+    "u111",
+    "u112",
+    "u113",
+    "u114",
+    "u115",
+    "u116",
+    "u117",
+    "u118",
+    "u119",
+    "u120",
+    "u121",
+    "u122",
+    "u123",
+    "u124",
+    "u125",
+    "u126",
+    "u127",
+    "u128",
+    "u129",
+    "u130",
+    "u131",
+    "u132",
+    "u133",
+    "u134",
+    "u135",
+    "u136",
+    "u137",
+    "u138",
+    "u139",
+    "u140",
+    "u141",
+    "u142",
+    "u143",
+    "u144",
+    "u145",
+    "u146",
+    "u147",
+    "u148",
+    "u149",
+    "u150",
+    "u151",
+    "u152",
+    "u153",
+    "u154",
+    "u155",
+    "u156",
+    "u157",
+    "u158",
+    "u159",
+    "u160",
+    "u161",
+    "u162",
+    "u163",
+    "u164",
+    "u165",
+    "u166",
+    "u167",
+    "u168",
+    "u169",
+    "u170",
+    "u171",
+    "u172",
+    "u173",
+    "u174",
+    "u175",
+    "u176",
+    "u177",
+    "u178",
+    "u179",
+    "u180",
+    "u181",
+    "u182",
+    "u183",
+    "u184",
+    "u185",
+    "u186",
+    "u187",
+    "u188",
+    "u189",
+    "u190",
+    "u191",
+    "u192",
+    "u193",
+    "u194",
+    "u195",
+    "u196",
+    "u197",
+    "u198",
+    "u199"
+   ],
+   "expected": [
+    "u0",
+    "u1",
+    "u2",
+    "u3",
+    "u4",
+    "u5",
+    "u6",
+    "u7",
+    "u8",
+    "u9",
+    "u10",
+    "u11",
+    "u12",
+    "u13",
+    "u14",
+    "u15",
+    "u16",
+    "u17",
+    "u18",
+    "u19",
+    "u20",
+    "u21",
+    "u22",
+    "u23",
+    "u24",
+    "u25",
+    "u26",
+    "u27",
+    "u28",
+    "u29",
+    "u30",
+    "u31",
+    "u32",
+    "u33",
+    "u34",
+    "u35",
+    "u36",
+    "u37",
+    "u38",
+    "u39",
+    "u40",
+    "u41",
+    "u42",
+    "u43",
+    "u44",
+    "u45",
+    "u46",
+    "u47",
+    "u48",
+    "u49",
+    "u50",
+    "u51",
+    "u52",
+    "u53",
+    "u54",
+    "u55",
+    "u56",
+    "u57",
+    "u58",
+    "u59",
+    "u60",
+    "u61",
+    "u62",
+    "u63",
+    "u64",
+    "u65",
+    "u66",
+    "u67",
+    "u68",
+    "u69",
+    "u70",
+    "u71",
+    "u72",
+    "u73",
+    "u74",
+    "u75",
+    "u76",
+    "u77",
+    "u78",
+    "u79",
+    "u80",
+    "u81",
+    "u82",
+    "u83",
+    "u84",
+    "u85",
+    "u86",
+    "u87",
+    "u88",
+    "u89",
+    "u90",
+    "u91",
+    "u92",
+    "u93",
+    "u94",
+    "u95",
+    "u96",
+    "u97",
+    "u98",
+    "u99",
+    "u100",
+    "u101",
+    "u102",
+    "u103",
+    "u104",
+    "u105",
+    "u106",
+    "u107",
+    "u108",
+    "u109",
+    "u110",
+    "u111",
+    "u112",
+    "u113",
+    "u114",
+    "u115",
+    "u116",
+    "u117",
+    "u118",
+    "u119",
+    "u120",
+    "u121",
+    "u122",
+    "u123",
+    "u124",
+    "u125",
+    "u126",
+    "u127",
+    "u128",
+    "u129",
+    "u130",
+    "u131",
+    "u132",
+    "u133",
+    "u134",
+    "u135",
+    "u136",
+    "u137",
+    "u138",
+    "u139",
+    "u140",
+    "u141",
+    "u142",
+    "u143",
+    "u144",
+    "u145",
+    "u146",
+    "u147",
+    "u148",
+    "u149",
+    "u150",
+    "u151",
+    "u152",
+    "u153",
+    "u154",
+    "u155",
+    "u156",
+    "u157",
+    "u158",
+    "u159",
+    "u160",
+    "u161",
+    "u162",
+    "u163",
+    "u164",
+    "u165",
+    "u166",
+    "u167",
+    "u168",
+    "u169",
+    "u170",
+    "u171",
+    "u172",
+    "u173",
+    "u174",
+    "u175",
+    "u176",
+    "u177",
+    "u178",
+    "u179",
+    "u180",
+    "u181",
+    "u182",
+    "u183",
+    "u184",
+    "u185",
+    "u186",
+    "u187",
+    "u188",
+    "u189",
+    "u190",
+    "u191",
+    "u192",
+    "u193",
+    "u194",
+    "u195",
+    "u196",
+    "u197",
+    "u198",
+    "u199"
+   ]
+  },
+  {
+   "input": [
+    "u0",
+    "u1",
+    "u2",
+    "u3",
+    "u4",
+    "u5",
+    "u6",
+    "u7",
+    "u8",
+    "u9",
+    "u10",
+    "u11",
+    "u12",
+    "u13",
+    "u14",
+    "u15",
+    "u16",
+    "u17",
+    "u18",
+    "u19",
+    "u20",
+    "u21",
+    "u22",
+    "u23",
+    "u24",
+    "u25",
+    "u26",
+    "u27",
+    "u28",
+    "u29",
+    "u30",
+    "u31",
+    "u32",
+    "u33",
+    "u34",
+    "u35",
+    "u36",
+    "u37",
+    "u38",
+    "u39",
+    "u40",
+    "u41",
+    "u42",
+    "u43",
+    "u44",
+    "u45",
+    "u46",
+    "u47",
+    "u48",
+    "u49",
+    "u50",
+    "u51",
+    "u52",
+    "u53",
+    "u54",
+    "u55",
+    "u56",
+    "u57",
+    "u58",
+    "u59",
+    "u60",
+    "u61",
+    "u62",
+    "u63",
+    "u64",
+    "u65",
+    "u66",
+    "u67",
+    "u68",
+    "u69",
+    "u70",
+    "u71",
+    "u72",
+    "u73",
+    "u74",
+    "u75",
+    "u76",
+    "u77",
+    "u78",
+    "u79",
+    "u80",
+    "u81",
+    "u82",
+    "u83",
+    "u84",
+    "u85",
+    "u86",
+    "u87",
+    "u88",
+    "u89",
+    "u90",
+    "u91",
+    "u92",
+    "u93",
+    "u94",
+    "u95",
+    "u96",
+    "u97",
+    "u98",
+    "u99",
+    "u100",
+    "u101",
+    "u102",
+    "u103",
+    "u104",
+    "u105",
+    "u106",
+    "u107",
+    "u108",
+    "u109",
+    "u110",
+    "u111",
+    "u112",
+    "u113",
+    "u114",
+    "u115",
+    "u116",
+    "u117",
+    "u118",
+    "u119",
+    "u120",
+    "u121",
+    "u122",
+    "u123",
+    "u124",
+    "u125",
+    "u126",
+    "u127",
+    "u128",
+    "u129",
+    "u130",
+    "u131",
+    "u132",
+    "u133",
+    "u134",
+    "u135",
+    "u136",
+    "u137",
+    "u138",
+    "u139",
+    "u140",
+    "u141",
+    "u142",
+    "u143",
+    "u144",
+    "u145",
+    "u146",
+    "u147",
+    "u148",
+    "u149",
+    "u150",
+    "u151",
+    "u152",
+    "u153",
+    "u154",
+    "u155",
+    "u156",
+    "u157",
+    "u158",
+    "u159",
+    "u160",
+    "u161",
+    "u162",
+    "u163",
+    "u164",
+    "u165",
+    "u166",
+    "u167",
+    "u168",
+    "u169",
+    "u170",
+    "u171",
+    "u172",
+    "u173",
+    "u174",
+    "u175",
+    "u176",
+    "u177",
+    "u178",
+    "u179",
+    "u180",
+    "u181",
+    "u182",
+    "u183",
+    "u184",
+    "u185",
+    "u186",
+    "u187",
+    "u188",
+    "u189",
+    "u190",
+    "u191",
+    "u192",
+    "u193",
+    "u194",
+    "u195",
+    "u196",
+    "u197",
+    "u198",
+    "u199",
+    "u200"
+   ],
+   "expected": null
+  },
+  {
+   "input": [
+    " alice "
+   ],
+   "expected": [
+    "alice"
+   ]
+  },
+  {
+   "input": [
+    "﻿bob"
+   ],
+   "expected": [
+    "bob"
+   ]
+  },
+  {
+   "input": [
+    "ALICE",
+    "alice",
+    "Alice"
+   ],
+   "expected": [
+    "alice"
+   ]
+  },
+  {
+   "input": [
+    "x\n"
+   ],
+   "expected": [
+    "x"
+   ]
+  }
+ ],
+ "astPlan": {
+  "rows": [
+   {
+    "channelID": "c",
+    "scopeType": "command",
+    "scopeName": "a",
+    "userId": "u1",
+    "userLogin": "Alice",
+    "variables": {
+     "2": "two",
+     "x": "1",
+     "y": "old"
+    },
+    "updatedAt": 1000,
+    "_id": "b"
+   },
+   {
+    "channelID": "c",
+    "scopeType": "command",
+    "scopeName": "b",
+    "userId": "u1",
+    "userLogin": "alice",
+    "variables": {
+     "10": "ten",
+     "y": "new",
+     "z": "z"
+    },
+    "updatedAt": 2000,
+    "_id": "a"
+   },
+   {
+    "channelID": "c",
+    "scopeType": "global",
+    "scopeName": "global",
+    "userId": "u1",
+    "userLogin": "alice",
+    "variables": {
+     "g": "global"
+    },
+    "updatedAt": 3000,
+    "_id": "c"
+   },
+   {
+    "channelID": "c",
+    "scopeType": "keyword",
+    "scopeName": "k",
+    "userId": "",
+    "userLogin": "BOB",
+    "variables": {
+     "b": "1"
+    },
+    "_id": "e",
+    "updatedAt": null
+   },
+   {
+    "channelID": "c",
+    "scopeType": "keyword",
+    "scopeName": "k2",
+    "userId": "",
+    "userLogin": "bob",
+    "variables": {
+     "b": "2"
+    },
+    "_id": "f",
+    "updatedAt": null
+   },
+   {
+    "channelID": "d",
+    "scopeType": "command",
+    "scopeName": "a",
+    "userId": "u1",
+    "userLogin": "alice",
+    "variables": {},
+    "updatedAt": 1000,
+    "_id": "g"
+   },
+   {
+    "channelID": "c",
+    "scopeType": "command",
+    "scopeName": "c",
+    "userId": "u2",
+    "userLogin": "Zoë",
+    "variables": {
+     "q": "A"
+    },
+    "updatedAt": 5000,
+    "_id": "B"
+   },
+   {
+    "channelID": "c",
+    "scopeType": "command",
+    "scopeName": "d",
+    "userId": "u2",
+    "userLogin": "zoe",
+    "variables": {
+     "q": "a"
+    },
+    "updatedAt": 5000,
+    "_id": "a"
+   }
+  ],
+  "expected": [
+   {
+    "channelID": "c",
+    "scopeType": "global",
+    "scopeName": "global",
+    "userId": "u2",
+    "userLogin": "zoë",
+    "variables": {
+     "q": "A"
+    }
+   },
+   {
+    "channelID": "c",
+    "scopeType": "global",
+    "scopeName": "global",
+    "userId": "u1",
+    "userLogin": "alice",
+    "variables": {
+     "2": "two",
+     "10": "ten",
+     "y": "new",
+     "z": "z",
+     "x": "1"
+    }
+   },
+   {
+    "channelID": "d",
+    "scopeType": "global",
+    "scopeName": "global",
+    "userId": "u1",
+    "userLogin": "alice",
+    "variables": {}
+   },
+   {
+    "channelID": "c",
+    "scopeType": "global",
+    "scopeName": "global",
+    "userId": "",
+    "userLogin": "bob",
+    "variables": {
+     "b": "2"
+    }
+   }
+  ]
+ }
+}

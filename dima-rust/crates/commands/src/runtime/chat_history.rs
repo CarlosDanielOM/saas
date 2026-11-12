@@ -53,7 +53,7 @@ pub struct HistoryEntry {
     /// The text.
     pub message: String,
     /// When the bot received it, epoch milliseconds.
-    pub timestamp: f64,
+    pub timestamp: i64,
     /// Twitch's message id.
     #[serde(rename = "messageID", default, skip_serializing_if = "Option::is_none")]
     pub message_id: Option<String>,

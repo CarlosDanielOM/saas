@@ -82,6 +82,8 @@
 //!   `updateCommandAvailability` have no caller and are not ported.
 
 use std::collections::HashSet;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -213,6 +215,19 @@ pub struct CommandCache {
     clock: Arc<dyn Clock>,
     random: Arc<dyn Random>,
     config: CommandCacheConfig,
+    before_publish: Option<PublishGate>,
+}
+
+/// A test seam: awaited after a lookup read MongoDB and before it publishes what it read, so a
+/// test can run a write in between (`tests/runtime_cache.rs`). Never set in production.
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct PublishGate(pub Arc<dyn Fn() -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>);
+
+impl std::fmt::Debug for PublishGate {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("PublishGate")
+    }
 }
 
 /// One snapshot as loaded from MongoDB.
@@ -264,6 +279,19 @@ impl CommandCache {
             clock,
             random,
             config,
+            before_publish: None,
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn with_publish_gate(mut self, gate: PublishGate) -> Self {
+        self.before_publish = Some(gate);
+        self
+    }
+
+    async fn gate(&self) {
+        if let Some(gate) = &self.before_publish {
+            (gate.0)().await;
         }
     }
 
@@ -412,6 +440,7 @@ impl CommandCache {
         let max_bytes = self.config.max_snapshot_bytes.to_string();
         let max_fields = (self.config.max_partial_entries + 2).to_string();
         let field = entry_field(name);
+        self.gate().await;
         let args: [&[u8]; 6] = [
             revision,
             now.as_bytes(),
@@ -475,6 +504,7 @@ impl CommandCache {
             args.push(entry.as_bytes());
             args.push(raw.as_bytes());
         }
+        self.gate().await;
         let cache_error = FILL_CHANNEL
             .run_value(&self.stores.dragonfly, keys, &args)
             .await
@@ -544,7 +574,7 @@ impl CommandCache {
     ) -> Result<T, WriteFailure<E>>
     where
         F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = Result<T, E>>,
+        Fut: Future<Output = Result<T, E>>,
     {
         let keys = self.keys(channel_id);
         let fields: Vec<String> = match names {
