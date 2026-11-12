@@ -627,7 +627,8 @@ impl Connection {
                 .unwrap_or(DisconnectReason::TransportClose),
         };
         self.outbox().clear(&self.shared.outbound_bytes);
-        self.state().guard = None;
+        // The upgrade guard stays until the connection's task has seen the transport's tasks
+        // end: it is what aborts a writer stuck on a peer that stopped reading.
         self.slot
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -676,7 +677,9 @@ impl Connection {
         let timeout = tokio::time::sleep(self.shared.options.connect_timeout);
         tokio::pin!(timeout);
         let mut waiting_for_join = true;
-        let mut finished = self.engine().map(|engine| engine.watch_messages_done());
+        // Kept until the session's transport tasks have ended (see the end).
+        let engine = self.engine();
+        let mut finished = engine.as_ref().map(|engine| engine.watch_messages_done());
         loop {
             let progress = async {
                 match finished.as_mut() {
@@ -707,20 +710,40 @@ impl Connection {
                 }
             }
         }
-        if self.gone.is_cancelled() {
-            return;
+        if !self.gone.is_cancelled() {
+            if !self
+                .engine_closing
+                .load(std::sync::atomic::Ordering::Acquire)
+            {
+                self.drain_then_close().await;
+            }
+            // The session must end within the close timeout.
+            tokio::select! {
+                () = self.gone.cancelled() => {}
+                () = tokio::time::sleep(self.shared.options.close_timeout) => self.abort_transport(),
+                () = self.shared.hard_stop.cancelled() => self.abort_transport(),
+            }
         }
-        if !self
-            .engine_closing
-            .load(std::sync::atomic::Ordering::Acquire)
-        {
-            self.drain_then_close().await;
+        // The session has ended; its transport tasks (a writer flushing to a peer that stopped
+        // reading, the close task) end with it, within the close timeout, or at once when a
+        // shutdown's hard stop aborts the upgraded socket. This task, which the shutdown waits
+        // for, ends only after them.
+        if let Some(engine) = engine {
+            let ended = engine.tasks_ended();
+            tokio::pin!(ended);
+            tokio::select! {
+                biased;
+                () = &mut ended => {}
+                () = tokio::time::sleep(self.shared.options.close_timeout) => {
+                    self.abort_transport();
+                    (&mut ended).await;
+                }
+                () = self.shared.hard_stop.cancelled() => {
+                    self.abort_transport();
+                    (&mut ended).await;
+                }
+            }
         }
-        // The session must end within the close timeout.
-        tokio::select! {
-            () = self.gone.cancelled() => {}
-            () = tokio::time::sleep(self.shared.options.close_timeout) => self.abort_transport(),
-            () = self.shared.hard_stop.cancelled() => self.abort_transport(),
-        }
+        self.state().guard = None;
     }
 }

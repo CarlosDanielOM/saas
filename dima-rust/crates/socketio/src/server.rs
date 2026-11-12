@@ -12,7 +12,6 @@ use engineioxide::handler::EngineIoHandler;
 use engineioxide::service::{EngineIoService, NotFoundService};
 use engineioxide::{DisconnectReason as EngineReason, Str};
 use tokio_util::sync::CancellationToken;
-use tokio_util::task::TaskTracker;
 
 use crate::config::Options;
 use crate::connection::{Connection, EngineData, EngineSocket};
@@ -75,7 +74,7 @@ pub(crate) struct Shared {
     next_key: AtomicU64,
     next_ack: AtomicU64,
     /// Every task the server starts.
-    pub tasks: TaskTracker,
+    pub tasks: crate::tasks::Tasks,
     /// Shutdown has begun: no new connection, no new socket.
     pub stop: CancellationToken,
     /// The drain deadline has passed: handlers still running are dropped.
@@ -203,7 +202,7 @@ impl Builder {
             namespaces: AtomicUsize::new(0),
             next_key: AtomicU64::new(1),
             next_ack: AtomicU64::new(0),
-            tasks: TaskTracker::new(),
+            tasks: crate::tasks::Tasks::default(),
             stop: CancellationToken::new(),
             hard_stop: CancellationToken::new(),
         });
@@ -346,6 +345,8 @@ impl Builder {
                 config,
             ),
             connection_slots: Arc::new(tokio::sync::Semaphore::new(shared.options.max_connections)),
+            engines: Mutex::new(Vec::new()),
+            report: std::sync::OnceLock::new(),
             capacity,
             shutting_down: AtomicBool::new(false),
             done: CancellationToken::new(),
@@ -392,6 +393,11 @@ pub(crate) struct ServerInner {
     pub engine: EngineIoService<EngineHandler, NotFoundService>,
     /// `max_connections` slots: each Engine.IO session holds one from its handshake to its end.
     connection_slots: Arc<tokio::sync::Semaphore>,
+    /// Every Engine.IO session whose tasks may still run: shutdown waits for them through
+    /// `tasks_ended` (a session whose last handle is gone has no task left).
+    engines: Mutex<Vec<Weak<EngineSocket>>>,
+    /// The report of the shutdown, once it has finished.
+    report: std::sync::OnceLock<ShutdownReport>,
     capacity: usize,
     shutting_down: AtomicBool,
     done: CancellationToken,
@@ -430,8 +436,13 @@ impl ServerInner {
             return;
         }
         let weak = Arc::downgrade(self);
+        let done = self.done.clone();
         tokio::spawn(async move {
-            token.cancelled().await;
+            tokio::select! {
+                () = token.cancelled() => {}
+                // Shut down from elsewhere: nothing left to watch.
+                () = done.cancelled() => return,
+            }
             if let Some(inner) = weak.upgrade() {
                 SocketIo { inner }.shutdown().await;
             }
@@ -504,6 +515,14 @@ impl EngineIoHandler for EngineHandler {
             server.capacity,
         );
         socket.data.set(Arc::clone(&conn));
+        {
+            let mut engines = server
+                .engines
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            engines.retain(|engine| engine.strong_count() > 0);
+            engines.push(Arc::downgrade(&socket));
+        }
         server
             .connections()
             .insert(socket.id.as_str().to_owned(), Arc::clone(&conn));
@@ -550,6 +569,21 @@ impl std::fmt::Debug for SocketIo {
             .field("connections", &self.inner.connection_count())
             .finish_non_exhaustive()
     }
+}
+
+/// What a shutdown achieved ([`SocketIo::shutdown`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ShutdownReport {
+    /// Every task of the crate and every transport task had ended when it returned, which it
+    /// does by `shutdown_drain` at the latest.
+    pub deadline_met: bool,
+    /// Tasks of the crate that had not ended a little before the deadline and were aborted.
+    pub aborted: usize,
+    /// Tasks (of the crate, or a session's transport tasks counted once per session) still
+    /// running when it returned.
+    pub still_running: usize,
+    /// How long it took.
+    pub elapsed: Duration,
 }
 
 /// Counters, for diagnostics and tests.
@@ -603,31 +637,49 @@ impl SocketIo {
         }
     }
 
-    /// Resolves once a shutdown has finished.
-    pub async fn closed(&self) {
+    /// Resolves once a shutdown has finished, with its report.
+    pub async fn closed(&self) -> ShutdownReport {
         self.inner.done.cancelled().await;
+        self.inner.report.get().copied().unwrap_or_default()
     }
 
-    /// Shuts down (also run when the builder's token fires): stops admitting connections and
-    /// sockets; every socket leaves with `server shutting down`; queued output gets up to
-    /// `shutdown_drain` to reach the clients; every connection is closed; handlers still
-    /// running at the deadline are dropped; the recovery stores are released. Idempotent:
-    /// a second call waits for the first.
-    pub async fn shutdown(&self) {
+    /// Shuts down (also run when the builder's token fires), all within `shutdown_drain` from
+    /// the call:
+    ///
+    /// 1. No connection or socket is admitted any more; every socket leaves with
+    ///    `server shutting down` (its handlers are cancelled; `on_disconnect` runs).
+    /// 2. Queued output may reach the clients until the drain ends, a quarter of
+    ///    `shutdown_drain` before the deadline; then every connection is closed and the crate
+    ///    waits for its tasks.
+    /// 3. At that point handlers still running are dropped and stuck transports are aborted
+    ///    (`UpgradeGuard::abort`); half-way to the deadline, every task of the crate still
+    ///    running is aborted.
+    /// 4. At the deadline at the latest it returns, having waited for every task of the crate
+    ///    (connections, sockets, their concurrent handlers, the recovery sweep) and for the
+    ///    transport tasks of every Engine.IO session (`tasks_ended`: readers, writers,
+    ///    heartbeats, close tasks). The recovery store is released.
+    ///
+    /// The report says whether everything ended by the deadline, how many tasks had to be
+    /// aborted, and how many were still running when it returned (a task stuck in blocking
+    /// code cannot be stopped from outside; the process is about to exit). Idempotent: a
+    /// second call waits for the first and gets its report.
+    pub async fn shutdown(&self) -> ShutdownReport {
         let inner = &self.inner;
         if inner.shutting_down.swap(true, Ordering::AcqRel) {
-            inner.done.cancelled().await;
-            return;
+            return self.closed().await;
         }
         let shared = &inner.shared;
+        let started = tokio::time::Instant::now();
+        let drain = shared.options.shutdown_drain;
+        let deadline = started + drain;
+        let hard = deadline - drain / 4;
+        let abort = deadline - drain / 8;
         shared.stop.cancel();
-        let deadline = tokio::time::Instant::now() + shared.options.shutdown_drain;
         let connections: Vec<Arc<Connection>> = inner.connections().values().cloned().collect();
         for conn in &connections {
             conn.leave_all(crate::DisconnectReason::ServerShuttingDown);
         }
-        while tokio::time::Instant::now() < deadline
-            && connections.iter().any(|conn| conn.has_queued())
+        while tokio::time::Instant::now() < hard && connections.iter().any(|conn| conn.has_queued())
         {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
@@ -636,10 +688,51 @@ impl SocketIo {
             conn.close(crate::DisconnectReason::ServerShuttingDown);
         }
         shared.tasks.close();
-        let _ = tokio::time::timeout_at(deadline, shared.tasks.wait()).await;
+        let engines: Vec<Arc<EngineSocket>> = inner
+            .engines
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .filter_map(Weak::upgrade)
+            .collect();
+        let mut everything = Box::pin(async {
+            shared.tasks.ended().await;
+            for engine in &engines {
+                engine.tasks_ended().await;
+            }
+        });
+        let mut aborted = 0;
+        if tokio::time::timeout_at(hard, &mut everything)
+            .await
+            .is_err()
+        {
+            shared.hard_stop.cancel();
+            if tokio::time::timeout_at(abort, &mut everything)
+                .await
+                .is_err()
+            {
+                aborted = shared.tasks.abort_all();
+                let _ = tokio::time::timeout_at(deadline, &mut everything).await;
+            }
+        }
+        drop(everything);
         shared.hard_stop.cancel();
-        let _ = tokio::time::timeout(Duration::from_secs(1), shared.tasks.wait()).await;
+        let mut still_running = shared.tasks.running();
+        for engine in &engines {
+            let ended = std::pin::pin!(engine.tasks_ended());
+            if futures_util::FutureExt::now_or_never(ended).is_none() {
+                still_running += 1;
+            }
+        }
         shared.store().clear();
+        let report = ShutdownReport {
+            deadline_met: still_running == 0,
+            aborted,
+            still_running,
+            elapsed: started.elapsed(),
+        };
+        let _ = inner.report.set(report);
         inner.done.cancel();
+        report
     }
 }

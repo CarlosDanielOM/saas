@@ -1821,3 +1821,51 @@ async fn a_recovery_the_check_now_refuses_does_not_get_the_session() {
         s.server.stop().await;
     }
 }
+
+/// Finding 14: shutdown has one deadline and proves it: with a client that stopped reading
+/// (output queued in the transport), handlers that never end on their own, and a polling
+/// session, it returns within `shutdown_drain` (no extra second), and its report says every
+/// task of the crate and every transport task had ended.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn shutdown_ends_everything_within_its_deadline_and_says_so() {
+    let drain = 2 * SECOND;
+    let options = Options {
+        shutdown_drain: drain,
+        ..Options::default()
+    };
+    let namespace = NamespaceOptions {
+        dispatch: Dispatch::Concurrent(4),
+        ..NamespaceOptions::default()
+    };
+    let s = setup(options, namespace).await;
+    let mut stuck = Ws::open(s.server.addr).await;
+    stuck.join("/p", &ok()).await.unwrap();
+    let socket = s.probe.sockets("/p").pop().unwrap();
+    let big = json!("x".repeat(100_000));
+    for _ in 0..200 {
+        if socket.emit_with(&Delivery::Lossy, "big", std::slice::from_ref(&big))
+            == Err(SendError::Dropped)
+        {
+            break;
+        }
+    }
+    let mut busy = Ws::open(s.server.addr).await;
+    busy.join("/p", &ok()).await.unwrap();
+    busy.send("42/p,[\"sleep\",60000]").await;
+    busy.send("42/p,[\"sleep\",60000]").await;
+    let polling = Polling::open(s.server.addr).await;
+    assert_eq!(polling.post(&["40/p,{}"]).await, Some(200));
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let started = tokio::time::Instant::now();
+    let report = s.server.io.shutdown().await;
+    let elapsed = started.elapsed();
+    assert!(report.deadline_met, "{report:?}");
+    assert_eq!(report.still_running, 0, "{report:?}");
+    assert!(elapsed <= drain + Duration::from_millis(250), "{elapsed:?}");
+    assert!(report.elapsed <= drain, "{report:?}");
+    // A second call, and `closed`, give the same report.
+    assert_eq!(s.server.io.shutdown().await, report);
+    assert_eq!(s.server.io.closed().await, report);
+    drop(stuck);
+    s.server.stop().await;
+}

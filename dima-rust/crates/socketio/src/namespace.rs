@@ -846,7 +846,7 @@ async fn events<N: Namespace>(
                 let def = Arc::clone(def);
                 let socket = socket.clone();
                 let task_shared = Arc::clone(&shared);
-                running.spawn(shared.tasks.track_future(async move {
+                running.spawn(shared.tasks.track(async move {
                     let shared = task_shared;
                     let core = &socket.core;
                     run_handler(
