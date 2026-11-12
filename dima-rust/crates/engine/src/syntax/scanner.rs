@@ -4,16 +4,16 @@
 //! after an odd number of backslashes is text, and an expression ends at its matching `)`
 //! counting quotes and backslash escapes only.
 
-use super::source::{Budget, View};
+use super::source::View;
 use super::{Diagnostic, DiagnosticCode, PreparedGrammar, SegmentKind, SourceSegment, Span};
 use crate::text::{byte, next_char};
 
 /// The segments of `view`'s whole text.
-pub(crate) fn scan(
-    view: &View,
-    grammar: &PreparedGrammar,
-    budget: &Budget,
-) -> Result<Vec<SourceSegment>, Diagnostic> {
+///
+/// The scan is iterative and needs no nesting limit (the reference has none either): an
+/// expression nested deeper than the parser allows is still one segment, and its parse reports
+/// the limit.
+pub(crate) fn scan(view: &View, grammar: &PreparedGrammar) -> Vec<SourceSegment> {
     let text = &*view.text;
     let bytes = text.as_bytes();
     let mut segments = Vec::new();
@@ -44,13 +44,13 @@ pub(crate) fn scan(
             i = next_char(text, i);
             continue;
         }
-        let end = expression_end(view, i + grammar.start_len(def), budget)?;
+        let end = expression_end(view, i + grammar.start_len(def));
         if i > plain {
             segments.push(segment(SegmentKind::Text, plain, i));
         }
         let Some(end) = end else {
             segments.push(segment(SegmentKind::Unclosed, i, text.len()));
-            return Ok(segments);
+            return segments;
         };
         segments.push(segment(SegmentKind::Expr, i, end));
         i = end;
@@ -59,7 +59,7 @@ pub(crate) fn scan(
     if plain < text.len() {
         segments.push(segment(SegmentKind::Text, plain, text.len()));
     }
-    Ok(segments)
+    segments
 }
 
 fn segment(kind: SegmentKind, start: usize, end: usize) -> SourceSegment {
@@ -71,11 +71,10 @@ fn segment(kind: SegmentKind, start: usize, end: usize) -> SourceSegment {
 
 /// `findExpressionEnd`: the offset after the `)` that closes an expression whose content
 /// starts at `i`.
-fn expression_end(view: &View, mut i: usize, budget: &Budget) -> Result<Option<usize>, Diagnostic> {
+fn expression_end(view: &View, mut i: usize) -> Option<usize> {
     let text = &*view.text;
     let mut depth = 1usize;
     let mut quote = 0u8;
-    budget.depth(depth, view.span(i..i))?;
     while i < text.len() {
         let ch = byte(text, i);
         if quote != 0 {
@@ -99,21 +98,18 @@ fn expression_end(view: &View, mut i: usize, budget: &Budget) -> Result<Option<u
                 i += 1;
                 continue;
             }
-            b'(' => {
-                depth += 1;
-                budget.depth(depth, view.span(i..i + 1))?;
-            }
+            b'(' => depth += 1,
             b')' => {
                 depth -= 1;
                 if depth == 0 {
-                    return Ok(Some(i + 1));
+                    return Some(i + 1);
                 }
             }
             _ => {}
         }
         i = next_char(text, i);
     }
-    Ok(None)
+    None
 }
 
 /// The bot's last pass over a rendered reply (`unescapeRenderedText`): `\$`, `\%`, `\*`, `\#`

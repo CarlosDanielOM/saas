@@ -101,7 +101,7 @@ impl SyntaxEngine {
     pub fn scan_template(&self, input: &str) -> Result<Vec<SourceSegment>, Diagnostic> {
         source::check_length(input, self.limits)?;
         let view = View::original(Arc::from(input));
-        scanner::scan(&view, &self.grammar, &Budget::new(self.limits))
+        Ok(scanner::scan(&view, &self.grammar))
     }
 
     /// Scans command text and parses each expression segment, as `renderAstWithSourceReference`
@@ -111,7 +111,7 @@ impl SyntaxEngine {
         source::check_length(input, self.limits)?;
         let view = View::original(Arc::from(input));
         let mut budget = Budget::new(self.limits);
-        let ranges = scanner::scan(&view, &self.grammar, &budget)?;
+        let ranges = scanner::scan(&view, &self.grammar);
         let mut segments = Vec::with_capacity(ranges.len());
         for segment in ranges {
             let step = match segment.kind {
