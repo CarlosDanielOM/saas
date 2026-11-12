@@ -139,6 +139,7 @@ fn who(access: &OAuthAccess) -> Value {
 pub struct Fakes {
     pub calls: Arc<Calls>,
     pub snapshot_fails: Arc<AtomicBool>,
+    pub snapshot_calls: Arc<std::sync::atomic::AtomicUsize>,
     pub cases: Value,
     pub public_dir: PathBuf,
 }
@@ -159,11 +160,13 @@ impl ReservedCommands for Reserved {
 struct Snapshots {
     snapshot: Value,
     fails: Arc<AtomicBool>,
+    calls: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl SiteSnapshots for Snapshots {
     fn snapshot(&self) -> BoxFuture<'_, Result<Value, SnapshotError>> {
         Box::pin(async move {
+            self.calls.fetch_add(1, Ordering::SeqCst);
             if self.fails.load(Ordering::SeqCst) {
                 return Err(SnapshotError("snapshot failed".to_owned()));
             }
@@ -187,6 +190,9 @@ impl DesktopTurns for Turns {
         Box::pin(async move {
             self.calls
                 .push(json!({ "fn": "submit", "who": who(who_), "input": input }));
+            if let Some(ms) = input["sleep_ms"].as_u64() {
+                tokio::time::sleep(Duration::from_millis(ms)).await;
+            }
             if input["crash"] == json!(true) {
                 return Err(AreaError::UNAVAILABLE);
             }
@@ -382,6 +388,17 @@ fn write_public(dir: &Path, cases: &Value) -> Result<()> {
 /// and analytics mocks of `app-record.mts`, the area fakes, the cases' configuration, and the
 /// client address read from `X-Forwarded-For` behind the trusted proxy `127.0.0.1`.
 pub async fn harness(stores: Stores, cases: Value) -> Result<Harness> {
+    harness_with(stores, cases, |_config| {}, true).await
+}
+
+/// [`harness`] with the shell's configuration adjusted by `configure`, and without the area
+/// services when `register` is false.
+pub async fn harness_with(
+    stores: Stores,
+    cases: Value,
+    configure: impl FnOnce(&mut AppConfig),
+    register: bool,
+) -> Result<Harness> {
     let client_id = cases["client_id"].as_str().context("client_id")?.to_owned();
     let twitch_mock = MockServer::start().await?;
     let tokens = cases["browser_tokens"].clone();
@@ -407,7 +424,10 @@ pub async fn harness(stores: Stores, cases: Value) -> Result<Harness> {
         }
         match answer["status"].as_u64() {
             Some(status) => MockResponse::new(status as u16)
-                .body(answer["body"].as_str().unwrap_or_default().to_owned()),
+                .body(answer["body"].as_str().unwrap_or_default().to_owned())
+                .delay(Duration::from_millis(
+                    answer["delay_ms"].as_u64().unwrap_or(0),
+                )),
             None => MockResponse::json(404, r#"{"message":"no"}"#),
         }
     });
@@ -475,6 +495,7 @@ pub async fn harness(stores: Stores, cases: Value) -> Result<Harness> {
         base_url: analytics_mock.url(),
         ..AnalyticsConfig::reference()
     };
+    configure(&mut config);
     let core = Core {
         mongo: stores.mongo.clone(),
         dragonfly: stores.cache.clone(),
@@ -491,15 +512,22 @@ pub async fn harness(stores: Stores, cases: Value) -> Result<Harness> {
     let fakes = Fakes {
         calls: Arc::new(Calls::default()),
         snapshot_fails: Arc::new(AtomicBool::new(false)),
+        snapshot_calls: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         cases: cases.clone(),
         public_dir: public.clone(),
     };
     let mut services = Services::new();
+    let upstream = AnalyticsUpstream::new(
+        http.clone(),
+        analytics_mock.provider(core.config.analytics.provider())?,
+    );
+    services.provide(Arc::new(upstream))?;
     let reserved: Arc<dyn ReservedCommands> = Arc::new(Reserved(cases["reserved"].clone()));
     services.provide(reserved)?;
     let snapshots: Arc<dyn SiteSnapshots> = Arc::new(Snapshots {
         snapshot: cases["snapshot"].clone(),
         fails: Arc::clone(&fakes.snapshot_fails),
+        calls: Arc::clone(&fakes.snapshot_calls),
     });
     services.provide(snapshots)?;
     let turns: Arc<dyn DesktopTurns> = Arc::new(Turns {
@@ -512,18 +540,16 @@ pub async fn harness(stores: Stores, cases: Value) -> Result<Harness> {
     services.provide(pets)?;
     let credits: Arc<dyn DesktopCredits> = Arc::new(Credits(Arc::clone(&fakes.calls)));
     services.provide(credits)?;
-    let upstream = AnalyticsUpstream::new(
-        http,
-        analytics_mock.provider(core.config.analytics.provider())?,
-    );
-    services.provide(Arc::new(upstream))?;
+    if !register {
+        services = Services::new();
+    }
     let required: Vec<_> = dima_routes::app::SERVICES
         .iter()
         .chain(dima_routes::oauth::SERVICES)
         .chain(dima_routes::observability::SERVICES)
         .copied()
         .collect();
-    anyhow::ensure!(services.missing(&required).is_empty());
+    anyhow::ensure!(!register || services.missing(&required).is_empty());
 
     // The reference's `init()` indexes, the desktop client, the site users.
     for info in [
