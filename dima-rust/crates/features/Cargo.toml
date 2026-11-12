@@ -21,7 +21,7 @@ dima-model = { workspace = true }
 dima-store = { workspace = true }
 # P4-FEAT-GAMES (roulette, duel, bits rules).
 dima-core = { workspace = true }
-dima-text = { workspace = true }
+dima-text = { workspace = true, features = ["collation"] }
 dima-http = { workspace = true }
 bson = { workspace = true }
 mongodb = { workspace = true }
