@@ -370,6 +370,36 @@ async fn stubborn_upgrade(req: &mut Req) -> Result<Response, Error> {
     switching()
 }
 
+/// GET /abortable: echoes 4-byte messages; on `quit` it aborts its connection through the
+/// guard, then tries to write `late` (which must fail) and keeps the socket a little longer.
+async fn abortable_upgrade(req: &mut Req) -> Result<Response, Error> {
+    let (Some(upgrade), Some(guard)) = (req.take_upgrade(), req.take_upgrade_guard()) else {
+        return Ok(Response::send_status(426));
+    };
+    tokio::spawn(async move {
+        let Ok(upgraded) = upgrade.await else { return };
+        let mut io = hyper_util::rt::TokioIo::new(upgraded);
+        let mut buf = [0u8; 4];
+        while io.read_exact(&mut buf).await.is_ok() {
+            if &buf == b"quit" {
+                guard.abort();
+                let late = io.write_all(b"late").await;
+                assert_eq!(
+                    late.map_err(|e| e.kind()),
+                    Err(std::io::ErrorKind::ConnectionAborted)
+                );
+                assert!(io.read_exact(&mut buf).await.is_err(), "reads fail too");
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                return;
+            }
+            if io.write_all(&buf).await.is_err() {
+                return;
+            }
+        }
+    });
+    switching()
+}
+
 /// GET /sse: an event stream that stays open until the client goes away.
 async fn sse_forever(_req: &mut Req) -> Response {
     let (events, body) = dima_web::sse::channel(dima_web::sse::SseOptions::new());
@@ -403,6 +433,7 @@ async fn start(
     root.get("/up", echo_upgrade);
     root.get("/guarded", guarded_upgrade);
     root.get("/stubborn", stubborn_upgrade);
+    root.get("/abortable", abortable_upgrade);
     root.get("/sse", sse_forever);
     root.get("/slow", slow);
     root.middleware_at("/read", dima_web::body::json());
@@ -845,6 +876,36 @@ async fn shutdown_closes_upgraded_sockets_that_ignore_it() {
     assert!(read.is_err() || rest.is_empty(), "{read:?} {rest:?}");
     assert!(began.elapsed() >= drain, "{:?}", began.elapsed());
     tokio::time::timeout(Duration::from_secs(3), server)
+        .await
+        .expect("serve returned")
+        .expect("join")
+        .expect("serve");
+}
+
+/// `UpgradeGuard::abort` fails one upgraded connection's I/O at once, without touching others
+/// or shutdown; the client then sees the connection close with nothing more written.
+#[tokio::test]
+async fn an_upgrade_owner_can_abort_its_connection() {
+    let (addr, token, server) = start(ServeOptions::default()).await;
+    let mut other = upgraded(addr, "/abortable").await;
+    let mut stream = upgraded(addr, "/abortable").await;
+    stream.write_all(b"quit").await.expect("quit");
+    let mut rest = Vec::new();
+    let read = tokio::time::timeout(Duration::from_secs(3), stream.read_to_end(&mut rest))
+        .await
+        .expect("the connection closed");
+    assert!(
+        read.is_err() || rest.is_empty(),
+        "nothing after the abort: {rest:?}"
+    );
+    // The other connection still echoes.
+    other.write_all(b"ping").await.expect("ping");
+    let mut echoed = [0u8; 4];
+    other.read_exact(&mut echoed).await.expect("echo");
+    assert_eq!(&echoed, b"ping");
+    token.cancel();
+    drop(other);
+    tokio::time::timeout(Duration::from_secs(12), server)
         .await
         .expect("serve returned")
         .expect("join")

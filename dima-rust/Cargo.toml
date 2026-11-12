@@ -24,6 +24,7 @@ dima-store = { path = "crates/store" }
 dima-telemetry = { path = "crates/telemetry" }
 dima-http = { path = "crates/http" }
 dima-web = { path = "crates/web" }
+dima-socketio = { path = "crates/socketio" }
 dima-model = { path = "crates/model" }
 dima-engine = { path = "crates/engine" }
 # Runtime.
@@ -58,6 +59,11 @@ hyper-util = { version = "0.1.21", default-features = false, features = ["tokio"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 # dima-web: listen like Node (dual-stack `::` with IPV6_V6ONLY off). Already built for tokio.
 socket2 = "0.6.5"
+# dima-socketio: the Engine.IO transport (polling, WebSocket, upgrade, heartbeat); Socket.IO itself
+# is our own layer (ledger/socketio.md). No default features: no tracing, no Engine.IO v3.
+engineioxide = { version = "0.17.7", default-features = false }
+# dima-socketio tests: a raw WebSocket client for the adversarial tests (the version engineioxide uses).
+tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["connect", "handshake"] }
 url = "2.5.8"
 percent-encoding = "2.3.2"
 mime = "0.3.17"
