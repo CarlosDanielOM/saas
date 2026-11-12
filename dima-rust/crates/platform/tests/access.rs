@@ -388,6 +388,10 @@ fn app(stores: &Stores, access: ChannelAccess) -> Result<App<State>> {
         (test_user, ChannelGuard::owner(), scoped),
     );
     router.patch(
+        "/self/:channelID",
+        (test_user, ChannelGuard::self_only(), scoped),
+    );
+    router.patch(
         "/commands/:channelID",
         (
             test_user,
@@ -475,6 +479,18 @@ async fn typed_guards_give_a_checked_scope() -> Result<()> {
         assert_eq!(send_with(&app, "PATCH", &format!("/owner/{CREATOR}"), Some(&id("super")), Some(json!({}))).await?.0, 403);
         assert_eq!(send_with(&app, "PATCH", &format!("/owner/{CREATOR}"), Some(CREATOR), Some(json!({}))).await?.0, 200);
 
+        // Self only: the channel's own account; global owners and managers are refused.
+        let (got, body) = send_with(&app, "PATCH", &format!("/self/{managed}"), Some(&id("owner")), Some(json!({"name": "x"}))).await?;
+        assert_eq!((got, serde_json::from_str::<Value>(&body)?), (200, json!({"channel": managed, "role": "owner", "filter": managed})));
+        for who in ["creator", "super", "db_creator", "full", "manager", "viewer"] {
+            let (got, body) = send_with(&app, "PATCH", &format!("/self/{managed}"), Some(&id(who)), Some(json!({}))).await?;
+            assert_eq!((got, body.as_str()), (403, refusal), "{who}");
+        }
+        assert_eq!(send_with(&app, "PATCH", &format!("/self/{CREATOR}"), Some(CREATOR), Some(json!({}))).await?.0, 200);
+        assert_eq!(send_with(&app, "PATCH", &format!("/self/{managed}"), None, Some(json!({}))).await?.0, 403);
+        // The scope still pins the channel.
+        assert_eq!(send_with(&app, "PATCH", &format!("/self/{managed}"), Some(&id("owner")), Some(json!({"channelID": id("unrelated")}))).await?.0, 400);
+
         // Manager with a permission.
         let (got, body) = send_with(&app, "PATCH", &format!("/commands/{managed}"), Some(&id("manager")), Some(json!({"name": "x"}))).await?;
         assert_eq!((got, serde_json::from_str::<Value>(&body)?["role"].clone()), (200, json!("admin")));
@@ -532,6 +548,21 @@ async fn direct_scope_and_media_library_seam() -> Result<()> {
                 .await?
                 .is_err()
         );
+        // Self only makes no lookup and admits the channel's own account alone.
+        let own = access
+            .scope(&user("owner"), &managed, Need::SelfOnly)
+            .await?
+            .expect("own channel");
+        assert_eq!(own.role(), ScopeRole::OwnChannel);
+        for who in ["super", "creator", "full"] {
+            assert!(
+                access
+                    .scope(&user(who), &managed, Need::SelfOnly)
+                    .await?
+                    .is_err(),
+                "{who}"
+            );
+        }
         let seam: &dyn GlobalChannelOwnerAccess = &access;
         assert!(
             seam.has_access(&id_of("super", &run), &managed)
