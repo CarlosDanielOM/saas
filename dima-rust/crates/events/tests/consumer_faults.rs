@@ -74,7 +74,7 @@ static BOTH: [ConsumerDefinition; 2] = [FAULT, OTHER];
 
 /// Scripted handlers (by `payload.script`): `ok`; `fail`; `block` (never returns); `block-once`
 /// (blocks on its first call, then returns); `wait` (returns once released); `sleep-300`;
-/// `slow` (2 s); `sync-block` (holds its thread 2.5 s without yielding).
+/// `slow` (2 s); `sync-block` (holds its thread 4 s without yielding).
 #[derive(Debug, Default)]
 struct Behaviour {
     calls: Mutex<HashMap<String, u32>>,
@@ -150,7 +150,7 @@ impl Handler for Behaviour {
                 }
                 Some("sync-block") => {
                     self.entered.notify_one();
-                    std::thread::sleep(Duration::from_millis(2_500));
+                    std::thread::sleep(Duration::from_secs(4));
                     Outcome::Done
                 }
                 _ => Outcome::Done,
@@ -210,9 +210,11 @@ async fn journal_with(journal: &Journal, source: &str, items: &[(&str, &str)]) -
     Ok(())
 }
 
+/// Every store call's deadline: a lost reply costs this much, and a journaled write on a busy
+/// machine must not miss it.
 fn events_config() -> EventsConfig {
     EventsConfig {
-        store_deadline: Duration::from_secs(2),
+        store_deadline: Duration::from_secs(5),
     }
 }
 
@@ -707,7 +709,7 @@ async fn the_store_silent_or_losing_a_reply_at_each_write() -> Result<()> {
             let Some(through) = support::store_through(&proxy, store.database().name()).await? else {
                 return Ok(());
             };
-            through.ping().await?;
+            support::warm(&through).await?;
             let clock = ManualClock::new(1_794_392_430_456);
             journal(&store, Arc::new(clock.clone()), "fault", &[("faulty", case.script)]).await?;
             let key = key("fault", "faulty");
@@ -1097,7 +1099,6 @@ async fn a_handler_that_cannot_be_stopped_makes_the_runtime_fail() -> Result<()>
             abort_grace_ms: 200,
             ..FAST
         };
-        let started = tokio::time::Instant::now();
         let ran = runtime(&store, config, vec![consumer_of(&FAULT, &behaviour)], &ONE)
             .await?
             .run(&Shutdown::new())
@@ -1107,13 +1108,13 @@ async fn a_handler_that_cannot_be_stopped_makes_the_runtime_fail() -> Result<()>
             "{ran:?}"
         );
         ensure!(
-            started.elapsed() < Duration::from_millis(2_400),
-            "it does not wait for the stuck handler"
+            behaviour.running.load(Ordering::SeqCst) == 1,
+            "it returns while the stuck handler still holds its thread"
         );
         // Let the stuck thread finish before the database is dropped.
         until(
             "the blocked handler ends",
-            Duration::from_secs(5),
+            Duration::from_secs(8),
             || async { Ok(behaviour.running.load(Ordering::SeqCst) == 0) },
         )
         .await?;

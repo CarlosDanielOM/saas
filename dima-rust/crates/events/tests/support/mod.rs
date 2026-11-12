@@ -488,6 +488,19 @@ pub async fn store_through(proxy: &Proxy, database: &str) -> Result<Option<Mongo
     Ok(Some(MongoStore::connect(&config, None).await?))
 }
 
+/// Opens several connections in `store`'s pool (bursts of concurrent round trips), so that when a
+/// test makes the proxy drop one, the next call finds an idle connection instead of needing a
+/// new handshake (SCRAM in a debug build is slow on a loaded machine).
+pub async fn warm(store: &MongoStore) -> Result<()> {
+    for _ in 0..3 {
+        let pings = (0..6).map(|_| store.ping());
+        for outcome in futures_util::future::join_all(pings).await {
+            outcome?;
+        }
+    }
+    Ok(())
+}
+
 /// The upstream `host:port` of the test MongoDB.
 pub fn mongo_address() -> Result<Option<String>> {
     let Some(uri) = mongo_uri()? else {

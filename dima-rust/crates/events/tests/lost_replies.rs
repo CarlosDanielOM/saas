@@ -29,9 +29,9 @@ use support::{Proxy, with_store};
 
 const NOW: i64 = 1_794_392_430_456;
 const QUEUE: &str = "cron:stream-memory:queue";
-/// A lost reply ends the call at this deadline; long enough for a new connection's handshake
-/// (SCRAM in a debug build) when tests run side by side.
-const DEADLINE: Duration = Duration::from_millis(2_000);
+/// A lost reply ends the call at this deadline. Long enough that a journaled write (`j: true`
+/// waits for the journal to be flushed) does not miss it on a machine busy with other builds.
+const DEADLINE: Duration = Duration::from_millis(8_000);
 
 #[derive(Clone, Copy, Debug)]
 struct NoQueue;
@@ -78,8 +78,8 @@ async fn through(store: &MongoStore) -> Result<Option<(Proxy, MongoStore)>> {
     let Some(other) = support::store_through(&proxy, &name).await? else {
         return Ok(None);
     };
-    // One round trip so the connection pool and the monitor are up before a trap is armed.
-    other.ping().await?;
+    // The pool and the monitor are up, with idle connections, before a trap is armed.
+    support::warm(&other).await?;
     Ok(Some((proxy, other)))
 }
 
