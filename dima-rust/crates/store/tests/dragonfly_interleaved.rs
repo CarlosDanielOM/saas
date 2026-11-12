@@ -24,8 +24,10 @@ use dima_store::dragonfly::plan_cache_fence::{
     self, Acceptance, AccountRead, AccountVersion, CreditMode, PlanCacheFence, TtlSeconds,
 };
 use dima_store::dragonfly::pubsub::{envelope, parse_envelope};
-use dima_store::dragonfly::{Dragonfly, End, ListQueue, ProcessingList, QueueItem, Topic};
-use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
+use dima_store::dragonfly::{
+    Dragonfly, End, ListQueue, Overflow, ProcessingList, QueueItem, Topic,
+};
+use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, expect_message, prefix};
 use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::process::Stdio;
@@ -426,16 +428,15 @@ async fn pubsub_envelopes_cross_both_ways() -> Result<()> {
     let to_rust = prefix("interleaved-to-rust");
     let subscriber = df.subscriber();
     let mut subscription = subscriber
-        .subscribe(Topic::Channel(to_rust.clone()))
+        .subscribe(Topic::Channel(to_rust.clone()), Overflow::Gap)
         .await?;
     node.call(
         "publish_envelope",
         json!({"channel": to_rust, "data": data, "now": now}),
     )
     .await?;
-    let message = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
-        .await?
-        .context("message")?;
+    let message =
+        expect_message(tokio::time::timeout(Duration::from_secs(2), subscription.recv()).await?)?;
     ensure!(message.payload == envelope(&data, now)?);
     let parsed: Value = parse_envelope(&message.payload)?;
     ensure!(parsed["session"] == AWKWARD_TEXT[1] && parsed["timestamp"].as_f64() == Some(now));

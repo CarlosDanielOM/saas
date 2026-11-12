@@ -4,18 +4,39 @@
 //! # Raw layer
 //!
 //! A [`Subscriber`] owns one connection in subscribe mode and a background task. Each
-//! [`Subscription`] (a channel or a pattern) receives its messages through its own bounded buffer
-//! ([`super::DragonflyConfig::subscription_buffer`]).
+//! [`Subscription`] (a channel or a pattern) receives [`Event`]s through its own bounded buffer
+//! ([`super::DragonflyConfig::subscription_buffer`] messages). The reader task never waits for a
+//! slow consumer, so one slow subscription cannot stall the others.
 //!
-//! - **Overflow**: when a subscription's buffer is full, the new message is dropped and counted
-//!   ([`Subscription::dropped`]); the reader task never waits for a slow consumer, so one slow
-//!   subscription cannot stall the others or make the server's output buffer grow. Every channel in
-//!   the reference is a hint or an invalidation with a fallback (Mongo polling, cache TTLs), and
-//!   pub/sub is at-most-once anyway: the reference loses messages during a reconnect too.
+//! # Overflow policy
+//!
+//! Pub/sub is at most once: a message is lost when a buffer is full or while the connection is
+//! down. Every subscription states what it does about that ([`Overflow`]; there is no default):
+//!
+//! - [`Overflow::DropNewest`]: a message that finds the buffer full is dropped and counted
+//!   ([`Subscription::dropped`]); nothing tells the consumer. For **samples replaced by the next
+//!   one** and **wake-up hints with a fallback**: `domain-events:wakeup:v1` and
+//!   `pet:runtime:wake:v1` (an undelivered wake-up is already in the buffer, and Mongo polling
+//!   covers the rest).
+//! - [`Overflow::Gap`]: nothing is lost silently. The subscription delivers an [`Event::Gap`] in
+//!   place of what was lost (consecutive losses merge into one marker), then carries on; the
+//!   consumer resynchronises from the source of truth. For **channels whose messages are state
+//!   or work**: `widget-feed` (chat deletions and clears, terminal states: a missed one leaves a
+//!   widget on screen for ever, `overlays/live.ts:278`), `twitch:{id}:clip:request`,
+//!   `tts:session-ended:v1`, and invalidations such as `keywords:changed` (resync: drop the cached
+//!   index). When unsure, choose `Gap`.
+//!
+//! A full `Gap` buffer holds at most one marker beyond its messages, so the bound is
+//! `subscription_buffer + 1` events whatever the policy.
+//!
+//! # Connection
+//!
 //! - **Reconnect**: when the connection drops, the task reconnects with back-off
 //!   (`min(50 ms × 2^attempt, 2 s)`, node-redis 5's default strategy without its random jitter) and
 //!   subscribes again to every channel and pattern, as node-redis does. Messages published while it
-//!   was disconnected are lost.
+//!   was disconnected are lost; a `Gap` subscription gets an [`Event::Gap`] with
+//!   [`Gap::resubscribed`] set when it is subscribed again, and so does one that was registered
+//!   while disconnected ([`Subscription::confirmed`] `false`) once it is live.
 //! - **One handler per channel**: subscribing to a topic that already has a subscription replaces
 //!   it (the old subscription's stream ends), mirroring the reference's `Map.set(channel, handler)`.
 //!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one).
@@ -44,12 +65,12 @@ use redis::aio::{PubSub, PubSubSink};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{Notify, mpsc, oneshot};
 use tokio::task::JoinHandle;
 
 /// Bound on queued subscribe/unsubscribe requests to the subscriber task.
@@ -75,6 +96,155 @@ pub struct Message {
     pub payload: Vec<u8>,
 }
 
+/// What a subscription does when its buffer is full (see the module docs). Every subscription
+/// chooses; there is no default.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Overflow {
+    /// Drop the new message and count it ([`Subscription::dropped`]). For samples replaced by
+    /// the next one and hints with a fallback.
+    DropNewest,
+    /// Deliver an [`Event::Gap`] in place of what was lost, so the consumer resynchronises.
+    Gap,
+}
+
+/// Messages were lost here: resynchronise from the source of truth.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Gap {
+    /// Messages dropped because the buffer was full (0 when only a resubscription happened).
+    pub overflowed: u64,
+    /// The subscription was made again on a new connection (or for the first time after being
+    /// registered while disconnected): anything published while it was not subscribed is lost,
+    /// how much is unknown.
+    pub resubscribed: bool,
+}
+
+/// What a subscription delivers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Event<T = Message> {
+    /// One message.
+    Message(T),
+    /// Messages were lost at this point (only for [`Overflow::Gap`] subscriptions).
+    Gap(Gap),
+}
+
+/// A subscription's buffer: at most `capacity` messages plus one trailing gap marker.
+struct Inbox {
+    state: Mutex<InboxState>,
+    notify: Notify,
+    dropped: AtomicU64,
+    capacity: usize,
+    overflow: Overflow,
+}
+
+#[derive(Default)]
+struct InboxState {
+    events: VecDeque<Event>,
+    sender_closed: bool,
+    receiver_closed: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Push {
+    Delivered,
+    Dropped,
+    Closed,
+}
+
+impl Inbox {
+    fn new(capacity: usize, overflow: Overflow) -> Self {
+        Self {
+            state: Mutex::new(InboxState::default()),
+            notify: Notify::new(),
+            dropped: AtomicU64::new(0),
+            capacity: capacity.max(1),
+            overflow,
+        }
+    }
+
+    fn lock(&self) -> MutexGuard<'_, InboxState> {
+        // Nothing panics while the lock is held; a poisoned lock still holds valid state.
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn push_message(&self, message: Message) -> Push {
+        let pushed = {
+            let mut state = self.lock();
+            if state.receiver_closed {
+                return Push::Closed;
+            }
+            if state.events.len() < self.capacity {
+                state.events.push_back(Event::Message(message));
+                Push::Delivered
+            } else {
+                self.dropped.fetch_add(1, Ordering::Relaxed);
+                if self.overflow == Overflow::Gap {
+                    match state.events.back_mut() {
+                        Some(Event::Gap(gap)) => gap.overflowed = gap.overflowed.saturating_add(1),
+                        _ => state.events.push_back(Event::Gap(Gap {
+                            overflowed: 1,
+                            resubscribed: false,
+                        })),
+                    }
+                }
+                Push::Dropped
+            }
+        };
+        self.notify.notify_one();
+        pushed
+    }
+
+    /// For a `Gap` subscription that just became live on a new connection.
+    fn push_resubscribed(&self) -> Push {
+        if self.overflow != Overflow::Gap {
+            return Push::Delivered;
+        }
+        {
+            let mut state = self.lock();
+            if state.receiver_closed {
+                return Push::Closed;
+            }
+            match state.events.back_mut() {
+                Some(Event::Gap(gap)) => gap.resubscribed = true,
+                _ => state.events.push_back(Event::Gap(Gap {
+                    overflowed: 0,
+                    resubscribed: true,
+                })),
+            }
+        }
+        self.notify.notify_one();
+        Push::Delivered
+    }
+
+    fn close_sender(&self) {
+        self.lock().sender_closed = true;
+        self.notify.notify_one();
+    }
+
+    fn close_receiver(&self) {
+        let mut state = self.lock();
+        state.receiver_closed = true;
+        state.events.clear();
+    }
+
+    async fn recv(&self) -> Option<Event> {
+        loop {
+            // `notify_one` stores a permit when nobody waits, so a push between the check and
+            // the await is not missed.
+            let notified = self.notify.notified();
+            {
+                let mut state = self.lock();
+                if let Some(event) = state.events.pop_front() {
+                    return Some(event);
+                }
+                if state.sender_closed {
+                    return None;
+                }
+            }
+            notified.await;
+        }
+    }
+}
+
 enum Control {
     Subscribe {
         topic: Topic,
@@ -92,8 +262,18 @@ enum Control {
 
 struct Entry {
     id: u64,
-    sender: mpsc::Sender<Message>,
-    dropped: Arc<AtomicU64>,
+    inbox: Arc<Inbox>,
+    /// Set when the subscription was not live on the server for a while (registered while
+    /// disconnected, or the connection was lost): a `Gap` subscription gets a marker once it is
+    /// live again.
+    owe_gap: bool,
+}
+
+impl Drop for Entry {
+    fn drop(&mut self) {
+        // Replaced, unsubscribed, or the subscriber stopped: the stream ends after its buffer.
+        self.inbox.close_sender();
+    }
 }
 
 #[derive(Default)]
@@ -132,8 +312,7 @@ pub struct Subscription {
     topic: Topic,
     id: u64,
     confirmed: bool,
-    receiver: mpsc::Receiver<Message>,
-    dropped: Arc<AtomicU64>,
+    inbox: Arc<Inbox>,
     control: mpsc::Sender<Control>,
 }
 
@@ -141,6 +320,7 @@ impl std::fmt::Debug for Subscription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Subscription")
             .field("topic", &self.topic)
+            .field("overflow", &self.inbox.overflow)
             .field("confirmed", &self.confirmed)
             .field("dropped", &self.dropped())
             .finish()
@@ -148,9 +328,15 @@ impl std::fmt::Debug for Subscription {
 }
 
 impl Subscription {
-    /// The next message; `None` once the subscription was replaced or the subscriber stopped.
-    pub async fn recv(&mut self) -> Option<Message> {
-        self.receiver.recv().await
+    /// The next event; `None` once the subscription was replaced or the subscriber stopped (after
+    /// what was already buffered).
+    pub async fn recv(&mut self) -> Option<Event> {
+        self.inbox.recv().await
+    }
+
+    /// The overflow policy it was made with.
+    pub fn overflow(&self) -> Overflow {
+        self.inbox.overflow
     }
 
     /// The topic.
@@ -164,14 +350,16 @@ impl Subscription {
         self.confirmed
     }
 
-    /// Messages dropped because this subscription's buffer was full.
+    /// Messages dropped because this subscription's buffer was full (for a `Gap` subscription
+    /// they were also reported through [`Event::Gap`]).
     pub fn dropped(&self) -> u64 {
-        self.dropped.load(Ordering::Relaxed)
+        self.inbox.dropped.load(Ordering::Relaxed)
     }
 }
 
 impl Drop for Subscription {
     fn drop(&mut self) {
+        self.inbox.close_receiver();
         // If the control buffer is full the task notices the closed receiver on the next message
         // for this topic and unsubscribes then.
         let _ = self.control.try_send(Control::Unsubscribe {
@@ -195,12 +383,12 @@ impl Subscriber {
         }
     }
 
-    /// Subscribes to a topic. Returns once the server confirmed it, or at once when the
-    /// subscriber is reconnecting (the subscription is then made on reconnect; see
+    /// Subscribes to a topic with an overflow policy (see the module docs for which fits which
+    /// channel). Returns once the server confirmed it, or at once when the subscriber is
+    /// reconnecting (the subscription is then made on reconnect; see
     /// [`Subscription::confirmed`]).
-    pub async fn subscribe(&self, topic: Topic) -> Result<Subscription> {
-        let (sender, receiver) = mpsc::channel(self.buffer);
-        let dropped = Arc::new(AtomicU64::new(0));
+    pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
+        let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
         let (ack, confirmed) = oneshot::channel();
         self.control
@@ -208,8 +396,8 @@ impl Subscriber {
                 topic: topic.clone(),
                 entry: Entry {
                     id,
-                    sender,
-                    dropped: dropped.clone(),
+                    inbox: inbox.clone(),
+                    owe_gap: false,
                 },
                 ack,
             })
@@ -222,28 +410,40 @@ impl Subscriber {
             topic,
             id,
             confirmed,
-            receiver,
-            dropped,
+            inbox,
             control: self.control.clone(),
         })
     }
 
-    /// Runs `handler` for every message of `topic` parsed as the pub/sub manager's JSON (see
-    /// [`parse_envelope`]). A payload that is not JSON of type `T` is skipped (the reference's
-    /// `JSON.parse` throws inside its listener). Messages are handled one at a time, in order.
-    /// Dropping the returned guard stops the handler and unsubscribes.
-    pub async fn on_json<T, F>(&self, topic: Topic, handler: F) -> Result<HandlerGuard>
+    /// Runs `handler` for every message of `topic` parsed as the envelope's JSON (see
+    /// [`parse_envelope`]), and for every [`Event::Gap`] of a `Gap` subscription. A payload that is
+    /// not JSON of type `T` is skipped and reported (the reference's `JSON.parse` throws inside its
+    /// listener). Events are handled one at a time, in order. Dropping the returned guard stops
+    /// the handler and unsubscribes.
+    pub async fn on_json<T, F>(
+        &self,
+        topic: Topic,
+        overflow: Overflow,
+        handler: F,
+    ) -> Result<HandlerGuard>
     where
         T: DeserializeOwned + Send + 'static,
-        F: FnMut(T) + Send + 'static,
+        F: FnMut(Event<T>) + Send + 'static,
     {
-        let mut subscription = self.subscribe(topic).await?;
+        let mut subscription = self.subscribe(topic, overflow).await?;
         let shared = self.shared.clone();
         let mut handler = handler;
         let task = tokio::spawn(async move {
-            while let Some(message) = subscription.recv().await {
+            while let Some(event) = subscription.recv().await {
+                let message = match event {
+                    Event::Message(message) => message,
+                    Event::Gap(gap) => {
+                        handler(Event::Gap(gap));
+                        continue;
+                    }
+                };
                 match parse_envelope::<T>(&message.payload) {
-                    Ok(value) => handler(value),
+                    Ok(value) => handler(Event::Message(value)),
                     Err(error) => {
                         if let DragonflyError::Decode(decode) = &error {
                             shared
@@ -360,6 +560,13 @@ async fn run(shared: Arc<Shared>, mut control: mpsc::Receiver<Control>, state: A
                             state.connection_id.store(id, Ordering::Relaxed);
                             state.connections.fetch_add(1, Ordering::Relaxed);
                             attempt = 0;
+                            entries.retain(|_, entry| {
+                                if std::mem::take(&mut entry.owe_gap) {
+                                    entry.inbox.push_resubscribed() != Push::Closed
+                                } else {
+                                    true
+                                }
+                            });
                             break (sink, stream);
                         }
                         Err(error) => shared.hooks.report(&shared.config.caller, &error),
@@ -379,7 +586,8 @@ async fn run(shared: Arc<Shared>, mut control: mpsc::Receiver<Control>, state: A
                             let _ = ack.send(());
                             return;
                         }
-                        Some(Control::Subscribe { topic, entry, ack }) => {
+                        Some(Control::Subscribe { topic, mut entry, ack }) => {
+                            entry.owe_gap = true;
                             entries.insert(topic, entry);
                             let _ = ack.send(false);
                         }
@@ -403,7 +611,10 @@ async fn run(shared: Arc<Shared>, mut control: mpsc::Receiver<Control>, state: A
                         let _ = ack.send(());
                         return;
                     }
-                    Some(Control::Subscribe { topic, entry, ack }) => {
+                    Some(Control::Subscribe { topic, mut entry, ack }) => {
+                        // Replacing a live topic keeps the server subscription: the new
+                        // subscription is live at once.
+                        entry.owe_gap = false;
                         let fresh = entries.insert(topic.clone(), entry).is_none();
                         let result = if fresh { subscribe(&mut sink, &topic).await } else { Ok(()) };
                         let confirmed = result.is_ok();
@@ -444,6 +655,9 @@ async fn run(shared: Arc<Shared>, mut control: mpsc::Receiver<Control>, state: A
             }
         }
         state.connection_id.store(0, Ordering::Relaxed);
+        for entry in entries.values_mut() {
+            entry.owe_gap = true;
+        }
     }
 }
 
@@ -466,13 +680,9 @@ fn deliver(message: &redis::Msg, entries: &mut HashMap<Topic, Entry>) -> Option<
         },
         payload: message.get_payload_bytes().to_vec(),
     };
-    match entry.sender.try_send(outgoing) {
-        Ok(()) => None,
-        Err(mpsc::error::TrySendError::Full(_)) => {
-            entry.dropped.fetch_add(1, Ordering::Relaxed);
-            None
-        }
-        Err(mpsc::error::TrySendError::Closed(_)) => {
+    match entry.inbox.push_message(outgoing) {
+        Push::Delivered | Push::Dropped => None,
+        Push::Closed => {
             entries.remove(&topic);
             Some(topic)
         }
@@ -608,6 +818,118 @@ mod tests {
         let value: Value = parse_envelope(br#"{"t":"\udc00"}"#).unwrap();
         assert_eq!(value["t"], "\u{fffd}");
         assert!(parse_envelope::<Value>(b"not json").is_err());
+    }
+
+    fn message(n: u64) -> Message {
+        Message {
+            channel: b"c".to_vec(),
+            pattern: None,
+            payload: n.to_string().into_bytes(),
+        }
+    }
+
+    fn drain(inbox: &Inbox) -> Vec<Event> {
+        inbox.lock().events.drain(..).collect()
+    }
+
+    #[test]
+    fn drop_newest_keeps_the_oldest_and_counts() {
+        let inbox = Inbox::new(2, Overflow::DropNewest);
+        for n in 0..5 {
+            inbox.push_message(message(n));
+        }
+        assert_eq!(
+            drain(&inbox),
+            vec![Event::Message(message(0)), Event::Message(message(1))]
+        );
+        assert_eq!(inbox.dropped.load(Ordering::Relaxed), 3);
+        assert_eq!(inbox.push_resubscribed(), Push::Delivered);
+        assert!(drain(&inbox).is_empty(), "no markers for DropNewest");
+    }
+
+    #[test]
+    fn gap_replaces_what_was_lost_and_merges() {
+        let inbox = Inbox::new(2, Overflow::Gap);
+        for n in 0..5 {
+            inbox.push_message(message(n));
+        }
+        inbox.push_resubscribed();
+        let events = drain(&inbox);
+        assert_eq!(
+            events,
+            vec![
+                Event::Message(message(0)),
+                Event::Message(message(1)),
+                Event::Gap(Gap {
+                    overflowed: 3,
+                    resubscribed: true
+                })
+            ]
+        );
+        // After a resubscription on an empty buffer the marker comes first.
+        inbox.push_resubscribed();
+        inbox.push_message(message(9));
+        assert_eq!(
+            drain(&inbox),
+            vec![
+                Event::Gap(Gap {
+                    overflowed: 0,
+                    resubscribed: true
+                }),
+                Event::Message(message(9))
+            ]
+        );
+    }
+
+    #[test]
+    fn the_buffer_never_holds_more_than_capacity_plus_one() {
+        for capacity in [1, 2, 5] {
+            let inbox = Inbox::new(capacity, Overflow::Gap);
+            // A deterministic mix of pushes, pops and resubscriptions.
+            let mut state = 7_u64;
+            for n in 0..2_000 {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1);
+                match state >> 61 {
+                    0 => {
+                        inbox.lock().events.pop_front();
+                    }
+                    1 => {
+                        inbox.push_resubscribed();
+                    }
+                    _ => {
+                        inbox.push_message(message(n));
+                    }
+                }
+                let guard = inbox.lock();
+                let events = &guard.events;
+                assert!(
+                    events.len() <= capacity + 1,
+                    "{} > {capacity} + 1",
+                    events.len()
+                );
+                assert!(
+                    events
+                        .iter()
+                        .zip(events.iter().skip(1))
+                        .all(|pair| !matches!(pair, (Event::Gap(_), Event::Gap(_)))),
+                    "markers merge"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn a_dropped_receiver_closes_and_a_closed_sender_ends_the_stream() {
+        let inbox = Inbox::new(2, Overflow::Gap);
+        inbox.push_message(message(1));
+        inbox.close_sender();
+        assert_eq!(inbox.recv().await, Some(Event::Message(message(1))));
+        assert_eq!(inbox.recv().await, None);
+        let other = Inbox::new(2, Overflow::Gap);
+        other.close_receiver();
+        assert_eq!(other.push_message(message(1)), Push::Closed);
     }
 
     #[test]

@@ -45,7 +45,7 @@ pub use commands::{End, SetCondition, SetExpiry, SetOptions, SetOutcome, Ttl};
 pub use config::DragonflyConfig;
 pub use error::{DecodeCategory, DecodeError, DragonflyError};
 pub use hooks::{CommandHook, ErrorHook, Hooks};
-pub use pubsub::{Message, Subscriber, Subscription, Topic};
+pub use pubsub::{Event, Gap, Message, Overflow, Subscriber, Subscription, Topic};
 pub use queue::{
     DelayQueue, Fence, FencedTransition, ListQueue, ProcessingList, QueueItem, Transition,
 };

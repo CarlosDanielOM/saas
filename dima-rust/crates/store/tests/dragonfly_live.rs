@@ -14,10 +14,10 @@ use dima_store::dragonfly::hooks::{
 };
 use dima_store::dragonfly::pubsub::envelope;
 use dima_store::dragonfly::{
-    Dragonfly, DragonflyError, Hooks, QueueItem, Script, SetCondition, SetExpiry, SetOptions,
-    SetOutcome, Topic, Ttl,
+    Dragonfly, DragonflyError, Event, Gap, Hooks, Overflow, QueueItem, Script, SetCondition,
+    SetExpiry, SetOptions, SetOutcome, Subscription, Topic, Ttl,
 };
-use dragonfly_support::{cleanup, config, prefix};
+use dragonfly_support::{cleanup, config, expect_message, prefix};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -295,23 +295,21 @@ async fn the_subscriber_resubscribes_after_its_connection_is_killed() -> Result<
     let pattern_base = prefix("pubsub-pattern");
     let subscriber = df.subscriber();
     let mut by_channel = subscriber
-        .subscribe(Topic::Channel(channel.clone()))
+        .subscribe(Topic::Channel(channel.clone()), Overflow::Gap)
         .await?;
     let mut by_pattern = subscriber
-        .subscribe(Topic::Pattern(format!("{pattern_base}*")))
+        .subscribe(
+            Topic::Pattern(format!("{pattern_base}*")),
+            Overflow::DropNewest,
+        )
         .await?;
     ensure!(by_channel.confirmed() && by_pattern.confirmed());
 
     df.publish(&channel, b"one").await?;
     df.publish(&format!("{pattern_base}x"), b"p-one").await?;
-    let got = tokio::time::timeout(Duration::from_secs(2), by_channel.recv()).await?;
-    ensure!(
-        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"one".as_slice()),
-        "{got:?}"
-    );
-    let got = tokio::time::timeout(Duration::from_secs(2), by_pattern.recv())
-        .await?
-        .context("pattern message")?;
+    let got = expect_message(timeout(by_channel.recv()).await?)?;
+    ensure!(got.payload == b"one", "{got:?}");
+    let got = expect_message(timeout(by_pattern.recv()).await?)?;
     ensure!(got.payload == b"p-one" && got.channel == format!("{pattern_base}x").as_bytes());
     ensure!(got.pattern.as_deref() == Some(format!("{pattern_base}*").as_str()));
 
@@ -334,26 +332,29 @@ async fn the_subscriber_resubscribes_after_its_connection_is_killed() -> Result<
 
     df.publish(&channel, b"two").await?;
     df.publish(&format!("{pattern_base}y"), b"p-two").await?;
-    let got = tokio::time::timeout(Duration::from_secs(2), by_channel.recv()).await?;
+    // The Gap subscription is told that it missed whatever was published meanwhile.
+    let marker = timeout(by_channel.recv()).await?;
     ensure!(
-        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"two".as_slice()),
-        "{got:?}"
+        marker
+            == Some(Event::Gap(Gap {
+                overflowed: 0,
+                resubscribed: true
+            })),
+        "{marker:?}"
     );
-    let got = tokio::time::timeout(Duration::from_secs(2), by_pattern.recv()).await?;
-    ensure!(
-        got.as_ref().map(|m| m.payload.as_slice()) == Some(b"p-two".as_slice()),
-        "{got:?}"
-    );
+    let got = expect_message(timeout(by_channel.recv()).await?)?;
+    ensure!(got.payload == b"two", "{got:?}");
+    // The DropNewest one just carries on.
+    let got = expect_message(timeout(by_pattern.recv()).await?)?;
+    ensure!(got.payload == b"p-two", "{got:?}");
 
     // Dropping a subscription unsubscribes; shutting down ends every stream.
     drop(by_pattern);
     let mut gone = false;
     for _ in 0..40 {
-        let counts: i64 = df.query(redis::cmd("PUBSUB").arg("NUMPAT")).await?;
         let receivers = df.publish(&format!("{pattern_base}z"), b"nobody").await?;
         if receivers == 0 {
             gone = true;
-            let _ = counts;
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -367,42 +368,64 @@ async fn the_subscriber_resubscribes_after_its_connection_is_killed() -> Result<
     Ok(())
 }
 
+fn timeout<F: std::future::Future>(future: F) -> tokio::time::Timeout<F> {
+    tokio::time::timeout(Duration::from_secs(2), future)
+}
+
+/// Waits until the subscription counted `expected` dropped messages.
+async fn dropped_reaches(subscription: &Subscription, expected: u64) -> Result<()> {
+    for _ in 0..80 {
+        if subscription.dropped() == expected {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    bail!("dropped {} instead of {expected}", subscription.dropped())
+}
+
 #[tokio::test]
-async fn a_full_subscription_buffer_drops_and_counts() -> Result<()> {
+async fn a_full_buffer_drops_newest_or_reports_a_gap_as_each_subscription_chose() -> Result<()> {
     let Some(mut config) = config(DB) else {
         return Ok(());
     };
     config.subscription_buffer = 2;
     let df = Dragonfly::connect(config, Hooks::default()).await?;
-    let channel = prefix("pubsub-overflow");
+    let samples = prefix("pubsub-samples");
+    let feed = prefix("pubsub-feed");
     let subscriber = df.subscriber();
-    let mut subscription = subscriber
-        .subscribe(Topic::Channel(channel.clone()))
+    let mut dropping = subscriber
+        .subscribe(Topic::Channel(samples.clone()), Overflow::DropNewest)
+        .await?;
+    let mut gapping = subscriber
+        .subscribe(Topic::Channel(feed.clone()), Overflow::Gap)
         .await?;
     for index in 0..5 {
-        df.publish(&channel, format!("m{index}").as_bytes()).await?;
+        df.publish(&samples, format!("m{index}").as_bytes()).await?;
+        df.publish(&feed, format!("m{index}").as_bytes()).await?;
     }
-    let mut dropped = 0;
-    for _ in 0..40 {
-        dropped = subscription.dropped();
-        if dropped == 3 {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(25)).await;
-    }
-    ensure!(dropped == 3, "dropped {dropped}");
-    let first = subscription.recv().await.context("first")?;
-    let second = subscription.recv().await.context("second")?;
+    dropped_reaches(&dropping, 3).await?;
+    dropped_reaches(&gapping, 3).await?;
+
+    // DropNewest: the oldest two, nothing else; delivery continues once there is room.
+    ensure!(expect_message(dropping.recv().await)?.payload == b"m0");
+    ensure!(expect_message(dropping.recv().await)?.payload == b"m1");
+    df.publish(&samples, b"m5").await?;
+    ensure!(expect_message(timeout(dropping.recv()).await?)?.payload == b"m5");
+
+    // Gap: the oldest two, then one marker standing for the three that were lost, then on.
+    ensure!(expect_message(gapping.recv().await)?.payload == b"m0");
+    ensure!(expect_message(gapping.recv().await)?.payload == b"m1");
+    let marker = gapping.recv().await;
     ensure!(
-        first.payload == b"m0" && second.payload == b"m1",
-        "kept the oldest two"
+        marker
+            == Some(Event::Gap(Gap {
+                overflowed: 3,
+                resubscribed: false
+            })),
+        "{marker:?}"
     );
-    // Delivery continues once there is room again.
-    df.publish(&channel, b"m5").await?;
-    let next = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
-        .await?
-        .context("next")?;
-    ensure!(next.payload == b"m5");
+    df.publish(&feed, b"m5").await?;
+    ensure!(expect_message(timeout(gapping.recv()).await?)?.payload == b"m5");
     Ok(())
 }
 
@@ -423,9 +446,15 @@ async fn json_handler_receives_the_envelope() -> Result<()> {
         timestamp: f64,
     }
     let _guard = subscriber
-        .on_json(Topic::Channel(channel.clone()), move |value: Ended| {
-            let _ = sender.try_send(value);
-        })
+        .on_json(
+            Topic::Channel(channel.clone()),
+            Overflow::Gap,
+            move |event: Event<Ended>| {
+                if let Event::Message(value) = event {
+                    let _ = sender.try_send(value);
+                }
+            },
+        )
         .await?;
     df.publish(&channel, b"not json").await?;
     // Valid JSON of the wrong shape: serde's message would quote the value.

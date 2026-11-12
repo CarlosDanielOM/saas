@@ -23,8 +23,8 @@ use dima_store::dragonfly::plan_cache_fence::{
     PlanCacheFence, TtlSeconds,
 };
 use dima_store::dragonfly::pubsub::envelope;
-use dima_store::dragonfly::{End, ListQueue, QueueItem, SetOptions, Topic, Ttl};
-use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
+use dima_store::dragonfly::{End, ListQueue, Overflow, QueueItem, SetOptions, Topic, Ttl};
+use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, expect_message, prefix};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::borrow::Cow;
@@ -499,16 +499,16 @@ async fn published_envelopes_arrive_as_the_recorded_bytes() -> Result<()> {
     let channel = prefix("golden-pubsub");
     let subscriber = df.subscriber();
     let mut subscription = subscriber
-        .subscribe(Topic::Channel(channel.clone()))
+        .subscribe(Topic::Channel(channel.clone()), Overflow::Gap)
         .await?;
     df.publish_envelope(&channel, &clip_data(run.now_ms), run.now_ms)
         .await?;
     df.publish(&channel, br#"{"channelID":"42"}"#).await?;
     let pubsub = run.case("pubsub");
     for name in ["clip_request", "keywords_changed"] {
-        let message = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
-            .await?
-            .context("message")?;
+        let message = expect_message(
+            tokio::time::timeout(Duration::from_secs(2), subscription.recv()).await?,
+        )?;
         ensure!(
             message.payload == recorded(&pubsub[name])?,
             "{name} differs"

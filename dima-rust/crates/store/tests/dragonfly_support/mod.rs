@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 use anyhow::{Context, Result};
-use dima_store::dragonfly::{Dragonfly, DragonflyConfig, Hooks};
+use dima_store::dragonfly::{Dragonfly, DragonflyConfig, Event, Hooks, Message};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -90,3 +90,11 @@ pub const AWKWARD_TEXT: &[&str] = &[
     "slash / and \u{2028} separator \u{7}",
     "",
 ];
+
+/// The message of a received event; an error for a gap marker or the end of the stream.
+pub fn expect_message(event: Option<Event>) -> Result<Message> {
+    match event {
+        Some(Event::Message(message)) => Ok(message),
+        other => anyhow::bail!("expected a message, got {other:?}"),
+    }
+}
