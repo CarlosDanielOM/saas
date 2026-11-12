@@ -3536,6 +3536,506 @@
 {"source":".{1000}","ignoreCase":true,"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaac","wholeWord":false,"expected":null},
 {"source":"(?:.{100}){10}","ignoreCase":true,"text":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","wholeWord":false,"expected":null},
 {"source":"(?:.{100}){10}","ignoreCase":true,"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaac","wholeWord":false,"expected":null},
+{"source":"\\p{gc=Lu}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[3,4]},
+{"source":"\\p{gc=Lu}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[1,2]},
+{"source":"\\p{gc=Lu}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[1,2]},
+{"source":"\\p{gc=Lu}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Lu}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Lu}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{General_Category=Letter}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{gc=Letter}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{scx=Greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,8]},
+{"source":"\\p{scx=Greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[9,10]},
+{"source":"\\p{scx=Greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,8]},
+{"source":"\\p{scx=Greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[9,10]},
+{"source":"\\p{scx=Grek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,8]},
+{"source":"\\p{scx=Grek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Grek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[9,10]},
+{"source":"\\p{scx=Grek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,8]},
+{"source":"\\p{scx=Grek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Grek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[9,10]},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[11,12]},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[11,12]},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Hani}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[16,18]},
+{"source":"\\p{scx=Hani}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Hani}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Hani}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[16,18]},
+{"source":"\\p{scx=Hani}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Hani}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\P{scx=Greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{scx=Greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{scx=Greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{scx=Greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{scx=Greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{scx=Greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{scx=greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\P{sc=Greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{sc=Greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{sc=Greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{sc=Greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{sc=Greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{sc=Greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{^sc=Greek}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,10]},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[13,15]},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,10]},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[13,15]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,7]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,9]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,7]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,9]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[3,4]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[1,2]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[1,2]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Cased_Letter}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{LC}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{ASCII}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,5]},
+{"source":"\\p{ASCII}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"\\p{ASCII}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,5]},
+{"source":"\\p{ASCII}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,7]},
+{"source":"\\p{ASCII}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"\\p{ASCII}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,5]},
+{"source":"\\P{ASCII}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[5,6]},
+{"source":"\\P{ASCII}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\P{ASCII}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[5,7]},
+{"source":"\\P{ASCII}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[7,10]},
+{"source":"\\P{ASCII}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\P{ASCII}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[5,7]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,5]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,5]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\P{ASCII}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,5]},
+{"source":"[\\P{ASCII}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[5,6]},
+{"source":"[\\P{ASCII}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\P{ASCII}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[5,7]},
+{"source":"[\\P{ASCII}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"[\\P{ASCII}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\P{ASCII}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[5,7]},
+{"source":"\\p{^Emoji}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{gc=Emoji}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,21]},
+{"source":"\\p{gc=Emoji}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{gc=Emoji}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{gc=Emoji}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,21]},
+{"source":"\\p{gc=Emoji}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{gc=Emoji}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{Alpha}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Alpha}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Alpha}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Alpha}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Alpha}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Alpha}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{AHex}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[30,32]},
+{"source":"\\p{AHex}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{AHex}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,3]},
+{"source":"\\p{AHex}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[30,32]},
+{"source":"\\p{AHex}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{AHex}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,3]},
+{"source":"\\p{Lowercase}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Lowercase}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lowercase}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lowercase}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Lowercase}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Lowercase}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{Lowercase}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,5]},
+{"source":"\\P{Lowercase}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[1,3]},
+{"source":"\\P{Lowercase}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[1,5]},
+{"source":"\\P{Lowercase}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"\\P{Lowercase}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[2,3]},
+{"source":"\\P{Lowercase}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,5]},
+{"source":"\\p{Lower}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lower}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lower}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lower}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lower}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Lower}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{White_Space}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{White_Space}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{White_Space}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[4,5]},
+{"source":"\\p{White_Space}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{White_Space}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{White_Space}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[4,5]},
+{"source":"\\p{Any}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Any}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Any}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Any}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Any}]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{Any}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\P{Any}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\P{Any}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\P{Any}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\P{Any}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\P{Any}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{^Any}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\pé","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\pé","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\pé","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\pé","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\pé","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\pé","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{^}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{^L}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{^L}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{^L}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,5]},
+{"source":"\\p{^L}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{^L}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[2,3]},
+{"source":"\\p{^L}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,5]},
+{"source":"\\P{^L}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{^L}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{^L}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{^L}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{^L}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\P{^L}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latn}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latn}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latn}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latn}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latn}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latn}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Latin}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latin}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latin}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latin}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latin}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{Latin}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"\\p{C}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"\\p{C}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{C}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[27,28]},
+{"source":"\\p{C}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"\\p{C}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{C}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[27,28]},
+{"source":"\\P{C}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{C}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{C}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{C}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{C}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\P{C}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Cs}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Cs}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Cs}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Cs}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Cs}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Cs}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\p{Cs}a]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"[\\p{Cs}a]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Cs}a]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Cs}a]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[30,31]},
+{"source":"[\\p{Cs}a]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\p{Cs}a]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Cn}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cn}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cn}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cn}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cn}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Cn}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Co}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"\\p{Co}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Co}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Co}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"\\p{Co}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Co}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Yi}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Assigned}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Assigned}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Assigned}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Assigned}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Assigned}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Assigned}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[23,25]},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[23,25]},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[21,25]},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[21,25]},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{Beria_Erfe}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\p{scx=Sidt}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Sidt}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Sidt}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Sidt}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Sidt}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\p{scx=Sidt}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[33,35]},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[77,79]},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[33,35]},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[77,79]},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[]\\p{Emoji}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[33,35]},
+{"source":"[]\\p{Emoji}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[]\\p{Emoji}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[77,79]},
+{"source":"[]\\p{Emoji}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[33,35]},
+{"source":"[]\\p{Emoji}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[]\\p{Emoji}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[77,79]},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\p{Emoji}-z]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,21]},
+{"source":"[\\p{Emoji}-z]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[2,3]},
+{"source":"[\\p{Emoji}-z]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"[\\p{Emoji}-z]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,21]},
+{"source":"[\\p{Emoji}-z]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[2,3]},
+{"source":"[\\p{Emoji}-z]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"[a-\\p{Emoji}]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[\\p{Emoji}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,25]},
+{"source":"[\\p{Emoji}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\p{Emoji}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"[\\p{Emoji}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[19,25]},
+{"source":"[\\p{Emoji}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\p{Emoji}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[2,3]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,19]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,19]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,6]},
+{"source":"[^\\p{Emoji}]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"[\\P{Emoji}a]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[\\P{Emoji}a]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\P{Emoji}a]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[\\P{Emoji}a]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[\\P{Emoji}a]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[\\P{Emoji}a]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"\\Qa/b\\E","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Qa/b\\E","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Qa/b\\E","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Qa/b\\E","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Qa/b\\E","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Qa/b\\E","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\u0041\\E","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\Q\\cA\\E","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[[:alpha] :]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha] :]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha] :]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha] :]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha] :]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha] :]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[[:alpha:]-z]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[[:alpha:]-z]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[[:alpha:]-z]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[[:alpha:]-z]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[[:alpha:]-z]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[[:alpha:]-z]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[a-[:alpha:]]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":"error"},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,2]},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,2]},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,2]},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[^\\uD83D]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[^\\uD83D]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[^\\uD83D]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[^\\uD83D]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[0,1]},
+{"source":"[^\\uD83D]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":[0,1]},
+{"source":"[^\\uD83D]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[0,1]},
+{"source":"[\\uD83D]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"[\\uD83D]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD83D]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\uD83D]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"[\\uD83D]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\uD83D]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\x{D800}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\x{110000}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\x{110000}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\x{110000}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":"error"},
+{"source":"\\x{110000}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":"error"},
+{"source":"\\x{10FFFF}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\x{10FFFF}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\x{10FFFF}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\x{10FFFF}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\x{10FFFF}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\x{10FFFF}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\uFFFF","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{10FFFF}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u00411","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[30,32]},
+{"source":"\\u00411","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u00411","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[1,3]},
+{"source":"\\u00411","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[30,32]},
+{"source":"\\u00411","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u00411","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[1,3]},
+{"source":"\\u{d83d}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{d83d}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{d83d}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u{d83d}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{d83d}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{d83d}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":[28,29]},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\ud83d\\ude00+","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":false,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":false,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":true,"text":"ks K ſ αβγ ひらがな 漢字 😀🇪🇸 ͸  A1 [] :]","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":true,"text":"aA-z{}","wholeWord":false,"expected":null},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":true,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":null},
 {"source":"😀","ignoreCase":false,"text":"😀😀 👍🏽 café café قال مرحبا שלום 中文字 𐐨𐐀","wholeWord":false,"expected":[0,2]},
 {"source":"😀","ignoreCase":false,"text":"aA1_ éÉ é ñ Ωω σς 😀👍🏽 x\ny\r\nz wv ٣ قال 𐐨𐐀 ǅ ß ẞ K ſ İı -.,;:!?@#$%^&*()[]{}<>|\\/\"'`~+= \t\f\u000b\u0000","wholeWord":false,"expected":[19,21]},
 {"source":"😀","ignoreCase":true,"text":"😀😀 👍🏽 café café قال مرحبا שלום 中文字 𐐨𐐀","wholeWord":false,"expected":[0,2]},
@@ -5755,6 +6255,170 @@
 {"source":"(?:\\w{100}){10}","ignoreCase":true,"result":"ok"},
 {"source":".{1000}","ignoreCase":true,"result":"ok"},
 {"source":"(?:.{100}){10}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{gc=Lu}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{gc=Lu}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{General_Category=Letter}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{General_Category=Letter}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{gc=Letter}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{gc=Letter}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{scx=Greek}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{scx=Greek}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{scx=Grek}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{scx=Grek}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Script_Extensions=Hira}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{scx=Hani}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{scx=Hani}+","ignoreCase":true,"result":"ok"},
+{"source":"\\P{scx=Greek}","ignoreCase":false,"result":"ok"},
+{"source":"\\P{scx=Greek}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{scx=greek}","ignoreCase":false,"result":"error"},
+{"source":"\\p{scx=greek}","ignoreCase":true,"result":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":false,"result":"error"},
+{"source":"\\p{Script=greek}","ignoreCase":true,"result":"error"},
+{"source":"\\P{sc=Greek}","ignoreCase":false,"result":"ok"},
+{"source":"\\P{sc=Greek}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{^sc=Greek}","ignoreCase":false,"result":"error"},
+{"source":"\\p{^sc=Greek}","ignoreCase":true,"result":"error"},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":false,"result":"ok"},
+{"source":"[\\p{sc=Greek}]+","ignoreCase":true,"result":"ok"},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":false,"result":"ok"},
+{"source":"[^\\p{scx=Greek}]+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Uppercase_Letter}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Cased_Letter}","ignoreCase":false,"result":"error"},
+{"source":"\\p{Cased_Letter}","ignoreCase":true,"result":"error"},
+{"source":"\\p{LC}","ignoreCase":false,"result":"error"},
+{"source":"\\p{LC}","ignoreCase":true,"result":"error"},
+{"source":"\\p{ASCII}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{ASCII}+","ignoreCase":true,"result":"ok"},
+{"source":"\\P{ASCII}+","ignoreCase":false,"result":"ok"},
+{"source":"\\P{ASCII}+","ignoreCase":true,"result":"ok"},
+{"source":"[^\\P{ASCII}]+","ignoreCase":false,"result":"ok"},
+{"source":"[^\\P{ASCII}]+","ignoreCase":true,"result":"ok"},
+{"source":"[\\P{ASCII}]+","ignoreCase":false,"result":"ok"},
+{"source":"[\\P{ASCII}]+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{^Emoji}","ignoreCase":false,"result":"error"},
+{"source":"\\p{^Emoji}","ignoreCase":true,"result":"error"},
+{"source":"\\p{gc=Emoji}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{gc=Emoji}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Alpha}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Alpha}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{AHex}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{AHex}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Lowercase}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Lowercase}+","ignoreCase":true,"result":"ok"},
+{"source":"\\P{Lowercase}+","ignoreCase":false,"result":"ok"},
+{"source":"\\P{Lowercase}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Lower}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Lower}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{White_Space}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{White_Space}+","ignoreCase":true,"result":"ok"},
+{"source":"[\\p{Any}]","ignoreCase":false,"result":"ok"},
+{"source":"[\\p{Any}]","ignoreCase":true,"result":"ok"},
+{"source":"\\P{Any}","ignoreCase":false,"result":"ok"},
+{"source":"\\P{Any}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{^Any}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{^Any}","ignoreCase":true,"result":"ok"},
+{"source":"\\pé","ignoreCase":false,"result":"error"},
+{"source":"\\pé","ignoreCase":true,"result":"error"},
+{"source":"\\p{^}","ignoreCase":false,"result":"error"},
+{"source":"\\p{^}","ignoreCase":true,"result":"error"},
+{"source":"\\p{^L}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{^L}+","ignoreCase":true,"result":"ok"},
+{"source":"\\P{^L}+","ignoreCase":false,"result":"ok"},
+{"source":"\\P{^L}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Latn}","ignoreCase":false,"result":"error"},
+{"source":"\\p{Latn}","ignoreCase":true,"result":"error"},
+{"source":"\\p{Latin}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Latin}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{C}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{C}","ignoreCase":true,"result":"ok"},
+{"source":"\\P{C}","ignoreCase":false,"result":"ok"},
+{"source":"\\P{C}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Cs}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Cs}","ignoreCase":true,"result":"ok"},
+{"source":"[\\p{Cs}a]","ignoreCase":false,"result":"ok"},
+{"source":"[\\p{Cs}a]","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Cn}","ignoreCase":false,"result":"error"},
+{"source":"\\p{Cn}","ignoreCase":true,"result":"error"},
+{"source":"\\p{Co}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Co}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Yi}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Yi}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Assigned}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Assigned}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Emoji_Modifier}","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":false,"result":"ok"},
+{"source":"\\p{Regional_Indicator}+","ignoreCase":true,"result":"ok"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":false,"result":"error"},
+{"source":"\\p{Beria_Erfe}","ignoreCase":true,"result":"error"},
+{"source":"\\p{scx=Sidt}","ignoreCase":false,"result":"ok"},
+{"source":"\\p{scx=Sidt}","ignoreCase":true,"result":"ok"},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":false,"result":"ok"},
+{"source":"[[:alpha:]\\p{Emoji}]+","ignoreCase":true,"result":"ok"},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":false,"result":"ok"},
+{"source":"\\Q[\\E\\p{Emoji}","ignoreCase":true,"result":"ok"},
+{"source":"[]\\p{Emoji}]+","ignoreCase":false,"result":"ok"},
+{"source":"[]\\p{Emoji}]+","ignoreCase":true,"result":"ok"},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":false,"result":"ok"},
+{"source":"\\Q\\p{Emoji}\\E","ignoreCase":true,"result":"ok"},
+{"source":"[\\p{Emoji}-z]","ignoreCase":false,"result":"ok"},
+{"source":"[\\p{Emoji}-z]","ignoreCase":true,"result":"ok"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":false,"result":"error"},
+{"source":"[a-\\p{Emoji}]","ignoreCase":true,"result":"error"},
+{"source":"[\\p{Emoji}]+","ignoreCase":false,"result":"ok"},
+{"source":"[\\p{Emoji}]+","ignoreCase":true,"result":"ok"},
+{"source":"[^\\p{Emoji}]+","ignoreCase":false,"result":"ok"},
+{"source":"[^\\p{Emoji}]+","ignoreCase":true,"result":"ok"},
+{"source":"[\\P{Emoji}a]","ignoreCase":false,"result":"ok"},
+{"source":"[\\P{Emoji}a]","ignoreCase":true,"result":"ok"},
+{"source":"\\Qa/b\\E","ignoreCase":false,"result":"ok"},
+{"source":"\\Qa/b\\E","ignoreCase":true,"result":"ok"},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":false,"result":"ok"},
+{"source":"\\Q(?<n>a)\\E","ignoreCase":true,"result":"ok"},
+{"source":"\\Q\\u0041\\E","ignoreCase":false,"result":"ok"},
+{"source":"\\Q\\u0041\\E","ignoreCase":true,"result":"ok"},
+{"source":"\\Q\\cA\\E","ignoreCase":false,"result":"ok"},
+{"source":"\\Q\\cA\\E","ignoreCase":true,"result":"ok"},
+{"source":"[[:alpha] :]","ignoreCase":false,"result":"error"},
+{"source":"[[:alpha] :]","ignoreCase":true,"result":"error"},
+{"source":"[[:alpha:]","ignoreCase":false,"result":"error"},
+{"source":"[[:alpha:]","ignoreCase":true,"result":"error"},
+{"source":"[[:alpha:]-z]","ignoreCase":false,"result":"ok"},
+{"source":"[[:alpha:]-z]","ignoreCase":true,"result":"ok"},
+{"source":"[a-[:alpha:]]","ignoreCase":false,"result":"error"},
+{"source":"[a-[:alpha:]]","ignoreCase":true,"result":"error"},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":false,"result":"ok"},
+{"source":"\\uD83D[\\uDE00-\\uDE4F]","ignoreCase":true,"result":"ok"},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":false,"result":"ok"},
+{"source":"[\\uD800-\\uDFFF]","ignoreCase":true,"result":"ok"},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":false,"result":"ok"},
+{"source":"[\\u0041-\\uD83D]+","ignoreCase":true,"result":"ok"},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":false,"result":"ok"},
+{"source":"[\\uD83D-\\uFFFF]","ignoreCase":true,"result":"ok"},
+{"source":"[^\\uD83D]","ignoreCase":false,"result":"ok"},
+{"source":"[^\\uD83D]","ignoreCase":true,"result":"ok"},
+{"source":"[\\uD83D]","ignoreCase":false,"result":"ok"},
+{"source":"[\\uD83D]","ignoreCase":true,"result":"ok"},
+{"source":"\\x{D800}","ignoreCase":false,"result":"ok"},
+{"source":"\\x{D800}","ignoreCase":true,"result":"ok"},
+{"source":"\\x{10FFFF}","ignoreCase":false,"result":"ok"},
+{"source":"\\x{10FFFF}","ignoreCase":true,"result":"ok"},
+{"source":"\\uFFFF","ignoreCase":false,"result":"ok"},
+{"source":"\\uFFFF","ignoreCase":true,"result":"ok"},
+{"source":"\\u{10FFFF}","ignoreCase":false,"result":"ok"},
+{"source":"\\u{10FFFF}","ignoreCase":true,"result":"ok"},
+{"source":"\\u00411","ignoreCase":false,"result":"ok"},
+{"source":"\\u00411","ignoreCase":true,"result":"ok"},
+{"source":"\\u{d83d}","ignoreCase":false,"result":"ok"},
+{"source":"\\u{d83d}","ignoreCase":true,"result":"ok"},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":false,"result":"ok"},
+{"source":"[\\x{D800}-\\x{E000}]","ignoreCase":true,"result":"ok"},
+{"source":"\\ud83d\\ude00+","ignoreCase":false,"result":"ok"},
+{"source":"\\ud83d\\ude00+","ignoreCase":true,"result":"ok"},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":false,"result":"ok"},
+{"source":"\\u{1F600}\\u{1F601}","ignoreCase":true,"result":"ok"},
 {"source":"😀","ignoreCase":false,"result":"ok"},
 {"source":"😀","ignoreCase":true,"result":"ok"},
 {"source":"👍🏽","ignoreCase":false,"result":"ok"},

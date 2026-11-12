@@ -17,6 +17,8 @@ serde_json = { workspace = true }
 # Stored permission expressions are untyped `Mixed` values read as raw BSON (`dima-model`).
 bson = { workspace = true }
 regex = { workspace = true }
+# The complement of a Unicode property as explicit ranges, as the `re2` package writes it.
+regex-syntax = { workspace = true }
 # The keyword index cache coalesces cold loads (`sync`) and resolves roles concurrently (`macros`).
 tokio = { workspace = true }
 thiserror = { workspace = true }

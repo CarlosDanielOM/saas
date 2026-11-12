@@ -181,6 +181,25 @@ for (const source of [
     '[\\s\\S]{1000}', '(?:\\w{100}){10}', '.{1000}', '(?:.{100}){10}',
 ]) add(source, true, ['x'.repeat(50), 'a'.repeat(40) + 'c']);
 
+// Property names and sets as the package rewrites them, surrogate escapes, POSIX names, and
+// the package's naive idea of being inside a class.
+for (const source of [
+    '\\p{gc=Lu}', '\\p{General_Category=Letter}', '\\p{gc=Letter}', '\\p{scx=Greek}', '\\p{scx=Grek}',
+    '\\p{Script_Extensions=Hira}', '\\p{scx=Hani}+', '\\P{scx=Greek}', '\\p{scx=greek}', '\\p{Script=greek}',
+    '\\P{sc=Greek}', '\\p{^sc=Greek}', '[\\p{sc=Greek}]+', '[^\\p{scx=Greek}]+', '\\p{Uppercase_Letter}',
+    '\\p{Cased_Letter}', '\\p{LC}', '\\p{ASCII}+', '\\P{ASCII}+', '[^\\P{ASCII}]+', '[\\P{ASCII}]+', '\\p{^Emoji}',
+    '\\p{gc=Emoji}', '\\p{Alpha}+', '\\p{AHex}+', '\\p{Lowercase}+', '\\P{Lowercase}+', '\\p{Lower}',
+    '\\p{White_Space}+', '\\p{Any}', '[\\p{Any}]', '\\P{Any}', '\\p{^Any}', '\\pé', '\\p{^}', '\\p{^L}+', '\\P{^L}+',
+    '\\p{Latn}', '\\p{Latin}+', '\\p{C}', '\\P{C}', '\\p{Cs}', '[\\p{Cs}a]', '\\p{Cn}', '\\p{Co}', '\\p{Yi}',
+    '\\p{Assigned}', '\\p{Emoji_Modifier}', '\\p{Regional_Indicator}+', '\\p{Beria_Erfe}', '\\p{scx=Sidt}',
+    '[[:alpha:]\\p{Emoji}]+', '\\Q[\\E\\p{Emoji}', '[]\\p{Emoji}]+', '\\Q\\p{Emoji}\\E', '[\\p{Emoji}-z]',
+    '[a-\\p{Emoji}]', '[\\p{Emoji}]+', '[^\\p{Emoji}]+', '[\\P{Emoji}a]', '\\Qa/b\\E', '\\Q(?<n>a)\\E',
+    '\\Q\\u0041\\E', '\\Q\\cA\\E', '[[:alpha] :]', '[[:alpha:]', '[[:alpha:]-z]', '[a-[:alpha:]]',
+    '\\uD83D[\\uDE00-\\uDE4F]', '[\\uD800-\\uDFFF]', '[\\u0041-\\uD83D]+', '[\\uD83D-\\uFFFF]', '[^\\uD83D]',
+    '[\\uD83D]', '\\x{D800}', '\\x{110000}', '\\x{10FFFF}', '\\uFFFF', '\\u{10FFFF}', '\\u00411', '\\u{d83d}',
+    '[\\x{D800}-\\x{E000}]', '\\ud83d\\ude00+', '\\u{1F600}\\u{1F601}',
+]) grid(source, ['ks K ſ αβγ ひらがな 漢字 😀🇪🇸 \u0378 \ue000 A1 [] :]', 'aA-z{}']);
+
 // ---- 5. Unicode in the source and the text. ----
 for (const source of [
     '😀', '👍🏽', '👍', '🏽', '\u0301', 'e\u0301', 'é', 'قال', 'ق', '\u200f', '[😀👍]+', '[^😀]', '😀{2,}',
