@@ -17,11 +17,18 @@
 //! | [`usage_queue`] | `claimUsageJob`, `completeUsageJob`, `failUsageJob` (`utils/ai_usage_queue_health.ts`), fenced |
 //! | [`usage_backfill`] | `utils/ai_usage_backfill_queue.ts`, `ai_usage_backfill.ts`, the job handling of `workers/ai_usage_backfill.worker.ts` |
 //! | [`usage_health`] | `monitorAiUsageQueues`; the flush's dead-letter report and the flush of quiet channels |
+//! | [`gifts`] | `utils/credit_gifts.ts`, `utils/credit_gift_provider.ts`, `domain_events/credit_gift_events.ts`, the step of `workers/credit_gifts.worker.ts` |
+//! | [`referrals`] | `utils/referral.ts`, `utils/referral_ledger.ts` |
+//! | [`order_rewards`] | `utils/paid_order_reward.ts`, `applyPolarRewardDomainEvent` of `domain_events/polar_billing_events.ts` |
+//! | [`account_cancellation`] | `utils/polar_account_cancellation.ts` |
+//! | [`admin_grant`] | the grant and local top-up of `POST /admin-site/users/:channelID/ai-credits/grant` |
+//! | [`mongo_ops`] | workaround: deadlines, `maxTimeMS` and a sort on the writes above |
 //!
 //! The usage side (P2-BILLING-02a) plugs into the first half through [`polar::UsageSink`]
 //! ([`usage_receipts::ReceiptSink`]) and [`plans::projection::PlanEffects`]
-//! ([`usage_ledger::retention::UsageRetention`]); gifts, referrals, paid-order rewards and
-//! account cancellation follow in P2-BILLING-02b.
+//! ([`usage_ledger::retention::UsageRetention`]). Gifts, referrals, paid-order rewards,
+//! account cancellation and the admin top-up are P2-BILLING-02b; each module says which
+//! document holds an operation's identity before anything is sent, and what a kill leaves.
 //!
 //! # Rules
 //!
@@ -47,7 +54,10 @@
 //! `twitch:{id}:ai:credits:polar-version`, `twitch:{id}:ai:credits:revision` (the generation and
 //! the debits held against Polar's figures, [`plans::balance`]), `twitch:{id}:ai:usage-local:*`,
 //! `billing:credit-packs:context:v1:*`, `locks:polar-ingest:{id}`, `locks:plan-effects:{owner}`
-//! (one plan change's write and effects at a time, [`plans::projection`]). Drained (money):
+//! (one plan change's write and effects at a time, [`plans::projection`]),
+//! `billing:admin-grant:pending:{sha256}` (an admin grant's operation id while its outcome is
+//! unknown, 24 hours: [`admin_grant`]; a pending grant lost with it can be granted again by
+//! a retry, as in the reference). Drained (money):
 //! `twitch:{id}:ai:polarshevent`, flushed by the TypeScript processes before they stop; its
 //! Rust-only companions `twitch:{id}:ai:polarshevent:processing` and `…:dead` are new after
 //! cutover (an operator reviews `…:dead`, which is never trimmed: [`polar::flush`]). The
@@ -80,7 +90,16 @@
 //! - A grant's identity is the caller's operation id ([`polar::OperationId`]), never drawn per
 //!   call; a write whose outcome is unknown is reported as such ([`polar::IngestOutcome`]).
 //! - Lists are read to the end within a bound ([`polar::MAX_LIST_PAGES`]).
-//! - A product whose `name` is truthy but not text is malformed ([`credit_packs`]).
+//! - A product whose `name` is truthy but not text is malformed ([`credit_packs`], [`gifts`]).
+//! - An admin grant carries an operation id persisted before it is sent, and tops up the
+//!   local balance only when Polar stored it with this call, on a balance verified before it
+//!   ([`admin_grant`]); the reference drew a new id per call and added the credits to whatever
+//!   it read after the grant.
+//! - Referral codes racing past a plan's limit, or taken between check and insert, are
+//!   refused ([`referrals`]); a label counts characters (text rule 1).
+//! - A reward event with a cadence other than monthly or yearly is refused
+//!   ([`order_rewards`]); the subscription lists of the account cancellation are bounded
+//!   ([`account_cancellation`]).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 

@@ -205,6 +205,8 @@ try {
   console.log(`recorded ${steps.length} referral, reward and cancellation steps`);
 } finally {
   globalThis.Date = RealDate;
+  // Collections Mongoose creates in the background (autoCreate) must not outlive the drop.
+  await new Promise(r => setTimeout(r, 1_000));
   await mongoose.connection.db?.dropDatabase().catch(() => {});
   await mongoose.disconnect().catch(() => {});
   server.close();

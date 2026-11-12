@@ -170,6 +170,23 @@ pub async fn insert_ejson(store: &MongoStore, collection: &str, documents: &[Val
     }
 }
 
+/// The recording was made from the frozen reference: every source file it names still has the
+/// SHA-256 it recorded (`dimabot/src` of this checkout).
+pub fn check_sources(recording: &Value) {
+    use sha2::{Digest, Sha256};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../dimabot/src");
+    let sources = recording["reference"]["sources"].as_object().unwrap();
+    assert!(!sources.is_empty());
+    for (file, digest) in sources {
+        let bytes = std::fs::read(root.join(file)).unwrap();
+        assert_eq!(
+            hex::encode(Sha256::digest(&bytes)),
+            digest.as_str().unwrap(),
+            "{file} changed since the recording"
+        );
+    }
+}
+
 /// A fixed clock and a seeded random source.
 pub fn clock(now: i64) -> ManualClock {
     ManualClock::new(now)

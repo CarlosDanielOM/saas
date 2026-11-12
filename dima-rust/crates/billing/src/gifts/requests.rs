@@ -22,8 +22,8 @@ use dima_store::mongo::update::UpdateOptions;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
-/// `GiftRecipient`: `{id, login, displayName, avatarUrl: null}`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// `GiftRecipient`: `{id, login, displayName, avatarUrl: null}`. `Debug` prints the id only.
+#[derive(Clone, PartialEq, Eq)]
 pub struct GiftRecipient {
     /// `users._id`.
     pub id: String,
@@ -31,6 +31,14 @@ pub struct GiftRecipient {
     pub login: String,
     /// The Twitch name as stored.
     pub display_name: String,
+}
+
+impl std::fmt::Debug for GiftRecipient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GiftRecipient")
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
 }
 
 impl GiftRecipient {

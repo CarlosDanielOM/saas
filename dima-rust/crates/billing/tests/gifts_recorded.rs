@@ -91,6 +91,7 @@ mod intended {
 #[tokio::test]
 async fn the_recorded_gift_scenario_replays_exactly() {
     let recorded = recording();
+    gift_support::check_sources(&recorded);
     support::with_mongo(|store| async move {
         let Some(dragonfly) = support::dragonfly(10).await? else {
             return Ok(());

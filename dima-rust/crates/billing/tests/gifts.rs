@@ -735,5 +735,21 @@ fn gift_values_never_print_secrets() {
             display_name: "d".into(),
         },
     };
-    assert!(!format!("{response:?}").contains("polar_c_secret1"));
+    let printed = format!("{response:?}");
+    assert!(!printed.contains("polar_c_secret1"));
+    let recipient = dima_billing::gifts::GiftRecipient {
+        id: "r".into(),
+        login: "secretlogin".into(),
+        display_name: "SecretName".into(),
+    };
+    assert!(!format!("{recipient:?}").contains("secret"));
+    assert!(!format!("{recipient:?}").contains("Secret"));
+    let request = dima_billing::admin_grant::AdminGrantRequest {
+        channel_id: "1".into(),
+        customer_id: dima_model::Private::from("cust-secret".to_owned()),
+        credits: 1.0,
+        reason: "r".into(),
+        admin_login: Some(dima_model::Private::from("admin-secret".to_owned())),
+    };
+    assert!(!format!("{request:?}").contains("secret"));
 }

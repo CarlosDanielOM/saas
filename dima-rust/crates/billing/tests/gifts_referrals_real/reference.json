@@ -1,0 +1,884 @@
+{
+  "reference": {
+    "commit": "0c71108e",
+    "sources": {
+      "utils/referral.ts": "ef4cdb9f0aede45cce28b96a20d154458c207f4179b6941005f0718122f3d6c3",
+      "utils/referral_ledger.ts": "c71377f6e227fc22247bb44c36738357dba05bb1f42e2d4076b488711b1f2e0a",
+      "utils/credit_gifts.ts": "b3e25c0b56fa03805d7b9ca2f720e3174817606b423a18241f852b155cdd644c"
+    }
+  },
+  "referrals": [
+    {
+      "owner": "656ec726be85da7a473664ad",
+      "stats": {
+        "ok": {
+          "planType": "PRO",
+          "codeLimit": 15,
+          "codesUsed": 2,
+          "codesRemaining": 13,
+          "codes": [
+            {
+              "_id": "6998dcb7db093d78eb0df970",
+              "code": "sha256:ef260e9aa3c673af",
+              "owner": "656ec726be85da7a473664ad",
+              "label": "sha256:b34f3ec153e2e1a6",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-02-20T22:14:15.490Z",
+              "updatedAt": "2026-02-20T22:14:15.490Z",
+              "__v": 0
+            },
+            {
+              "_id": "6998b3bddb093d78eb0df793",
+              "code": "sha256:245c64c8366f4537",
+              "owner": "656ec726be85da7a473664ad",
+              "label": "sha256:28fc59795406654e",
+              "stats": {
+                "conversions": 0,
+                "signups": 1
+              },
+              "active": true,
+              "createdAt": "2026-02-20T19:19:25.854Z",
+              "updatedAt": "2026-02-20T19:19:25.854Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 1,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "69b39ab4d09e8d0e2e6f647e",
+              "name": "sha256:b12de15ada2b3ea9",
+              "code": "sha256:245c64c8366f4537",
+              "signedUpAt": "2026-03-13T05:03:48.494Z",
+              "tier": "free",
+              "creditsEarned": 0
+            }
+          ]
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "signup:69b39ab4d09e8d0e2e6f647e",
+              "kind": "signup",
+              "userId": "69b39ab4d09e8d0e2e6f647e",
+              "name": "sha256:b12de15ada2b3ea9",
+              "code": "sha256:245c64c8366f4537",
+              "at": "2026-03-13T05:03:48.494Z",
+              "credits": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "owner": "659612bfdf793a8565d9c728",
+      "stats": {
+        "ok": {
+          "planType": "FREE",
+          "codeLimit": 1,
+          "codesUsed": 0,
+          "codesRemaining": 1,
+          "codes": [],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 6325
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    },
+    {
+      "owner": "65b0301b0c57ffe4062fd151",
+      "stats": {
+        "ok": {
+          "planType": "PRO",
+          "codeLimit": 15,
+          "codesUsed": 1,
+          "codesRemaining": 14,
+          "codes": [
+            {
+              "_id": "6a9a44ce8fff18339c974a90",
+              "code": "sha256:0f7de11a75f0536f",
+              "owner": "65b0301b0c57ffe4062fd151",
+              "label": "sha256:e3b0c44298fc1c14",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-09-04T04:10:54.929Z",
+              "updatedAt": "2026-09-04T04:10:54.929Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    },
+    {
+      "owner": "6a0e1c36e3d824c4dbe6568c",
+      "stats": {
+        "ok": {
+          "planType": "PRO",
+          "codeLimit": 15,
+          "codesUsed": 1,
+          "codesRemaining": 14,
+          "codes": [
+            {
+              "_id": "6aeabc0995eccee3fce3fd3c",
+              "code": "sha256:57946818aaefdb7e",
+              "owner": "6a0e1c36e3d824c4dbe6568c",
+              "label": "sha256:e3b0c44298fc1c14",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-11-04T05:00:57.495Z",
+              "updatedAt": "2026-11-04T05:00:57.495Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    },
+    {
+      "owner": "6a1b490d1c89c6d496627486",
+      "stats": {
+        "ok": {
+          "planType": "FREE",
+          "codeLimit": 1,
+          "codesUsed": 1,
+          "codesRemaining": 0,
+          "codes": [
+            {
+              "_id": "6a7f61ecc3a0b469d60cc5fe",
+              "code": "sha256:148697cbc6951ef7",
+              "owner": "6a1b490d1c89c6d496627486",
+              "label": "sha256:d67aa2d6277b743d",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-08-14T18:43:56.118Z",
+              "updatedAt": "2026-08-14T18:43:56.118Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    },
+    {
+      "owner": "6a5a9f3bfaac1c0c8d8b21ab",
+      "stats": {
+        "ok": {
+          "planType": "PRO",
+          "codeLimit": 15,
+          "codesUsed": 1,
+          "codesRemaining": 14,
+          "codes": [
+            {
+              "_id": "6abadc2a9ff7b89964a15e07",
+              "code": "sha256:ba22d40ec1812a71",
+              "owner": "6a5a9f3bfaac1c0c8d8b21ab",
+              "label": "sha256:96cbfa6d60b49c38",
+              "stats": {
+                "conversions": 2,
+                "signups": 7
+              },
+              "active": true,
+              "createdAt": "2026-09-28T21:29:14.746Z",
+              "updatedAt": "2026-09-28T21:29:14.746Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 7,
+          "totalConversions": 2,
+          "totalEarned": 200,
+          "currentBalance": 200
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "6af223a6687df991dbceafec",
+              "name": "sha256:bb1519c148342833",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-11-09T19:48:54.693Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6abadd439ff7b89964a15ea9",
+              "name": "sha256:6ad8486b79787785",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-28T21:33:56.248Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6ab5f0ffd988ed5f9150e76e",
+              "name": "sha256:88e101adeceaf229",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-25T03:56:47.712Z",
+              "tier": "free",
+              "creditsEarned": 50
+            },
+            {
+              "id": "6ab47ab5bfd7a9d9d5cd3c58",
+              "name": "sha256:4366aa33336373f8",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-24T01:19:49.859Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6aadaefce43b9ed59943f42b",
+              "name": "sha256:7c0ead9d8259a8a5",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-18T21:37:01.459Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6aac4794521b588755db9d6c",
+              "name": "sha256:3f5bcfe7472d80fb",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-17T20:03:33.237Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6aa4a18a284cb88c7429863b",
+              "name": "sha256:473637363409a747",
+              "code": "sha256:ba22d40ec1812a71",
+              "signedUpAt": "2026-09-12T00:49:15.420Z",
+              "tier": "premium",
+              "creditsEarned": 150
+            }
+          ]
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "signup:6af223a6687df991dbceafec",
+              "kind": "signup",
+              "userId": "6af223a6687df991dbceafec",
+              "name": "sha256:bb1519c148342833",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-11-09T19:48:54.693Z",
+              "credits": 0
+            },
+            {
+              "id": "reward:6ae3c3b8cfe7a3a6b837eba2",
+              "kind": "reward",
+              "userId": "6aa4a18a284cb88c7429863b",
+              "name": "sha256:473637363409a747",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-10-29T22:07:52.854Z",
+              "credits": 50
+            },
+            {
+              "id": "reward:6ae3676acfe7a3a6b837e4b0",
+              "kind": "reward",
+              "userId": "6aa4a18a284cb88c7429863b",
+              "name": "sha256:473637363409a747",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-10-29T15:34:02.805Z",
+              "credits": 50
+            },
+            {
+              "id": "reward:6ad25837cfe7a3a6b836acfb",
+              "kind": "reward",
+              "userId": "6ab5f0ffd988ed5f9150e76e",
+              "name": "sha256:88e101adeceaf229",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-10-16T17:00:39.454Z",
+              "credits": 50
+            },
+            {
+              "id": "reward:6abae4686ac358f0b144ba8a",
+              "kind": "reward",
+              "userId": "6aa4a18a284cb88c7429863b",
+              "name": "sha256:473637363409a747",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-28T22:04:24.399Z",
+              "credits": 50
+            },
+            {
+              "id": "signup:6abadd439ff7b89964a15ea9",
+              "kind": "signup",
+              "userId": "6abadd439ff7b89964a15ea9",
+              "name": "sha256:6ad8486b79787785",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-28T21:33:56.248Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6ab5f0ffd988ed5f9150e76e",
+              "kind": "signup",
+              "userId": "6ab5f0ffd988ed5f9150e76e",
+              "name": "sha256:88e101adeceaf229",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-25T03:56:47.712Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6ab47ab5bfd7a9d9d5cd3c58",
+              "kind": "signup",
+              "userId": "6ab47ab5bfd7a9d9d5cd3c58",
+              "name": "sha256:4366aa33336373f8",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-24T01:19:49.859Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6aadaefce43b9ed59943f42b",
+              "kind": "signup",
+              "userId": "6aadaefce43b9ed59943f42b",
+              "name": "sha256:7c0ead9d8259a8a5",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-18T21:37:01.459Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6aac4794521b588755db9d6c",
+              "kind": "signup",
+              "userId": "6aac4794521b588755db9d6c",
+              "name": "sha256:3f5bcfe7472d80fb",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-17T20:03:33.237Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6aa4a18a284cb88c7429863b",
+              "kind": "signup",
+              "userId": "6aa4a18a284cb88c7429863b",
+              "name": "sha256:473637363409a747",
+              "code": "sha256:ba22d40ec1812a71",
+              "at": "2026-09-12T00:49:15.420Z",
+              "credits": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "owner": "6a6e7868faac1c0c8d8eac9e",
+      "stats": {
+        "ok": {
+          "planType": "PRO",
+          "codeLimit": 15,
+          "codesUsed": 1,
+          "codesRemaining": 14,
+          "codes": [
+            {
+              "_id": "6ac7f3b8a6282e2ab0e58ae6",
+              "code": "sha256:9e78b43ea00edcac",
+              "owner": "6a6e7868faac1c0c8d8eac9e",
+              "label": "sha256:e3b0c44298fc1c14",
+              "stats": {
+                "conversions": 1,
+                "signups": 1
+              },
+              "active": true,
+              "createdAt": "2026-10-08T19:49:12.853Z",
+              "updatedAt": "2026-10-08T19:49:12.853Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 1,
+          "totalConversions": 1,
+          "totalEarned": 225,
+          "currentBalance": 225
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "6ac7f557a6282e2ab0e58ddc",
+              "name": "sha256:2462390756ce9a8d",
+              "code": "sha256:9e78b43ea00edcac",
+              "signedUpAt": "2026-10-08T19:56:07.640Z",
+              "tier": "pro",
+              "creditsEarned": 225
+            }
+          ]
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "reward:6af0dde6cfe7a3a6b838af1d",
+              "kind": "reward",
+              "userId": "6ac7f557a6282e2ab0e58ddc",
+              "name": "sha256:2462390756ce9a8d",
+              "code": "sha256:9e78b43ea00edcac",
+              "at": "2026-11-08T20:39:02.322Z",
+              "credits": 100
+            },
+            {
+              "id": "reward:6ac7fbe2cfe7a3a6b83595e9",
+              "kind": "reward",
+              "userId": "6ac7f557a6282e2ab0e58ddc",
+              "name": "sha256:2462390756ce9a8d",
+              "code": "sha256:9e78b43ea00edcac",
+              "at": "2026-10-08T20:24:02.593Z",
+              "credits": 125
+            },
+            {
+              "id": "signup:6ac7f557a6282e2ab0e58ddc",
+              "kind": "signup",
+              "userId": "6ac7f557a6282e2ab0e58ddc",
+              "name": "sha256:2462390756ce9a8d",
+              "code": "sha256:9e78b43ea00edcac",
+              "at": "2026-10-08T19:56:07.640Z",
+              "credits": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "owner": "6a980a97bdea6d0047faa790",
+      "stats": {
+        "ok": {
+          "planType": "PREMIUM",
+          "codeLimit": 5,
+          "codesUsed": 1,
+          "codesRemaining": 4,
+          "codes": [
+            {
+              "_id": "6a9e611bec7673788e63eb4d",
+              "code": "sha256:81c7d24281f499b5",
+              "owner": "6a980a97bdea6d0047faa790",
+              "label": "sha256:e3b0c44298fc1c14",
+              "stats": {
+                "conversions": 0,
+                "signups": 2
+              },
+              "active": true,
+              "createdAt": "2026-09-07T07:00:43.953Z",
+              "updatedAt": "2026-09-07T07:00:43.953Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 2,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "6ab838d8fc6b351a99b2cc67",
+              "name": "sha256:3600efd0e3d06526",
+              "code": "sha256:81c7d24281f499b5",
+              "signedUpAt": "2026-09-26T21:27:52.441Z",
+              "tier": "free",
+              "creditsEarned": 0
+            },
+            {
+              "id": "6aa356833754e3ba3f13554d",
+              "name": "sha256:5b78f9566d6c17b8",
+              "code": "sha256:81c7d24281f499b5",
+              "signedUpAt": "2026-09-11T01:16:52.532Z",
+              "tier": "free",
+              "creditsEarned": 0
+            }
+          ]
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "signup:6ab838d8fc6b351a99b2cc67",
+              "kind": "signup",
+              "userId": "6ab838d8fc6b351a99b2cc67",
+              "name": "sha256:3600efd0e3d06526",
+              "code": "sha256:81c7d24281f499b5",
+              "at": "2026-09-26T21:27:52.441Z",
+              "credits": 0
+            },
+            {
+              "id": "signup:6aa356833754e3ba3f13554d",
+              "kind": "signup",
+              "userId": "6aa356833754e3ba3f13554d",
+              "name": "sha256:5b78f9566d6c17b8",
+              "code": "sha256:81c7d24281f499b5",
+              "at": "2026-09-11T01:16:52.532Z",
+              "credits": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "owner": "6aa4a18a284cb88c7429863b",
+      "stats": {
+        "ok": {
+          "planType": "PREMIUM",
+          "codeLimit": 5,
+          "codesUsed": 1,
+          "codesRemaining": 4,
+          "codes": [
+            {
+              "_id": "6ac2a12e13c4c7377952a653",
+              "code": "sha256:3a56b13d7fad03d0",
+              "owner": "6aa4a18a284cb88c7429863b",
+              "label": "sha256:b74771cee7cbc237",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-10-04T18:55:42.295Z",
+              "updatedAt": "2026-10-04T18:55:42.295Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    },
+    {
+      "owner": "6aadaefce43b9ed59943f42b",
+      "stats": {
+        "ok": {
+          "planType": "FREE",
+          "codeLimit": 1,
+          "codesUsed": 1,
+          "codesRemaining": 0,
+          "codes": [
+            {
+              "_id": "6aee58b846e416dd6fd52c83",
+              "code": "sha256:7c0ead9d8259a8a5",
+              "owner": "6aadaefce43b9ed59943f42b",
+              "label": "sha256:9092da6e48f2fd5a",
+              "stats": {
+                "conversions": 0,
+                "signups": 1
+              },
+              "active": true,
+              "createdAt": "2026-11-06T22:46:16.743Z",
+              "updatedAt": "2026-11-06T22:46:16.743Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 1,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "6aee65e10882b500894524a3",
+              "name": "sha256:28fce8f873134db6",
+              "code": "sha256:7c0ead9d8259a8a5",
+              "signedUpAt": "2026-11-06T23:42:26.215Z",
+              "tier": "free",
+              "creditsEarned": 0
+            }
+          ]
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": [
+            {
+              "id": "signup:6aee65e10882b500894524a3",
+              "kind": "signup",
+              "userId": "6aee65e10882b500894524a3",
+              "name": "sha256:28fce8f873134db6",
+              "code": "sha256:7c0ead9d8259a8a5",
+              "at": "2026-11-06T23:42:26.215Z",
+              "credits": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "owner": "6af223a6687df991dbceafec",
+      "stats": {
+        "ok": {
+          "planType": "FREE",
+          "codeLimit": 1,
+          "codesUsed": 1,
+          "codesRemaining": 0,
+          "codes": [
+            {
+              "_id": "6af22573687df991dbcec23d",
+              "code": "sha256:b70a14ee1e15d7aa",
+              "owner": "6af223a6687df991dbceafec",
+              "label": "sha256:e3b0c44298fc1c14",
+              "stats": {
+                "conversions": 0,
+                "signups": 0
+              },
+              "active": true,
+              "createdAt": "2026-11-09T19:56:35.530Z",
+              "updatedAt": "2026-11-09T19:56:35.530Z",
+              "__v": 0
+            }
+          ],
+          "totalSignups": 0,
+          "totalConversions": 0,
+          "totalEarned": 0,
+          "currentBalance": 0
+        }
+      },
+      "people": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      },
+      "timeline": {
+        "ok": {
+          "page": 0,
+          "hasMore": false,
+          "items": []
+        }
+      }
+    }
+  ],
+  "gifts": [
+    {
+      "id": "0ddedf73fd1c1dc9c841c9a04e37965956e4a34bd4f3c5a90a2001a21efb5716",
+      "buyer": "6ac947b8022f796bd6d7bae2",
+      "view": {
+        "ok": {
+          "id": "0ddedf73fd1c1dc9c841c9a04e37965956e4a34bd4f3c5a90a2001a21efb5716",
+          "status": "needs_support",
+          "recipient": {
+            "id": "6a5a9f3bfaac1c0c8d8b21ab",
+            "login": "sha256:ba22d40ec1812a71",
+            "displayName": "sha256:ba22d40ec1812a71"
+          },
+          "credits": 250000,
+          "paidAt": null,
+          "deliveredAt": null
+        }
+      }
+    },
+    {
+      "id": "405b8090e7b05375b336ebd5c49b9f2cf766c31fe63f1288f179089329b2b67d",
+      "buyer": "656ec726be85da7a473664ad",
+      "view": {
+        "ok": {
+          "id": "405b8090e7b05375b336ebd5c49b9f2cf766c31fe63f1288f179089329b2b67d",
+          "status": "delivered",
+          "recipient": {
+            "id": "69212d7d82aad29d4df5914e",
+            "login": "sha256:0e13f92307385e63",
+            "displayName": "sha256:0e13f92307385e63"
+          },
+          "credits": 40000,
+          "paidAt": "2026-10-06T21:48:01.432Z",
+          "deliveredAt": "2026-10-06T21:48:16.019Z"
+        }
+      }
+    },
+    {
+      "id": "57c694620682193f7d13e3182392f09f6a30da756b778664da93d058793ff02c",
+      "buyer": "656ec726be85da7a473664ad",
+      "view": {
+        "ok": {
+          "id": "57c694620682193f7d13e3182392f09f6a30da756b778664da93d058793ff02c",
+          "status": "delivered",
+          "recipient": {
+            "id": "6a6e7868faac1c0c8d8eac9e",
+            "login": "sha256:1ebaf00483861e61",
+            "displayName": "sha256:1ebaf00483861e61"
+          },
+          "credits": 40000,
+          "paidAt": "2026-10-08T05:09:59.405Z",
+          "deliveredAt": "2026-10-08T05:10:19.557Z"
+        }
+      }
+    },
+    {
+      "id": "a00385edaaef634db37d9cbf8fa6352ce339ab11391c582c19728badc332cbca",
+      "buyer": "656ec726be85da7a473664ad",
+      "view": {
+        "ok": {
+          "id": "a00385edaaef634db37d9cbf8fa6352ce339ab11391c582c19728badc332cbca",
+          "status": "needs_support",
+          "recipient": {
+            "id": "6a6e7868faac1c0c8d8eac9e",
+            "login": "sha256:1ebaf00483861e61",
+            "displayName": "sha256:1ebaf00483861e61"
+          },
+          "credits": 40000,
+          "paidAt": null,
+          "deliveredAt": null
+        }
+      }
+    },
+    {
+      "id": "a9653fe63310d7b0a1fd109ea0c602d5c1f1e0e20306d306548b419db29a194a",
+      "buyer": "6aadaefce43b9ed59943f42b",
+      "view": {
+        "ok": {
+          "id": "a9653fe63310d7b0a1fd109ea0c602d5c1f1e0e20306d306548b419db29a194a",
+          "status": "needs_support",
+          "recipient": {
+            "id": "6ab2b508571212dbb2fd91c3",
+            "login": "sha256:6ca3cb4af5c6dd99",
+            "displayName": "sha256:6ca3cb4af5c6dd99"
+          },
+          "credits": 40000,
+          "paidAt": null,
+          "deliveredAt": null
+        }
+      }
+    },
+    {
+      "id": "b36d07a7ea0a60197807cb0e481e991f1986f3ae1fb87eadf68169bcd3058ae5",
+      "buyer": "656ec726be85da7a473664ad",
+      "view": {
+        "ok": {
+          "id": "b36d07a7ea0a60197807cb0e481e991f1986f3ae1fb87eadf68169bcd3058ae5",
+          "status": "delivered",
+          "recipient": {
+            "id": "6a5a9f3bfaac1c0c8d8b21ab",
+            "login": "sha256:ba22d40ec1812a71",
+            "displayName": "sha256:ba22d40ec1812a71"
+          },
+          "credits": 40000,
+          "paidAt": "2026-10-08T19:56:57.703Z",
+          "deliveredAt": "2026-10-08T19:57:12.753Z"
+        }
+      }
+    }
+  ]
+}

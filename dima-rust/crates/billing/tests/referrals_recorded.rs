@@ -129,6 +129,7 @@ fn oid(value: &Value) -> ObjectId {
 #[tokio::test]
 async fn the_recorded_referral_reward_and_cancellation_scenario_replays_exactly() {
     let recorded = recording();
+    gift_support::check_sources(&recorded);
     support::with_mongo(|store| async move {
         for (collection, key) in [
             ("users", "users"),
