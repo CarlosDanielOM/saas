@@ -1261,3 +1261,22 @@ async fn a_cancelled_acknowledgement_frees_its_slot() {
     client.close().await;
     s.server.stop().await;
 }
+
+/// Finding 16: a polling answer can be compressed, so it names `Accept-Encoding` in `Vary`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn polling_answers_vary_on_the_accepted_encoding() {
+    let s = setup(Options::default(), NamespaceOptions::default()).await;
+    let answer = http(
+        s.server.addr,
+        "GET",
+        "/socket.io/?EIO=4&transport=polling",
+        &[("Accept-Encoding", "gzip")],
+        b"",
+        5 * SECOND,
+    )
+    .await
+    .unwrap();
+    assert_eq!(answer.status, 200);
+    assert_eq!(answer.header("vary"), Some("Accept-Encoding"));
+    s.server.stop().await;
+}

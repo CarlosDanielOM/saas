@@ -13,12 +13,19 @@
 //!
 //! The files are vendored in `client-dist/` (with their Brotli form, made by
 //! `tests/js/vendor-client-dist.mjs` with Node's defaults); gzip and deflate are computed once
-//! per file on first use, off the async threads.
+//! per file on first use, off the async threads: concurrent first requests wait for that one
+//! compression (at most [`COMPRESS_WAIT`]; past it they get the file uncompressed).
+//!
+//! Every answer whose body depends on `Accept-Encoding` (the `200`s, and the `304`s, which
+//! must name the same `Vary` as the `200` they stand for) carries `Vary: Accept-Encoding`, so a
+//! shared cache does not hand a compressed body to a client that cannot read it. The reference
+//! sends no `Vary` (a fix, not visible to the browsers, which do not share caches).
 
 use std::io::Write as _;
 use std::pin::Pin;
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use bytes::Bytes;
 use dima_web::Body;
@@ -57,8 +64,17 @@ static FILES: [File; 8] = [
     file!("socket.io.msgpack.min.js.map"),
 ];
 
-static GZIP: [OnceLock<Bytes>; 8] = [const { OnceLock::new() }; 8];
-static DEFLATE: [OnceLock<Bytes>; 8] = [const { OnceLock::new() }; 8];
+static GZIP: [tokio::sync::OnceCell<Bytes>; 8] = [const { tokio::sync::OnceCell::const_new() }; 8];
+static DEFLATE: [tokio::sync::OnceCell<Bytes>; 8] =
+    [const { tokio::sync::OnceCell::const_new() }; 8];
+
+/// How many times each file was compressed, gzip then deflate (one each, once warm).
+static COMPRESSIONS: [AtomicUsize; 16] = [const { AtomicUsize::new(0) }; 16];
+
+/// How long a request waits for the first compression of its file before it is answered with
+/// the file as is. Compressing the largest file takes milliseconds; this only fires when the
+/// blocking pool is saturated.
+pub const COMPRESS_WAIT: Duration = Duration::from_secs(5);
 
 /// `clientPathRegex.test(req.url)`, on the path and query of the request target.
 pub fn is_client_path(target: &str) -> bool {
@@ -107,17 +123,25 @@ fn compress(raw: &'static [u8], gzip: bool) -> Bytes {
     written.map(Bytes::from).unwrap_or_default()
 }
 
+/// The compressed file, computed by the first request that needs it; the others wait for that
+/// one (a request that gives up hands the work to the next waiter). `None` when it took longer
+/// than [`COMPRESS_WAIT`] or failed.
 async fn encoded(index: usize, gzip: bool) -> Option<Bytes> {
     let cells = if gzip { &GZIP } else { &DEFLATE };
     let cell = cells.get(index)?;
-    if let Some(bytes) = cell.get() {
-        return Some(bytes.clone());
-    }
     let raw = FILES.get(index)?.raw;
-    let bytes = tokio::task::spawn_blocking(move || compress(raw, gzip))
+    let counter = COMPRESSIONS.get(index * 2 + usize::from(!gzip))?;
+    let compute = cell.get_or_try_init(|| async move {
+        counter.fetch_add(1, Ordering::Relaxed);
+        tokio::task::spawn_blocking(move || compress(raw, gzip))
+            .await
+            .map_err(|_| ())
+    });
+    tokio::time::timeout(COMPRESS_WAIT, compute)
         .await
-        .ok()?;
-    Some(cell.get_or_init(|| bytes).clone())
+        .ok()?
+        .ok()
+        .cloned()
 }
 
 /// Answers a request for a client file (`target` passed [`is_client_path`]).
@@ -137,6 +161,9 @@ pub async fn serve(headers: &http::HeaderMap, target: &str) -> Response<Body> {
         if etag == expected || etag == format!("W/{expected}") {
             let mut response = Response::new(Body::empty());
             *response.status_mut() = StatusCode::NOT_MODIFIED;
+            response
+                .headers_mut()
+                .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
             return response;
         }
     }
@@ -150,7 +177,25 @@ pub async fn serve(headers: &http::HeaderMap, target: &str) -> Response<Body> {
         .contains_key(header::ACCEPT_ENCODING)
         .then_some(accept.as_str());
     let found = FILES.iter().position(|file| file.name == filename);
-    let encoding = negotiate::preferred(accept, &["br", "gzip", "deflate"]);
+    let wanted = negotiate::preferred(accept, &["br", "gzip", "deflate"]);
+    let body = match (found, wanted) {
+        (None, _) => None,
+        (Some(index), Some("br")) => FILES
+            .get(index)
+            .map(|file| (Some("br"), Bytes::from_static(file.brotli))),
+        (Some(index), Some(encoding @ ("gzip" | "deflate"))) => {
+            match encoded(index, encoding == "gzip").await {
+                Some(bytes) => Some((Some(encoding), bytes)),
+                // Not ready in time: the file as is, which every client reads.
+                None => FILES
+                    .get(index)
+                    .map(|file| (None, Bytes::from_static(file.raw))),
+            }
+        }
+        (Some(index), _) => FILES
+            .get(index)
+            .map(|file| (None, Bytes::from_static(file.raw))),
+    };
     let mut response = Response::new(Body::empty());
     let out = response.headers_mut();
     out.insert(
@@ -168,24 +213,22 @@ pub async fn serve(headers: &http::HeaderMap, target: &str) -> Response<Body> {
     if let Ok(etag) = HeaderValue::from_str(&expected) {
         out.insert(header::ETAG, etag);
     }
-    if let Some(encoding) = encoding {
-        out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+    out.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+    match body {
+        Some((encoding, bytes)) => {
+            if let Some(encoding) = encoding {
+                out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+            }
+            *response.body_mut() = Body::from(bytes);
+        }
+        None => {
+            // The reference sets the encoding header before its stream fails.
+            if let Some(encoding) = wanted {
+                out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+            }
+            *response.body_mut() = Body::new(Reset);
+        }
     }
-    let Some(index) = found else {
-        *response.body_mut() = Body::new(Reset);
-        return response;
-    };
-    let body = match (encoding, FILES.get(index)) {
-        (Some("br"), Some(file)) => Some(Bytes::from_static(file.brotli)),
-        (Some("gzip"), _) => encoded(index, true).await,
-        (Some("deflate"), _) => encoded(index, false).await,
-        (_, Some(file)) => Some(Bytes::from_static(file.raw)),
-        (_, None) => None,
-    };
-    *response.body_mut() = match body {
-        Some(bytes) => Body::from(bytes),
-        None => Body::new(Reset),
-    };
     response
 }
 
@@ -238,6 +281,62 @@ mod tests {
                 file.name
             );
         }
+    }
+
+    fn accepting(encoding: &str) -> http::HeaderMap {
+        let mut headers = http::HeaderMap::new();
+        headers.insert(
+            header::ACCEPT_ENCODING,
+            HeaderValue::from_str(encoding).unwrap(),
+        );
+        headers
+    }
+
+    /// Finding 16: `Vary: Accept-Encoding` on every answer the encoding can change, `304`s
+    /// included.
+    #[tokio::test]
+    async fn answers_vary_on_the_accepted_encoding() {
+        for headers in [accepting("br"), accepting("gzip"), http::HeaderMap::new()] {
+            let response = serve(&headers, "/socket.io/socket.io.min.js").await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+        }
+        let mut headers = accepting("gzip");
+        headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static("\"4.8.3\""));
+        let response = serve(&headers, "/socket.io/socket.io.min.js").await;
+        assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+    }
+
+    /// Finding 16: concurrent cold requests compress the file once; the others wait for it.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn concurrent_cold_requests_compress_once() {
+        // `socket.io.msgpack.min.js.map` with deflate: no other test asks for it.
+        let index = 7;
+        assert_eq!(FILES[index].name, "socket.io.msgpack.min.js.map");
+        let requests: Vec<_> = (0..16)
+            .map(|_| {
+                tokio::spawn(async {
+                    let response =
+                        serve(&accepting("deflate"), "/socket.io/socket.io.msgpack.min.js.map")
+                            .await;
+                    let encoding = response.headers().get(header::CONTENT_ENCODING).cloned();
+                    let body = http_body_util::BodyExt::collect(response.into_body())
+                        .await
+                        .unwrap()
+                        .to_bytes();
+                    (encoding, body)
+                })
+            })
+            .collect();
+        let mut bodies = Vec::new();
+        for request in requests {
+            bodies.push(request.await.unwrap());
+        }
+        assert_eq!(COMPRESSIONS[index * 2 + 1].load(Ordering::Relaxed), 1);
+        assert!(bodies.iter().all(|(encoding, body)| {
+            encoding.as_ref().is_some_and(|e| e == "deflate") && *body == bodies[0].1
+        }));
     }
 
     fn hex(bytes: &[u8]) -> String {

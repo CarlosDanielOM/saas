@@ -368,7 +368,12 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
         return Response::from_parts(parts, Body::new(body));
     }
-    // A poll: the payload is complete (`engineioxide` answers with a full body).
+    // A poll: whether its body is compressed depends on `Accept-Encoding` (from the threshold
+    // on), which a shared cache must know; the reference sends no `Vary`.
+    parts
+        .headers
+        .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+    // The payload is complete (`engineioxide` answers with a full body).
     let payload = match body.collect().await {
         Ok(collected) => collected.to_bytes(),
         Err(never) => match never {},
