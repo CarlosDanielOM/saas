@@ -17,7 +17,7 @@ import ChatHistory from '../classes/chat_history.js';
 import { ModerationDecision, type ModerationContextMessage } from '../schemas/moderation_decision.schema.js';
 import { findBlacklistMatches, paidModeration, SEMANTIC_DEADLINE_MS, type ModerationMatch } from '../utils/moderation/advanced.js';
 import { createModerationDecision, awaitSemanticDecision } from '../utils/moderation/decisions.js';
-import { claimFirstObservedMessage, claimSpamReviewBudget, isServiceBot, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive, defaultSpamModerationSettings } from '../utils/moderation/spam.js';
+import { claimObservedMessage, claimSpamReviewBudget, includedSpamReviews, isServiceBot, SPAM_OWN_CONTEXT_WINDOW_MS, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive, defaultSpamModerationSettings } from '../utils/moderation/spam.js';
 
 const SETTINGS_CACHE_TTL_SECONDS = 300;
 export const NO_SETTINGS_SENTINEL = '{"none":true}';
@@ -101,27 +101,41 @@ export interface ChatModerationResult {
 async function reviewPromotionalSpam(channelID: string, message: IChatMessage, identity: UserIdentity, settings: IChannelModerationSettings, receivedAt: number): Promise<boolean> {
     const protection = spamProtectionSettings(settings);
     if (!protection.enabled || !protection.categories.length || isServiceBot(message.chatter_user_login) || ruleExempt(spamRuleForContext([], settings), identity) || !message.message_id) return false;
-    const first = await claimFirstObservedMessage(channelID, message.chatter_user_id!);
+    const ordinal = await claimObservedMessage(channelID, message.chatter_user_id!);
     let tier: unknown;
-    if ((!first && protection.reviewAllMessages) || protection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
+    // The plan decides how many of a chatter's first messages are included, later reviews and custom confidence.
+    if (ordinal > 1 || (!ordinal && protection.reviewAllMessages) || protection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         tier = owner?.plan_tier;
     }
-    const reviewSource = spamReviewSource(first, settings, tier);
+    const reviewSource = spamReviewSource(ordinal, settings, tier);
     if (!reviewSource || !await claimSpamReviewBudget(channelID)) return false;
+    const included = reviewSource === 'first_message' ? ordinal : 0;
     const history = await ChatHistory.getRecentMessages(channelID, 30);
-    const context = history.filter((item: ModerationContextMessage) => item.messageID !== message.message_id
+    const recent: ModerationContextMessage[] = history.filter((item: ModerationContextMessage) => item.messageID !== message.message_id
         && item.timestamp <= receivedAt && item.timestamp >= receivedAt - 60_000)
         .slice(0, 7).reverse().map((item: ModerationContextMessage & { badges?: string[] }) => ({
             messageID: item.messageID || '', username: String(item.username).slice(0, 100),
             message: String(item.message).slice(0, 500), timestamp: item.timestamp,
             isBroadcaster: Array.isArray(item.badges) && item.badges.includes('[STREAMER]')
         }));
+    // A second or third message is read together with what the same chatter wrote before it: "hi"
+    // followed minutes later by the ad, or one pitch split over two lines. Those lines come from the
+    // chatter's own earlier reviews (exact chatter ID), so a busy chat cannot push them out of reach
+    // the way it does with the short chat history, and a similar or changed name cannot mix people up.
+    const own = included > 1 ? await ModerationDecision.find({ channelID, userID: message.chatter_user_id, ruleID: spamRule.id,
+        messageID: { $ne: message.message_id }, createdAt: { $gt: new Date(receivedAt - SPAM_OWN_CONTEXT_WINDOW_MS) } })
+        .sort({ createdAt: -1 }).limit(included - 1).select('messageID username messageText createdAt').lean() : [];
+    const shown = new Set(recent.map(item => item.messageID).filter(Boolean));
+    const context = own.length ? [...recent, ...own.filter(row => !shown.has(row.messageID)).map(row => ({
+        messageID: row.messageID || '', username: String(row.username).slice(0, 100),
+        message: String(row.messageText).slice(0, 500), timestamp: row.createdAt.getTime(), isBroadcaster: false
+    }))].sort((a, b) => a.timestamp - b.timestamp) : recent;
     let decision = await createModerationDecision({
         channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
         messageID: message.message_id, messageText: message.message.text || '',
         ruleID: spamRule.id, rule: spamRuleForContext(context, { spamProtection: { ...protection, thresholdPercent: paidModeration(tier) ? protection.thresholdPercent : DEFAULT_SPAM_THRESHOLD } }, message.broadcaster_user_login || ''), settingsVersion: settings.settingsVersion,
-        matches: [], context, mode: 'semantic', reviewSource,
+        matches: [], context, mode: 'semantic', reviewSource, ...(included ? { messageOrdinal: included } : {}),
         deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
     });
     decision = await awaitSemanticDecision(decision);
@@ -133,14 +147,17 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     }
     const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
     let stillPaid = true;
-    if (reviewSource === 'spam_continuous' || decision.charge.credits > 0 || decision.rule.semantic?.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
+    if (reviewSource === 'spam_continuous' || included > 1 || decision.charge.credits > 0 || decision.rule.semantic?.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
-        stillPaid = paidModeration(owner?.plan_tier);
+        // A second or third message is only reviewed while the plan still includes it.
+        stillPaid = included > 1 ? includedSpamReviews(owner?.plan_tier) >= included : paidModeration(owner?.plan_tier);
     }
     if (Date.now() >= decision.deadline.getTime() || !semanticPolicyActive(current, decision) || !stillPaid
         || await hasActivePermit(channelID, message.chatter_user_login || '')) {
+        // The review ran either way: a charge is dropped, the zero-credit cost report of an included review is kept.
         await ModerationDecision.updateOne({ _id: decision._id }, { $set: {
-            'consequence.status': 'cancelled', 'charge.status': 'none', 'charge.credits': 0, 'charge.billableCostUSD': 0
+            'consequence.status': 'cancelled',
+            ...(decision.charge.credits > 0 ? { 'charge.status': 'none', 'charge.credits': 0, 'charge.billableCostUSD': 0 } : {})
         } });
         return false;
     }

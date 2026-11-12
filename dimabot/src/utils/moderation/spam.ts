@@ -17,6 +17,14 @@ export const SERVICE_BOT_LOGINS: ReadonlySet<string> = new Set([
     'streamlootsbot', 'soundalerts', 'streamelements', 'nightbot', 'tangiabot', 'blerp', 'streamlabs', 'moobot', 'fossabot',
     'wizebot', 'botrixoficial', 'kofistreambot', 'pokemoncommunitygame', 'sery_bot', 'restreambot', 'pretzelrocks'
 ]);
+// Reviews every plan includes at no AI-credit cost: a chatter's first message on Free, their first two
+// on Premium and their first three on Pro. A spammer who opens with "hi" is read again on a paid plan.
+export const MAX_INCLUDED_SPAM_REVIEWS = 3;
+// How far back a second or third message looks for what the same chatter wrote before.
+export const SPAM_OWN_CONTEXT_WINDOW_MS = 24 * 3_600_000;
+export function includedSpamReviews(tier: unknown): number {
+    return tier === 'pro' ? 3 : tier === 'premium' ? 2 : 1;
+}
 export const isServiceBot = (login: unknown): boolean => typeof login === 'string' && SERVICE_BOT_LOGINS.has(login.toLowerCase());
 export const spamRule = {
     ...buildDefaultModerationRules()[3],
@@ -78,10 +86,11 @@ export function defaultSpamModerationSettings(channelID: string): IChannelModera
         spamProtection: spamProtectionSettings({}), createdAt: new Date(0), updatedAt: new Date(0) };
 }
 
-export function spamReviewSource(firstMessage: boolean, settings: IChannelModerationSettings, tier: unknown): IModerationDecision['reviewSource'] | null {
+/** `ordinal` is the chatter's message number in this channel (1, 2, 3), or 0 once they are past the counted ones. */
+export function spamReviewSource(ordinal: number, settings: IChannelModerationSettings, tier: unknown): IModerationDecision['reviewSource'] | null {
     const protection = spamProtectionSettings(settings);
     if (!protection.enabled || !protection.categories.length) return null;
-    if (firstMessage) return 'first_message';
+    if (ordinal >= 1 && ordinal <= includedSpamReviews(tier)) return 'first_message';
     return protection.reviewAllMessages && paidModeration(tier) ? 'spam_continuous' : null;
 }
 
@@ -102,20 +111,35 @@ export function chatterMarkerID(channelID: string, userID: string): string {
     return createHash('sha256').update(JSON.stringify([channelID, userID])).digest('hex');
 }
 
-export async function claimFirstObservedMessage(channelID: string, userID: string): Promise<boolean> {
+/**
+ * Counts this chatter's message in the channel and returns its number (1, 2 or 3), or 0 once they
+ * are past the counted messages. The count is claimed even when the review is later not admitted.
+ */
+export async function claimObservedMessage(channelID: string, userID: string): Promise<number> {
     const id = chatterMarkerID(channelID, userID);
-    const cache = await getDragonflyClient('moderation.firstObservedMessage');
+    const cache = await getDragonflyClient('moderation.observedMessage');
     const key = `moderation:seen:${id}`;
-    if (await cache.get(key)) return false;
-    let first = false;
-    try {
-        const result = await ModerationChatter.updateOne({ _id: id }, { $setOnInsert: { firstSeenAt: new Date() } }, { upsert: true });
-        first = result.upsertedCount === 1;
-    } catch (error) {
-        if (!(error && typeof error === 'object' && 'code' in error && error.code === 11000)) throw error;
+    if (await cache.get(key)) return 0;
+    const past = MAX_INCLUDED_SPAM_REVIEWS + 1;
+    const legacy = { $and: [{ $ne: [{ $type: '$firstSeenAt' }, 'missing'] }, { $eq: [{ $type: '$seen' }, 'missing'] }] };
+    const update = [{ $set: {
+        firstSeenAt: { $ifNull: ['$firstSeenAt', '$$NOW'] },
+        seen: { $cond: [legacy, past, { $min: [past, { $add: [{ $ifNull: ['$seen', 0] }, 1] }] }] }
+    } }];
+    let seen = past;
+    for (let attempt = 0; ; attempt++) {
+        try {
+            const marker = await ModerationChatter.findOneAndUpdate({ _id: id }, update, { upsert: true, new: true }).lean();
+            seen = Number(marker?.seen) || past;
+            break;
+        } catch (error) {
+            // Two first messages can race the insert; the loser counts against the stored marker.
+            if (attempt || !(error && typeof error === 'object' && 'code' in error && error.code === 11000)) throw error;
+        }
     }
+    if (seen < past) return seen;
     await cache.set(key, '1', { EX: 86400 });
-    return first;
+    return 0;
 }
 
 // Admission happens before queueing, so a flood cannot create unlimited model work.

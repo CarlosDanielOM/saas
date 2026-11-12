@@ -34,7 +34,7 @@ The page has four tabs: **Protection**, **Rules**, **Recent Actions**, and **Dec
 
 ## Chat protection
 
-Chat protection checks each chatter's first message in your channel for the behaviors you select. A match is a **ban**, applied right away.
+Chat protection checks each new chatter's first message on Free, first two on Premium, and first three on Pro for the behaviors you select. A second or third message is read together with what that chatter wrote before. These included checks do not use AI credits on any plan. A match is a **ban**, applied right away.
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -44,7 +44,7 @@ Chat protection checks each chatter's first message in your channel for the beha
 | **Profanity** | Off | Explicit swear words in the sender's own message. |
 | **Insults** | Off | Direct, abusive attacks on a person or group. |
 
-- **Review subsequent messages** (Premium and Pro) checks every message, not only the first one. Each review uses AI credits.
+- **Review subsequent messages** (Premium and Pro) checks every message after those included checks. These reviews use AI credits when available; if credits are exhausted or cannot be verified, a fallback review runs without a charge.
 - **Ban confidence** is the score needed before a ban. The default is 85%. Premium and Pro can choose from 80% to 100%. Free always uses 85%. The overall check must also agree that the message contains unwanted behavior before a ban.
 - Uncertain cases are allowed and logged. They do not count toward the rules' steps.
 - **Exempt roles** are skipped. Moderators, editors, and channel admins are exempt by default. You can also exempt VIPs, subscribers, and founders.

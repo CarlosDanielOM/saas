@@ -62,6 +62,8 @@ export interface ModerationDecisionEntry {
   messageText: string;
   ruleID: string;
   reviewSource?: 'rule' | 'first_message' | 'spam_continuous';
+  /** Reviews included with the plan: which of the chatter's first messages this was (1, 2 or 3). */
+  messageOrdinal?: number;
   mode: 'literal' | 'regex' | 'semantic';
   verdict: 'allow' | 'violation' | 'uncertain';
   status: string;

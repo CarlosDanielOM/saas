@@ -2166,12 +2166,14 @@
     "spam": {
       "title": "Chat protection",
       "free": "Every plan",
-      "description": "Checks each chatter's first message for the behaviors you pick, and bans clear spammers and scam bots right away.",
+      "description": "Checks each new chatter's first messages for the behaviors you pick, and bans clear spammers and scam bots right away. Free checks the first message, Premium the first two and Pro the first three.",
       "action": "Bans only when a behavior scores above your ban confidence and above the safe score. Unsure cases are allowed and logged. Runs separately from your rules. Review limits apply.",
       "continuous": "Review subsequent messages",
       "paid": "Premium · Pro",
-      "continuousDescription": "Check every message, not just the first one. Falls back to Span-1 Lite if AI credits run out.",
+      "continuousDescription": "Check every message, not just a chatter's first ones. Each of these reviews uses AI credits; it falls back to Span-1 Lite if they run out.",
       "firstDecision": "First-message protection",
+      "secondDecision": "Second-message protection",
+      "thirdDecision": "Third-message protection",
       "continuousDecision": "Continuous chat protection",
       "categoriesTitle": "What to detect",
       "categoriesHint": "Spam, ads and self-promotion are on by default. Pick none to pause these checks; your rules still apply.",
@@ -2197,7 +2199,7 @@
         "insults": "Insults",
         "safe": "Safe for selected categories"
       },
-      "modelHint": "Chat protection uses GPT-6 Luna on every plan. Free reviews use no AI credits. On Premium and Pro each review uses AI credits; if credits run out, it falls back to Span-1 Lite, which can be less accurate on complex or ambiguous text.",
+      "modelHint": "Chat protection uses GPT-6 Luna on every plan. Each chatter's first message on Free, first two on Premium and first three on Pro are reviewed at no cost. Reviewing later messages uses AI credits; if credits run out, those reviews fall back to Span-1 Lite, which can be less accurate on complex or ambiguous text.",
       "reviewCredits": "AI credits used: {{credits}}",
       "noReviewCredits": "No AI credits used."
     },

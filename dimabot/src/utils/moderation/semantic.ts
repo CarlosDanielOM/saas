@@ -15,11 +15,12 @@ import { ALLOW_THRESHOLD, SEMANTIC_MODEL, paidModeration } from './advanced.js';
 import { SPAM_RULE_ID } from './spam.js';
 import { categoryQuestions, type SpamCategory } from './spam_categories.js';
 
-// Free channels get the same classifier as paid ones; their reviews are never charged.
-export const FREE_MODERATION_MODEL = SPAM_CLASSIFIER_MODEL;
-
-export function moderationModelForAccount(planTier: unknown, hasCredits: boolean): string {
-    return paidModeration(planTier) ? (hasCredits ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL) : FREE_MODERATION_MODEL;
+// Included reviews (a chatter's first messages, by plan) always run on the classifier and are never
+// charged. Reviewing every later message is an opt-in paid extra: the classifier while the channel
+// has AI credits, the Lite fallback without them.
+export function moderationModelForReview(reviewSource: IModerationDecision['reviewSource'], planTier: unknown, hasCredits: boolean): string {
+    if (reviewSource === 'first_message') return SPAM_CLASSIFIER_MODEL;
+    return paidModeration(planTier) && hasCredits ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL;
 }
 
 export interface SemanticResult {

@@ -15,6 +15,8 @@ export interface IModerationDecision {
     settingsVersion: number;
     matches: ModerationMatch[];
     context: ModerationContextMessage[];
+    /** Included reviews only: 1, 2 or 3, the chatter's message number in the channel. */
+    messageOrdinal?: number;
     mode: 'literal' | 'regex' | 'semantic';
     reviewSource?: 'rule' | 'first_message' | 'spam_continuous';
     state: 'pending' | 'processing' | 'completed';
@@ -40,7 +42,7 @@ const schema = new Schema<IModerationDecision>({
     _id: String, channelID: { type: String, required: true }, userID: String, username: String,
     messageID: String, messageText: String, ruleID: String, rule: Schema.Types.Mixed,
     settingsVersion: Number, matches: [Schema.Types.Mixed], context: [Schema.Types.Mixed],
-    mode: String, reviewSource: { type: String, enum: ['rule', 'first_message', 'spam_continuous'], default: 'rule' }, state: { type: String, default: 'pending' }, verdict: { type: String, default: 'uncertain' },
+    mode: String, messageOrdinal: Number, reviewSource: { type: String, enum: ['rule', 'first_message', 'spam_continuous'], default: 'rule' }, state: { type: String, default: 'pending' }, verdict: { type: String, default: 'uncertain' },
     status: { type: String, default: 'pending' }, model: { type: String, default: '' }, provider: { type: String, default: '' },
     decisionPolicyVersion: String, scores: { type: Schema.Types.Mixed, default: null },
     providerRequestID: { type: String, default: '' }, inputTokens: { type: Number, default: 0 },

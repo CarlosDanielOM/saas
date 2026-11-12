@@ -37,7 +37,14 @@ try {
                 }
                 data = settings;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [{ username: 'adbot', ruleID: 'builtin-spam-protection', ruleType: 'blacklist', action: 'ban', offenseNumber: 1, messageExcerpt: 'Buy viewers!', reason: 'Unsolicited ads', success: true, createdAt: new Date().toISOString() }], total: 1, limit: 10, skip: 0 };
-            else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'first', username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'violation', status: 'completed', scores: { violation: 0.995, spam: 0.995, ads: 0.96, self_promotion: 0.01, safe: 0.01 }, consequence: { action: 'ban', offenseNumber: 1, success: true }, charge: { credits: tier === 'free' ? 0 : 5 }, createdAt: new Date().toISOString() }] };
+            else if (url.pathname.endsWith('/decisions')) {
+                // A plan's included reviews cost nothing; only a paid later-message review shows credits.
+                const row = (id, extra) => ({ _id: id, username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'allow', status: 'completed', scores: null, consequence: { status: 'allowed' }, charge: { credits: 0 }, createdAt: new Date().toISOString(), ...extra });
+                const decisions = [row('first', { messageOrdinal: 1, verdict: 'violation', scores: { violation: 0.995, spam: 0.995, ads: 0.96, self_promotion: 0.01, safe: 0.01 }, consequence: { action: 'ban', offenseNumber: 1, success: true } }),
+                    row('second', { messageOrdinal: 2 }), row('third', { messageOrdinal: 3 }),
+                    ...(tier === 'free' ? [] : [row('later', { reviewSource: 'spam_continuous', charge: { credits: 5 } })])];
+                data = { total: decisions.length, limit: 10, skip: 0, decisions };
+            }
             return route.fulfill({ status: 200, json: { error: false, status: 200, data } });
         });
         if (context.routeWebSocket) await context.routeWebSocket('**/*', socket => socket.close());
@@ -103,11 +110,15 @@ try {
         const axe = await new AxeBuilder({ page }).include('app-moderation-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
         assert.deepEqual(axe.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) })), []);
         assert.match(await host.innerText(), language === 'en' ? /First-message protection/ : /Protección del primer mensaje/);
-        assert.match(await host.locator('[data-moderation-credits]').innerText(), tier === 'free' ? /No AI credits/ : /5/);
+        assert.match(await host.innerText(), language === 'en' ? /Second-message protection[\s\S]*Third-message protection/ : /Protección del segundo mensaje[\s\S]*Protección del tercer mensaje/);
+        assert.match(await host.innerText(), language === 'en' ? /Premium the first two and Pro the first three/ : /Premium los dos primeros y Pro los tres primeros/);
+        if (tier === 'free') assert.match(await host.locator('[data-moderation-credits]').first().innerText(), /No AI credits/);
+        else assert.match(await host.locator('[data-moderation-credits]').last().innerText(), /5/);
+        assert.equal(await host.locator('[data-moderation-credits]').count(), tier === 'free' ? 3 : 4);
         assert.match(await host.locator('.lf-spam-score').allTextContents().then(items => items.join(' ')), /99.5%/);
         assert.equal(await host.locator('.lf-spam-score').count(), 4);
         assert.deepEqual(errors, []);
         await context.close();
     }
-    console.log('PASS independent protection/rule switches, role exemption defaults/selection/save/reload, 85% default, first-message controls, free/Premium/Pro gates, legacy defaults, category defaults/selection, paid thresholds, save/reload, category scores/decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
+    console.log('PASS independent protection/rule switches, role exemption defaults/selection/save/reload, 85% default, first-message controls, first/second/third-message labels by plan, free/Premium/Pro gates, legacy defaults, category defaults/selection, paid thresholds, save/reload, category scores/decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
 } finally { await browser.close(); }

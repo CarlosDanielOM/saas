@@ -880,7 +880,7 @@
                     }
                     <p class="lf-decision__meta">
                       @if (decision.reviewSource === 'first_message' || decision.reviewSource === 'spam_continuous') {
-                        <span>{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</span>
+                        <span>{{ t(decision.reviewSource === 'spam_continuous' ? 'moderation.spam.continuousDecision' : decision.messageOrdinal === 3 ? 'moderation.spam.thirdDecision' : decision.messageOrdinal === 2 ? 'moderation.spam.secondDecision' : 'moderation.spam.firstDecision') }}</span>
                       } @else {
                         <span>{{ t('moderation.decisions.modes.' + decision.mode) }}</span>
                       }

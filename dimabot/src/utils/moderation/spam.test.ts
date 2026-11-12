@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { broadcasterInvitedPromotion, isServiceBot, spamRuleForContext, spamReviewSource, spamRule, semanticPolicyActive } from './spam.js';
+import { broadcasterInvitedPromotion, includedSpamReviews, isServiceBot, spamRuleForContext, spamReviewSource, spamRule, semanticPolicyActive } from './spam.js';
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import type { IChannelModerationSettings, IModerationRule } from '../../schemas/channel_moderation_settings.schema.js';
-import { semanticRequest, parseSpamResponse, moderationModelForAccount } from './semantic.js';
+import { semanticRequest, parseSpamResponse, moderationModelForReview } from './semantic.js';
 import { ruleExempt, createUserIdentity } from '../permissions/index.js';
 
 test('only a verified broadcaster invitation permits channel promotion; negated invitations never grant permission', () => {
@@ -22,25 +22,32 @@ test('only a verified broadcaster invitation permits channel promotion; negated 
     assert.equal(spamRuleForContext(context('Please share your channel!', false)).semantic.broadcasterInvitation, false);
 });
 
-test('first-message scope is available on all tiers while subsequent scope requires paid plan and opt-in', () => {
-    const settings = { enabled: true, spamProtection: { enabled: true, reviewAllMessages: true } } as IChannelModerationSettings;
-    for (const tier of ['free', 'premium', 'pro', undefined]) assert.equal(spamReviewSource(true, settings, tier), 'first_message');
-    assert.equal(spamReviewSource(false, settings, 'free'), null);
-    assert.equal(spamReviewSource(false, settings, 'premium'), 'spam_continuous');
-    assert.equal(spamReviewSource(false, { ...settings, spamProtection: { enabled: true, reviewAllMessages: false } }, 'pro'), null);
-    assert.equal(spamReviewSource(true, { ...settings, enabled: false }, 'free'), 'first_message');
-    assert.equal(spamReviewSource(true, { ...settings, spamProtection: { enabled: false, reviewAllMessages: true } }, 'pro'), null);
+test('each plan includes its first messages; later ones need a paid plan and the opt-in', () => {
+    const optedIn = { enabled: true, spamProtection: { enabled: true, reviewAllMessages: true } } as IChannelModerationSettings;
+    const includedOnly = { ...optedIn, spamProtection: { enabled: true, reviewAllMessages: false } };
+    const sources = (settings: IChannelModerationSettings, tier: unknown) => [1, 2, 3, 0].map(ordinal => spamReviewSource(ordinal, settings, tier));
+    // Free reviews a chatter's first message, Premium the first two, Pro the first three.
+    assert.deepEqual(sources(includedOnly, 'free'), ['first_message', null, null, null]);
+    assert.deepEqual(sources(includedOnly, 'premium'), ['first_message', 'first_message', null, null]);
+    assert.deepEqual(sources(includedOnly, 'pro'), ['first_message', 'first_message', 'first_message', null]);
+    assert.deepEqual([undefined, 'unknown', 'free', 'premium', 'pro'].map(includedSpamReviews), [1, 1, 1, 2, 3]);
+    // With the opt-in, a paid plan reviews everything after the included messages as a charged review.
+    assert.deepEqual(sources(optedIn, 'free'), ['first_message', null, null, null]);
+    assert.deepEqual(sources(optedIn, 'premium'), ['first_message', 'first_message', 'spam_continuous', 'spam_continuous']);
+    assert.deepEqual(sources(optedIn, 'pro'), ['first_message', 'first_message', 'first_message', 'spam_continuous']);
+    assert.equal(spamReviewSource(1, { ...optedIn, enabled: false }, 'free'), 'first_message');
+    assert.equal(spamReviewSource(1, { ...optedIn, spamProtection: { enabled: false, reviewAllMessages: true } }, 'pro'), null);
 });
 
-test('every plan uses Luna; only paid accounts without credits fall back to Span Lite', () => {
-    for (const tier of ['free', undefined, 'unknown']) {
-        assert.equal(moderationModelForAccount(tier, true), 'openai/gpt-6-luna-decisions');
-        assert.equal(moderationModelForAccount(tier, false), 'openai/gpt-6-luna-decisions');
+test('included reviews always run on Luna; later reviews fall back to Span Lite without credits', () => {
+    for (const tier of ['free', undefined, 'unknown', 'premium', 'pro']) {
+        for (const credits of [true, false]) assert.equal(moderationModelForReview('first_message', tier, credits), 'openai/gpt-6-luna-decisions');
     }
     for (const tier of ['premium', 'pro']) {
-        assert.equal(moderationModelForAccount(tier, true), 'openai/gpt-6-luna-decisions');
-        assert.equal(moderationModelForAccount(tier, false), 'respan/span-01-lite');
+        assert.equal(moderationModelForReview('spam_continuous', tier, true), 'openai/gpt-6-luna-decisions');
+        assert.equal(moderationModelForReview('spam_continuous', tier, false), 'respan/span-01-lite');
     }
+    assert.equal(moderationModelForReview('spam_continuous', 'free', true), 'respan/span-01-lite');
     const request = semanticRequest({ rule: spamRuleForContext([]), username: 'viewer', messageText: 'Hello!', context: [], matches: [] }, 'respan/span-01-lite');
     assert.equal(request.model, 'respan/span-01-lite');
     assert.equal(request.questions.ads.type, 'noul');

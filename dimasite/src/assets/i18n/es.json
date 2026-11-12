@@ -2166,12 +2166,14 @@
     "spam": {
       "title": "Protección del chat",
       "free": "Todos los planes",
-      "description": "Revisa el primer mensaje de cada participante para detectar las conductas que elijas y banea al momento a los spammers y bots de estafas evidentes.",
+      "description": "Revisa los primeros mensajes de cada participante nuevo para detectar las conductas que elijas y banea al momento a los spammers y bots de estafas evidentes. El plan gratis revisa el primer mensaje, Premium los dos primeros y Pro los tres primeros.",
       "action": "Solo banea cuando una conducta supera tu confianza para banear y la puntuación de contenido seguro. Los casos dudosos se permiten y se registran. Funciona aparte de tus reglas. Se aplican límites de revisión.",
       "continuous": "Revisar los mensajes posteriores",
       "paid": "Premium · Pro",
-      "continuousDescription": "Revisa todos los mensajes, no solo el primero. Pasa a Span-1 Lite si se agotan los créditos de IA.",
+      "continuousDescription": "Revisa todos los mensajes, no solo los primeros de cada participante. Cada una de estas revisiones consume créditos de IA; si se agotan, pasa a Span-1 Lite.",
       "firstDecision": "Protección del primer mensaje",
+      "secondDecision": "Protección del segundo mensaje",
+      "thirdDecision": "Protección del tercer mensaje",
       "continuousDecision": "Protección continua del chat",
       "categoriesTitle": "Qué detectar",
       "categoriesHint": "El spam, los anuncios y la autopromoción están activados por defecto. Si no eliges ninguna, estas revisiones se pausan; tus reglas siguen vigentes.",
@@ -2197,7 +2199,7 @@
         "insults": "Insultos",
         "safe": "Seguro para las categorías seleccionadas"
       },
-      "modelHint": "La protección del chat usa GPT-6 Luna en todos los planes. En el plan gratis las revisiones no consumen créditos de IA. En Premium y Pro cada revisión consume créditos de IA; si se agotan, pasa a Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
+      "modelHint": "La protección del chat usa GPT-6 Luna en todos los planes. El primer mensaje de cada participante en el plan gratis, los dos primeros en Premium y los tres primeros en Pro se revisan sin costo. Revisar los mensajes posteriores consume créditos de IA; si se agotan, esas revisiones pasan a Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
       "reviewCredits": "Créditos de IA consumidos: {{credits}}",
       "noReviewCredits": "Sin consumo de créditos de IA."
     },

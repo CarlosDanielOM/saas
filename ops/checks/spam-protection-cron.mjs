@@ -2,12 +2,14 @@
 // The full spam-protection check loads the chat handler next to every supervised worker and exceeds
 // the cron candidate's memory limit. This one queues decisions the way the handler does and lets the
 // supervised semantic-moderation worker of the candidate review them: model routing, the broadcaster
-// named to the classifier, the overall-score guard, provider cost and which reviews are charged.
+// named to the classifier, the overall-score guard, provider cost, which reviews are charged, and the
+// zero-credit Polar event for the reviews a plan includes.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
 const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
 const { ModerationDecision: Decisions } = await import('/app/dist/schemas/moderation_decision.schema.js');
+const { ChannelModerationSettingsSchema: Settings } = await import('/app/dist/schemas/channel_moderation_settings.schema.js');
 const { createModerationDecision } = await import('/app/dist/utils/moderation/decisions.js');
 const { SPAM_RULE_ID, spamRuleForContext } = await import('/app/dist/utils/moderation/spam.js');
 
@@ -18,17 +20,25 @@ await Decisions.init();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const calls = () => { try { return fs.readFileSync('/tmp/saas-fixtures/calls.jsonl', 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(call => call.spamReview); } catch { return []; } };
 const credits = (used, balance, status = 'available') => JSON.stringify({ version: 3, used, limit: 1000, balance, available: true, status });
+const versions = {};
 async function seed(channel, tier, name = channel, credit = credits(0, 1000)) {
+    // Paid channels opt into later-message reviews; a saved settings document starts at version 1.
+    if (tier !== 'free') {
+        await Settings.create({ channelID: channel, channel, enabled: false, spamProtection: { enabled: true, reviewAllMessages: true }, rules: [], settingsVersion: 1 });
+        versions[channel] = 1;
+    }
     await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
     await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name, plan_tier: tier });
     await redis.set(`twitch:${channel}:ai:credits`, credit);
 }
-// What the chat handler stores for a first message: unsaved default settings (version 0) and a 4-second deadline.
-async function review(channel, id, text, { login = '', source = 'first_message', context = [] } = {}) {
+// What the chat handler stores for a review: the channel's settings version and a 4-second deadline.
+const polarEvent = async row => (await redis.lRange(`twitch:${row.channelID}:ai:polarshevent`, 0, -1)).map(raw => JSON.parse(raw)).find(event => JSON.stringify(event).includes(row._id));
+async function review(channel, id, text, { login = '', source = 'first_message', context = [], ordinal = 1 } = {}) {
     for (let attempt = 0; attempt < 8; attempt++) {
         const messageID = `${id}-${attempt}`;
         await createModerationDecision({ channelID: channel, userID: `viewer-${id}`, username: `viewer_${id}`, messageID, messageText: text, ruleID: SPAM_RULE_ID,
-            rule: spamRuleForContext(context, {}, login), settingsVersion: 0, matches: [], context, mode: 'semantic', reviewSource: source, deadline: new Date(Date.now() + 4000) });
+            rule: spamRuleForContext(context, {}, login), settingsVersion: versions[channel] ?? 0, matches: [], context, mode: 'semantic', reviewSource: source,
+            ...(source === 'first_message' ? { messageOrdinal: ordinal } : {}), deadline: new Date(Date.now() + 4000) });
         for (let i = 0; i < 60; i++) {
             const row = await Decisions.findOne({ messageID }).lean();
             // The candidate starts every worker at once. A review that expired before the worker
@@ -46,14 +56,26 @@ await seed('cron-paid', 'premium');
 await seed('cron-empty', 'pro', 'cron_empty', credits(1000, 0, 'exhausted'));
 await redis.set('twitch:cron-empty:ai:credits:exhausted', '1');
 
-// Free: Luna, banned, never charged; the provider charge on our own key is kept as the cost.
+// Free: Luna, banned, never charged; the provider charge on our own key is kept as the cost and
+// reported to Polar with zero credits once the handler has recorded the outcome.
 const ad = await review('cron-free', 'ad', 'Want to buy more viewers? Visit viewerbuy . com!', { login: 'New_Name' });
 assert.equal(ad.model, LUNA);
 assert.equal(ad.verdict, 'violation');
 assert.equal(ad.status, 'completed');
 assert.equal(ad.charge.credits, 0);
-assert.equal(ad.charge.status, 'none');
+assert.equal(ad.charge.status, 'pending');
+assert.equal(ad.charge.customerID, 'customer-cron-free');
 assert.equal(ad.cost, 0.000155);
+// Nothing here plays the handler: the report must not wait for an outcome that may never be written.
+assert.equal(ad.consequence.status, 'none');
+for (let i = 0; i < 80 && (await Decisions.findById(ad._id).lean()).charge.status !== 'recorded'; i++) await sleep(100);
+assert.equal((await Decisions.findById(ad._id).lean()).charge.status, 'recorded');
+const tracked = await polarEvent(ad);
+assert.equal(tracked.name, 'ai_usage');
+assert.equal(tracked.metadata.credits, 0, 'an included review never spends credits');
+assert.ok(Math.abs(tracked.metadata._cost.amount - 0.0155) < 1e-9, 'its provider cost (in cents) is still tracked');
+assert.equal(tracked.metadata._llm.vendor, 'openai');
+assert.equal(await redis.get('twitch:cron-free:ai:credits'), credits(0, 1000), 'the local balance is untouched');
 // The login from the chat event wins over the stored account name; the stored name is the fallback.
 assert.equal(calls().find(call => call.spamReview.startsWith('Want to buy more viewers?'))?.broadcaster, 'new_name');
 await review('cron-free', 'fallback', 'Hello from the fallback');
@@ -71,26 +93,37 @@ assert.equal(contradicted.status, 'uncertain');
 assert.equal(contradicted.scores.violation, 0.99);
 assert.ok(Math.abs(contradicted.scores.safe - 0.96) < 1e-9);
 
-// Paid with credits: the same model, and the review is charged from its input tokens.
-const paid = await review('cron-paid', 'paid', 'Hello everyone!');
+// Paid: a chatter's first messages are included too, with or without credits.
+for (const channel of ['cron-paid', 'cron-empty']) {
+    for (const ordinal of [1, 2, 3]) {
+        const included = await review(channel, `included-${ordinal}-${channel}`, 'Hello everyone!', { ordinal });
+        assert.equal(included.model, LUNA, channel);
+        assert.equal(included.status, 'completed', channel);
+        assert.equal(included.verdict, 'allow', channel);
+        assert.equal(included.messageOrdinal, ordinal, channel);
+        assert.equal(included.charge.credits, 0, channel);
+    }
+}
+assert.equal(JSON.parse(await redis.get('twitch:cron-paid:ai:credits')).used, 0, 'included reviews leave a paid balance alone');
+// Later messages are the paid extra: charged from input tokens with credits, the Lite fallback without.
+const paid = await review('cron-paid', 'paid', 'Hello everyone!', { source: 'spam_continuous' });
 assert.equal(paid.model, LUNA);
 assert.equal(paid.verdict, 'allow');
 assert.ok(paid.charge.credits > 0);
 assert.equal(paid.charge.customerID, 'customer-cron-paid');
-// Paid without credits: the Lite fallback, never charged.
-const empty = await review('cron-empty', 'empty', 'Hello everyone!');
+const empty = await review('cron-empty', 'empty', 'Hello everyone!', { source: 'spam_continuous' });
 assert.equal(empty.model, 'respan/span-01-lite');
 assert.equal(empty.charge.credits, 0);
 
 // Failures stay fail-open and free.
 for (const marker of ['INVALID', 'UNAVAILABLE']) {
-    const failed = await review('cron-paid', marker.toLowerCase(), `Want to buy viewers? ${marker}`);
+    const failed = await review('cron-paid', marker.toLowerCase(), `Want to buy viewers? ${marker}`, { source: 'spam_continuous' });
     assert.equal(failed.verdict, 'uncertain', marker);
     assert.equal(failed.charge.credits, 0, marker);
 }
 assert.equal(await Decisions.countDocuments({ channelID: 'cron-free', 'charge.credits': { $gt: 0 } }), 0, 'a Free channel is never charged');
 assert.ok(calls().every(call => [LUNA, 'respan/span-01-lite'].includes(call.model)));
-console.log('PASS cron semantic worker: Luna on Free and paid, Lite fallback without credits, broadcaster from the chat event with stored-name fallback, no name under an invitation, overall-score guard, own-key cost recorded, Free never charged, fail-open errors');
+console.log('PASS cron semantic worker: included reviews on Luna and never charged on any plan, zero-credit Polar event with the provider cost, charged later reviews with the Lite fallback, broadcaster from the chat event with stored-name fallback, no name under an invitation, overall-score guard, own-key cost recorded, Free never charged, fail-open errors');
 // Preloaded provider fixtures keep handles open; leave explicitly once everything passed.
 await Promise.allSettled([mongo.disconnect(), redis.quit()]);
 process.exit(0);

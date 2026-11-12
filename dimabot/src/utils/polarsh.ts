@@ -63,6 +63,11 @@ interface IngestPolarSHEventOptions {
   /** For TTS/audio services - number of characters processed */
   characters?: number;
   mode?: "immediate" | "batch" | "cache";
+  /**
+   * `false` reports the cost with zero credits: the AI-credits meter (sum of `credits`) and the
+   * local balance are untouched, while the USD cost stays on the event for tracking. Default true.
+   */
+  chargeCredits?: boolean;
   /** Descriptive receipt metadata. It does not affect pricing or credits. */
   usage?: AiUsageContextInput;
 }
@@ -229,6 +234,7 @@ export async function ingestPolarSHEvent(
     _cost,
     characters,
     mode = "batch",
+    chargeCredits = true,
     usage,
   } = options;
 
@@ -327,6 +333,7 @@ export async function ingestPolarSHEvent(
       };
     }
 
+    if (!chargeCredits) accountingMetadata.credits = 0;
     eventData.metadata = enrichPolarUsageMetadata(accountingMetadata, usageContext);
 
     if (mode === "immediate") {

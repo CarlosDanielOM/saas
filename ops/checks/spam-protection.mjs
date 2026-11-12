@@ -10,7 +10,7 @@ import { ModerationChatter as Chatters } from '/app/dist/schemas/moderation_chat
 import { ModerationActionLogSchema as Actions } from '/app/dist/schemas/moderation_action_log.schema.js';
 import { runChatModeration, invalidateModerationSettingsCache } from '/app/dist/handlers/moderation.handler.js';
 import { grantPermit } from '/app/dist/utils/moderation/permit.js';
-import { chatterMarkerID, claimFirstObservedMessage, claimSpamReviewBudget, SPAM_RULE_ID } from '/app/dist/utils/moderation/spam.js';
+import { chatterMarkerID, claimObservedMessage, claimSpamReviewBudget, SPAM_RULE_ID } from '/app/dist/utils/moderation/spam.js';
 import ChatHistory from '/app/dist/classes/chat_history.js';
 import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_EXEMPT_TAGS } from '/app/dist/utils/moderation/spam_categories.js';
 
@@ -27,6 +27,8 @@ const msg = (id, text, user = 'viewer') => ({ message_id: id, chatter_user_id: u
 const identity = { level: 1, tags: new Set(['everyone']) };
 const review = (channel, id, text, user) => runChatModeration(channel, msg(id, text, user), identity);
 const decision = id => Decisions.findOne({ messageID: id }).lean();
+// Usage events wait in a per-channel queue before they are sent to Polar.
+const polarEvent = async row => (await redis.lRange(`twitch:${row.channelID}:ai:polarshevent`, 0, -1)).map(raw => JSON.parse(raw)).find(event => JSON.stringify(event).includes(row._id));
 async function seed(channel, tier = 'free', protection = { enabled: true, reviewAllMessages: false }) {
     await Settings.create({ channelID: channel, channel, enabled: true, spamProtection: protection, rules: [], settingsVersion: 1 });
     await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: channel }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
@@ -48,9 +50,15 @@ try {
     assert.equal(first.reviewSource, 'first_message');
     assert.equal(first.consequence.action, 'ban');
     assert.equal(first.consequence.offenseNumber, 1);
-    assert.equal(first.charge.status, 'none');
+    assert.equal(first.messageOrdinal, 1);
     assert.equal(first.charge.credits, 0);
     assert.equal(first.charge.billableCostUSD, 0);
+    await until(async () => (await decision('first-ad'))?.charge.status === 'recorded', 'included review reported to Polar');
+    const tracked = await polarEvent(first);
+    assert.equal(tracked.name, 'ai_usage');
+    assert.equal(tracked.metadata.credits, 0, 'an included review never spends credits');
+    assert.ok(tracked.metadata._cost.amount > 0 && tracked.metadata.cost > 0, 'its provider cost is still tracked');
+    assert.equal(tracked.metadata._llm.vendor, 'openai');
     assert.equal(first.cost, 0.000155, 'service absorbs the Luna cost for Free accounts, including what our own key is charged');
     assert.equal(first.model, 'openai/gpt-6-luna-decisions');
     // This fixture's stored account name ("spam-free") is not a Twitch login, so no broadcaster is named;
@@ -110,24 +118,48 @@ try {
     assert.equal((await unsavedPending).actionTaken, false);
     assert.equal((await decision('unsaved-policy-change')).consequence.status, 'cancelled', 'saving disables a pending unsaved review');
 
-    // The durable marker survives cache loss and is channel-specific.
+    // The durable count survives cache loss, is channel-specific and stops one past the most any plan reviews.
     const marker = chatterMarkerID('spam-free', 'hello');
     await redis.del(`moderation:seen:${marker}`);
-    assert.equal(await claimFirstObservedMessage('spam-free', 'hello'), false);
-    const claims = await Promise.all(Array.from({ length: 16 }, () => claimFirstObservedMessage('atomic-channel', 'atomic-user')));
-    assert.equal(claims.filter(Boolean).length, 1);
+    assert.equal(await claimObservedMessage('spam-free', 'hello'), 3, 'two messages were already counted for this chatter');
+    assert.equal(await claimObservedMessage('spam-free', 'hello'), 0);
+    assert.equal((await Chatters.findById(marker).lean()).seen, 4);
+    assert.equal(await redis.get(`moderation:seen:${marker}`), '1', 'a finished count is cached');
+    const claims = await Promise.all(Array.from({ length: 16 }, () => claimObservedMessage('atomic-channel', 'atomic-user')));
+    assert.deepEqual(claims.sort(), [...Array(13).fill(0), 1, 2, 3], 'concurrent messages each get their own number');
     assert.equal(await Chatters.countDocuments({ _id: chatterMarkerID('atomic-channel', 'atomic-user') }), 1);
-    assert.equal(await claimFirstObservedMessage('another-channel', 'atomic-user'), true);
+    assert.equal(await claimObservedMessage('another-channel', 'atomic-user'), 1);
+    // A marker written before messages were counted belongs to a chatter who is past every included review.
+    await Chatters.collection.insertOne({ _id: chatterMarkerID('legacy-channel', 'legacy-user'), firstSeenAt: new Date(Date.now() - 86_400_000) });
+    assert.equal(await claimObservedMessage('legacy-channel', 'legacy-user'), 0);
+    assert.equal((await Chatters.findById(chatterMarkerID('legacy-channel', 'legacy-user')).lean()).seen, 4);
     await Promise.all([review('spam-free', 'race-hello', 'Hello!', 'race'), review('spam-free', 'race-ad', 'Want to buy viewers?', 'race')]);
     assert.equal(await Decisions.countDocuments({ channelID: 'spam-free', userID: 'race' }), 1);
 
-    // Premium and Pro can opt into later reviews; every successful paid review consumes credits.
-    for (const tier of ['premium', 'pro']) {
+    // Each plan includes a chatter's first messages at no credit cost: two on Premium, three on Pro.
+    // With the opt-in, every message after them is a charged review.
+    for (const [tier, included] of [['premium', 2], ['pro', 3]]) {
         const channel = `spam-${tier}`;
         await seed(channel, tier, { enabled: true, reviewAllMessages: true });
+        for (let ordinal = 1; ordinal <= included; ordinal++) {
+            await review(channel, `${tier}-included-${ordinal}`, 'Hello everyone!');
+            const row = await decision(`${tier}-included-${ordinal}`);
+            assert.equal(row.reviewSource, 'first_message');
+            assert.equal(row.status, 'completed', 'the review really ran');
+            assert.equal(row.verdict, 'allow');
+            assert.equal(row.messageOrdinal, ordinal);
+            assert.equal(row.model, 'openai/gpt-6-luna-decisions');
+            assert.equal(row.charge.credits, 0, 'included reviews are never charged');
+        }
+        assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).used, 0, 'included reviews leave the balance alone');
         await review(channel, `${tier}-hello`, 'Hello everyone!');
-        assert.ok((await decision(`${tier}-hello`)).charge.credits > 0);
-        assert.equal((await decision(`${tier}-hello`)).model, 'openai/gpt-6-luna-decisions');
+        const later = await decision(`${tier}-hello`);
+        assert.equal(later.reviewSource, 'spam_continuous');
+        assert.equal(later.messageOrdinal, undefined);
+        assert.ok(later.charge.credits > 0);
+        assert.equal(later.model, 'openai/gpt-6-luna-decisions');
+        await until(async () => (await decision(`${tier}-hello`))?.charge.status === 'recorded', `${tier} later review charged`);
+        assert.equal((await polarEvent(later)).metadata.credits, later.charge.credits, 'a charged review reports its credits');
         assert.equal((await review(channel, `${tier}-ad`, 'Want to buy viewers? viewerbuy.com')).actionTaken, true);
         await until(async () => (await decision(`${tier}-ad`))?.consequence.status === 'executed', `${tier} ban`);
         const paid = await decision(`${tier}-ad`);
@@ -138,11 +170,44 @@ try {
         assert.equal((await review(channel, `${tier}-downgrade`, 'Want to buy viewers?')).actionTaken, false);
         assert.equal(await decision(`${tier}-downgrade`), null, 'downgrade fences continuous reviews');
         await review(channel, `${tier}-new-first`, 'Hello!', 'newviewer');
-        assert.equal((await decision(`${tier}-new-first`)).charge.status, 'none', 'downgrade keeps first review free');
+        assert.equal((await decision(`${tier}-new-first`)).charge.credits, 0, 'downgrade keeps first review free');
+        assert.equal((await review(channel, `${tier}-new-second`, 'Want to buy viewers?', 'newviewer')).actionTaken, false);
+        assert.equal(await decision(`${tier}-new-second`), null, 'after the downgrade only the first message is included');
     }
 
-    // The last paid review exhausts credits; all subsequent checks use Lite.
+    // "hi" first, the ad second: Premium reads the second message together with what the same chatter
+    // wrote before, even minutes earlier. (Free never reviews a second message: `second-ad` above.)
+    await seed('spam-second', 'premium');
+    await ChatHistory.addMessage('spam-second', 'greeter', 'hi', [], 'twitch', 'second-hi', Date.now() - 300_000);
+    assert.equal((await review('spam-second', 'second-hi', 'hi', 'greeter')).actionTaken, false);
+    await ChatHistory.addMessage('spam-second', 'someone_else', 'gg', [], 'twitch', 'second-other', Date.now() - 200_000);
+    await ChatHistory.addMessage('spam-second', 'greeter', 'Want to buy viewers? viewerbuy.com', [], 'twitch', 'second-pitch', Date.now());
+    assert.equal((await review('spam-second', 'second-pitch', 'Want to buy viewers? viewerbuy.com', 'greeter')).actionTaken, true);
+    const second = await decision('second-pitch');
+    assert.equal(second.messageOrdinal, 2);
+    assert.equal(second.charge.credits, 0);
+    assert.deepEqual(second.context.map(item => item.message), ['hi'], 'the chatter\'s own earlier line, and nobody else\'s old chat');
+    await until(() => calls().some(call => call.ban === 'greeter'), 'second-message ban');
+    assert.equal((await review('spam-second', 'second-third', 'Want to buy viewers?', 'greeter')).actionTaken, false);
+    assert.equal(await decision('second-third'), null, 'Premium includes two messages, not three');
+    // Pro reads a third message with both earlier lines, in order, even when the chat history never held
+    // them (a busy chat trims it) and another chatter has a look-alike name.
+    await seed('spam-third', 'pro');
+    assert.equal((await review('spam-third', 'third-one', 'hello', 'splitter')).actionTaken, false);
+    assert.equal((await review('spam-third', 'third-other', 'hello from me', 'splitter_')).actionTaken, false);
+    assert.equal((await review('spam-third', 'third-two', 'good stream', 'splitter')).actionTaken, false);
+    assert.deepEqual((await decision('third-two')).context.map(item => item.message), ['hello']);
+    assert.equal((await review('spam-third', 'third-three', 'nice', 'splitter')).actionTaken, false);
+    const third = await decision('third-three');
+    assert.equal(third.messageOrdinal, 3);
+    assert.equal(third.status, 'completed');
+    assert.deepEqual(third.context.map(item => [item.username, item.message]), [['splitter', 'hello'], ['splitter', 'good stream']]);
+    assert.equal((await review('spam-third', 'third-four', 'Want to buy viewers?', 'splitter')).actionTaken, false);
+    assert.equal(await decision('third-four'), null, 'a fourth message needs the opt-in');
+
+    // The last paid review exhausts credits; later reviews then use Lite, while included ones stay on Luna and free.
     await seed('tier-switch', 'premium', { enabled: true, reviewAllMessages: true });
+    for (const id of ['switch-first', 'switch-second']) await review('tier-switch', id, 'Hello everyone!');
     await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 999, limit: 1000, balance: 1, available: true, status: 'available' }));
     await review('tier-switch', 'last-paid', 'Hello everyone!');
     await until(async () => (await decision('last-paid'))?.charge.status === 'recorded', 'last credit charged');
@@ -150,13 +215,15 @@ try {
     assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).balance,
         1 - (await decision('last-paid')).charge.credits, 'the final review deducts its recorded cost, including overdraw');
     await review('tier-switch', 'exhausted-later', 'Do not buy viewers; those sites are scams.');
+    const exhaustedLater = await decision('exhausted-later');
+    assert.equal(exhaustedLater.model, 'respan/span-01-lite');
+    assert.equal(exhaustedLater.charge.credits, 0);
+    assert.equal(exhaustedLater.verdict, 'allow');
     await review('tier-switch', 'exhausted-first', 'Hello everyone!', 'new-exhausted');
-    for (const id of ['exhausted-later', 'exhausted-first']) {
-        const row = await decision(id);
-        assert.equal(row.model, 'respan/span-01-lite');
-        assert.equal(row.charge.credits, 0);
-        assert.equal(row.verdict, 'allow');
-    }
+    const exhaustedFirst = await decision('exhausted-first');
+    assert.equal(exhaustedFirst.model, 'openai/gpt-6-luna-decisions', 'an included review does not depend on credits');
+    assert.equal(exhaustedFirst.charge.credits, 0);
+    assert.equal(exhaustedFirst.verdict, 'allow');
     await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
     await redis.del(['twitch:tier-switch:ai:exhaust', 'tier-switch:ai:exhaust']);
     await review('tier-switch', 'recharged', 'Want to buy viewers? UNCERTAIN');
@@ -171,18 +238,23 @@ try {
         await review('tier-switch', `paid-${marker}`, `Want to buy viewers? ${marker}`);
         assert.equal((await decision(`paid-${marker}`)).charge.credits, 0, 'failed paid reviews do not charge');
     }
-    await seed('missing-customer', 'premium');
+    // Without a Polar customer nothing can be charged or reported; later reviews fall back to Lite.
+    await seed('missing-customer', 'premium', { enabled: true, reviewAllMessages: true });
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'missing-customer' }, { $unset: { polar_sh_customer_id: '' } });
+    for (const id of ['missing-first', 'missing-second']) await review('missing-customer', id, 'Hello everyone!');
+    assert.equal((await decision('missing-first')).model, 'openai/gpt-6-luna-decisions');
+    assert.equal((await decision('missing-first')).charge.status, 'none');
     await review('missing-customer', 'missing-customer', 'Hello everyone!');
     assert.equal((await decision('missing-customer')).model, 'respan/span-01-lite');
     assert.equal((await decision('missing-customer')).charge.credits, 0);
 
-    await seed('unverifiable-credits', 'premium');
+    await seed('unverifiable-credits', 'premium', { enabled: true, reviewAllMessages: true });
     await redis.del('twitch:unverifiable-credits:ai:credits');
+    for (const id of ['unverifiable-first', 'unverifiable-second']) await review('unverifiable-credits', id, 'Hello everyone!');
     await review('unverifiable-credits', 'unverifiable-credits', 'Hello everyone!');
     assert.equal((await decision('unverifiable-credits')).model, 'respan/span-01-lite');
     assert.equal((await decision('unverifiable-credits')).charge.credits, 0);
-    await review('unverifiable-credits', 'unverifiable-cached', 'Hello everyone!', 'another-unverified');
+    await review('unverifiable-credits', 'unverifiable-cached', 'Hello everyone!');
     assert.equal((await decision('unverifiable-cached')).model, 'respan/span-01-lite', 'cached unavailable estimates never become a charged review');
     assert.equal((await decision('unverifiable-cached')).charge.credits, 0);
 
@@ -264,7 +336,7 @@ try {
         assert.equal((await api('PUT', 'spam-free/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: false } })).status, 200);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [{ ...caps, id: SPAM_RULE_ID }] })).status, 400);
         const view = await (await api('GET', 'spam-free/decisions')).json();
-        assert.ok(view.data.decisions.some(row => row.reviewSource === 'first_message' && row.charge.credits === 0));
+        assert.ok(view.data.decisions.some(row => row.reviewSource === 'first_message' && row.messageOrdinal === 1 && row.charge.credits === 0));
         assert.equal((await api('GET', 'spam-free/settings', null, 'paid-owner')).status, 403);
         assert.equal((await api('PUT', 'spam-premium/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: true } }, 'paid-owner')).status, 200);
         const protection = { enabled: true, reviewAllMessages: false, categories: ['ads'], thresholdPercent: 85 };
@@ -318,7 +390,7 @@ try {
     assert.equal((await decision('tied')).verdict, 'uncertain');
     await seed('spam-threshold', 'premium', { enabled: true, reviewAllMessages: true, categories: ['ads'], thresholdPercent: 80 });
     assert.equal((await review('spam-threshold', 'custom-first', 'Want to buy viewers? BORDERLINE')).actionTaken, true);
-    assert.ok((await decision('custom-first')).charge.credits > 0, 'paid first review consumes credits');
+    assert.equal((await decision('custom-first')).charge.credits, 0, 'a paid first review is included too');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'spam-threshold' }, { $set: { plan_tier: 'free' } });
     assert.equal((await review('spam-threshold', 'downgraded-threshold', 'Want to buy viewers? BORDERLINE', 'another')).actionTaken, false);
     assert.equal((await decision('downgraded-threshold')).rule.semantic.thresholdPercent, 85, 'free downgrade uses default threshold');
@@ -342,7 +414,7 @@ try {
         const row = await decision(id);
         assert.equal(row.model, fixture.model, fixture.label);
         assert.deepEqual(row.scores, fixture.scores, fixture.label);
-        assert.ok(row.charge.credits > 0, fixture.label);
+        assert.equal(row.charge.credits, 0, fixture.label);
         if (fixture.expectedBan) {
             await until(async () => (await decision(id))?.consequence.status === 'executed', id);
             assert.equal(calls().filter(call => call.ban === user).length, 1, fixture.label);
@@ -351,14 +423,25 @@ try {
             assert.equal(await Actions.countDocuments({ channelID: channel }), 0, fixture.label);
         }
     }
+    // A second message is reviewed only while the plan still includes it: a downgrade during its review cancels the ban.
     await seed('paid-first-downgrade', 'premium');
+    await review('paid-first-downgrade', 'downgrade-first', 'Hello everyone!');
     const downgrade = review('paid-first-downgrade', 'paid-first-downgrade', 'Want to buy viewers? SLOW');
-    // Free and paid share one model now, so the paid review is recognised by its channel, not by its model.
-    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.user === 'paid-first-downgrade'), 'paid first review starts');
+    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.user === 'paid-first-downgrade'), 'second-message review starts');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'paid-first-downgrade' }, { $set: { plan_tier: 'free' } });
     assert.equal((await downgrade).actionTaken, false);
+    assert.equal((await decision('paid-first-downgrade')).messageOrdinal, 2);
     assert.equal((await decision('paid-first-downgrade')).consequence.status, 'cancelled');
     assert.equal((await decision('paid-first-downgrade')).charge.credits, 0);
+    // The review still ran: its cost is reported to Polar with zero credits although the ban was cancelled.
+    await until(async () => (await decision('paid-first-downgrade'))?.charge.status === 'recorded', 'cancelled review still reported');
+    assert.equal((await polarEvent(await decision('paid-first-downgrade'))).metadata.credits, 0);
+    // A first message is included on every plan, so the same downgrade does not cancel its ban.
+    await seed('first-downgrade', 'premium');
+    const kept = review('first-downgrade', 'first-downgrade', 'Want to buy viewers? SLOW', 'pitcher');
+    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.user === 'first-downgrade'), 'first-message review starts');
+    await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'first-downgrade' }, { $set: { plan_tier: 'free' } });
+    assert.equal((await kept).actionTaken, true);
     // A category the overall answer contradicts never bans (real Luna scores: 0.99 against 0.04).
     await seed('spam-contradict');
     assert.equal((await review('spam-contradict', 'contradict', 'Juega mis cartas CONTRADICT', 'cardfan')).actionTaken, false);
@@ -384,7 +467,7 @@ try {
     assert.ok(await Decisions.countDocuments({ channelID: 'spam-free', model: 'openai/gpt-6-luna-decisions' }) > 3, 'Free reviews ran on Luna');
     assert.equal(await Decisions.countDocuments({ channelID: { $in: alwaysFree }, 'charge.credits': { $gt: 0 } }), 0, 'a Free channel is never charged');
     assert.equal(await Actions.countDocuments({ ruleID: SPAM_RULE_ID, action: { $ne: 'ban' } }), 0);
-    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, Luna on every plan with the Lite fallback, exhaustion/recharge, first-message and uncertain billing, deduped credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
+    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, Luna on every plan, included first messages by plan (1/2/3) with earlier messages by the same chatter as context, zero-credit Polar tracking, charged later reviews with the Lite fallback, exhaustion/recharge, uncertain billing, deduped credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }

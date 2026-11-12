@@ -166,7 +166,7 @@ router.get('/:channelID/decisions', authMiddleware as any, async (req: Moderatio
         const skip = Math.min(100000, Math.max(0, Math.floor(Number(req.query.skip) || 0)));
         const filter = { channelID, createdAt: { $gte: new Date(Date.now() - MODERATION_VISIBLE_DAYS * 86400000) } };
         const [decisions, total] = await Promise.all([
-            ModerationDecision.find(filter).select('_id username messageText ruleID mode reviewSource verdict status scores consequence createdAt charge.credits')
+            ModerationDecision.find(filter).select('_id username messageText ruleID mode reviewSource messageOrdinal verdict status scores consequence createdAt charge.credits')
                 .sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
             ModerationDecision.countDocuments(filter)
         ]);
