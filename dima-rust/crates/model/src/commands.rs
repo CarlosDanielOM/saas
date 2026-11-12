@@ -30,7 +30,7 @@ use crate::shape::ReadNeed;
 use crate::timer_commands::{CREATION_DATE, CreationDate};
 use crate::validation::Rule;
 use crate::values::{Nullable, StringMap};
-use crate::writes::{find_and_update_unchecked, save_with_hooks, update_unchecked};
+use crate::writes::{find_and_update_after_hooks, save_with_hooks, update_after_hooks};
 use bson::oid::ObjectId;
 use bson::{Bson, Document};
 use dima_core::Random;
@@ -464,7 +464,7 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_unchecked(&INFO, filter, update.into(), options, ctx)
+    update_after_hooks(&INFO, filter, update.into(), options, ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
@@ -480,7 +480,7 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_unchecked(&INFO, filter, update.into(), options, returned, ctx)
+    find_and_update_after_hooks(&INFO, filter, update.into(), options, returned, ctx)
 }
 
 /// `doc.save()` of a loaded command (read without projection) after `changes`, with the save hook.

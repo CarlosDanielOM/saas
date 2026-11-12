@@ -160,8 +160,8 @@
 //! - Hooks: a collection with Mongoose middleware sets [`Hooks`], and the generic entry points
 //!   refuse it; its module offers the adapters instead (`commands::prepare_update` with an
 //!   [`availability::Writer`], `admins::prepare_save`...). An update adapter applies its hook to
-//!   the update, then calls `writes::update_unchecked(&INFO, …)` (or
-//!   `find_and_update_unchecked`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
+//!   the update, then calls `writes::update_after_hooks(&INFO, …)` (or
+//!   `find_and_update_after_hooks`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
 //!   changes, hook, ctx)`, where `hook` returns the changes the middleware makes (`hooks.rs` has
 //!   the `updatedAt`-on-save one). Both run validation and the guard; never call the store's
 //!   helpers directly. A create with document middleware uses `writes::create_with_hooks`

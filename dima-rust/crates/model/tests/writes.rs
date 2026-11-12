@@ -1550,9 +1550,11 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let options = update_options(intent)?;
             let raw_update = intent.get("update").context("update")?;
+            let pipeline = raw_update.is_array();
             let prepared = match raw_update.as_array() {
-                // A pipeline (no collection with update hooks uses one).
-                Some(stages) => info.prepare_update(
+                // A pipeline: the write guard cannot check one, so the documents it leaves are
+                // decoded below (the write-then-read test such a caller owes).
+                Some(stages) => info.prepare_pipeline_update_unchecked(
                     &filter,
                     stages.iter().map(document_of).collect::<Result<Vec<_>>>()?,
                     options,
@@ -1592,6 +1594,16 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
             };
             if let Err(error) = result {
                 outcome.error = Some(Value::String(write_error(&error)));
+            }
+            if pipeline {
+                for document in stored(store, collection).await? {
+                    let raw = bson::RawDocumentBuf::try_from(&document)?;
+                    if let Err(error) = (info.decode)(&raw) {
+                        bail!(
+                            "{collection}: a pipeline left a document the read type cannot read: {error}"
+                        );
+                    }
+                }
             }
         }
         "findOneAndUpdate" => {

@@ -17,9 +17,11 @@
 //!   object written without it, an upsert or a new document without it, an array element unset.
 //!
 //! `Mixed` paths and everything below them are free: their read types are raw BSON. Operators no
-//! reference call uses (`$rename`, `$currentDate`, `$bit`, pipeline stages other than `$set`,
-//! `$addFields` and `$unset`) are refused; a pipeline value that is an expression (`'$field'`, an
-//! operator document) cannot be checked and is the caller's responsibility.
+//! reference call uses (`$rename`, `$currentDate`, `$bit`) are refused. An update pipeline cannot
+//! be checked (its values are expressions: `{$literal: 'bad'}` stores a string anywhere), so the
+//! ordinary entry points refuse one ([`crate::ModelError::Pipeline`]); a caller that needs one
+//! uses [`CollectionInfo::prepare_pipeline_update_unchecked`] and brings its own write-then-read
+//! test.
 
 use crate::collection::CollectionInfo;
 use crate::validation::{ValidationError, ValidatorError, ValidatorKind};
@@ -566,36 +568,10 @@ impl CollectionInfo {
                     );
                 }
             }
-            UpdateDoc::Pipeline(stages) => {
-                for stage in stages {
-                    for (name, body) in stage {
-                        match (name.as_str(), body) {
-                            ("$set" | "$addFields", Bson::Document(paths)) => {
-                                let literal: Document = paths
-                                    .iter()
-                                    .filter(|(_, v)| !is_expression(v))
-                                    .map(|(k, v)| (k.clone(), v.clone()))
-                                    .collect();
-                                checker.operator(self.schema, "$set", &literal, against);
-                            }
-                            ("$unset", Bson::String(path)) => {
-                                let mut one = Document::new();
-                                one.insert(path.clone(), 1);
-                                checker.operator(self.schema, "$unset", &one, against);
-                            }
-                            ("$unset", Bson::Array(paths)) => {
-                                let one: Document = paths
-                                    .iter()
-                                    .filter_map(Bson::as_str)
-                                    .map(|p| (p.to_owned(), Bson::Int32(1)))
-                                    .collect();
-                                checker.operator(self.schema, "$unset", &one, against);
-                            }
-                            (other, _) => checker.unsupported(other, other),
-                        }
-                    }
-                }
-            }
+            // An expression (`{$literal: …}`, `'$field'`) cannot be checked without running it:
+            // the ordinary entry points refuse a pipeline before it gets here, and
+            // `prepare_pipeline_update_unchecked` does not call the guard.
+            UpdateDoc::Pipeline(_) => checker.unsupported("", "an update pipeline"),
         }
         checker.finish()
     }
@@ -675,15 +651,6 @@ fn upserted(filter: &Document, update: &Document) -> Document {
         }
     }
     document
-}
-
-/// A pipeline value that is computed (`'$path'`, `{$concat: …}`), not literal.
-fn is_expression(value: &Bson) -> bool {
-    match value {
-        Bson::String(text) => text.starts_with('$'),
-        Bson::Document(document) => document.keys().any(|k| k.starts_with('$')),
-        _ => false,
-    }
 }
 
 fn has_type(ty: ValueType, value: &Bson) -> bool {

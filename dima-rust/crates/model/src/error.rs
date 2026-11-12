@@ -35,6 +35,15 @@ pub enum ModelError {
         /// The reference's error message.
         message: String,
     },
+    /// An update pipeline given to an entry point that checks its writes: the write guard cannot
+    /// check expressions. Use [`crate::CollectionInfo::prepare_pipeline_update_unchecked`].
+    #[error(
+        "an update pipeline on {collection} cannot be checked: use prepare_pipeline_update_unchecked"
+    )]
+    Pipeline {
+        /// The collection.
+        collection: &'static str,
+    },
     /// A generic write to a collection whose Mongoose middleware would be skipped: use the
     /// collection module's adapter.
     #[error("{operation} on {collection} must go through its module (Mongoose hooks)")]

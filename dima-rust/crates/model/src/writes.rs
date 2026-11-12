@@ -35,7 +35,7 @@ impl CollectionInfo {
         ctx: &mut WriteContext,
     ) -> Result<PreparedUpdate, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "update")?;
-        update_unchecked(self, filter, update.into(), options, ctx)
+        update_after_hooks(self, filter, update.into(), options, ctx)
     }
 
     /// `Model.findOneAndUpdate` of a collection without hooks.
@@ -48,7 +48,34 @@ impl CollectionInfo {
         ctx: &mut WriteContext,
     ) -> Result<PreparedFindAndModify, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "findOneAndUpdate")?;
-        find_and_update_unchecked(self, filter, update.into(), options, returned, ctx)
+        find_and_update_after_hooks(self, filter, update.into(), options, returned, ctx)
+    }
+
+    /// `Model.updateOne` / `updateMany` with an update pipeline, **not checked by the write
+    /// guard**: a pipeline's values are expressions (`$dateAdd`, `$literal`, `'$field'`), so what
+    /// it stores is known only after it ran. The store's helpers still prepare it (filter cast,
+    /// the trailing `updatedAt` stage); a collection with update hooks refuses it.
+    ///
+    /// The caller owns what the read type can decode: it needs a write-then-read test that runs
+    /// its pipeline against a throwaway database and decodes every document left there
+    /// (`tests/writes.rs` does that for the recorded `retention_pipeline` cases, which are
+    /// `utils/ai_usage_ledger.ts:424` and `:430`, the only pipelines the reference sends to these
+    /// collections).
+    pub fn prepare_pipeline_update_unchecked(
+        &self,
+        filter: &Document,
+        stages: Vec<Document>,
+        options: UpdateOptions,
+        ctx: &mut WriteContext,
+    ) -> Result<PreparedUpdate, ModelError> {
+        self.refuse_hooked(Hooks::UpdatesAndSave, "update")?;
+        Ok(prepare_update(
+            self.schema,
+            filter,
+            Update::Pipeline(stages),
+            options,
+            ctx,
+        )?)
     }
 
     /// `doc.save()` of a document of a collection without hooks, loaded whole with
@@ -85,14 +112,17 @@ impl CollectionInfo {
     }
 }
 
-/// [`CollectionInfo::prepare_update`] without the hooks check (for the modules' adapters).
-pub(crate) fn update_unchecked(
+/// [`CollectionInfo::prepare_update`] without the hooks check: what a module's adapter calls
+/// once it applied its hooks to the update. Validation (when asked for) and the write guard run;
+/// a pipeline is refused.
+pub(crate) fn update_after_hooks(
     info: &CollectionInfo,
     filter: &Document,
     update: Update,
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, ModelError> {
+    refuse_pipeline(info, &update)?;
     let update = immutable_mixed_children(info.schema, update, options.upsert);
     let prepared = prepare_update(info.schema, filter, update, options, ctx)?;
     if let Some(update) = &prepared.update {
@@ -107,8 +137,9 @@ pub(crate) fn update_unchecked(
     Ok(prepared)
 }
 
-/// [`CollectionInfo::prepare_find_one_and_update`] without the hooks check.
-pub(crate) fn find_and_update_unchecked(
+/// [`CollectionInfo::prepare_find_one_and_update`] without the hooks check (see
+/// [`update_after_hooks`]).
+pub(crate) fn find_and_update_after_hooks(
     info: &CollectionInfo,
     filter: &Document,
     update: Update,
@@ -116,6 +147,7 @@ pub(crate) fn find_and_update_unchecked(
     returned: Returned,
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, ModelError> {
+    refuse_pipeline(info, &update)?;
     let update = immutable_mixed_children(info.schema, update, options.upsert);
     let prepared =
         prepare_find_one_and_update(info.schema, filter, update, options, returned, ctx)?;
@@ -129,6 +161,16 @@ pub(crate) fn find_and_update_unchecked(
         )?;
     }
     Ok(prepared)
+}
+
+/// The write guard cannot check a pipeline: the checked entry points refuse it.
+fn refuse_pipeline(info: &CollectionInfo, update: &Update) -> Result<(), ModelError> {
+    match update {
+        Update::Document(_) => Ok(()),
+        Update::Pipeline(_) => Err(ModelError::Pipeline {
+            collection: info.name,
+        }),
+    }
 }
 
 /// Every save of `info` (the generic one and the modules' adapters): checks that `loaded` was
@@ -607,6 +649,59 @@ mod tests {
             );
             assert_eq!(refused, info.hooks != Hooks::None, "{}", info.name);
         }
+    }
+
+    /// A pipeline's expressions cannot be checked: `{$literal: 'bad'}` would store a string
+    /// where the read type needs an array. The checked entry points refuse every pipeline; the
+    /// unchecked one says so in its name.
+    #[test]
+    fn pipelines_are_refused_unless_unchecked() {
+        let mut ctx = WriteContext::new(0);
+        let filter = doc! { "_id": bson::oid::ObjectId::new() };
+        let stages = vec![doc! { "$set": { "accounts": { "$literal": "bad" } } }];
+        let users = &crate::users::INFO;
+        for options in [UpdateOptions::default(), UpdateOptions::upsert()] {
+            let update = users.prepare_update(&filter, stages.clone(), options.clone(), &mut ctx);
+            assert!(
+                matches!(
+                    update,
+                    Err(ModelError::Pipeline {
+                        collection: "users"
+                    })
+                ),
+                "{update:?}"
+            );
+            let found = users.prepare_find_one_and_update(
+                &filter,
+                stages.clone(),
+                options,
+                Returned::After,
+                &mut ctx,
+            );
+            assert!(
+                matches!(found, Err(ModelError::Pipeline { .. })),
+                "{found:?}"
+            );
+        }
+        let unchecked = users.prepare_pipeline_update_unchecked(
+            &filter,
+            stages.clone(),
+            UpdateOptions::default(),
+            &mut ctx,
+        );
+        assert!(unchecked.is_ok(), "{unchecked:?}");
+        // Collections with update hooks keep refusing it.
+        let commands = &crate::commands::INFO;
+        let hooked = commands.prepare_pipeline_update_unchecked(
+            &filter,
+            stages,
+            UpdateOptions::default(),
+            &mut ctx,
+        );
+        assert!(
+            matches!(hooked, Err(ModelError::Hooked { .. })),
+            "{hooked:?}"
+        );
     }
 
     static S: Schema = Schema::new(&[
