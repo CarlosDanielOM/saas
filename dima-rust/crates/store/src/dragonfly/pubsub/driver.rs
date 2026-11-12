@@ -35,8 +35,10 @@
 //! is read only as fast as frames are dispatched, and a frame over the limit discards the
 //! connection instead of growing the buffer.
 //!
-//! A connection that stays silent for the ping interval is sent `PING`, under the same deadline,
-//! so a peer that stops answering is noticed even without control traffic.
+//! A connection that sends no complete frame for the ping interval is sent `PING`, under the
+//! same deadline, so a peer that stops answering is noticed even without control traffic. Only
+//! complete frames count: a peer trickling the bytes of a frame that never ends is pinged, its
+//! `PONG` cannot arrive behind that frame, and the connection is replaced at the deadline.
 
 use super::resp::{self, Frame};
 use super::{Ack, Control, Entry, Message, Push, State, Topic};
@@ -377,10 +379,7 @@ async fn serve(
             }
             read = connection.reader.read_buf(&mut connection.input) => match read {
                 Ok(0) => return Err(Lost::Closed),
-                Ok(_) => {
-                    connection.last_heard = Instant::now();
-                    connection.drain_frames(entries, state, limits)?;
-                }
+                Ok(_) => connection.drain_frames(entries, state, limits)?,
                 Err(error) => return Err(Lost::Io(error)),
             },
             written = connection.writer.write(&connection.output), if writing => match written {
@@ -569,6 +568,9 @@ impl Connection {
             match self.framer.next(rest, limits.frame()) {
                 Ok(Some((frame, used))) => {
                     consumed += used;
+                    // Only a whole frame counts as hearing from the peer: bytes of a frame
+                    // that never completes must not hold off the keep-alive.
+                    self.last_heard = Instant::now();
                     self.handle(frame, entries, state, limits)?;
                 }
                 Ok(None) => break,

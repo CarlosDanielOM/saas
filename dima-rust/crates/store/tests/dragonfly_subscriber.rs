@@ -1016,3 +1016,41 @@ async fn a_cancelled_subscribe_does_not_hold_its_topic() -> Result<()> {
     let _b = subscribed(&subscriber, &mut peer, "b").await?;
     Ok(())
 }
+
+#[tokio::test]
+async fn a_peer_trickling_an_endless_frame_is_pinged_and_replaced() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_millis(300));
+    config.subscriber_ping_interval = Duration::from_millis(200);
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    let mut subscription = subscribed(&subscriber, &mut peer, "a").await?;
+    // A frame that never completes, one byte every 20 ms: bytes keep coming, frames do not.
+    peer.send(b"*3\r\n$7\r\nmessage\r\n$1\r\na\r\n$100000\r\n")
+        .await?;
+    let started = Instant::now();
+    let mut pinged = false;
+    loop {
+        ensure!(
+            started.elapsed() < Duration::from_secs(3),
+            "the connection is still open (pinged: {pinged})"
+        );
+        if peer.send(b"x").await.is_err() {
+            break;
+        }
+        match tokio::time::timeout(Duration::from_millis(20), peer.commands.recv()).await {
+            Ok(Some(command)) => {
+                ensure!(command == ["PING"], "{command:?}");
+                pinged = true;
+            }
+            Ok(None) => break,
+            Err(_) => {}
+        }
+    }
+    ensure!(pinged, "closed without a keep-alive PING");
+    let mut fresh = mock.peer().await?;
+    ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    fresh.send(&confirmation("subscribe", "a", 1)).await?;
+    ensure!(next(&mut subscription).await? == RESUBSCRIBED);
+    Ok(())
+}

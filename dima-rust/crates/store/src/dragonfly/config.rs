@@ -77,7 +77,8 @@ pub const DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 /// [`DragonflyConfig::subscription_max_message_bytes`].
 pub const DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES: usize = 1024;
 
-/// Default interval of silence after which a subscriber connection is sent `PING`: 30 seconds.
+/// Default interval without a complete frame after which a subscriber connection is sent `PING`:
+/// 30 seconds.
 ///
 /// The reference sets no `pingInterval` (node-redis 5 then never pings), so a subscriber whose
 /// peer stopped answering without closing would wait for ever. By charter rule 6 this is a
