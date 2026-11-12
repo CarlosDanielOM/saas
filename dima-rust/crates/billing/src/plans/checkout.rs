@@ -15,7 +15,11 @@
 //! - The checkout body is `JSON.stringify` of the reference's object: keys in its order, an
 //!   `undefined` member left out; `customer_email` and `customer_name` are left out when the user
 //!   has none (the copy stores a text or nothing, never `null`).
-//! - Idempotency keys end with the injected clock's epoch milliseconds, as `Date.now()`.
+//! - Idempotency keys end with the injected clock's epoch milliseconds, as `Date.now()`, so
+//!   every request makes a new checkout, as in the reference (kept on purpose, unlike grants,
+//!   which carry the caller's [`crate::polar::OperationId`]): a checkout costs nothing until it
+//!   is paid, and Polar only charges the one the customer completes. A retry after
+//!   [`CheckoutError::outcome_unknown`] may leave an unused checkout behind, nothing more.
 //!
 //! Redirect targets (success, return and portal URLs) must be `https`, or `http` to a loopback
 //! host, without credentials ([`is_safe_redirect`]), whatever the allowlist says; the reference

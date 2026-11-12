@@ -393,14 +393,16 @@ impl Ingest<'_> {
         }
     }
 
-    /// `grantPolarAiCredits(options)`.
+    /// `grantPolarAiCredits(options)`. The grant's identity is the caller's
+    /// [`super::OperationId`]: calling again with the same input after a lost reply
+    /// ([`IngestOutcome::OutcomeUnknown`]), or after a restart, repeats the same grant, which
+    /// Polar deduplicates by `external_id`.
     pub async fn grant_ai_credits(&self, input: &GrantInput) -> IngestOutcome {
-        let (event, context, credits) = match build_grant_event(input, self.random) {
-            Ok(Ok(built)) => built,
-            Ok(Err(refused @ (GrantRefused::MissingCustomer | GrantRefused::NotPositive))) => {
+        let (event, context, credits) = match build_grant_event(input) {
+            Ok(built) => built,
+            Err(refused @ (GrantRefused::MissingCustomer | GrantRefused::NotPositive)) => {
                 return failed(refused.to_string());
             }
-            Err(error) => return failed(error.to_string()),
         };
         match self.polar.ingest_events(std::slice::from_ref(&event)).await {
             Ok(result) if result.is_complete(1) => {}

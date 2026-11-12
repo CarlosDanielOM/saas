@@ -322,8 +322,64 @@ pub fn build_usage_event(
     ))
 }
 
+/// The identity of one grant (item 2 of P2-BILLING-01b): chosen by the caller that decides
+/// to grant (a route, a worker) and **persisted before the grant is sent**, so that a retry
+/// after a lost reply, or after a restart, sends the same grant again instead of a second one.
+/// It is the event's `external_id`, which Polar deduplicates, and its usage entry and request
+/// id; [`Self::idempotency_key`] derives the key of a Polar call that takes one.
+///
+/// What a caller persists first: the free-credit reset stores the period's record with status
+/// `pending` and its `externalId` (`free-credit-reset-{user}-{day}`) before granting; an admin
+/// grant stores the request's operation id with the pending grant (or receives it from the
+/// client, which repeats it on retry); a gift stores it on the gift document. An id that was
+/// never persisted cannot protect a retry.
+///
+/// Text rule: 1 to [`OperationId::MAX_LEN`] printable ASCII characters without spaces, so it
+/// is the same text in Polar, in a receipt and in a key (`[!-~]`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OperationId(String);
+
+/// An operation id that is empty, too long or not printable ASCII.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("operation id must be 1 to 128 printable ASCII characters without spaces")]
+pub struct InvalidOperationId;
+
+impl OperationId {
+    /// The longest id accepted.
+    pub const MAX_LEN: usize = 128;
+
+    /// Checks `text` (see the type docs).
+    pub fn new(text: &str) -> Result<Self, InvalidOperationId> {
+        if text.is_empty()
+            || text.len() > Self::MAX_LEN
+            || !text.bytes().all(|byte| byte.is_ascii_graphic())
+        {
+            return Err(InvalidOperationId);
+        }
+        Ok(Self(text.to_owned()))
+    }
+
+    /// The id.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// `{scope}:{id}`: the `Idempotency-Key` of a Polar call made for this operation (the
+    /// grant itself goes through `events.ingest`, which takes none: Polar deduplicates it by
+    /// `external_id`).
+    pub fn idempotency_key(&self, scope: &str) -> String {
+        format!("{scope}:{}", self.0)
+    }
+}
+
+impl std::fmt::Display for OperationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 /// The options of `grantPolarAiCredits`.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct GrantInput {
     /// Polar customer id.
     pub customer_id: Private<String>,
@@ -335,8 +391,10 @@ pub struct GrantInput {
     pub reason: String,
     /// The admin who granted them.
     pub admin_login: Option<Private<String>>,
-    /// Stable id.
-    pub external_id: Option<String>,
+    /// The grant's identity, persisted by the caller before the call ([`OperationId`]).
+    /// Intended difference: the reference took an optional `externalId` and drew a new
+    /// `aiu_<uuid>` per call without one, so a retry made a second grant.
+    pub operation_id: OperationId,
     /// Source label.
     pub source: Option<String>,
 }
@@ -369,24 +427,24 @@ pub fn grant_source(source: Option<&str>) -> String {
 }
 
 /// The `ai_usage` event of `grantPolarAiCredits` (credits are negative usage), its context and
-/// the whole number of credits granted.
+/// the whole number of credits granted. The external id, entry id and request id are the
+/// operation id: nothing is drawn per call.
 pub fn build_grant_event(
     input: &GrantInput,
-    random: &dyn Random,
-) -> Result<Result<(IngestEvent, AiUsageContext, f64), GrantRefused>, RandomError> {
+) -> Result<(IngestEvent, AiUsageContext, f64), GrantRefused> {
     let credits = input.credits.floor();
     if input.customer_id.expose().is_empty() {
-        return Ok(Err(GrantRefused::MissingCustomer));
+        return Err(GrantRefused::MissingCustomer);
     }
     if !credits.is_finite() || credits <= 0.0 {
-        return Ok(Err(GrantRefused::NotPositive));
+        return Err(GrantRefused::NotPositive);
     }
     let source = grant_source(input.source.as_deref());
-    let context = create_ai_usage_context(
+    let id = input.operation_id.as_str().to_owned();
+    let context = crate::usage::create_ai_usage_context_with_entry_id(
         &input.reason,
         &AiUsageContextInput {
-            entry_id: input.external_id.clone(),
-            request_id: input.external_id.clone(),
+            request_id: Some(id.clone()),
             entry_kind: Some(crate::usage::EntryKind::Adjustment),
             category: Some(crate::usage::Category::CreditAdjustment),
             operation: Some("grant".into()),
@@ -394,8 +452,8 @@ pub fn build_grant_event(
             provider: Some("polar".into()),
             ..Default::default()
         },
-        random,
-    )?;
+        id,
+    );
     let admin = input
         .admin_login
         .as_ref()
@@ -411,7 +469,7 @@ pub fn build_grant_event(
         ("adminLogin", Value::from(admin)),
     ]);
     let metadata = enrich_polar_usage_metadata(accounting, &context);
-    Ok(Ok((
+    Ok((
         IngestEvent {
             name: "ai_usage".into(),
             customer_id: input.customer_id.clone(),
@@ -420,7 +478,7 @@ pub fn build_grant_event(
         },
         context,
         credits,
-    )))
+    ))
 }
 
 /// `ingestPolarNamedEvents`' checks: never `ai_usage` or a `credits` key, and a name, customer
@@ -443,7 +501,6 @@ pub fn check_named_events(events: &[IngestEvent]) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dima_core::SeededRandom;
     use serde_json::json;
 
     #[test]
@@ -494,36 +551,49 @@ mod tests {
         }
     }
 
+    fn grant(credits: f64) -> GrantInput {
+        GrantInput {
+            customer_id: "c".into(),
+            channel_id: None,
+            credits,
+            reason: "gift".into(),
+            admin_login: None,
+            operation_id: OperationId::new("x1").unwrap(),
+            source: None,
+        }
+    }
+
     #[test]
     fn grants_floor_credits_and_label_the_source() {
-        let random = SeededRandom::new(3);
-        let refused = build_grant_event(
-            &GrantInput {
-                customer_id: "c".into(),
-                credits: 0.9,
-                ..Default::default()
-            },
-            &random,
-        )
-        .unwrap();
+        let refused = build_grant_event(&grant(0.9));
         assert_eq!(refused.err(), Some(GrantRefused::NotPositive));
-        let (event, context, credits) = build_grant_event(
-            &GrantInput {
-                customer_id: "c".into(),
-                credits: 12.7,
-                reason: "gift".into(),
-                external_id: Some("x1".into()),
-                source: Some("  ".into()),
-                ..Default::default()
-            },
-            &random,
-        )
-        .unwrap()
+        let (event, context, credits) = build_grant_event(&GrantInput {
+            source: Some("  ".into()),
+            ..grant(12.7)
+        })
         .unwrap();
         assert_eq!(credits, 12.0);
         assert_eq!(event.external_id, "x1");
+        assert_eq!(context.request_id, "x1");
         assert_eq!(context.source, "admin_credit_grant");
         assert_eq!(event.metadata["credits"], json!(-12.0));
         assert_eq!(grant_source(Some(&"é".repeat(100))).chars().count(), 96);
+    }
+
+    #[test]
+    fn operation_ids_are_printable_ascii() {
+        for good in ["x", "free-credit-reset-6650a0-2026-11-01", &"a".repeat(128)] {
+            assert_eq!(
+                OperationId::new(good).map(|id| id.to_string()).as_deref(),
+                Ok(good)
+            );
+        }
+        for bad in ["", " x", "x y", "é", "a\n", &"a".repeat(129)] {
+            assert_eq!(OperationId::new(bad), Err(InvalidOperationId));
+        }
+        assert_eq!(
+            OperationId::new("op-1").unwrap().idempotency_key("gift"),
+            "gift:op-1"
+        );
     }
 }

@@ -157,7 +157,7 @@ fn ingest_events_and_grants_print_no_personal_data() {
         ..grant_identity()
     };
     assert_redacted("GrantInput", &grant);
-    let (event, _, _) = build_grant_event(&grant, &random).unwrap().unwrap();
+    let (event, _, _) = build_grant_event(&grant).unwrap();
     assert_redacted("IngestEvent (grant)", &event);
     let named = IngestEvent {
         name: "ai_assistant".into(),
@@ -169,7 +169,15 @@ fn ingest_events_and_grants_print_no_personal_data() {
 }
 
 fn grant_identity() -> GrantInput {
-    GrantInput::default()
+    GrantInput {
+        customer_id: "c".into(),
+        channel_id: None,
+        credits: 1.0,
+        reason: String::new(),
+        admin_login: None,
+        operation_id: dima_billing::polar::OperationId::new("op-debug").unwrap(),
+        source: None,
+    }
 }
 
 fn client(server: &MockServer) -> PolarClient {

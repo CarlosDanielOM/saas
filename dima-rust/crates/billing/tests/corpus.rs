@@ -930,18 +930,30 @@ fn polar_ingest_events_match_the_sdk_wire() {
     tally.finish();
 
     let mut tally = Tally::new("grant_credits");
+    let mut drawn = 0;
     for case in cases("grant_credits") {
         let i = &case["input"];
+        // Intended difference (item 2 of P2-BILLING-01b): a grant's identity is the caller's
+        // operation id; the reference drew `aiu_<randomUUID()>` when no `externalId` was given.
+        // Those cases are replayed with the id the recording drew (its `randomUUID` is zeros),
+        // as the caller that persisted it would pass it, and counted.
+        let operation = match text(i, "externalId") {
+            Some(id) => id.to_owned(),
+            None => {
+                drawn += 1;
+                "aiu_00000000-0000-4000-8000-000000000000".to_owned()
+            }
+        };
         let input = GrantInput {
             customer_id: text(i, "customerId").unwrap_or("").into(),
             channel_id: text(i, "channelID").map(Into::into),
             credits: js_number(field(i, "credits")),
             reason: text(i, "reason").unwrap_or("").into(),
             admin_login: text(i, "adminLogin").map(Into::into),
-            external_id: text(i, "externalId").map(Into::into),
+            operation_id: polar::OperationId::new(&operation).unwrap(),
             source: text(i, "source").map(Into::into),
         };
-        let built = polar::build_grant_event(&input, &support::ZeroRandom).unwrap();
+        let built = polar::build_grant_event(&input);
         let ok = match built {
             Ok((event, _, credits)) => {
                 let body = dima_text::to_js_json(&json!({"events": [event.wire().unwrap()]}));
@@ -958,6 +970,7 @@ fn polar_ingest_events_match_the_sdk_wire() {
         tally.check(ok, &case, || format!("{}", case["expected"]));
     }
     tally.finish();
+    assert_eq!(drawn, 4, "grant cases whose id the reference drew");
 
     let mut tally = Tally::new("ingest_answer");
     for case in cases("ingest_answer") {

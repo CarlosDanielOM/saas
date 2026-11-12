@@ -9,7 +9,7 @@ use dima_billing::NoopObserver;
 use dima_billing::plans::credits_cache::CreditsCache;
 use dima_billing::polar::{
     AcceptedUsage, GrantInput, Ingest, IngestEvent, IngestMode, IngestOutcome, LlmUsage,
-    PolarClient, UsageEventInput, UsageSink, build_usage_event,
+    OperationId, PolarClient, UsageEventInput, UsageSink, build_usage_event,
 };
 use dima_core::{ManualClock, SecretString};
 use dima_http::HttpClient;
@@ -235,7 +235,9 @@ async fn ingest_modes_queue_flush_and_project_as_the_reference() {
         channel_id: Some(channel.clone()),
         credits: 500.9,
         reason: "support".into(),
-        ..Default::default()
+        admin_login: None,
+        operation_id: OperationId::new("grant-op-1").unwrap(),
+        source: None,
     };
     assert_eq!(
         ingest.grant_ai_credits(&grant).await,
