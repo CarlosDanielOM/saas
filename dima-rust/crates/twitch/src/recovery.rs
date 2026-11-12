@@ -442,13 +442,13 @@ impl Inner {
     }
 
     /// Writes `answer` to MongoDB ([`Inner::write_answer`]); once MongoDB has answered, the
-    /// answer leaves the registry, its record is removed and the cache follows.
-    pub(crate) async fn settle_answer(
+    /// answer leaves the registry and its record is removed. `Err` only when MongoDB did not
+    /// answer (the answer stays in the registry).
+    pub(crate) async fn release_answer(
         &self,
         answer: &Answer,
         first: Option<StoredAccount>,
-        context: &RefreshContext,
-    ) -> Result<Settled, TwitchError> {
+    ) -> Result<Settlement, TwitchError> {
         let settlement = self
             .write_answer(&answer.user_id, &answer.rotation, first)
             .await?;
@@ -456,12 +456,24 @@ impl Inner {
         // A record left behind (Dragonfly failed here) is removed by the next refresh of the
         // streamer or the reconciliation: MongoDB already holds this answer or a newer one.
         let _ = self.unpark(&answer.user_id, &answer.text).await;
+        Ok(settlement)
+    }
+
+    /// [`Inner::release_answer`], then the cache and the log ([`Inner::after_settlement`]).
+    async fn settle_answer(
+        &self,
+        answer: &Answer,
+        first: Option<StoredAccount>,
+        context: &RefreshContext,
+    ) -> Result<Settled, TwitchError> {
+        let settlement = self.release_answer(answer, first).await?;
         self.after_settlement(&answer.user_id, settlement, &answer.rotation, context)
             .await
     }
 
-    /// After MongoDB answered a write: the cache (fenced; best effort) and the log.
-    async fn after_settlement(
+    /// After MongoDB answered a write: the cache (fenced; best effort) and the log. An error
+    /// here (the cache could not be repaired from a newer state) no longer concerns the answer.
+    pub(crate) async fn after_settlement(
         &self,
         user_id: &str,
         settlement: Settlement,
@@ -584,9 +596,13 @@ impl Inner {
                 biased;
                 () = self.drain_expired.wait() => break false,
                 () = self.kill.cancelled() => break false,
-                attempt = self.settle_answer(&answer, None, &context) => attempt,
+                attempt = self.release_answer(&answer, None) => attempt,
             };
-            if attempt.is_ok() {
+            if let Ok(settlement) = attempt {
+                // The cache write is best effort here: MongoDB has answered.
+                let _ = self
+                    .after_settlement(&answer.user_id, settlement, &answer.rotation, &context)
+                    .await;
                 break true;
             }
         };

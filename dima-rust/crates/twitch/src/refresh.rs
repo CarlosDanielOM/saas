@@ -579,20 +579,25 @@ impl Inner {
                 }
             };
         self.ensure_parked_logged(&answer).await;
-        match self.settle_answer(&answer, base, context).await {
-            Ok(settled) => Ok(match settled {
-                Settled::Written | Settled::Superseded(None) => RefreshOutcome::Success {
-                    access_token: access,
-                    refresh_token: refresh,
-                    expires_in,
+        match self.release_answer(&answer, base).await {
+            Ok(settlement) => Ok(
+                match self
+                    .after_settlement(user_id, settlement, &answer.rotation, context)
+                    .await?
+                {
+                    Settled::Written | Settled::Superseded(None) => RefreshOutcome::Success {
+                        access_token: access,
+                        refresh_token: refresh,
+                        expires_in,
+                    },
+                    Settled::Superseded(Some(stored)) => stored,
+                    Settled::UserNotFound => failure(
+                        RefreshFailureKind::Transient,
+                        None,
+                        RefreshFailureReason::UserNotFound,
+                    ),
                 },
-                Settled::Superseded(Some(stored)) => stored,
-                Settled::UserNotFound => failure(
-                    RefreshFailureKind::Transient,
-                    None,
-                    RefreshFailureReason::UserNotFound,
-                ),
-            }),
+            ),
             Err(error) => {
                 self.refresh_log(
                     Level::Warn,
