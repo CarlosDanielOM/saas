@@ -2,7 +2,7 @@
 //! `bulkWrite` `insertOne` (ledger `mongo.md`, rules 4, 5, 9, 12, 14, 16).
 //!
 //! The document is built as Mongoose's `Document` constructor builds it (see
-//! [`crate::mongo::cast`]): every default, sub-document `_id` only where the sub-schema has one,
+//! the crate's casting notes): every default, sub-document `_id` only where the sub-schema has one,
 //! `trim`, unknown keys dropped, keys in the order Mongoose would store them. Then, per style:
 //!
 //! | style | timestamps | version key | key position |

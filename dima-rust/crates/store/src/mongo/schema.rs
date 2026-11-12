@@ -3,7 +3,8 @@
 //!
 //! Declare one [`Schema`] per collection as a `static`, listing the fields **in the order the
 //! TypeScript schema declares them** (the order decides where defaults land in a new document).
-//! Only what changes the bytes Mongoose sends is described: field shape, defaults, `trim`,
+//! Only what changes the bytes Mongoose sends is described: field shape and value type (the
+//! type decides how filter values are cast, see [`crate::mongo::filter`]), defaults, `trim`,
 //! `immutable`, `_id`, timestamps, version key and `minimize`. Validators, enums, `required`
 //! and indexes are the model's business. The production schemas use no other setters
 //! (`lowercase`, custom `set:`) and no sub-schema timestamps; those are not supported.
