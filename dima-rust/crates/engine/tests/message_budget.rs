@@ -189,3 +189,103 @@ fn a_reference_keeps_its_own_limits() {
     }
     assert_eq!(delivery.budget.stopped(), None);
 }
+
+// ---- the deadline ----
+
+fn deadline_limits(millis: u64) -> EvalLimits {
+    EvalLimits {
+        deadline_ms: PerPlan::all(millis),
+        ..EvalLimits::default()
+    }
+}
+
+#[test]
+fn a_message_stops_at_its_deadline() {
+    // `slow` takes four seconds of the host's clock; the message has ten.
+    let engine = engine_with(&[("slow", None)]).with_limits(deadline_limits(10_000));
+    let host = MemoryHost::new(1);
+    let clock = host.clock.now.clone();
+    let mut host = host.answer("slow", move |_, _| {
+        clock.advance(4_000);
+        dima_engine::value::Value::Text("done".into())
+    });
+    let commands = HashMap::from([("r".to_owned(), "$(slow) then *(1 + 1)".to_owned())]);
+    let delivery = deliver(
+        &engine,
+        &commands,
+        "#(r) #(r) #(r) #(r)",
+        &context(),
+        &mut host,
+    );
+    let runs = &delivery.runs;
+    assert_eq!(runs.len(), 5, "{runs:?}");
+    assert_eq!(*runs[1].1.as_ref().unwrap(), "done then 2");
+    assert_eq!(*runs[2].1.as_ref().unwrap(), "done then 2");
+    // The third call ends past the deadline: its answer is dropped, and the run's later
+    // expressions stop too.
+    let stopped = marker(LimitKind::Deadline);
+    assert_eq!(
+        *runs[3].1.as_ref().unwrap(),
+        format!("{stopped} then {stopped}")
+    );
+    assert_eq!(runs[4].1, Err(EvalError::Limit(LimitKind::Deadline)));
+    assert_eq!(delivery.budget.stopped(), Some(LimitKind::Deadline));
+}
+
+#[test]
+fn a_host_call_in_flight_is_dropped_at_the_deadline() {
+    let engine = engine_with(&[("hang", None)]).with_limits(deadline_limits(10_000));
+    let template = engine.compile("a $(hang) b *(1 + 1)").unwrap();
+    let mut host = MemoryHost::new(1);
+    // The call moves the clock eleven seconds on and never answers.
+    host.hang = Some(("hang", 11_000));
+    let rendered =
+        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+    let stopped = marker(LimitKind::Deadline);
+    assert_eq!(rendered.text, format!("a {stopped} b {stopped}"));
+    assert!(
+        host.hung_call_dropped
+            .load(std::sync::atomic::Ordering::SeqCst)
+    );
+}
+
+#[test]
+fn a_delay_is_cut_at_the_deadline() {
+    let engine = engine_with(&[]).with_limits(deadline_limits(10_000));
+    let template = engine.compile("$(delay 6) one $(delay 6) two").unwrap();
+    let mut host = MemoryHost::new(1);
+    host.sleep_moves_clock = true;
+    let rendered =
+        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+    let stopped = marker(LimitKind::Deadline);
+    assert_eq!(rendered.text, format!(" one {stopped} two"));
+}
+
+#[test]
+fn work_reads_the_clock_once_per_lease_and_stops_at_the_deadline() {
+    use std::sync::atomic::Ordering::SeqCst;
+    let (stats, _) = cost(WORK);
+    assert_eq!(stats.host_calls, 0);
+    let engine = engine_with(&[]).with_limits(deadline_limits(10_000));
+    let template = engine.compile(WORK).unwrap();
+    let mut host = MemoryHost::new(1);
+    host.clock.tick.store(1, SeqCst);
+    let rendered =
+        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+    assert!(!rendered.text.contains("[Parse error"));
+    // One read when the message starts, one per lease of 1,024 units.
+    let reads = host.clock.reads.load(SeqCst);
+    assert_eq!(
+        reads,
+        1 + stats.steps.div_ceil(1024),
+        "{} steps",
+        stats.steps
+    );
+    // With a clock that moves a second per read, the same work passes ten seconds.
+    let mut host = MemoryHost::new(1);
+    host.clock.tick.store(1_000, SeqCst);
+    let rendered =
+        block_on(engine.render(&template, &context(), State::default(), &mut host)).unwrap();
+    assert_eq!(rendered.text, marker(LimitKind::Deadline));
+    assert_eq!(host.clock.reads.load(SeqCst), 11);
+}

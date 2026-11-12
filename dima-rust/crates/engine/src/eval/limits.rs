@@ -104,10 +104,18 @@ pub struct EvalLimits {
     /// (the stored commands of the production copy use at most a small share of it,
     /// `tests/real_commands.rs`).
     pub message_factor: u64,
+    /// How long one message may take, from its start to the end of its last command
+    /// reference, in milliseconds of the host's clock, by plan ([`super::MessageBudget`]).
+    /// Ten seconds: the supported workload takes well under a second in a debug build with an
+    /// in-memory host (`tests/workload.rs`); waits and slow host calls are what reaches it.
+    pub deadline_ms: PerPlan,
 }
 
 /// The default [`EvalLimits::message_factor`].
 pub const MESSAGE_FACTOR: u64 = 2;
+
+/// The default [`EvalLimits::deadline_ms`] of every plan.
+pub const DEADLINE_MS: u64 = 10_000;
 
 /// The deepest nesting [`EvalLimits::nesting`] may allow: the depth the stack contract is
 /// proven for ([`crate::stack::EVAL_STACK_BYTES`]).
@@ -122,6 +130,7 @@ impl Default for EvalLimits {
             memory_bytes: 4 * 1024 * 1024,
             nesting: MAX_EVAL_NESTING,
             message_factor: MESSAGE_FACTOR,
+            deadline_ms: PerPlan::all(DEADLINE_MS),
         }
     }
 }
@@ -139,6 +148,8 @@ pub enum LimitKind {
     Nesting,
     /// [`EvalLimits::memory_bytes`], or the message's.
     Memory,
+    /// The message's deadline ([`EvalLimits::deadline_ms`]).
+    Deadline,
 }
 
 impl LimitKind {
@@ -150,6 +161,7 @@ impl LimitKind {
             Self::TextSize => "This command builds text that is too long",
             Self::Nesting => "Nesting limit exceeded",
             Self::Memory => "This command keeps too much data",
+            Self::Deadline => "This command took too long",
         }
     }
 }

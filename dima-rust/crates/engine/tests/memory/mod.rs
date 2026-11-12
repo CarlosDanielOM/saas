@@ -71,8 +71,41 @@ pub struct MemoryHost {
     /// When set, `simulate` answers every function not in this list (the simulation host).
     pub simulate_except: Option<Vec<&'static str>>,
     pub schedule_fails: bool,
-    clock: ManualClock,
+    pub clock: TestClock,
     random: Seeded,
+    /// `$(delay)` moves the clock by the time slept.
+    pub sleep_moves_clock: bool,
+    /// A host function that never answers: its call moves the clock by the milliseconds given
+    /// and stays pending; `hung_call_dropped` is set when the engine drops it.
+    pub hang: Option<(&'static str, i64)>,
+    pub hung_call_dropped: Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// The host's clock: a [`ManualClock`] that can also move by `tick` milliseconds at every
+/// read, and counts its reads.
+#[derive(Debug, Default)]
+pub struct TestClock {
+    pub now: ManualClock,
+    pub tick: std::sync::atomic::AtomicI64,
+    pub reads: std::sync::atomic::AtomicU64,
+}
+
+impl Clock for TestClock {
+    fn now_ms(&self) -> i64 {
+        use std::sync::atomic::Ordering::SeqCst;
+        self.reads.fetch_add(1, SeqCst);
+        self.now.advance(self.tick.load(SeqCst));
+        self.now.now_ms()
+    }
+}
+
+/// Sets a flag when dropped.
+struct DropFlag(Arc<std::sync::atomic::AtomicBool>);
+
+impl Drop for DropFlag {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 impl MemoryHost {
@@ -87,8 +120,14 @@ impl MemoryHost {
             caller: "caller".into(),
             simulate_except: None,
             schedule_fails: false,
-            clock: ManualClock::new(1_767_225_600_000),
+            clock: TestClock {
+                now: ManualClock::new(1_767_225_600_000),
+                ..TestClock::default()
+            },
             random: Seeded::new(seed),
+            sleep_moves_clock: false,
+            hang: None,
+            hung_call_dropped: Arc::default(),
         }
     }
 
@@ -149,6 +188,17 @@ impl Host for MemoryHost {
             .map(|v| v.to_text_or_empty().unwrap().into_owned())
             .collect();
         self.recorded.calls.push((call.name.to_owned(), args));
+        if let Some((name, millis)) = self.hang
+            && name == call.name
+        {
+            self.clock.now.advance(millis);
+            let flag = DropFlag(self.hung_call_dropped.clone());
+            return Box::pin(async move {
+                let _flag = flag;
+                std::future::pending::<()>().await;
+                Ok(Value::empty())
+            });
+        }
         let answer = self
             .answers
             .get(call.name)
@@ -181,8 +231,27 @@ impl Host for MemoryHost {
         ready(Ok(answer))
     }
 
+    fn alarm(&self, millis: u64) -> HostFuture<'static, ()> {
+        // Ends once the clock has moved `millis` on (polled again whenever the call it races
+        // is; the hung call moves the clock before its first poll returns).
+        let clock = self.clock.now.clone();
+        let at = clock
+            .now_ms()
+            .saturating_add(i64::try_from(millis).unwrap());
+        Box::pin(std::future::poll_fn(move |_| {
+            if clock.now_ms() >= at {
+                std::task::Poll::Ready(())
+            } else {
+                std::task::Poll::Pending
+            }
+        }))
+    }
+
     fn sleep(&mut self, millis: u64) -> HostFuture<'_, ()> {
         self.recorded.sleeps.push(millis);
+        if self.sleep_moves_clock {
+            self.clock.now.advance(i64::try_from(millis).unwrap());
+        }
         Box::pin(async {})
     }
 

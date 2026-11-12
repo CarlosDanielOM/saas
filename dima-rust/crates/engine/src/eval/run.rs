@@ -29,6 +29,18 @@ const MAX_TIMER_SECONDS: f64 = 604_800.0;
 /// Command references nest at most this deep (`depth >= 5`).
 const MAX_REFERENCE_DEPTH: u32 = 5;
 
+/// One host call: counted ([`Run::host_op`]), raced against the message's deadline (when the
+/// host's alarm ends first, the call in flight is dropped) and the clock read again after it.
+/// The value is the call's own answer.
+macro_rules! host_call {
+    ($run:ident, $call:expr) => {{
+        let alarm = $run.host_op()?;
+        let done = super::budget::within(alarm, $call).await;
+        $run.host_returned(done)?
+    }};
+}
+pub(super) use host_call;
+
 /// The maps of what a run keeps, charged to [`super::EvalLimits::memory_bytes`].
 #[derive(Clone, Copy)]
 pub(super) enum Kept {
@@ -270,6 +282,8 @@ impl<'a> Run<'a> {
             return Err(EvalError::Limit(LimitKind::Steps));
         }
         if units > self.lease {
+            // Every lease (1,024 units) the clock is read once.
+            self.on_time()?;
             let least = units - self.lease;
             self.lease += self
                 .budget
@@ -285,13 +299,33 @@ impl<'a> Run<'a> {
         self.charge((bytes / 256) as u64)
     }
 
-    pub(super) fn host_op(&mut self) -> Result<(), EvalError> {
+    /// The milliseconds left before the message's deadline, or [`LimitKind::Deadline`].
+    fn on_time(&mut self) -> Result<u64, EvalError> {
+        let now = self.host.clock().now_ms();
+        self.budget.time_left(now).map_err(EvalError::Limit)
+    }
+
+    /// Counts a host call about to be made and returns the alarm it races: the host's alarm
+    /// for the time left before the message's deadline. Use [`host_call!`].
+    pub(super) fn host_op(&mut self) -> Result<HostFuture<'static, ()>, EvalError> {
         self.stats.host_calls = self.stats.host_calls.saturating_add(1);
         if self.stats.host_calls > self.engine.limits.host_calls.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
         self.budget.host_call().map_err(EvalError::Limit)?;
-        self.step()
+        self.step()?;
+        let left = self.on_time()?;
+        Ok(self.host.alarm(left))
+    }
+
+    /// After a host call: its answer, unless the alarm cut it short or the deadline passed
+    /// while it ran.
+    pub(super) fn host_returned<T>(&mut self, done: Option<T>) -> Result<T, EvalError> {
+        let Some(value) = done else {
+            return Err(EvalError::Limit(self.budget.stop(LimitKind::Deadline)));
+        };
+        self.on_time()?;
+        Ok(value)
     }
 
     /// Charges the run's output up to `len` bytes in all. When the message's output is spent,
@@ -961,8 +995,7 @@ impl<'a> Run<'a> {
         // Timer bodies are programs to run later, never eager arguments.
         if name == "timer" {
             if self.context.simulation {
-                self.host_op()?;
-                let value = self.host.simulate("timer", &[], self.context).await?;
+                let value = host_call!(self, self.host.simulate("timer", &[], self.context))?;
                 return Ok(value.unwrap_or_else(Value::empty));
             }
             return self.timer(nodes).await;
@@ -978,16 +1011,15 @@ impl<'a> Run<'a> {
             return Ok(Value::Text(permission_denied(name, required, actual)));
         }
         if self.context.simulation {
-            self.host_op()?;
-            if let Some(value) = self.host.simulate(name, &args, self.context).await? {
+            let simulated = host_call!(self, self.host.simulate(name, &args, self.context))?;
+            if let Some(value) = simulated {
                 return Ok(value);
             }
         }
         match spec.kind {
             FunctionKind::Builtin(Builtin::Delay) => match functions::delay_millis(&args)? {
                 Ok(millis) => {
-                    self.host_op()?;
-                    self.host.sleep(millis).await;
+                    host_call!(self, self.host.sleep(millis));
                     Ok(Value::empty())
                 }
                 Err(answer) => Ok(Value::Text(answer)),
@@ -1018,7 +1050,7 @@ impl<'a> Run<'a> {
                 .map_err(failure)
             }
             FunctionKind::Host(function) => {
-                self.host_op()?;
+                let alarm = self.host_op()?;
                 let call = HostCall {
                     function,
                     name,
@@ -1027,7 +1059,8 @@ impl<'a> Run<'a> {
                     effect: self.frames.scalars.effect.as_ref(),
                     random_user: &mut self.state.random_user,
                 };
-                Ok(self.host.call(call).await?)
+                let done = super::budget::within(alarm, self.host.call(call)).await;
+                Ok(self.host_returned(done)??)
             }
         }
     }
@@ -1061,8 +1094,7 @@ impl<'a> Run<'a> {
         if !seconds.is_finite() || !(1.0..=MAX_TIMER_SECONDS).contains(&seconds) {
             return Ok(fail("seconds must be between 1 and 604800"));
         }
-        self.host_op()?;
-        match self.host.schedule_timer(seconds, body, snapshot).await {
+        match host_call!(self, self.host.schedule_timer(seconds, body, snapshot)) {
             Ok(()) => Ok(Value::empty()),
             Err(_) => Ok(fail("could not schedule timer")),
         }

@@ -9,14 +9,24 @@
 //! `[Parse error: …]` (as a per-run limit does), every later expression of that run hits it too,
 //! and a reference not yet started is refused ([`super::EvalError::Limit`]).
 //!
+//! The message also has a deadline ([`MessageLimits::deadline_ms`] from its start, on the
+//! host's clock, [`crate::host::Host::clock`]). The clock is read when a run takes work from
+//! the budget (every [`STEP_LEASE`] work units), and before and after every host call; each
+//! host call also races the host's alarm for the time left ([`crate::host::Host::alarm`]),
+//! and when the alarm fires first the call in flight is dropped. Past the deadline the
+//! message stops with [`LimitKind::Deadline`].
+//!
 //! Clones share the budget. The engine hands it to the references a run starts
 //! ([`crate::context::ReferenceState::message`]); nothing outside the crate can make one.
 
 use super::limits::{EvalLimits, LimitKind};
 use crate::context::Plan;
 use std::fmt;
+use std::future::Future;
+use std::pin::pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
+use std::task::Poll;
 
 /// Work units a run takes from the message's budget at a time. A run spends them locally and
 /// gives back what it did not use when it ends.
@@ -37,6 +47,8 @@ pub struct MessageLimits {
     /// Bytes of output, every run's rendered text together ([`EvalLimits::text_bytes`] is
     /// one run's).
     pub output_bytes: u64,
+    /// Milliseconds from the message's start to its deadline ([`EvalLimits::deadline_ms`]).
+    pub deadline_ms: u64,
 }
 
 impl MessageLimits {
@@ -48,6 +60,7 @@ impl MessageLimits {
             host_calls: limits.host_calls.of(plan).saturating_mul(factor),
             memory_bytes: (limits.memory_bytes as u64).saturating_mul(factor),
             output_bytes: (limits.text_bytes as u64).saturating_mul(factor),
+            deadline_ms: limits.deadline_ms.of(plan),
         }
     }
 }
@@ -72,6 +85,8 @@ pub struct MessageBudget(Arc<Shared>);
 
 struct Shared {
     limits: MessageLimits,
+    /// When the message must end, in epoch milliseconds of the host's clock.
+    deadline_at: i64,
     steps: AtomicU64,
     host_calls: AtomicU64,
     memory: AtomicU64,
@@ -87,6 +102,7 @@ fn code(kind: LimitKind) -> u8 {
         LimitKind::TextSize => 3,
         LimitKind::Nesting => 4,
         LimitKind::Memory => 5,
+        LimitKind::Deadline => 6,
     }
 }
 
@@ -97,6 +113,7 @@ fn kind(code: u8) -> Option<LimitKind> {
         3 => LimitKind::TextSize,
         4 => LimitKind::Nesting,
         5 => LimitKind::Memory,
+        6 => LimitKind::Deadline,
         _ => return None,
     })
 }
@@ -117,10 +134,13 @@ fn give_back(counter: &AtomicU64, amount: u64) {
 }
 
 impl MessageBudget {
-    /// A fresh budget for a message of `plan`.
-    pub(super) fn new(limits: &EvalLimits, plan: Plan) -> Self {
+    /// A fresh budget for a message of `plan` that starts at `now_ms` (the host's clock).
+    pub(super) fn new(limits: &EvalLimits, plan: Plan, now_ms: i64) -> Self {
+        let limits = MessageLimits::of(limits, plan);
+        let deadline = i64::try_from(limits.deadline_ms).unwrap_or(i64::MAX);
         Self(Arc::new(Shared {
-            limits: MessageLimits::of(limits, plan),
+            limits,
+            deadline_at: now_ms.saturating_add(deadline),
             steps: AtomicU64::new(0),
             host_calls: AtomicU64::new(0),
             memory: AtomicU64::new(0),
@@ -142,6 +162,11 @@ impl MessageBudget {
             memory_bytes: self.0.memory.load(Ordering::SeqCst),
             output_bytes: self.0.output.load(Ordering::SeqCst),
         }
+    }
+
+    /// When the message must end, in epoch milliseconds of the host's clock.
+    pub fn deadline_at_ms(&self) -> i64 {
+        self.0.deadline_at
     }
 
     /// The limit that stopped the message, once one has.
@@ -167,6 +192,17 @@ impl MessageBudget {
     /// Fails with the limit that stopped the message, if one has.
     pub(super) fn running(&self) -> Result<(), LimitKind> {
         self.stopped().map_or(Ok(()), Err)
+    }
+
+    /// Fails with [`LimitKind::Deadline`] (and stops the message) once `now_ms` has reached
+    /// the deadline; otherwise the milliseconds left.
+    pub(super) fn time_left(&self, now_ms: i64) -> Result<u64, LimitKind> {
+        self.running()?;
+        let left = self.0.deadline_at.saturating_sub(now_ms);
+        if left <= 0 {
+            return Err(self.stop(LimitKind::Deadline));
+        }
+        Ok(u64::try_from(left).unwrap_or(0))
     }
 
     /// Takes between `least` and `want` work units (as many as are left, up to `want`).
@@ -256,6 +292,22 @@ impl MessageBudget {
         self.stop(LimitKind::TextSize);
         Err(room)
     }
+}
+
+/// Runs `work` until it ends or `alarm` fires, whichever is first; `None` when the alarm fired
+/// first, and `work` (a host call in flight) is then dropped, which cancels it.
+pub(super) async fn within<T>(
+    mut alarm: crate::host::HostFuture<'static, ()>,
+    work: impl Future<Output = T>,
+) -> Option<T> {
+    let mut work = pin!(work);
+    std::future::poll_fn(move |cx| {
+        if let Poll::Ready(value) = work.as_mut().poll(cx) {
+            return Poll::Ready(Some(value));
+        }
+        alarm.as_mut().poll(cx).map(|()| None)
+    })
+    .await
 }
 
 impl fmt::Debug for MessageBudget {

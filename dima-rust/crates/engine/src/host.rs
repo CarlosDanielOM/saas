@@ -223,6 +223,16 @@ pub trait Host: Send {
         Box::pin(async { Ok(None) })
     }
 
+    /// A future that ends after `millis` milliseconds, to cut a host call short at the
+    /// message's deadline ([`crate::eval::MessageBudget`]): the engine races every host call
+    /// against it and drops the call when it ends first. It must not borrow the host. The
+    /// default never ends: the deadline is then checked only before and after each call, and
+    /// a call can overrun it by as long as that call itself takes.
+    fn alarm(&self, millis: u64) -> HostFuture<'static, ()> {
+        let _ = millis;
+        Box::pin(std::future::pending())
+    }
+
     /// Waits (`$(delay)`), at most 60 seconds.
     fn sleep(&mut self, millis: u64) -> HostFuture<'_, ()>;
 

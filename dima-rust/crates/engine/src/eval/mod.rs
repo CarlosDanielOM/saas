@@ -60,8 +60,8 @@ mod storage;
 
 pub use budget::{MessageBudget, MessageLimits, MessageUsage};
 pub use limits::{
-    EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, MESSAGE_FACTOR, PerPlan,
-    STEPS_PER_STATEMENT, SUPPORTED_STATEMENTS,
+    DEADLINE_MS, EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, MESSAGE_FACTOR,
+    PerPlan, STEPS_PER_STATEMENT, SUPPORTED_STATEMENTS,
 };
 
 use crate::context::{Context, State, TimerSnapshot};
@@ -221,7 +221,7 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Rendered, EvalError> {
-        let budget = self.message_budget(context);
+        let budget = self.message_budget(context, host);
         stack::Guarded::new(self.render_guarded(template, context, state, host, budget)).await
     }
 
@@ -236,13 +236,22 @@ impl Engine {
         host: &mut dyn Host,
         budget: &MessageBudget,
     ) -> Result<Rendered, EvalError> {
-        budget.running().map_err(EvalError::Limit)?;
+        Self::may_start(budget, host)?;
         stack::Guarded::new(self.render_guarded(template, context, state, host, budget.clone()))
             .await
     }
 
-    fn message_budget(&self, context: &Context) -> MessageBudget {
-        MessageBudget::new(&self.limits, context.user_plan)
+    fn message_budget(&self, context: &Context, host: &dyn Host) -> MessageBudget {
+        MessageBudget::new(&self.limits, context.user_plan, host.clock().now_ms())
+    }
+
+    /// Whether a reference may still start: the message has not stopped and its deadline has
+    /// not passed.
+    fn may_start(budget: &MessageBudget, host: &dyn Host) -> Result<(), EvalError> {
+        budget
+            .time_left(host.clock().now_ms())
+            .map(drop)
+            .map_err(EvalError::Limit)
     }
 
     async fn render_guarded(
@@ -324,7 +333,7 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let budget = self.message_budget(context);
+        let budget = self.message_budget(context, host);
         let run = run::Run::new(self, context, state, host, budget);
         stack::Guarded::new(Self::finish_program(run, node)).await
     }
@@ -340,7 +349,7 @@ impl Engine {
         host: &mut dyn Host,
         budget: &MessageBudget,
     ) -> Result<Evaluated, EvalError> {
-        budget.running().map_err(EvalError::Limit)?;
+        Self::may_start(budget, host)?;
         let run = run::Run::new(self, context, state, host, budget.clone());
         stack::Guarded::new(Self::finish_program(run, node)).await
     }
@@ -369,7 +378,7 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let budget = self.message_budget(context);
+        let budget = self.message_budget(context, host);
         let run = run::Run::new(self, context, state, host, budget);
         stack::Guarded::new(Self::finish_timer(run, args)).await
     }
