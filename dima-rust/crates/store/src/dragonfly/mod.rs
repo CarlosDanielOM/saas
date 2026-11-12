@@ -16,11 +16,15 @@
 //!   the timeout policy.
 //! - [`client`]: [`Dragonfly`], the cloneable command handle on one multiplexed connection with
 //!   reconnection and a response timeout.
-//! - [`commands`]: typed helpers for the replies where node-redis and redis-rs differ.
+//! - [`commands`]: typed helpers for the replies where node-redis and redis-rs differ, scored
+//!   ranges, streams, counted pops and transactions with per-command results.
 //! - [`blocking`]: [`BlockingConnection`], a cancel-safe dedicated connection for blocking commands.
-//! - [`pubsub`]: [`Subscriber`] (raw, bounded, resubscribing) and the JSON envelope.
-//! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script.
-//! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes.
+//! - [`pubsub`]: [`Subscriber`] (bounded, deadline-driven, resubscribing; each subscription
+//!   states its [`Overflow`] policy and may receive [`Event::Gap`]) and the JSON envelope.
+//! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script;
+//!   scripts with unbounded loops are refused before they are sent.
+//! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes; the
+//!   unfenced processing-list helpers and [`FencedTransition`] for lease-checked transitions.
 //! - [`hooks`]: command spans and connection-error reporting, so telemetry attaches from outside.
 //! - [`plan_cache_fence`], [`cron_queue`]: the two protocols ported from the pre-existing crate.
 //!

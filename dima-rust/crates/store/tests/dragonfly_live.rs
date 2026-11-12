@@ -360,6 +360,14 @@ async fn the_subscriber_resubscribes_after_its_connection_is_killed() -> Result<
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
     ensure!(gone, "pattern subscription still active after drop");
+    // Dragonfly's unsubscribe confirmation was understood: no reconnect, delivery goes on.
+    df.publish(&channel, b"three").await?;
+    let got = expect_message(timeout(by_channel.recv()).await?)?;
+    ensure!(got.payload == b"three", "{got:?}");
+    ensure!(
+        subscriber.connections() == 2,
+        "reconnected after the unsubscribe"
+    );
     subscriber.shutdown().await;
     ensure!(
         by_channel.recv().await.is_none(),
