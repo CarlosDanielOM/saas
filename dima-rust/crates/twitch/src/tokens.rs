@@ -27,8 +27,10 @@
 //!    the hash every 150 ms for up to 4.5 s for a token other than the rejected one with more
 //!    than 60 s left, stops waiting when the lease is gone, then tries once more; failing that
 //!    it gives up for this call.
-//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): a rotation parked by a process
-//!    that stopped is applied first; then a usable stored access token is returned (the cache
+//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): an answer this process still holds,
+//!    then the streamer's recovery record (written by any process, however old), is written to
+//!    MongoDB first, or dropped when MongoDB holds something newer; while that fails, nothing is
+//!    exchanged; then a usable stored access token is returned (the cache
 //!    repaired from MongoDB, nothing sent); otherwise the **stored** refresh token is the one
 //!    exchanged, never the cache's copy.
 //! 3. **The exchange** (`refreshTwitchToken`): the exchange marker is set (`NX`; when another

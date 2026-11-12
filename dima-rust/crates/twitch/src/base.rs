@@ -152,6 +152,8 @@ pub(crate) struct Inner {
     pub(crate) app_flight: Flights<(), Option<AccessToken>>,
     pub(crate) hydrate_flights: Flights<String, Result<Option<StreamerAccount>, TwitchError>>,
     pub(crate) emote_flights: Flights<String, ChannelEmoteCatalog>,
+    /// The reconciliation of recovery records running in this process (one at a time).
+    pub(crate) recovery_flight: Flights<(), Result<crate::recovery::RecoveryReport, TwitchError>>,
     pub(crate) permission_checks: crate::credentials::PermissionChecks,
     pub(crate) gates: crate::lease::Gates,
     /// Tokens a 401-driven refresh produced, or could not replace, with when (see
@@ -187,6 +189,7 @@ impl Twitch {
                 app_flight: Flights::new(1),
                 hydrate_flights: Flights::new(MAX_FLIGHTS),
                 emote_flights: Flights::new(MAX_FLIGHTS),
+                recovery_flight: Flights::new(1),
                 permission_checks: Mutex::new(HashMap::new()),
                 gates: crate::lease::Gates::default(),
                 unhelpful_refreshes: Mutex::new(HashMap::new()),

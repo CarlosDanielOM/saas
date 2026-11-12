@@ -24,6 +24,34 @@
 //! everything the registry still holds ([`Inner::park_remaining`]); if Dragonfly refuses too,
 //! that answer is lost and logged once per streamer (`token_refresh_lost`).
 //!
+//! # Reconciliation (review F2, F5)
+//!
+//! A record has **no expiry**: it is resolved, never left to time out. Three paths resolve
+//! records, all through [`Inner::recover_record`] (the write a retry makes, then the removal):
+//!
+//! - a refresh of the streamer, in any process, resolves its record before anything else
+//!   (and does not exchange while it cannot);
+//! - [`crate::Twitch::start_recovery`], once when a process starts, and
+//!   [`crate::Twitch::reconcile_recovery`] on a tick ([`crate::Timings::recovery_interval`]),
+//!   resolve every record;
+//! - the rollback procedure runs [`crate::Twitch::reconcile_recovery`] until `left` is 0
+//!   before the TypeScript starts, which cannot read these records.
+//!
+//! **How records are found**: a `SCAN` of their key pattern
+//! ([`crate::KeySpace::parked_pattern`]), page by page. No index is kept beside them, so
+//! nothing can drift out of step with the records: after a Dragonfly restart with an empty
+//! database there is nothing to find (the processes still holding answers write their records
+//! again at the next retry or at shutdown), and a record written during the scan is either
+//! seen or found by the next run (`SCAN` returns every key present for the whole scan; one
+//! written meanwhile belongs to a live process, whose registry still holds the answer). With
+//! every Rust process stopped, a complete run that leaves nothing is proof that none is left.
+//!
+//! It is safe from several processes at once and safe to interrupt: the write is a
+//! compare-and-set (a second writer finds MongoDB holding the answer) and the removal a
+//! compare-and-delete of the exact text read (a record replaced meanwhile stays). Stopped
+//! between the write and the removal, the next run finds MongoDB holding the answer and
+//! removes the record.
+//!
 //! # Generations
 //!
 //! An answer's **generation** is MongoDB's generation (the user's `refreshed_at`, see
@@ -50,7 +78,7 @@
 //!   written over that state by compare-and-set, whatever its generation (a higher one there
 //!   only means the generation was advanced without a new token, or the account was wiped).
 
-use crate::base::Inner;
+use crate::base::{Inner, Twitch};
 use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
@@ -271,15 +299,11 @@ impl Inner {
                 ));
             }
             let generation = answer.rotation.generation.to_string();
-            let ttl = u64::try_from(self.config.timings.park_ttl.as_millis())
-                .unwrap_or(u64::MAX)
-                .max(1)
-                .to_string();
             let reply = PARK
                 .run_value(
                     &self.dragonfly,
                     &[self.config.keys.parked_rotation(&answer.user_id)],
-                    &[generation.as_str(), answer.text.as_str(), ttl.as_str()],
+                    &[generation.as_str(), answer.text.as_str()],
                 )
                 .await
                 .map_err(|error| TwitchError::cache("park answer", error))?;
@@ -787,4 +811,155 @@ pub(crate) fn log_unregistered(inner: &Inner, user_id: &str, context: &RefreshCo
             "consequence": "Twitch rotated the refresh token but the answer could not be encrypted; the rotated refresh token is LOST and the streamer must reauthorize",
         }),
     );
+}
+
+/// How many keys one `SCAN` page asks for.
+const SCAN_PAGE: u32 = 500;
+
+/// What one reconciliation found ([`Twitch::reconcile_recovery`]). Records whose answer was
+/// settled are removed; the others stay.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RecoveryReport {
+    /// Records whose answer this run wrote to MongoDB.
+    pub applied: usize,
+    /// Records whose answer MongoDB already held, or held a newer token than (removed).
+    pub already_newer: usize,
+    /// Records of accounts that no longer exist (removed).
+    pub account_gone: usize,
+    /// Records this run could not settle: a store failed, or the record cannot be read (with
+    /// another `SECRET_KEY`, for instance). They stay.
+    pub failed: usize,
+    /// Records this run saw that are still in Dragonfly at its end: the failed ones, and those
+    /// whose removal failed or that another answer replaced meanwhile. The rollback runs the
+    /// reconciliation until this is 0.
+    pub left: usize,
+}
+
+impl Inner {
+    /// One complete reconciliation: every record the scan finds, one at a time.
+    async fn reconcile(&self) -> Result<RecoveryReport, TwitchError> {
+        let context = RefreshContext::new("recovery_reconciliation", "reconcile_recovery");
+        let mut report = RecoveryReport::default();
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut scan = self
+            .dragonfly
+            .scan(&self.config.keys.parked_pattern(), Some(SCAN_PAGE));
+        let outcome = 'scan: loop {
+            let page = match scan.next_page().await {
+                Ok(Some(page)) => page,
+                Ok(None) => break Ok(()),
+                Err(error) => break Err(TwitchError::cache("scan recovery records", error)),
+            };
+            for key in page {
+                if self.shutdown.is_triggered() {
+                    break 'scan Err(TwitchError::Shutdown);
+                }
+                let Some(user_id) = std::str::from_utf8(&key)
+                    .ok()
+                    .and_then(|key| self.config.keys.parked_user(key))
+                else {
+                    continue;
+                };
+                // `SCAN` can return a key twice.
+                if !seen.insert(user_id.to_owned()) {
+                    continue;
+                }
+                match self.recover_record(user_id, &context).await {
+                    Ok((recovered, left)) => {
+                        match recovered {
+                            Recovered::Absent => {}
+                            Recovered::Applied => report.applied += 1,
+                            Recovered::AlreadyNewer => report.already_newer += 1,
+                            Recovered::AccountGone => report.account_gone += 1,
+                        }
+                        report.left += usize::from(left);
+                    }
+                    Err(error) => {
+                        report.failed += 1;
+                        report.left += 1;
+                        self.log(
+                            Level::Error,
+                            Destination::Both,
+                            Some(user_id),
+                            json!({
+                                "function": "reconcileRecovery",
+                                "userId": user_id,
+                                "action": "token_recovery_failed",
+                                "reason": error.to_string(),
+                                "consequence": "the recovery record stays; the next refresh of this streamer or the next reconciliation tries again",
+                            }),
+                        );
+                    }
+                }
+            }
+        };
+        let complete = outcome.is_ok();
+        self.log(
+            if report.left > 0 || !complete {
+                Level::Error
+            } else {
+                Level::Info
+            },
+            Destination::Both,
+            None,
+            json!({
+                "function": "reconcileRecovery",
+                "action": "token_recovery_reconciled",
+                "complete": complete,
+                "applied": report.applied,
+                "alreadyNewer": report.already_newer,
+                "accountGone": report.account_gone,
+                "failed": report.failed,
+                "left": report.left,
+            }),
+        );
+        outcome.map(|()| report)
+    }
+}
+
+impl Twitch {
+    /// Reconciles every recovery record into MongoDB (review F2, F5; see `crate::recovery`):
+    /// each record found by a `SCAN` of [`crate::KeySpace::parked_pattern`] is written to
+    /// MongoDB with the compare-and-set a retry uses, then removed when MongoDB holds its answer
+    /// or a newer token, or when the account no longer exists. Safe from several processes at
+    /// once and safe to interrupt; in one process, a call while a run is going joins it.
+    ///
+    /// This is also the **tick**: call it every [`crate::Timings::recovery_interval`]. The
+    /// rollback procedure calls it until `left` is 0 (with every Rust process stopped) before
+    /// the TypeScript starts. `Err` when the scan could not finish (Dragonfly failed, or the
+    /// process is stopping): the counts are then incomplete, run it again.
+    pub async fn reconcile_recovery(&self) -> Result<RecoveryReport, TwitchError> {
+        let inner = Arc::clone(&self.inner);
+        let kill = self.inner.kill.clone();
+        let waiter = self
+            .inner
+            .recovery_flight
+            .join(
+                (),
+                &self.inner.tracker,
+                Err(TwitchError::Interrupted),
+                move || async move {
+                    tokio::select! {
+                        biased;
+                        () = kill.cancelled() => Err(TwitchError::Interrupted),
+                        report = inner.reconcile() => report,
+                    }
+                },
+            )
+            .ok_or(TwitchError::Busy)?;
+        waiter.await
+    }
+
+    /// The start-up reconciliation: call it once when the process starts, after building the
+    /// handle. It runs [`Twitch::reconcile_recovery`] as a task and waits for it at most
+    /// [`crate::Timings::recovery_start_wait`] (3 s), so the process's readiness is never
+    /// held longer; a run not finished by then goes on in the background and logs its counts
+    /// (`token_recovery_reconciled`). `Some` with the counts when it finished in time.
+    pub async fn start_recovery(&self) -> Option<RecoveryReport> {
+        let wait = self.inner.config.timings.recovery_start_wait;
+        match tokio::time::timeout(wait, self.reconcile_recovery()).await {
+            Ok(Ok(report)) => Some(report),
+            Ok(Err(_)) | Err(_) => None,
+        }
+    }
 }

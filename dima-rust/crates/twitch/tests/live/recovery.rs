@@ -254,3 +254,409 @@ async fn an_answer_both_stores_refuse_at_shutdown_is_logged_lost_once() -> Resul
     })
     .await
 }
+
+/// Review F2: a recovery record has no expiry. It waits, however long the streamer is not used,
+/// until a refresh or the reconciliation writes it to MongoDB. (Before: 30 days, then the next
+/// refresh exchanged the consumed token and wiped the streamer.)
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovery_record_never_expires() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state();
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        let mut timings = fast_timings();
+        timings.exchange_drain = Duration::from_millis(300);
+        let stopping = process(&stores, &server, timings)?;
+        seed(&stores, &stopping).await?;
+        fail_writes(&stopping);
+        stopping.twitch.streamer_token("u1", None, "test").await?;
+        stopping.shutdown.trigger();
+        assert!(!stopping.twitch.shutdown().await);
+        let key = stores.keys.parked_rotation("u1");
+        assert_eq!(
+            stores.dragonfly.ttl(&key).await?,
+            dima_store::dragonfly::Ttl::NoExpiry
+        );
+        Ok(())
+    })
+    .await
+}
+
+/// Twitch's state with a valid refresh token `{id}-refresh-0` for each streamer.
+fn state_for(ids: &[&str]) -> Shared {
+    let state = state();
+    {
+        let mut state = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for id in ids {
+            state
+                .valid
+                .insert(format!("{id}-refresh-0"), (*id).to_owned());
+        }
+    }
+    state
+}
+
+/// Seeds `ids`, then leaves a recovery record for each: a process whose MongoDB refuses every
+/// write refreshes them all and stops.
+async fn park_answers(
+    stores: &Stores,
+    server: &dima_http::testing::MockServer,
+    ids: &[&str],
+) -> Result<()> {
+    for id in ids {
+        let access = format!("{id}-access-0");
+        let refresh = format!("{id}-refresh-0");
+        insert_user(
+            stores,
+            user_document(id, id, &access, &refresh, Some(NOW_SECS - 10)),
+        )
+        .await?;
+    }
+    let mut timings = fast_timings();
+    timings.exchange_drain = Duration::from_millis(300);
+    let stopping = process(stores, server, timings)?;
+    stopping.twitch.load_streamers().await?;
+    fail_writes(&stopping);
+    for id in ids {
+        let token = stopping.twitch.streamer_token(id, None, "test").await?;
+        assert_eq!(token.expose(), format!("{id}-access-1"));
+    }
+    stopping.shutdown.trigger();
+    assert!(!stopping.twitch.shutdown().await);
+    for id in ids {
+        assert_eq!(
+            parked_answer(stores, id).await?.map(|(_, refresh)| refresh),
+            Some(format!("{id}-refresh-1"))
+        );
+    }
+    Ok(())
+}
+
+/// Every recovery record under the test prefix.
+async fn records(stores: &Stores) -> Result<Vec<String>> {
+    let mut found = Vec::new();
+    let mut scan = stores
+        .dragonfly
+        .scan(&stores.keys.parked_pattern(), Some(500));
+    while let Some(page) = scan.next_page().await? {
+        for key in page {
+            found.push(String::from_utf8(key)?);
+        }
+    }
+    Ok(found)
+}
+
+/// Kills `process` the first time it reaches `point`, while it reconciles.
+async fn kill_reconciliation_at(process: &Process, point: FaultPoint) -> Result<()> {
+    let reached = Arc::new(Notify::new());
+    let armed = Arc::new(AtomicBool::new(true));
+    {
+        let reached = Arc::clone(&reached);
+        process.twitch.set_fault_hook(move |at, _| {
+            let stop = at == point && armed.swap(false, Ordering::SeqCst);
+            let reached = Arc::clone(&reached);
+            async move {
+                if stop {
+                    reached.notify_one();
+                    std::future::pending::<()>().await;
+                }
+            }
+            .boxed()
+        });
+    }
+    let run = {
+        let twitch = process.twitch.clone();
+        tokio::spawn(async move { twitch.reconcile_recovery().await })
+    };
+    reached.notified().await;
+    process.twitch.kill();
+    assert!(run.await?.is_err(), "the run was interrupted");
+    Ok(())
+}
+
+/// Review F2: R1 was parked during a MongoDB outage, the process exited, and the streamer was
+/// not used for 60 days. The record is still there, and the next process writes it to MongoDB
+/// when it starts, without asking Twitch; the next refresh exchanges R1, not the consumed R0.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_record_older_than_any_former_lifetime_is_reconciled_at_start() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &["u1"]).await?;
+        let later = dima_core::ManualClock::new(NOW_MS + 60 * 86_400_000);
+        let next = process_at(&stores, &server, fast_timings(), later)?;
+        let report = next.twitch.start_recovery().await;
+        assert_eq!(
+            report,
+            Some(dima_twitch::RecoveryReport {
+                applied: 1,
+                ..Default::default()
+            })
+        );
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-1")
+        );
+        assert!(records(&stores).await?.is_empty());
+        assert_eq!(
+            token_requests(&server).len(),
+            1,
+            "nothing exchanged at start"
+        );
+        // Its access token expired long ago: the next refresh exchanges R1 (once the stopped
+        // process's marker, left to expire, is gone).
+        marker_gone(&stores, "u1").await?;
+        let token = next.twitch.streamer_token("u1", None, "later").await?;
+        assert_eq!(token.expose(), "u1-access-2");
+        let requests = token_requests(&server);
+        assert_eq!(requests.len(), 2);
+        assert_eq!(
+            form_value(&requests[1], "refresh_token").as_deref(),
+            Some("u1-refresh-1")
+        );
+        assert!(
+            next.events
+                .actions()
+                .contains(&"token_recovery_reconciled".to_owned())
+        );
+        assert_no_secrets(&next.events, &["u1-refresh-1", "u1-access-1"]);
+        Ok(())
+    })
+    .await
+}
+
+/// Two processes reconcile the same records at once: each answer is written exactly once (the
+/// compare-and-set lets one writer through; the other finds MongoDB holding it), and no record
+/// is left.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn two_processes_reconcile_at_once_and_each_record_is_applied_once() -> Result<()> {
+    with_stores(|stores| async move {
+        let ids = ["u1", "u2", "u3", "u4", "u5"];
+        let state = state_for(&ids);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &ids).await?;
+        let a = process(&stores, &server, fast_timings())?;
+        let b = process(&stores, &server, fast_timings())?;
+        let (first, second) =
+            tokio::join!(a.twitch.reconcile_recovery(), b.twitch.reconcile_recovery());
+        let (first, second) = (first?, second?);
+        assert_eq!(
+            first.applied + second.applied,
+            ids.len(),
+            "{first:?} {second:?}"
+        );
+        for report in [first, second] {
+            assert_eq!((report.failed, report.left, report.account_gone), (0, 0, 0));
+            assert!(report.applied + report.already_newer <= ids.len());
+        }
+        for id in ids {
+            assert_eq!(
+                stored_refresh(&stores, id).await?,
+                Some(format!("{id}-refresh-1"))
+            );
+        }
+        assert!(records(&stores).await?.is_empty());
+        assert_eq!(token_requests(&server).len(), ids.len());
+        Ok(())
+    })
+    .await
+}
+
+/// A reconciliation stopped between its steps leaves a state the next run finishes: stopped
+/// before the write, MongoDB is untouched and the record stays; stopped after the write and
+/// before the removal, MongoDB holds the answer and the record stays; the next run finds MongoDB
+/// holding it and removes the record.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_interrupted_reconciliation_is_finished_by_the_next_run() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &["u1"]).await?;
+
+        let before_write = process(&stores, &server, fast_timings())?;
+        kill_reconciliation_at(&before_write, FaultPoint::BeforePersist).await?;
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-0")
+        );
+        assert_eq!(records(&stores).await?.len(), 1);
+
+        // The cache write comes after MongoDB's and before the record's removal.
+        let after_write = process(&stores, &server, fast_timings())?;
+        kill_reconciliation_at(&after_write, FaultPoint::BeforeCacheWrite).await?;
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-1")
+        );
+        assert_eq!(records(&stores).await?.len(), 1);
+
+        let next = process(&stores, &server, fast_timings())?;
+        let report = next.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            dima_twitch::RecoveryReport {
+                already_newer: 1,
+                ..Default::default()
+            }
+        );
+        assert!(records(&stores).await?.is_empty());
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-1")
+        );
+        Ok(())
+    })
+    .await
+}
+
+/// The account of a record was deleted meanwhile: the record is removed and counted.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_record_whose_account_is_gone_is_removed() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &["u1"]).await?;
+        stores
+            .mongo
+            .documents("users")
+            .delete_one(bson::doc! { "accounts.id": "u1" })
+            .await?;
+        let next = process(&stores, &server, fast_timings())?;
+        let report = next.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            dima_twitch::RecoveryReport {
+                account_gone: 1,
+                ..Default::default()
+            }
+        );
+        assert!(records(&stores).await?.is_empty());
+        Ok(())
+    })
+    .await
+}
+
+/// The streamer signed in again after the record was written (MongoDB holds R9, written at a
+/// higher generation). The record's answer is older: a refresh that finds it, and the
+/// reconciliation, remove it and leave MongoDB alone; the refresh then exchanges R9.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_record_older_than_mongodb_is_removed_and_mongodb_kept() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1", "u2"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &["u1", "u2"]).await?;
+        let next = process(&stores, &server, fast_timings())?;
+        for id in ["u1", "u2"] {
+            // A sign-in: new tokens (the access token already near its expiry), then the
+            // crate is told, which advances the generation.
+            let refresh = format!("{id}-refresh-9");
+            state
+                .lock()
+                .unwrap()
+                .valid
+                .insert(refresh.clone(), id.to_owned());
+            stores
+                .mongo
+                .documents("users")
+                .update_one(
+                    bson::doc! { "accounts.id": id },
+                    bson::doc! { "$set": {
+                        "accounts.$.refresh_token": envelope(&refresh),
+                        "accounts.$.access_token": envelope(&format!("{id}-access-9")),
+                        "accounts.$.access_token_expires_at": NOW_SECS + 10,
+                    } },
+                )
+                .await?;
+            next.twitch.credentials_changed(id).await?;
+        }
+        let generation = |stores: &Stores, id: &'static str| {
+            let stores = stores.mongo.clone();
+            async move {
+                let user = stores
+                    .documents("users")
+                    .find_one(bson::doc! { "accounts.id": id })
+                    .await?
+                    .ok_or_else(|| anyhow::anyhow!("user"))?;
+                anyhow::Ok(user.get_datetime("refreshed_at")?.timestamp_millis())
+            }
+        };
+        let (parked_generation, _) = parked_answer(&stores, "u1").await?.unwrap();
+        assert!(generation(&stores, "u1").await? > parked_generation);
+
+        // The refresh path: the record is older, so it goes; R9 is the token exchanged (once
+        // the stopped process's marker, left to expire, is gone).
+        marker_gone(&stores, "u1").await?;
+        let token = next.twitch.streamer_token("u1", None, "next").await?;
+        assert_eq!(token.expose(), "u1-access-2");
+        let requests = token_requests(&server);
+        assert_eq!(
+            form_value(requests.last().unwrap(), "refresh_token").as_deref(),
+            Some("u1-refresh-9")
+        );
+        assert_eq!(parked_answer(&stores, "u1").await?, None);
+        assert!(
+            next.events
+                .actions()
+                .contains(&"token_refresh_recovery_discarded".to_owned())
+        );
+
+        // The reconciliation path.
+        let report = next.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            dima_twitch::RecoveryReport {
+                already_newer: 1,
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            stored_refresh(&stores, "u2").await?.as_deref(),
+            Some("u2-refresh-9")
+        );
+        assert!(records(&stores).await?.is_empty());
+        Ok(())
+    })
+    .await
+}
+
+/// The start-up run never holds the process longer than `recovery_start_wait`, even when
+/// MongoDB hangs; a later process finishes the work.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_start_up_reconciliation_holds_the_start_at_most_its_wait() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state_for(&["u1"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        park_answers(&stores, &server, &["u1"]).await?;
+        let mut timings = fast_timings();
+        timings.recovery_start_wait = Duration::from_millis(200);
+        let slow = process(&stores, &server, timings)?;
+        slow.twitch.set_fault_hook(|point, _| {
+            async move {
+                if point == FaultPoint::BeforePersist {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                }
+            }
+            .boxed()
+        });
+        let started = tokio::time::Instant::now();
+        assert_eq!(slow.twitch.start_recovery().await, None);
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "the start was held {:?}",
+            started.elapsed()
+        );
+        slow.twitch.kill();
+
+        let next = process(&stores, &server, fast_timings())?;
+        assert_eq!(
+            next.twitch
+                .start_recovery()
+                .await
+                .map(|report| report.applied),
+            Some(1)
+        );
+        Ok(())
+    })
+    .await
+}

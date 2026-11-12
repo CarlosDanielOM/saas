@@ -7,5 +7,4 @@ if held then
 end
 redis.call('DEL', KEYS[1])
 redis.call('HSET', KEYS[1], 'generation', ARGV[1], 'rotation', ARGV[2])
-redis.call('PEXPIRE', KEYS[1], ARGV[3])
 return 0
