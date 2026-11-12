@@ -1,0 +1,263 @@
+{
+  "requests": [
+    {
+      "method": "POST",
+      "url": "https://us.i.posthog.com/batch/",
+      "headers": {
+        "content-encoding": "gzip",
+        "content-type": "application/json",
+        "user-agent": "posthog-node/5.49.1"
+      },
+      "body": {
+        "api_key": "phc_ApcLd2XbNHavPCcyD9fFDVHxs7cCBPozWmSBFTqugfP",
+        "batch": [
+          {
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "channel_name": "firstuser"
+              },
+              "$set_once": {},
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.245Z",
+            "uuid": "01a1d081-3d8a-79cb-b5d6-4cbf8e3b7d0c",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "channel_name": "renamed_user"
+              },
+              "$set_once": {},
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-08fb5270d835",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "command_executed",
+            "properties": {
+              "channel_id": "1001",
+              "channel_name": "firstuser",
+              "command": "!hola",
+              "status": "success",
+              "user_id": "5001",
+              "username": "viewer",
+              "arguments": "mundo 🌍",
+              "error_message": null,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-08fcf1c75c28",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "command_executed",
+            "properties": {
+              "channel_id": "1001",
+              "channel_name": "firstuser",
+              "command": "!roto",
+              "status": "error",
+              "user_id": "1001",
+              "username": "firstuser",
+              "arguments": null,
+              "error_message": "boom",
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-08fdeab5271c",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "tts_executed",
+            "properties": {
+              "channel_id": "1001",
+              "channel_name": "firstuser",
+              "source": "chat-command",
+              "tts_type": "fish",
+              "characters": 12,
+              "message": "hola مرحبا 👋🏽",
+              "status": "success",
+              "mode": "queue",
+              "provider": "fish",
+              "user_id": "5001",
+              "username": "viewer",
+              "error_message": null,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-08fe5fcadccb",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "tts_executed",
+            "properties": {
+              "channel_id": "1001",
+              "channel_name": "firstuser",
+              "source": "ast",
+              "tts_type": "gtts",
+              "characters": 0,
+              "message": "",
+              "status": "error",
+              "mode": null,
+              "provider": null,
+              "user_id": "1001",
+              "username": "firstuser",
+              "error_message": "no voice",
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-08ff59fc9eb7",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "ai_usage_recorded",
+            "properties": {
+              "$insert_id": "entry-1",
+              "schema_version": 1,
+              "pricing_version": "legacy-polar-math-v1",
+              "entry_id": "entry-1",
+              "request_id": "request-1",
+              "parent_request_id": "parent-1",
+              "entry_kind": "usage",
+              "category": "ai_chat",
+              "operation": "chat.reply",
+              "source": "chat",
+              "provider": "openrouter",
+              "model": "model-x",
+              "channel_id": "1001",
+              "credits": 2.5,
+              "reason": "ai_chat",
+              "polar_cost_amount": 3,
+              "quantity": 1234,
+              "unit": "tokens",
+              "resource_type": "llm_generation",
+              "resource_id": "gen-1",
+              "input_tokens": 1000,
+              "output_tokens": 234,
+              "total_tokens": 1234,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-090030a323f4",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "ai_usage_recorded",
+            "properties": {
+              "$insert_id": "entry-2",
+              "schema_version": 1,
+              "pricing_version": "legacy-polar-math-v1",
+              "entry_id": "entry-2",
+              "request_id": "request-2",
+              "parent_request_id": null,
+              "entry_kind": "adjustment",
+              "category": "credit_adjustment",
+              "operation": "grant",
+              "source": "admin",
+              "provider": "internal",
+              "model": null,
+              "channel_id": null,
+              "credits": -5,
+              "reason": "grant",
+              "polar_cost_amount": null,
+              "quantity": null,
+              "unit": null,
+              "resource_type": null,
+              "resource_id": null,
+              "input_tokens": null,
+              "output_tokens": null,
+              "total_tokens": null,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-09013be899bd",
+            "distinct_id": "billing:request-2"
+          },
+          {
+            "event": "ai_operation",
+            "properties": {
+              "$insert_id": "request-1:speech:completed",
+              "schema_version": 1,
+              "request_id": "request-1",
+              "channel_id": "1001",
+              "category": "tts",
+              "operation": "speech",
+              "source": "chat",
+              "lifecycle": "completed",
+              "requested_provider": "fish",
+              "actual_provider": "gtts",
+              "fallback_reason": "quota",
+              "error_code": "E1",
+              "resource_type": "speech",
+              "resource_id": "sp-1",
+              "latency_ms": 812,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-09024b9236ff",
+            "distinct_id": "1001"
+          },
+          {
+            "event": "ai_operation",
+            "properties": {
+              "$insert_id": "request-3:embed:queued",
+              "schema_version": 1,
+              "request_id": "request-3",
+              "channel_id": "1001",
+              "category": "memory",
+              "operation": "embed",
+              "source": "cron",
+              "lifecycle": "queued",
+              "requested_provider": null,
+              "actual_provider": null,
+              "fallback_reason": null,
+              "error_code": null,
+              "resource_type": null,
+              "resource_id": null,
+              "latency_ms": null,
+              "$lib": "posthog-node",
+              "$lib_version": "5.49.1",
+              "$is_server": true,
+              "$geoip_disable": true
+            },
+            "timestamp": "2026-11-12T16:04:53.259Z",
+            "uuid": "01a1d081-3d8b-7597-8e77-0903bfe4bf36",
+            "distinct_id": "1001"
+          }
+        ],
+        "sent_at": "2026-11-12T16:04:53.260Z"
+      }
+    }
+  ]
+}

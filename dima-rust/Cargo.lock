@@ -1527,12 +1527,12 @@ dependencies = [
  "dima-text",
  "dima-tts",
  "dima-twitch",
+ "flate2",
  "redis",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
- "uuid",
 ]
 
 [[package]]
