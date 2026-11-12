@@ -283,6 +283,36 @@ impl JournalInput {
     }
 }
 
+/// `getTwitchEventsubPayload(input)`: the `{subscription, event}` payload of a valid Twitch event
+/// (retained mode).
+pub fn twitch_payload(input: &Object, now_ms: i64) -> Result<&Object, ContractError> {
+    validate_contract(input, Check::retained(now_ms))?;
+    let source = input.at("source").as_str().unwrap_or_default();
+    if source != sources::TWITCH && source != sources::TWITCH_TEST {
+        return Err(ContractError::new("expected a Twitch event"));
+    }
+    input
+        .at("payload")
+        .as_object()
+        .ok_or_else(|| ContractError::new("payload must be a plain record"))
+}
+
+/// `getPolarBillingPayload(input)`: the payload of a valid mapped Polar billing event (retained
+/// mode).
+pub fn polar_billing_payload(input: &Object, now_ms: i64) -> Result<&Object, ContractError> {
+    validate_contract(input, Check::retained(now_ms))?;
+    let kind = input.at("type").as_str().unwrap_or_default();
+    if input.at("source").as_str() != Some(sources::POLAR)
+        || !POLAR_TYPES.iter().any(|(_, to)| *to == kind)
+    {
+        return Err(ContractError::new("expected a mapped Polar billing event"));
+    }
+    input
+        .at("payload")
+        .as_object()
+        .ok_or_else(|| ContractError::new("payload must be a plain record"))
+}
+
 fn subject_object(subject: &SubjectInput) -> Object {
     let mut object = Object::new();
     object.insert("provider", Value::from(subject.provider.as_str()));
