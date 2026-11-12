@@ -89,7 +89,8 @@ impl SyntaxEngine {
 
     /// One program with its own budget, derived from its length. It is parsed on the caller's
     /// stack when the caller's thread has [`crate::stack::PARSE_STACK_BYTES`] left, else on a
-    /// short-lived thread with a stack for it (the stack contract, [`crate::stack`]).
+    /// short-lived thread with a stack for it (the stack contract, [`crate::stack`]), at most
+    /// [`crate::stack::PARSE_THREADS`] at once.
     fn program(&self, view: &View, bytes: Range<usize>) -> Result<CompiledProgram, Diagnostic> {
         let parse = || {
             let mut budget = Budget::new(self.limits, bytes.len());
@@ -98,15 +99,13 @@ impl SyntaxEngine {
         if crate::stack::remaining().is_some_and(|room| room >= crate::stack::PARSE_STACK_BYTES) {
             return parse();
         }
-        crate::stack::run_on_thread(crate::stack::PARSE_THREAD_STACK_BYTES, parse).unwrap_or_else(
-            || {
-                Err(Diagnostic::new(
-                    DiagnosticCode::NestingLimit,
-                    "Nesting limit exceeded",
-                    view.span(bytes.clone()),
-                ))
-            },
-        )
+        crate::stack::run_on_parse_thread(parse).unwrap_or_else(|| {
+            Err(Diagnostic::new(
+                DiagnosticCode::NestingLimit,
+                "Nesting limit exceeded",
+                view.span(bytes.clone()),
+            ))
+        })
     }
 
     fn parse_range(
