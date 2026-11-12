@@ -1,5 +1,6 @@
 //! The shutdown token, the signal listener and ordered shutdown under a deadline.
 
+use super::registry::WorkRegistry;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -8,33 +9,65 @@ use tokio_util::sync::CancellationToken;
 
 /// A cancellation signal shared by everything that must stop on shutdown. Clones share the
 /// state; [`Shutdown::child`] makes a token that also fires on its own without stopping the parent.
+///
+/// A token may carry a [`WorkRegistry`] ([`Shutdown::with_registry`]): work that
+/// [`run_with_deadline`](super::run_with_deadline) starts under it, or under any token derived
+/// from it, is registered there until it has really stopped.
 #[derive(Clone, Debug, Default)]
-pub struct Shutdown(CancellationToken);
+pub struct Shutdown {
+    token: CancellationToken,
+    registry: Option<WorkRegistry>,
+}
 
 impl Shutdown {
     /// A token that has not fired.
     pub fn new() -> Self {
-        Self(CancellationToken::new())
+        Self::default()
     }
 
     /// Fires the token (idempotent). Every clone and child sees it.
     pub fn trigger(&self) {
-        self.0.cancel();
+        self.token.cancel();
     }
 
     /// Whether the token has fired.
     pub fn is_triggered(&self) -> bool {
-        self.0.is_cancelled()
+        self.token.is_cancelled()
     }
 
     /// Resolves once the token has fired (at once if it already has).
     pub async fn wait(&self) {
-        self.0.cancelled().await;
+        self.token.cancelled().await;
     }
 
-    /// A token that fires when this one does, or when triggered itself.
+    /// A token that fires when this one does, or when triggered itself. It carries the same
+    /// registry.
     pub fn child(&self) -> Self {
-        Self(self.0.child_token())
+        Self {
+            token: self.token.child_token(),
+            registry: self.registry.clone(),
+        }
+    }
+
+    /// A `tokio_util` [`CancellationToken`] that is cancelled when this token fires, for APIs that
+    /// take one (for example `dima_web::serve`), so a binary keeps a single shutdown signal.
+    /// It is a child: cancelling it does not trigger this token or its clones.
+    pub fn cancellation_token(&self) -> CancellationToken {
+        self.token.child_token()
+    }
+
+    /// The same signal (not a child: triggering either fires both), with work started under it
+    /// registered in `registry`, replacing any registry this token carried.
+    pub fn with_registry(&self, registry: &WorkRegistry) -> Self {
+        Self {
+            token: self.token.clone(),
+            registry: Some(registry.clone()),
+        }
+    }
+
+    /// The registry work started under this token is registered in, if any.
+    pub fn registry(&self) -> Option<&WorkRegistry> {
+        self.registry.as_ref()
     }
 }
 
@@ -111,23 +144,23 @@ impl ShutdownReport {
 }
 
 /// Runs the steps one after another, all within one overall `deadline`: a step that is still
-/// running when the deadline passes is dropped and the remaining steps are skipped. Uses tokio
-/// time, so paused-time tests control it.
+/// running when the deadline passes is dropped, and no step starts once the deadline has passed
+/// (it is reported skipped), even if the previous one finished. Uses tokio time, so paused-time
+/// tests control it.
 pub async fn shutdown_in_order(steps: Vec<ShutdownStep>, deadline: Duration) -> ShutdownReport {
-    let end = Instant::now() + deadline;
+    let start = Instant::now();
     let mut report = ShutdownReport { steps: Vec::new() };
-    let mut expired = false;
     for step in steps {
-        if expired {
+        let remaining = deadline
+            .checked_sub(start.elapsed())
+            .filter(|remaining| !remaining.is_zero());
+        let Some(remaining) = remaining else {
             report.steps.push((step.name, StepOutcome::Skipped));
             continue;
-        }
-        let outcome = match tokio::time::timeout_at(end, step.run).await {
+        };
+        let outcome = match tokio::time::timeout(remaining, step.run).await {
             Ok(()) => StepOutcome::Completed,
-            Err(_) => {
-                expired = true;
-                StepOutcome::TimedOut
-            }
+            Err(_) => StepOutcome::TimedOut,
         };
         report.steps.push((step.name, outcome));
     }
@@ -171,6 +204,41 @@ mod tests {
         );
         assert!(!report.is_clean());
         assert_eq!(*log.lock().unwrap(), vec!["stop-accepting", "drain"]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_step_starts_after_the_deadline() {
+        let ran = Arc::new(Mutex::new(false));
+        let flag = Arc::clone(&ran);
+        let report = shutdown_in_order(
+            vec![
+                // Finishes exactly at the deadline.
+                ShutdownStep::new("drain", sleep(Duration::from_millis(500))),
+                ShutdownStep::new("close", async move {
+                    *flag.lock().unwrap() = true;
+                }),
+            ],
+            Duration::from_millis(500),
+        )
+        .await;
+        assert_eq!(report.steps[1], ("close", StepOutcome::Skipped));
+        assert!(!*ran.lock().unwrap(), "a step started after the deadline");
+    }
+
+    #[tokio::test]
+    async fn a_cancellation_token_follows_shutdown_but_not_the_other_way() {
+        let shutdown = Shutdown::new();
+        let own = shutdown.cancellation_token();
+        own.cancel();
+        assert!(!shutdown.is_triggered(), "the child stopped its parent");
+        let token = shutdown.cancellation_token();
+        let child_of_child = shutdown.child().cancellation_token();
+        assert!(!token.is_cancelled());
+        shutdown.trigger();
+        token.cancelled().await;
+        child_of_child.cancelled().await;
+        // Already triggered: a new token is cancelled from the start.
+        assert!(shutdown.cancellation_token().is_cancelled());
     }
 
     #[tokio::test]

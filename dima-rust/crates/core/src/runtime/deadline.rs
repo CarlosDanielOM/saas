@@ -3,8 +3,9 @@
 //! This is the single-process replacement for the reference's "kill the worker process when its
 //! lease is about to expire" (MIGRATION.md section 6, "Single-process cron"): the work runs as a
 //! task; when the deadline passes (or shutdown fires) its token is triggered and the task is
-//! aborted, and [`run_with_deadline`] returns only once the task, and any blocking work it started
-//! through its [`WorkScope`], has really finished. If that takes longer than the grace period it
+//! aborted, and [`run_with_deadline`] returns only once the task, any blocking work it started
+//! through its [`WorkScope`], and the work of `run_with_deadline` calls nested under
+//! [`WorkScope::token`], has really finished. If that takes longer than the grace period it
 //! returns [`DeadlineError::Unstoppable`]: the caller must then exit the process (non-zero), since
 //! the work may still be running and nothing else may take it over.
 //!
@@ -12,12 +13,24 @@
 //! thread: a long synchronous stretch inside the task, or blocking work. Blocking work must go
 //! through [`WorkScope::spawn_blocking`], so it is waited for, and should check
 //! [`WorkScope::token`] to stop early.
+//!
+//! **If the caller goes away first.** The future [`run_with_deadline`] returns owns the work: when
+//! it is dropped before it finished (the worker awaiting it was aborted, or it lost a `select!`),
+//! the token fires and the task is aborted. Dropping cannot wait, so the work is also registered,
+//! until it has really stopped, in the [`WorkRegistry`] of the [`Shutdown`] passed in (if it
+//! carries one); the owner of the worker waits on that registry. The [`Supervisor`] gives each
+//! run of each task a token with its own registry and waits on it before restarting the task.
+//! Pass that token, or one derived from it such as [`WorkScope::token`], so nested work is
+//! registered too.
+//!
+//! [`Supervisor`]: super::Supervisor
 
+use super::registry::WorkRegistry;
 use super::shutdown::Shutdown;
 use std::future::Future;
 use std::time::Duration;
-use tokio::task::JoinError;
-use tokio_util::task::TaskTracker;
+use tokio::task::{AbortHandle, JoinError};
+use tokio::time::Instant;
 
 /// The time allowed for a unit of work, and for it to stop afterwards.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,12 +44,13 @@ pub struct Deadline {
 /// What the work gets to cooperate with its deadline.
 #[derive(Clone, Debug)]
 pub struct WorkScope {
+    /// A child of the caller's token, carrying this call's own registry.
     token: Shutdown,
-    tracker: TaskTracker,
 }
 
 impl WorkScope {
-    /// Fires when the deadline passes or shutdown begins.
+    /// Fires when the deadline passes or shutdown begins. It carries the caller's registry, so
+    /// [`run_with_deadline`] called with it registers nested work with the same owner.
     pub fn token(&self) -> &Shutdown {
         &self.token
     }
@@ -48,7 +62,11 @@ impl WorkScope {
         F: FnOnce() -> R + Send + 'static,
         R: Send + 'static,
     {
-        self.tracker.spawn_blocking(f)
+        let hold = self.token.registry().map(WorkRegistry::hold);
+        tokio::task::spawn_blocking(move || {
+            let _hold = hold;
+            f()
+        })
     }
 }
 
@@ -61,7 +79,9 @@ pub enum DeadlineError {
     /// Shutdown began; the work was aborted and has stopped.
     #[error("work was stopped for shutdown")]
     ShutDown,
-    /// The work was aborted but did not stop within the grace period. Exit the process.
+    /// The work was aborted but did not stop within the grace period. Exit the process. It is
+    /// also recorded in the caller's [`WorkRegistry`], so a [`Supervisor`](super::Supervisor)
+    /// treats the task as fatal even if the error is swallowed or turned into text.
     #[error("work did not stop within its grace period")]
     Unstoppable,
     /// The work panicked (the panic is contained; the message is kept).
@@ -81,6 +101,19 @@ pub(crate) fn panic_message(error: JoinError) -> String {
     }
 }
 
+/// Fires the work's token and aborts its task when dropped, whichever way the caller leaves.
+struct StopOnDrop {
+    token: Shutdown,
+    task: AbortHandle,
+}
+
+impl Drop for StopOnDrop {
+    fn drop(&mut self) {
+        self.token.trigger();
+        self.task.abort();
+    }
+}
+
 /// Runs `work` as a task under `deadline`, stopping it on expiry or when `shutdown` fires.
 ///
 /// - Finished in time: its value. Blocking work it left running is told to stop and waited for
@@ -88,7 +121,12 @@ pub(crate) fn panic_message(error: JoinError) -> String {
 /// - Panicked: [`DeadlineError::Panicked`].
 /// - Deadline or shutdown: the token fires, the task is aborted, and this waits until the task and
 ///   its blocking work have stopped, then returns [`DeadlineError::TimedOut`] or
-///   [`DeadlineError::ShutDown`]; a value produced in that window is discarded.
+///   [`DeadlineError::ShutDown`]; a value produced in that window is discarded. When the work
+///   finishes as the deadline passes or shutdown is requested, the deadline or shutdown is
+///   reported, never the value.
+/// - Shutdown already requested: [`DeadlineError::ShutDown`] at once; `work` is not called.
+/// - The returned future dropped first: the token fires and the task is aborted at once; the work
+///   stays in `shutdown`'s [`WorkRegistry`] until it has stopped (see the module documentation).
 pub async fn run_with_deadline<T, F, Fut>(
     shutdown: &Shutdown,
     deadline: Deadline,
@@ -99,31 +137,51 @@ where
     Fut: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
-    let token = shutdown.child();
-    let tracker = TaskTracker::new();
+    if shutdown.is_triggered() {
+        return Err(DeadlineError::ShutDown);
+    }
+    let started = Instant::now();
+    // This call's own registry, nested in the caller's: it holds the task, the blocking work it
+    // starts and the work of calls nested inside it, and every entry also counts for the caller.
+    let registry = WorkRegistry::nested(shutdown.registry());
+    let token = shutdown.child().with_registry(&registry);
     let scope = WorkScope {
         token: token.clone(),
-        tracker: tracker.clone(),
     };
+    let hold = registry.hold();
     // `work` is called inside the task, so a panic while building the future is contained too.
-    let mut handle = tracker.spawn(async move { work(scope).await });
-    let abort = handle.abort_handle();
-    tracker.close();
+    let mut handle = tokio::spawn(async move {
+        let _hold = hold;
+        work(scope).await
+    });
+    let stop = StopOnDrop {
+        token: token.clone(),
+        task: handle.abort_handle(),
+    };
 
     let stopped = tokio::select! {
         biased;
-        joined = &mut handle => Ok(joined),
         () = tokio::time::sleep(deadline.limit) => Err(DeadlineError::TimedOut),
         () = shutdown.wait() => Err(DeadlineError::ShutDown),
+        joined = &mut handle => Ok(joined),
+    };
+    // The work may have finished just as the deadline passed or shutdown was requested (the
+    // timer is only seen once the runtime fires it). Then the deadline or shutdown wins: its
+    // owner may already treat the work as abandoned.
+    let stopped = match stopped {
+        Ok(_) if started.elapsed() >= deadline.limit => Err(DeadlineError::TimedOut),
+        Ok(_) if shutdown.is_triggered() => Err(DeadlineError::ShutDown),
+        other => other,
     };
     token.trigger();
     if stopped.is_err() {
-        abort.abort();
+        stop.task.abort();
     }
-    if tokio::time::timeout(deadline.grace, tracker.wait())
+    if tokio::time::timeout(deadline.grace, registry.wait())
         .await
         .is_err()
     {
+        registry.report_unstoppable();
         return Err(DeadlineError::Unstoppable);
     }
     match stopped? {
@@ -132,6 +190,7 @@ where
         // Only this function aborts the task, and only on the paths above.
         Err(_) => Err(DeadlineError::TimedOut),
     }
+    // `stop` drops here: the task has finished, so its abort does nothing.
 }
 
 #[cfg(test)]
@@ -199,6 +258,75 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn aborting_the_caller_aborts_nested_work() {
+        let dropped = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&dropped);
+        let long = Deadline {
+            limit: Duration::from_secs(3600),
+            grace: Duration::from_secs(1),
+        };
+        // A worker awaiting work that itself awaits nested work; the supervisor aborts the worker.
+        let worker = tokio::spawn(async move {
+            run_with_deadline(&Shutdown::new(), long, move |scope| async move {
+                let inner = scope.token().clone();
+                run_with_deadline(&inner, long, move |_| async move {
+                    let _guard = SetOnDrop(flag);
+                    std::future::pending::<()>().await;
+                })
+                .await
+            })
+            .await
+        });
+        sleep(Duration::from_millis(10)).await;
+        worker.abort();
+        assert!(worker.await.is_err_and(|error| error.is_cancelled()));
+        for _ in 0..10 {
+            tokio::task::yield_now().await;
+        }
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "nested work kept running after its caller was aborted"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_owner_joins_work_left_by_a_dropped_caller() {
+        let registry = WorkRegistry::new();
+        let root = Shutdown::new().with_registry(&registry);
+        let finished = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&finished);
+        let long = Deadline {
+            limit: Duration::from_secs(3600),
+            grace: Duration::from_secs(1),
+        };
+        let caller = run_with_deadline(&root, long, move |scope| async move {
+            run_with_deadline(scope.token(), long, move |scope| async move {
+                // Blocking work cannot be aborted; it ignores its token for 300 ms.
+                let _ = scope
+                    .spawn_blocking(move || {
+                        std::thread::sleep(Duration::from_millis(300));
+                        flag.store(true, Ordering::SeqCst);
+                    })
+                    .await;
+            })
+            .await
+        });
+        // The caller is dropped while the nested blocking work runs.
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), caller)
+                .await
+                .is_err()
+        );
+        assert!(registry.running() > 0, "the left-over work is registered");
+        assert!(!finished.load(Ordering::SeqCst));
+        tokio::time::timeout(Duration::from_secs(5), registry.wait())
+            .await
+            .unwrap();
+        assert!(finished.load(Ordering::SeqCst), "wait returned early");
+        assert_eq!(registry.running(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn shutdown_stops_the_work() {
         let shutdown = Shutdown::new();
         let trigger = shutdown.clone();
@@ -211,6 +339,43 @@ mod tests {
             run_with_deadline(&shutdown, DEADLINE, |_| std::future::pending()).await;
         assert_eq!(result, Err(DeadlineError::ShutDown));
         assert_eq!(start.elapsed(), Duration::from_millis(200));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_work_starts_after_shutdown() {
+        let shutdown = Shutdown::new();
+        shutdown.trigger();
+        let started = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&started);
+        let result = run_with_deadline(&shutdown, DEADLINE, move |_| async move {
+            flag.store(true, Ordering::SeqCst);
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::ShutDown));
+        tokio::task::yield_now().await;
+        assert!(!started.load(Ordering::SeqCst), "the work was started");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_after_shutdown_reports_shutdown() {
+        let shutdown = Shutdown::new();
+        let trigger = shutdown.clone();
+        let result = run_with_deadline(&shutdown, DEADLINE, move |_| async move {
+            trigger.trigger();
+            42
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::ShutDown));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_at_the_deadline_reports_the_deadline() {
+        let result = run_with_deadline(&Shutdown::new(), DEADLINE, |_| async {
+            tokio::time::advance(DEADLINE.limit).await;
+            42
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::TimedOut));
     }
 
     #[tokio::test(start_paused = true)]
@@ -247,6 +412,38 @@ mod tests {
         assert!(
             start.elapsed() >= Duration::from_millis(300),
             "returned before the work stopped"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_outer_deadline_waits_for_nested_work() {
+        let finished = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&finished);
+        let outer = Deadline {
+            limit: Duration::from_millis(50),
+            grace: Duration::from_secs(5),
+        };
+        let inner = Deadline {
+            limit: Duration::from_secs(3600),
+            grace: Duration::from_secs(5),
+        };
+        // No registry on the root token: the outer call itself must join the nested work.
+        let result = run_with_deadline(&Shutdown::new(), outer, move |scope| async move {
+            let _ = run_with_deadline(scope.token(), inner, move |scope| async move {
+                let _ = scope
+                    .spawn_blocking(move || {
+                        std::thread::sleep(Duration::from_millis(300));
+                        flag.store(true, Ordering::SeqCst);
+                    })
+                    .await;
+            })
+            .await;
+        })
+        .await;
+        assert_eq!(result, Err(DeadlineError::TimedOut));
+        assert!(
+            finished.load(Ordering::SeqCst),
+            "reported stopped while nested work was still running"
         );
     }
 

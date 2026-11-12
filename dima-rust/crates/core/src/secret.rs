@@ -1,10 +1,16 @@
-//! Key material that never shows up in `Debug` output or error messages.
+//! Key material that never shows up in `Debug` output or error messages, and is wiped when
+//! dropped.
+//!
+//! Wiping uses the `zeroize` crate, whose volatile writes the compiler cannot remove as dead
+//! stores. It covers the value's own buffer; copies the caller made (or a buffer that grew and
+//! moved before it was wrapped) are the caller's.
 
 use std::fmt;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Secret bytes (keys, shared secrets). `Debug` prints a placeholder; equality is constant-time
-/// for equal lengths; the bytes are overwritten with zeros when the value is dropped (best
-/// effort, no `unsafe`).
+/// for equal lengths; the bytes are overwritten with zeros when the value is dropped, or on
+/// [`Zeroize::zeroize`], which also empties it.
 #[derive(Clone, Eq, Default)]
 pub struct SecretBytes(Vec<u8>);
 
@@ -42,14 +48,23 @@ impl fmt::Debug for SecretBytes {
     }
 }
 
-impl Drop for SecretBytes {
-    fn drop(&mut self) {
-        self.0.fill(0);
+impl Zeroize for SecretBytes {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
     }
 }
 
+impl Drop for SecretBytes {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+impl ZeroizeOnDrop for SecretBytes {}
+
 /// A secret text value (for example `SECRET_KEY`). `Debug` prints a placeholder; equality is
-/// constant-time for equal lengths.
+/// constant-time for equal lengths; the text is overwritten with zeros when the value is dropped,
+/// or on [`Zeroize::zeroize`], which also empties it.
 #[derive(Clone, Eq, Default)]
 pub struct SecretString(String);
 
@@ -93,9 +108,35 @@ impl fmt::Debug for SecretString {
     }
 }
 
+impl Zeroize for SecretString {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl Drop for SecretString {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+impl ZeroizeOnDrop for SecretString {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn both_secret_types_are_wiped_by_zeroize() {
+        fn wiped_on_drop<T: ZeroizeOnDrop>() {}
+        wiped_on_drop::<SecretBytes>();
+        wiped_on_drop::<SecretString>();
+        let mut bytes = SecretBytes::from_text("hunter2");
+        let mut text = SecretString::from("hunter2");
+        bytes.zeroize();
+        text.zeroize();
+        assert!(bytes.is_empty() && text.is_empty());
+    }
 
     #[test]
     fn debug_never_prints_the_secret() {

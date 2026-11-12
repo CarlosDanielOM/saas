@@ -9,6 +9,11 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Predictable randomness for tests: `SeededRandom` and `CredentialCipher::encrypt_with_iv`.
+# Off by default; enable it only from `[dev-dependencies]`, never in a binary's dependencies.
+test-util = []
+
 [dependencies]
 dima-text = { workspace = true }
 thiserror = { workspace = true }
@@ -21,12 +26,14 @@ sha2 = { workspace = true }
 sha1 = { workspace = true }
 md-5 = { workspace = true }
 hmac = { workspace = true }
-aes = { workspace = true }
-ctr = { workspace = true }
+# `zeroize`: the expanded AES key schedule and the counter state are wiped on drop.
+aes = { workspace = true, features = ["zeroize"] }
+ctr = { workspace = true, features = ["zeroize"] }
 subtle = { workspace = true }
 base64 = { workspace = true }
 hex = { workspace = true }
 getrandom = { workspace = true }
+zeroize = { workspace = true }
 
 [dev-dependencies]
 # Paused time for the deadline and supervisor tests.

@@ -6,8 +6,22 @@
 //! get [`SupervisorConfig::stop_deadline`] to return, then the stragglers are aborted and get
 //! [`SupervisorConfig::stop_grace`] more. A task that still has not stopped (stuck in synchronous
 //! code) is reported, so the binary can exit non-zero. No processes are spawned.
+//!
+//! **Work that will not stop is fatal.** Each run of a task gets a token with its own
+//! [`WorkRegistry`]: the work it starts through
+//! [`run_with_deadline`](super::run_with_deadline) is registered there until it has really
+//! stopped. Before a task is restarted, everything its last run started must have stopped (the
+//! supervisor waits up to [`SupervisorConfig::stop_grace`]). When work did not stop (a deadline
+//! returned [`DeadlineError::Unstoppable`](super::DeadlineError::Unstoppable), whatever the task
+//! did with that error, or left-over work outlived the grace period), the task is **not**
+//! restarted, since a new run would overlap work that may still hold its lease: its status
+//! becomes [`TaskStatus::Fatal`], [`SupervisorHandle::fatal`] names it, and
+//! [`SupervisorHandle::run_until_shutdown`] returns so the binary stops the other tasks and exits
+//! non-zero ([`SupervisorReport::is_clean`] is false). This is MIGRATION.md section 6's rule for
+//! the single-process cron: the process exits and the container restarts it.
 
 use super::deadline::panic_message;
+use super::registry::WorkRegistry;
 use super::shutdown::Shutdown;
 use crate::env::read::{finite_max_or, timer_delay_ms};
 use std::fmt;
@@ -16,6 +30,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 use tokio::task::AbortHandle;
+use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
 /// The reference's default restart delay (`CRON_WORKER_RESTART_DELAY_MS`), in milliseconds.
@@ -68,6 +83,9 @@ pub enum TaskExit {
     Panicked(String),
     /// It was aborted at shutdown after the stop deadline.
     Aborted,
+    /// Work it started did not stop when told to and may still be running. Fatal: see the
+    /// module documentation.
+    Unstoppable,
 }
 
 /// Where a task is in its life.
@@ -79,6 +97,41 @@ pub enum TaskStatus {
     Restarting,
     /// Stopped for shutdown.
     Stopped,
+    /// Not restarted because work it started would not stop. The process must exit.
+    Fatal,
+}
+
+/// A task that may not run again because work it started did not stop and may still be running.
+/// The binary must exit non-zero; the container restarts the process (MIGRATION.md section 6).
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("task {task}: work it started did not stop within its grace period; exiting")]
+pub struct FatalError {
+    /// The task's name.
+    pub task: &'static str,
+}
+
+/// The first fatal task, and a signal for those waiting on it.
+#[derive(Debug, Default)]
+struct FatalState {
+    first: Mutex<Option<FatalError>>,
+    signal: CancellationToken,
+}
+
+impl FatalState {
+    fn report(&self, task: &'static str) {
+        self.first
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get_or_insert(FatalError { task });
+        self.signal.cancel();
+    }
+
+    fn get(&self) -> Option<FatalError> {
+        self.first
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
 }
 
 /// A task's state, for health reporting.
@@ -129,7 +182,8 @@ impl Supervisor {
     }
 
     /// Adds a task. `task` is called for every (re)start with a token that fires on shutdown; the
-    /// task should return when it fires.
+    /// task should return when it fires. Pass that token (or one derived from it) to
+    /// [`run_with_deadline`](super::run_with_deadline), so the work is registered with this run.
     pub fn add<F, Fut, E>(&mut self, name: &'static str, task: F)
     where
         F: Fn(Shutdown) -> Fut + Send + Sync + 'static,
@@ -148,6 +202,7 @@ impl Supervisor {
     pub fn start(self, shutdown: &Shutdown) -> SupervisorHandle {
         let token = shutdown.child();
         let tracker = TaskTracker::new();
+        let fatal = Arc::new(FatalState::default());
         let mut slots = Vec::new();
         for entry in self.entries {
             let slot = Arc::new(Slot {
@@ -163,7 +218,8 @@ impl Supervisor {
                 entry.factory,
                 token.clone(),
                 Arc::clone(&slot),
-                self.config.restart_delay,
+                self.config,
+                Arc::clone(&fatal),
             ));
             slots.push(slot);
         }
@@ -173,6 +229,7 @@ impl Supervisor {
             token,
             tracker,
             slots,
+            fatal,
         }
     }
 }
@@ -210,25 +267,59 @@ impl Slot {
     }
 }
 
-async fn supervise(factory: TaskFactory, token: Shutdown, slot: Arc<Slot>, delay: Duration) {
+async fn supervise(
+    factory: TaskFactory,
+    token: Shutdown,
+    slot: Arc<Slot>,
+    config: SupervisorConfig,
+    fatal: Arc<FatalState>,
+) {
     loop {
         if token.is_triggered() {
             slot.update(|state| state.status = TaskStatus::Stopped);
             return;
         }
         slot.update(|state| state.status = TaskStatus::Running);
+        // Everything this run starts through `run_with_deadline` is registered here, and so is
+        // the run itself.
+        let registry = WorkRegistry::new();
+        let (build, child) = (Arc::clone(&factory), token.with_registry(&registry));
+        let hold = registry.hold();
         // The factory runs inside the task, so a panic while building the future is a task panic.
-        let (build, child) = (Arc::clone(&factory), token.clone());
-        let handle = tokio::spawn(async move { build(child).await });
+        let mut handle = tokio::spawn(async move {
+            let _hold = hold;
+            build(child).await
+        });
         slot.set_current(Some(handle.abort_handle()));
-        let exit = match handle.await {
-            Ok(Ok(())) => TaskExit::Finished,
-            Ok(Err(error)) => TaskExit::Failed(error),
-            Err(error) if error.is_panic() => TaskExit::Panicked(panic_message(error)),
-            Err(_) => TaskExit::Aborted,
+        let exit = tokio::select! {
+            biased;
+            joined = &mut handle => Some(match joined {
+                Ok(Ok(())) => TaskExit::Finished,
+                Ok(Err(error)) => TaskExit::Failed(error),
+                Err(error) if error.is_panic() => TaskExit::Panicked(panic_message(error)),
+                Err(_) => TaskExit::Aborted,
+            }),
+            // The task carries on after its work proved unstoppable: stop it now.
+            () = registry.unstoppable() => None,
         };
+        if exit.is_none() {
+            handle.abort();
+        }
+        // Nothing may start again until everything this run started has stopped.
+        let stopped = !registry.is_unstoppable()
+            && tokio::time::timeout(config.stop_grace, registry.wait())
+                .await
+                .is_ok();
         slot.set_current(None);
-        slot.update(|state| state.last_exit = Some(exit));
+        if !stopped {
+            slot.update(|state| {
+                state.last_exit = Some(TaskExit::Unstoppable);
+                state.status = TaskStatus::Fatal;
+            });
+            fatal.report(slot.snapshot().name);
+            return;
+        }
+        slot.update(|state| state.last_exit = exit);
         if token.is_triggered() {
             slot.update(|state| state.status = TaskStatus::Stopped);
             return;
@@ -238,7 +329,7 @@ async fn supervise(factory: TaskFactory, token: Shutdown, slot: Arc<Slot>, delay
             state.status = TaskStatus::Restarting;
         });
         tokio::select! {
-            () = tokio::time::sleep(delay) => {}
+            () = tokio::time::sleep(config.restart_delay) => {}
             () = token.wait() => {}
         }
     }
@@ -250,6 +341,7 @@ pub struct SupervisorHandle {
     token: Shutdown,
     tracker: TaskTracker,
     slots: Vec<Arc<Slot>>,
+    fatal: Arc<FatalState>,
 }
 
 impl fmt::Debug for SupervisorHandle {
@@ -265,8 +357,18 @@ impl fmt::Debug for SupervisorHandle {
 pub struct SupervisorReport {
     /// Every task's final state.
     pub tasks: Vec<TaskState>,
-    /// Tasks that had not stopped after the deadline and the grace period. Exit non-zero.
+    /// Tasks that had not stopped after the deadline and the grace period, and fatal tasks
+    /// (whose work may still be running). Exit non-zero.
     pub unstoppable: Vec<&'static str>,
+    /// The first task that became fatal, if any. Exit non-zero.
+    pub fatal: Option<FatalError>,
+}
+
+impl SupervisorReport {
+    /// Whether every task stopped and none was fatal. When false, the binary exits non-zero.
+    pub fn is_clean(&self) -> bool {
+        self.unstoppable.is_empty() && self.fatal.is_none()
+    }
 }
 
 impl SupervisorHandle {
@@ -275,9 +377,28 @@ impl SupervisorHandle {
         self.slots.iter().map(|slot| slot.snapshot()).collect()
     }
 
-    /// Waits until shutdown fires, then stops (see [`SupervisorHandle::stop`]).
+    /// The first task that became fatal, if any.
+    pub fn fatal(&self) -> Option<FatalError> {
+        self.fatal.get()
+    }
+
+    /// Resolves once a task becomes fatal (never, if none does).
+    pub async fn wait_fatal(&self) -> FatalError {
+        loop {
+            self.fatal.signal.cancelled().await;
+            if let Some(fatal) = self.fatal.get() {
+                return fatal;
+            }
+        }
+    }
+
+    /// Waits until shutdown fires or a task becomes fatal, then stops every task (see
+    /// [`SupervisorHandle::stop`]). Exit non-zero unless the report [is clean](SupervisorReport::is_clean).
     pub async fn run_until_shutdown(self) -> SupervisorReport {
-        self.token.wait().await;
+        tokio::select! {
+            () = self.token.wait() => {}
+            _ = self.wait_fatal() => {}
+        }
         self.stop().await
     }
 
@@ -301,7 +422,11 @@ impl SupervisorHandle {
             .filter(|task| task.status != TaskStatus::Stopped)
             .map(|task| task.name)
             .collect();
-        SupervisorReport { tasks, unstoppable }
+        SupervisorReport {
+            tasks,
+            unstoppable,
+            fatal: self.fatal.get(),
+        }
     }
 }
 
@@ -469,6 +594,139 @@ mod tests {
         assert_eq!(report.tasks[0].last_exit, Some(TaskExit::Finished));
         assert_eq!(report.tasks[1].last_exit, Some(TaskExit::Aborted));
         assert!(report.tasks.iter().all(|task| task.restarts == 0));
+    }
+
+    /// Blocking work under `run_with_deadline` that ignores its token for `ms` milliseconds.
+    async fn stubborn_work(token: &Shutdown, limit_ms: u64, grace_ms: u64, ms: u64) {
+        let deadline = crate::runtime::Deadline {
+            limit: Duration::from_millis(limit_ms),
+            grace: Duration::from_millis(grace_ms),
+        };
+        let result = crate::runtime::run_with_deadline(token, deadline, move |scope| async move {
+            let _ = scope
+                .spawn_blocking(move || std::thread::sleep(Duration::from_millis(ms)))
+                .await;
+        })
+        .await;
+        assert_eq!(result, Err(crate::runtime::DeadlineError::Unstoppable));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn unstoppable_work_is_fatal_and_not_restarted() {
+        let (starts, seen) = counter();
+        let mut supervisor = Supervisor::new(SupervisorConfig {
+            restart_delay: Duration::from_millis(10),
+            stop_deadline: Duration::from_secs(1),
+            stop_grace: Duration::from_millis(50),
+        });
+        supervisor.add("lease-worker", move |token: Shutdown| {
+            starts.fetch_add(1, Ordering::SeqCst);
+            async move {
+                stubborn_work(&token, 10, 10, 400).await;
+                // The worker flattens the error to text, as most workers will.
+                Err::<(), _>("work did not stop".to_owned())
+            }
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        let fatal = tokio::time::timeout(Duration::from_secs(5), handle.wait_fatal())
+            .await
+            .unwrap();
+        assert_eq!(fatal.task, "lease-worker");
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(
+            seen.load(Ordering::SeqCst),
+            1,
+            "restarted over the survivor"
+        );
+        let state = &handle.snapshot()[0];
+        assert_eq!(state.restarts, 0);
+        assert_eq!(state.status, TaskStatus::Fatal);
+        assert_eq!(state.last_exit, Some(TaskExit::Unstoppable));
+        // The binary's loop: returns on the fatal task without any shutdown signal.
+        let report = tokio::time::timeout(Duration::from_secs(5), handle.run_until_shutdown())
+            .await
+            .unwrap();
+        assert!(!report.is_clean());
+        assert_eq!(report.fatal, Some(fatal));
+        assert_eq!(report.unstoppable, vec!["lease-worker"]);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_task_that_swallows_unstoppable_is_stopped_and_fatal() {
+        let mut supervisor = Supervisor::new(SupervisorConfig {
+            restart_delay: Duration::from_millis(10),
+            stop_deadline: Duration::from_secs(1),
+            stop_grace: Duration::from_millis(50),
+        });
+        supervisor.add("carries-on", |token: Shutdown| async move {
+            stubborn_work(&token, 10, 10, 300).await;
+            // Ignores the error and keeps going, never returning.
+            std::future::pending::<Result<(), String>>().await
+        });
+        supervisor.add("healthy", |token: Shutdown| async move {
+            token.wait().await;
+            Ok::<(), String>(())
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        let report = tokio::time::timeout(Duration::from_secs(5), handle.run_until_shutdown())
+            .await
+            .unwrap();
+        assert_eq!(report.fatal.map(|fatal| fatal.task), Some("carries-on"));
+        assert_eq!(report.tasks[0].status, TaskStatus::Fatal);
+        assert_eq!(report.tasks[1].status, TaskStatus::Stopped);
+        assert_eq!(report.unstoppable, vec!["carries-on"]);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_restart_waits_for_work_left_by_the_previous_run() {
+        let running = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let overlapped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (starts, seen) = counter();
+        let mut supervisor = Supervisor::new(SupervisorConfig {
+            restart_delay: Duration::from_millis(10),
+            stop_deadline: Duration::from_secs(1),
+            stop_grace: Duration::from_secs(2),
+        });
+        let (flag, overlap) = (Arc::clone(&running), Arc::clone(&overlapped));
+        supervisor.add("worker", move |token: Shutdown| {
+            if flag.load(Ordering::SeqCst) {
+                overlap.store(true, Ordering::SeqCst);
+            }
+            let run = starts.fetch_add(1, Ordering::SeqCst);
+            let flag = Arc::clone(&flag);
+            async move {
+                if run > 0 {
+                    token.wait().await;
+                    return Ok(());
+                }
+                let deadline = crate::runtime::Deadline {
+                    limit: Duration::from_secs(60),
+                    grace: Duration::from_secs(1),
+                };
+                let work =
+                    crate::runtime::run_with_deadline(&token, deadline, move |scope| async move {
+                        let _ = scope
+                            .spawn_blocking(move || {
+                                flag.store(true, Ordering::SeqCst);
+                                std::thread::sleep(Duration::from_millis(200));
+                                flag.store(false, Ordering::SeqCst);
+                            })
+                            .await;
+                    });
+                // The worker gives up on the work early (it loses a select) and fails.
+                let _ = tokio::time::timeout(Duration::from_millis(20), work).await;
+                Err::<(), _>("gave up".to_owned())
+            }
+        });
+        let handle = supervisor.start(&Shutdown::new());
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        assert_eq!(seen.load(Ordering::SeqCst), 2);
+        assert!(
+            !overlapped.load(Ordering::SeqCst),
+            "restarted while the previous run's work was still running"
+        );
+        assert_eq!(handle.snapshot()[0].restarts, 1);
+        assert!(handle.stop().await.is_clean());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

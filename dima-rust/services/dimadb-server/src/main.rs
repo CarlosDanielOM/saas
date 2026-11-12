@@ -47,25 +47,21 @@ async fn run() -> anyhow::Result<()> {
 
     let shutdown = Shutdown::new();
     let signals = shutdown.clone();
-    let token = tokio_util::sync::CancellationToken::new();
-    let stop = token.clone();
     tokio::spawn(async move {
         match dima_core::runtime::shutdown::stop_signal().await {
             Ok(signal) => eprintln!("dimadb: {signal:?}, shutting down"),
             Err(error) => eprintln!("dimadb: signal handlers unavailable: {error}"),
         }
         signals.trigger();
-        stop.cancel();
     });
     dima_web::serve(
         listener,
         app.clone(),
-        token,
+        shutdown.cancellation_token(),
         dima_web::ServeOptions::default(),
     )
     .await?;
     app.state().redis.clear();
     app.state().mongo.clear();
-    let _ = shutdown;
     Ok(())
 }

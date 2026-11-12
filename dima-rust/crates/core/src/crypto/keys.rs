@@ -4,7 +4,7 @@
 
 use super::digest::{constant_time_eq, hmac_sha256, md5, sha256};
 use super::encoding::decode_hex_lenient;
-use crate::random::{Random, RandomError};
+use crate::random::{RandomError, SecureRandom};
 use crate::secret::SecretString;
 use serde_json::Value;
 
@@ -22,7 +22,7 @@ pub fn sha256_base64url(value: &str) -> String {
 
 /// The OAuth server's `secret(prefix)`: `prefix` + 32 random bytes as base64url (43 characters).
 /// Access tokens use `dima_at_`, refresh tokens `dima_rt_`; request ids and codes no prefix.
-pub fn oauth_secret(random: &dyn Random, prefix: &str) -> Result<String, RandomError> {
+pub fn oauth_secret(random: &dyn SecureRandom, prefix: &str) -> Result<String, RandomError> {
     Ok(format!("{prefix}{}", random.base64url_token(32)?))
 }
 
@@ -48,8 +48,14 @@ pub fn credit_gift_id(user_id: &str, request_id: &str) -> String {
 /// `sha256(JSON.stringify(value)).hex` for idempotency, receipt and catalog ids. `value` must be
 /// shaped as the TypeScript producer's object (see `dima_text::to_js_json`); cut the result for
 /// the 12- and 24-character catalog digests.
+///
+/// Keys are written in JavaScript's enumeration order (`dima_text::js_key_order`: array-index
+/// keys such as `"2"` and `"10"` first, in numeric order, then the rest in insertion order), so a
+/// map built in Rust hashes as the same object built in JavaScript.
 pub fn json_sha256_hex(value: &Value) -> String {
-    sha256(dima_text::to_js_json(value)).hex()
+    let mut ordered = value.clone();
+    dima_text::js_key_order(&mut ordered);
+    sha256(dima_text::to_js_json(&ordered)).hex()
 }
 
 /// The 24 hex digits of an ObjectId made from `sha256(identity).hex` (follow-defense attack log
@@ -146,6 +152,30 @@ pub fn verify_trace_signature(
 mod tests {
     use super::*;
     use crate::secret::SecretBytes;
+
+    #[test]
+    fn json_hashes_use_javascript_key_order_for_maps_built_in_rust() {
+        // Built in Rust in insertion order; JavaScript enumerates array-index keys first.
+        let mut nested = serde_json::Map::new();
+        for (key, value) in [("1", "x"), ("a", "y"), ("0", "z"), ("01", "w")] {
+            nested.insert(key.to_owned(), Value::from(value));
+        }
+        let mut item = serde_json::Map::new();
+        item.insert("9".to_owned(), Value::from(1));
+        item.insert("c".to_owned(), Value::from(2));
+        let mut root = serde_json::Map::new();
+        root.insert("b".to_owned(), Value::from(1));
+        root.insert("10".to_owned(), Value::from(2));
+        root.insert("2".to_owned(), Value::from(3));
+        root.insert("nested".to_owned(), Value::Object(nested));
+        root.insert("list".to_owned(), Value::Array(vec![Value::Object(item)]));
+        // Node: sha256(JSON.stringify({b:1,10:2,2:3,nested:{1:"x",a:"y",0:"z","01":"w"},list:[{9:1,c:2}]}))
+        // of `{"2":3,"10":2,"b":1,"nested":{"0":"z","1":"x","a":"y","01":"w"},"list":[{"9":1,"c":2}]}`.
+        assert_eq!(
+            json_sha256_hex(&Value::Object(root)),
+            "6f713acf6dacb22678065191ee2275aa86f2e0c30bac08e2f6cdc6df5037d4f8"
+        );
+    }
 
     #[test]
     fn overlay_tokens() {

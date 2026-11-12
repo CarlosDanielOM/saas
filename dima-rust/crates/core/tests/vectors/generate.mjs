@@ -7,8 +7,9 @@
 //   node dima-rust/crates/core/tests/vectors/generate.mjs --verify-rust <file>
 //       Second step of the JWT round trip: `tools/cargo test -p dima-core --test vectors` writes
 //       the tokens Rust signed (plus the options and clock it used) to a file under cargo's
-//       CARGO_TARGET_TMPDIR and prints its path; this checks every one with `jsonwebtoken.verify`
-//       and exits non-zero on any disagreement.
+//       CARGO_TARGET_TMPDIR and runs this on it (skipping, with a message, when node or the
+//       modules are missing; DIMA_REQUIRE_NODE=1 makes that a failure); this checks every one
+//       with `jsonwebtoken.verify` and exits non-zero on any disagreement.
 //
 // Packages come from dimabot/node_modules (the versions production runs). A worktree without
 // node_modules can point at another checkout with DIMABOT_NODE_MODULES=/path/to/node_modules.

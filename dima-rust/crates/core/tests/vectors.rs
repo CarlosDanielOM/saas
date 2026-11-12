@@ -1,7 +1,10 @@
 //! Asserts every golden vector written by `tests/vectors/generate.mjs` (real Node, production
 //! packages). The JWT round trip has a second step: `jwt_rust_signed_tokens_for_node` writes the
-//! tokens Rust signs to a file and prints the `node … --verify-rust <file>` command that checks
-//! them with `jsonwebtoken` (see the script's header).
+//! tokens Rust signs to a file and has `node … --verify-rust <file>` check them with
+//! `jsonwebtoken` (see the script's header). That step needs `node` and the production
+//! `node_modules`: from `DIMABOT_NODE_MODULES`, this checkout's `dimabot/node_modules`, or the
+//! main checkout's when this is a git worktree. Without them it is skipped with a message on
+//! stderr; set `DIMA_REQUIRE_NODE=1` to make a skip a failure.
 // Test helpers outside `#[test]` functions: a malformed vector file should fail loudly.
 #![allow(clippy::panic)]
 
@@ -235,28 +238,29 @@ fn credential_cipher() {
     }
     let cipher =
         CredentialCipher::new(text(&file["key"])).unwrap_or_else(|error| panic!("{error}"));
+    // Rust encrypting with Node's IVs is checked by the cipher's unit tests (`encrypt_with_iv`
+    // exists only with the `test-util` feature); here, Node encrypts and Rust decrypts.
     for row in rows(&file, "encrypt") {
         let plaintext = text(&row["text"]);
-        let iv: [u8; 16] = decode_hex_lenient(text(&row["iv"]))
-            .try_into()
-            .unwrap_or_else(|_| panic!("iv"));
-        let stored = cipher
-            .encrypt_with_iv(plaintext, iv)
-            .unwrap_or_else(|error| panic!("{error}"));
         let expected: StoredCredential =
             serde_json::from_value(row["stored"].clone()).unwrap_or_else(|error| panic!("{error}"));
-        check.eq(
-            format!("encrypt {plaintext:?}"),
-            (&stored.iv, &stored.content),
-            (&expected.iv, &expected.content),
-        );
-        // Node encrypts, Rust decrypts.
         let back = cipher
             .decrypt(&expected)
             .unwrap_or_else(|error| panic!("{error}"));
         check.eq(
             format!("decrypt {plaintext:?}"),
             back,
+            (!plaintext.is_empty()).then(|| plaintext.to_owned()),
+        );
+        // A fresh IV from the system generator round-trips too.
+        let fresh = cipher
+            .encrypt(plaintext, &dima_core::SystemRandom)
+            .unwrap_or_else(|error| panic!("{error}"));
+        check.eq(
+            format!("round trip {plaintext:?}"),
+            cipher
+                .decrypt(&fresh)
+                .unwrap_or_else(|error| panic!("{error}")),
             (!plaintext.is_empty()).then(|| plaintext.to_owned()),
         );
     }
@@ -687,7 +691,59 @@ fn jwt_vectors() {
     check.finish();
 }
 
-/// Step two of the round trip: tokens signed here, for `jsonwebtoken.verify` to check.
+/// The `node_modules` holding the production `jsonwebtoken`, if any.
+fn dimabot_node_modules() -> Option<std::path::PathBuf> {
+    let has_jwt = |dir: &std::path::Path| dir.join("jsonwebtoken/package.json").is_file();
+    if let Some(dir) = std::env::var_os("DIMABOT_NODE_MODULES") {
+        return Some(std::path::PathBuf::from(dir)).filter(|dir| has_jwt(dir));
+    }
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    // crates/core -> dima-rust -> the repository.
+    let here = manifest.join("../../../dimabot/node_modules");
+    if has_jwt(&here) {
+        return Some(here);
+    }
+    // A git worktree has no node_modules of its own: use the main checkout's.
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--path-format=absolute", "--git-common-dir"])
+        .current_dir(manifest)
+        .output()
+        .ok()?;
+    let common = String::from_utf8(output.stdout).ok()?;
+    let main = std::path::Path::new(common.trim())
+        .parent()?
+        .join("dimabot/node_modules");
+    Some(main).filter(|dir| has_jwt(dir))
+}
+
+/// Runs `generate.mjs --verify-rust <rows>`: `Some(exit success, output)`, or `None` when Node or
+/// the modules are not available.
+fn node_verify(rows: &[Value], name: &str) -> Option<(bool, String)> {
+    let modules = dimabot_node_modules()?;
+    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::write(
+        &path,
+        serde_json::to_string_pretty(rows).unwrap_or_default(),
+    )
+    .unwrap_or_else(|error| panic!("{error}"));
+    let script =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/vectors/generate.mjs");
+    let output = std::process::Command::new("node")
+        .arg(script)
+        .arg("--verify-rust")
+        .arg(&path)
+        .env("DIMABOT_NODE_MODULES", modules)
+        .output()
+        .ok()?;
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Some((output.status.success(), text))
+}
+
+/// Step two of the round trip: tokens signed here, checked by `jsonwebtoken.verify` in Node.
 #[test]
 fn jwt_rust_signed_tokens_for_node() {
     let file = load("jwt.json");
@@ -788,17 +844,34 @@ fn jwt_rust_signed_tokens_for_node() {
             "options": { "algorithms": [options.algorithm.name()], "ignoreExpiration": true, "ignoreNotBefore": true },
         }));
     }
-    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("dima-core-rust-signed.json");
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&out).unwrap_or_default(),
-    )
-    .unwrap_or_else(|error| panic!("{error}"));
-    println!(
-        "{} Rust-signed tokens written; check them with:\n  node dima-rust/crates/core/tests/vectors/generate.mjs --verify-rust {}",
-        out.len(),
-        path.display()
+    let Some((ok, report)) = node_verify(&out, "dima-core-rust-signed.json") else {
+        assert!(
+            std::env::var_os("DIMA_REQUIRE_NODE").is_none_or(|value| value.is_empty()),
+            "DIMA_REQUIRE_NODE is set but node or dimabot/node_modules is unavailable"
+        );
+        eprintln!(
+            "SKIPPED: {} Rust-signed tokens not checked by Node (node or the production \
+             jsonwebtoken in dimabot/node_modules not found; set DIMABOT_NODE_MODULES)",
+            out.len()
+        );
+        return;
+    };
+    println!("{report}");
+    assert!(ok, "jsonwebtoken rejected Rust-signed tokens:\n{report}");
+    assert!(
+        report.contains(&format!("{0}/{0} Rust-signed tokens accepted", out.len())),
+        "unexpected Node output:\n{report}"
     );
+    // Negative control: the check must be able to fail. A token whose payload Rust reports
+    // differently, and one with a broken signature, are both mismatches for Node.
+    let mut tampered = vec![out[0].clone(), out[0].clone()];
+    tampered[0]["payload"]["tampered"] = json!(true);
+    let token = text(&tampered[1]["token"]).to_owned();
+    tampered[1]["token"] = json!(format!("{token}x"));
+    let (ok, report) = node_verify(&tampered, "dima-core-rust-signed-tampered.json")
+        .unwrap_or_else(|| panic!("node ran once but not twice"));
+    assert!(!ok, "Node accepted tampered rows:\n{report}");
+    assert_eq!(report.matches("MISMATCH").count(), 2, "{report}");
 }
 
 // ---------------------------------------------------------------- webhooks
