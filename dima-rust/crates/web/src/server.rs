@@ -20,8 +20,12 @@
 //! - **Shutdown**: the server stops accepting, lets open requests finish and waits for upgraded
 //!   sockets and their [`UpgradeGuard`]s, all up to [`ServeOptions::drain_timeout`]; then HTTP
 //!   connections are aborted and every upgraded socket fails its reads and writes (the owner
-//!   then drops it, which closes it). Last, the observers of the apps it served deliver what
-//!   they have queued, for up to two seconds, and are shut down
+//!   then drops it, which closes it). The server does not hold an upgraded socket and cannot
+//!   close it itself: the forced close takes effect when the owner next reads or writes it (a
+//!   pending read or write is woken and fails). An owner that never polls its socket again
+//!   keeps the descriptor open until it drops the socket or the process exits, which it does
+//!   right after `serve` returns. Last, the observers of the apps it served deliver what they
+//!   have queued, for up to two seconds, and are shut down
 //!   ([`crate::ObserverQueue::shutdown`]).
 //! - **Request head**: the request line and all header lines together at most 16 KiB (Node's
 //!   `--max-http-header-size`), and at most 100 header lines; beyond either the answer is
@@ -510,15 +514,20 @@ struct Shared {
 ///   guard.
 /// - Shutdown waits for every guard and every upgraded socket up to
 ///   [`ServeOptions::drain_timeout`]. After it, the socket's reads and writes fail with
-///   `ConnectionAborted` (a pending read is woken); drop it then. `serve` returns at most one
-///   more second later whatever the owners do.
+///   `ConnectionAborted` (a pending read or write is woken); drop it then. `serve` returns at
+///   most one more second later whatever the owners do.
+/// - That forced close takes effect when the owner next reads or writes the socket: the
+///   server does not hold the socket and cannot close it itself. An owner that never polls it
+///   again keeps the descriptor open until it drops the socket, or until the process exits,
+///   which it does right after `serve` returns.
 /// - An owner whose socket's I/O cannot finish on its own (a write pending to a peer that
 ///   stopped reading) can end it before that with [`UpgradeGuard::abort`]: the same failure,
 ///   for this connection only.
 ///
 /// The connection counts against [`ServeOptions::max_streams`] once the `101` is sent, until the
 /// socket is dropped. To refuse before creating a session when that quota is full, reserve the
-/// slot first with the request's [`StreamAdmission`]. A clone is a second guard: shutdown waits for every one.
+/// slot first with the request's [`StreamAdmission`]. A clone is a second guard: shutdown waits
+/// for every one.
 #[derive(Clone)]
 pub struct UpgradeGuard {
     shutdown: CancellationToken,
@@ -702,6 +711,10 @@ impl AsyncWrite for ConnectionIo {
 /// Serves `service` on `listener` until `shutdown` is cancelled, then stops accepting, lets open
 /// requests finish and upgraded connections close (up to [`ServeOptions::drain_timeout`]) and
 /// returns.
+///
+/// At the drain deadline HTTP connections are closed; upgraded sockets are made to fail, which
+/// takes effect when their owners next read or write them (see [`UpgradeGuard`]): an owner that
+/// never polls its socket again keeps the descriptor until the process exits.
 ///
 /// Every request carries the connection's [`PeerAddr`] in its extensions, and a request that
 /// asks for an upgrade also carries hyper's upgrade handle and an [`UpgradeGuard`], so a service

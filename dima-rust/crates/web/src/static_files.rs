@@ -23,6 +23,10 @@ use crate::send::{Sent, resolve_root, serve_static as send_static};
 ///   JavaScript and JSON), `Accept-Ranges: bytes`, `Cache-Control: public, max-age=0`,
 ///   `Last-Modified`, a weak ETag from size and modification time, conditional requests and
 ///   single byte ranges. Nothing is cached: every request looks at the disk.
+/// - A file that exists but cannot be opened (no read permission) answers `HEAD` with `500`,
+///   like `GET`, on the error path (not falling through to the next layer): the file is opened
+///   before any header is set. Express answered `HEAD` from `stat` alone (`200` with the
+///   headers) and failed only the `GET`, while streaming.
 pub fn serve_static(root: impl AsRef<str>) -> ServeStatic {
     ServeStatic {
         root: resolve_root(root.as_ref()),

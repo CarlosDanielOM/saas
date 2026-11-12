@@ -104,6 +104,23 @@
 //! - **Headers after next()**: middleware that sets headers and continues uses
 //!   [`Req::set_header`]; a [`Response`] merges with those headers when it is sent.
 //!
+//! Where serving knowingly differs from Express and Node (each module's documentation has the
+//! rest):
+//!
+//! - **Forced close at shutdown**: after [`ServeOptions::drain_timeout`] an upgraded socket
+//!   fails its reads and writes, but the server does not hold it: the close takes effect when
+//!   its owner next reads or writes it (or drops it). An owner that never polls the socket again
+//!   keeps the descriptor until the process exits, which it does right after [`serve`] returns.
+//!   Node destroyed the sockets itself.
+//! - **HEAD for a file that cannot be opened**: [`serve_static`] and [`Response::send_file`]
+//!   open the file before setting any header, so `HEAD` for a file that exists but cannot be
+//!   opened (no read permission) answers `500` like `GET`. Express answered `HEAD` from `stat`
+//!   alone.
+//! - **Slow readers and long-lived streams**: a write pending without progress for
+//!   [`ServeOptions::write_stall_timeout`] closes the connection; event streams and upgrades
+//!   have their own quota ([`ServeOptions::max_streams`], [`StreamAdmission`]), and a
+//!   connection that served an event stream closes when it ends (`Connection: close`).
+//!
 //! Beyond routing and bodies:
 //!
 //! - **Files**: [`serve_static`] is `express.static(dir)` and [`Response::send_file`] is
