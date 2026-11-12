@@ -1532,6 +1532,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-engine"
+version = "0.1.0"
+dependencies = [
+ "dima-text",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dima-http"
 version = "0.1.0"
 dependencies = [
