@@ -1868,6 +1868,7 @@ dependencies = [
  "dima-text",
  "dima-twitch",
  "futures-util",
+ "garde",
  "mongodb",
  "redis",
  "serde",

@@ -7,7 +7,8 @@
 //! display labels use scalar limits. Queries retain 20 ranks and 2000 chart points.
 //! A batch has a 45-second deadline (lease 60 seconds); cancellation leaves its checkpoint
 //! and lease for replay. No detached heartbeat survives cancellation. Each store call has a
-//! five-second deadline. The caller owns scheduling, stores, clock and owner generation.
+//! five-second default deadline (configurable through 30 seconds, with matching reserved lease
+//! headroom). The caller owns scheduling, stores, clock and owner generation.
 use crate::activity_projection::{Activity, Projection, hash};
 use crate::{Error, bounded};
 use bson::{Bson, DateTime, Document, doc, oid::ObjectId};
@@ -150,7 +151,7 @@ pub struct Activities {
 impl Activities {
     pub fn new(store: MongoStore, clock: Arc<dyn Clock>, config: Config) -> Result<Self, Error> {
         if config.store_deadline.is_zero()
-            || config.store_deadline > Duration::from_secs(5)
+            || config.store_deadline > Duration::from_secs(30)
             || config.batch_deadline.is_zero()
             || config.batch_deadline > Duration::from_secs(45)
         {
@@ -191,6 +192,19 @@ impl Activities {
         upsert: bool,
         production_widths: bool,
     ) -> Result<UpdateOutcome, Error> {
+        self.update_observed(info, filter, update, upsert, production_widths, true)
+            .await
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn update_observed(
+        &self,
+        info: &'static CollectionInfo,
+        filter: Document,
+        update: Document,
+        upsert: bool,
+        production_widths: bool,
+        observe: bool,
+    ) -> Result<UpdateOutcome, Error> {
         // The projector that runs in production is native Rust and stores int64 buckets and
         // double counters; its port keeps those types instead of the ones Node would choose.
         let mut ctx = WriteContext::new(self.clock.now_ms());
@@ -216,7 +230,9 @@ impl Activities {
             );
         }
         let result = bounded(self.config.store_deadline, writes.update_one(&prepared)).await?;
-        self.after_write().await;
+        if observe {
+            self.after_write().await;
+        }
         Ok(result)
     }
     async fn find(
@@ -308,9 +324,9 @@ impl Activities {
                 tokio::select! {
                     result = &mut work => break result,
                     _ = tokio::time::sleep(Duration::from_secs(10)) => {
-                        let renewed = self.update(&stream_activity_states::INFO,
+                        let renewed = self.update_observed(&stream_activity_states::INFO,
                             doc! {"_id": STATE, "owner": owner},
-                            doc! {"$set": {"leaseUntil": DateTime::from_millis(self.clock.now_ms()+60_000)}}, false, true).await?;
+                            doc! {"$set": {"leaseUntil": DateTime::from_millis(self.clock.now_ms()+60_000)}}, false, true, false).await?;
                         if renewed.matched == 0 {break Err(Error::Invalid("Timeline projection lease lost".into()));}
                     }
                 }
@@ -334,7 +350,7 @@ impl Activities {
         }
     }
     async fn assert_owner(&self, owner: &str) -> Result<(), Error> {
-        if self.find(stream_activity_states::COLLECTION,doc!{"_id":STATE,"owner":owner,"leaseUntil":{"$gt":DateTime::from_millis(self.clock.now_ms()+5000)}},doc!{},1,1500).await?.is_empty() {return Err(Error::Invalid("Timeline projection lease lost".into()));}
+        if self.find(stream_activity_states::COLLECTION,doc!{"_id":STATE,"owner":owner,"leaseUntil":{"$gt":DateTime::from_millis(self.clock.now_ms()+self.config.store_deadline.as_millis() as i64)}},doc!{},1,1500).await?.is_empty() {return Err(Error::Invalid("Timeline projection lease lost".into()));}
         Ok(())
     }
     async fn project_owned(
