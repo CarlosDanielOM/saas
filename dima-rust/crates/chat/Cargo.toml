@@ -1,0 +1,13 @@
+[package]
+name = "dima-chat"
+description = "The bot: EventSub webhook ingress, the chat message handler, EventSub handlers, built-in chat commands, bot runtime metrics and product events."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-actions = { workspace = true }
