@@ -218,6 +218,27 @@ as it goes.
 - Not ported: AI code execution (Deno sandbox), about 30 unreachable files listed in `modules.md`
   (confirmed dead before each is skipped).
 
+## The upper layers (from 2026-11-12)
+
+The plan for everything not yet ported is `upper-layers.md`: 405 TypeScript files and 70,067 lines in 76
+packages (ids `P4-...`) in eight waves, with the crates, the routes, the binaries and the first vertical slice (a
+custom command answered by the bot). Its packages are tracked there and in the commit log; this file keeps the
+packages of the lower layers, the decisions and the cutover steps. The lead's decisions on its open questions:
+the crate map of its section 2.3 is adopted (`dima-features` below the command host, a socket-owning
+`dima-realtime` above it, new `dima-moderation`, `dima-recap`, `dima-routes`); the EventSub test route keeps
+running the bot's handler inside the API; the restore-moderator loop runs in the cron only; the EventSub ingress
+answers 2xx for an event that can never be valid and keeps it in a dead-letter record; `ChannelGuard::self_only()`
+is added for the routes that admit the channel itself only; calls from the bot to the API stay HTTP in the first
+cut; the bot drains and exits on SIGTERM. Not to port (69 files, 6,331 lines, each with its evidence in the plan):
+dead files, entry scripts, the Deno tool, the timed VIP redemption, type-only files.
+
+Waiting for the owner: whether `POST /speech/:channelID` (no authentication: anyone can make a channel with TTS
+on speak a text and spend its credits) is patched in production before the cutover (Rust requires a service
+credential on it); the same for `POST /overlays/furry/:channelID` and `POST /users/premium`; whether temporary
+moderators and the DimaFX extension are still wanted; two one-off scripts with rows left on the copy
+(`migrate_ast_variables_global` 9, `cleanup_orphaned_clip_recommendations` 19) to run in production before the
+cutover; `GET /admin/read-file` to drop.
+
 ## Owner decisions on reference behaviour (2026-11-12)
 
 - **Timed VIP redemption: dropped.** A channel-point reward that grants VIP for a time never works in production (the stored document lacks a required field, so nothing is granted or recorded, and the `vips` collection is empty). The owner: "that can go, we have the `$(vip)` function that handles it better". Rust keeps the permanent VIP redemption; a reward set up as timed is refused before any write or call to Twitch (the reference changes the reward's cost first and then fails); `unvip_expired_user` and its trigger on stream events are removed. To do with the package that ports the redemption handler: remove `crates/twitch/src/functions/redemptions/unvipexpired.rs`, the timed branch of `vip.rs` and their tests.
