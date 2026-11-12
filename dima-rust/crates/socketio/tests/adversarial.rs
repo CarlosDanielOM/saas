@@ -2055,6 +2055,168 @@ async fn a_recovery_the_check_now_refuses_does_not_get_the_session() {
     }
 }
 
+/// `/q`: the check counts its calls, refuses `deny`, and verifies `user` as the owner; the
+/// recovery hook refuses `revoked`.
+#[derive(Default)]
+struct Rechecked {
+    checks: std::sync::atomic::AtomicUsize,
+}
+
+impl Namespace for Rechecked {
+    type Data = String;
+
+    async fn check(&self, handshake: &Handshake, _nsp: &str) -> Result<String, ConnectError> {
+        self.checks
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if handshake.auth().contains_key("deny") {
+            return Err(ConnectError::new("denied").with_data(json!({"why": "asked"})));
+        }
+        let user = handshake.auth().get("user").and_then(Value::as_str);
+        Ok(user.unwrap_or("nobody").to_owned())
+    }
+
+    fn owner(&self, data: &String) -> dima_socketio::Owner {
+        dima_socketio::Owner::verified(data.as_str())
+    }
+
+    async fn recheck(
+        &self,
+        handshake: &Handshake,
+        _nsp: &str,
+        _data: &String,
+    ) -> Result<(), ConnectError> {
+        if handshake.auth().contains_key("revoked") {
+            return Err(ConnectError::new("revoked"));
+        }
+        Ok(())
+    }
+
+    async fn on_connect(&self, socket: Socket<String>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// `/q2`: the same check, without a recovery hook of its own.
+#[derive(Default)]
+struct PlainCheck(Rechecked);
+
+impl Namespace for PlainCheck {
+    type Data = String;
+
+    async fn check(&self, handshake: &Handshake, nsp: &str) -> Result<String, ConnectError> {
+        self.0.check(handshake, nsp).await
+    }
+
+    fn owner(&self, data: &String) -> dima_socketio::Owner {
+        self.0.owner(data)
+    }
+
+    async fn on_connect(&self, socket: Socket<String>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// H7 (re-check of 2026-11-12): a recovery runs the check once, and its first refusal is the
+/// answer. A recovering client the check now refuses gets exactly what an unknown session gets
+/// (the check's CONNECT_ERROR); one that the check admits but whose recovery is refused (the
+/// namespace's recovery hook, or the check now naming another owner) connects fresh, exactly
+/// as an unknown session does. Before, a refused recovery ran the check a second time.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_failed_recovery_runs_the_check_once_and_answers_as_an_unknown_session() {
+    let slot: Arc<Mutex<Option<NamespaceRef<Rechecked>>>> = Arc::default();
+    let declared = Arc::clone(&slot);
+    let slot2: Arc<Mutex<Option<NamespaceRef<PlainCheck>>>> = Arc::default();
+    let declared2 = Arc::clone(&slot2);
+    let server = TestServer::start_with(Options::default(), Runtime::default(), move |builder| {
+        let q = builder
+            .namespace("/q", NamespaceOptions::default(), Rechecked::default())
+            .unwrap();
+        *declared.lock().unwrap() = Some(q);
+        let q2 = builder
+            .namespace("/q2", NamespaceOptions::default(), PlainCheck::default())
+            .unwrap();
+        *declared2.lock().unwrap() = Some(q2);
+    })
+    .await;
+    let q = slot.lock().unwrap().take().unwrap();
+    let q2 = slot2.lock().unwrap().take().unwrap();
+    let io = server.io.clone();
+    let checks = || q.handler().checks.load(std::sync::atomic::Ordering::SeqCst);
+
+    // Without a hook of its own (where the old default re-ran the check): a refused recovery
+    // runs the check once (it ran twice).
+    {
+        let mut client = Ws::open(server.addr).await;
+        let (_, pid, offset) = join_owned(&mut client, "/q2", &json!({"user": "a"})).await;
+        client.drop_connection();
+        eventually("the session kept", || io.stats().sessions == 1).await;
+        let plain_checks = || {
+            q2.handler()
+                .0
+                .checks
+                .load(std::sync::atomic::Ordering::SeqCst)
+        };
+        let before = plain_checks();
+        let mut back = Ws::open(server.addr).await;
+        let auth = json!({"pid": pid, "offset": offset, "deny": 1, "user": "a"});
+        assert!(back.join("/q2", &auth).await.is_err());
+        assert_eq!(plain_checks() - before, 1, "the check ran once");
+        back.close().await;
+        eventually("the session dropped", || io.stats().sessions == 0).await;
+    }
+    // A session to come back to, as user `a`.
+    let session = || async {
+        let mut client = Ws::open(server.addr).await;
+        let (sid, pid, offset) = join_owned(&mut client, "/q", &json!({"user": "a"})).await;
+        client.drop_connection();
+        eventually("the session kept", || io.stats().sessions == 1).await;
+        (sid, pid, offset)
+    };
+    let attempt = |auth: Value| async move {
+        let mut client = Ws::open(server.addr).await;
+        let before = checks();
+        let answer = client.join("/q", &auth).await;
+        // Leaves the namespace (not recoverable): no session is kept for a fresh socket.
+        client.send("41/q,").await;
+        client.close().await;
+        (answer, checks() - before)
+    };
+
+    // The check refuses: unknown session and known session answer the same, one check each.
+    let (_, pid, offset) = session().await;
+    let unknown = attempt(json!({"pid": "forged", "offset": offset, "deny": 1, "user": "a"})).await;
+    let known = attempt(json!({"pid": pid, "offset": offset, "deny": 1, "user": "a"})).await;
+    assert_eq!(
+        unknown.0,
+        Err(json!({"message": "denied", "data": {"why": "asked"}}))
+    );
+    assert_eq!(known, unknown);
+    assert_eq!(known.1, 1, "the check ran once");
+    eventually("the session dropped", || io.stats().sessions == 0).await;
+
+    // The check admits, the recovery is refused (by the hook, or another owner): a fresh
+    // connect, as for an unknown session, with one check.
+    for refused in [json!({"revoked": 1, "user": "a"}), json!({"user": "b"})] {
+        let (sid, pid, offset) = session().await;
+        let mut auth = refused.clone();
+        auth["offset"] = json!(offset);
+        auth["pid"] = json!("forged");
+        let (unknown, unknown_checks) = attempt(auth.clone()).await;
+        auth["pid"] = json!(pid);
+        let (known, known_checks) = attempt(auth).await;
+        for answer in [&unknown, &known] {
+            let answer = answer.as_ref().unwrap();
+            let keys: Vec<&String> = answer.as_object().unwrap().keys().collect();
+            assert_eq!(keys, ["sid", "pid"]);
+            assert_ne!(answer["sid"], json!(sid));
+            assert_ne!(answer["pid"], json!(pid));
+        }
+        assert_eq!((unknown_checks, known_checks), (1, 1), "{refused}");
+        eventually("the session dropped", || io.stats().sessions == 0).await;
+    }
+    server.stop().await;
+}
+
 /// Finding 14: shutdown has one deadline and proves it: with a client that stopped reading
 /// (output queued in the transport), handlers that never end on their own, and a polling
 /// session, it returns within `shutdown_drain` (no extra second), and its report says every

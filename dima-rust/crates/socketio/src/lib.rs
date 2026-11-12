@@ -124,9 +124,11 @@
 //!   spare capacity given back): measuring takes the locks inside the data, never while the
 //!   crate holds one of its own, and `Socket::disconnect_connection` closes the connection on
 //!   its task, so a handler holding its data's lock cannot deadlock with it.
-//! - **Recovery re-runs the check** ([`Namespace::recheck`], on by default; the reference skips
-//!   its middlewares): a namespace whose check cannot pass twice (a one-time ticket) sets
-//!   [`NamespaceOptions::recheck_recovery`] to `false` or overrides `recheck`. [`Dispatch::Sequential`] (the default)
+//! - **Recovery runs the check** (on by default; the reference skips its middlewares): once
+//!   per connect, recovering or not, and a session comes back only if the check names its
+//!   owner ([`Namespace::owner`]) and [`Namespace::recheck`] accepts; any refusal answers as an
+//!   unknown session. A namespace whose check cannot pass twice (a one-time ticket) sets
+//!   [`NamespaceOptions::recheck_recovery`] to `false`. [`Dispatch::Sequential`] (the default)
 //!   handles one event at a time; use [`Dispatch::Concurrent`] where a slow handler (speech
 //!   preview) must not hold up the next event, and lock in the data where order matters.
 //! - **Disconnected sockets.** An emit on a socket that has left is never written to the
