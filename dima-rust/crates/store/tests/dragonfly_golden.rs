@@ -1,6 +1,11 @@
 //! Replays `tests/dragonfly_golden/golden.json` (written by `record.mjs` with node-redis 5.12.1 and
 //! the reference's Lua) through `dima_store::dragonfly` and compares bytes.
 //!
+//! What these recordings pin as contract is the Lua scripts' effects and the reply shapes. Queue
+//! items and pub/sub envelopes are Rust's own encoding after the one cutover (`MIGRATION.md`
+//! section 3): their cases record that the encoding currently equals Node's, which is incidental.
+//! If Rust's encoding changes on purpose, update those cases; do not bend the encoder back.
+//!
 //! - Offline (always): Rust's encoders give the recorded bytes for the same inputs: cron jobs
 //!   (including the awkward text and JavaScript number formatting), plan versions, the pub/sub
 //!   envelopes.

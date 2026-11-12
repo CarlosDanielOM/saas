@@ -7,9 +7,11 @@
 //! copy ([`QueueItem::parse`]), and every operation that removes, acknowledges or requeues takes
 //! the item itself, never a parsed value.
 //!
-//! Items Rust creates are written with [`QueueItem::encode`]: `JSON.stringify` bytes
-//! ([`dima_text::to_js_json_from`]) of a struct whose fields follow the producer's object, absent
-//! optional fields skipped (`#[serde(skip_serializing_if = "Option::is_none")]`).
+//! Items Rust creates are written with [`QueueItem::encode`]. The encoding is Rust's own (queues
+//! are drained at the cutover, `MIGRATION.md` section 3): compact JSON from one deterministic
+//! writer, so the same value always gives the same bytes. Nothing depends on it matching what
+//! Node's `JSON.stringify` would write; that it currently does for plain values is incidental.
+//! What matters is that acknowledgement and requeue use the popped bytes, never a re-encoding.
 //!
 //! Direction is part of the contract and differs per queue (ledger, "Queues"); [`presets`] lists
 //! the reference's list queues. Two are newest-first (`LPUSH` + head pop): `cron:jobs:queue` and
@@ -45,14 +47,15 @@ impl QueueItem {
         Self { raw }
     }
 
-    /// A new item Rust creates: `JSON.stringify` bytes of `value` (see the module docs).
+    /// A new item Rust creates: compact JSON of `value`, Rust's own deterministic encoding (see
+    /// the module docs).
     pub fn encode<T: serde::Serialize + ?Sized>(value: &T) -> Result<Self> {
         Ok(Self {
             raw: to_js_json_from(value)?,
         })
     }
 
-    /// A new item from a JSON value built in Rust, written as `JSON.stringify` would write it.
+    /// A new item from a JSON value built in Rust, with the same writer as [`Self::encode`].
     /// Prefer [`Self::encode`] with a struct; this is for producers that spread free-form data.
     pub fn encode_value(value: &serde_json::Value) -> Self {
         Self {
@@ -453,8 +456,9 @@ mod tests {
         attempt: f64,
     }
 
+    /// Pins Rust's own encoding (stable bytes for the same value), not Node's.
     #[test]
-    fn encode_writes_javascript_bytes() {
+    fn encode_is_deterministic_compact_json() {
         let item = QueueItem::encode(&Job {
             id: "a\"/\u{2028}é",
             absent: None,

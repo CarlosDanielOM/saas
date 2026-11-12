@@ -1,11 +1,16 @@
-//! Dragonfly (Redis protocol) access that interoperates byte for byte with the TypeScript
-//! processes (node-redis 5) sharing the same keys, queues, channels and Lua scripts.
+//! Dragonfly (Redis protocol) access for the Rust backend: commands, pub/sub, Lua scripts,
+//! queues. The bot, the API and every cron worker share it.
 //!
-//! The specification is `dima-rust/ledger/dragonfly.md` (cross-process flows, byte-sensitive
-//! items, the node-redis / redis-rs reply differences and the rules a Rust implementation must
-//! follow) and charter data rules 6 to 8. `tests/dragonfly_golden/record.mjs` records what
-//! node-redis and the reference's Lua actually store; the `dragonfly_*` tests replay it and run a
-//! Node process beside Rust on the same keys.
+//! After the one cutover only Rust reads and writes Dragonfly (`MIGRATION.md` section 3,
+//! "Dragonfly is internal"), so queue items and pub/sub payloads are Rust's own encoding; nothing
+//! here has to produce the bytes Node would have produced. What still matches the reference: the
+//! Lua scripts (verbatim, data rule 7), the reply shapes the ported logic depends on, and the
+//! *carried* key families the porting package names. Within Rust, a value matched by its bytes
+//! (`LREM`, `LPOS`, Lua text comparison) is carried as the bytes that were read (data rule 6).
+//!
+//! The specification is `dima-rust/ledger/dragonfly.md` (flows, key families, reply
+//! differences) and charter data rules 6 to 8. `tests/dragonfly_golden/record.mjs` records what
+//! node-redis and the reference's Lua store; the golden tests pin the scripts and reply shapes.
 //!
 //! - [`config`]: [`DragonflyConfig`], the address built exactly as the reference builds it, and
 //!   the timeout policy.
@@ -13,7 +18,7 @@
 //!   reconnection and a response timeout.
 //! - [`commands`]: typed helpers for the replies where node-redis and redis-rs differ.
 //! - [`blocking`]: [`BlockingConnection`], a cancel-safe dedicated connection for blocking commands.
-//! - [`pubsub`]: [`Subscriber`] (raw, bounded, resubscribing) and the pub/sub manager's envelope.
+//! - [`pubsub`]: [`Subscriber`] (raw, bounded, resubscribing) and the JSON envelope.
 //! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script.
 //! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes.
 //! - [`hooks`]: command spans and connection-error reporting, so telemetry attaches from outside.

@@ -2,11 +2,12 @@
 //! cron_queue.rs`) onto this module's client. TypeScript originals:
 //! `dimabot/src/utils/cron_jobs_queue.ts` and the Redis half of `dimabot/src/utils/durable_cron_jobs.ts`.
 //!
-//! A job travels as the bytes of `JSON.stringify(job)`. Field order is `id, job, requestedAt,
-//! requestedBy?, userID?, accountID?, channelID?, data?, dedupeKey?`; absent fields are omitted;
-//! numbers inside `data` are written as JavaScript writes them. [`CronQueueJob::to_item`] produces
-//! exactly those bytes, and a popped job is carried as its [`QueueItem`] (requeue, dead letter
-//! and `LREM` use the popped bytes).
+//! A job travels as compact JSON in the field order `id, job, requestedAt, requestedBy?, userID?,
+//! accountID?, channelID?, data?, dedupeKey?`, absent fields omitted. The queues are drained at
+//! the cutover, so this is Rust's own encoding ([`CronQueueJob::to_item`], deterministic); it is
+//! not required to equal what Node writes (the golden recordings show it currently does, which
+//! is incidental). A popped job is carried as its [`QueueItem`]: requeue, dead letter and `LREM`
+//! use the popped bytes, never a re-encoding.
 //!
 //! Enqueueing goes through `ENQUEUE_DEDUPLICATED_JOB` (verbatim, `lua/cron_enqueue_deduplicated_job.lua`):
 //! one atomic step sets the dedupe marker (`SET NX EX`), the optional session acceptance marker,

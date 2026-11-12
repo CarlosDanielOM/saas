@@ -27,11 +27,13 @@
 //!
 //! # Envelope layer
 //!
-//! `PubSubManager.publish(channel, data)` sends `JSON.stringify({...data, timestamp: Date.now()})`
-//! and its subscribers `JSON.parse` each message and hand the value to the handler.
-//! [`envelope`] writes the same bytes; [`parse_envelope`] reads them; [`Subscriber::on_json`]
-//! runs a handler per message. Raw publishers (`keywords:changed`, the domain-event wake-ups) add
-//! no envelope: use [`super::Dragonfly::publish`] with their payload.
+//! The reference's `PubSubManager.publish(channel, data)` sends `{...data, timestamp: now}` as
+//! JSON and its subscribers parse each message and hand the value to the handler. [`envelope`]
+//! builds that object, [`parse_envelope`] reads it, [`Subscriber::on_json`] runs a handler per
+//! message. Only Rust publishes and subscribes after the cutover (and every Rust channel name
+//! differs from the TypeScript one), so the bytes are Rust's own encoding; the shape (the spread
+//! keys plus `timestamp`) is what subscribers read. Raw publishers (`keywords:changed`, the
+//! domain-event wake-ups) add no envelope: use [`super::Dragonfly::publish`] with their payload.
 
 use super::client::{Dragonfly, Shared};
 use super::error::{DragonflyError, Result};
@@ -286,7 +288,8 @@ impl Drop for HandlerGuard {
     }
 }
 
-/// `JSON.stringify({...data, timestamp: now_ms})`: the pub/sub manager's message bytes.
+/// `{...data, timestamp: now_ms}` as compact JSON: the envelope's message bytes (Rust's own
+/// encoding, see the module docs).
 ///
 /// `data` must serialise to a JSON object (the reference's parameter type is `object`). Spread
 /// semantics are kept: keys in `data`'s order, array-index keys first; a `timestamp` that `data`

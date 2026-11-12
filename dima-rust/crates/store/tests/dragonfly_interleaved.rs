@@ -1,9 +1,13 @@
 //! TypeScript and Rust on the same keys at the same time. `record.mjs peer` is the TypeScript
 //! side: node-redis 5.12.1, the reference's Lua read from `dimabot/src`, the reference's producers.
 //!
+//! Rust never runs beside TypeScript in production (one cutover, `MIGRATION.md` section 3), so
+//! this is not a compatibility contract. It is kept as an independent check of the reference's
+//! Lua scripts and of claim and acknowledge by the claimed bytes. Queue items and envelopes are
+//! Rust's own encoding; nothing here requires Node to produce the same bytes as Rust.
+//!
 //! - Node pushes, Rust pops, acknowledges and requeues; Node sees the exact bytes.
-//! - Rust pushes, Node claims and acknowledges by value, including by its *own* `JSON.stringify` of
-//!   the same job, which only matches if Rust wrote identical bytes.
+//! - Rust pushes, Node claims and acknowledges by the bytes it claimed.
 //! - Both race the plan fence scripts; Lua's cjson rewrite of the credits value is accepted by
 //!   Rust's read mode with the exact bytes and refused when re-serialised.
 //! - Pub/sub envelopes in both directions.
@@ -241,41 +245,6 @@ async fn rust_pushes_and_node_claims_and_acknowledges_by_value() -> Result<()> {
         .await?;
     ensure!(reply["removed"] == 1);
     ensure!(unb64(&reply["base64"])? == pushed.job.to_item()?.into_bytes());
-
-    // Rust claims; Node acknowledges with its OWN JSON.stringify of the same job. LREM matches
-    // whole elements byte for byte, so this removes the entry only if both writers agree.
-    let queue2 = format!("{p}jobs2");
-    let (input, node_input) = job_input(&queue2, &format!("{p}token-b"), 11);
-    ensure!(
-        cron_queue::enqueue_cron_job(&df, &input, config, NOW_ISO, &uuid(11))
-            .await?
-            .enqueued
-    );
-    let node_json = node
-        .call("job_json", json!({"input": node_input, "uuid": uuid(11)}))
-        .await?;
-    let list = ListQueue::new(Cow::Owned(queue2.clone()), End::Left, End::Left);
-    let processing = ProcessingList::new(Cow::Owned(format!("{p}processing")), End::Right);
-    let mut blocking = df.blocking();
-    let claimed = list
-        .blocking_claim(&mut blocking, &processing, Duration::from_secs(2))
-        .await?
-        .context("claim")?;
-    ensure!(
-        claimed.as_str() == node_json.as_str(),
-        "rust: {:?}\nnode: {node_json}",
-        claimed.as_str()
-    );
-    let removed = node
-        .call(
-            "ack_job",
-            json!({"processing": processing.key(), "input": node_input, "uuid": uuid(11)}),
-        )
-        .await?;
-    ensure!(
-        removed == 1,
-        "Node could not acknowledge Rust's bytes by value"
-    );
 
     // A raw item Rust encodes from a struct is acknowledged by Node by value too.
     let item = QueueItem::encode(&json!({"id": "raw", "text": AWKWARD_TEXT[1]}))?;
