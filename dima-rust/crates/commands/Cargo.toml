@@ -1,6 +1,6 @@
 [package]
 name = "dima-commands"
-description = "Who may run a chat command and when: permissions and roles, keywords, moderation patterns, cooldowns, timer policy."
+description = "Who may run a chat command and when: permissions and roles, keywords, moderation patterns, cooldowns, timer policy; and the runtime that finds commands and keeps their caches."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -10,7 +10,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-dima-text = { workspace = true }
+dima-text = { workspace = true, features = ["collation"] }
 dima-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -25,11 +25,21 @@ regex-automata = { workspace = true, features = ["hybrid", "nfa-backtrack", "dfa
 # The keyword index cache coalesces cold loads (`sync`) and resolves roles concurrently (`macros`).
 tokio = { workspace = true }
 thiserror = { workspace = true }
+# `runtime`: the command lookup and its Dragonfly cache, the availability service, chat history
+# and the role cache loader run against the stores (all layers below this crate, no cycle).
+dima-store = { workspace = true }
+dima-model = { workspace = true }
+# `runtime::availability`: the Helix reward toggle goes through the Twitch crate's wrapper.
+dima-twitch = { workspace = true }
+dima-http = { workspace = true }
+mongodb = { workspace = true }
+redis = { workspace = true }
+futures-util = { workspace = true }
 
 [dev-dependencies]
 dima-core = { workspace = true, features = ["test-util"] }
 tokio = { workspace = true, features = ["test-util"] }
-# tests/real_data.rs only: reads the stored patterns and keywords of the local production copy.
-dima-store = { workspace = true }
-futures-util = { workspace = true }
+dima-http = { workspace = true, features = ["test-util"] }
+dima-twitch = { workspace = true, features = ["test-util"] }
+url = { workspace = true }
 anyhow = { workspace = true }

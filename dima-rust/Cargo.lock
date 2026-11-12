@@ -1584,9 +1584,14 @@ dependencies = [
  "anyhow",
  "bson",
  "dima-core",
+ "dima-http",
+ "dima-model",
  "dima-store",
  "dima-text",
+ "dima-twitch",
  "futures-util",
+ "mongodb",
+ "redis",
  "regex",
  "regex-automata",
  "regex-syntax",
@@ -1594,6 +1599,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "url",
 ]
 
 [[package]]
