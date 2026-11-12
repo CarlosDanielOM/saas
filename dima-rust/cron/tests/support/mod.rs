@@ -100,9 +100,18 @@ impl Stores {
         }))
     }
 
-    /// Drops the database and the keys.
+    /// Drops the database and the keys. A `dima-cron` child may have sent a write it then gave
+    /// up on (a store deadline under load) that the server runs after the drop and that creates
+    /// the database again: the drop is repeated while it reappears within a few seconds.
     pub async fn clean(&self) -> Result<()> {
         self.mongo.database().drop().await?;
+        for _ in 0..12 {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            let names = self.mongo.client().list_database_names().await?;
+            if names.contains(&self.database) {
+                self.mongo.database().drop().await?;
+            }
+        }
         clean_prefix(&self.dragonfly, &self.prefix).await
     }
 
