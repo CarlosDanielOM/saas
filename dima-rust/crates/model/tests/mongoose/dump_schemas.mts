@@ -31,6 +31,10 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/duel/completion.ts', 'DuelModeratorRestore'],
+    ['src/duel/stats.ts', 'DuelResult'],
+    ['src/duel/service.ts', 'DuelWidget'],
+    ['src/roulette/service.ts', 'RouletteChannel'],
     ['src/goals/service.ts', 'ChannelGoals'],
     ['src/goals/service.ts', 'GoalContribution'],
     ['src/goals/service.ts', 'GoalCustomReceipt'],

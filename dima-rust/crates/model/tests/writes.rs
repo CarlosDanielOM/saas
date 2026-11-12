@@ -349,6 +349,104 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("duel_moderator_restores", "typed") => {
+            use dima_model::duel_moderator_restores::*;
+            let input = NewDuelModeratorRestore {
+                id: String::from("seed"),
+                channel: String::from("111"),
+                user_id: Private::new(String::from("222")),
+                due_at: JsNumber(1794392430456.0),
+                lease_until: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("duel_results", "typed") => {
+            use dima_model::duel_results::*;
+            use dima_model::values::Nullable;
+            let input = NewDuelResult {
+                id: String::from("seed"),
+                channel: String::from("111"),
+                winner: Private::new(String::from("viewer")),
+                loser: Private::new(String::from("other")),
+                streamer: Nullable::Null,
+                at: JsNumber(1794392430456.0),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("duel_widgets", "typed") => {
+            use dima_model::duel_widgets::*;
+            let input = NewDuelWidget {
+                id: String::from("seed"),
+                revision: None,
+                settings: Private::new(DuelWidgetSettingsContent(bson::Bson::from(
+                    bson::doc! {"enabled":true,"timeoutEnabled":true,"timeoutSeconds":60_i32,"language":String::from("en")},
+                ))),
+                challenge: Some(Private::new(DuelWidgetChallengeContent(bson::Bson::from(
+                    bson::doc! {"id":String::from("challenge"),"challenger":String::from("viewer"),"opponent":String::from("other"),"expiresAt":1794392430456.0_f64},
+                )))),
+                run: Some(Private::new(DuelWidgetRunContent(bson::Bson::from(
+                    bson::doc! {"id":String::from("run"),"challenger":String::from("viewer"),"opponent":String::from("other"),"phrases":bson::Bson::Array(vec![bson::Bson::from(bson::doc!{"at":1794392430456.0_f64,"text":String::from("héllo 👋🏽 مرحبا שלום é")})]),"completedAt":bson::Bson::Null,"record":bson::Bson::Null},
+                )))),
+                token_hash: None,
+                overlay_token: Some(Private::new(DuelWidgetOverlayTokenContent(
+                    bson::Bson::from(
+                        bson::doc! {"iv":String::from("iv"),"content":String::from("secret")},
+                    ),
+                ))),
+                due_at: None,
+                lease_until: None,
+                stats_revision: None,
+                language_configured: None,
+                receipts: Some(vec![Some(NewDuelWidgetReceiptsEntry {
+                    key: String::from("key"),
+                    fingerprint: String::from("fingerprint"),
+                    at: JsNumber(1794392430456.0),
+                })]),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("roulette_channels", "typed") => {
+            use dima_model::roulette_channels::*;
+            use dima_model::values::Nullable;
+            let input = NewRouletteChannel {
+                actions: Some(Private::new(vec![Some(NewRouletteChannelActionsEntry {
+                    draw_id: String::from("draw"),
+                    roulette_id: String::from("roulette"),
+                    item_id: String::from("item"),
+                    label: Private::new(String::from("héllo 👋🏽 مرحبا שלום é")),
+                    source: Private::new(String::from("$(text héllo 👋🏽 مرحبا שלום é)")),
+                    due_at: JsNumber(1794392430456.0),
+                    status: String::from("pending"),
+                    actor: Some(Private::new(RouletteChannelActionsEntryActorContent(
+                        bson::Bson::from(
+                            bson::doc! {"userId":String::from("111"),"userLogin":String::from("viewer"),"userDisplayName":String::from("héllo 👋🏽 مرحبا שלום é"),"argument":bson::Bson::Null},
+                        ),
+                    ))),
+                    started_at: Some(JsNumber(1794392430456.0)),
+                    finished_at: Some(JsNumber(1794392430456.0)),
+                })])),
+                action_due_at: Some(JsNumber(1794392430456.0)),
+                id: String::from("seed"),
+                revision: JsNumber(1.0),
+                state: Private::new(RouletteChannelStateContent(bson::Bson::from(
+                    bson::doc! {"roulettes":bson::Bson::Array(vec![]),"activeId":bson::Bson::Null,"visible":true,"draw":bson::doc!{"id":String::from("draw"),"completedAt":bson::Bson::Null,"endsAt":1794392430456.0_f64},"history":bson::Bson::Array(vec![]),"hideAt":bson::Bson::Null},
+                ))),
+                token_hash: Nullable::Null,
+                overlay_token: Some(Private::new(RouletteChannelOverlayTokenContent(
+                    bson::Bson::from(
+                        bson::doc! {"iv":String::from("iv"),"content":String::from("secret")},
+                    ),
+                ))),
+                due_at: Nullable::Null,
+                receipts: Some(vec![Some(NewRouletteChannelReceiptsEntry {
+                    key: String::from("key"),
+                    fingerprint: String::from("fingerprint"),
+                    result: String::from("draw"),
+                    at: JsNumber(1794392430456.0),
+                })]),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("channel_goals", "typed") => {
             use dima_model::channel_goals::*;
             let input = NewChannelGoals {

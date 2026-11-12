@@ -15,6 +15,17 @@ fn at() -> DateTime {
 // Each entry names the worker's actual write, including the explicit numeric widths.
 fn writes() -> Vec<(&'static str, Document)> {
     vec![
+        // roulette_completion.rs: state/dueAt completion CAS; epoch fields double,
+        // remaining copies int32, revision increment int32. Actions/tokens untouched.
+        (
+            "roulette_channels",
+            doc! {"$set":{
+            "state":{"roulettes":[{"id":"roulette","items":[{"id":"item","multiplier":1_i32,"copies":["copy"]}],"order":["copy"]}],
+            "activeId":"roulette","visible":true,
+            "draw":{"id":"draw","rouletteId":"roulette","startedAt":1_794_392_429_456.0_f64,"endsAt":1_794_392_430_456.0_f64,"completedAt":1_794_392_430_456.0_f64},
+            "history":[{"id":"draw","startedAt":1_794_392_429_456.0_f64,"endsAt":1_794_392_430_456.0_f64,"completedAt":1_794_392_430_456.0_f64}],"hideAt":1_794_392_435_456.0_f64},
+            "dueAt":1_794_392_435_456.0_f64},"$inc":{"revision":1_i32}},
+        ),
         // stream_activity/projection.rs: Change::update; bucket is i64, inc/seq f64.
         (
             "stream_activity_aggregates",
@@ -293,6 +304,31 @@ async fn native_worker_inserts_and_control_upsert_decode() -> Result<()> {
         let stored = store.documents(controls.name).find_one(doc!{"_id":"control"}).await?.context("control")?;
         assert_eq!(stored.get("ratePerSecond"), Some(&Bson::Int32(5)));
         (controls.decode)(&bson::serialize_to_raw_document_buf(&stored)?)?;
+        Ok(())
+    }).await
+}
+
+#[tokio::test]
+async fn roulette_native_default_upsert_and_hide_decode() -> Result<()> {
+    support::with_store(|store| async move {
+        let info = info("roulette_channels")?;
+        let mut ctx = WriteContext::new(NOW).native_numbers();
+        // roulette_completion.rs:default_document/load, including Node-normalized defaults.
+        let empty = doc! {"roulettes":[],"activeId":null,"visible":false,"draw":null,"history":[],"hideAt":null};
+        let original = doc! {"$setOnInsert":{"actions":[],"actionDueAt":null,"revision":0_i32,"state":empty.clone(),"tokenHash":null,"dueAt":null,"receipts":[]}};
+        let prepared = info.prepare_update(&doc!{"_id":"native"}, original, UpdateOptions::upsert(), &mut ctx)?;
+        assert!(prepared.dropped_paths.is_empty());
+        store.writes(info.name).update_one(&prepared).await?;
+        let stored = store.documents(info.name).find_one(doc!{"_id":"native"}).await?.context("native default")?;
+        assert_eq!(stored.get("revision"), Some(&Bson::Int32(0)));
+        assert_eq!(stored.get("dueAt"), Some(&Bson::Null));
+        (info.decode)(&bson::serialize_to_raw_document_buf(&stored)?)?;
+        let hide = info.prepare_update(&doc!{"_id":"native","revision":0_i32}, doc!{"$set":{"state":empty,"dueAt":null},"$inc":{"revision":1_i32}}, UpdateOptions::default(), &mut ctx)?;
+        store.writes(info.name).update_one(&hide).await?;
+        let stored = store.documents(info.name).find_one(doc!{"_id":"native"}).await?.context("native hide")?;
+        assert_eq!(stored.get("revision"), Some(&Bson::Int32(1)));
+        assert_eq!(stored.get("dueAt"), Some(&Bson::Null));
+        (info.decode)(&bson::serialize_to_raw_document_buf(&stored)?)?;
         Ok(())
     }).await
 }
