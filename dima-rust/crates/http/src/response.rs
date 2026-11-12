@@ -29,6 +29,7 @@ pub(crate) struct Limits {
 /// Dropping the response closes the connection if the body was not read to the end.
 pub struct Response {
     inner: reqwest::Response,
+    url: url::Url,
     info: RequestInfo,
     query: QueryShown,
     limits: Limits,
@@ -60,6 +61,7 @@ impl Response {
         cancel: Cancel,
     ) -> Self {
         Self {
+            url: inner.url().clone(),
             inner,
             info,
             query,
@@ -79,14 +81,20 @@ impl Response {
         attempts: u32,
         refresh_unavailable: bool,
         retried_status: bool,
-        end: EndGuard,
+        end: Option<EndGuard>,
         permit: Option<OwnedSemaphorePermit>,
     ) -> Self {
         self.attempts = attempts;
         self.refresh_unavailable = refresh_unavailable;
         self.retried_status = retried_status;
-        self.end = Some(end);
+        self.end = end;
         self._permit = permit;
+        self
+    }
+
+    /// The URL this answered, for a response rebuilt from buffered parts.
+    pub(crate) fn with_url(mut self, url: url::Url) -> Self {
+        self.url = url;
         self
     }
 
@@ -103,7 +111,7 @@ impl Response {
     /// The request this answers (safe to print), with its redacted query: a provider's secret
     /// parameters are replaced; for a guarded request every value is replaced.
     pub fn info(&self) -> RequestInfo {
-        self.info.clone().with_query(self.inner.url(), &self.query)
+        self.info.clone().with_query(&self.url, &self.query)
     }
 
     /// How many attempts were made.

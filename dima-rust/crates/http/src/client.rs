@@ -46,7 +46,11 @@ impl std::fmt::Debug for Refresh {
 /// [`RetryPolicy::refresh_unauthorized`]).
 pub trait Credential: Send + Sync + std::fmt::Debug {
     /// Called once per 401 before the retry wait, with the attempt number and the value the
-    /// server rejected.
+    /// server rejected. The rejected response has been read and its connection and concurrency
+    /// slot released, so the hook may call the same provider. It runs under the request's
+    /// refresh deadline ([`RequestBuilder::refresh_timeout`]) and the shutdown tokens; past
+    /// either, it is dropped and the request fails with [`TimeoutKind::Refresh`] or
+    /// [`Error::Cancelled`].
     fn refresh<'a>(&'a self, attempt: u32, rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh>;
 }
 
@@ -287,6 +291,7 @@ pub struct RequestBuilder<'a> {
     timeout: Duration,
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
+    refresh_timeout: Option<Duration>,
     max_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: Option<bool>,
@@ -333,6 +338,7 @@ impl<'a> RequestBuilder<'a> {
             timeout: p.timeout,
             headers_timeout: p.headers_timeout,
             idle_timeout: p.idle_timeout,
+            refresh_timeout: None,
             max_bytes: p.max_bytes,
             retry: None,
             idempotent: None,
@@ -492,6 +498,12 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
+    /// The deadline for one credential refresh after a 401 (by default the attempt timeout).
+    pub fn refresh_timeout(mut self, timeout: Duration) -> Self {
+        self.refresh_timeout = Some(timeout);
+        self
+    }
+
     /// The body limit.
     pub fn max_bytes(mut self, max: u64) -> Self {
         self.max_bytes = max;
@@ -550,6 +562,7 @@ struct Sender<'a> {
     timeout: Duration,
     headers_timeout: Option<Duration>,
     idle_timeout: Duration,
+    refresh_timeout: Duration,
     max_bytes: u64,
     retry: Option<RetryPolicy>,
     idempotent: bool,
@@ -584,6 +597,7 @@ impl<'a> Sender<'a> {
             timeout: request.timeout,
             headers_timeout: request.headers_timeout,
             idle_timeout: request.idle_timeout,
+            refresh_timeout: request.refresh_timeout.unwrap_or(request.timeout),
             max_bytes: request.max_bytes,
             retry: request.retry,
             idempotent,
@@ -662,24 +676,23 @@ impl<'a> Sender<'a> {
                     };
                     if status == StatusCode::UNAUTHORIZED
                         && policy.refreshes_unauthorized()
-                        && let Some((credential, _, value)) = &mut self.credential
+                        && self.credential.is_some()
                     {
-                        match credential.refresh(attempt, value).await {
-                            Refresh::Rotated(mut fresh) => {
-                                fresh.set_sensitive(true);
-                                *value = fresh;
-                            }
-                            Refresh::Retry => {}
-                            Refresh::Stop => {
-                                return Ok(self.finish(
-                                    response, attempt, true, false, end, permit, deadline,
-                                ));
-                            }
+                        // Read the rejected answer (it is returned if the refresh stops) and
+                        // release its connection and slot before the hook runs: the hook may
+                        // call this provider, and a slow hook must not hold the slot.
+                        let rejected = self.buffer(response, attempt, end, deadline).await;
+                        drop(permit);
+                        if let Refresh::Stop = self.refresh(attempt).await? {
+                            return rejected.map(|response| {
+                                response.with_attempt_state(attempt, true, false, None, None)
+                            });
                         }
+                    } else {
+                        drop(response);
+                        drop(end);
+                        drop(permit);
                     }
-                    drop(response);
-                    drop(end);
-                    drop(permit);
                     self.sleep(delay).await?;
                 }
                 AttemptResult::Failed(error) => {
@@ -730,7 +743,77 @@ impl<'a> Sender<'a> {
             limits,
             self.cancel.clone(),
         )
-        .with_attempt_state(attempts, refresh_unavailable, retried_status, end, permit)
+        .with_attempt_state(
+            attempts,
+            refresh_unavailable,
+            retried_status,
+            Some(end),
+            permit,
+        )
+    }
+
+    /// Reads a response whole under the attempt's limits and rebuilds it from the bytes, so the
+    /// connection can be released and the answer still handed back later.
+    async fn buffer(
+        &self,
+        response: reqwest::Response,
+        attempt: u32,
+        end: EndGuard,
+        deadline: Instant,
+    ) -> Result<Response> {
+        let status = response.status();
+        let version = response.version();
+        let headers = response.headers().clone();
+        let url = response.url().clone();
+        let body = self
+            .finish(response, attempt, false, false, end, None, deadline)
+            .bytes()
+            .await?;
+        let mut rebuilt = http::Response::new(body);
+        *rebuilt.status_mut() = status;
+        *rebuilt.version_mut() = version;
+        *rebuilt.headers_mut() = headers;
+        // The body is already decoded: the length and encoding headers no longer describe it.
+        rebuilt.headers_mut().remove(http::header::CONTENT_ENCODING);
+        rebuilt.headers_mut().remove(http::header::CONTENT_LENGTH);
+        let limits = Limits {
+            max_bytes: self.max_bytes,
+            idle: self.idle_timeout,
+            deadline,
+        };
+        Ok(Response::new(
+            reqwest::Response::from(rebuilt),
+            RequestInfo::new(self.provider.0.name, self.method.clone(), self.template),
+            QueryShown::Redact(Arc::clone(&self.provider.0.secret_query)),
+            limits,
+            self.cancel.clone(),
+        )
+        .with_url(url))
+    }
+
+    /// Runs the credential's refresh under the refresh deadline and shutdown, and applies a
+    /// rotated value.
+    async fn refresh(&mut self, attempt: u32) -> Result<Refresh> {
+        let Some((credential, _, rejected)) = &self.credential else {
+            return Ok(Refresh::Retry);
+        };
+        let credential = Arc::clone(credential);
+        let rejected = rejected.clone();
+        let deadline = Instant::now() + self.refresh_timeout;
+        let outcome = tokio::select! {
+            biased;
+            () = self.cancel.wait() => return Err(Error::Cancelled { info: self.info() }),
+            () = tokio::time::sleep_until(deadline) => {
+                return Err(Error::Timeout { info: self.info(), kind: TimeoutKind::Refresh });
+            }
+            outcome = credential.refresh(attempt, &rejected) => outcome,
+        };
+        if let (Refresh::Rotated(fresh), Some((_, _, value))) = (&outcome, &mut self.credential) {
+            let mut fresh = fresh.clone();
+            fresh.set_sensitive(true);
+            *value = fresh;
+        }
+        Ok(outcome)
     }
 
     async fn acquire(

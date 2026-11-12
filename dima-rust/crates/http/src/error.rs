@@ -28,6 +28,8 @@ pub enum TimeoutKind {
     Total,
     /// No body bytes arrived for the idle timeout.
     Idle,
+    /// The credential refresh after a 401 did not finish in time.
+    Refresh,
 }
 
 impl fmt::Display for TimeoutKind {
@@ -38,6 +40,7 @@ impl fmt::Display for TimeoutKind {
             Self::Headers => "headers",
             Self::Total => "total",
             Self::Idle => "idle",
+            Self::Refresh => "refresh",
         })
     }
 }
@@ -160,6 +163,7 @@ impl FailureClass {
             Self::Timeout(TimeoutKind::Headers) => "timeout_headers",
             Self::Timeout(TimeoutKind::Total) => "timeout_total",
             Self::Timeout(TimeoutKind::Idle) => "timeout_idle",
+            Self::Timeout(TimeoutKind::Refresh) => "timeout_refresh",
             Self::Connect => "connect",
             Self::Transport => "transport",
             Self::Status => "status",

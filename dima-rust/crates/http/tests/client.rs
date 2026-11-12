@@ -1097,3 +1097,165 @@ async fn brotli_bodies_are_decoded() {
     let request = server.next_request().await.unwrap();
     assert!(request.header("accept-encoding").unwrap().contains("br"));
 }
+
+/// A credential whose refresh fetches a new token from the same provider.
+#[derive(Debug)]
+struct SameProviderCredential {
+    client: HttpClient,
+    provider: Provider,
+}
+
+impl Credential for SameProviderCredential {
+    fn refresh<'a>(&'a self, _attempt: u32, _rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh> {
+        Box::pin(async move {
+            let token = self
+                .client
+                .post(&self.provider, "/token")
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            Refresh::Rotated(HeaderValue::try_from(token).unwrap())
+        })
+    }
+}
+
+#[tokio::test]
+async fn the_refresh_hook_runs_after_the_slot_is_released() {
+    let server = MockServer::start().await.unwrap();
+    let provider = Provider::builder("twitch", &server.url())
+        .max_concurrency(1)
+        .timeout(Duration::from_secs(2))
+        .retry(RetryPolicy::twitch_helix_with(&[ms(1)]))
+        .build()
+        .unwrap();
+    let client = client();
+    server.push(MockResponse::new(401).body("expired"));
+    server.push(MockResponse::new(200).body("Bearer fresh"));
+    server.push(MockResponse::new(200).body("done"));
+    let credential = Arc::new(SameProviderCredential {
+        client: client.clone(),
+        provider: provider.clone(),
+    });
+    let started = Instant::now();
+    let text = client
+        .get(&provider, "/users")
+        .credential(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer old"),
+            credential,
+        )
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(text, "done");
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "{:?}",
+        started.elapsed()
+    );
+    let requests = server.requests();
+    assert_eq!(
+        requests
+            .iter()
+            .map(|r| (
+                r.path().to_owned(),
+                r.header("authorization").map(str::to_owned)
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("/users".to_owned(), Some("Bearer old".to_owned())),
+            ("/token".to_owned(), None),
+            ("/users".to_owned(), Some("Bearer fresh".to_owned())),
+        ]
+    );
+}
+
+/// A refresh that never answers.
+#[derive(Debug)]
+struct StalledCredential;
+
+impl Credential for StalledCredential {
+    fn refresh<'a>(&'a self, _attempt: u32, _rejected: &'a HeaderValue) -> BoxFuture<'a, Refresh> {
+        Box::pin(std::future::pending())
+    }
+}
+
+#[tokio::test]
+async fn a_stalled_refresh_is_bounded_by_its_deadline_and_by_shutdown() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(401));
+    let provider = Provider::builder("twitch", &server.url())
+        .max_concurrency(1)
+        .retry(RetryPolicy::twitch_helix_with(&[ms(1)]))
+        .build()
+        .unwrap();
+    let shutdown = Shutdown::new();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
+    let send = |refresh_timeout| {
+        client
+            .get(&provider, "/users")
+            .credential(
+                header::AUTHORIZATION,
+                HeaderValue::from_static("Bearer old"),
+                Arc::new(StalledCredential),
+            )
+            .refresh_timeout(refresh_timeout)
+            .send()
+    };
+    let started = Instant::now();
+    let error = send(ms(100)).await.unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Refresh,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert!(started.elapsed() < Duration::from_secs(2));
+
+    // While a refresh stalls, its slot is free for others; shutdown ends the stalled one.
+    let stalled = tokio::spawn({
+        let client = client.clone();
+        let provider = provider.clone();
+        async move {
+            client
+                .get(&provider, "/users")
+                .credential(
+                    header::AUTHORIZATION,
+                    HeaderValue::from_static("Bearer old"),
+                    Arc::new(StalledCredential),
+                )
+                .send()
+                .await
+        }
+    });
+    server.wait_for(2).await;
+    tokio::time::sleep(ms(50)).await;
+    let other = client
+        .get(&provider, "/other")
+        .timeout(ms(500))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(other.status().as_u16(), 401);
+    drop(other);
+    shutdown.trigger();
+    let error = tokio::time::timeout(Duration::from_secs(2), stalled)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap_err();
+    assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
+}
