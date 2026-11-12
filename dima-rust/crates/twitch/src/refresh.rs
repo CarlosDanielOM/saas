@@ -17,21 +17,21 @@
 //!    changed meanwhile (a sign-in), the newer stored token is kept.
 
 use crate::base::Inner;
-use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields, wipe_fields};
+use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, wipe_fields};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::lease::Lease;
 use crate::oauth::{Field, RefreshContext, RefreshFailureKind, RefreshFailureReason, parse_answer};
+use crate::recovery::Settled;
 use crate::secret::{AccessToken, RefreshToken, open_cached};
 use crate::streamers::decrypt_envelope;
 use crate::tokens::{RefreshOutcome, TokenError, is_access_token_usable};
 use dima_core::SecretString;
-use dima_core::crypto::{CredentialCipher, StoredCredential};
+use dima_core::crypto::CredentialCipher;
 use dima_model::users::EncryptedToken;
-use dima_store::dragonfly::SetOptions;
 use dima_store::dragonfly::commands::reply;
 use serde_json::{Value, json};
-use std::sync::{Arc, PoisonError};
+use std::sync::Arc;
 use tokio::time::Instant;
 
 /// The cache's credential fields of one streamer, decrypted.
@@ -56,17 +56,20 @@ enum Exchange {
         refresh: RefreshToken,
         expires_in: f64,
     },
-    /// Twitch refused (a 4xx or 5xx answer, or a 2xx with an `error` field).
+    /// Twitch refused (a 4xx or 5xx answer, or a 2xx with an `error` field), and no attempt of
+    /// this exchange may have been processed without an answer: the refusal is about the
+    /// token sent.
     Refused {
         kind: RefreshFailureKind,
         reason: RefreshFailureReason,
         status: u16,
     },
-    /// No usable answer (network, unparseable, incomplete). `uncertain` when Twitch may have
-    /// processed the request (a lost answer, a 2xx that could not be read).
+    /// No usable answer, or a refusal that proves nothing. `ambiguous` when Twitch may have
+    /// processed one of the attempts (a lost answer, a 5xx, a 2xx that could not be read): the
+    /// outcome is unknown, so the marker is left to expire and nothing is wiped (review F3).
     Failed {
         outcome: RefreshOutcome,
-        uncertain: bool,
+        ambiguous: bool,
     },
 }
 
@@ -75,41 +78,6 @@ enum Acquired {
     Lease(Lease),
     Winner(AccessToken),
     Unavailable,
-}
-
-/// A rotation Twitch answered, encrypted: what is written to MongoDB, parked in Dragonfly
-/// (`twitch:{id}:refresh:parked`, this JSON) or kept in memory while MongoDB refuses it.
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub(crate) struct Rotation {
-    /// MongoDB's refresh envelope it replaces (`None`: none was stored).
-    base: Option<StoredCredential>,
-    access: StoredCredential,
-    refresh: StoredCredential,
-    #[serde(rename = "expiresAt")]
-    expires_at: f64,
-    #[serde(rename = "expiresIn")]
-    expires_in: f64,
-}
-
-/// A rotation this process is still writing.
-pub(crate) type Pending = Rotation;
-
-/// What became of a rotation MongoDB answered for.
-enum Settled {
-    Written,
-    /// A newer token was stored: its pair, when its access token is usable.
-    Superseded(Option<RefreshOutcome>),
-    UserNotFound,
-}
-
-/// What a compare-and-set write of a rotation found.
-enum Persisted {
-    /// Written with this generation.
-    Written(i64),
-    /// A different refresh token is stored: nothing written.
-    Superseded(Box<StoredAccount>),
-    /// No such user.
-    UserNotFound,
 }
 
 /// The refresh token in a stored envelope (wiped when dropped); `Err` when the envelope
@@ -184,7 +152,7 @@ impl Inner {
     }
 
     /// The cache's credentials replaced by MongoDB's (fenced by the generation).
-    async fn sync_cache_from(
+    pub(crate) async fn sync_cache_from(
         &self,
         id: &str,
         stored: &StoredAccount,
@@ -219,7 +187,8 @@ impl Inner {
         user_id: &str,
         context: &RefreshContext,
     ) -> Exchange {
-        let (answer, uncertain) = self.post_refresh(refresh_token, user_id, context).await;
+        let crate::oauth::Attempts { answer, ambiguous } =
+            self.post_refresh(refresh_token, user_id, context).await;
         let Some(answer) = answer else {
             self.refresh_log(
                 Level::Error,
@@ -240,7 +209,7 @@ impl Inner {
                     None,
                     RefreshFailureReason::Network,
                 ),
-                uncertain,
+                ambiguous,
             };
         };
         let status = answer.status;
@@ -271,7 +240,7 @@ impl Inner {
                         RefreshFailureReason::Unparseable,
                     ),
                     // A 2xx that cannot be read may carry a rotation that is now lost.
-                    uncertain: (200..300).contains(&status),
+                    ambiguous: ambiguous || (200..300).contains(&status),
                 };
             }
         };
@@ -297,10 +266,37 @@ impl Inner {
                     "reason": reason.as_str(),
                 }),
             );
-            return Exchange::Refused {
-                kind,
-                reason,
-                status,
+            if !ambiguous {
+                return Exchange::Refused {
+                    kind,
+                    reason,
+                    status,
+                };
+            }
+            // Review F3: an earlier attempt may have been processed, so this refusal may be
+            // about a token Twitch rotated then. Nothing is invalidated; the next refresh, which
+            // starts clean, decides.
+            let reason = if kind == RefreshFailureKind::Permanent {
+                self.refresh_log(
+                    Level::Warn,
+                    Destination::Both,
+                    user_id,
+                    context,
+                    json!({
+                        "function": "refreshTwitchToken",
+                        "userId": user_id,
+                        "action": "token_refresh_inconclusive",
+                        "status": status,
+                        "reason": "an earlier attempt of this exchange may have reached Twitch; the refusal can be about a token Twitch had just rotated, so nothing is invalidated",
+                    }),
+                );
+                RefreshFailureReason::Inconclusive
+            } else {
+                reason
+            };
+            return Exchange::Failed {
+                outcome: failure(RefreshFailureKind::Transient, Some(status), reason),
+                ambiguous: true,
             };
         }
 
@@ -333,7 +329,7 @@ impl Inner {
                     Some(status),
                     RefreshFailureReason::IncompletePayload,
                 ),
-                uncertain: true,
+                ambiguous: true,
             };
         };
         let access = AccessToken::from_secret(access);
@@ -390,7 +386,9 @@ impl Inner {
         user_id: &str,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
-        self.apply_parked(user_id, context).await?;
+        // An answer not yet in MongoDB is written first, never exchanged again (review F1/F2).
+        self.apply_registered(user_id, context).await?;
+        self.recover_record(user_id, context).await?;
         let Some(stored) = self.load_stored(user_id).await? else {
             return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::UserNotFound));
         };
@@ -485,6 +483,10 @@ impl Inner {
         if self.shutdown.is_triggered() {
             return Ok(self.refresh_skipped(user_id, context, RefreshFailureReason::Interrupted));
         }
+        // An answer always finds room in the registry: no exchange starts while it is full.
+        if !self.has_room_for_an_answer() {
+            return Err(TwitchError::Busy);
+        }
         if !self.mark_exchange(lease, user_id).await? {
             return Ok(self.refresh_skipped(
                 user_id,
@@ -533,7 +535,7 @@ impl Inner {
             } => Ok(failure(kind, Some(status), reason)),
             Exchange::Failed {
                 outcome,
-                uncertain: true,
+                ambiguous: true,
             } => {
                 // Twitch may have rotated the token and the answer is lost: the marker stays
                 // until it expires, so no refusal in the meantime is blamed on the stored token.
@@ -550,10 +552,11 @@ impl Inner {
         result
     }
 
-    /// Writes a rotation Twitch answered: parked in Dragonfly first, then MongoDB, then the
-    /// cache, then unparked. When MongoDB fails, the rotation is never exchanged again: it is
-    /// kept (encrypted, in memory and parked), handed with a share of the lease to a background
-    /// writer that retries, and returned to the caller at once.
+    /// Stores an answer Twitch gave (see `crate::recovery`): into the registry first, then its
+    /// recovery record, then MongoDB, then the cache; the record removed and the answer out of
+    /// the registry once MongoDB holds it. When MongoDB fails, the answer is never exchanged
+    /// again: a background writer with a share of the lease retries it (each retry first makes
+    /// sure the record holds it), and the caller gets the new pair at once.
     #[allow(clippy::too_many_arguments)]
     async fn store_rotation(
         self: &Arc<Self>,
@@ -566,37 +569,35 @@ impl Inner {
         expires_in: f64,
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
-        let random: &dyn dima_core::SecureRandom = &*self.random;
-        let rotation = Rotation {
-            base: base.as_ref().and_then(StoredAccount::refresh_envelope),
-            access: self.cipher.encrypt(access.expose(), random)?,
-            refresh: self.cipher.encrypt(refresh.expose(), random)?,
-            expires_at: self.now_secs() as f64 + expires_in,
-            expires_in,
-        };
-        let parked = self.park(user_id, &rotation).await;
-        match self.persist_once(user_id, used, base, &rotation).await {
-            Ok(persisted) => {
-                if let Some(parked) = &parked {
-                    self.unpark(user_id, parked).await;
+        let answer =
+            match self.register_answer(user_id, used, base.as_ref(), &access, &refresh, expires_in)
+            {
+                Ok(answer) => answer,
+                Err(error) => {
+                    crate::recovery::log_unregistered(self, user_id, context);
+                    return Err(error);
                 }
-                let answered = RefreshOutcome::Success {
-                    access_token: access,
-                    refresh_token: refresh,
-                    expires_in,
-                };
-                Ok(
-                    match self.settle(user_id, persisted, &rotation, context).await? {
-                        Settled::Written | Settled::Superseded(None) => answered,
-                        Settled::Superseded(Some(stored)) => stored,
-                        Settled::UserNotFound => failure(
-                            RefreshFailureKind::Transient,
-                            None,
-                            RefreshFailureReason::UserNotFound,
-                        ),
+            };
+        self.ensure_parked_logged(&answer).await;
+        match self.release_answer(&answer, base).await {
+            Ok(settlement) => Ok(
+                match self
+                    .after_settlement(user_id, settlement, &answer.rotation, context)
+                    .await?
+                {
+                    Settled::Written | Settled::Superseded(None) => RefreshOutcome::Success {
+                        access_token: access,
+                        refresh_token: refresh,
+                        expires_in,
                     },
-                )
-            }
+                    Settled::Superseded(Some(stored)) => stored,
+                    Settled::UserNotFound => failure(
+                        RefreshFailureKind::Transient,
+                        None,
+                        RefreshFailureReason::UserNotFound,
+                    ),
+                },
+            ),
             Err(error) => {
                 self.refresh_log(
                     Level::Warn,
@@ -611,14 +612,11 @@ impl Inner {
                         "consequence": "Twitch rotated the refresh token; it is kept and written again in the background, never exchanged again",
                     }),
                 );
-                self.keep_pending(user_id, &rotation);
                 let writer = lease.share();
                 let inner = Arc::clone(self);
-                let (user, used, context) = (user_id.to_owned(), used.clone(), context.clone());
+                let context = context.clone();
                 self.tracker.spawn(async move {
-                    inner
-                        .write_in_background(writer, user, used, rotation, parked, context)
-                        .await;
+                    inner.write_in_background(writer, answer, context).await;
                 });
                 Ok(RefreshOutcome::Success {
                     access_token: access,
@@ -627,385 +625,6 @@ impl Inner {
                 })
             }
         }
-    }
-
-    /// The background writer of a rotation MongoDB refused: it retries the write (with
-    /// backoff, holding a share of the lease, which keeps the marker) until it succeeds or the
-    /// drain ends; then the rotation stays parked for the next refresh of the streamer.
-    async fn write_in_background(
-        self: Arc<Self>,
-        lease: Lease,
-        user_id: String,
-        used: RefreshToken,
-        rotation: Rotation,
-        parked: Option<String>,
-        context: RefreshContext,
-    ) {
-        let timings = &self.config.timings;
-        let mut pause = timings.persist_retry;
-        let mut parked = parked;
-        let written = loop {
-            tokio::select! {
-                biased;
-                () = self.drain_expired.wait() => break false,
-                () = self.kill.cancelled() => break false,
-                () = tokio::time::sleep(pause) => {}
-            }
-            pause = (pause * 2).min(timings.persist_retry_max);
-            if parked.is_none() {
-                parked = self.park(&user_id, &rotation).await;
-            }
-            let attempt = tokio::select! {
-                biased;
-                () = self.drain_expired.wait() => break false,
-                () = self.kill.cancelled() => break false,
-                attempt = self.persist_once(&user_id, &used, None, &rotation) => attempt,
-            };
-            if let Ok(persisted) = attempt {
-                if let Some(parked) = &parked {
-                    self.unpark(&user_id, parked).await;
-                }
-                // The cache write is best effort here: MongoDB has the rotation.
-                let _ = self.settle(&user_id, persisted, &rotation, &context).await;
-                break true;
-            }
-        };
-        if self.kill.is_cancelled() {
-            return;
-        }
-        if !written {
-            if parked.is_none() {
-                parked = self.park(&user_id, &rotation).await;
-            }
-            self.refresh_log(
-                Level::Error,
-                Destination::Both,
-                &user_id,
-                &context,
-                json!({
-                    "function": "refreshTwitchToken",
-                    "userId": user_id,
-                    "action": if parked.is_some() { "token_refresh_parked" } else { "token_refresh_lost" },
-                    "consequence": if parked.is_some() {
-                        "MongoDB did not take the rotated tokens before the process stopped; the next refresh of this streamer applies them from Dragonfly"
-                    } else {
-                        "MongoDB and Dragonfly both failed before the process stopped; the rotated refresh token is LOST and the streamer must reauthorize"
-                    },
-                }),
-            );
-        }
-        self.forget_pending(&user_id);
-        if written {
-            self.clear_marker(&lease).await;
-        } else {
-            self.abandon_marker(&lease);
-        }
-        self.release(lease).await;
-    }
-
-    /// One compare-and-set write of a rotation (see [`Inner::persist_rotation`]).
-    async fn persist_once(
-        &self,
-        user_id: &str,
-        used: &RefreshToken,
-        base: Option<StoredAccount>,
-        rotation: &Rotation,
-    ) -> Result<Persisted, TwitchError> {
-        #[cfg(any(test, feature = "test-util"))]
-        if self
-            .fault(crate::base::FaultPoint::BeforePersist, user_id)
-            .await
-            == crate::base::FaultAction::Fail
-        {
-            return Err(TwitchError::MongoTimeout { op: "update user" });
-        }
-        self.persist_rotation(
-            user_id,
-            used,
-            base,
-            &rotation.access,
-            &rotation.refresh,
-            rotation.expires_at,
-        )
-        .await
-    }
-
-    /// After MongoDB answered a rotation's write: the cache (fenced; best effort) and the log.
-    async fn settle(
-        &self,
-        user_id: &str,
-        persisted: Persisted,
-        rotation: &Rotation,
-        context: &RefreshContext,
-    ) -> Result<Settled, TwitchError> {
-        Ok(match persisted {
-            Persisted::UserNotFound => {
-                self.refresh_log(
-                    Level::Error,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_store_failed",
-                        "reason": "user_not_found",
-                        "consequence": "Twitch rotated the refresh token but it could not be stored; the rotated token is LOST and the next refresh will fail with invalid grant",
-                    }),
-                );
-                Settled::UserNotFound
-            }
-            Persisted::Superseded(stored) => {
-                let cached = self.sync_cache_from(user_id, &stored).await?;
-                let now = self.now_secs();
-                let skew = self.config.timings.waiter_expiry_skew_secs;
-                self.refresh_log(
-                    Level::Info,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_superseded",
-                        "reason": "a newer refresh token was stored meanwhile; this refresh was not written",
-                    }),
-                );
-                if is_access_token_usable(cached.access(), cached.expires_at.as_deref(), now, skew)
-                    && let (Some(access_token), Some(refresh_token)) =
-                        (cached.access_token, cached.refresh_token)
-                {
-                    let expiry = cached.expires_at.as_deref().map_or(f64::NAN, |raw| {
-                        dima_text::parse_int(raw, dima_text::Radix::Decimal)
-                    });
-                    Settled::Superseded(Some(RefreshOutcome::Success {
-                        access_token,
-                        refresh_token,
-                        expires_in: expiry - now as f64,
-                    }))
-                } else {
-                    Settled::Superseded(None)
-                }
-            }
-            Persisted::Written(generation) => {
-                let fields =
-                    rotation_fields(&rotation.access, &rotation.refresh, rotation.expires_at);
-                if let Err(error) = self.publish(user_id, generation, &fields).await {
-                    // MongoDB has the rotation; the next refresh repairs the cache from it.
-                    self.refresh_log(
-                        Level::Warn,
-                        Destination::Both,
-                        user_id,
-                        context,
-                        json!({
-                            "function": "refreshTwitchToken",
-                            "userId": user_id,
-                            "action": "token_refresh_cache_failed",
-                            "reason": error.to_string(),
-                        }),
-                    );
-                }
-                self.refresh_log(
-                    Level::Info,
-                    Destination::Cache,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_succeeded",
-                        "expiresIn": rotation.expires_in,
-                        "expiresAt": rotation.expires_at,
-                    }),
-                );
-                Settled::Written
-            }
-        })
-    }
-
-    /// Parks `rotation` (`SET twitch:{id}:refresh:parked <json> EX <park_ttl>`, within
-    /// [`crate::Timings::park_grace`]); the text written, or `None` when Dragonfly failed
-    /// (logged).
-    async fn park(&self, user_id: &str, rotation: &Rotation) -> Option<String> {
-        let text = serde_json::to_string(rotation).ok()?;
-        let seconds = self.config.timings.park_ttl.as_secs().max(1);
-        let parked = tokio::time::timeout(
-            self.config.timings.park_grace,
-            self.dragonfly.set(
-                &self.config.keys.parked_rotation(user_id),
-                text.as_bytes(),
-                SetOptions::ex(seconds),
-            ),
-        )
-        .await;
-        if let Ok(Ok(_)) = parked {
-            return Some(text);
-        }
-        self.log(
-            Level::Warn,
-            Destination::Both,
-            Some(user_id),
-            json!({
-                "function": "refreshTwitchToken",
-                "userId": user_id,
-                "action": "token_refresh_park_failed",
-            }),
-        );
-        None
-    }
-
-    async fn unpark(&self, user_id: &str, parked: &str) {
-        self.compare_delete(&self.config.keys.parked_rotation(user_id), parked)
-            .await;
-    }
-
-    fn keep_pending(&self, user_id: &str, rotation: &Rotation) {
-        let mut pending = self.pending.lock().unwrap_or_else(PoisonError::into_inner);
-        if pending.len() < crate::base::MAX_FLIGHTS {
-            pending.insert(user_id.to_owned(), rotation.clone());
-        }
-    }
-
-    fn forget_pending(&self, user_id: &str) {
-        self.pending
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(user_id);
-    }
-
-    /// The access token of a rotation this process is still writing, when it is usable and not
-    /// `rejected`.
-    pub(crate) fn pending_token(
-        &self,
-        user_id: &str,
-        rejected: Option<&AccessToken>,
-    ) -> Option<AccessToken> {
-        let rotation = self
-            .pending
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(user_id)
-            .cloned()?;
-        let token = self.cipher.decrypt(&rotation.access).ok().flatten()?;
-        let token = AccessToken::from_secret(SecretString::new(token));
-        let expiry = dima_text::number_to_string(rotation.expires_at);
-        let usable = is_access_token_usable(
-            Some(token.expose()),
-            Some(&expiry),
-            self.now_secs(),
-            self.config.timings.token_expiry_skew_secs,
-        );
-        (usable && rejected != Some(&token)).then_some(token)
-    }
-
-    /// A rotation parked by a process that stopped before MongoDB took it: applied to MongoDB
-    /// (and the cache) when MongoDB still holds the refresh token it replaced, or none;
-    /// discarded when it is already applied or a newer token is stored. Runs under the lease,
-    /// before anything else looks at MongoDB.
-    async fn apply_parked(
-        &self,
-        user_id: &str,
-        context: &RefreshContext,
-    ) -> Result<(), TwitchError> {
-        let key = self.config.keys.parked_rotation(user_id);
-        let Some(text) = self
-            .dragonfly
-            .get_text(&key)
-            .await
-            .map_err(|error| TwitchError::cache("get parked rotation", error))?
-        else {
-            return Ok(());
-        };
-        let Ok(rotation) = serde_json::from_str::<Rotation>(&text) else {
-            self.compare_delete(&key, &text).await;
-            return Ok(());
-        };
-        for _round in 0..CAS_ROUNDS {
-            let Some(stored) = self.load_stored(user_id).await? else {
-                self.compare_delete(&key, &text).await;
-                return Ok(());
-            };
-            let current = stored.refresh_envelope();
-            if current.as_ref() == Some(&rotation.refresh) {
-                // Already in MongoDB (the writer stopped after its write).
-                self.compare_delete(&key, &text).await;
-                return Ok(());
-            }
-            let replaceable = current.is_none()
-                || current == rotation.base
-                || stored_refresh(&self.cipher, &stored.refresh).is_err();
-            if !replaceable {
-                // A newer token was stored since (a sign-in): it wins.
-                self.compare_delete(&key, &text).await;
-                return Ok(());
-            }
-            if let Written::Done(generation) = self
-                .write_rotation(
-                    user_id,
-                    &stored,
-                    &rotation.access,
-                    &rotation.refresh,
-                    rotation.expires_at,
-                )
-                .await?
-            {
-                let fields =
-                    rotation_fields(&rotation.access, &rotation.refresh, rotation.expires_at);
-                let _ = self.publish(user_id, generation, &fields).await;
-                self.compare_delete(&key, &text).await;
-                self.refresh_log(
-                    Level::Info,
-                    Destination::Both,
-                    user_id,
-                    context,
-                    json!({
-                        "function": "refreshTwitchToken",
-                        "userId": user_id,
-                        "action": "token_refresh_recovered",
-                        "reason": "a rotation parked by a stopping process was written to MongoDB",
-                    }),
-                );
-                return Ok(());
-            }
-        }
-        Ok(())
-    }
-
-    /// Writes a rotation over the stored state while its refresh token is still `used`, empty
-    /// or unreadable (an envelope that cannot be decrypted holds no usable token).
-    async fn persist_rotation(
-        &self,
-        id: &str,
-        used: &RefreshToken,
-        base: Option<StoredAccount>,
-        access: &StoredCredential,
-        refresh: &StoredCredential,
-        expires_at: f64,
-    ) -> Result<Persisted, TwitchError> {
-        let mut next = base;
-        for _round in 0..CAS_ROUNDS {
-            let stored = match next.take() {
-                Some(stored) => stored,
-                None => match self.load_stored(id).await? {
-                    Some(stored) => stored,
-                    None => return Ok(Persisted::UserNotFound),
-                },
-            };
-            if let Ok(Some(current)) = stored_refresh(&self.cipher, &stored.refresh)
-                && current != *used
-            {
-                return Ok(Persisted::Superseded(Box::new(stored)));
-            }
-            if let Written::Done(generation) = self
-                .write_rotation(id, &stored, access, refresh, expires_at)
-                .await?
-            {
-                return Ok(Persisted::Written(generation));
-            }
-        }
-        Err(TwitchError::Write(
-            "the stored refresh token kept changing".to_owned(),
-        ))
     }
 
     /// A permanent refusal of `failed`: compared with the stored refresh token, then a
@@ -1100,8 +719,8 @@ impl Inner {
                         reason,
                         status,
                     } => return Ok(failure(kind, Some(status), reason)),
-                    Exchange::Failed { outcome, uncertain } => {
-                        if uncertain {
+                    Exchange::Failed { outcome, ambiguous } => {
+                        if ambiguous {
                             // The cache's token may have been consumed and its answer lost.
                             self.abandon_marker(lease);
                         }
@@ -1389,7 +1008,9 @@ impl Inner {
             Err(TokenError::NoRefreshToken)
         };
         let context = RefreshContext::new("token_refresh", caller);
-        self.apply_parked(id, &context).await?;
+        // An answer not yet in MongoDB is written first, never exchanged again (review F1/F2).
+        self.apply_registered(id, &context).await?;
+        self.recover_record(id, &context).await?;
         let Some(stored) = self.load_stored(id).await? else {
             return not_found();
         };

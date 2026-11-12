@@ -111,6 +111,10 @@ pub enum RefreshFailureReason {
     ExchangeInFlight,
     /// MongoDB holds no refresh token for the streamer: nothing was sent.
     NoRefreshToken,
+    /// Twitch refused the token for good, but an earlier attempt of the same exchange may have
+    /// been processed (review F3): the refusal can be about a token Twitch had just rotated, so
+    /// nothing was invalidated. The next refresh decides.
+    Inconclusive,
 }
 
 impl RefreshFailureReason {
@@ -133,6 +137,7 @@ impl RefreshFailureReason {
             Self::Interrupted => "interrupted",
             Self::ExchangeInFlight => "exchange_in_flight",
             Self::NoRefreshToken => "no_refresh_token",
+            Self::Inconclusive => "inconclusive_refusal",
         }
     }
 
@@ -157,6 +162,9 @@ impl RefreshFailureReason {
             Self::Interrupted => "The refresh was interrupted",
             Self::ExchangeInFlight => "Another refresh of this streamer is in flight",
             Self::NoRefreshToken => "The streamer has no stored refresh token",
+            Self::Inconclusive => {
+                "Twitch refused the refresh token after an earlier attempt may have used it; nothing was invalidated"
+            }
         }
     }
 }
@@ -209,7 +217,7 @@ pub fn refresh_failure_message(payload: &Value) -> String {
         .filter_map(|key| object.get(*key).and_then(Value::as_str))
         .filter(|text| !dima_text::trim(text).is_empty())
         .collect::<Vec<_>>()
-        .join(" | ")
+        .join(SEPARATOR)
 }
 
 /// `isPermanentRefreshFailure`: status 400 or 401 and the message (lower case) contains one of
@@ -427,25 +435,51 @@ impl<'de> Deserialize<'de> for AnswerBody {
     }
 }
 
+/// What [`refresh_failure_message`] puts between two texts.
+const SEPARATOR: &str = " | ";
+
+/// The most a lower-case mapping multiplies a text's UTF-8 length by (the largest growth is a
+/// two-byte letter becoming three bytes, such as `İ` → `i̇`; three leaves room to spare).
+const LOWER_CASE_GROWTH: usize = 3;
+
+/// `text` in lower case, in a wiping buffer sized once for the longest possible result (review
+/// F6: a buffer that grows leaves its earlier allocation unwiped). Character by character, so
+/// a final capital sigma becomes `σ` where `toLowerCase` gives `ς`: no fragment the
+/// classification looks for contains either.
+fn lower_case_wiped(text: &str) -> Zeroizing<String> {
+    let mut lower = Zeroizing::new(String::with_capacity(
+        text.len().saturating_mul(LOWER_CASE_GROWTH),
+    ));
+    for character in text.chars() {
+        lower.extend(character.to_lowercase());
+    }
+    lower
+}
+
 impl AnswerBody {
-    /// [`refresh_failure_message`] of this answer, in a wiping buffer.
+    /// [`refresh_failure_message`] of this answer, in a wiping buffer reserved at its full
+    /// length before it is filled, so it never grows (review F6).
     fn failure_message(&self) -> Zeroizing<String> {
-        let mut joined = Zeroizing::new(String::new());
-        for part in [&self.message, &self.error_description, &self.error] {
-            let Some(text) = part.text().filter(|text| !dima_text::trim(text).is_empty()) else {
-                continue;
-            };
-            if !joined.is_empty() {
-                joined.push_str(" | ");
+        let parts: Vec<&str> = [&self.message, &self.error_description, &self.error]
+            .into_iter()
+            .filter_map(Field::text)
+            .filter(|text| !dima_text::trim(text).is_empty())
+            .collect();
+        let length = parts.iter().map(|part| part.len()).sum::<usize>()
+            + SEPARATOR.len() * parts.len().saturating_sub(1);
+        let mut joined = Zeroizing::new(String::with_capacity(length));
+        for (index, part) in parts.into_iter().enumerate() {
+            if index > 0 {
+                joined.push_str(SEPARATOR);
             }
-            joined.push_str(text);
+            joined.push_str(part);
         }
         joined
     }
 
     /// [`classify_refusal`] of this answer; the text never leaves a wiping buffer.
     pub(crate) fn classify(&self, status: u16) -> (RefreshFailureKind, RefreshFailureReason) {
-        let lower = Zeroizing::new(dima_text::to_lower(&self.failure_message()));
+        let lower = lower_case_wiped(&self.failure_message());
         classify_message(status, &lower)
     }
 }
@@ -522,6 +556,18 @@ pub(crate) struct TokenAnswer {
     pub(crate) body: Zeroizing<Vec<u8>>,
 }
 
+/// The attempts of one refresh exchange.
+pub(crate) struct Attempts {
+    /// The last attempt's answer, when it got one.
+    pub(crate) answer: Option<TokenAnswer>,
+    /// An attempt **may have been processed by Twitch without a usable answer** (review F3): a
+    /// request that failed after it may have reached Twitch, or an answer of 500 or more (a
+    /// gateway can answer so after Twitch's token service rotated the token). Twitch may then
+    /// have consumed the token sent, so a later refusal of the same token proves nothing. Set
+    /// by the attempt that ended so and never cleared by a later one.
+    pub(crate) ambiguous: bool,
+}
+
 impl Inner {
     /// One POST of a token form; the answer's status and body text. A refresh exchange goes
     /// through the exchange client and lives until the drain ends (see `crate::drain`); the
@@ -551,15 +597,22 @@ impl Inner {
     }
 
     /// The reference's refresh loop: up to [`crate::Timings::refresh_attempts`] attempts, a
-    /// failed or 5xx attempt retried after 400 ms then 900 ms. `None` when no attempt got an
-    /// answer (each failure is logged as `token_refresh_attempt_failed`). The flag says whether
-    /// a failed attempt may have reached Twitch (its outcome is then unknown).
+    /// failed or 5xx attempt retried after 400 ms then 900 ms. No answer when no attempt got
+    /// one (each failure is logged as `token_refresh_attempt_failed`). [`Attempts::ambiguous`]
+    /// says whether an attempt may have been processed by Twitch without a usable answer.
+    ///
+    /// **A retry after an ambiguous attempt is kept** (review F3): sent again, the same token
+    /// either rotates (Twitch had not processed the first request: the streamer is served at
+    /// once), or is refused (Twitch had rotated it and the answer is lost whatever happens; the
+    /// refusal is then inconclusive and wipes nothing, see `refresh.rs`), or fails again
+    /// (nothing changes). The exchange marker stays this holder's throughout, so no other
+    /// exchange interleaves.
     pub(crate) async fn post_refresh(
         &self,
         refresh_token: &RefreshToken,
         user_id: &str,
         context: &RefreshContext,
-    ) -> (Option<TokenAnswer>, bool) {
+    ) -> Attempts {
         let timings = &self.config.timings;
         let attempts = timings.refresh_attempts.max(1);
         let pairs = [
@@ -569,12 +622,17 @@ impl Inner {
             ("refresh_token", refresh_token.expose()),
         ];
         let mut answer = None;
-        let mut uncertain = false;
+        let mut ambiguous = false;
         for attempt in 0..attempts {
             answer = match self.post_token_form(&pairs, true).await {
-                Ok(answer) => Some(answer),
+                Ok(answer) => {
+                    ambiguous |= answer.status >= 500;
+                    Some(answer)
+                }
                 Err(error) => {
-                    uncertain |= may_have_reached_twitch(error.class());
+                    // A request cancelled by the end of the drain counts as reached: it may
+                    // have been sent.
+                    ambiguous |= may_have_reached_twitch(error.class());
                     self.log(
                         Level::Warn,
                         Destination::Both,
@@ -607,7 +665,7 @@ impl Inner {
                 () = tokio::time::sleep(pause) => {}
             }
         }
-        (answer, uncertain)
+        Attempts { answer, ambiguous }
     }
 
     /// `client_credentials` exchange (no retry, as in the reference).
@@ -713,6 +771,53 @@ mod tests {
         // Invalid UTF-8 is replaced, as `Response.text()` does.
         let (body, _) = parse_answer(b"{\"message\":\"\xff invalid refresh token\"}");
         assert_eq!(body.unwrap().classify(400).0, RefreshFailureKind::Permanent);
+    }
+
+    /// Review F6: the buffers that hold Twitch's text are sized once and never grow, so no
+    /// earlier allocation is left behind unwiped.
+    #[test]
+    fn the_classified_text_never_grows_its_wiping_buffer() {
+        let (body, _) = parse_answer(
+            br#"{"message":"Invalid refresh token r-secret-123","error_description":"for someone@example.invalid","error":"Bad Request"}"#,
+        );
+        let body = body.unwrap();
+        let joined = body.failure_message();
+        assert_eq!(
+            joined.as_str(),
+            "Invalid refresh token r-secret-123 | for someone@example.invalid | Bad Request"
+        );
+        assert_eq!(
+            joined.capacity(),
+            joined.len(),
+            "reserved at its full length before it was filled"
+        );
+        // The lower-case copy is reserved for the longest possible result, also when letters
+        // grow (`İ` is two bytes, `i̇` three).
+        for text in [
+            "Invalid Refresh Token",
+            "İİİ REVOKED ΟΔΟΣ",
+            "\u{212a}elvin",
+            "",
+        ] {
+            let lower = lower_case_wiped(text);
+            assert_eq!(lower.capacity(), text.len() * LOWER_CASE_GROWTH, "{text}");
+            assert!(lower.len() <= lower.capacity());
+        }
+        // Lowering character by character classifies exactly as `toLowerCase` does.
+        for (status, text) in [
+            (400, "Invalid Refresh Token"),
+            (401, "AUTHORIZATION HAS BEEN REVO\u{212a}ED"),
+            (400, "İnvalid grant"),
+            (400, "ΟΔΟΣ invalid client"),
+            (400, "Missing ΣΑΣ"),
+            (400, "x"),
+        ] {
+            assert_eq!(
+                classify_message(status, &lower_case_wiped(text)),
+                classify_message(status, &dima_text::to_lower(text)),
+                "{text}"
+            );
+        }
     }
 
     #[test]

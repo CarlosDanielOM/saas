@@ -72,9 +72,10 @@ impl fmt::Debug for TwitchConfig {
 /// | `store_deadline` | 10 s | none in the reference (Mongoose without `maxTimeMS`); one MongoDB operation |
 /// | `emote_timeout` | 3 s | `AbortSignal.timeout(3000)` (`twitch_emotes.ts`) |
 /// | `exchange_drain` | 15 s | Rust only: how long an exchange already sent, and the write of its answer, go on after shutdown (one 10 s attempt plus 5 s to write); see `crate::drain` |
-/// | `park_grace` | 2 s | Rust only: after the drain, how long a rotation MongoDB has not taken may take to be parked in Dragonfly |
+/// | `park_grace` | 2 s | Rust only: the deadline of one write of a recovery record, and of the last step of shutdown, which parks in Dragonfly every answer MongoDB has not taken (`crate::recovery`) |
 /// | `persist_retry` | 200 ms doubling to 2 s | Rust only: the pause between writes of a rotation MongoDB refused (never a new exchange) |
-/// | `park_ttl` | 30 days | Rust only: how long a parked rotation waits for the next refresh of its streamer |
+/// | `recovery_start_wait` | 3 s | Rust only: how long [`crate::Twitch::start_recovery`] holds the start of a process (its readiness) while the reconciliation of recovery records runs; the run goes on in the background after that |
+/// | `recovery_interval` | 5 min | Rust only: the period at which a process should call [`crate::Twitch::reconcile_recovery`] (the tick) |
 /// | `directory_read` | 500 ms | Rust only: the default deadline of a directory read ([`crate::Twitch::streamer`]); the chat path uses it. A read is one Dragonfly script round trip (well under a millisecond on the host), a miss adds one MongoDB read and one write (a few milliseconds), so it fires only when a store is unhealthy; a hydration it started goes on in the background |
 /// | `unhelpful_refresh_window` | 60 s | Rust only: after a 401-driven refresh of the app or bot token, how long a 401 for the token it produced (or for the one it could not replace) does not refresh again |
 /// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
@@ -112,8 +113,10 @@ pub struct Timings {
     pub persist_retry: Duration,
     /// The longest such pause.
     pub persist_retry_max: Duration,
-    /// How long a parked rotation is kept.
-    pub park_ttl: Duration,
+    /// How long [`crate::Twitch::start_recovery`] waits for the start-up reconciliation.
+    pub recovery_start_wait: Duration,
+    /// The period of the reconciliation tick ([`crate::Twitch::reconcile_recovery`]).
+    pub recovery_interval: Duration,
     /// How long a cached "no permissions" that MongoDB confirmed is trusted without asking
     /// MongoDB again.
     pub permission_recheck: Duration,
@@ -144,11 +147,21 @@ impl Timings {
             park_grace: Duration::from_secs(2),
             persist_retry: Duration::from_millis(200),
             persist_retry_max: Duration::from_secs(2),
-            park_ttl: Duration::from_secs(30 * 24 * 3600),
+            recovery_start_wait: Duration::from_secs(3),
+            recovery_interval: Duration::from_secs(300),
             permission_recheck: Duration::from_secs(30),
             directory_read: Duration::from_millis(500),
             unhelpful_refresh_window: Duration::from_secs(60),
         }
+    }
+
+    /// The longest [`crate::Twitch::shutdown`] takes: the drain of exchanges and their writes
+    /// ([`Timings::exchange_drain`]) plus the last step that parks what MongoDB has not taken
+    /// ([`Timings::park_grace`]): 15 s + 2 s = 17 s with the reference values. A container's
+    /// stop timeout (Compose `stop_grace_period`) must exceed it, with room for the rest of the
+    /// binary's shutdown.
+    pub fn shutdown_budget(&self) -> Duration {
+        self.exchange_drain.saturating_add(self.park_grace)
     }
 
     /// The pause before retry `index` (0-based): the list's value, 900 ms past its end

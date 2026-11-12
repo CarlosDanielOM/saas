@@ -11,7 +11,7 @@
 //! | `locks:refresh:twitch:{id}` (`PX 5000`, renewed by its holder) | `acquireRefreshLock` | **rebuilt** (a 5 s lease; Rust's database starts without one) |
 //! | `locks:refresh:twitch:{id}:exchange` (`PX 30000`, renewed) | Rust only: an exchange is (or may be) in flight | **rebuilt** |
 //! | `app:twitch:token` (envelope, `EX expires_in`; plain text in the reference) | `getNewTwitchAppToken` | **rebuilt**: a new app token is requested on first use |
-//! | `twitch:{id}:refresh:parked` (JSON of envelopes, `EX` 30 days) | Rust only: a rotation MongoDB had not taken when the process had to stop | **drained**: the next refresh of that streamer applies it to MongoDB; Rust's own database, so nothing crosses the cutover |
+//! | `twitch:{id}:refresh:parked` (hash: `generation`, `rotation` as JSON of envelopes; **no expiry**) | Rust only: the recovery record of an answer MongoDB has not taken (`crate::recovery`) | **drained**, never flushed while one is left: the next refresh of that streamer or the reconciliation ([`crate::Twitch::reconcile_recovery`], at every start and on its tick) writes it to MongoDB. Rust's database starts without any at the cutover; before a rollback it is reconciled until none is left |
 //! | `twitch:{id}:emote-catalog:v1` (JSON, `EX 86400`) | `twitch_emotes.ts` | **rebuilt** from Helix on first use |
 //! | `twitch:{id}:ai:credits:plan-version` (fence) | billing | read here (fence of the account hash); owned by the billing package |
 //! | `streamers:by:name` | legacy (`DEL` only, no writer) | not written or deleted by Rust |
@@ -86,6 +86,19 @@ impl KeySpace {
         format!("{}twitch:{id}:refresh:parked", self.prefix)
     }
 
+    /// `twitch:*:refresh:parked`, the pattern the reconciliation scans.
+    pub fn parked_pattern(&self) -> String {
+        format!("{}twitch:*:refresh:parked", self.prefix)
+    }
+
+    /// The streamer id in a key of [`KeySpace::parked_rotation`] (`None` for any other key).
+    pub fn parked_user<'a>(&self, key: &'a str) -> Option<&'a str> {
+        key.strip_prefix(self.prefix.as_str())?
+            .strip_prefix("twitch:")?
+            .strip_suffix(":refresh:parked")
+            .filter(|id| !id.is_empty() && !id.contains(':'))
+    }
+
     /// `app:twitch:token`.
     pub fn app_token(&self) -> String {
         format!("{}app:twitch:token", self.prefix)
@@ -129,5 +142,19 @@ mod tests {
             KeySpace::prefixed("t1:").account("42"),
             "t1:accounts:twitch:42:data"
         );
+        // The reconciliation finds recovery records by their pattern and reads the id back.
+        assert_eq!(keys.parked_pattern(), "twitch:*:refresh:parked");
+        assert_eq!(keys.parked_user(&keys.parked_rotation("42")), Some("42"));
+        let test = KeySpace::prefixed("t1:");
+        assert_eq!(test.parked_pattern(), "t1:twitch:*:refresh:parked");
+        assert_eq!(test.parked_user(&test.parked_rotation("42")), Some("42"));
+        for other in [
+            "twitch:42:emote-catalog:v1",
+            "t1:twitch:42:refresh:parked",
+            "twitch::refresh:parked",
+            "twitch:4:2:refresh:parked",
+        ] {
+            assert_eq!(keys.parked_user(other), None, "{other}");
+        }
     }
 }

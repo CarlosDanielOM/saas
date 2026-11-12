@@ -123,19 +123,6 @@ impl StoredAccount {
         }
     }
 
-    /// The stored refresh envelope, when both parts are present and not empty.
-    pub(crate) fn refresh_envelope(&self) -> Option<StoredCredential> {
-        match (self.refresh.iv.as_deref(), self.refresh.content.as_deref()) {
-            (Some(iv), Some(content)) if !iv.is_empty() && !content.is_empty() => {
-                Some(StoredCredential {
-                    iv: iv.to_owned(),
-                    content: content.to_owned(),
-                })
-            }
-            _ => None,
-        }
-    }
-
     /// The credential fields of the directory hash for this state.
     fn cache_fields(&self) -> Vec<(&'static str, String)> {
         let flag = |value: bool| if value { "true" } else { "false" }.to_owned();

@@ -27,24 +27,34 @@
 //!    the hash every 150 ms for up to 4.5 s for a token other than the rejected one with more
 //!    than 60 s left, stops waiting when the lease is gone, then tries once more; failing that
 //!    it gives up for this call.
-//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): a rotation parked by a process
-//!    that stopped is applied first; then a usable stored access token is returned (the cache
+//! 2. **Under the lease, MongoDB decides** (`refresh.rs`): an answer this process still holds,
+//!    then the streamer's recovery record (written by any process, however old), is written to
+//!    MongoDB first, or dropped when MongoDB holds something newer; while that fails, nothing is
+//!    exchanged; then a usable stored access token is returned (the cache
 //!    repaired from MongoDB, nothing sent); otherwise the **stored** refresh token is the one
 //!    exchanged, never the cache's copy.
 //! 3. **The exchange** (`refreshTwitchToken`): the exchange marker is set (`NX`; when another
 //!    exchange is or may be in flight nothing is sent), then three attempts, 400 ms and 900 ms
 //!    apart, retried only on a network error or a 5xx, none started once the process stops.
-//! 4. **The answer is always stored**: parked in Dragonfly (encrypted), written to MongoDB with
-//!    a compare-and-set on the state read in 2 (advancing the generation), copied to the hash
-//!    under that generation, then unparked and the marker removed. A MongoDB failure keeps the
-//!    rotation (never exchanged again) and a background writer retries; a rotation still
-//!    unwritten when the drain ends stays parked for the next refresh (`drain.rs`).
+//! 4. **The answer is always stored** (`recovery.rs`): it enters the process's registry of
+//!    unwritten answers before anything else, then its recovery record in Dragonfly
+//!    (encrypted), then MongoDB with a compare-and-set on the state read in 2 (advancing the
+//!    generation), then the hash under that generation; then the record is removed, the answer
+//!    leaves the registry and the marker is removed. A MongoDB failure keeps the answer (never
+//!    exchanged again): a background writer retries, each retry first making sure the record
+//!    still holds it, and when the drain ends the last step of shutdown parks whatever the
+//!    registry still holds.
 //!
 //! # What a refused refresh does
 //!
 //! Twitch's answer is classified ([`crate::oauth`]): a 400 or 401 whose message says the
 //! refresh token is invalid or revoked is **permanent**; anything else is transient and changes
-//! nothing. On a permanent refusal MongoDB is read again: if the stored refresh token is no
+//! nothing. A permanent refusal that follows an **ambiguous attempt** of the same exchange (a
+//! request that may have reached Twitch without a usable answer: a lost answer, a 5xx, a 2xx
+//! that could not be read) is inconclusive (review F3): Twitch may have rotated the token on
+//! that attempt, so nothing is wiped, permissions stay, the marker is left to expire and the
+//! next refresh, which starts clean, decides ([`RefreshFailureReason::Inconclusive`]). On any
+//! other permanent refusal MongoDB is read again: if the stored refresh token is no
 //! longer the refused one, another refresh rotated it and its access token is used when it has
 //! more than 60 s left (otherwise the call fails without touching anything). If it is the same
 //! but the exchange marker is no longer this refresh's own, the refusal is inconclusive (another
@@ -56,11 +66,12 @@
 //!
 //! # What a crash can still lose
 //!
-//! A hard crash (no drain: `SIGKILL`, power loss) between Twitch's answer and the park write,
-//! a few milliseconds, loses the new pair; if Twitch consumed the old refresh token, the
-//! streamer must log in again (after the marker expires, 30 s). The same happens if both
-//! Dragonfly and MongoDB fail between the answer and the end of the drain, or if a drain is cut
-//! short by the container's stop timeout while an exchange is still waiting for Twitch.
+//! A hard crash (no drain: `SIGKILL`, power loss) before the first write of the recovery record
+//! lands (a few milliseconds after the answer) loses the new pair; if Twitch consumed the old
+//! refresh token, the streamer must log in again (after the marker expires, 30 s). The same
+//! happens if both Dragonfly and MongoDB refuse from the answer to the end of the last step of
+//! shutdown (logged as `token_refresh_lost`), or if the container's stop timeout cuts the
+//! shutdown short ([`crate::Timings::shutdown_budget`] must fit in it).
 //!
 //! # Intended differences (safety; `MIGRATION.md` section 3; review 2026-11-11)
 //!

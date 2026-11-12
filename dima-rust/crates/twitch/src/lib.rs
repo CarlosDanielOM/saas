@@ -13,6 +13,9 @@
 //!   [`Auth`], and [`Twitch::helix`] with [`HelixRequest`], which the Helix wrapper packages call.
 //! - [`oauth`]: the token endpoint and the classification of refused refreshes.
 //! - [`badges`], [`emotes`]: `formatBadges` and `getChannelEmoteCatalog`.
+//! - Recovery of answers MongoDB has not taken (`recovery.rs`): [`Twitch::start_recovery`] once
+//!   per process, [`Twitch::reconcile_recovery`] on a tick and before a rollback, and the last
+//!   step of [`Twitch::shutdown`].
 //! - [`keys`]: every Dragonfly key and what happens to it at the cutover.
 //! - [`config`]: the typed configuration and every pause, lease and timeout ([`Timings`]).
 //!
@@ -43,9 +46,11 @@
 //!     events,
 //!     shutdown: shutdown.clone(),
 //! });
+//! twitch.start_recovery().await; // once per process: recovery records into MongoDB (3 s at most)
 //! twitch.load_streamers().await?; // start-up, as `getTwitchAccountsFromDB`
-//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await; (the drain: up to
-//! // `Timings::exchange_drain` + `park_grace`, so the container's stop timeout must exceed it)
+//! // ... every `Timings::recovery_interval` (5 min): twitch.reconcile_recovery().await
+//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await; (at most
+//! // `Timings::shutdown_budget()`, 17 s: the container's stop timeout must exceed it)
 //! # Ok(())
 //! # }
 //! ```
@@ -68,6 +73,7 @@ pub mod helix;
 pub mod keys;
 mod lease;
 pub mod oauth;
+mod recovery;
 mod refresh;
 mod secret;
 pub mod streamers;
@@ -86,6 +92,7 @@ pub use helix::{
 };
 pub use keys::KeySpace;
 pub use oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason};
+pub use recovery::RecoveryReport;
 pub use secret::{AccessToken, RefreshToken};
 pub use streamers::StreamerAccount;
 pub use tokens::{RefreshOutcome, TokenError};
