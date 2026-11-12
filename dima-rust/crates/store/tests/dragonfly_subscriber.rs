@@ -702,3 +702,54 @@ async fn a_nested_array_replaces_the_connection() -> Result<()> {
     ensure!(next(&mut subscription).await? == RESUBSCRIBED);
     Ok(())
 }
+
+#[tokio::test]
+async fn a_subscription_replaced_while_resubscribing_still_reports_the_gap() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let subscriber = setup(mock.config(Duration::from_secs(10))).await?;
+    let mut peer = mock.peer().await?;
+    let mut old = subscribed(&subscriber, &mut peer, "a").await?;
+    // The connection drops: whatever is published until "a" is subscribed again is lost.
+    drop(peer);
+    let mut fresh = mock.peer().await?;
+    ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    // Replaced before the resubscription is confirmed: the new subscription is owed the gap.
+    let confirm = async {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        fresh.send(&confirmation("subscribe", "a", 1)).await
+    };
+    let (new, confirmed) = tokio::join!(
+        subscriber.subscribe(Topic::Channel("a".into()), Overflow::Gap),
+        confirm
+    );
+    confirmed?;
+    let mut new = new?;
+    ensure!(new.confirmed());
+    ensure!(next(&mut new).await? == RESUBSCRIBED);
+    ensure!(old.recv().await.is_none(), "the replaced stream ends");
+    // Nothing was sent for the replacement.
+    fresh.silent(Duration::from_millis(200)).await
+}
+
+#[tokio::test]
+async fn a_subscription_replaced_while_reconnecting_still_reports_the_gap() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.connect_timeout = Duration::from_secs(10);
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    let _old = subscribed(&subscriber, &mut peer, "a").await?;
+    drop(peer);
+    let mut fresh = mock.peer().await?;
+    let (new, script) = tokio::join!(
+        subscriber.subscribe(Topic::Channel("a".into()), Overflow::Gap),
+        async {
+            ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+            fresh.send(&confirmation("subscribe", "a", 1)).await
+        }
+    );
+    script?;
+    let mut new = new?;
+    ensure!(next(&mut new).await? == RESUBSCRIBED);
+    Ok(())
+}

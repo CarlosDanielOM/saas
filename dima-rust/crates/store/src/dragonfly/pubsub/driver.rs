@@ -255,11 +255,12 @@ fn offline(
             let Some(ack) = admit(&topic, entries, ack, limits) else {
                 return Flow::Continue;
             };
+            // A replacement takes over a gap its predecessor was owed.
             if let Some(mut old) = entries.remove(&topic) {
                 old.release_waiters(false);
+                entry.owe_gap = old.owe_gap;
             }
             if connecting {
-                entry.owe_gap = false;
                 entry.waiters.push(ack);
             } else {
                 entry.owe_gap = true;
@@ -427,6 +428,8 @@ impl Connection {
             Some(mut old) => {
                 old.release_waiters(false);
                 entry.live = old.live;
+                // Not live yet after a reconnect: the gap it was owed is the new one's.
+                entry.owe_gap = old.owe_gap;
                 if entry.live {
                     let _ = ack.send(Ok(true));
                 } else {
