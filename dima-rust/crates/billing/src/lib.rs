@@ -12,10 +12,16 @@
 //! | [`usage`] | `utils/ai_usage_event.ts`, `utils/ai_usage_classification.ts` |
 //! | [`polar`] | `utils/polarsh.ts` and every Polar call of the files above |
 //! | [`config`] | the `POLARSH_*` and `BILLING_*` variables (a binary fills it) |
+//! | [`usage_ledger`] | `utils/ai_usage_ledger.ts`, `ai_usage_lock.ts`, `ai_usage_dashboard.ts`, `ai_usage_queries.ts`, `ai_credit_display.ts`, the read functions of `ai_usage_receipts.ts`, and the native receipts worker's ledger and dashboards |
+//! | [`usage_receipts`] | `enqueueAiUsageReceipt` and the native receipts worker's queue handling |
+//! | [`usage_queue`] | `claimUsageJob`, `completeUsageJob`, `failUsageJob` (`utils/ai_usage_queue_health.ts`), fenced |
+//! | [`usage_backfill`] | `utils/ai_usage_backfill_queue.ts`, `ai_usage_backfill.ts`, the job handling of `workers/ai_usage_backfill.worker.ts` |
+//! | [`usage_health`] | `monitorAiUsageQueues`; the flush's dead-letter report and the flush of quiet channels |
 //!
-//! The second half (usage ledger and receipts, gifts, referrals, paid-order rewards, account
-//! cancellation) builds on this one through [`polar::UsageSink`] (receipts),
-//! [`plans::projection::PlanEffects`] (usage retention) and [`polar::PolarClient`].
+//! The usage side (P2-BILLING-02a) plugs into the first half through [`polar::UsageSink`]
+//! ([`usage_receipts::ReceiptSink`]) and [`plans::projection::PlanEffects`]
+//! ([`usage_ledger::retention::UsageRetention`]); gifts, referrals, paid-order rewards and
+//! account cancellation follow in P2-BILLING-02b.
 //!
 //! # Rules
 //!
@@ -87,6 +93,11 @@ pub mod plans;
 pub mod polar;
 pub mod products;
 pub mod usage;
+pub mod usage_backfill;
+pub mod usage_health;
+pub mod usage_ledger;
+pub mod usage_queue;
+pub mod usage_receipts;
 
 /// Where this crate reports what the reference logs and swallows (a failed best-effort write,
 /// a provider fallback). The binary wires it to telemetry. Messages never hold a token, an

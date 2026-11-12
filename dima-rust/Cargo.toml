@@ -111,6 +111,9 @@ regex-automata = { version = "0.4.18", default-features = false, features = ["st
 regex-syntax = { version = "0.8.11", default-features = false, features = ["std", "unicode"] }
 unicode-normalization = "0.1.26"
 icu_collator = "2.3.0"
+# dima-billing: the AI usage page resolves date windows in the viewer's IANA time zone, as
+# `Intl.DateTimeFormat` does in the reference; the time zone database is bundled (no files read).
+jiff = { version = "0.2.43", default-features = false, features = ["std", "tzdb-bundle-always"] }
 # Side-by-side rig (rig/): command line, process-group signals (it also uses bson's Extended JSON, declared with the stores).
 clap = { version = "4.6.6", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions"] }
 nix = { version = "0.31.3", default-features = false, features = ["signal"] }
