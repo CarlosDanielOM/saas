@@ -1564,12 +1564,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bson",
+ "dima-core",
  "dima-text",
  "futures-util",
  "mongodb",
  "regex",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
  "tokio",
 ]
 

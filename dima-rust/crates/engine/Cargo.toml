@@ -1,6 +1,6 @@
 [package]
 name = "dima-engine"
-description = "The command language: syntax (tokenizer, parser, template scanner) and the block editor's model."
+description = "The command language: syntax, block model, evaluator, function registry and the host trait every effect goes through."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -11,9 +11,13 @@ workspace = true
 
 [dependencies]
 dima-text = { workspace = true }
+# Clock and randomness traits the host exposes.
+dima-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-# Block names are checked with `\p{L}\p{N}`, as the reference's `/u` regular expressions do.
+thiserror = { workspace = true }
+# Block names and the user/title functions are checked with `\p{L}`, `\p{M}`, `\p{N}`, as the
+# reference's `/u` regular expressions do.
 regex = { workspace = true }
 
 
