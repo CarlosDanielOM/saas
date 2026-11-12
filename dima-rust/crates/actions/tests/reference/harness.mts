@@ -115,7 +115,10 @@ const keysBefore = new Set<string>(await cache.keys('*'));
 /** Deletes the keys created since the start (only those) and drops the throwaway database. */
 export async function finish() {
     for (const key of await cache.keys('*')) if (!keysBefore.has(key)) await cache.del(key);
-    await mongoose.connection.dropDatabase().catch(() => {});
+    // Mongoose creates each model's collection and indexes in the background: wait for them,
+    // or they recreate the database after the drop.
+    await Promise.all(mongoose.modelNames().map((name: string) => mongoose.model(name).init().catch(() => {})));
+    await scratch.dropDatabase();
     await copyClient.close().catch(() => {});
     await mongoose.disconnect().catch(() => {});
 }

@@ -81,7 +81,7 @@ await stubGroups();
 
 const canonical = (doc: unknown) => sorted(JSON.parse(EJSON.stringify(doc, { relaxed: false })));
 
-async function stateOf(channel: string) {
+async function stateOf(channel: string, started: number) {
     const variables = (await scratch.collection('astvariables').find({}).toArray())
         .map((doc: any) => { delete doc._id; return canonical(doc); })
         .sort((a: any, b: any) => JSON.stringify(a) < JSON.stringify(b) ? -1 : 1);
@@ -95,7 +95,11 @@ async function stateOf(channel: string) {
             : type === 'zset' ? (await cache.zRangeWithScores(key, 0, -1)).map((e: any) => [e.value, e.score]) : null;
         const pttl = await cache.pTTL(key);
         // Absolute expiries (PXAT) follow the frozen clock, not the server's: only their presence.
-        const ttl = key.startsWith('ast:timers:') ? (pttl < 0 ? pttl : 'at') : (pttl < 0 ? pttl : Math.round(pttl / 1000));
+        // A relative one is compared as it was set: what is left plus the time since the case
+        // started, plus 50 ms for the rounding of both clocks, in whole seconds (exact while the write
+        // came less than 950 ms after the start).
+        const ttl = key.startsWith('ast:timers:') ? (pttl < 0 ? pttl : 'at')
+            : (pttl < 0 ? pttl : Math.floor((pttl + (performance.now() - started) + 50) / 1000));
         keys.push([key, type, value, ttl]);
     }
     return { variables, commands, keys };
@@ -147,6 +151,7 @@ try {
         if (channelCommands.length) await scratch.collection('commands').insertMany(channelCommands);
         await deleteKeys([`${channel}:commands:*`, `twitch:${channel}:*`, `command:execution:cooldown:${channel}:*`, 'ast:timers:*', 'keywords:*']);
         reseed(index);
+        const started = performance.now();
         let result: any;
         try {
             if (item.source === 'commands') {
@@ -168,7 +173,7 @@ try {
         } catch (error: any) {
             result = { thrown: error?.message ?? String(error) };
         }
-        const outcome = sorted({ result, posts: posts.splice(0).map(p => [p.channel, p.text, p.replyTo]), ...await stateOf(channel) });
+        const outcome = sorted({ result, posts: posts.splice(0).map(p => [p.channel, p.text, p.replyTo]), ...await stateOf(channel, started) });
         const text = JSON.stringify(outcome);
         recorded.push({ source: item.source, id: item.id, path: item.path, channel, hash: sha256(text) });
         if (debug) appendFileSync(debug, JSON.stringify({ source: item.source, id: item.id, path: item.path, outcome }) + '\n');

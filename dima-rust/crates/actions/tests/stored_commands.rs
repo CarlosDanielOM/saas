@@ -185,7 +185,11 @@ fn canonical(document: Document) -> Value {
     sorted(Bson::Document(document).into_canonical_extjson())
 }
 
-async fn state_of(stores: &Stores, channel: &str) -> Result<(Value, Value, Value)> {
+async fn state_of(
+    stores: &Stores,
+    channel: &str,
+    started: std::time::Instant,
+) -> Result<(Value, Value, Value)> {
     let mut variables: Vec<Value> = stores
         .mongo
         .documents("astvariables")
@@ -244,7 +248,9 @@ async fn state_of(stores: &Stores, channel: &str) -> Result<(Value, Value, Value
         } else if pttl < 0 {
             json!(pttl)
         } else {
-            json!(dima_text::math_round(pttl as f64 / 1000.0) as i64)
+            // As it was set: what is left plus the time since the case started (the recorder's).
+            let elapsed = i64::try_from(started.elapsed().as_millis()).unwrap_or(i64::MAX);
+            json!((pttl + elapsed + 50).div_euclid(1000))
         };
         keys.push(json!([name, kind, value, ttl]));
     }
@@ -453,6 +459,7 @@ fn stored_command_texts_match_the_reference() -> Result<()> {
                 process.deps.commands.invalidate_channel(channel).await?;
                 random.reseed(index as u64 + 1);
                 let posted_before = twitch.posts().len();
+                let started = std::time::Instant::now();
                 let result = if case.source == "commands" {
                     let name = case.doc.get_str("cmd").unwrap_or_default().to_owned();
                     let request = CommandRequest {
@@ -508,7 +515,7 @@ fn stored_command_texts_match_the_reference() -> Result<()> {
                     .skip(posted_before)
                     .map(|post| json!([post.channel, post.text, post.reply_to]))
                     .collect();
-                let (variables, commands, keys) = state_of(&stores, channel).await?;
+                let (variables, commands, keys) = state_of(&stores, channel, started).await?;
                 let outcome = sorted(json!({
                     "result": result, "posts": posts, "variables": variables, "commands": commands, "keys": keys,
                 }));
