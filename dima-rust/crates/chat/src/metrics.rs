@@ -1,15 +1,6 @@
-//! Bot runtime metrics (`metrics:bot:*`, flushed every `BOT_METRICS_INTERVAL_MS`, default 30 s) and
-//! product events. Package **P4-BOT-INGRESS** fills this module; it is empty until then.
-//!
-//! TypeScript it ports (baseline `0c71108e`), with the exports other packages call, which are the
-//! public entry points the plan promises:
-//!
-//! - `utils/observability/bot_runtime_metrics.ts` (516 lines): `endMessageHandlerMetric`,
-//!   `recordRedisOpsEstimate`, `recordSemanticMemoryMetric`, `recordStreamMemoryActionMetric`,
-//!   `recordStreamMemoryJobMetric`, `recordThreadRoutingMetric`, `startBotRuntimeMetricsLoop`,
-//!   `startMessageHandlerMetric`
-//! - `utils/posthog_events.ts` (177 lines): `identifyStreamer`, `trackAiOperation`,
-//!   `trackAiUsageRecorded`, `trackCommand`, `trackTts`
-//!
-//! Both files are loaded by every process in the reference; recorders the API or the cron call land
-//! where those processes can reach them (open question in the P4-SKEL report).
+//! The bot runtime metrics and product events, re-exported from `dima-actions`, where they live
+//! because the cron and the API load them too (lead's decision at the P4-SKEL merge):
+//! [`dima_actions::metrics`] (`bot_runtime_metrics.ts`) and `dima_actions::product_events`
+//! (`posthog_events.ts`). Kept so the bot's modules can name them from their own crate.
+
+pub use dima_actions::metrics::*;

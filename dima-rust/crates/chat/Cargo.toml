@@ -11,3 +11,28 @@ workspace = true
 
 [dependencies]
 dima-actions = { workspace = true }
+# P4-BOT-INGRESS: the webhook (journal, raid filter, Dragonfly claims, the HTTP edge).
+dima-core = { workspace = true }
+dima-events = { workspace = true }
+dima-store = { workspace = true }
+dima-stream = { workspace = true }
+dima-telemetry = { workspace = true }
+dima-text = { workspace = true }
+dima-web = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+http = { workspace = true }
+http-body-util = { workspace = true }
+redis = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+bson = { workspace = true }
+dima-model = { workspace = true }
+dima-twitch = { workspace = true }
+hyper = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
