@@ -164,7 +164,8 @@ impl ProviderBuilder {
 
     /// A header sent with every request.
     pub fn header(mut self, name: &str, value: &str) -> Self {
-        self.headers.push((name.to_owned(), value.to_owned(), false));
+        self.headers
+            .push((name.to_owned(), value.to_owned(), false));
         self
     }
 
@@ -366,13 +367,22 @@ mod tests {
             .provider(Provider::builder("twitch", "https://api.twitch.tv"))
             .base_url_override("twich", "http://127.0.0.1:1")
             .build();
-        assert_eq!(typo.unwrap_err(), ConfigError::UnknownOverride("twich".into()));
+        assert_eq!(
+            typo.unwrap_err(),
+            ConfigError::UnknownOverride("twich".into())
+        );
         let twice = ProviderRegistry::builder()
             .provider(Provider::builder("a", "https://a.test"))
             .provider(Provider::builder("a", "https://b.test"))
             .build();
         assert_eq!(twice.unwrap_err(), ConfigError::Duplicate("a"));
-        for bad in ["ftp://x.test", "https://u:p@x.test", "https://x.test/?q=1", "nope", "https://x.test/#f"] {
+        for bad in [
+            "ftp://x.test",
+            "https://u:p@x.test",
+            "https://x.test/?q=1",
+            "nope",
+            "https://x.test/#f",
+        ] {
             assert_eq!(
                 Provider::builder("bad", bad).build().unwrap_err(),
                 ConfigError::BaseUrl("bad")

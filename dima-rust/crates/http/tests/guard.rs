@@ -37,7 +37,12 @@ impl ScriptedResolver {
     }
 
     fn calls(&self, host: &str) -> usize {
-        self.calls.lock().unwrap().iter().filter(|h| *h == host).count()
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|h| *h == host)
+            .count()
     }
 }
 
@@ -46,10 +51,14 @@ impl Resolver for ScriptedResolver {
         Box::pin(async move {
             self.calls.lock().unwrap().push(host.to_owned());
             let mut answers = self.answers.lock().unwrap();
-            let list = answers.get_mut(host).ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::NotFound, "no such host")
-            })?;
-            Ok(if list.len() > 1 { list.remove(0) } else { list[0].clone() })
+            let list = answers
+                .get_mut(host)
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no such host"))?;
+            Ok(if list.len() > 1 {
+                list.remove(0)
+            } else {
+                list[0].clone()
+            })
         })
     }
 }
@@ -67,7 +76,10 @@ fn client(policy: GuardPolicy, resolver: &Arc<ScriptedResolver>) -> GuardedClien
 }
 
 fn reason(error: &Error) -> BlockReason {
-    error.block_reason().cloned().unwrap_or_else(|| panic!("not blocked: {error:?}"))
+    error
+        .block_reason()
+        .cloned()
+        .unwrap_or_else(|| panic!("not blocked: {error:?}"))
 }
 
 #[tokio::test]
@@ -78,11 +90,21 @@ async fn fetches_an_allowed_host_and_sends_no_credentials() {
     resolver.answer("cdn.test", &[&[LOOPBACK]]);
     let client = client(policy(&server, &["cdn.test"]), &resolver);
     let url = format!("http://cdn.test:{}/a.png", server.addr().port());
-    let body = client.get(&url).send().await.unwrap().bytes().await.unwrap();
+    let body = client
+        .get(&url)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
     assert_eq!(&body[..], b"image");
     let request = server.next_request().await.unwrap();
     assert_eq!(request.target, "/a.png");
-    assert_eq!(request.header("host"), Some(&*format!("cdn.test:{}", server.addr().port())));
+    assert_eq!(
+        request.header("host"),
+        Some(&*format!("cdn.test:{}", server.addr().port()))
+    );
     for name in ["authorization", "cookie", "referer", "proxy-authorization"] {
         assert_eq!(request.header(name), None, "{name}");
     }
@@ -97,7 +119,14 @@ async fn refuses_names_that_resolve_to_refused_addresses() {
     resolver.answer("mapped.test", &[&["::ffff:127.0.0.2"]]);
     resolver.answer("nat64.test", &[&["64:ff9b::a9fe:a9fe"]]);
     resolver.answer("empty.test", &[&[]]);
-    let hosts = ["meta.test", "mixed.test", "mapped.test", "nat64.test", "empty.test", "missing.test"];
+    let hosts = [
+        "meta.test",
+        "mixed.test",
+        "mapped.test",
+        "nat64.test",
+        "empty.test",
+        "missing.test",
+    ];
     let client = client(policy(&server, &hosts), &resolver);
     let port = server.addr().port();
     let fetch = |host: &str| client.get(&format!("http://{host}:{port}/")).send();
@@ -118,8 +147,14 @@ async fn refuses_names_that_resolve_to_refused_addresses() {
         reason(&fetch("nat64.test").await.unwrap_err()),
         BlockReason::Address(_)
     ));
-    assert_eq!(reason(&fetch("empty.test").await.unwrap_err()), BlockReason::Unresolvable);
-    assert_eq!(reason(&fetch("missing.test").await.unwrap_err()), BlockReason::Unresolvable);
+    assert_eq!(
+        reason(&fetch("empty.test").await.unwrap_err()),
+        BlockReason::Unresolvable
+    );
+    assert_eq!(
+        reason(&fetch("missing.test").await.unwrap_err()),
+        BlockReason::Unresolvable
+    );
     assert!(server.requests().is_empty());
 }
 
@@ -163,7 +198,16 @@ async fn literal_addresses_in_every_notation_never_connect() {
         "not a url".to_owned(),
         format!("http://user:pass@127.0.0.1:{port}/"),
     ] {
-        assert!(client.get(&raw).send().await.unwrap_err().block_reason().is_some(), "{raw}");
+        assert!(
+            client
+                .get(&raw)
+                .send()
+                .await
+                .unwrap_err()
+                .block_reason()
+                .is_some(),
+            "{raw}"
+        );
     }
     assert!(server.requests().is_empty());
 }
@@ -181,7 +225,11 @@ async fn dns_rebinding_cannot_swap_the_checked_address() {
     let url = format!("http://rebind.test:{}/", server.addr().port());
     let text = client.get(&url).send().await.unwrap().text().await.unwrap();
     assert_eq!(text, "ok");
-    assert_eq!(resolver.calls("rebind.test"), 1, "one resolution per connection");
+    assert_eq!(
+        resolver.calls("rebind.test"),
+        1,
+        "one resolution per connection"
+    );
     let error = client.get(&url).send().await.unwrap_err();
     assert_eq!(
         reason(&error),
@@ -200,7 +248,10 @@ async fn redirect_chains_are_rechecked_hop_by_hop() {
     resolver.answer("evil.test", &[&[LOOPBACK]]);
     resolver.answer("internal.test", &[&["10.1.1.1"]]);
     let port = server.addr().port();
-    let client = client(policy(&server, &["a.test", "b.test", "internal.test"]), &resolver);
+    let client = client(
+        policy(&server, &["a.test", "b.test", "internal.test"]),
+        &resolver,
+    );
 
     // Three hops are allowed: a -> b -> a -> b.
     server.push(MockResponse::new(302).header("location", &format!("http://b.test:{port}/2")));
@@ -220,7 +271,17 @@ async fn redirect_chains_are_rechecked_hop_by_hop() {
     let requests = server.requests();
     let hosts: Vec<_> = requests
         .iter()
-        .map(|r| (r.header("host").unwrap().split(':').next().unwrap().to_owned(), r.target.clone()))
+        .map(|r| {
+            (
+                r.header("host")
+                    .unwrap()
+                    .split(':')
+                    .next()
+                    .unwrap()
+                    .to_owned(),
+                r.target.clone(),
+            )
+        })
         .collect();
     assert_eq!(
         hosts,
@@ -239,7 +300,11 @@ async fn redirect_chains_are_rechecked_hop_by_hop() {
     for _ in 0..4 {
         server.push(MockResponse::new(302).header("location", "/again"));
     }
-    let error = client.get(&format!("http://a.test:{port}/")).send().await.unwrap_err();
+    let error = client
+        .get(&format!("http://a.test:{port}/"))
+        .send()
+        .await
+        .unwrap_err();
     assert_eq!(reason(&error), BlockReason::TooManyRedirects);
 
     // A hop to an unlisted host, to a refused address, to another scheme or port, or to a
@@ -255,7 +320,11 @@ async fn redirect_chains_are_rechecked_hop_by_hop() {
         format!("http://user@a.test:{port}/"),
     ] {
         server.push(MockResponse::new(302).header("location", &location));
-        let error = client.get(&format!("http://a.test:{port}/")).send().await.unwrap_err();
+        let error = client
+            .get(&format!("http://a.test:{port}/"))
+            .send()
+            .await
+            .unwrap_err();
         assert!(error.block_reason().is_some(), "{location}: {error:?}");
     }
     assert_eq!(server.requests().len(), before + 7);
@@ -280,8 +349,15 @@ async fn post_turns_into_get_on_303_and_keeps_its_body_on_307() {
         .unwrap();
     let requests = server.requests();
     assert_eq!(
-        requests.iter().map(|r| (r.method.as_str(), r.body_text())).collect::<Vec<_>>(),
-        [("POST", "{}".into()), ("POST", "{}".into()), ("GET", String::new())]
+        requests
+            .iter()
+            .map(|r| (r.method.as_str(), r.body_text()))
+            .collect::<Vec<_>>(),
+        [
+            ("POST", "{}".into()),
+            ("POST", "{}".into()),
+            ("GET", String::new())
+        ]
     );
 }
 
@@ -292,20 +368,56 @@ async fn size_and_time_limits_hold() {
     resolver.answer("a.test", &[&[LOOPBACK]]);
     let port = server.addr().port();
     let client = client(
-        policy(&server, &["a.test"]).max_bytes(16).timeout(Duration::from_millis(300)),
+        policy(&server, &["a.test"])
+            .max_bytes(16)
+            .timeout(Duration::from_millis(300)),
         &resolver,
     );
     let url = format!("http://a.test:{port}/");
     server.push(MockResponse::new(200).body(vec![0u8; 17]));
-    let error = client.get(&url).send().await.unwrap().bytes().await.unwrap_err();
-    assert!(matches!(error, Error::BodyTooLarge { limit: 16, .. }), "{error:?}");
+    let error = client
+        .get(&url)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, Error::BodyTooLarge { limit: 16, .. }),
+        "{error:?}"
+    );
     server.push(MockResponse::new(200).body(vec![0u8; 16]));
-    assert_eq!(client.get(&url).send().await.unwrap().bytes().await.unwrap().len(), 16);
+    assert_eq!(
+        client
+            .get(&url)
+            .send()
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap()
+            .len(),
+        16
+    );
     server.push(MockResponse::new(200).delay(Duration::from_secs(5)));
     let error = client.get(&url).send().await.unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Total, .. }), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Total,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
     // The deadline covers every hop together.
-    server.push(MockResponse::new(302).header("location", "/b").delay(Duration::from_millis(200)));
+    server.push(
+        MockResponse::new(302)
+            .header("location", "/b")
+            .delay(Duration::from_millis(200)),
+    );
     server.push(MockResponse::new(200).delay(Duration::from_millis(200)));
     let error = client.get(&url).send().await.unwrap_err();
     assert!(error.is_timeout(), "{error:?}");
@@ -325,8 +437,14 @@ async fn the_reference_policy_refuses_what_media_ts_refuses() {
     .unwrap();
     for (url, expected) in [
         ("http://cdn.streamelements.com/a.png", BlockReason::Scheme),
-        ("https://cdn.streamelements.com:8443/a.png", BlockReason::Port),
-        ("https://user@cdn.streamelements.com/a.png", BlockReason::Userinfo),
+        (
+            "https://cdn.streamelements.com:8443/a.png",
+            BlockReason::Port,
+        ),
+        (
+            "https://user@cdn.streamelements.com/a.png",
+            BlockReason::Userinfo,
+        ),
         ("https://streamelements.com/a.png", BlockReason::Host),
         ("https://api.streamelements.com/a.png", BlockReason::Host),
         ("https://1.1.1.1/a.png", BlockReason::Host),
@@ -336,6 +454,13 @@ async fn the_reference_policy_refuses_what_media_ts_refuses() {
     }
     // An allowed name with a private answer: refused before connecting.
     resolver.answer("cdn.streamelements.com", &[&["192.168.1.10"]]);
-    let error = client.get("https://cdn.streamelements.com/a.png").send().await.unwrap_err();
-    assert_eq!(reason(&error), BlockReason::Address("192.168.1.10".parse().unwrap()));
+    let error = client
+        .get("https://cdn.streamelements.com/a.png")
+        .send()
+        .await
+        .unwrap_err();
+    assert_eq!(
+        reason(&error),
+        BlockReason::Address("192.168.1.10".parse().unwrap())
+    );
 }

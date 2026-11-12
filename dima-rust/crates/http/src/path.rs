@@ -6,7 +6,11 @@ use std::borrow::Cow;
 /// Characters escaped in a path segment argument: everything except the RFC 3986 unreserved set.
 /// `/`, `?`, `#` and `%` are escaped, so an argument can never add a segment, a query or an
 /// escape of its own.
-const SEGMENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
+const SEGMENT: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'~');
 
 /// A request path relative to the provider's base URL.
 ///
@@ -61,7 +65,8 @@ impl Path {
         if args.is_empty() {
             return Ok(Self::fixed(template));
         }
-        let mut out = String::with_capacity(template.len() + args.iter().map(|a| a.len()).sum::<usize>());
+        let mut out =
+            String::with_capacity(template.len() + args.iter().map(|a| a.len()).sum::<usize>());
         for (index, piece) in pieces.enumerate() {
             out.push_str(piece);
             if let Some(arg) = args.get(index) {
@@ -106,7 +111,10 @@ mod tests {
             Path::template("/a/{}", &[".."]).unwrap_err(),
             PathError::Segment
         );
-        assert_eq!(Path::template("/a/{}", &[""]).unwrap_err(), PathError::Segment);
+        assert_eq!(
+            Path::template("/a/{}", &[""]).unwrap_err(),
+            PathError::Segment
+        );
         assert_eq!(Path::template("/a/{}", &[]).unwrap_err(), PathError::Arity);
         assert_eq!(Path::template("a", &[]).unwrap_err(), PathError::Relative);
     }

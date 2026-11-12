@@ -205,7 +205,9 @@ pub struct MockServer {
 
 impl std::fmt::Debug for MockServer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MockServer").field("addr", &self.addr).finish()
+        f.debug_struct("MockServer")
+            .field("addr", &self.addr)
+            .finish()
     }
 }
 
@@ -255,7 +257,10 @@ impl MockServer {
     }
 
     /// Answers with `handler` once the queue is empty.
-    pub fn fallback(&self, handler: impl Fn(&RecordedRequest) -> MockResponse + Send + Sync + 'static) {
+    pub fn fallback(
+        &self,
+        handler: impl Fn(&RecordedRequest) -> MockResponse + Send + Sync + 'static,
+    ) {
         lock(&self.state).fallback = Some(Arc::new(handler));
     }
 
@@ -353,9 +358,7 @@ async fn serve(
             std::future::pending::<()>().await;
         }
         (Action::DropAfter(n), MockBody::Full(bytes)) => {
-            stream
-                .write_all(bytes.get(..*n).unwrap_or(bytes))
-                .await?;
+            stream.write_all(bytes.get(..*n).unwrap_or(bytes)).await?;
             stream.flush().await?;
             return Ok(());
         }
@@ -406,7 +409,10 @@ fn invalid(what: &str) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::InvalidData, what.to_owned())
 }
 
-async fn read_line(reader: &mut BufReader<TcpStream>, budget: &mut usize) -> std::io::Result<String> {
+async fn read_line(
+    reader: &mut BufReader<TcpStream>,
+    budget: &mut usize,
+) -> std::io::Result<String> {
     let mut line = Vec::new();
     let n = (&mut *reader)
         .take(u64::try_from(*budget).unwrap_or(0))
@@ -422,7 +428,9 @@ async fn read_line(reader: &mut BufReader<TcpStream>, budget: &mut usize) -> std
     String::from_utf8(line).map_err(|_| invalid("non-utf8 head"))
 }
 
-async fn read_request(reader: &mut BufReader<TcpStream>) -> std::io::Result<Option<RecordedRequest>> {
+async fn read_request(
+    reader: &mut BufReader<TcpStream>,
+) -> std::io::Result<Option<RecordedRequest>> {
     let mut budget = MAX_HEAD;
     let start = match read_line(reader, &mut budget).await {
         Ok(line) => line,

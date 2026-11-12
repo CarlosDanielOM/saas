@@ -343,7 +343,10 @@ impl<'a> RequestBuilder<'a> {
 
     /// Adds a header whose value is a secret.
     pub fn secret_header(self, name: &str, value: &dima_core::SecretString) -> Self {
-        match (HeaderName::try_from(name), HeaderValue::try_from(value.expose())) {
+        match (
+            HeaderName::try_from(name),
+            HeaderValue::try_from(value.expose()),
+        ) {
             (Ok(name), Ok(mut value)) => {
                 value.set_sensitive(true);
                 let mut this = self;
@@ -748,13 +751,18 @@ impl<'a> Sender<'a> {
                 }
             }
             let info = self.info();
-            let response =
-                match await_with(builder.send(), deadline, headers_deadline, &self.cancel, &info)
-                    .await
-                {
-                    Ok(response) => response,
-                    Err(error) => return (AttemptResult::Failed(error), end),
-                };
+            let response = match await_with(
+                builder.send(),
+                deadline,
+                headers_deadline,
+                &self.cancel,
+                &info,
+            )
+            .await
+            {
+                Ok(response) => response,
+                Err(error) => return (AttemptResult::Failed(error), end),
+            };
             let status = response.status();
             if !status.is_redirection() || !response.headers().contains_key(LOCATION) {
                 return (AttemptResult::Answer(response), end);
@@ -780,11 +788,10 @@ impl<'a> Sender<'a> {
                 );
             match next {
                 Some(next) if hops < max && next.origin() == url.origin() && replay_ok => {
-                    let to_get = (matches!(
-                        status,
-                        StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND
-                    ) && method == Method::POST)
-                        || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
+                    let to_get =
+                        (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
+                            && method == Method::POST)
+                            || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
                     if to_get {
                         method = Method::GET;
                         self.body = Body::Empty;

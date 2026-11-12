@@ -37,7 +37,10 @@ fn ms(n: u64) -> Duration {
 #[tokio::test]
 async fn json_round_trip_with_paths_queries_and_headers() {
     let server = MockServer::start().await.unwrap();
-    server.push(MockResponse::json(200, r#"{"data":[{"id":"1","name":"\ud800x"}]}"#));
+    server.push(MockResponse::json(
+        200,
+        r#"{"data":[{"id":"1","name":"\ud800x"}]}"#,
+    ));
     let provider = Provider::builder("twitch", "https://api.twitch.tv/helix")
         .base_url(&format!("{}/helix", server.url()))
         .header("client-id", "abc")
@@ -60,7 +63,10 @@ async fn json_round_trip_with_paths_queries_and_headers() {
     assert_eq!(users.data[0]["name"], "\u{fffd}x");
     let request = server.next_request().await.unwrap();
     assert_eq!(request.method, "GET");
-    assert_eq!(request.target, "/helix/users/a%20b?login=d%C3%B3m%26x&first=1+0");
+    assert_eq!(
+        request.target,
+        "/helix/users/a%20b?login=d%C3%B3m%26x&first=1+0"
+    );
     assert_eq!(request.header("client-id"), Some("abc"));
     assert_eq!(request.header("authorization"), Some("Bearer tok"));
     assert!(request.header("accept-encoding").unwrap().contains("gzip"));
@@ -111,7 +117,10 @@ async fn bodies_json_js_form_and_exact_bytes() {
     );
     assert_eq!(requests[3].method, "PUT");
     assert_eq!(requests[3].body, b"\x83\xa4text");
-    assert_eq!(requests[3].header("content-type"), Some("application/msgpack"));
+    assert_eq!(
+        requests[3].header("content-type"),
+        Some("application/msgpack")
+    );
 }
 
 #[tokio::test]
@@ -121,16 +130,43 @@ async fn body_limit_is_exact_and_an_error() {
     let client = client();
     // Exactly at the limit: fine. One byte over: an error, declared or streamed.
     server.push(MockResponse::new(200).body(vec![b'a'; 10]));
-    let body = client.get(&provider, "/").max_bytes(10).send().await.unwrap().bytes().await.unwrap();
+    let body = client
+        .get(&provider, "/")
+        .max_bytes(10)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
     assert_eq!(body.len(), 10);
     server.push(MockResponse::new(200).body(vec![b'a'; 11]));
-    let error = client.get(&provider, "/").max_bytes(10).send().await.unwrap().bytes().await.unwrap_err();
-    assert!(matches!(error, Error::BodyTooLarge { limit: 10, .. }), "{error:?}");
+    let error = client
+        .get(&provider, "/")
+        .max_bytes(10)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, Error::BodyTooLarge { limit: 10, .. }),
+        "{error:?}"
+    );
     server.push(MockResponse::new(200).chunks(vec![
         (Duration::ZERO, Bytes::from_static(b"12345")),
         (Duration::ZERO, Bytes::from_static(b"678901")),
     ]));
-    let error = client.get(&provider, "/").max_bytes(10).send().await.unwrap().text().await.unwrap_err();
+    let error = client
+        .get(&provider, "/")
+        .max_bytes(10)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap_err();
     assert_eq!(error.class(), FailureClass::TooLarge);
 }
 
@@ -146,13 +182,53 @@ async fn decompression_counts_decoded_bytes() {
     let mut deflate = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
     deflate.write_all(text.as_bytes()).unwrap();
     let deflate = deflate.finish().unwrap();
-    server.push(MockResponse::new(200).header("content-encoding", "gzip").body(gzip.clone()));
-    server.push(MockResponse::new(200).header("content-encoding", "deflate").body(deflate));
-    assert_eq!(client.get(&provider, "/").send().await.unwrap().text().await.unwrap(), text);
-    assert_eq!(client.get(&provider, "/").send().await.unwrap().text().await.unwrap(), text);
+    server.push(
+        MockResponse::new(200)
+            .header("content-encoding", "gzip")
+            .body(gzip.clone()),
+    );
+    server.push(
+        MockResponse::new(200)
+            .header("content-encoding", "deflate")
+            .body(deflate),
+    );
+    assert_eq!(
+        client
+            .get(&provider, "/")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap(),
+        text
+    );
+    assert_eq!(
+        client
+            .get(&provider, "/")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap(),
+        text
+    );
     // A small compressed body that inflates past the limit is refused.
-    server.push(MockResponse::new(200).header("content-encoding", "gzip").body(gzip));
-    let error = client.get(&provider, "/").max_bytes(1000).send().await.unwrap().bytes().await.unwrap_err();
+    server.push(
+        MockResponse::new(200)
+            .header("content-encoding", "gzip")
+            .body(gzip),
+    );
+    let error = client
+        .get(&provider, "/")
+        .max_bytes(1000)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap_err();
     assert_eq!(error.class(), FailureClass::TooLarge);
 }
 
@@ -166,7 +242,14 @@ async fn write_to_and_chunks() {
         (ms(20), Bytes::from_static(b"cd")),
     ]));
     let mut out = Vec::new();
-    let n = client.get(&provider, "/").send().await.unwrap().write_to(&mut out).await.unwrap();
+    let n = client
+        .get(&provider, "/")
+        .send()
+        .await
+        .unwrap()
+        .write_to(&mut out)
+        .await
+        .unwrap();
     assert_eq!((n, out.as_slice()), (4, &b"abcd"[..]));
 }
 
@@ -176,8 +259,22 @@ async fn timeouts_total_headers_idle() {
     let provider = provider(&server);
     let client = client();
     server.push(MockResponse::new(200).delay(ms(2000)));
-    let error = client.get(&provider, "/").timeout(ms(200)).send().await.unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Total, .. }), "{error:?}");
+    let error = client
+        .get(&provider, "/")
+        .timeout(ms(200))
+        .send()
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Total,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
 
     server.push(MockResponse::new(200).delay(ms(2000)));
     let error = client
@@ -186,10 +283,23 @@ async fn timeouts_total_headers_idle() {
         .send()
         .await
         .unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Headers, .. }), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Headers,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
 
     // A stalled stream: headers arrive, the body never does.
-    server.push(MockResponse::new(200).body(vec![0u8; 100]).stall_after_headers());
+    server.push(
+        MockResponse::new(200)
+            .body(vec![0u8; 100])
+            .stall_after_headers(),
+    );
     let started = Instant::now();
     let error = client
         .get(&provider, "/")
@@ -200,13 +310,26 @@ async fn timeouts_total_headers_idle() {
         .bytes()
         .await
         .unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Idle, .. }), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Idle,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
     assert!(started.elapsed() < ms(1500));
 
     // Chunks that keep coming but past the total deadline.
-    server.push(MockResponse::new(200).chunks(
-        (0..20).map(|_| (ms(50), Bytes::from_static(b"x"))).collect(),
-    ));
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..20)
+                .map(|_| (ms(50), Bytes::from_static(b"x")))
+                .collect(),
+        ),
+    );
     let error = client
         .get(&provider, "/")
         .timeout(ms(300))
@@ -216,7 +339,16 @@ async fn timeouts_total_headers_idle() {
         .bytes()
         .await
         .unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Total, .. }), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Total,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
 }
 
 /// A resolver that never answers, so the connect phase hangs on loopback.
@@ -236,10 +368,21 @@ async fn slow_connect_is_a_connect_timeout() {
         .resolver(Arc::new(Hanging))
         .build()
         .unwrap();
-    let provider = Provider::builder("slow", "http://slow.invalid").build().unwrap();
+    let provider = Provider::builder("slow", "http://slow.invalid")
+        .build()
+        .unwrap();
     let started = Instant::now();
     let error = client.get(&provider, "/").send().await.unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Connect, .. }), "{error:?}");
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Connect,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
     assert!(started.elapsed() < ms(1500));
 }
 
@@ -261,7 +404,10 @@ async fn refused_connection_is_a_connect_error_and_retried_when_allowed() {
         .send()
         .await
         .unwrap_err();
-    assert!(matches!(error, Error::RetriesExhausted { attempts: 3, .. }), "{error:?}");
+    assert!(
+        matches!(error, Error::RetriesExhausted { attempts: 3, .. }),
+        "{error:?}"
+    );
     assert_eq!(error.class(), FailureClass::Connect);
 }
 
@@ -277,7 +423,12 @@ async fn retries_statuses_and_returns_the_last_response() {
     server.push(MockResponse::new(503));
     server.push(MockResponse::new(429));
     server.push(MockResponse::json(200, "{}"));
-    let response = client.post(&provider, "/chat").json(&serde_json::json!({})).send().await.unwrap();
+    let response = client
+        .post(&provider, "/chat")
+        .json(&serde_json::json!({}))
+        .send()
+        .await
+        .unwrap();
     assert_eq!((response.status().as_u16(), response.attempts()), (200, 3));
     let requests = server.wait_for(3).await;
     assert!(requests.iter().all(|r| r.body_text() == "{}"));
@@ -302,7 +453,12 @@ async fn retries_statuses_and_returns_the_last_response() {
     // A POST is not retried on 503 by a policy that keeps idempotency.
     let strict = RetryPolicy::fixed(&[ms(1)]).retry_statuses(StatusSet::new().with(503));
     server.push(MockResponse::new(503));
-    let response = client.post(&provider, "/x").retry(strict.clone()).send().await.unwrap();
+    let response = client
+        .post(&provider, "/x")
+        .retry(strict.clone())
+        .send()
+        .await
+        .unwrap();
     assert_eq!(response.attempts(), 1);
     // ...unless the caller declares it idempotent.
     server.push(MockResponse::new(503));
@@ -328,7 +484,12 @@ async fn retry_after_is_waited_in_real_time() {
         .retry_statuses(StatusSet::new().with(429))
         .server_delay(ServerDelay::retry_after(Duration::from_secs(5)));
     let started = Instant::now();
-    let response = client.get(&provider, "/").retry(policy).send().await.unwrap();
+    let response = client
+        .get(&provider, "/")
+        .retry(policy)
+        .send()
+        .await
+        .unwrap();
     assert_eq!(response.status().as_u16(), 200);
     assert!(started.elapsed() >= ms(300), "{:?}", started.elapsed());
 }
@@ -437,7 +598,10 @@ async fn helix_persistent_401s_stop_after_the_configured_retries() {
         helix_run(&[401, 401, 401, 200], &[ms(1), ms(1)], rotate).await;
     assert_eq!(response.status().as_u16(), 401);
     assert!(!response.auth_refresh_unavailable());
-    assert_eq!(sent, ["Bearer rejected", "Bearer rotated-1", "Bearer rotated-2"]);
+    assert_eq!(
+        sent,
+        ["Bearer rejected", "Bearer rotated-1", "Bearer rotated-2"]
+    );
     assert_eq!(refreshes, [1, 2]);
 }
 
@@ -467,7 +631,10 @@ async fn redirects_error_manual_and_same_origin() {
     let refuse = provider(&server);
     server.push(MockResponse::new(307).header("location", "/elsewhere"));
     let error = client.get(&refuse, "/").send().await.unwrap_err();
-    assert!(matches!(error, Error::Redirect { status: 307, .. }), "{error:?}");
+    assert!(
+        matches!(error, Error::Redirect { status: 307, .. }),
+        "{error:?}"
+    );
 
     let manual = Provider::builder("m", &server.url())
         .redirects(Redirects::Manual)
@@ -495,7 +662,9 @@ async fn redirects_error_manual_and_same_origin() {
     let requests = server.requests();
     let tail = &requests[requests.len() - 3..];
     assert_eq!(
-        tail.iter().map(|r| (r.method.as_str(), r.target.as_str())).collect::<Vec<_>>(),
+        tail.iter()
+            .map(|r| (r.method.as_str(), r.target.as_str()))
+            .collect::<Vec<_>>(),
         [("POST", "/one"), ("POST", "/two"), ("GET", "/three")]
     );
     assert_eq!(tail[1].body_text(), r#"{"a":1}"#);
@@ -517,7 +686,10 @@ async fn nothing_secret_is_printed() {
     let server = MockServer::start().await.unwrap();
     let provider = Provider::builder("polar", "https://api.polar.sh/v1")
         .base_url(&format!("{}/v1", server.url()))
-        .secret_header("authorization", &SecretString::from("Bearer polar_oat_SECRET1"))
+        .secret_header(
+            "authorization",
+            &SecretString::from("Bearer polar_oat_SECRET1"),
+        )
         .secret_query_params(&["sig"])
         .build()
         .unwrap();
@@ -543,7 +715,10 @@ async fn nothing_secret_is_printed() {
         .unwrap_err();
     let printed = format!("{error} | {error:?} | {:?}", error.info());
     assert!(!printed.contains("SECRET"), "{printed}");
-    assert!(printed.contains("/checkouts/client/{}/confirm"), "{printed}");
+    assert!(
+        printed.contains("/checkouts/client/{}/confirm"),
+        "{printed}"
+    );
     assert!(printed.contains("page=2"), "{printed}");
     let status = error.as_status().unwrap();
     assert_eq!(status.status.as_u16(), 403);
@@ -552,7 +727,10 @@ async fn nothing_secret_is_printed() {
     // The body slice is available to the caller, never printed.
     assert!(status.body_text().contains("SECRET4"));
     let request = server.next_request().await.unwrap();
-    assert_eq!(request.header("authorization"), Some("Bearer polar_oat_SECRET1"));
+    assert_eq!(
+        request.header("authorization"),
+        Some("Bearer polar_oat_SECRET1")
+    );
 
     // Transport errors never carry the URL.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -627,7 +805,14 @@ async fn observer_sees_attempts_and_trace_headers_go_to_internal_providers_only(
     server.push(MockResponse::new(503));
     server.push(MockResponse::new(200).body("hello"));
     let path = Path::template("/speech/{}/status", &["123456"]).unwrap();
-    let text = client.get(&internal, path).send().await.unwrap().text().await.unwrap();
+    let text = client
+        .get(&internal, path)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
     assert_eq!(text, "hello");
     server.push(MockResponse::new(200));
     client.get(&external, "/x").send().await.unwrap();
@@ -659,15 +844,47 @@ async fn concurrency_cap_holds_slots_until_the_body_is_done() {
     let client = client();
     let started = Instant::now();
     let (a, b) = tokio::join!(
-        async { client.get(&provider, "/a").send().await.unwrap().text().await.unwrap() },
-        async { client.get(&provider, "/b").send().await.unwrap().text().await.unwrap() },
+        async {
+            client
+                .get(&provider, "/a")
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap()
+        },
+        async {
+            client
+                .get(&provider, "/b")
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap()
+        },
     );
     assert_eq!((a.as_str(), b.as_str()), ("ok", "ok"));
     assert!(started.elapsed() >= ms(300), "{:?}", started.elapsed());
     // Waiting for a slot counts against the deadline.
     let held = client.get(&provider, "/held").send().await.unwrap();
-    let error = client.get(&provider, "/c").timeout(ms(100)).send().await.unwrap_err();
-    assert!(matches!(error, Error::Timeout { kind: TimeoutKind::Queue, .. }), "{error:?}");
+    let error = client
+        .get(&provider, "/c")
+        .timeout(ms(100))
+        .send()
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Queue,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
     drop(held);
     client.get(&provider, "/d").send().await.unwrap();
 }
@@ -676,7 +893,10 @@ async fn concurrency_cap_holds_slots_until_the_body_is_done() {
 async fn shutdown_cancels_sends_bodies_and_retry_waits() {
     let server = MockServer::start().await.unwrap();
     let shutdown = Shutdown::new();
-    let client = HttpClient::builder().shutdown(shutdown.clone()).build().unwrap();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
     let provider = provider(&server);
     server.push(MockResponse::new(200).delay(ms(5000)));
     let trigger = {
@@ -696,8 +916,8 @@ async fn shutdown_cancels_sends_bodies_and_retry_waits() {
     let client = client_with_fresh_shutdown();
     let own = Shutdown::new();
     server.push(MockResponse::new(503));
-    let policy = RetryPolicy::fixed(&[Duration::from_secs(30)])
-        .retry_statuses(StatusSet::new().with(503));
+    let policy =
+        RetryPolicy::fixed(&[Duration::from_secs(30)]).retry_statuses(StatusSet::new().with(503));
     let cancel = own.clone();
     tokio::spawn(async move {
         tokio::time::sleep(ms(100)).await;
@@ -714,7 +934,10 @@ async fn shutdown_cancels_sends_bodies_and_retry_waits() {
 }
 
 fn client_with_fresh_shutdown() -> HttpClient {
-    HttpClient::builder().shutdown(Shutdown::new()).build().unwrap()
+    HttpClient::builder()
+        .shutdown(Shutdown::new())
+        .build()
+        .unwrap()
 }
 
 #[tokio::test]
@@ -722,15 +945,26 @@ async fn dropping_a_response_closes_the_stream() {
     let server = MockServer::start().await.unwrap();
     let provider = provider(&server);
     let client = client();
-    server.push(MockResponse::new(200).chunks(
-        (0..100).map(|_| (ms(20), Bytes::from_static(b"x"))).collect(),
-    ));
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..100)
+                .map(|_| (ms(20), Bytes::from_static(b"x")))
+                .collect(),
+        ),
+    );
     let mut response = client.get(&provider, "/").send().await.unwrap();
     assert!(response.chunk().await.unwrap().is_some());
     drop(response);
     // The next request still works (on a new connection).
     server.push(MockResponse::new(200).body("next"));
-    let text = client.get(&provider, "/").send().await.unwrap().text().await.unwrap();
+    let text = client
+        .get(&provider, "/")
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
     assert_eq!(text, "next");
 }
 
@@ -762,7 +996,14 @@ async fn connection_dropped_mid_body_is_a_transport_error() {
     let provider = provider(&server);
     let client = client();
     server.push(MockResponse::new(200).body(vec![b'a'; 100]).drop_after(10));
-    let error = client.get(&provider, "/").send().await.unwrap().bytes().await.unwrap_err();
+    let error = client
+        .get(&provider, "/")
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap_err();
     assert_eq!(error.class(), FailureClass::Transport, "{error:?}");
 }
 
@@ -776,7 +1017,14 @@ async fn corrupt_compressed_body_is_a_decode_error() {
             .header("content-encoding", "gzip")
             .body(&b"\x1f\x8b\x08\x00garbage-not-gzip"[..]),
     );
-    let error = client.get(&provider, "/").send().await.unwrap().bytes().await.unwrap_err();
+    let error = client
+        .get(&provider, "/")
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap_err();
     assert_eq!(error.class(), FailureClass::Decode, "{error:?}");
     // Invalid JSON too.
     server.push(MockResponse::json(200, "{nope"));

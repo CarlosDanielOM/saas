@@ -68,7 +68,9 @@ pub(crate) fn query(url: &url::Url, secrets: &[&'static str]) -> Option<Box<str>
         };
         let decoded = percent_encoding::percent_decode_str(name).decode_utf8_lossy();
         let secret = secrets.iter().any(|s| s.eq_ignore_ascii_case(&decoded))
-            || SENSITIVE_QUERY.iter().any(|s| s.eq_ignore_ascii_case(&decoded));
+            || SENSITIVE_QUERY
+                .iter()
+                .any(|s| s.eq_ignore_ascii_case(&decoded));
         if secret {
             out.push_str(name);
             out.push_str("=<redacted>");
@@ -136,8 +138,8 @@ mod tests {
 
     #[test]
     fn query_redacts_provider_and_common_secrets() {
-        let url = url::Url::parse("https://x.test/p?id=1&key=abc&Sig=s3&flag&client_secret=zz")
-            .unwrap();
+        let url =
+            url::Url::parse("https://x.test/p?id=1&key=abc&Sig=s3&flag&client_secret=zz").unwrap();
         let out = query(&url, &["sig"]).unwrap();
         assert_eq!(
             &*out,

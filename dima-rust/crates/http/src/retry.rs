@@ -200,13 +200,13 @@ impl ServerDelay {
         }
     }
 
-    fn hint(
-        &self,
-        status: StatusCode,
-        headers: &HeaderMap,
-        clock: &dyn Clock,
-    ) -> Option<Duration> {
-        let text = |name: &str| headers.get(name).and_then(|v| v.to_str().ok()).map(str::trim);
+    fn hint(&self, status: StatusCode, headers: &HeaderMap, clock: &dyn Clock) -> Option<Duration> {
+        let text = |name: &str| {
+            headers
+                .get(name)
+                .and_then(|v| v.to_str().ok())
+                .map(str::trim)
+        };
         if self.retry_after_ms
             && let Some(ms) = text("retry-after-ms").and_then(parse_non_negative)
         {
@@ -240,7 +240,7 @@ fn parse_non_negative(raw: &str) -> Option<f64> {
         return None;
     }
     let value: f64 = raw.parse().ok()?;
-    (value.is_finite() && value >= 0.0 && value < 1e12).then_some(value)
+    (0.0..1e12).contains(&value).then_some(value)
 }
 
 /// The retry policy of a provider or a request. Build it from a preset and adjust it with the
@@ -505,7 +505,10 @@ impl RetryPolicy {
                         _ => {}
                     }
                 }
-                (retryable, code == 429 || (code == 401 && self.refresh_unauthorized))
+                (
+                    retryable,
+                    code == 429 || (code == 401 && self.refresh_unauthorized),
+                )
             }
             Outcome::Failure(class) => match class {
                 FailureClass::Connect | FailureClass::Timeout(TimeoutKind::Connect) => {
@@ -646,7 +649,10 @@ mod tests {
         );
         // `retryDelaysMs: []` means the defaults.
         assert_eq!(RetryPolicy::twitch_helix_with(&[]), policy);
-        assert_eq!(RetryPolicy::twitch_helix_with(&[ms(1), ms(1)]).attempts(), 3);
+        assert_eq!(
+            RetryPolicy::twitch_helix_with(&[ms(1), ms(1)]).attempts(),
+            3
+        );
     }
 
     #[test]
@@ -688,7 +694,8 @@ mod tests {
             policy.decide(ctx(1), status(503, &frac), &clock, &random),
             Decision::Retry(ms(250))
         );
-        let date_clock = ManualClock::new(dima_text::parse_date("Wed, 21 Oct 2026 07:28:00 GMT").unwrap());
+        let date_clock =
+            ManualClock::new(dima_text::parse_date("Wed, 21 Oct 2026 07:28:00 GMT").unwrap());
         let date = headers(&[("retry-after", "Wed, 21 Oct 2026 07:28:07 GMT")]);
         assert_eq!(
             policy.decide(ctx(1), status(503, &date), &date_clock, &random),
@@ -772,10 +779,12 @@ mod tests {
             Decision::Retry(ms(500))
         );
         assert_eq!(
-            policy
-                .clone()
-                .retry_non_idempotent(true)
-                .decide(post, status(503, &empty), &clock, &random),
+            policy.clone().retry_non_idempotent(true).decide(
+                post,
+                status(503, &empty),
+                &clock,
+                &random
+            ),
             Decision::Retry(ms(500))
         );
         // A streamed body is never sent twice.
@@ -848,7 +857,15 @@ mod tests {
         let delays: Vec<_> = (0..7).map(|n| backoff.base(n)).collect();
         assert_eq!(
             delays,
-            vec![ms(500), ms(1000), ms(2000), ms(4000), ms(8000), ms(8000), ms(8000)]
+            vec![
+                ms(500),
+                ms(1000),
+                ms(2000),
+                ms(4000),
+                ms(8000),
+                ms(8000),
+                ms(8000)
+            ]
         );
         assert_eq!(backoff.base(u32::MAX), ms(8000));
     }

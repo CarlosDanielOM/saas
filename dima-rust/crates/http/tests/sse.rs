@@ -16,7 +16,10 @@ fn ms(n: u64) -> Duration {
 async fn setup() -> (MockServer, HttpClient, Provider, Shutdown) {
     let server = MockServer::start().await.unwrap();
     let shutdown = Shutdown::new();
-    let client = HttpClient::builder().shutdown(shutdown.clone()).build().unwrap();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
     let provider = Provider::builder("openrouter", "https://openrouter.ai/api/v1")
         .base_url(&server.url())
         .build()
@@ -50,7 +53,12 @@ async fn events_split_across_network_chunks() {
             .header("content-type", "text/event-stream")
             .chunks(chunks),
     );
-    let mut stream = client.post(&provider, "/chat/completions").send().await.unwrap().sse();
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse();
     assert_eq!(stream.response().status().as_u16(), 200);
     let (events, error) = collect(&mut stream).await;
     assert!(error.is_none(), "{error:?}");
@@ -62,7 +70,10 @@ async fn events_split_across_network_chunks() {
     // The unterminated last event is discarded.
     assert_eq!(
         events,
-        [event("delta", "{\"t\":\"hé\nllo 👋\"}"), event("message", "[DONE]")]
+        [
+            event("delta", "{\"t\":\"hé\nllo 👋\"}"),
+            event("message", "[DONE]")
+        ]
     );
     assert_eq!(stream.retry(), Some(1500));
     assert_eq!(stream.last_event_id(), "1");
@@ -71,10 +82,12 @@ async fn events_split_across_network_chunks() {
 #[tokio::test]
 async fn idle_timeout_between_events() {
     let (server, client, provider, _) = setup().await;
-    server.push(MockResponse::sse(&["data: a\n\n", "data: b\n\n"], ms(10)).chunks(vec![
-        (Duration::ZERO, Bytes::from_static(b"data: a\n\n")),
-        (ms(2000), Bytes::from_static(b"data: b\n\n")),
-    ]));
+    server.push(
+        MockResponse::sse(&["data: a\n\n", "data: b\n\n"], ms(10)).chunks(vec![
+            (Duration::ZERO, Bytes::from_static(b"data: a\n\n")),
+            (ms(2000), Bytes::from_static(b"data: b\n\n")),
+        ]),
+    );
     let mut stream = client
         .post(&provider, "/chat/completions")
         .idle_timeout(ms(200))
@@ -85,16 +98,24 @@ async fn idle_timeout_between_events() {
     let (events, error) = collect(&mut stream).await;
     assert_eq!(events.len(), 1);
     assert!(
-        matches!(error, Some(Error::Timeout { kind: TimeoutKind::Idle, .. })),
+        matches!(
+            error,
+            Some(Error::Timeout {
+                kind: TimeoutKind::Idle,
+                ..
+            })
+        ),
         "{error:?}"
     );
     // Comments keep a stream alive: a keep-alive every 100 ms beats a 200 ms idle timeout.
-    server.push(MockResponse::new(200).chunks(
-        (0..5)
-            .map(|_| (ms(100), Bytes::from_static(b": ping\n\n")))
-            .chain([(ms(100), Bytes::from_static(b"data: end\n\n"))])
-            .collect(),
-    ));
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..5)
+                .map(|_| (ms(100), Bytes::from_static(b": ping\n\n")))
+                .chain([(ms(100), Bytes::from_static(b"data: end\n\n"))])
+                .collect(),
+        ),
+    );
     let mut stream = client
         .post(&provider, "/chat/completions")
         .idle_timeout(ms(200))
@@ -110,11 +131,13 @@ async fn idle_timeout_between_events() {
 #[tokio::test]
 async fn total_size_limit_bounds_the_stream() {
     let (server, client, provider, _) = setup().await;
-    server.push(MockResponse::new(200).chunks(
-        (0..50)
-            .map(|_| (Duration::ZERO, Bytes::from_static(b"data: 0123456789\n\n")))
-            .collect(),
-    ));
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..50)
+                .map(|_| (Duration::ZERO, Bytes::from_static(b"data: 0123456789\n\n")))
+                .collect(),
+        ),
+    );
     let mut stream = client
         .post(&provider, "/chat/completions")
         .max_bytes(100)
@@ -124,13 +147,23 @@ async fn total_size_limit_bounds_the_stream() {
         .sse();
     let (events, error) = collect(&mut stream).await;
     assert!(events.len() <= 6, "{}", events.len());
-    assert!(matches!(error, Some(Error::BodyTooLarge { limit: 100, .. })), "{error:?}");
+    assert!(
+        matches!(error, Some(Error::BodyTooLarge { limit: 100, .. })),
+        "{error:?}"
+    );
     // A single endless line without a line end is bounded the same way.
-    server.push(MockResponse::new(200).chunks(
-        (0..50)
-            .map(|_| (Duration::ZERO, Bytes::from_static(b"data: xxxxxxxxxxxxxxxxxx")))
-            .collect(),
-    ));
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..50)
+                .map(|_| {
+                    (
+                        Duration::ZERO,
+                        Bytes::from_static(b"data: xxxxxxxxxxxxxxxxxx"),
+                    )
+                })
+                .collect(),
+        ),
+    );
     let mut stream = client
         .post(&provider, "/chat/completions")
         .max_bytes(100)
@@ -140,24 +173,39 @@ async fn total_size_limit_bounds_the_stream() {
         .sse();
     let (events, error) = collect(&mut stream).await;
     assert!(events.is_empty());
-    assert!(matches!(error, Some(Error::BodyTooLarge { .. })), "{error:?}");
+    assert!(
+        matches!(error, Some(Error::BodyTooLarge { .. })),
+        "{error:?}"
+    );
 }
 
 #[tokio::test]
 async fn dropping_the_stream_closes_the_connection() {
     let (server, client, provider, _) = setup().await;
-    server.push(MockResponse::new(200).chunks(
-        (0..200)
-            .map(|_| (ms(20), Bytes::from_static(b"data: x\n\n")))
-            .collect(),
-    ));
-    let mut stream = client.post(&provider, "/chat/completions").send().await.unwrap().sse();
+    server.push(
+        MockResponse::new(200).chunks(
+            (0..200)
+                .map(|_| (ms(20), Bytes::from_static(b"data: x\n\n")))
+                .collect(),
+        ),
+    );
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse();
     assert!(stream.next_event().await.unwrap().is_ok());
     drop(stream);
     // The server notices the closed connection: its next write fails and the mock moves on;
     // a new request is served at once.
     server.push(MockResponse::new(200).body("data: next\n\n"));
-    let mut stream = client.post(&provider, "/chat/completions").send().await.unwrap().sse();
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse();
     assert_eq!(stream.next_event().await.unwrap().unwrap().data, "next");
 }
 
@@ -168,7 +216,12 @@ async fn shutdown_ends_a_stream() {
         (Duration::ZERO, Bytes::from_static(b"data: a\n\n")),
         (ms(5000), Bytes::from_static(b"data: b\n\n")),
     ]));
-    let mut stream = client.post(&provider, "/chat/completions").send().await.unwrap().sse();
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse();
     assert!(stream.next_event().await.unwrap().is_ok());
     let trigger = shutdown.clone();
     tokio::spawn(async move {

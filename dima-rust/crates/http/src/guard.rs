@@ -123,11 +123,27 @@ fn refused_v6(ip: Ipv6Addr) -> Option<&'static str> {
         (0x0064_ff9b_0000_0000_0000_0000_0000_0000, 96, "nat64"),
         (0x0064_ff9b_0001_0000_0000_0000_0000_0000, 48, "nat64"),
         (0x0100_0000_0000_0000_0000_0000_0000_0000, 64, "discard"),
-        (0x2001_0000_0000_0000_0000_0000_0000_0000, 23, "ietf protocol assignments"),
-        (0x2001_0db8_0000_0000_0000_0000_0000_0000, 32, "documentation"),
+        (
+            0x2001_0000_0000_0000_0000_0000_0000_0000,
+            23,
+            "ietf protocol assignments",
+        ),
+        (
+            0x2001_0db8_0000_0000_0000_0000_0000_0000,
+            32,
+            "documentation",
+        ),
         (0x2002_0000_0000_0000_0000_0000_0000_0000, 16, "6to4"),
-        (0x3fff_0000_0000_0000_0000_0000_0000_0000, 20, "documentation"),
-        (0x5f00_0000_0000_0000_0000_0000_0000_0000, 16, "segment routing"),
+        (
+            0x3fff_0000_0000_0000_0000_0000_0000_0000,
+            20,
+            "documentation",
+        ),
+        (
+            0x5f00_0000_0000_0000_0000_0000_0000_0000,
+            16,
+            "segment routing",
+        ),
         (0xfc00_0000_0000_0000_0000_0000_0000_0000, 7, "unique local"),
         (0xfe80_0000_0000_0000_0000_0000_0000_0000, 10, "link-local"),
         (0xfec0_0000_0000_0000_0000_0000_0000_0000, 10, "site-local"),
@@ -443,10 +459,7 @@ pub struct GuardedRequest<'a> {
 impl GuardedRequest<'_> {
     /// Adds a header (dropped on a hop to another origin).
     pub fn header(mut self, name: &str, value: &str) -> Self {
-        match (
-            HeaderName::try_from(name),
-            HeaderValue::try_from(value),
-        ) {
+        match (HeaderName::try_from(name), HeaderValue::try_from(value)) {
             (Ok(name), Ok(value)) => {
                 self.headers.append(name, value);
             }
@@ -556,13 +569,7 @@ impl GuardedRequest<'_> {
                 idle: self.idle_timeout,
                 deadline,
             };
-            return Ok(Response::new(
-                response,
-                info(method),
-                &[],
-                limits,
-                cancel,
-            ));
+            return Ok(Response::new(response, info(method), &[], limits, cancel));
         }
     }
 }
@@ -666,9 +673,7 @@ mod tests {
     #[test]
     fn literal_hosts_in_every_notation() {
         let policy = GuardPolicy::any_public_host().allow_ip_literals(true);
-        let blocked = |raw: &str| {
-            parse(raw).and_then(|url| policy.check_url(&url)).err()
-        };
+        let blocked = |raw: &str| parse(raw).and_then(|url| policy.check_url(&url)).err();
         let loopback = Some(BlockReason::Address("127.0.0.1".parse().unwrap()));
         for raw in [
             "https://127.0.0.1/",
@@ -693,11 +698,22 @@ mod tests {
         );
         assert_eq!(
             blocked("https://[0:0:0:0:0:ffff:a9fe:a9fe]/"),
-            Some(BlockReason::Address("::ffff:169.254.169.254".parse().unwrap()))
+            Some(BlockReason::Address(
+                "::ffff:169.254.169.254".parse().unwrap()
+            ))
         );
-        assert_eq!(blocked("https://[fe80::1%25eth0]/"), Some(BlockReason::InvalidUrl));
-        assert_eq!(blocked("https://[fe80::1%eth0]/"), Some(BlockReason::InvalidUrl));
-        assert_eq!(blocked("https://0/"), Some(BlockReason::Address("0.0.0.0".parse().unwrap())));
+        assert_eq!(
+            blocked("https://[fe80::1%25eth0]/"),
+            Some(BlockReason::InvalidUrl)
+        );
+        assert_eq!(
+            blocked("https://[fe80::1%eth0]/"),
+            Some(BlockReason::InvalidUrl)
+        );
+        assert_eq!(
+            blocked("https://0/"),
+            Some(BlockReason::Address("0.0.0.0".parse().unwrap()))
+        );
         assert_eq!(blocked("https://8.8.8.8/"), None);
         assert_eq!(blocked("https://[2606:4700:4700::1111]/"), None);
         // Literals are refused outright unless enabled, and always with a host list.
@@ -710,19 +726,41 @@ mod tests {
 
     #[test]
     fn scheme_port_userinfo_and_host_list() {
-        let policy = GuardPolicy::https_hosts(["cdn.streamelements.com", "static.streamelements.com"]);
+        let policy =
+            GuardPolicy::https_hosts(["cdn.streamelements.com", "static.streamelements.com"]);
         let check = |raw: &str| policy.check_url(&Url::parse(raw).unwrap());
         assert_eq!(check("https://cdn.streamelements.com/a.png"), Ok(()));
         assert_eq!(check("https://CDN.StreamElements.com:443/a.png"), Ok(()));
-        assert_eq!(check("http://cdn.streamelements.com/a.png"), Err(BlockReason::Scheme));
-        assert_eq!(check("ftp://cdn.streamelements.com/a.png"), Err(BlockReason::Scheme));
+        assert_eq!(
+            check("http://cdn.streamelements.com/a.png"),
+            Err(BlockReason::Scheme)
+        );
+        assert_eq!(
+            check("ftp://cdn.streamelements.com/a.png"),
+            Err(BlockReason::Scheme)
+        );
         assert_eq!(check("file:///etc/passwd"), Err(BlockReason::Scheme));
-        assert_eq!(check("https://cdn.streamelements.com:8443/"), Err(BlockReason::Port));
-        assert_eq!(check("https://u:p@cdn.streamelements.com/"), Err(BlockReason::Userinfo));
-        assert_eq!(check("https://u@cdn.streamelements.com/"), Err(BlockReason::Userinfo));
+        assert_eq!(
+            check("https://cdn.streamelements.com:8443/"),
+            Err(BlockReason::Port)
+        );
+        assert_eq!(
+            check("https://u:p@cdn.streamelements.com/"),
+            Err(BlockReason::Userinfo)
+        );
+        assert_eq!(
+            check("https://u@cdn.streamelements.com/"),
+            Err(BlockReason::Userinfo)
+        );
         assert_eq!(check("https://evil.com/"), Err(BlockReason::Host));
-        assert_eq!(check("https://cdn.streamelements.com.evil.com/"), Err(BlockReason::Host));
-        assert_eq!(check("https://cdn.streamelements.com./"), Err(BlockReason::Host));
+        assert_eq!(
+            check("https://cdn.streamelements.com.evil.com/"),
+            Err(BlockReason::Host)
+        );
+        assert_eq!(
+            check("https://cdn.streamelements.com./"),
+            Err(BlockReason::Host)
+        );
         assert_eq!(check("https://93.184.215.14/"), Err(BlockReason::Host));
     }
 }

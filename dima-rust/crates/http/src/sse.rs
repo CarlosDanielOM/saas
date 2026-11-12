@@ -133,12 +133,10 @@ impl SseDecoder {
                     self.last_id = String::from_utf8_lossy(value).into_owned();
                 }
             }
-            b"retry" => {
-                if !value.is_empty() && value.iter().all(u8::is_ascii_digit) {
-                    // Too many digits to fit is ignored like any other invalid value.
-                    if let Ok(ms) = String::from_utf8_lossy(value).parse() {
-                        self.retry = Some(ms);
-                    }
+            // Too many digits to fit is ignored like any other invalid value.
+            b"retry" if !value.is_empty() && value.iter().all(u8::is_ascii_digit) => {
+                if let Ok(ms) = String::from_utf8_lossy(value).parse() {
+                    self.retry = Some(ms);
                 }
             }
             _ => {}
