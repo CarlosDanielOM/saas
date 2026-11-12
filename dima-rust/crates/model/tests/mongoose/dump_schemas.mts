@@ -1,3 +1,4 @@
+import { loadSchema } from './feature_schemas.mjs';
 // Dumps what Mongoose itself reports for every model in the `dima-model` registry, so that
 // `tests/schema_drift.rs` can compare each hand-written `Schema` with it. No database is opened.
 //
@@ -30,6 +31,11 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/goals/service.ts', 'ChannelGoals'],
+    ['src/goals/service.ts', 'GoalContribution'],
+    ['src/goals/service.ts', 'GoalCustomReceipt'],
+    ['src/widgets/service.ts', 'WidgetChannel'],
+
     ['src/schemas/clip_design.schema.ts', 'ClipDesign'],
     ['src/schemas/clip_recommendation.schema.ts', 'ClipRecommendation'],
     ['src/schemas/clip_recommendation_config.schema.ts', 'ClipRecommendationConfig'],
@@ -147,7 +153,7 @@ mongoose.set('autoCreate', false);
 mongoose.set('bufferCommands', false);
 const { EJSON } = await import(pathToFileURL(path.join(root, 'node_modules/bson/lib/bson.cjs')).href);
 
-for (const [file] of MODELS) await import(pathToFileURL(path.join(root, file)).href);
+for (const [file] of MODELS) await loadSchema(root, file, mongoose);
 
 const ejson = (value: any) => JSON.parse(EJSON.stringify(value, { relaxed: false }));
 
