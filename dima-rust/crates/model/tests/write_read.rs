@@ -12,6 +12,10 @@
 //! validation error, the write guard, a cast error) is fine; a written document that does not
 //! decode is a failure naming the collection, the write, the path and the value.
 //!
+//! Every path a client-fed write of the reference can set to `null`
+//! ([`dima_model::CollectionInfo::client_nulls`]) must take a `$set` of `null` (`MIGRATION.md`
+//! data rule 4: the reference stores what a form sends).
+//!
 //! Dotted writes get a filter that proves the objects on their way exist (the write guard asks
 //! for one, `src/shape.rs`); when the base document lacks them, the write matches nothing.
 
@@ -21,7 +25,7 @@ use anyhow::{Context, Result, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocumentBuf, doc};
 use dima_model::availability::Writer;
-use dima_model::{CollectionInfo, REGISTRY};
+use dima_model::{ClientNulls, CollectionInfo, REGISTRY};
 use dima_store::mongo::schema::{Field, IdField, Kind, MapOf, Schema};
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
@@ -104,6 +108,32 @@ fn paths(schema: &Schema) -> Vec<String> {
     out
 }
 
+/// The schema paths a client-fed write can set to `null` ([`ClientNulls`]), as probe paths
+/// (element `0` for `$`).
+fn client_null_paths(info: &CollectionInfo) -> Vec<String> {
+    fn every(fields: &[Field], prefix: &str, out: &mut Vec<String>) {
+        for field in fields {
+            let path = format!("{prefix}{}", field.name);
+            out.push(path.clone());
+            match field.kind {
+                Kind::Nested(children) => every(children, &format!("{path}."), out),
+                Kind::Subdocument(schema) => every(schema.fields, &format!("{path}."), out),
+                Kind::DocumentArray(schema) => every(schema.fields, &format!("{path}.0."), out),
+                _ => {}
+            }
+        }
+    }
+    match info.client_nulls {
+        ClientNulls::None => Vec::new(),
+        ClientNulls::Paths(paths) => paths.iter().map(|p| p.replace('$', "0")).collect(),
+        ClientNulls::Every => {
+            let mut out = Vec::new();
+            every(info.schema.fields, "", &mut out);
+            out
+        }
+    }
+}
+
 /// `$set` of a dotted path into a document, following array positions; `false` when an
 /// element on the way does not exist.
 fn put(document: &mut Document, path: &str, value: Bson) -> bool {
@@ -157,6 +187,7 @@ async fn decode_all(store: &MongoStore, info: &CollectionInfo) -> Result<Vec<Str
 struct Counts {
     written: u64,
     refused: u64,
+    client_nulls: u64,
 }
 
 struct Probe<'a> {
@@ -169,6 +200,29 @@ struct Probe<'a> {
 }
 
 impl Probe<'_> {
+    /// A client-fed path takes `null`: the write helpers accept `$set: {path: null}` (the
+    /// stored document is decoded by the probe loop like every other write).
+    fn client_null(&mut self, path: &str) {
+        let mut ctx = WriteContext::with_sequential_ids(NOW_MS, 4_000);
+        let random = support::entry::CountingRandom::default();
+        let prepared = support::entry::update(
+            self.info,
+            &self.filter(path),
+            doc! { "$set": { path: Bson::Null } },
+            UpdateOptions::default(),
+            Writer::Client,
+            &mut ctx,
+            &random,
+        );
+        if let Err(error) = prepared {
+            self.failures.push(format!(
+                "{}: the client-fed path {path} refuses null: {error}",
+                self.info.name
+            ));
+        }
+        self.counts.client_nulls += 1;
+    }
+
     /// Back to the base document alone.
     async fn reset(&self) -> Result<()> {
         let collection = self.store.documents(self.info.name);
@@ -369,6 +423,9 @@ async fn every_accepted_write_decodes() -> Result<()> {
                 failures: Vec::new(),
                 counts: Counts::default(),
             };
+            for path in client_null_paths(info) {
+                probe.client_null(&path);
+            }
             for path in paths(info.schema) {
                 let unset = Bson::Undefined;
                 probe
@@ -412,11 +469,20 @@ async fn every_accepted_write_decodes() -> Result<()> {
                     }
                 }
             }
-            summary.insert(info.name, (probe.counts.written, probe.counts.refused));
+            summary.insert(
+                info.name,
+                (
+                    probe.counts.written,
+                    probe.counts.refused,
+                    probe.counts.client_nulls,
+                ),
+            );
             failures.extend(probe.failures);
         }
-        for (name, (written, refused)) in &summary {
-            eprintln!("{name:<28} {written:>6} writes decoded, {refused:>6} refused");
+        for (name, (written, refused, client)) in &summary {
+            eprintln!(
+                "{name:<28} {written:>6} writes decoded, {refused:>6} refused, {client:>3} client-fed nulls accepted"
+            );
         }
         if !failures.is_empty() {
             let shown: Vec<&String> = failures.iter().take(80).collect();

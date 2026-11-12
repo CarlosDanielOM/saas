@@ -6,11 +6,14 @@
 //! it with upserts only; note that `userId` and `userLogin` default to `''` and are required, so
 //! `create` without them fails validation, as it does in Mongoose.
 //!
+//! Client-fed writes (`null` from a request body): none: its writers (`ledger/mongo.json`) store
+//! values the server builds or checks, and no request body reaches them unchecked.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
@@ -92,6 +95,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
     initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<AstVariables>,

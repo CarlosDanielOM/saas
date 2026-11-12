@@ -11,11 +11,14 @@
 //! `payload` (`Mixed`, the queue item) stays raw ([`PlaybackPayload`]) and is private: it holds
 //! the viewer's TTS text and the buyer's id. The production copy holds no job.
 //!
+//! Client-fed writes (`null` from a request body): none: its writers (`ledger/mongo.json`) store
+//! values the server builds or checks, and no request body reaches them unchecked.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; with no stored job
 //! the census shows nothing, and the reference never writes those `null`s.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::empty;
 use crate::enums::{Open, StrEnum, str_enum};
@@ -105,6 +108,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
     initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<DimafxPlayback>,

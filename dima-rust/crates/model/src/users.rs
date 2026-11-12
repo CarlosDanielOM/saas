@@ -5,11 +5,16 @@
 //! declared index (the reference queries `accounts.type` + `accounts.id` without one).
 //! `polar_credit_snapshot` and `applied_credit_transaction_ids` are `select: false`.
 //!
+//! Client-fed writes (`null` from a request body): none. The API's writes check their values or
+//! build them: `server/routes/user.route.ts:239` and `:417` refuse a non-boolean (`typeof active
+//! !== 'boolean'`), `auth.route.ts` and `admin_site.route.ts:704` write server values (names from
+//! Twitch, dates, `true`).
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -192,6 +197,8 @@ pub const PRIVATE: &[&str] = &[
 
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("accounts.$.refresh_token"),
+    ReadNeed::not_null("accounts.$.access_token"),
     ReadNeed::not_null("accounts"),
     ReadNeed::not_null("accounts.$.type"),
     ReadNeed::not_null("accounts.$.actived"),
@@ -223,6 +230,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
     initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<User>,

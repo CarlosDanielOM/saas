@@ -28,12 +28,18 @@
 //! `learningConfig.semanticChatHistoryLimit` stored as `null` (41: the plan's default).
 //! `knownUsers` (descriptions of real viewers) is private.
 //!
+//! Client-fed writes (`null` from a request body): none stored.
+//! `server/services/ai_personality.service.ts:474` and `:482` copy `personaMode` and `tonePreset`
+//! from the body unchecked (`null` passes their enum validators), but the `pre('save')` hook copies
+//! both from the active profile before the save (`ensure_profiles`), and the profiles are
+//! sanitised; every other field is sanitised or built.
+//!
 //! Intended differences (`crate::shape`): the write helpers refuse a value of the wrong BSON
 //! type, and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of
 //! the production copy shows none stored there, so Mongoose's acceptance of them is not
 //! reproduced. The element `required` of `rules` (an array of strings) is not checked.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -325,6 +331,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
+    client_nulls: ClientNulls::None,
     initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<ChannelAiPersonality>,

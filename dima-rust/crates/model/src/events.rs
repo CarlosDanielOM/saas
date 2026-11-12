@@ -6,11 +6,18 @@
 //! `updatedAt = new Date()` on every save. Many strings are trimmed. `config[]` elements carry
 //! their own `_id`. `__v`, no index.
 //!
-//! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
-//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
-//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! Client-fed writes: `server/routes/site.route.ts:245` (`PATCH /site/events/:id`) passes the
+//! request body to `findByIdAndUpdate` as given (only `type` is canonicalised), and
+//! `site.route.ts:143` creates an event from the body after checking `config[]` labels. Any path,
+//! inside the `config[]` elements and `description` too, can therefore be set to `null`: every
+//! field of the read type is an `Option` (a path with a default reads the default when missing
+//! and `None` when `null`) and [`READ_NEEDS`] is empty. No client write removes a path.
+//!
+//! Intended differences (`crate::shape`): the write helpers refuse a value of the wrong BSON
+//! type (Mongoose would cast it; the API casts before it writes), and a `null` *element* of
+//! `config[]` (an element is an object; a form never sends `[null]`).
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
@@ -146,31 +153,7 @@ pub const RULES: &[Rule] = &[
 ];
 
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
-pub const READ_NEEDS: &[ReadNeed] = &[
-    ReadNeed::value("name"),
-    ReadNeed::value("type"),
-    ReadNeed::not_null("version"),
-    ReadNeed::value("icon"),
-    ReadNeed::value("color"),
-    ReadNeed::value("textColor"),
-    ReadNeed::not_null("releaseStage"),
-    ReadNeed::not_null("enabled"),
-    ReadNeed::not_null("plan_tier"),
-    ReadNeed::value("description"),
-    ReadNeed::value("description.EN"),
-    ReadNeed::value("description.ES"),
-    ReadNeed::not_null("config"),
-    ReadNeed::value("config.$.id"),
-    ReadNeed::value("config.$.label"),
-    ReadNeed::value("config.$.label.EN"),
-    ReadNeed::value("config.$.label.ES"),
-    ReadNeed::not_null("config.$.type"),
-    ReadNeed::not_null("config.$.canDisable"),
-    ReadNeed::value("config.$.showIf.controlId"),
-    ReadNeed::not_null("tierLimits.free"),
-    ReadNeed::not_null("tierLimits.premium"),
-    ReadNeed::not_null("tierLimits.pro"),
-];
+pub const READ_NEEDS: &[ReadNeed] = &[];
 
 /// The registry entry. Creates and saves go through [`NewEvent::prepare`] and [`prepare_save`]
 /// (the `updatedAt` hook).
@@ -185,6 +168,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::Save,
+    client_nulls: ClientNulls::Every,
     initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<Event>,
@@ -197,41 +181,45 @@ pub struct Event {
     #[serde(rename = "_id")]
     pub id: ObjectId,
     /// Display name.
-    pub name: String,
+    #[serde(default)]
+    pub name: Option<String>,
     /// The EventSub type (`stream.online`).
-    #[serde(rename = "type")]
-    pub kind: String,
-    /// The EventSub version.
+    #[serde(default, rename = "type")]
+    pub kind: Option<String>,
+    /// The EventSub version (default `'1'`).
     #[serde(default = "one")]
-    pub version: String,
+    pub version: Option<String>,
     /// The EventSub condition template (`{broadcaster_user_id: "user"}`; missing when it was
     /// created as `{}`, which `minimize` removed).
     #[serde(default)]
     pub condition: Option<EventCondition>,
     /// Icon name.
-    pub icon: String,
+    #[serde(default)]
+    pub icon: Option<String>,
     /// Colour.
-    pub color: String,
+    #[serde(default)]
+    pub color: Option<String>,
     /// Text colour.
-    #[serde(rename = "textColor")]
-    pub text_color: String,
-    /// Release stage.
+    #[serde(default, rename = "textColor")]
+    pub text_color: Option<String>,
+    /// Release stage (default `stable`).
     #[serde(default = "stable", rename = "releaseStage")]
-    pub release_stage: Open<ReleaseStage>,
-    /// Offered.
-    #[serde(default)]
-    pub enabled: bool,
-    /// Lowest plan that can use it.
+    pub release_stage: Option<Open<ReleaseStage>>,
+    /// Offered (default `false`).
+    #[serde(default = "crate::defaults::some_no")]
+    pub enabled: Option<bool>,
+    /// Lowest plan that can use it (default `free`).
     #[serde(default = "free")]
-    pub plan_tier: Open<PlanTier>,
+    pub plan_tier: Option<Open<PlanTier>>,
     /// Description per language.
-    pub description: Localized,
-    /// Configuration controls.
     #[serde(default)]
-    pub config: Vec<Control>,
-    /// How many each plan may enable.
-    #[serde(default, rename = "tierLimits")]
-    pub tier_limits: TierLimits,
+    pub description: Option<LocalizedText>,
+    /// Configuration controls (default empty).
+    #[serde(default = "no_controls")]
+    pub config: Option<Vec<Control>>,
+    /// How many each plan may enable (a plain nested object: its defaults when missing).
+    #[serde(default = "default_limits", rename = "tierLimits")]
+    pub tier_limits: Option<TierLimits>,
     /// Creation time.
     #[serde(default, rename = "createdAt")]
     pub created_at: Option<JsDate>,
@@ -240,16 +228,48 @@ pub struct Event {
     pub updated_at: Option<JsDate>,
 }
 
-fn one() -> String {
-    "1".to_owned()
+fn one() -> Option<String> {
+    Some("1".to_owned())
 }
 
-fn stable() -> Open<ReleaseStage> {
-    Open::Known(ReleaseStage::Stable)
+fn stable() -> Option<Open<ReleaseStage>> {
+    Some(Open::Known(ReleaseStage::Stable))
 }
 
-fn free() -> Open<PlanTier> {
-    Open::Known(PlanTier::Free)
+fn free() -> Option<Open<PlanTier>> {
+    Some(Open::Known(PlanTier::Free))
+}
+
+fn no_controls() -> Option<Vec<Control>> {
+    Some(Vec::new())
+}
+
+fn default_limits() -> Option<TierLimits> {
+    Some(TierLimits::default())
+}
+
+/// What the reference's truthiness checks see (`null` is falsy).
+impl Event {
+    /// `event.enabled` as a condition.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.unwrap_or(false)
+    }
+
+    /// The controls (`null`: none).
+    pub fn controls(&self) -> &[Control] {
+        self.config.as_deref().unwrap_or_default()
+    }
+}
+
+/// A description or label per language, as stored (either may be `null`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+pub struct LocalizedText {
+    /// English.
+    #[serde(default, rename = "EN")]
+    pub en: Option<String>,
+    /// Spanish.
+    #[serde(default, rename = "ES")]
+    pub es: Option<String>,
 }
 
 /// The EventSub condition template, kept as stored until the EventSub package types it.
@@ -271,33 +291,33 @@ pub struct Localized {
 /// `tierLimits`.
 #[derive(Clone, Copy, Debug, Deserialize)]
 pub struct TierLimits {
-    /// Free plan.
-    #[serde(default = "crate::defaults::zero")]
-    pub free: JsNumber,
-    /// Premium plan.
+    /// Free plan (default 0).
+    #[serde(default = "crate::defaults::some_zero")]
+    pub free: Option<JsNumber>,
+    /// Premium plan (default 2).
     #[serde(default = "two")]
-    pub premium: JsNumber,
-    /// Pro plan.
+    pub premium: Option<JsNumber>,
+    /// Pro plan (default 5).
     #[serde(default = "five")]
-    pub pro: JsNumber,
+    pub pro: Option<JsNumber>,
 }
 
 impl Default for TierLimits {
     fn default() -> Self {
         Self {
-            free: JsNumber(0.0),
+            free: crate::defaults::some_zero(),
             premium: two(),
             pro: five(),
         }
     }
 }
 
-fn two() -> JsNumber {
-    JsNumber(2.0)
+fn two() -> Option<JsNumber> {
+    Some(JsNumber(2.0))
 }
 
-fn five() -> JsNumber {
-    JsNumber(5.0)
+fn five() -> Option<JsNumber> {
+    Some(JsNumber(5.0))
 }
 
 /// `config[]`: one control of the event's settings form.
@@ -307,21 +327,23 @@ pub struct Control {
     #[serde(default, rename = "_id")]
     pub object_id: Option<ObjectId>,
     /// The control id.
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     /// The settings field it writes.
     #[serde(default, rename = "dbId")]
     pub db_id: Option<String>,
     /// Label per language.
-    pub label: Localized,
-    /// The control kind.
+    #[serde(default)]
+    pub label: Option<LocalizedText>,
+    /// The control kind (default `text`).
     #[serde(default = "text", rename = "type")]
-    pub kind: Open<ControlType>,
+    pub kind: Option<Open<ControlType>>,
     /// The default value, as stored (text, number, flag or list).
     #[serde(default)]
     pub value: Option<ControlValue>,
-    /// The user may switch it off.
-    #[serde(default, rename = "canDisable")]
-    pub can_disable: bool,
+    /// The user may switch it off (default `false`).
+    #[serde(default = "crate::defaults::some_no", rename = "canDisable")]
+    pub can_disable: Option<bool>,
     /// Placeholder text.
     #[serde(default)]
     pub placeholder: Option<String>,
@@ -330,8 +352,8 @@ pub struct Control {
     pub show_if: Option<ShowIf>,
 }
 
-fn text() -> Open<ControlType> {
-    Open::Known(ControlType::Text)
+fn text() -> Option<Open<ControlType>> {
+    Some(Open::Known(ControlType::Text))
 }
 
 /// A control's value (`Mixed`), kept as stored.
@@ -343,8 +365,8 @@ pub struct ControlValue(pub Bson);
 #[derive(Clone, Debug, Deserialize)]
 pub struct ShowIf {
     /// The control that decides.
-    #[serde(rename = "controlId")]
-    pub control_id: String,
+    #[serde(default, rename = "controlId")]
+    pub control_id: Option<String>,
     /// The value it must have.
     #[serde(default)]
     pub is: Bson,

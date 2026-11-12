@@ -656,6 +656,7 @@ mod tests {
             rules: RULES,
             read_needs: &[],
             hooks: Hooks::Save,
+            client_nulls: crate::collection::ClientNulls::None,
             initialised_at_startup: true,
             private: &[],
             decode: |_| Ok(Box::new(())),

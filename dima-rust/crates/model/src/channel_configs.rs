@@ -5,11 +5,13 @@
 //! model, so production never created the collection and the copy has no document: the read type
 //! follows the schema only. `commands` (an untyped array) stays raw.
 //!
+//! Client-fed writes (`null` from a request body): none (no process imports the schema).
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none (`commands`, the
 //! `date` object); with no data, nothing shows them stored.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::error::ModelError;
 use crate::shape::ReadNeed;
@@ -55,6 +57,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: &[],
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
     // No process of the reference imports the schema (`ledger/modules.json`: unreachable).
     initialised_at_startup: false,
     private: &[],

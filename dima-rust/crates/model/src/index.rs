@@ -24,8 +24,8 @@
 //!
 //! [`preflight_indexes`] compares the declarations with a database's indexes without changing
 //! anything, and lists every difference: the cutover rehearsal runs it against production first.
-//! The collections start-up does not initialise are reported apart ([`Preflight::not_initialised`]):
-//! their absence is not a difference.
+//! The collections start-up does not initialise are reported apart
+//! ([`Preflight::not_initialised`]): their absence is not a difference.
 
 use crate::collection::CollectionInfo;
 use bson::{Bson, Document, doc};

@@ -75,12 +75,12 @@
 //! assert_eq!(insert.document.get_str("name").ok(), Some("promo"));
 //! let stored = bson::RawDocumentBuf::try_from(&insert.document)?;
 //! let read: CustomTimer = dima_model::decode(&stored)?;
-//! assert!(read.active && read.frequency.0 == 30.0 && INFO.name == "custom_timers");
+//! assert!(read.is_active() && read.frequency.0 == 30.0 && INFO.name == "custom_timers");
 //!
-//! // What the read type could not read back is refused: `active` is a `bool`, values are not
-//! // cast.
+//! // What the read type could not read back is refused: `channel` needs a value (only the
+//! // server writes it; `active` takes `null`, a client may send it), values are not cast.
 //! let filter = doc! { "_id": ObjectId::new() };
-//! let update = doc! { "$set": { "active": Bson::Null, "frequency": "15" } };
+//! let update = doc! { "$set": { "channel": Bson::Null, "frequency": "15" } };
 //! let Err(ModelError::Validation(refused)) =
 //!     INFO.prepare_update(&filter, update, UpdateOptions::default(), &mut ctx)
 //! else {
@@ -294,7 +294,7 @@ pub mod user_extension_inventories;
 pub mod user_media_library_items;
 pub mod users;
 
-pub use collection::{CollectionInfo, Hooks, ReadError};
+pub use collection::{ClientNulls, CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;

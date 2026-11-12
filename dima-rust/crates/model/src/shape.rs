@@ -11,8 +11,8 @@
 //!   of stored. A plain nested object, a sub-document and the elements of a document array must be
 //!   documents; an array path must hold an array; the values of a Map of values its type;
 //! - it is `null` where the read type has no null state (kind `null`): a [`ReadNeed`] of the
-//!   collection says so, and the elements of arrays, the values of a Map of values and plain
-//!   nested objects are never `null`;
+//!   collection says so (plain nested objects and sub-documents included), and the elements of
+//!   arrays and the values of a Map of values are never `null`;
 //! - it removes or leaves out a path the read type needs (kind `missing`): `$unset`, a whole
 //!   object written without it, an upsert or a new document without it, an array element unset.
 //!
@@ -266,8 +266,9 @@ impl<'i> Checker<'i> {
     /// A value written at `path` (`pattern` its schema path).
     fn value(&mut self, node: Node, place: Place, path: &str, pattern: &str, value: &Bson) {
         if matches!(value, Bson::Null | Bson::Undefined) {
-            let structural = place != Place::Field && !matches!(node, Node::Free)
-                || matches!(node, Node::Nested(_));
+            // An array element or a Map value is never `null`; a plain nested object is when its
+            // read type is an `Option` (no `ReadNeed` refuses it), like any other path.
+            let structural = place != Place::Field && !matches!(node, Node::Free);
             if structural || self.need(pattern).is_some_and(|n| n.refuse_null) {
                 self.null_error(path);
             }
@@ -739,7 +740,7 @@ mod tests {
     fn refusals_name_the_path() {
         let info = &crate::commands::INFO;
         let update = UpdateDoc::Document(doc! {
-            "$set": { "enabled": Bson::Null, "cooldown": "5", "responses": 3, "variables.k": 1 },
+            "$set": { "paused": Bson::Null, "cooldown": "5", "responses": 3, "variables.k": 1 },
             "$unset": { "channelID": 1 },
         });
         let Err(error) = info.check_update(&update, Against::Loaded(&doc! {})) else {
@@ -753,7 +754,7 @@ mod tests {
         assert_eq!(
             found,
             [
-                ("enabled", ValidatorKind::Null),
+                ("paused", ValidatorKind::Null),
                 ("cooldown", ValidatorKind::Type),
                 ("responses", ValidatorKind::Type),
                 ("variables.k", ValidatorKind::Type),

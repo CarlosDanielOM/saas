@@ -6,12 +6,14 @@
 //! reference reads or writes the model any more; the two documents of the production copy stay
 //! readable. `user_email` and both tokens are private.
 //!
+//! Client-fed writes (`null` from a request body): none (no process imports the schema).
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there (`user_type`, the two token objects), so Mongoose's
 //! acceptance of them is not reproduced. The `default: null` strings keep their null.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::empty;
 use crate::error::ModelError;
@@ -67,6 +69,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: &[],
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::None,
     // No process of the reference imports the schema (`ledger/modules.json`: unreachable).
     initialised_at_startup: false,
     private: PRIVATE,

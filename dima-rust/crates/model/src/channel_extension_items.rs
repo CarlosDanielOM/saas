@@ -9,11 +9,16 @@
 //! `tts.voice` are trimmed; `assetID` is required unless the item is a TTS item (`null` for those,
 //! stored as `null`); lengths count characters (Mongoose counts UTF-16 units).
 //!
+//! Client-fed writes (`null` from a request body): `server/routes/dimafx.route.ts:1246` sets `tts`
+//! from `normalizeDimafxTtsConfig(body.tts)`, which returns `null` for a `null` body value; `tts`
+//! is an `Option` already ([`INFO`] declares it). The other paths are normalised
+//! (`normalizePositiveInteger`, `normalizeVolume`, `typeof ... === 'boolean'`).
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
 
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
 use crate::defaults::{empty, yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -200,6 +205,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::None,
+    client_nulls: ClientNulls::Paths(&["tts"]),
     initialised_at_startup: true,
     private: &[],
     decode: decode_boxed::<ChannelExtensionItem>,

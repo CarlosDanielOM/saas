@@ -691,8 +691,8 @@ const CASES: Record<string, any[]> = {
         { name: 'update_enabled_bare', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { enabled: true, $inc: { count: 1 } } },
         { name: 'update_strips_availability', op: 'updateOne', seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1) }, update: { $set: { 'availability.pending': true, availabilityLease: { token: 'x', until: T2 }, message: 'm' }, $unset: { availability: 1 }, availabilityLease: 1 } },
         { name: 'update_strips_and_enables', op: 'updateOne', seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1) }, update: { $set: { availability: scheduled, enabled: false } } },
-        // Mongoose stores the null; the read type has none (never stored, census): Rust refuses it.
-        { name: 'update_enabled_null', op: 'updateOne', refused: 'enabled has no null state in the read type', seed: [commandSeed()], filter: { _id: OID(1) }, update: { $set: { enabled: null } } },
+        // A form's empty switch: Mongoose stores the null (`command_mutations.service.ts:281`), and so does Rust.
+        { name: 'update_enabled_null', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { $set: { enabled: null } } },
         { name: 'update_internal', op: 'updateOne', internal: true, seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1), 'availability.token': scheduled.token }, update: { $set: { enabled: false, 'availability.pending': false, availabilityLease: { token: 'lease', until: T2 } } } },
         { name: 'update_internal_lease_release', op: 'updateOne', internal: true, seed: [commandSeed(1, { availability: scheduled, availabilityLease: { token: 'lease', until: T2 } })], filter: { _id: OID(1), 'availabilityLease.token': 'lease' }, update: { $unset: { availabilityLease: 1 } } },
         { name: 'update_many_enabled', op: 'updateMany', seed: [commandSeed(1), commandSeed(2)], filter: { channelID: '111' }, update: { $set: { enabled: false } } },

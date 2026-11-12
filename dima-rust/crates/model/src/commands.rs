@@ -11,16 +11,27 @@
 //! engine), the tag permission expression ([`PermissionExpression`], permissions), the response
 //! table ([`CommandResponses`]) and the per-action permissions ([`CommandPermissions`]).
 //!
+//! Client-fed writes: `server/services/command_mutations.service.ts:281` (`PUT
+//! /commands/:channelID/:commandID` and the site assistant's command tools) copies `name`, `cmd`,
+//! `func`, `responses`, `type`, `description`, `cooldown`, `enabled`, `userLevelName` and
+//! `userLevel` from the request body without a type check (`userLevel` reaches the write
+//! unchecked when the body also switches to a tag expression): a form's empty field arrives as
+//! `null` and is stored. Those ten fields are `Option`s in the read type (a missing path reads
+//! its default, `null` reads `None`), the guard accepts `null` there, and the accessors give
+//! what the reference's checks saw (`if (!command.enabled)`, `command.cooldown || 0`). The create
+//! paths (`:148`, `:371`) default every body value with `??` and store no `null` there. No client
+//! write removes a path.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
-//! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
-//! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
+//! and `null` or a removal where [`READ_NEEDS`] says the read type has none (the paths only the
+//! server writes); the census of the production copy shows none stored there.
 //! `permissions` (`Mixed`) is read as raw BSON ([`CommandPermissions`]): a client may store any
 //! value there.
 
 use crate::availability::{self, AvailabilityLease, AvailabilityState, Writer};
-use crate::collection::{CollectionInfo, Hooks};
+use crate::collection::{ClientNulls, CollectionInfo, Hooks};
 use crate::decode::decode_boxed;
-use crate::defaults::{empty, yes, zero};
+use crate::defaults::{empty, zero};
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
 use crate::index::IndexSpec;
@@ -136,21 +147,30 @@ pub const RULES: &[Rule] = &[
 /// The private paths: their read type fields are [`crate::Private`].
 pub const PRIVATE: &[&str] = &["blocks", "availability", "availabilityLease"];
 
+/// The paths `command_mutations.service.ts:281` copies from the request body unchecked.
+pub const CLIENT_NULLS: &[&str] = &[
+    "name",
+    "cmd",
+    "func",
+    "responses",
+    "type",
+    "description",
+    "cooldown",
+    "enabled",
+    "userLevelName",
+    "userLevel",
+];
+
 /// What the read type cannot decode (`crate::shape`): the write helpers refuse it.
 pub const READ_NEEDS: &[ReadNeed] = &[
+    ReadNeed::not_null("date"),
     ReadNeed::not_null("activation"),
     ReadNeed::not_null("keywordSettings.matchMode"),
     ReadNeed::not_null("message"),
     ReadNeed::not_null("authoring"),
-    ReadNeed::not_null("responses"),
-    ReadNeed::not_null("type"),
     ReadNeed::not_null("platform"),
     ReadNeed::not_null("reserved"),
-    ReadNeed::not_null("cooldown"),
     ReadNeed::not_null("count"),
-    ReadNeed::not_null("userLevelName"),
-    ReadNeed::not_null("userLevel"),
-    ReadNeed::not_null("enabled"),
     ReadNeed::not_null("paused"),
     ReadNeed::value("channelID"),
     ReadNeed::not_null("premiumRequired"),
@@ -169,6 +189,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     rules: RULES,
     read_needs: READ_NEEDS,
     hooks: Hooks::UpdatesAndSave,
+    client_nulls: ClientNulls::Paths(CLIENT_NULLS),
     initialised_at_startup: true,
     private: PRIVATE,
     decode: decode_boxed::<Command>,
@@ -207,14 +228,14 @@ pub struct Command {
     #[serde(default)]
     pub blocks: Option<Private<CommandBlocks>>,
     /// Response table of built-in functions (roulette outcomes, size ranges...).
-    #[serde(default)]
-    pub responses: CommandResponses,
+    #[serde(default = "no_responses")]
+    pub responses: Option<CommandResponses>,
     /// Command variables.
     #[serde(default)]
     pub variables: StringMap,
     /// `command` or `countable`.
     #[serde(default = "command_type", rename = "type")]
-    pub kind: String,
+    pub kind: Option<String>,
     /// Platform.
     #[serde(default = "twitch")]
     pub platform: String,
@@ -226,16 +247,16 @@ pub struct Command {
     pub description: Option<String>,
     /// Cooldown in seconds.
     #[serde(default = "twenty")]
-    pub cooldown: JsNumber,
+    pub cooldown: Option<JsNumber>,
     /// Uses so far.
     #[serde(default = "zero")]
     pub count: JsNumber,
     /// Legacy level name.
     #[serde(default = "everyone", rename = "userLevelName")]
-    pub user_level_name: String,
+    pub user_level_name: Option<String>,
     /// Legacy numeric level.
-    #[serde(default = "zero", rename = "userLevel")]
-    pub user_level: JsNumber,
+    #[serde(default = "crate::defaults::some_zero", rename = "userLevel")]
+    pub user_level: Option<JsNumber>,
     /// Tag-mode permission expression (`None`: numeric level mode).
     #[serde(default, rename = "permissionExpression")]
     pub permission_expression: Option<PermissionExpression>,
@@ -243,8 +264,8 @@ pub struct Command {
     #[serde(default)]
     pub permissions: CommandPermissions,
     /// Enabled.
-    #[serde(default = "yes")]
-    pub enabled: bool,
+    #[serde(default = "crate::defaults::some_yes")]
+    pub enabled: Option<bool>,
     /// Paused.
     #[serde(default)]
     pub paused: bool,
@@ -282,8 +303,12 @@ fn text() -> Open<Authoring> {
     Open::Known(Authoring::Text)
 }
 
-fn command_type() -> String {
-    "command".to_owned()
+fn command_type() -> Option<String> {
+    Some("command".to_owned())
+}
+
+fn no_responses() -> Option<CommandResponses> {
+    Some(CommandResponses::default())
 }
 
 fn twitch() -> String {
@@ -294,12 +319,36 @@ fn no_description() -> Option<String> {
     Some("No description provided.".to_owned())
 }
 
-fn twenty() -> JsNumber {
-    JsNumber(20.0)
+fn twenty() -> Option<JsNumber> {
+    Some(JsNumber(20.0))
 }
 
-fn everyone() -> String {
-    "everyone".to_owned()
+fn everyone() -> Option<String> {
+    Some("everyone".to_owned())
+}
+
+/// What the reference's checks see on the client-fed fields (`null` is falsy, `Number(null)` is
+/// 0).
+impl Command {
+    /// `command.enabled` as a condition.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.unwrap_or(false)
+    }
+
+    /// `command.cooldown` in arithmetic (`null` is 0 seconds).
+    pub fn cooldown_seconds(&self) -> f64 {
+        crate::defaults::js_number(self.cooldown.as_ref())
+    }
+
+    /// `command.userLevel` in a comparison (`null` is 0).
+    pub fn user_level_number(&self) -> f64 {
+        crate::defaults::js_number(self.user_level.as_ref())
+    }
+
+    /// The response table (`null`: none).
+    pub fn response_list(&self) -> &[Bson] {
+        self.responses.as_ref().map_or(&[], |r| r.0.as_slice())
+    }
 }
 
 /// `keywordSettings`.
