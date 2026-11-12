@@ -1070,3 +1070,30 @@ async fn a_streamed_body_is_not_resent_through_a_redirect() {
     let last = server.requests().pop().unwrap();
     assert_eq!((last.method.as_str(), last.body.len()), ("GET", 0));
 }
+
+#[tokio::test]
+async fn brotli_bodies_are_decoded() {
+    // `zlib.brotliCompressSync(Buffer.from("hola brotli hola brotli"))` from Node.
+    const BROTLI: &[u8] = &[
+        27, 22, 0, 248, 197, 109, 108, 93, 247, 213, 165, 32, 8, 81, 0, 21, 11, 216, 43, 161, 219,
+        55, 0,
+    ];
+    let server = MockServer::start().await.unwrap();
+    let provider = provider(&server);
+    server.push(
+        MockResponse::new(200)
+            .header("content-encoding", "br")
+            .body(BROTLI),
+    );
+    let text = client()
+        .get(&provider, "/")
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(text, "hola brotli hola brotli");
+    let request = server.next_request().await.unwrap();
+    assert!(request.header("accept-encoding").unwrap().contains("br"));
+}
