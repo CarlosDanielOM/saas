@@ -1,0 +1,21 @@
+[package]
+name = "dima-features"
+description = "The channel features as libraries, without sockets: goals, roulettes, duels, bits rules, widgets, Overlay Studio, pets, assets, follow defense, custom timers."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-engine = { workspace = true }
+dima-twitch = { workspace = true }
+dima-events = { workspace = true }
+dima-stream = { workspace = true }
+dima-tts = { workspace = true }
+dima-billing = { workspace = true }
+dima-platform = { workspace = true }
+dima-model = { workspace = true }
+dima-store = { workspace = true }
