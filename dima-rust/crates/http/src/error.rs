@@ -90,6 +90,42 @@ impl fmt::Display for BlockReason {
     }
 }
 
+/// What kind of body decoding failed. Nothing of the body itself is kept: a JSON error's text
+/// can quote the rejected input.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DecodeCategory {
+    /// The bytes are not valid JSON.
+    Syntax,
+    /// Valid JSON that does not fit the expected type.
+    Data,
+    /// The body ended in the middle of a JSON value.
+    Eof,
+    /// The compressed body (gzip, deflate, brotli) could not be decompressed.
+    Compression,
+}
+
+impl fmt::Display for DecodeCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Syntax => "syntax",
+            Self::Data => "data",
+            Self::Eof => "eof",
+            Self::Compression => "compression",
+        })
+    }
+}
+
+impl DecodeCategory {
+    /// The category of a `serde_json` error.
+    pub(crate) fn of_json(error: &serde_json::Error) -> Self {
+        match error.classify() {
+            serde_json::error::Category::Data => Self::Data,
+            serde_json::error::Category::Eof => Self::Eof,
+            serde_json::error::Category::Syntax | serde_json::error::Category::Io => Self::Syntax,
+        }
+    }
+}
+
 /// The failure class an [`Error`] belongs to, for telemetry and retry decisions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FailureClass {
@@ -262,14 +298,18 @@ pub enum Error {
         /// The limit.
         limit: u64,
     },
-    /// The body could not be decoded (JSON, UTF-8).
-    #[error("{info}: decode failed")]
+    /// The body could not be decoded (JSON, decompression). Only where it failed is kept, never
+    /// the parser's message, which can quote the body.
+    #[error("{info}: decode failed ({category} at line {line} column {column})")]
     Decode {
         /// The request.
         info: RequestInfo,
-        /// The cause.
-        #[source]
-        source: BoxError,
+        /// What failed.
+        category: DecodeCategory,
+        /// The 1-based line of a JSON error (0 when unknown).
+        line: usize,
+        /// The 1-based column of a JSON error (0 when unknown).
+        column: usize,
     },
     /// Shutdown fired while the request was waiting.
     #[error("{info}: cancelled")]
@@ -321,11 +361,6 @@ impl fmt::Debug for Error {
                 } else {
                     "Transport"
                 })
-                .field("info", info)
-                .field("source", &redact::ErrorChain(source.as_ref()))
-                .finish(),
-            Self::Decode { info, source } => f
-                .debug_struct("Decode")
                 .field("info", info)
                 .field("source", &redact::ErrorChain(source.as_ref()))
                 .finish(),
@@ -416,6 +451,14 @@ impl Error {
         // `Response::chunk` reports every body failure as "decode"; a failure of the connection
         // underneath shows as a body error in the source chain.
         let decode = error.is_decode() && !has_body_error(&error);
+        if decode {
+            return Self::Decode {
+                info,
+                category: DecodeCategory::Compression,
+                line: 0,
+                column: 0,
+            };
+        }
         let source: BoxError = Box::new(error.without_url());
         if connect && timeout {
             Self::Timeout {
@@ -424,8 +467,6 @@ impl Error {
             }
         } else if connect {
             Self::Connect { info, source }
-        } else if decode {
-            Self::Decode { info, source }
         } else {
             Self::Transport { info, source }
         }

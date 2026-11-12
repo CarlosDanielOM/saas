@@ -245,7 +245,9 @@ impl Response {
         let clean = dima_text::sanitize_lone_surrogates(&bytes);
         serde_json::from_slice(&clean).map_err(|error| Error::Decode {
             info,
-            source: Box::new(error),
+            category: crate::error::DecodeCategory::of_json(&error),
+            line: error.line(),
+            column: error.column(),
         })
     }
 

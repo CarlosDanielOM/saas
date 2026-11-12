@@ -127,7 +127,8 @@ pub mod testing;
 
 pub use client::{Credential, HttpClient, HttpClientBuilder, Refresh, RequestBuilder};
 pub use error::{
-    BlockReason, BoxError, Error, FailureClass, RequestInfo, Result, StatusError, TimeoutKind,
+    BlockReason, BoxError, DecodeCategory, Error, FailureClass, RequestInfo, Result, StatusError,
+    TimeoutKind,
 };
 pub use path::{Path, PathError};
 pub use provider::{ConfigError, Provider, ProviderBuilder, ProviderRegistry, Redirects};

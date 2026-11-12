@@ -125,3 +125,59 @@ async fn debug_output_never_shows_secrets() {
     );
     assert_clean("GuardedClient", &format!("{guarded:?}"));
 }
+
+/// A JSON error's text can quote the rejected input (`invalid type: string "..."`, `unknown
+/// variant ...`): the error keeps where it failed, never that text.
+#[tokio::test]
+async fn decode_errors_never_quote_the_body() {
+    #[derive(Debug, serde::Deserialize)]
+    #[allow(dead_code)]
+    struct Typed {
+        token: u32,
+    }
+    #[derive(Debug, serde::Deserialize)]
+    #[allow(dead_code)]
+    enum Kind {
+        Known,
+    }
+    let server = MockServer::start().await.unwrap();
+    let provider = Provider::builder("mock", &server.url()).build().unwrap();
+    let client = HttpClient::builder().build().unwrap();
+    server.push(MockResponse::json(200, r#"{"token": "MARKER-typed"}"#));
+    let typed = client
+        .get(&provider, "/")
+        .send_json::<Typed>()
+        .await
+        .unwrap_err();
+    server.push(MockResponse::json(200, r#""MARKER-variant""#));
+    let variant = client
+        .get(&provider, "/")
+        .send_json::<Kind>()
+        .await
+        .unwrap_err();
+    for error in [&typed, &variant] {
+        let mut printed = format!("{error} | {error:?}");
+        let mut source = std::error::Error::source(error);
+        while let Some(cause) = source {
+            printed.push_str(&format!(" | {cause} | {cause:?}"));
+            source = cause.source();
+        }
+        assert_clean("Error::Decode", &printed);
+    }
+    assert!(
+        matches!(
+            typed,
+            dima_http::Error::Decode {
+                category: dima_http::DecodeCategory::Data,
+                line: 1,
+                column: 24,
+                ..
+            }
+        ),
+        "{typed:?}"
+    );
+    assert!(
+        format!("{typed}").contains("data at line 1 column 24"),
+        "{typed}"
+    );
+}
