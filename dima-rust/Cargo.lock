@@ -1576,6 +1576,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-hoststats"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dima-core",
+ "dima-text",
+ "dima-web",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "nix",
+ "regex",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-http"
 version = "0.1.0"
 dependencies = [

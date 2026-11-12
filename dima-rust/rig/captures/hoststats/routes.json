@@ -1,0 +1,465 @@
+{
+  "rig_capture": 3,
+  "target": "hoststats",
+  "scenario": "routes",
+  "provenance": {
+    "side": "reference",
+    "label": "655af798",
+    "recorded_at": "2026-11-12T05:30:00.778Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:e676fbcb2d67661e",
+    "files": {
+      "routes.json": "fnv1a64:e676fbcb2d67661e"
+    }
+  },
+  "run": {
+    "seeded_at": 1794461399829,
+    "start": 1794461400293,
+    "end": 1794461400312,
+    "process_start": 1794461399836,
+    "ports": {
+      "http": 33469
+    },
+    "mongo_db": "rig_623942_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_623942_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 44697,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794461400295,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"status\":\"ok\",\"sampledAt\":\"2026-11-12T05:30:00.011Z\",\"dockerReachable\":false}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400296,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"version\":1,\"at\":\"2026-11-12T05:30:00.011Z\",\"sampleMs\":15000,\"host\":{\"cpus\":16,\"uptimeSec\":123.4,\"cpuPct\":null,\"iowaitPct\":null,\"stealPct\":null,\"load1\":0.5,\"load5\":0.4,\"load15\":0.3,\"running\":2,\"procs\":300,\"memTotal\":102400,\"memAvailable\":51200,\"memUsed\":51200,\"memFree\":null,\"memCache\":0,\"memShared\":null,\"swapTotal\":0,\"swapUsed\":0,\"diskReadBps\":null,\"diskWriteBps\":null,\"netRxBps\":null,\"netTxBps\":null,\"netRx\":10,\"netTx\":20,\"pressure\":{\"cpu\":1.92,\"memory\":0.1,\"io\":0.5}},\"docker\":{\"reachable\":false,\"version\":null,\"df\":null},\"containers\":[],\"errors\":[\"docker: connect ENOENT /tmp/hoststats-rig-absent.sock\"]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400298,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400299,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400301,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400302,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400304,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400306,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400307,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Read-only service\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400309,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Read-only service\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400310,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Read-only service\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400311,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Read-only service\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461400312,
+        "status": 405,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:30:00 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"message\":\"Read-only service\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}

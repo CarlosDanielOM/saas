@@ -1,0 +1,142 @@
+{
+  "rig_capture": 3,
+  "target": "hoststats",
+  "scenario": "sampling",
+  "provenance": {
+    "side": "reference",
+    "label": "655af798",
+    "recorded_at": "2026-11-12T05:31:44.588Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:b1ee4aa9c28dddf0",
+    "files": {
+      "sampling.json": "fnv1a64:b1ee4aa9c28dddf0"
+    }
+  },
+  "run": {
+    "seeded_at": 1794461472725,
+    "start": 1794461473115,
+    "end": 1794461488622,
+    "process_start": 1794461472732,
+    "ports": {
+      "http": 34141
+    },
+    "mongo_db": "rig_636673_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_636673_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 36221,
+    "qdrant_port": null,
+    "qdrant_prefix": null
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794461473118,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:31:13 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"version\":1,\"at\":\"2026-11-12T05:31:12.854Z\",\"sampleMs\":15000,\"host\":{\"cpus\":16,\"uptimeSec\":123.4,\"cpuPct\":null,\"iowaitPct\":null,\"stealPct\":null,\"load1\":0.5,\"load5\":0.4,\"load15\":0.3,\"running\":2,\"procs\":300,\"memTotal\":102400,\"memAvailable\":51200,\"memUsed\":51200,\"memFree\":null,\"memCache\":0,\"memShared\":null,\"swapTotal\":0,\"swapUsed\":0,\"diskReadBps\":null,\"diskWriteBps\":null,\"netRxBps\":null,\"netTxBps\":null,\"netRx\":10,\"netTx\":20,\"pressure\":{\"cpu\":1.92,\"memory\":0.1,\"io\":0.5}},\"docker\":{\"reachable\":false,\"version\":null,\"df\":null},\"containers\":[],\"errors\":[\"docker: connect ENOENT /tmp/hoststats-rig-absent.sock\"]}"
+      }
+    },
+    {
+      "pause_ms": {}
+    },
+    {
+      "http": {
+        "at": 1794461488621,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:31:28 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"version\":1,\"at\":\"2026-11-12T05:31:27.898Z\",\"sampleMs\":15000,\"host\":{\"cpus\":16,\"uptimeSec\":123.4,\"cpuPct\":null,\"iowaitPct\":null,\"stealPct\":null,\"load1\":0.5,\"load5\":0.4,\"load15\":0.3,\"running\":2,\"procs\":300,\"memTotal\":102400,\"memAvailable\":51200,\"memUsed\":51200,\"memFree\":null,\"memCache\":0,\"memShared\":null,\"swapTotal\":0,\"swapUsed\":0,\"diskReadBps\":0,\"diskWriteBps\":0,\"netRxBps\":0,\"netTxBps\":0,\"netRx\":10,\"netTx\":20,\"pressure\":{\"cpu\":1.92,\"memory\":0.1,\"io\":0.5}},\"docker\":{\"reachable\":false,\"version\":null,\"df\":null},\"containers\":[],\"errors\":[\"docker: connect ENOENT /tmp/hoststats-rig-absent.sock\"]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794461488622,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 05:31:28 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"status\":\"ok\",\"sampledAt\":\"2026-11-12T05:31:27.898Z\",\"dockerReachable\":false}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
+}
