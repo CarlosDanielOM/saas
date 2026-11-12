@@ -276,10 +276,11 @@ async fn list_settle_and_reconcile_the_records_left_by_a_stopped_process() -> Re
         Ok(())
     }
     .await;
+    // The commands' entries, and the per-streamer ones of the reconciliation.
     clean_log_entries(
         &stores.dragonfly,
         since,
-        &["reconcileRecovery", "settleRecoveryRecord"],
+        &["reconcileRecovery", "settleRecoveryRecord", FIRST, SECOND],
     )
     .await?;
     stores.clean().await?;
