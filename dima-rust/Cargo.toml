@@ -26,6 +26,7 @@ dima-http = { path = "crates/http" }
 dima-web = { path = "crates/web" }
 dima-socketio = { path = "crates/socketio" }
 dima-model = { path = "crates/model" }
+dima-commands = { path = "crates/commands" }
 dima-engine = { path = "crates/engine" }
 # Runtime.
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net", "process", "fs", "io-util"] }
