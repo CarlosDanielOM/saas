@@ -23,7 +23,6 @@ use dima_http::testing::{MockResponse, MockServer};
 use dima_model::oauth_clients::{ClientType, NewOAuthClient};
 use dima_model::users::{AccountType, NewAccount, NewUser};
 use dima_model::{IndexPolicy, ensure_indexes};
-use dima_platform::auth::twitch::HttpTwitchUserApi;
 use dima_platform::oauth::catalog::{DESKTOP_REDIRECT_URIS, active_scopes};
 use dima_platform::oauth::{
     AccessIdentity, HookPoint, Input, OAuthConfig, OAuthDeps, OAuthError, OAuthService, RATE_LIMIT,
@@ -79,11 +78,7 @@ fn service(stores: &Stores, twitch: Option<&MockServer>) -> Result<OAuthService>
             cache: stores.cache.clone(),
             clock: Arc::new(SystemClock),
             random: Arc::new(SystemRandom),
-            twitch: Arc::new(HttpTwitchUserApi::new(
-                dima_http::HttpClient::builder().build()?,
-                oauth,
-                helix,
-            )),
+            twitch: guard_support::user_api(stores, oauth, helix, "fixture-client")?,
         },
     ))
 }
@@ -1224,7 +1219,7 @@ async fn browser_proof() -> Result<()> {
         let stranger = id_of("stranger", &run);
         server.fallback(move |request| {
             let auth = request.header("authorization").unwrap_or_default();
-            let token = auth.strip_prefix("OAuth ").unwrap_or("");
+            let token = auth.strip_prefix("Bearer ").unwrap_or("");
             let body = |client: &str, user: &str, expires: i64| {
                 MockResponse::json(200, &json!({"client_id": client, "login": "x", "scopes": [], "user_id": user, "expires_in": expires}).to_string())
             };
@@ -1258,8 +1253,9 @@ async fn browser_proof() -> Result<()> {
         ] {
             assert_eq!(code(service.browser_user(header).await), Err(expected), "{header:?}");
         }
-        // The proof is sent as `OAuth <token>`, every time.
-        assert!(server.requests().iter().all(|r| r.header("authorization").is_some_and(|a| a.starts_with("OAuth "))));
+        // The proof is sent as `Bearer <token>` (`Twitch::validate_user_token`; the reference sent
+        // `OAuth <token>`, which Twitch's validation treats the same), every time.
+        assert!(server.requests().iter().all(|r| r.header("authorization").is_some_and(|a| a.starts_with("Bearer "))));
         Ok(())
     })
     .await

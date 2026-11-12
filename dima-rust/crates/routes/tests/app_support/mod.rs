@@ -11,7 +11,7 @@ use dima_http::testing::{MockResponse, MockServer};
 use dima_model::users::{AccountType, NewAccount, NewUser};
 use dima_model::{IndexPolicy, ensure_indexes};
 use dima_platform::access::ChannelAccess;
-use dima_platform::auth::twitch::HttpTwitchUserApi;
+use dima_platform::auth::twitch::TwitchUserApi;
 use dima_platform::auth::{AuthConfig, AuthDeps, Authenticator, NoReport};
 use dima_platform::oauth::{OAuthConfig, OAuthDeps, OAuthService};
 use dima_routes::app::{
@@ -436,11 +436,6 @@ pub async fn harness_with(
     write_public(&public, &cases)?;
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let http = HttpClient::builder().build()?;
-    let user_api = Arc::new(HttpTwitchUserApi::new(
-        HttpClient::builder().build()?,
-        twitch_mock.provider(dima_twitch::oauth_provider())?,
-        twitch_mock.provider(dima_twitch::helix_provider(&client_id))?,
-    ));
     let mut twitch_config =
         TwitchConfig::new(client_id.clone(), SecretString::from("routes-secret"));
     twitch_config.keys = KeySpace::prefixed(format!("dima_test_routes_{}:tw:", stores.run));
@@ -460,6 +455,8 @@ pub async fn harness_with(
             shutdown: Shutdown::new(),
         },
     );
+    // The user-token calls go through the same handle, as in the binary.
+    let user_api: Arc<dyn TwitchUserApi> = Arc::new(twitch.clone());
     let mut oauth_config = OAuthConfig::new(
         cases["issuer"].as_str(),
         cases["website"].as_str(),
@@ -473,7 +470,7 @@ pub async fn harness_with(
             cache: stores.cache.clone(),
             clock: Arc::clone(&clock),
             random: Arc::new(SystemRandom),
-            twitch: user_api.clone(),
+            twitch: Arc::clone(&user_api),
         },
     );
     let authenticator = Authenticator::new(

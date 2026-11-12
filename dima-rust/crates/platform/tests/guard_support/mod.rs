@@ -217,7 +217,11 @@ pub fn script_twitch(server: &MockServer, cases: &Value, run: &str) {
             );
         }
         let user = spec["user"].as_str().unwrap_or_default();
-        let text = match &answer["body"] {
+        let mut body = answer["body"].clone();
+        if which == "users" {
+            complete_helix_users(&mut body);
+        }
+        let text = match &body {
             Value::String(raw) => raw.clone(),
             body => serde_json::to_string(body)
                 .unwrap_or_default()
@@ -228,4 +232,56 @@ pub fn script_twitch(server: &MockServer, cases: &Value, run: &str) {
         let status = u16::try_from(answer["status"].as_u64().unwrap_or(500)).unwrap_or(500);
         MockResponse::json(status, &text)
     });
+}
+
+/// Real Helix sends every documented field of a user (`""` for a missing picture); the
+/// recorded cases list only those the reference reads. The typed `Twitch::user_by_token`
+/// decodes the documented user, so the mock completes each entry as Helix would. The
+/// reference read none of the added fields, so its recording stays valid.
+pub fn complete_helix_users(body: &mut Value) {
+    let Some(users) = body.get_mut("data").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for user in users.iter_mut().filter_map(Value::as_object_mut) {
+        for (field, value) in [
+            ("type", Value::from("")),
+            ("broadcaster_type", Value::from("")),
+            ("description", Value::from("")),
+            ("profile_image_url", Value::from("")),
+            ("offline_image_url", Value::from("")),
+            ("view_count", Value::from(0)),
+            ("created_at", Value::from("2020-01-01T00:00:00Z")),
+        ] {
+            user.entry(field).or_insert(value);
+        }
+    }
+}
+
+/// The two calls with a user's own token, as production makes them: a [`dima_twitch::Twitch`]
+/// for `client_id` whose providers point at the test's mock (or nowhere).
+pub fn user_api(
+    stores: &Stores,
+    oauth: dima_http::Provider,
+    helix: dima_http::Provider,
+    client_id: &str,
+) -> Result<std::sync::Arc<dima_twitch::Twitch>> {
+    use dima_core::{SecretString, Shutdown, SystemClock, SystemRandom};
+    let mut config = dima_twitch::TwitchConfig::new(client_id, SecretString::from("test-secret"));
+    config.keys = dima_twitch::KeySpace::prefixed(format!("platform_test_{}:tw:", stores.run));
+    Ok(std::sync::Arc::new(dima_twitch::Twitch::new(
+        config,
+        dima_twitch::TwitchDeps {
+            http: dima_http::HttpClient::builder().build()?,
+            exchange_http: dima_twitch::exchange_client(dima_http::HttpClient::builder())?,
+            helix,
+            oauth,
+            mongo: stores.mongo.clone(),
+            dragonfly: stores.cache.clone(),
+            cipher: dima_core::crypto::CredentialCipher::new("platform-test-only")?,
+            clock: std::sync::Arc::new(SystemClock),
+            random: std::sync::Arc::new(SystemRandom),
+            events: std::sync::Arc::new(dima_twitch::NoopEvents),
+            shutdown: Shutdown::new(),
+        },
+    )))
 }

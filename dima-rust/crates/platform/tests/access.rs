@@ -17,7 +17,6 @@ use dima_platform::access::{
     parse_permission_list, requested_permissions, require_admin, require_global_admin,
     resolve_granted_permissions,
 };
-use dima_platform::auth::twitch::HttpTwitchUserApi;
 use dima_platform::auth::{
     AuthConfig, AuthDeps, AuthenticatedUser, Authenticator, HasAuthenticator, NoReport,
 };
@@ -365,11 +364,12 @@ fn app(stores: &Stores, access: ChannelAccess) -> Result<App<State>> {
     let auth = Authenticator::new(
         AuthConfig::new("fixture-client")?,
         AuthDeps {
-            twitch: Arc::new(HttpTwitchUserApi::new(
-                dima_http::HttpClient::builder().build()?,
+            twitch: guard_support::user_api(
+                stores,
                 unreachable_provider(dima_twitch::oauth_provider())?,
                 unreachable_provider(dima_twitch::helix_provider("fixture-client"))?,
-            )),
+                "fixture-client",
+            )?,
             cache: stores.cache.clone(),
             mongo: stores.mongo.clone(),
             clock: Arc::new(SystemClock),
