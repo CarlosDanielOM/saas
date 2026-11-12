@@ -163,7 +163,12 @@ pub async fn load_channel_admins(
             actived: admin.actived,
         })
         .collect();
-    populate_admin_cache(&DragonflyRoleCache::new(stores.clone()), channel_id, &entries).await?;
+    populate_admin_cache(
+        &DragonflyRoleCache::new(stores.clone()),
+        channel_id,
+        &entries,
+    )
+    .await?;
     Ok(admins.len())
 }
 
@@ -179,7 +184,11 @@ pub async fn reset_sumimetro(stores: &Stores, channel_id: &str) -> Result<usize,
     if !glob_safe(channel_id) {
         return Err(RuntimeError::Reply("a channel id with glob characters"));
     }
-    let keys = scan_keys(stores, &stores.keys.key(format_args!("{channel_id}:sumimetro:*"))).await?;
+    let keys = scan_keys(
+        stores,
+        &stores.keys.key(format_args!("{channel_id}:sumimetro:*")),
+    )
+    .await?;
     for chunk in keys.chunks(500) {
         let refs: Vec<&str> = chunk.iter().map(String::as_str).collect();
         stores.dragonfly.del(&refs).await?;

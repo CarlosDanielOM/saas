@@ -101,3 +101,34 @@ impl ChatCooldowns {
         self.len() == 0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dima_core::ManualClock;
+
+    #[test]
+    fn entries_expire_by_the_clock_and_stay_bounded() {
+        let clock = ManualClock::new(1_000);
+        let mut cooldowns = ChatCooldowns::new(Arc::new(clock.clone()), 2);
+        cooldowns.set("hola", 5_000);
+        assert!(cooldowns.has("hola") && cooldowns.get("hola") == Some(5_000));
+        clock.advance(4_999);
+        assert!(cooldowns.has("hola"));
+        clock.advance(1);
+        assert!(!cooldowns.has("hola") && cooldowns.is_empty());
+        // The latest set counts (the reference's first timer would cut the second short).
+        cooldowns.set("a", 1_000);
+        cooldowns.set("a", 10_000);
+        clock.advance(2_000);
+        assert!(cooldowns.has("a"));
+        // Full: the entry that ends soonest goes.
+        cooldowns.set("b", 3_000);
+        cooldowns.set("c", 20_000);
+        assert!(cooldowns.has("a") && !cooldowns.has("b") && cooldowns.has("c"));
+        assert_eq!(cooldowns.len(), 2);
+        cooldowns.delete("a");
+        cooldowns.clear();
+        assert!(cooldowns.is_empty());
+    }
+}

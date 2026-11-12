@@ -11,9 +11,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use bson::doc;
-use dima_commands::runtime::availability::{Availability, AvailabilityConfig, Target, TwitchRewardToggle};
+use dima_commands::runtime::availability::{
+    Availability, AvailabilityConfig, Target, TwitchRewardToggle,
+};
 use dima_commands::runtime::lookup::{CommandCache, Lookup, Names, Source};
-use dima_commands::runtime::{RuntimeError, ast_variables, chat_history, channel_cache, random_user, user_level};
+use dima_commands::runtime::{
+    RuntimeError, ast_variables, channel_cache, chat_history, random_user, user_level,
+};
 use dima_http::testing::MockResponse;
 use runtime_support::*;
 use serde_json::{Value, json};
@@ -66,7 +70,10 @@ async fn lookups_find_what_the_reference_finds() -> Result<()> {
                     Err(RuntimeError::Decode(path))
                         if matches!(name, "arr1" | "arr2" | "nullact") =>
                     {
-                        assert!(path.starts_with("cmd") || path.starts_with("activation"), "{path}");
+                        assert!(
+                            path.starts_with("cmd") || path.starts_with("activation"),
+                            "{path}"
+                        );
                         assert!(step["id"].is_string());
                         unreadable += 1;
                         compared += 1;
@@ -74,11 +81,18 @@ async fn lookups_find_what_the_reference_finds() -> Result<()> {
                     }
                     Err(error) => return Err(error.into()),
                 };
-                assert!(lookup.cache_error.is_none(), "{name:?}: {:?}", lookup.cache_error);
+                assert!(
+                    lookup.cache_error.is_none(),
+                    "{name:?}: {:?}",
+                    lookup.cache_error
+                );
                 assert_eq!(found_id(&lookup), step["id"], "{channel} {name:?}");
                 if !step["enabled"].is_null() {
                     let enabled = lookup.command.as_ref().map(|c| c.is_enabled());
-                    assert_eq!(enabled.map(Value::Bool).unwrap_or(Value::Null), step["enabled"]);
+                    assert_eq!(
+                        enabled.map(Value::Bool).unwrap_or(Value::Null),
+                        step["enabled"]
+                    );
                 }
                 let reference_source = if step["message"].as_str().unwrap().contains("from cache") {
                     Source::Cache
@@ -136,16 +150,28 @@ async fn count_update_stores_what_the_reference_stores() -> Result<()> {
             cache.update_count(CHANNEL_A, "hola", 5.0).await,
             cache.update_count(CHANNEL_A, "nope", 1.0).await,
             cache.update_count(CHANNEL_A, "Mayus", 2.5).await,
-            cache.update_count(CHANNEL_A, "\u{f1}and\u{fa}", 3_000_000_000.0).await,
+            cache
+                .update_count(CHANNEL_A, "\u{f1}and\u{fa}", 3_000_000_000.0)
+                .await,
         ];
-        for (outcome, recorded) in outcomes.into_iter().zip(case["results"].as_array().unwrap()) {
+        for (outcome, recorded) in outcomes
+            .into_iter()
+            .zip(case["results"].as_array().unwrap())
+        {
             let found = outcome.map_err(|e| e.into_runtime())?;
             assert_eq!(!found, recorded["error"].as_bool().unwrap());
         }
         let after = cache.find(CHANNEL_A, "hola").await?;
         assert_eq!(after.command.unwrap().count.0, 5.0);
-        assert_eq!(after.source, Source::Database, "the updated name was re-read");
-        assert_eq!(changed_documents(&env, "commands").await?, case["documents"]);
+        assert_eq!(
+            after.source,
+            Source::Database,
+            "the updated name was re-read"
+        );
+        assert_eq!(
+            changed_documents(&env, "commands").await?,
+            case["documents"]
+        );
         Ok(())
     })
     .await
@@ -158,14 +184,26 @@ async fn delete_removes_what_the_reference_removes() -> Result<()> {
         let cache = env.cache();
         let case = writes_case("delete");
         cache.find(CHANNEL_A, "hola").await?;
-        let deleted = cache.delete(CHANNEL_A, "hola").await.map_err(|e| e.into_runtime())?;
-        let missing = cache.delete(CHANNEL_A, "nope").await.map_err(|e| e.into_runtime())?;
+        let deleted = cache
+            .delete(CHANNEL_A, "hola")
+            .await
+            .map_err(|e| e.into_runtime())?;
+        let missing = cache
+            .delete(CHANNEL_A, "nope")
+            .await
+            .map_err(|e| e.into_runtime())?;
         let results = case["results"].as_array().unwrap();
-        assert_eq!(deleted.map(|c| c.id.to_hex()), results[0]["id"].as_str().map(str::to_owned));
+        assert_eq!(
+            deleted.map(|c| c.id.to_hex()),
+            results[0]["id"].as_str().map(str::to_owned)
+        );
         assert!(missing.is_none() && results[1]["id"].is_null());
         assert!(cache.find(CHANNEL_A, "hola").await?.command.is_none());
         assert_eq!(case["after"], "Command does not exist");
-        assert_eq!(changed_documents(&env, "commands").await?, case["documents"]);
+        assert_eq!(
+            changed_documents(&env, "commands").await?,
+            case["documents"]
+        );
         Ok(())
     })
     .await
@@ -178,7 +216,10 @@ async fn reference_staleness_is_closed() -> Result<()> {
     with_env(now(), |env| async move {
         // A writer killed between its database write and its invalidation.
         let recorded = writes_case("killed_writer");
-        assert_eq!(recorded["served"], "reply 1", "the reference serves the old message");
+        assert_eq!(
+            recorded["served"], "reply 1",
+            "the reference serves the old message"
+        );
         assert_eq!(recorded["ttl"], 3600, "for an hour");
         seed(&env).await?;
         let cache = env.cache();
@@ -191,7 +232,10 @@ async fn reference_staleness_is_closed() -> Result<()> {
                     .write(CHANNEL_A, Names::These(&["hola"]), || async move {
                         mongo
                             .documents("commands")
-                            .update_one(doc! { "_id": oid("64a000000000000000000001") }, doc! { "$set": { "message": "changed" } })
+                            .update_one(
+                                doc! { "_id": oid("64a000000000000000000001") },
+                                doc! { "$set": { "message": "changed" } },
+                            )
                             .await?;
                         std::future::pending::<Result<(), anyhow::Error>>().await
                     })
@@ -207,16 +251,26 @@ async fn reference_staleness_is_closed() -> Result<()> {
 
         // `deleteMany` (account deletion): Rust's caller drops the channel's snapshot.
         let recorded = writes_case("delete_many");
-        assert_eq!(recorded["served"], "64a000000000000000000001", "the reference serves a deleted command");
+        assert_eq!(
+            recorded["served"], "64a000000000000000000001",
+            "the reference serves a deleted command"
+        );
         seed(&env).await?;
         cache.find(CHANNEL_A, "hola").await?;
-        env.stores.mongo.documents("commands").delete_many(doc! { "channelID": CHANNEL_A }).await?;
+        env.stores
+            .mongo
+            .documents("commands")
+            .delete_many(doc! { "channelID": CHANNEL_A })
+            .await?;
         cache.invalidate_channel(CHANNEL_A).await?;
         assert!(cache.find(CHANNEL_A, "hola").await?.command.is_none());
 
         // A lookup that read before an update and published after it.
         let recorded = writes_case("read_write_race");
-        assert_eq!((recorded["served"].clone(), recorded["stored"].clone()), (json!(false), json!(true)));
+        assert_eq!(
+            (recorded["served"].clone(), recorded["stored"].clone()),
+            (json!(false), json!(true))
+        );
         Ok(())
     })
     .await
@@ -231,10 +285,17 @@ async fn wait_for_message(env: &Env, message: &str) -> Result<()> {
             .documents("commands")
             .find_one(doc! { "_id": oid("64a000000000000000000001") })
             .await?;
-        if stored.and_then(|d| d.get_str("message").ok().map(str::to_owned)).as_deref() == Some(message) {
+        if stored
+            .and_then(|d| d.get_str("message").ok().map(str::to_owned))
+            .as_deref()
+            == Some(message)
+        {
             return Ok(());
         }
-        anyhow::ensure!(tokio::time::Instant::now() < deadline, "the write never landed");
+        anyhow::ensure!(
+            tokio::time::Instant::now() < deadline,
+            "the write never landed"
+        );
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
 }
@@ -272,15 +333,17 @@ async fn run_availability_case(
                 };
                 let target = Target::from_name(step["target"].as_str().unwrap());
                 let outcome = match target {
-                    Ok(target) => availability
-                        .set(
-                            target,
-                            step["channel"].as_str().unwrap_or(CHANNEL_A),
-                            step["name"].as_str().unwrap(),
-                            step["enabled"].as_bool().unwrap(),
-                            seconds,
-                        )
-                        .await,
+                    Ok(target) => {
+                        availability
+                            .set(
+                                target,
+                                step["channel"].as_str().unwrap_or(CHANNEL_A),
+                                step["name"].as_str().unwrap(),
+                                step["enabled"].as_bool().unwrap(),
+                                seconds,
+                            )
+                            .await
+                    }
                     Err(error) => Err(error),
                 };
                 results.push(match outcome {
@@ -298,7 +361,9 @@ async fn run_availability_case(
                 results.push(json!({ "recovered": true }));
             }
             _ => {
-                let lookup = cache.find(CHANNEL_A, step["name"].as_str().unwrap()).await?;
+                let lookup = cache
+                    .find(CHANNEL_A, step["name"].as_str().unwrap())
+                    .await?;
                 let enabled = lookup.command.as_ref().map(|c| c.is_enabled());
                 results.push(json!({ "found": lookup.command.is_some(), "enabled": enabled }));
             }
@@ -319,7 +384,11 @@ async fn run_availability_case(
             None => result.clone(),
         })
         .collect();
-    assert_eq!(Value::Array(results), Value::Array(recorded), "{name}: results");
+    assert_eq!(
+        Value::Array(results),
+        Value::Array(recorded),
+        "{name}: results"
+    );
     let requests: Vec<Value> = server
         .requests()
         .iter()
@@ -327,7 +396,10 @@ async fn run_availability_case(
         .map(|request| {
             assert_eq!(request.header("client-id"), Some(CLIENT_ID));
             assert_eq!(request.header("content-type"), Some("application/json"));
-            assert_eq!(request.header("authorization"), Some("Bearer streamer-access"));
+            assert_eq!(
+                request.header("authorization"),
+                Some("Bearer streamer-access")
+            );
             json!({
                 "method": request.method,
                 "target": request.target,
@@ -348,8 +420,16 @@ async fn run_availability_case(
         })
         .collect();
     assert_eq!(requests, recorded, "{name}: Twitch requests");
-    assert_eq!(changed_documents(env, "commands").await?, case["commands"], "{name}: commands");
-    assert_eq!(changed_documents(env, "redemptionrewards").await?, case["rewards"], "{name}: rewards");
+    assert_eq!(
+        changed_documents(env, "commands").await?,
+        case["commands"],
+        "{name}: commands"
+    );
+    assert_eq!(
+        changed_documents(env, "redemptionrewards").await?,
+        case["rewards"],
+        "{name}: rewards"
+    );
     Ok(())
 }
 
@@ -363,7 +443,11 @@ impl ClockNow for Env {
     }
 }
 
-fn availability_for(env: &Env, cache: &CommandCache, twitch: dima_twitch::Twitch) -> Availability<TwitchRewardToggle> {
+fn availability_for(
+    env: &Env,
+    cache: &CommandCache,
+    twitch: dima_twitch::Twitch,
+) -> Availability<TwitchRewardToggle> {
     Availability::new(
         env.stores.clone(),
         cache.clone(),
@@ -420,10 +504,12 @@ async fn availability_without_a_streamer_token() -> Result<()> {
             .find(|case| case["name"] == "reward_no_credential")
             .unwrap();
         let mut case = case.clone();
-        case["results"][0]["error"] = json!(case["results"][0]["error"]
-            .as_str()
-            .unwrap()
-            .replace("{id}", CHANNEL_A));
+        case["results"][0]["error"] = json!(
+            case["results"][0]["error"]
+                .as_str()
+                .unwrap()
+                .replace("{id}", CHANNEL_A)
+        );
         run_availability_case(&env, &availability, &cache, &script, &server, &case).await
     })
     .await
@@ -466,9 +552,17 @@ async fn chat_history_matches_the_reference() -> Result<()> {
             message_id: Some("x".to_owned()),
             badges: Some(Vec::new()),
         };
-        assert!(!chat_history::add_message(stores, platform, CHANNEL_A, &invalid("", "no user")).await?);
-        assert!(!chat_history::add_message(stores, platform, CHANNEL_A, &invalid("user", "")).await?);
-        assert!(!chat_history::add_message(stores, platform, "", &invalid("user", "no channel")).await?);
+        assert!(
+            !chat_history::add_message(stores, platform, CHANNEL_A, &invalid("", "no user"))
+                .await?
+        );
+        assert!(
+            !chat_history::add_message(stores, platform, CHANNEL_A, &invalid("user", "")).await?
+        );
+        assert!(
+            !chat_history::add_message(stores, platform, "", &invalid("user", "no channel"))
+                .await?
+        );
         let kick = chat_history::HistoryEntry {
             username: "KickUser".into(),
             message: "on kick".into(),
@@ -479,17 +573,29 @@ async fn chat_history_matches_the_reference() -> Result<()> {
         chat_history::add_message(stores, chat_history::Platform::Kick, CHANNEL_A, &kick).await?;
         for limit in [7, 1, 0, -5, 30, 100, 200] {
             let read = chat_history::recent_messages(stores, platform, CHANNEL_A, limit).await?;
-            assert_eq!(serde_json::to_value(&read)?, recorded["reads"][limit.to_string()], "limit {limit}");
+            assert_eq!(
+                serde_json::to_value(&read)?,
+                recorded["reads"][limit.to_string()],
+                "limit {limit}"
+            );
         }
-        let kick = chat_history::recent_messages(stores, chat_history::Platform::Kick, CHANNEL_A, 7).await?;
+        let kick =
+            chat_history::recent_messages(stores, chat_history::Platform::Kick, CHANNEL_A, 7)
+                .await?;
         assert_eq!(serde_json::to_value(&kick)?, recorded["kick"]);
         let empty = chat_history::recent_messages(stores, platform, CHANNEL_B, 7).await?;
         assert_eq!(serde_json::to_value(&empty)?, recorded["empty"]);
         chat_history::clear_history(stores, platform, CHANNEL_A).await?;
         let key = chat_history::history_key(stores, platform, CHANNEL_A);
         let kick_key = chat_history::history_key(stores, chat_history::Platform::Kick, CHANNEL_A);
-        assert_eq!(json!(stores.dragonfly.exists(&[&key]).await?), recorded["afterClear"]);
-        assert_eq!(json!(stores.dragonfly.exists(&[&kick_key]).await?), recorded["kickAfterClear"]);
+        assert_eq!(
+            json!(stores.dragonfly.exists(&[&key]).await?),
+            recorded["afterClear"]
+        );
+        assert_eq!(
+            json!(stores.dragonfly.exists(&[&kick_key]).await?),
+            recorded["kickAfterClear"]
+        );
         Ok(())
     })
     .await
@@ -499,7 +605,10 @@ async fn chat_history_matches_the_reference() -> Result<()> {
 /// `record.mts` writes them.
 async fn key_state(env: &Env, pattern: &str) -> Result<Value> {
     let prefix = env.stores.keys.as_str().to_owned();
-    let mut scan = env.stores.dragonfly.scan(&format!("{prefix}{pattern}"), Some(500));
+    let mut scan = env
+        .stores
+        .dragonfly
+        .scan(&format!("{prefix}{pattern}"), Some(500));
     let mut keys = Vec::new();
     while let Some(page) = scan.next_page().await? {
         keys.extend(page.into_iter().map(|k| String::from_utf8(k).unwrap()));
@@ -513,7 +622,8 @@ async fn key_state(env: &Env, pattern: &str) -> Result<Value> {
         let value = match kind.as_str() {
             "string" => json!(dragonfly.get_text(&key).await?),
             "set" => {
-                let mut members: Vec<String> = dragonfly.query(redis::cmd("SMEMBERS").arg(&key)).await?;
+                let mut members: Vec<String> =
+                    dragonfly.query(redis::cmd("SMEMBERS").arg(&key)).await?;
                 members.sort();
                 json!(members)
             }
@@ -560,19 +670,58 @@ async fn role_cache_load_and_resets_match_the_reference() -> Result<()> {
         seed(&env).await?;
         let dragonfly = &env.stores.dragonfly;
         let key = |k: &str| env.key(k);
-        dragonfly.query_value(redis::cmd("SADD").arg(key(&format!("twitch:{CHANNEL_C}:admins"))).arg("gone")).await?;
-        dragonfly.query_value(redis::cmd("SADD").arg(key(&format!("twitch:{CHANNEL_C}:admins:ids"))).arg("a999")).await?;
         dragonfly
-            .hset(&key(&format!("twitch:{CHANNEL_C}:admins:a999")), &[("adminID", b"a999"), ("adminName", b"gone")])
+            .query_value(
+                redis::cmd("SADD")
+                    .arg(key(&format!("twitch:{CHANNEL_C}:admins")))
+                    .arg("gone"),
+            )
             .await?;
-        dragonfly.query_value(redis::cmd("SET").arg(key(&format!("{CHANNEL_C}:admins:legacy"))).arg("x")).await?;
-        dragonfly.query_value(redis::cmd("SADD").arg(key(&format!("twitch:{CHANNEL_B}:admins"))).arg("untouched")).await?;
+        dragonfly
+            .query_value(
+                redis::cmd("SADD")
+                    .arg(key(&format!("twitch:{CHANNEL_C}:admins:ids")))
+                    .arg("a999"),
+            )
+            .await?;
+        dragonfly
+            .hset(
+                &key(&format!("twitch:{CHANNEL_C}:admins:a999")),
+                &[("adminID", b"a999"), ("adminName", b"gone")],
+            )
+            .await?;
+        dragonfly
+            .query_value(
+                redis::cmd("SET")
+                    .arg(key(&format!("{CHANNEL_C}:admins:legacy")))
+                    .arg("x"),
+            )
+            .await?;
+        dragonfly
+            .query_value(
+                redis::cmd("SADD")
+                    .arg(key(&format!("twitch:{CHANNEL_B}:admins")))
+                    .arg("untouched"),
+            )
+            .await?;
         let deadline = std::time::Duration::from_secs(30);
-        assert_eq!(channel_cache::load_channel_admins(&env.stores, CHANNEL_C, deadline).await?, 4);
-        same_keys(&key_state(&env, &format!("*{CHANNEL_C}*")).await?, &recorded["admins"]);
-        same_keys(&key_state(&env, &format!("*{CHANNEL_B}*")).await?, &recorded["otherChannel"]);
+        assert_eq!(
+            channel_cache::load_channel_admins(&env.stores, CHANNEL_C, deadline).await?,
+            4
+        );
+        same_keys(
+            &key_state(&env, &format!("*{CHANNEL_C}*")).await?,
+            &recorded["admins"],
+        );
+        same_keys(
+            &key_state(&env, &format!("*{CHANNEL_B}*")).await?,
+            &recorded["otherChannel"],
+        );
         channel_cache::load_channel_admins(&env.stores, CHANNEL_C, deadline).await?;
-        same_keys(&key_state(&env, &format!("*{CHANNEL_C}*")).await?, &recorded["adminsTwice"]);
+        same_keys(
+            &key_state(&env, &format!("*{CHANNEL_C}*")).await?,
+            &recorded["adminsTwice"],
+        );
 
         clean_prefix(dragonfly, env.stores.keys.as_str()).await?;
         for (k, v) in [
@@ -582,20 +731,40 @@ async fn role_cache_load_and_resets_match_the_reference() -> Result<()> {
             (format!("{CHANNEL_A}:sumimetro:bob"), "7"),
             (format!("{CHANNEL_B}:sumimetro:carol"), "1"),
         ] {
-            dragonfly.query_value(redis::cmd("SET").arg(key(&k)).arg(v)).await?;
+            dragonfly
+                .query_value(redis::cmd("SET").arg(key(&k)).arg(v))
+                .await?;
         }
         dragonfly
-            .hset(&key(&format!("{CHANNEL_A}:sumimetro:dominant")), &[("user", b"alice"), ("value", b"42")])
+            .hset(
+                &key(&format!("{CHANNEL_A}:sumimetro:dominant")),
+                &[("user", b"alice"), ("value", b"42")],
+            )
             .await?;
         channel_cache::clear_channel_cache(&env.stores, CHANNEL_A).await?;
-        assert_eq!(channel_cache::reset_sumimetro(&env.stores, CHANNEL_A).await?, 3);
+        assert_eq!(
+            channel_cache::reset_sumimetro(&env.stores, CHANNEL_A).await?,
+            3
+        );
         let mut expected_a = recorded["afterResets"]["a"].clone();
         // Intended: `{channel}:commands` (a legacy key nothing writes) is not deleted.
         assert!(expected_a.get(format!("{CHANNEL_A}:commands")).is_none());
-        expected_a[format!("{CHANNEL_A}:commands")] = json!({ "type": "string", "ttl": -1, "value": "legacy" });
-        same_keys(&key_state(&env, &format!("*{CHANNEL_A}*")).await?, &expected_a);
-        same_keys(&key_state(&env, &format!("*{CHANNEL_B}*")).await?, &recorded["afterResets"]["b"]);
-        assert!(channel_cache::reset_sumimetro(&env.stores, "99*").await.is_err(), "glob characters are refused");
+        expected_a[format!("{CHANNEL_A}:commands")] =
+            json!({ "type": "string", "ttl": -1, "value": "legacy" });
+        same_keys(
+            &key_state(&env, &format!("*{CHANNEL_A}*")).await?,
+            &expected_a,
+        );
+        same_keys(
+            &key_state(&env, &format!("*{CHANNEL_B}*")).await?,
+            &recorded["afterResets"]["b"],
+        );
+        assert!(
+            channel_cache::reset_sumimetro(&env.stores, "99*")
+                .await
+                .is_err(),
+            "glob characters are refused"
+        );
         Ok(())
     })
     .await

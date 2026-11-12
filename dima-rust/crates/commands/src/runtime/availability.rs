@@ -112,7 +112,9 @@ impl Target {
         Self::ALL
             .into_iter()
             .find(|target| target.name() == kind)
-            .ok_or_else(|| AvailabilityError::Refused(format!("Unsupported availability target: {kind}")))
+            .ok_or_else(|| {
+                AvailabilityError::Refused(format!("Unsupported availability target: {kind}"))
+            })
     }
 
     fn collection(self) -> &'static str {
@@ -429,7 +431,9 @@ impl<R: RewardToggle> Availability<R> {
                     return Ok(found);
                 }
                 let Some(pattern) = exact(name) else {
-                    return Err(AvailabilityError::Refused("Redemption not found".to_owned()));
+                    return Err(AvailabilityError::Refused(
+                        "Redemption not found".to_owned(),
+                    ));
                 };
                 (
                     doc! { "channelID": channel_id, "title": pattern },
@@ -467,9 +471,14 @@ impl<R: RewardToggle> Availability<R> {
         let random = self.random.as_ref();
         let options = dima_model::UpdateOptions::default();
         Ok(match target {
-            Target::Command => {
-                commands::prepare_update(filter, update, options, Writer::Internal, &mut ctx, random)?
-            }
+            Target::Command => commands::prepare_update(
+                filter,
+                update,
+                options,
+                Writer::Internal,
+                &mut ctx,
+                random,
+            )?,
             Target::Redemption => redemption_rewards::prepare_update(
                 filter,
                 update,
@@ -520,7 +529,9 @@ impl<R: RewardToggle> Availability<R> {
                 .map_err(WriteFailure::into_runtime),
             (Target::Command, None) => self
                 .commands
-                .write(channel_id, Names::All, || self.update(target, filter, update))
+                .write(channel_id, Names::All, || {
+                    self.update(target, filter, update)
+                })
                 .await
                 .map_err(WriteFailure::into_runtime),
             (Target::Redemption, _) => self.update(target, filter, update).await,
@@ -564,8 +575,7 @@ impl<R: RewardToggle> Availability<R> {
             let prior = document.get_document("availability").ok();
             let previous_enabled = match (seconds, prior) {
                 (Some(_), Some(prior))
-                    if prior.get("restoreAt").is_some_and(js_truthy)
-                        && current == enabled =>
+                    if prior.get("restoreAt").is_some_and(js_truthy) && current == enabled =>
                 {
                     truthy(prior, "previousEnabled")
                 }
@@ -649,7 +659,11 @@ impl<R: RewardToggle> Availability<R> {
         let mut release = filter.clone();
         release.insert("availabilityLease.token", owner.as_str());
         let released = self
-            .update(target, &release, doc! { "$unset": { "availabilityLease": 1 } })
+            .update(
+                target,
+                &release,
+                doc! { "$unset": { "availabilityLease": 1 } },
+            )
             .await;
         let outcome = outcome?;
         released?;

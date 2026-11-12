@@ -51,5 +51,9 @@ pub fn resolve_authored_user_level(event: &Value, provided: Option<f64>) -> f64 
     let identity = ["chatter_user_id", "chatter_user_login", "chatter_user_name"]
         .iter()
         .any(|key| property(event, key).is_some_and(js_truthy));
-    if identity { inferred } else { NO_CHATTER_USER_LEVEL }
+    if identity {
+        inferred
+    } else {
+        NO_CHATTER_USER_LEVEL
+    }
 }

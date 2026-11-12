@@ -319,7 +319,11 @@ impl CommandCache {
     pub async fn find(&self, channel_id: &str, name: &str) -> Result<Lookup, RuntimeError> {
         if name.len() > self.config.max_name_bytes {
             return Ok(Lookup {
-                command: self.query_one(channel_id, name).await?.map(|raw| decode(&raw)).transpose()?,
+                command: self
+                    .query_one(channel_id, name)
+                    .await?
+                    .map(|raw| decode(&raw))
+                    .transpose()?,
                 source: Source::Database,
                 cache_error: None,
             });
@@ -587,7 +591,11 @@ impl CommandCache {
             .map_err(|error| WriteFailure::Cache(error.into()))?;
         let now = self.clock.now_ms();
         let lease_end = now.saturating_add(self.config.writer_lease_ms).to_string();
-        let set_lifetime = self.config.writer_lease_ms.saturating_add(60_000).to_string();
+        let set_lifetime = self
+            .config
+            .writer_lease_ms
+            .saturating_add(60_000)
+            .to_string();
         let now_text = now.to_string();
         let mut args: Vec<&str> = vec![&token, &now_text, &lease_end, &set_lifetime];
         args.extend(fields.iter().map(String::as_str));
@@ -638,17 +646,13 @@ impl CommandCache {
                 &mut ctx,
                 self.random.as_ref(),
             )?;
-            within(
-                "commands.updateOne",
-                self.config.write_deadline,
-                async {
-                    self.stores
-                        .mongo
-                        .writes(commands::COLLECTION)
-                        .update_one(&prepared)
-                        .await
-                },
-            )
+            within("commands.updateOne", self.config.write_deadline, async {
+                self.stores
+                    .mongo
+                    .writes(commands::COLLECTION)
+                    .update_one(&prepared)
+                    .await
+            })
             .await?;
             Ok(true)
         })
@@ -685,9 +689,11 @@ impl CommandCache {
     /// Drops the channel's snapshot after a write that did not go through [`Self::write`] (or
     /// to start over); safe at any time.
     pub async fn invalidate_channel(&self, channel_id: &str) -> Result<(), RuntimeError> {
-        self.write(channel_id, Names::All, || async { Ok::<(), RuntimeError>(()) })
-            .await
-            .map_err(WriteFailure::into_runtime)
+        self.write(channel_id, Names::All, || async {
+            Ok::<(), RuntimeError>(())
+        })
+        .await
+        .map_err(WriteFailure::into_runtime)
     }
 }
 

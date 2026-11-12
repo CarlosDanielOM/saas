@@ -53,10 +53,15 @@ pub fn plan_global_ast_variables(
     rows: &[LegacyAstVariables],
     collator: &dima_text::Collator,
 ) -> Vec<GlobalAstVariables> {
-    let mut sorted: Vec<&LegacyAstVariables> =
-        rows.iter().filter(|row| row.scope_type != "global").collect();
+    let mut sorted: Vec<&LegacyAstVariables> = rows
+        .iter()
+        .filter(|row| row.scope_type != "global")
+        .collect();
     sorted.sort_by(|a, b| {
-        let by_time = b.updated_at_ms.unwrap_or(0).cmp(&a.updated_at_ms.unwrap_or(0));
+        let by_time = b
+            .updated_at_ms
+            .unwrap_or(0)
+            .cmp(&a.updated_at_ms.unwrap_or(0));
         if by_time != Ordering::Equal {
             return by_time;
         }
@@ -90,7 +95,11 @@ pub fn plan_global_ast_variables(
         let Some((_, variables)) = groups.get_mut(slot) else {
             continue;
         };
-        let names: Vec<&str> = row.variables.iter().map(|(name, _)| name.as_str()).collect();
+        let names: Vec<&str> = row
+            .variables
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
         for name in dima_text::js_property_order(names) {
             if variables.iter().any(|(known, _)| known == name) {
                 continue;

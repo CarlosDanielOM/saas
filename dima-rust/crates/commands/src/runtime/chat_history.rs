@@ -40,9 +40,10 @@ impl Platform {
 
 /// `{platform}:{channel}:chat:history`.
 pub fn history_key(stores: &Stores, platform: Platform, channel_id: &str) -> String {
-    stores
-        .keys
-        .key(format_args!("{}:{channel_id}:chat:history", platform.as_str()))
+    stores.keys.key(format_args!(
+        "{}:{channel_id}:chat:history",
+        platform.as_str()
+    ))
 }
 
 /// One stored message.

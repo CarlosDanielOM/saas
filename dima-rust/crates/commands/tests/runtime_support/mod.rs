@@ -115,7 +115,12 @@ impl Env {
     }
 
     pub fn cache_with(&self, config: CommandCacheConfig) -> CommandCache {
-        CommandCache::new(self.stores.clone(), self.clock(), Arc::new(SystemRandom), config)
+        CommandCache::new(
+            self.stores.clone(),
+            self.clock(),
+            Arc::new(SystemRandom),
+            config,
+        )
     }
 
     pub fn key(&self, key: &str) -> String {
@@ -191,7 +196,11 @@ pub fn documents_of(value: &Value) -> Vec<Document> {
 /// commands, rewards, admins.
 pub async fn seed(env: &Env) -> Result<()> {
     for collection in ["commands", "redemptionrewards", "admins"] {
-        env.stores.mongo.documents(collection).delete_many(doc! {}).await?;
+        env.stores
+            .mongo
+            .documents(collection)
+            .delete_many(doc! {})
+            .await?;
     }
     clean_prefix(&env.stores.dragonfly, env.stores.keys.as_str()).await?;
     let seed = &reference()["seed"];
@@ -269,7 +278,10 @@ pub async fn changed_documents(env: &Env, collection: &str) -> Result<Value> {
     let mut changed = Vec::new();
     let mut present = Vec::new();
     for document in stored {
-        let json = normalize_uuids(Bson::Document(document).into_canonical_extjson(), &mut uuids);
+        let json = normalize_uuids(
+            Bson::Document(document).into_canonical_extjson(),
+            &mut uuids,
+        );
         let id = json["_id"]["$oid"].as_str().unwrap_or_default().to_owned();
         if seed.get(&id) != Some(&json) {
             changed.push(json);
