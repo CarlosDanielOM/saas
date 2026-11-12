@@ -1,6 +1,6 @@
 //! The ported protocols against the local Dragonfly: the plan cache fence and the cron job queue.
 //! The fence keys embed a channel id, so each test uses its own id under a unique prefix and
-//! deletes its keys. Logical database 12. Skipped when `DIMA_TEST_DRAGONFLY` is not set.
+//! deletes its keys. Logical database 8. Skipped when `DIMA_TEST_DRAGONFLY` is not set.
 
 mod dragonfly_support;
 
@@ -16,7 +16,7 @@ use dima_store::dragonfly::{Dragonfly, QueueItem, SetOptions, Ttl};
 use dragonfly_support::{connect, prefix};
 use serde_json::json;
 
-const DB: u8 = 12;
+const DB: u8 = 8;
 
 /// A unique channel id (fence keys are `twitch:{id}:...`), and the keys to delete afterwards.
 fn channel(name: &str) -> String {

@@ -8,7 +8,7 @@
 //!   Rust's read mode with the exact bytes and refused when re-serialised.
 //! - Pub/sub envelopes in both directions.
 //!
-//! Logical database 15, unique prefixes. Skipped with a message when `DIMA_TEST_DRAGONFLY` is not
+//! Logical database 9, unique prefixes. Skipped with a message when `DIMA_TEST_DRAGONFLY` is not
 //! set, when `node` is missing, or when no node-redis install is found (see `record.mjs`).
 
 mod dragonfly_support;
@@ -29,7 +29,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 
-const DB: u8 = 15;
+const DB: u8 = 9;
 const NOW_ISO: &str = "2026-11-11T12:00:00.000Z";
 
 struct Peer {

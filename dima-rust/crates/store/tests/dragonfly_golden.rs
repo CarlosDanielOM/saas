@@ -4,7 +4,7 @@
 //! - Offline (always): Rust's encoders give the recorded bytes for the same inputs: cron jobs
 //!   (including the awkward text and JavaScript number formatting), plan versions, the pub/sub
 //!   envelopes.
-//! - Live (when `DIMA_TEST_DRAGONFLY` is set, logical database 15): Rust performs the same
+//! - Live (when `DIMA_TEST_DRAGONFLY` is set, logical database 9): Rust performs the same
 //!   operations through the Rust API and the stored values equal the recorded ones, after the
 //!   run's key prefix is swapped for the recorded one.
 
@@ -25,7 +25,7 @@ use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::time::Duration;
 
-const DB: u8 = 15;
+const DB: u8 = 9;
 
 fn golden() -> Result<Value> {
     let path = concat!(
