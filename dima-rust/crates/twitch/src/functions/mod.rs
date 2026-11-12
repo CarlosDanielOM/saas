@@ -3,3 +3,4 @@ pub mod channels;
 pub mod moderation;
 pub mod polls;
 pub mod predictions;
+pub mod redemptions;
