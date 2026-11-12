@@ -36,3 +36,5 @@ dima-core = { workspace = true, features = ["test-util"] }
 dima-http = { workspace = true, features = ["test-util"] }
 dima-twitch = { path = ".", features = ["test-util"] }
 tokio = { workspace = true, features = ["test-util"] }
+# Reading the form bodies the mock receives.
+url = { workspace = true }

@@ -254,6 +254,21 @@ pub(crate) fn cache_fields(
     Ok(fields)
 }
 
+/// The directory entry `getTwitchAccountsFromDB` builds for `user`'s first Twitch account,
+/// given the hash's current `expires_at`: the `HSET` fields of `WRITE_PLAN_ACCOUNT_SCRIPT` in
+/// the reference's order, without the plan version (which [`plan_cache_version`] gives). `None`
+/// when the user has no Twitch account. Exposed for the corpus test and tools.
+pub fn directory_fields(
+    user: &User,
+    cached_expires_at: Option<&str>,
+    cipher: &CredentialCipher,
+) -> Result<Option<Vec<(&'static str, String)>>, CipherError> {
+    let Some(account) = user.twitch() else {
+        return Ok(None);
+    };
+    cache_fields(user, account, cached_expires_at.map(str::to_owned), cipher).map(Some)
+}
+
 /// The atomic read of one hash and its fence.
 enum HashRead {
     Accepted(Vec<(String, String)>),
