@@ -21,7 +21,9 @@ mod writes;
 pub mod admins;
 pub mod app_configs;
 pub mod ast_variables;
+pub mod availability;
 pub mod command_user_variables;
+pub mod commands;
 pub mod countdown_timers;
 pub mod custom_timers;
 pub mod domain_event_checkpoints;
@@ -29,6 +31,7 @@ pub mod domain_event_deliveries;
 pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
+pub mod redemption_rewards;
 pub mod stream_sessions;
 pub mod timer_commands;
 pub mod users;
@@ -46,6 +49,8 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,
+    &commands::INFO,
+    &redemption_rewards::INFO,
     &events::INFO,
     &eventsubs::INFO,
     &ast_variables::INFO,

@@ -38,6 +38,8 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/app_config.schema.ts', 'app_config'],
     ['src/schemas/event.schema.ts', 'Event'],
     ['src/schemas/domain_event.schema.ts', 'domain_event'],
+    ['src/schemas/commands.schema.ts', 'Commands'],
+    ['src/schemas/redemption_reward.schema.ts', 'redemptionreward'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

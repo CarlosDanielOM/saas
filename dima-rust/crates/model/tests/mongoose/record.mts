@@ -66,6 +66,8 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/app_config.schema.ts', 'app_config'],
     ['src/schemas/event.schema.ts', 'Event'],
     ['src/schemas/domain_event.schema.ts', 'domain_event'],
+    ['src/schemas/commands.schema.ts', 'Commands'],
+    ['src/schemas/redemption_reward.schema.ts', 'redemptionreward'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -74,6 +76,9 @@ for (const [file, name] of FILES) {
     if (!model) throw new Error(`model ${name} not registered by ${file}`);
     MODELS[model.collection.collectionName] = model;
 }
+
+// `internalWrite(query)` marks a query as the availability scheduler's (the hook skips it).
+const { internalWrite } = await imported('src/utils/availability/schema.ts');
 
 // ---------------------------------------------------------------- fixtures
 
@@ -150,7 +155,56 @@ const domainEventInput = () => ({
     metadata: { originalEventType: 'channel.follow', durableChatHandled: true }, dispatchPending: true, expiresAt: T2,
 });
 
+const commandSeed = (n = 1, extra: any = {}) => ({
+    _id: OID(n), name: 'hola', cmd: '!hola', activation: 'command', func: 'custom', message: 'hola $(user)',
+    authoring: 'text', blocks: null, responses: [], variables: {}, type: 'command', platform: 'twitch', reserved: false,
+    description: 'd', cooldown: 10, count: 3, userLevelName: 'everyone', userLevel: 0, permissionExpression: null,
+    enabled: true, paused: false, channel: 'seed', channelID: '111', premiumRequired: false, premiumLevelRequired: 0,
+    createdAt: T1, date: { day: 2, month: 1, year: 2020 }, __v: 0, ...extra,
+});
+const rewardSeed = (extra: any = {}) => ({
+    _id: OID(1), eventsubID: 'sub-1', channelID: '111', channel: 'seed', rewardID: 'r1', title: 'Hydrate', type: 'custom',
+    prompt: '', originalCost: 100, cost: 100, isEnabled: true, message: '', costChange: 0, returnToOriginalCost: false,
+    duration: 0, cooldown: 0, createdFrom: 'domdimabot', createdFor: 'twitch', __v: 0, ...extra,
+});
+const scheduled = { token: '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f', previousEnabled: true, restoreAt: T2, pending: false, nextAt: T2 };
+
 const CASES: Record<string, any[]> = {
+    commands: [
+        { name: 'create_command', op: 'create', rust: 'command', doc: {
+            name: 'hola', cmd: '!hola', activation: 'command', func: 'custom', message: `hola ${TEXT}`, authoring: 'text',
+            blocks: null, responses: [], type: 'command', reserved: false, description: '', cooldown: 10, enabled: true,
+            userLevelName: 'everyone', userLevel: 0, permissionExpression: null, channelID: '111', channel: 'seed',
+        } },
+        { name: 'create_keyword', op: 'create', rust: 'keyword', doc: { cmd: 'gg', activation: 'keyword', keywordSettings: { matchMode: 'anywhere' }, func: 'custom', channelID: '111' } },
+        { name: 'validate_enums', op: 'validate', doc: { activation: 'button', authoring: 'voice', keywordSettings: { matchMode: 'regex' } } },
+        { name: 'update_enabled_set', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { $set: { enabled: false, cooldown: 5 } } },
+        { name: 'update_enabled_bare', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { enabled: true, $inc: { count: 1 } } },
+        { name: 'update_strips_availability', op: 'updateOne', seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1) }, update: { $set: { 'availability.pending': true, availabilityLease: { token: 'x', until: T2 }, message: 'm' }, $unset: { availability: 1 }, availabilityLease: 1 } },
+        { name: 'update_strips_and_enables', op: 'updateOne', seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1) }, update: { $set: { availability: scheduled, enabled: false } } },
+        { name: 'update_enabled_null', op: 'updateOne', seed: [commandSeed()], filter: { _id: OID(1) }, update: { $set: { enabled: null } } },
+        { name: 'update_internal', op: 'updateOne', internal: true, seed: [commandSeed(1, { availability: scheduled })], filter: { _id: OID(1), 'availability.token': scheduled.token }, update: { $set: { enabled: false, 'availability.pending': false, availabilityLease: { token: 'lease', until: T2 } } } },
+        { name: 'update_internal_lease_release', op: 'updateOne', internal: true, seed: [commandSeed(1, { availability: scheduled, availabilityLease: { token: 'lease', until: T2 } })], filter: { _id: OID(1), 'availabilityLease.token': 'lease' }, update: { $unset: { availabilityLease: 1 } } },
+        { name: 'update_many_enabled', op: 'updateMany', seed: [commandSeed(1), commandSeed(2)], filter: { channelID: '111' }, update: { $set: { enabled: false } } },
+        { name: 'find_and_disable', op: 'findOneAndUpdate', seed: [commandSeed(1, { blocks: { v: 1, root: {} } })], filter: { channelID: '111', cmd: '!hola' }, update: { $set: { enabled: false } }, options: { new: true } },
+        { name: 'find_internal_lease', op: 'findOneAndUpdate', internal: true, seed: [commandSeed()], filter: { _id: OID(1), $or: [{ 'availabilityLease.until': { $exists: false } }, { 'availabilityLease.until': { $lte: T1 } }] }, update: { $set: { availabilityLease: { token: 'owner', until: T2 } } }, options: { new: true } },
+        { name: 'upsert_enabled', op: 'updateOne', filter: { channelID: '222', cmd: '!new' }, update: { $set: { enabled: false, message: 'x' } }, options: { upsert: true } },
+        { name: 'save_disable', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'message', value: 'bye' }] },
+        { name: 'save_same_enabled', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'enabled', value: true }, { set: 'count', value: 4 }] },
+        { name: 'save_enabled_back', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'enabled', value: true }, { set: 'count', value: 5 }] },
+        { name: 'save_enabled_default', op: 'save', seed: [(({ enabled, ...rest }) => rest)(commandSeed())], id: OID(1), changes: [{ set: 'enabled', value: false }] },
+        { name: 'save_other', op: 'save', seed: [commandSeed()], id: OID(1), changes: [{ set: 'variables.k', value: TEXT }] },
+    ],
+    redemptionrewards: [
+        { name: 'create_reward', op: 'create', rust: 'reward', doc: { eventsubID: 'sub-1', channelID: '111', channel: 'seed', rewardID: 'r9', title: TEXT, originalCost: 100, cost: 150, message: 'gracias' } },
+        { name: 'validate_missing', op: 'validate', doc: { title: '', cost: 1 } },
+        { name: 'update_is_enabled', op: 'updateOne', seed: [rewardSeed()], filter: { rewardID: 'r1' }, update: { $set: { isEnabled: false } } },
+        { name: 'update_cost_only', op: 'updateOne', seed: [rewardSeed()], filter: { rewardID: 'r1' }, update: { $set: { cost: 120, prompt: TEXT } } },
+        { name: 'update_internal', op: 'updateOne', internal: true, seed: [rewardSeed({ availability: scheduled })], filter: { _id: OID(1) }, update: { $set: { isEnabled: true, 'availability.pending': false } } },
+        { name: 'find_and_enable', op: 'findOneAndUpdate', seed: [rewardSeed({ isEnabled: false, availability: scheduled })], filter: { _id: OID(1) }, update: { isEnabled: true }, options: { new: true } },
+        { name: 'save_disable', op: 'save', seed: [rewardSeed()], id: OID(1), changes: [{ set: 'isEnabled', value: false }] },
+        { name: 'save_cost', op: 'save', seed: [rewardSeed()], id: OID(1), changes: [{ set: 'cost', value: 200 }] },
+    ],
     admins: [
         { name: 'create_admin', op: 'create', rust: 'admin', doc: { channelID: '111', channelName: 'seed', adminID: '42', adminName: 'mod', permissions: ['commands', 'timers'], actived: true } },
         { name: 'create_empty', op: 'create', rust: 'empty', doc: {} },
@@ -332,6 +386,7 @@ async function runCase(name: string, model: any, spec: any) {
     frozen = NOW_MS;
     try {
         const a = clone(intent);
+        const q = (query: any) => (a.internal ? internalWrite(query) : query);
         switch (spec.op) {
             case 'create': await model.create(a.doc); break;
             case 'validate': await new model(a.doc).validate(); break;
@@ -342,9 +397,9 @@ async function runCase(name: string, model: any, spec: any) {
                 await model.collection.insertOne(doc.toObject(), { writeConcern: { w: 1, j: true } });
                 break;
             }
-            case 'updateOne': await model.updateOne(a.filter, a.update, a.options ?? {}); break;
-            case 'updateMany': await model.updateMany(a.filter, a.update, a.options ?? {}); break;
-            case 'findOneAndUpdate': result = await model.findOneAndUpdate(a.filter, a.update, a.options ?? {}).lean(); break;
+            case 'updateOne': await q(model.updateOne(a.filter, a.update, a.options ?? {})); break;
+            case 'updateMany': await q(model.updateMany(a.filter, a.update, a.options ?? {})); break;
+            case 'findOneAndUpdate': result = await q(model.findOneAndUpdate(a.filter, a.update, a.options ?? {})).lean(); break;
             case 'save': {
                 const doc = await model.findById(a.id);
                 for (const change of a.changes) {

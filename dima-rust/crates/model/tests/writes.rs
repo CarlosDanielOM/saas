@@ -16,7 +16,9 @@ use bson::{Bson, Document, doc};
 use dima_model::admins::{self, NewAdmin};
 use dima_model::app_configs::{self, NewAppConfig};
 use dima_model::ast_variables::NewAstVariables;
+use dima_model::availability::Writer;
 use dima_model::command_user_variables::NewCommandUserVariables;
+use dima_model::commands::{self, Activation, MatchMode, NewCommand, NewKeywordSettings};
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
 use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
@@ -24,6 +26,7 @@ use dima_model::domain_event_deliveries::NewDelivery;
 use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
 use dima_model::events::{self, ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
+use dima_model::redemption_rewards::{self, NewRedemptionReward};
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
@@ -191,6 +194,24 @@ fn same_values(a: &Bson, b: &Bson) -> bool {
             (Some(x), Some(y)) => x == y,
             _ => a == b,
         },
+    }
+}
+
+// ---------------------------------------------------------------------------- deterministic ids
+
+/// Random bytes from a counter: distinct, reproducible UUIDs for the hooks' tokens.
+#[derive(Debug, Default)]
+struct CountingRandom(std::sync::atomic::AtomicU64);
+
+impl dima_core::Random for CountingRandom {
+    fn fill(&self, buf: &mut [u8]) -> Result<(), dima_core::RandomError> {
+        for chunk in buf.chunks_mut(8) {
+            let next = self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            for (slot, byte) in chunk.iter_mut().zip(next.to_le_bytes()) {
+                *slot = byte;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -487,6 +508,52 @@ fn typed_create(
             }
             pair(event.to_document()?, event.prepare_journal(ctx))
         }
+        ("commands", "command") => {
+            let mut command = NewCommand::new("111");
+            command.name = Some("hola".into());
+            command.cmd = Some("!hola".into());
+            command.activation = Some(Activation::Command);
+            command.func = Some("custom".into());
+            command.message = Some(format!("hola {text}"));
+            command.authoring = Some(commands::Authoring::Text);
+            command.blocks = Some(Bson::Null);
+            command.responses = Some(Vec::new());
+            command.kind = Some("command".into());
+            command.reserved = Some(false);
+            command.description = Some(String::new());
+            command.cooldown = Some(JsNumber(10.0));
+            command.enabled = Some(true);
+            command.user_level_name = Some("everyone".into());
+            command.user_level = Some(JsNumber(0.0));
+            command.permission_expression = Some(Bson::Null);
+            command.channel = Some("seed".into());
+            pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("commands", "keyword") => {
+            let mut command = NewCommand::new("111");
+            command.cmd = Some("gg".into());
+            command.activation = Some(Activation::Keyword);
+            command.keyword_match_mode = Some(NewKeywordSettings {
+                match_mode: MatchMode::Anywhere,
+            });
+            command.func = Some("custom".into());
+            pair(command.to_document()?, command.prepare(ctx))
+        }
+        ("redemptionrewards", "reward") => {
+            let reward = NewRedemptionReward {
+                eventsub_id: "sub-1".into(),
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                reward_id: "r9".into(),
+                title: text.into(),
+                original_cost: JsNumber(100.0),
+                cost: JsNumber(150.0),
+                kind: None,
+                message: Some("gracias".into()),
+                is_enabled: None,
+            };
+            pair(reward.to_document()?, reward.prepare(ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
 }
@@ -582,6 +649,12 @@ async fn run_case(
     let info = info(collection)?;
     let mut ctx = WriteContext::with_sequential_ids(now_ms, 1);
     let mut writes = store.writes(collection);
+    let random = CountingRandom::default();
+    let writer = if intent.get("internal").and_then(Value::as_bool) == Some(true) {
+        Writer::Internal
+    } else {
+        Writer::Client
+    };
     let failure = |message: String| Ok((Some(Value::String(message)), None));
     match op {
         "create" | "journal" => {
@@ -630,8 +703,16 @@ async fn run_case(
         "updateOne" | "updateMany" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let update = document_of(intent.get("update").context("update")?)?;
-            let prepared =
-                info.prepare_update(&filter, update, update_options(intent)?, &mut ctx)?;
+            let options = update_options(intent)?;
+            let prepared = match collection {
+                "commands" => {
+                    commands::prepare_update(&filter, update, options, writer, &mut ctx, &random)?
+                }
+                "redemptionrewards" => redemption_rewards::prepare_update(
+                    &filter, update, options, writer, &mut ctx, &random,
+                )?,
+                _ => info.prepare_update(&filter, update, options, &mut ctx)?,
+            };
             let outcome = if op == "updateOne" {
                 writes.update_one(&prepared).await
             } else {
@@ -650,13 +731,18 @@ async fn run_case(
             } else {
                 Returned::Before
             };
-            let prepared = info.prepare_find_one_and_update(
-                &filter,
-                update,
-                update_options(intent)?,
-                returned,
-                &mut ctx,
-            )?;
+            let options = update_options(intent)?;
+            let prepared = match collection {
+                "commands" => commands::prepare_find_one_and_update(
+                    &filter, update, options, returned, writer, &mut ctx, &random,
+                )?,
+                "redemptionrewards" => redemption_rewards::prepare_find_one_and_update(
+                    &filter, update, options, returned, writer, &mut ctx, &random,
+                )?,
+                _ => {
+                    info.prepare_find_one_and_update(&filter, update, options, returned, &mut ctx)?
+                }
+            };
             let found = writes.find_one_and_update(&prepared).await?;
             return Ok((
                 None,
@@ -679,6 +765,10 @@ async fn run_case(
                 "admins" => admins::prepare_save(&loaded, &changes, &mut ctx)?,
                 "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx)?,
                 "events" => events::prepare_save(&loaded, &changes, &mut ctx)?,
+                "commands" => commands::prepare_save(&loaded, &changes, &mut ctx, &random)?,
+                "redemptionrewards" => {
+                    redemption_rewards::prepare_save(&loaded, &changes, &mut ctx, &random)?
+                }
                 _ => info.prepare_save(&loaded, &changes, &mut ctx)?,
             };
             writes.save(&prepared).await?;
@@ -1005,4 +1095,41 @@ fn insert_path(document: &mut Document, path: &str, value: Bson) {
             }
         }
     }
+}
+
+/// A generic write must not skip a collection's Mongoose middleware: the collection's module is
+/// the only way in.
+#[test]
+fn hooked_collections_refuse_generic_writes() -> Result<()> {
+    let mut ctx = WriteContext::new(0);
+    let loaded = doc! { "_id": oid(1)?, "enabled": true };
+    for info in REGISTRY {
+        let update = info.prepare_update(
+            &doc! {},
+            doc! { "$set": { "x": 1 } },
+            UpdateOptions::default(),
+            &mut ctx,
+        );
+        let save = info.prepare_save(&loaded, &[], &mut ctx);
+        let update = matches!(update, Err(ModelError::Hooked { .. }));
+        let save = matches!(save, Err(ModelError::Hooked { .. }));
+        match info.hooks {
+            dima_model::Hooks::None => {
+                if update || save {
+                    bail!("{} has no hooks but a generic write was refused", info.name);
+                }
+            }
+            dima_model::Hooks::Save => {
+                if update || !save {
+                    bail!("{}: only saves must be refused", info.name);
+                }
+            }
+            dima_model::Hooks::UpdatesAndSave => {
+                if !update || !save {
+                    bail!("{}: updates and saves must be refused", info.name);
+                }
+            }
+        }
+    }
+    Ok(())
 }
