@@ -457,15 +457,23 @@ impl Connection {
         }
     }
 
-    /// Sends a packet that must not be lost and may wait for room (missed events of a restore).
-    /// `false` when the connection closed or the attempt was cancelled first.
+    /// Sends a packet that must not be lost and may wait for room (missed events of a restore):
+    /// a burst of missed events reaches a polling client faster than it can poll, so a full
+    /// queue waits while the client keeps taking output. The slow-consumer rule still applies:
+    /// when nothing of this connection was finished for `close_timeout` while it waits, the
+    /// connection is closed as a slow consumer (the replay ends, and the missed events it held
+    /// give their share of the recovery budget back). `false` when the connection closed or the
+    /// attempt was cancelled first.
     pub async fn push_waiting(
         &self,
+        nsp: &str,
         key: u64,
         limits: crate::config::QueueLimits,
         packet: String,
         ticket: &Ticket,
     ) -> bool {
+        let stall = self.shared.options.close_timeout;
+        let mut deadline = tokio::time::Instant::now() + stall;
         loop {
             let pushed = self.push(Outgoing {
                 socket: Some((key, limits)),
@@ -475,11 +483,19 @@ impl Connection {
             match pushed {
                 Ok(()) => return true,
                 Err(NotSent::SlowConsumer) => {
+                    if tokio::time::Instant::now() >= deadline {
+                        self.shared
+                            .telemetry
+                            .send(nsp, crate::telemetry::SendOutcome::SlowConsumer);
+                        self.close(DisconnectReason::SlowConsumer);
+                        return false;
+                    }
                     let drained = self.drained.notified();
                     tokio::select! {
                         () = self.closed.cancelled() => return false,
                         () = ticket.cancel.cancelled() => return false,
-                        () = drained => {}
+                        // Output was finished (or room freed): the client is taking it.
+                        () = drained => deadline = tokio::time::Instant::now() + stall,
                         () = tokio::time::sleep(TICK) => {}
                     }
                 }
@@ -564,7 +580,10 @@ impl Connection {
         for socket in joined {
             socket.disconnect();
         }
-        self.close(DisconnectReason::ForcedServerClose);
+        // Called from a handler, which may hold its data's lock: a socket still joined (its
+        // DISCONNECT did not fit) is measured for its session when it leaves, which takes that
+        // lock, so the close runs on the connection's task.
+        self.close_soon(DisconnectReason::ForcedServerClose);
     }
 
     /// Closes the connection (`Client.close`): every socket leaves with `reason` and inbound

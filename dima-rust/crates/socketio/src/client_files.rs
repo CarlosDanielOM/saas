@@ -12,9 +12,10 @@
 //! response body fails at once, which does the same.
 //!
 //! The files are vendored in `client-dist/` (with their Brotli form, made by
-//! `tests/js/vendor-client-dist.mjs` with Node's defaults); gzip and deflate are computed once
-//! per file on first use, off the async threads: concurrent first requests wait for that one
-//! compression (at most [`COMPRESS_WAIT`]; past it they get the file uncompressed).
+//! `tests/js/vendor-client-dist.mjs` with Node's defaults); their gzip and deflate forms are
+//! computed once, when the server is built ([`ClientFiles::compress`]), so a request never
+//! compresses anything, a cancelled request leaves no work behind, and no job runs outside the
+//! server's tasks and its shutdown report.
 //!
 //! Every answer whose body depends on `Accept-Encoding` (the `200`s, and the `304`s, which
 //! must name the same `Vary` as the `200` they stand for) carries `Vary: Accept-Encoding`, so a
@@ -25,7 +26,6 @@ use std::io::Write as _;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Poll};
-use std::time::Duration;
 
 use bytes::Bytes;
 use dima_web::Body;
@@ -64,18 +64,6 @@ static FILES: [File; 8] = [
     file!("socket.io.msgpack.min.js.map"),
 ];
 
-static GZIP: [tokio::sync::OnceCell<Bytes>; 8] = [const { tokio::sync::OnceCell::const_new() }; 8];
-static DEFLATE: [tokio::sync::OnceCell<Bytes>; 8] =
-    [const { tokio::sync::OnceCell::const_new() }; 8];
-
-/// How many times each file was compressed, gzip then deflate (one each, once warm).
-static COMPRESSIONS: [AtomicUsize; 16] = [const { AtomicUsize::new(0) }; 16];
-
-/// How long a request waits for the first compression of its file before it is answered with
-/// the file as is. Compressing the largest file takes milliseconds; this only fires when the
-/// blocking pool is saturated.
-pub const COMPRESS_WAIT: Duration = Duration::from_secs(5);
-
 /// `clientPathRegex.test(req.url)`, on the path and query of the request target.
 pub fn is_client_path(target: &str) -> bool {
     let Some(rest) = target.strip_prefix("/socket.io/socket.io") else {
@@ -111,7 +99,8 @@ impl hyper::body::Body for Reset {
     }
 }
 
-fn compress(raw: &'static [u8], gzip: bool) -> Bytes {
+fn compress(raw: &[u8], gzip: bool, count: &AtomicUsize) -> Option<Bytes> {
+    count.fetch_add(1, Ordering::Relaxed);
     let level = Compression::default();
     let written = if gzip {
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), level);
@@ -120,116 +109,146 @@ fn compress(raw: &'static [u8], gzip: bool) -> Bytes {
         let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), level);
         encoder.write_all(raw).and_then(|()| encoder.finish())
     };
-    written.map(Bytes::from).unwrap_or_default()
+    written.ok().map(Bytes::from)
 }
 
-/// The compressed file, computed by the first request that needs it; the others wait for that
-/// one (a request that gives up hands the work to the next waiter). `None` when it took longer
-/// than [`COMPRESS_WAIT`] or failed.
-async fn encoded(index: usize, gzip: bool) -> Option<Bytes> {
-    let cells = if gzip { &GZIP } else { &DEFLATE };
-    let cell = cells.get(index)?;
-    let raw = FILES.get(index)?.raw;
-    let counter = COMPRESSIONS.get(index * 2 + usize::from(!gzip))?;
-    let compute = cell.get_or_try_init(|| async move {
-        counter.fetch_add(1, Ordering::Relaxed);
-        tokio::task::spawn_blocking(move || compress(raw, gzip))
-            .await
-            .map_err(|_| ())
-    });
-    tokio::time::timeout(COMPRESS_WAIT, compute)
-        .await
-        .ok()?
-        .ok()
-        .cloned()
+/// The gzip and deflate forms of every client file, computed when the server is built.
+pub(crate) struct ClientFiles {
+    /// Per file, in the order of `FILES`: gzip, then deflate (`None`: the compression failed,
+    /// and the file is sent as is).
+    encoded: Vec<[Option<Bytes>; 2]>,
+    /// Compressions done for this server (all of them in [`ClientFiles::compress`]); read by
+    /// the tests only.
+    #[cfg_attr(not(test), allow(dead_code))]
+    compressions: AtomicUsize,
 }
 
-/// Answers a request for a client file (`target` passed [`is_client_path`]).
-pub async fn serve(headers: &http::HeaderMap, target: &str) -> Response<Body> {
-    let path = target.split('?').next().unwrap_or(target);
-    let filename = path.strip_prefix("/socket.io/").unwrap_or(path);
-    let is_map = filename.contains(".map");
-    let expected = format!("\"{CLIENT_VERSION}\"");
-    let if_none_match: Vec<&str> = headers
-        .get_all(header::IF_NONE_MATCH)
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .collect();
-    if !if_none_match.is_empty() {
-        // Node joins repeated headers with ", " before comparing.
-        let etag = if_none_match.join(", ");
-        if etag == expected || etag == format!("W/{expected}") {
-            let mut response = Response::new(Body::empty());
-            *response.status_mut() = StatusCode::NOT_MODIFIED;
-            response
-                .headers_mut()
-                .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
-            return response;
+impl ClientFiles {
+    /// Compresses every file both ways, one scoped thread per file (the largest takes a few
+    /// tens of milliseconds in a release build). Called once, by `Builder::build`.
+    pub fn compress() -> Self {
+        let compressions = AtomicUsize::new(0);
+        let count = &compressions;
+        let encoded = std::thread::scope(|scope| {
+            let jobs: Vec<_> = FILES
+                .iter()
+                .map(|file| {
+                    scope.spawn(move || {
+                        [
+                            compress(file.raw, true, count),
+                            compress(file.raw, false, count),
+                        ]
+                    })
+                })
+                .collect();
+            jobs.into_iter()
+                .map(|job| job.join().unwrap_or([None, None]))
+                .collect()
+        });
+        Self {
+            encoded,
+            compressions,
         }
     }
-    let accept = headers
-        .get_all(header::ACCEPT_ENCODING)
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let accept = headers
-        .contains_key(header::ACCEPT_ENCODING)
-        .then_some(accept.as_str());
-    let found = FILES.iter().position(|file| file.name == filename);
-    let wanted = negotiate::preferred(accept, &["br", "gzip", "deflate"]);
-    let body = match (found, wanted) {
-        (None, _) => None,
-        (Some(index), Some("br")) => FILES
+
+    /// Compressions done for this server.
+    #[cfg(test)]
+    fn compressions(&self) -> usize {
+        self.compressions.load(Ordering::Relaxed)
+    }
+
+    fn encoded(&self, index: usize, gzip: bool) -> Option<Bytes> {
+        self.encoded
             .get(index)
-            .map(|file| (Some("br"), Bytes::from_static(file.brotli))),
-        (Some(index), Some(encoding @ ("gzip" | "deflate"))) => {
-            match encoded(index, encoding == "gzip").await {
-                Some(bytes) => Some((Some(encoding), bytes)),
-                // Not ready in time: the file as is, which every client reads.
-                None => FILES
-                    .get(index)
-                    .map(|file| (None, Bytes::from_static(file.raw))),
-            }
-        }
-        (Some(index), _) => FILES
-            .get(index)
-            .map(|file| (None, Bytes::from_static(file.raw))),
-    };
-    let mut response = Response::new(Body::empty());
-    let out = response.headers_mut();
-    out.insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=0"),
-    );
-    out.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static(if is_map {
-            "application/json; charset=utf-8"
-        } else {
-            "application/javascript; charset=utf-8"
-        }),
-    );
-    if let Ok(etag) = HeaderValue::from_str(&expected) {
-        out.insert(header::ETAG, etag);
+            .and_then(|forms| forms[usize::from(!gzip)].clone())
     }
-    out.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
-    match body {
-        Some((encoding, bytes)) => {
-            if let Some(encoding) = encoding {
-                out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+    /// Answers a request for a client file (`target` passed [`is_client_path`]).
+    pub fn serve(&self, headers: &http::HeaderMap, target: &str) -> Response<Body> {
+        let path = target.split('?').next().unwrap_or(target);
+        let filename = path.strip_prefix("/socket.io/").unwrap_or(path);
+        let is_map = filename.contains(".map");
+        let expected = format!("\"{CLIENT_VERSION}\"");
+        let if_none_match: Vec<&str> = headers
+            .get_all(header::IF_NONE_MATCH)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .collect();
+        if !if_none_match.is_empty() {
+            // Node joins repeated headers with ", " before comparing.
+            let etag = if_none_match.join(", ");
+            if etag == expected || etag == format!("W/{expected}") {
+                let mut response = Response::new(Body::empty());
+                *response.status_mut() = StatusCode::NOT_MODIFIED;
+                response
+                    .headers_mut()
+                    .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+                return response;
             }
-            *response.body_mut() = Body::from(bytes);
         }
-        None => {
-            // The reference sets the encoding header before its stream fails.
-            if let Some(encoding) = wanted {
-                out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+        let accept = headers
+            .get_all(header::ACCEPT_ENCODING)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let accept = headers
+            .contains_key(header::ACCEPT_ENCODING)
+            .then_some(accept.as_str());
+        let found = FILES.iter().position(|file| file.name == filename);
+        let wanted = negotiate::preferred(accept, &["br", "gzip", "deflate"]);
+        let body = match (found, wanted) {
+            (None, _) => None,
+            (Some(index), Some("br")) => FILES
+                .get(index)
+                .map(|file| (Some("br"), Bytes::from_static(file.brotli))),
+            (Some(index), Some(encoding @ ("gzip" | "deflate"))) => {
+                match self.encoded(index, encoding == "gzip") {
+                    Some(bytes) => Some((Some(encoding), bytes)),
+                    // The compression failed: the file as is, which every client reads.
+                    None => FILES
+                        .get(index)
+                        .map(|file| (None, Bytes::from_static(file.raw))),
+                }
             }
-            *response.body_mut() = Body::new(Reset);
+            (Some(index), _) => FILES
+                .get(index)
+                .map(|file| (None, Bytes::from_static(file.raw))),
+        };
+        let mut response = Response::new(Body::empty());
+        let out = response.headers_mut();
+        out.insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("public, max-age=0"),
+        );
+        out.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static(if is_map {
+                "application/json; charset=utf-8"
+            } else {
+                "application/javascript; charset=utf-8"
+            }),
+        );
+        if let Ok(etag) = HeaderValue::from_str(&expected) {
+            out.insert(header::ETAG, etag);
         }
+        out.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+        match body {
+            Some((encoding, bytes)) => {
+                if let Some(encoding) = encoding {
+                    out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+                }
+                *response.body_mut() = Body::from(bytes);
+            }
+            None => {
+                // The reference sets the encoding header before its stream fails.
+                if let Some(encoding) = wanted {
+                    out.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+                }
+                *response.body_mut() = Body::new(Reset);
+            }
+        }
+        response
     }
-    response
 }
 
 #[cfg(test)]
@@ -292,53 +311,66 @@ mod tests {
         headers
     }
 
+    fn files() -> &'static ClientFiles {
+        static FILES: std::sync::OnceLock<ClientFiles> = std::sync::OnceLock::new();
+        FILES.get_or_init(ClientFiles::compress)
+    }
+
+    fn body(response: Response<Body>) -> Bytes {
+        futures_util::FutureExt::now_or_never(http_body_util::BodyExt::collect(
+            response.into_body(),
+        ))
+        .unwrap()
+        .unwrap()
+        .to_bytes()
+    }
+
     /// Finding 16: `Vary: Accept-Encoding` on every answer the encoding can change, `304`s
     /// included.
-    #[tokio::test]
-    async fn answers_vary_on_the_accepted_encoding() {
+    #[test]
+    fn answers_vary_on_the_accepted_encoding() {
         for headers in [accepting("br"), accepting("gzip"), http::HeaderMap::new()] {
-            let response = serve(&headers, "/socket.io/socket.io.min.js").await;
+            let response = files().serve(&headers, "/socket.io/socket.io.min.js");
             assert_eq!(response.status(), StatusCode::OK);
             assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
         }
         let mut headers = accepting("gzip");
         headers.insert(header::IF_NONE_MATCH, HeaderValue::from_static("\"4.8.3\""));
-        let response = serve(&headers, "/socket.io/socket.io.min.js").await;
+        let response = files().serve(&headers, "/socket.io/socket.io.min.js");
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
         assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
     }
 
-    /// Finding 16: concurrent cold requests compress the file once; the others wait for it.
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn concurrent_cold_requests_compress_once() {
-        // `socket.io.msgpack.min.js.map` with deflate: no other test asks for it.
-        let index = 7;
-        assert_eq!(FILES[index].name, "socket.io.msgpack.min.js.map");
-        let requests: Vec<_> = (0..16)
-            .map(|_| {
-                tokio::spawn(async {
-                    let response = serve(
-                        &accepting("deflate"),
-                        "/socket.io/socket.io.msgpack.min.js.map",
-                    )
-                    .await;
-                    let encoding = response.headers().get(header::CONTENT_ENCODING).cloned();
-                    let body = http_body_util::BodyExt::collect(response.into_body())
-                        .await
-                        .unwrap()
-                        .to_bytes();
-                    (encoding, body)
-                })
-            })
-            .collect();
-        let mut bodies = Vec::new();
-        for request in requests {
-            bodies.push(request.await.unwrap());
+    /// H4: every file is compressed both ways once, when the server is built; requests
+    /// (concurrent, cancelled, repeated) only hand out those bytes, which decompress to the
+    /// file. Before, each request that found its file cold started a compression job, and eight
+    /// requests cancelled during the first one left eight jobs running.
+    #[test]
+    fn files_are_compressed_once_when_the_server_is_built() {
+        use std::io::Read as _;
+        let files = ClientFiles::compress();
+        assert_eq!(files.compressions(), FILES.len() * 2);
+        for (index, file) in FILES.iter().enumerate() {
+            let target = format!("/socket.io/{}", file.name);
+            for _ in 0..8 {
+                // A request whose client went away: its answer is dropped unread.
+                drop(files.serve(&accepting("gzip"), &target));
+            }
+            let gzip = body(files.serve(&accepting("gzip"), &target));
+            let deflate = body(files.serve(&accepting("deflate"), &target));
+            assert_eq!(Some(&gzip), files.encoded(index, true).as_ref());
+            let mut plain = Vec::new();
+            flate2::read::GzDecoder::new(&gzip[..])
+                .read_to_end(&mut plain)
+                .unwrap();
+            assert_eq!(plain, file.raw, "{}", file.name);
+            plain.clear();
+            flate2::read::ZlibDecoder::new(&deflate[..])
+                .read_to_end(&mut plain)
+                .unwrap();
+            assert_eq!(plain, file.raw, "{}", file.name);
         }
-        assert_eq!(COMPRESSIONS[index * 2 + 1].load(Ordering::Relaxed), 1);
-        assert!(bodies.iter().all(|(encoding, body)| {
-            encoding.as_ref().is_some_and(|e| e == "deflate") && *body == bodies[0].1
-        }));
+        assert_eq!(files.compressions(), FILES.len() * 2);
     }
 
     fn hex(bytes: &[u8]) -> String {

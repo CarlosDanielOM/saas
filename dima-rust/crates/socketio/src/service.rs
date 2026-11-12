@@ -129,7 +129,7 @@ where
     let upgrade = wants_upgrade(req.headers());
     match target {
         Some(target) if !upgrade && client_files::is_client_path(&target) => {
-            client_files::serve(req.headers(), &target).await
+            io.client_files.serve(req.headers(), &target)
         }
         Some(target) if target.starts_with("/socket.io/") => engine(io, req, target).await,
         _ => match inner.oneshot(req).await {
@@ -411,7 +411,12 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
         .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
     // The payload is complete (`engineioxide` answers with a full body). Its frames are read
     // without consuming the body: Engine.IO counts the messages in it as done when the body is
-    // dropped, so the body travels inside this answer's until that is written (finding 4).
+    // dropped, and the outbox releases their charge then. So the body becomes the owner of the
+    // bytes this answer sends (H1 of the re-check): it is dropped with the last reference to
+    // them, which hyper holds until it has written them to the socket, or until it drops them
+    // with the connection (closed by the client, by `dima-web`'s write-stall timeout, or by the
+    // shutdown). Taking the answer's body out of the response and dropping it, as hyper does
+    // once it has the last frame, no longer releases anything.
     let mut body = Box::pin(body);
     let mut payload = bytes::BytesMut::new();
     while let Some(frame) = body.frame().await {
@@ -453,47 +458,23 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
     parts
         .headers
         .insert(header::CONTENT_LENGTH, HeaderValue::from(payload.len()));
-    Response::from_parts(parts, Body::new(Holding::new(payload, body)))
+    Response::from_parts(parts, Body::from(written_with(payload, body)))
 }
 
-/// A complete answer body that keeps another value (Engine.IO's own body) alive until it is
-/// dropped itself, which the HTTP server does once the answer is written or abandoned.
-struct Holding<H> {
-    data: Option<Bytes>,
+/// The bytes of an answer, owning `held` (Engine.IO's body) for as long as any reference to
+/// them lives: `held` is dropped when the HTTP server has written the bytes or dropped them.
+fn written_with<H: Send + 'static>(data: Bytes, held: H) -> Bytes {
+    Bytes::from_owner(Written { data, _held: held })
+}
+
+struct Written<H> {
+    data: Bytes,
     _held: H,
 }
 
-impl<H> Holding<H> {
-    fn new(data: Bytes, held: H) -> Self {
-        Self {
-            data: (!data.is_empty()).then_some(data),
-            _held: held,
-        }
-    }
-}
-
-impl<H: Unpin> hyper::body::Body for Holding<H> {
-    type Data = Bytes;
-    type Error = Infallible;
-
-    fn poll_frame(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<hyper::body::Frame<Bytes>, Infallible>>> {
-        Poll::Ready(
-            self.get_mut()
-                .data
-                .take()
-                .map(|data| Ok(hyper::body::Frame::data(data))),
-        )
-    }
-
-    fn is_end_stream(&self) -> bool {
-        self.data.is_none()
-    }
-
-    fn size_hint(&self) -> hyper::body::SizeHint {
-        hyper::body::SizeHint::with_exact(self.data.as_ref().map_or(0, |d| d.len() as u64))
+impl<H> AsRef<[u8]> for Written<H> {
+    fn as_ref(&self) -> &[u8] {
+        &self.data
     }
 }
 
@@ -522,21 +503,27 @@ mod tests {
         }
     }
 
-    /// Finding 4: Engine.IO's body (whose drop marks its messages written) lives as long as
-    /// the answer's body, not only until its bytes were copied out.
+    /// H1: Engine.IO's body (whose drop marks its messages written) lives as long as the
+    /// answer's bytes, not as long as the answer's body: hyper takes the last frame and drops
+    /// the body before the bytes are written.
     #[tokio::test]
-    async fn a_polling_answer_holds_the_engine_body_until_it_is_dropped() {
+    async fn a_polling_answer_holds_the_engine_body_until_its_bytes_are_gone() {
         let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let body = Body::new(Holding::new(
+        let body = Body::from(written_with(
             Bytes::from_static(b"40"),
             Flag(Arc::clone(&dropped)),
         ));
         let mut body = Box::pin(body);
-        let frame = body.frame().await;
-        assert!(frame.is_some_and(|frame| frame.is_ok()));
+        let frame = body.frame().await.unwrap().unwrap().into_data().unwrap();
         assert!(body.frame().await.is_none());
-        assert!(!dropped.load(std::sync::atomic::Ordering::Acquire));
         drop(body);
+        // The bytes are still waiting to be written.
+        assert!(!dropped.load(std::sync::atomic::Ordering::Acquire));
+        assert_eq!(&frame[..], b"40");
+        let part = frame.slice(1..);
+        drop(frame);
+        assert!(!dropped.load(std::sync::atomic::Ordering::Acquire));
+        drop(part);
         assert!(dropped.load(std::sync::atomic::Ordering::Acquire));
     }
 }

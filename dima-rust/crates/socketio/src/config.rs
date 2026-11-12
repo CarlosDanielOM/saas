@@ -9,24 +9,39 @@
 //! # What the defaults bound
 //!
 //! Every limit is a reservation taken before the memory is kept or the work starts, given back
-//! on every way out. Computed for `Options::default()` on a 64-bit target (MiB = 2^20 bytes):
+//! on every way out, and held for as long as the memory really lives (F-SOCKETIO-c, after the
+//! re-check of 2026-11-12). Computed for `Options::default()` on a 64-bit target (MiB = 2^20
+//! bytes):
 //!
 //! | | Per socket | Whole server |
 //! |---|---|---|
 //! | Inbound, parsed client data (events until their handler returns, acknowledgement answers until their waiter has them) | 16 MiB (`max_inbound_bytes`) | 256 MiB (`max_inbound_total`), CONNECT data included |
 //! | Inbound, CONNECT data kept as `handshake.auth` | 16 MiB per connection | (in the 256 MiB) |
-//! | Outbound, charged until written (in the transport, or waiting in replaceable slots) | 2 MiB in the transport + 2 MiB in slots; a single larger packet (≤ 16 MiB, `max_outbound_message`) is allowed alone in each, so 32 MiB at most | 128 MiB (`max_outbound_total`) |
-//! | Recovery | a session ≤ 16 KiB | packets 64 MiB, sessions 32 MiB |
+//! | Outbound, charged until written: in the transport until it is flushed to the WebSocket, or until hyper has written the polling answer to the socket or dropped it with the connection (the answer's bytes own Engine.IO's body); or waiting in replaceable slots | 2 MiB in the transport + 2 MiB in slots; a single larger packet (≤ 16 MiB, `max_outbound_message`) is allowed alone in each, so 32 MiB at most | 128 MiB (`max_outbound_total`) |
+//! | Recovery packets, charged until their last owner lets go: the store, or a restore sending them after the store evicted them | a restore holds at most one batch (64 packets of one namespace, so ≤ 8 MiB), and ends as a slow consumer when its client takes nothing for `close_timeout` | 64 MiB (`bytes_total`) |
+//! | Recovery sessions (measured after compaction, owner key included) | a session ≤ 16 KiB; an owner ≤ 256 sessions (4 MiB) | 32 MiB: owned pool 28 MiB (3584 sessions), anonymous pool 4 MiB (512 sessions), which never takes from the owned one |
 //!
 //! So what this crate holds for clients is at most 256 + 128 + 64 + 32 = 480 MiB, plus small
 //! bookkeeping: the namespace table (33,024 members × a few hundred bytes ≈ 13 MB), 16,384
-//! acknowledgement slots and 4,096 connections × 8 sockets of fixed per-socket state (a few kB
-//! each: ≈ 100 MB if every connection joined 8 namespaces). Outside these budgets, and bounded
-//! by the transport rather than by this crate: a message being received is buffered whole
-//! before it is handed over (at most `max_http_buffer_size`, 1 MB, per connection: ≈ 3.8 GiB if
-//! all 4,096 connections sent a maximal message at the same instant), and a message being
-//! written can exist twice for a moment (Engine.IO's encoded copy, and the compressed copy of a
-//! polling answer of at most 1 MB). The reference bounds none of this.
+//! acknowledgement slots, 4,096 connections × 8 sockets of fixed per-socket state (a few kB
+//! each: ≈ 100 MB if every connection joined 8 namespaces), the per-owner order of the kept
+//! sessions (about 100 bytes each, ≈ 0.4 MB), and the compressed client files made when the
+//! server is built (gzip and deflate of 1.2 MB of JavaScript: about 0.6 MB, for the server's
+//! life). Outside these budgets, and bounded by the transport rather than by this crate: a
+//! message being received is buffered whole before it is handed over (at most
+//! `max_http_buffer_size`, 1 MB, per connection: ≈ 3.8 GiB if all 4,096 connections sent a
+//! maximal message at the same instant), and a message being written can exist twice for a
+//! moment (Engine.IO's encoded copy, and the compressed copy of a polling answer of at most
+//! 1 MB, made while the uncompressed one is still charged). Bytes the kernel has accepted into
+//! a socket's send buffer are released as written. The reference bounds none of this.
+//!
+//! The polling row relies on hyper's queued write strategy, which keeps an answer's `Bytes`
+//! until they are written: hyper uses it because `dima-web`'s connection socket is vectored
+//! (`is_write_vectored`, a TCP stream). Over a socket that is not (a TLS wrapper without
+//! vectored writes), hyper would copy the answer into its own buffer and drop the bytes
+//! early: the charge would end at the copy, and the copy would be outside the budget.
+//! `tests/adversarial.rs` (`a_polling_answer_stays_charged_until_it_is_written`) fails if that
+//! happens.
 
 use std::time::Duration;
 
@@ -120,7 +135,9 @@ pub struct Options {
     pub shutdown_drain: Duration,
     /// How long a closing connection may take to hand its last packets and the close packet to
     /// the client, and then to end, before its socket is aborted (30 s: `engine.io`'s polling
-    /// `closeTimeout` and `ws`'s close timeout).
+    /// `closeTimeout` and `ws`'s close timeout). Also how long a restore's missed events may
+    /// wait for room in a full send queue while the client takes nothing: past it, the
+    /// connection is closed as a slow consumer.
     pub close_timeout: Duration,
 }
 
@@ -163,7 +180,11 @@ impl Default for Options {
 /// Besides its deadline, every `on_connect` and `on_event` of a socket is cancelled when the
 /// socket leaves its namespace; `on_disconnect` then runs once, under its own deadline only.
 /// A recovered socket starts only once every handler of the socket it replaces has ended, so
-/// no work of the old socket can run beside the new one on the data they share.
+/// no work of the old socket can run beside the new one on the data they share; a recovery
+/// waits for that at most `recovery_wait`, then connects the client fresh.
+///
+/// A deadline drops a handler at its next `.await`: a handler that blocks its thread or loops
+/// without awaiting cannot be stopped by it (see [`crate::Namespace`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandlerDeadlines {
     /// [`crate::Namespace::on_connect`] (60 s).
@@ -173,6 +194,12 @@ pub struct HandlerDeadlines {
     pub event: Duration,
     /// [`crate::Namespace::on_disconnect`] (10 s). A client recovering the socket waits for it.
     pub disconnect: Duration,
+    /// How long a recovery waits for the handlers of the socket it replaces to end (15 s,
+    /// longer than `disconnect`, so an `on_disconnect` that keeps its deadline always ends
+    /// first). Past it, the session is not given back: the client connects fresh
+    /// (`recovered` false; telemetry `RecoveryOutcome::NotReleased`), and the old socket's
+    /// stuck work keeps the old data, never the new socket's.
+    pub recovery_wait: Duration,
 }
 
 impl Default for HandlerDeadlines {
@@ -181,6 +208,7 @@ impl Default for HandlerDeadlines {
             connect: Duration::from_secs(60),
             event: Duration::from_secs(120),
             disconnect: Duration::from_secs(10),
+            recovery_wait: Duration::from_secs(15),
         }
     }
 }
@@ -212,11 +240,27 @@ impl Default for QueueLimits {
     }
 }
 
-/// Hard bounds on what connection state recovery keeps. At a namespace's own bound its oldest
-/// entries are dropped; at a server-wide bound, the oldest entries of the namespace holding the
-/// most (stored bytes, or sessions) are, so one channel's churn cannot evict the others'. A
-/// client whose offset or session was dropped connects fresh (`recovered` false), never with a
-/// partial replay.
+/// Hard bounds on what connection state recovery keeps. A client whose offset or session was
+/// dropped connects fresh (`recovered` false), never with a partial replay.
+///
+/// **Packets** (emitted by the server, so no client chooses how many): at a namespace's own
+/// bound its oldest are dropped; at a server-wide bound, the oldest of the namespace storing
+/// the most bytes.
+///
+/// **Sessions** belong to the owner the namespace's check verified ([`crate::Owner`],
+/// [`crate::Namespace::owner`]), because namespace names are no proof of anything (several
+/// families accept any channel name, so a client can spread sessions over names it makes up):
+///
+/// - Sessions with a verified owner share the owned pool: `sessions_total` and
+///   `session_bytes_total` minus the anonymous pool (3584 sessions, 28 MiB). An owner holds at
+///   most `sessions_per_owner`; when the pool is full, the owner holding the most (sessions, or
+///   bytes when bytes are what is full) gives up its oldest, the newcomer's own owner included.
+/// - Sessions without an owner share the anonymous pool (`anonymous_sessions`,
+///   `anonymous_session_bytes`): when it is full its oldest goes. It never takes room from the
+///   owned pool, so anonymous clients can only push out each other.
+/// - A namespace holds at most `sessions_per_namespace`: at that bound it gives up its oldest
+///   anonymous session, or, for a newcomer with an owner, the oldest of the owner holding the
+///   most there. An anonymous newcomer finding only owned sessions there is not kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecoveryLimits {
     /// Stored packets per namespace (4096).
@@ -225,17 +269,25 @@ pub struct RecoveryLimits {
     pub bytes_per_namespace: usize,
     /// Stored packets in all namespaces (32,768).
     pub packets_total: usize,
-    /// Stored bytes in all namespaces (64 MiB).
+    /// Stored bytes in all namespaces (64 MiB). A stored packet is charged until its last
+    /// owner, the store or a restore sending it, lets go.
     pub bytes_total: usize,
     /// Sessions kept per namespace (256).
     pub sessions_per_namespace: usize,
-    /// Sessions kept in all namespaces (4096).
+    /// Sessions kept per verified owner, in all namespaces (256).
+    pub sessions_per_owner: usize,
+    /// Sessions kept in all namespaces, both pools (4096).
     pub sessions_total: usize,
-    /// The largest session kept (16 KiB: its ids, `size_of` the socket data and what the data
-    /// keeps on the heap, [`crate::RetainedSize`]); a larger one is not kept.
+    /// Of `sessions_total`, the sessions without an owner (512; at most `sessions_total`).
+    pub anonymous_sessions: usize,
+    /// The largest session kept (16 KiB: its ids, its owner key, `size_of` the socket data and
+    /// what the data keeps on the heap, [`crate::RetainedSize`]); a larger one is not kept.
     pub session_bytes: usize,
-    /// Bytes of all kept sessions together (32 MiB).
+    /// Bytes of all kept sessions together, both pools (32 MiB).
     pub session_bytes_total: usize,
+    /// Of `session_bytes_total`, the bytes of sessions without an owner (4 MiB; at most
+    /// `session_bytes_total`).
+    pub anonymous_session_bytes: usize,
 }
 
 impl Default for RecoveryLimits {
@@ -246,9 +298,12 @@ impl Default for RecoveryLimits {
             packets_total: 32_768,
             bytes_total: 64 << 20,
             sessions_per_namespace: 256,
+            sessions_per_owner: 256,
             sessions_total: 4096,
+            anonymous_sessions: 512,
             session_bytes: 16 << 10,
             session_bytes_total: 32 << 20,
+            anonymous_session_bytes: 4 << 20,
         }
     }
 }

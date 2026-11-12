@@ -120,6 +120,8 @@ pub(crate) struct Core<D> {
     pub recovered: bool,
     pub handshake: Handshake,
     pub data: Arc<D>,
+    /// Who its recovery session belongs to (the check's answer, or the recovered session's).
+    pub owner: crate::Owner,
     pub conn: Arc<Connection>,
     pub def: Arc<dyn DefOps<D>>,
     pub state: Mutex<SocketState>,

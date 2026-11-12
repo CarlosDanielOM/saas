@@ -118,12 +118,20 @@
 //!   their next await) when the socket leaves, and every handler has a deadline
 //!   ([`HandlerDeadlines`]: 60 s, 120 s, 10 s); `on_disconnect` runs afterwards under its own.
 //!   Work that must outlive the socket belongs in a task of the feature, not in a handler. A
-//!   recovered socket starts once the old socket's handlers have all ended.
+//!   recovered socket starts once the old socket's handlers have all ended (waited for at most
+//!   `recovery_wait`, 15 s; past it the client connects fresh). Handlers are async and never
+//!   block their thread; heavy work is offloaded (see [`Namespace`]): a deadline cannot stop a
+//!   handler that never yields.
 //! - **Socket data implements [`RetainedSize`]** (add up the fields), so a recovery session is
-//!   measured by what it really keeps.
-//! - **Recovery re-runs the check** ([`Namespace::recheck`], on by default; the reference skips
-//!   its middlewares): a namespace whose check cannot pass twice (a one-time ticket) sets
-//!   [`NamespaceOptions::recheck_recovery`] to `false` or overrides `recheck`. [`Dispatch::Sequential`] (the default)
+//!   measured by what it really keeps. It is compacted first (JSON maps rebuilt at their length,
+//!   spare capacity given back): measuring takes the locks inside the data, never while the
+//!   crate holds one of its own, and `Socket::disconnect_connection` closes the connection on
+//!   its task, so a handler holding its data's lock cannot deadlock with it.
+//! - **Recovery runs the check** (on by default; the reference skips its middlewares): once
+//!   per connect, recovering or not, and a session comes back only if the check names its
+//!   owner ([`Namespace::owner`]) and [`Namespace::recheck`] accepts; any refusal answers as an
+//!   unknown session. A namespace whose check cannot pass twice (a one-time ticket) sets
+//!   [`NamespaceOptions::recheck_recovery`] to `false`. [`Dispatch::Sequential`] (the default)
 //!   handles one event at a time; use [`Dispatch::Concurrent`] where a slow handler (speech
 //!   preview) must not hold up the next event, and lock in the data where order matters.
 //! - **Disconnected sockets.** An emit on a socket that has left is never written to the
@@ -163,7 +171,9 @@
 //! - Recovery: a session is restored only if the check still accepts the recovering handshake
 //!   (above); an event too large to store breaks recovery from earlier offsets (the client
 //!   connects fresh) where the reference, which stores everything, replays it; the stores are
-//!   bounded and evict fairly between namespaces (see the `recovery` module).
+//!   bounded: packets evict fairly between namespaces, sessions between their verified owners
+//!   ([`Owner`]), with a smaller pool for sessions without one (see [`RecoveryLimits`]). A
+//!   recovery whose old socket's handlers have not ended after `recovery_wait` connects fresh.
 //! - A client packet whose parsed size does not fit the inbound budgets closes the connection
 //!   (`inbound overflow`) without being parsed (see [`Options::max_inbound_bytes`]).
 //! - From the transport (`engineioxide` with the patches of `vendor/README.md`): a polling
@@ -202,6 +212,7 @@ pub use handshake::{Handshake, Query};
 pub use namespace::{Namespace, NamespaceOptions, NamespaceRef};
 pub use outbox::{Delivery, MAX_PENDING_KEYS};
 pub use pattern::{Pattern, PatternError};
+pub use recovery::Owner;
 pub use server::{Builder, Runtime, ShutdownReport, SocketIo, Stats};
 pub use service::SocketIoService;
 pub use size::RetainedSize;

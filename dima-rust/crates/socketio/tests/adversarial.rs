@@ -738,6 +738,162 @@ async fn recovery_stores_are_bounded() {
     s.server.stop().await;
 }
 
+/// H2 (re-check of 2026-11-12): a restore whose client takes nothing is ended by the
+/// slow-consumer rule, and its batch's share of the recovery budget comes back with it. The
+/// client recovers over polling and never polls: the replay fills the socket's queue and
+/// waits; newer events evict its batch from the store, which keeps the figure within its bound
+/// (the batch stays charged); once nothing was taken for `close_timeout` the connection closes
+/// as a slow consumer. Before, the replay waited until the heartbeat ended the session.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_stalled_replay_is_closed_as_a_slow_consumer() {
+    const BOUND: usize = 64 << 10;
+    let s = setup(
+        Options {
+            close_timeout: Duration::from_millis(500),
+            recovery: RecoveryLimits {
+                bytes_total: BOUND,
+                ..RecoveryLimits::default()
+            },
+            ..Options::default()
+        },
+        NamespaceOptions {
+            queue: Some(QueueLimits {
+                packets: 1024,
+                bytes: 8 << 10,
+            }),
+            ..NamespaceOptions::default()
+        },
+    )
+    .await;
+    let io = s.server.io.clone();
+    let mut client = Ws::open(s.server.addr).await;
+    let (_, pid, offset) = join_and_hello(&mut client, &ok()).await;
+    client.drop_connection();
+    eventually("the session kept", || io.stats().sessions == 1).await;
+    let chunk = [json!("x".repeat(4 << 10))];
+    for _ in 0..12 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+    }
+    let back = Polling::open(s.server.addr).await;
+    let connect = format!("40/p,{}", json!({"pid": pid, "offset": offset}));
+    assert_eq!(back.post(&[&connect]).await, Some(200));
+    eventually("the replay waits for room", || {
+        io.stats().outbound_bytes >= 4 << 10
+    })
+    .await;
+    for _ in 0..40 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+        assert!(io.stats().stored_bytes <= BOUND, "{:?}", io.stats());
+    }
+    let telemetry = Arc::clone(&s.telemetry);
+    eventually("closed as a slow consumer", || {
+        telemetry.get("closed:slow consumer") == 1
+    })
+    .await;
+    assert_eq!(s.telemetry.get("send:SlowConsumer"), 1);
+    eventually("output released", || io.stats().outbound_bytes == 0).await;
+    // Its share is back: the store fills the whole budget again.
+    for _ in 0..20 {
+        s.probe.emit("/p", "big", &chunk).unwrap();
+    }
+    let stats = io.stats();
+    assert!(
+        stats.stored_bytes <= BOUND && stats.stored_bytes > BOUND - (6 << 10),
+        "{stats:?}"
+    );
+    s.server.stop().await;
+}
+
+/// `/o/<name>`: a family whose check accepts any name (as several do in the reference); a
+/// client with the channel's token is that channel's, verified.
+struct Owned;
+
+impl Namespace for Owned {
+    type Data = Option<String>;
+
+    async fn check(
+        &self,
+        handshake: &Handshake,
+        _nsp: &str,
+    ) -> Result<Option<String>, ConnectError> {
+        Ok((handshake.auth().get("token") == Some(&json!("real"))).then(|| "channel:1".to_owned()))
+    }
+
+    fn owner(&self, data: &Option<String>) -> dima_socketio::Owner {
+        data.as_ref()
+            .map_or(dima_socketio::Owner::Anonymous, |key| {
+                dima_socketio::Owner::verified(key.as_str())
+            })
+    }
+
+    async fn on_connect(&self, socket: Socket<Option<String>>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// Joins `nsp` with `auth`, reads the hello; the connection's ids and the hello's offset.
+async fn join_owned(client: &mut Ws, nsp: &str, auth: &Value) -> (String, String, String) {
+    let connect = client.join(nsp, auth).await.unwrap();
+    let hello = client
+        .until(|t| event(t, nsp).is_some(), 3 * SECOND)
+        .await
+        .unwrap();
+    let args = event(&hello, nsp).unwrap();
+    (
+        connect["sid"].as_str().unwrap().to_owned(),
+        connect["pid"].as_str().unwrap().to_owned(),
+        args.last().and_then(Value::as_str).unwrap().to_owned(),
+    )
+}
+
+/// H3 (re-check of 2026-11-12), end to end: three session slots, one for anonymous sessions.
+/// The channel's two overlays drop their connections; an outsider then joins and drops ten
+/// made-up members of the family. The channel's sessions are its verified owner's: both
+/// overlays recover; before, the outsider pushed them out.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_outsider_on_made_up_names_cannot_push_a_channels_sessions_out() {
+    let options = Options {
+        recovery: RecoveryLimits {
+            sessions_total: 3,
+            anonymous_sessions: 1,
+            ..RecoveryLimits::default()
+        },
+        ..Options::default()
+    };
+    let server = TestServer::start_with(options, Runtime::default(), |builder| {
+        builder
+            .family(r"^\/o\/\w+$", NamespaceOptions::default(), Owned)
+            .unwrap();
+    })
+    .await;
+    let io = server.io.clone();
+    let token = json!({"token": "real"});
+    let mut overlays = Vec::new();
+    for _ in 0..2 {
+        let mut client = Ws::open(server.addr).await;
+        overlays.push(join_owned(&mut client, "/o/chan", &token).await);
+        client.drop_connection();
+    }
+    eventually("the channel's sessions kept", || io.stats().sessions == 2).await;
+    for i in 0..10 {
+        let mut client = Ws::open(server.addr).await;
+        join_owned(&mut client, &format!("/o/x{i}"), &ok()).await;
+        client.drop_connection();
+        eventually("an outsider's session kept", || io.stats().sessions == 3).await;
+    }
+    for (sid, pid, offset) in overlays {
+        let mut client = Ws::open(server.addr).await;
+        let auth = json!({"token": "real", "pid": pid, "offset": offset});
+        let connect = client.join("/o/chan", &auth).await.unwrap();
+        assert_eq!(
+            connect["sid"],
+            json!(sid),
+            "the overlay recovers its socket"
+        );
+    }
+    server.stop().await;
+}
+
 /// `/slow` dispatches one event at a time.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_client_flooding_busy_handlers_is_closed() {
@@ -1307,6 +1463,83 @@ async fn polling_answers_vary_on_the_accepted_encoding() {
     s.server.stop().await;
 }
 
+/// A polling client joined to `nsp` that has read its hello.
+async fn join_polling(addr: std::net::SocketAddr, nsp: &str) -> Polling {
+    let client = Polling::open(addr).await;
+    assert_eq!(client.post(&[&format!("40{nsp},{{}}")]).await, Some(200));
+    let mut seen = Vec::new();
+    while !seen.iter().any(|p: &String| event(p, nsp).is_some()) {
+        seen.extend(client.poll(5 * SECOND).await.unwrap());
+    }
+    client
+}
+
+/// H1 (re-check of 2026-11-12): a polling answer stays charged until it is written. The review's
+/// sequence: a large event queued, its poll requested, the client stops reading; before, the
+/// charge was released as soon as hyper had taken the body, 8 MiB unwritten counted as zero.
+/// Then several such clients against the server-wide budget: the third large event finds the
+/// budget taken by the two unwritten answers and is refused as a slow consumer.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_polling_answer_stays_charged_until_it_is_written() {
+    use tokio::io::AsyncReadExt as _;
+    const BIG: usize = 8 << 20;
+    let s = setup(
+        Options {
+            max_outbound_total: 20 << 20,
+            ..Options::default()
+        },
+        NamespaceOptions {
+            recovery: Recovery::Off,
+            ..NamespaceOptions::default()
+        },
+    )
+    .await;
+    let io = s.server.io.clone();
+    let big = [json!("x".repeat(BIG))];
+    let a = join_polling(s.server.addr, "/f/a").await;
+    eventually("hello written", || io.stats().outbound_bytes == 0).await;
+    assert_eq!(s.family.emit("/f/a", "big", &big), Ok(1));
+    let mut stalled_a = a.stalled_poll().await;
+    // The answer is in hyper's hands, mostly unwritten: still charged.
+    for _ in 0..30 {
+        assert!(io.stats().outbound_bytes >= BIG, "released while unwritten");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    // Read to its end: released.
+    let mut rest = vec![0_u8; 64 << 10];
+    let mut read = 0;
+    while read < BIG {
+        let n = stalled_a.read(&mut rest).await.unwrap();
+        assert!(n > 0, "closed early");
+        read += n;
+    }
+    eventually("written answer released", || io.stats().outbound_bytes == 0).await;
+    drop(stalled_a);
+
+    // Two clients stall their 8 MiB answers: 16 MiB of the 20 stay charged.
+    let b = join_polling(s.server.addr, "/f/b").await;
+    let c = join_polling(s.server.addr, "/f/c").await;
+    let d = join_polling(s.server.addr, "/f/d").await;
+    eventually("hellos written", || io.stats().outbound_bytes == 0).await;
+    assert_eq!(s.family.emit("/f/b", "big", &big), Ok(1));
+    assert_eq!(s.family.emit("/f/c", "big", &big), Ok(1));
+    let stalled_b = b.stalled_poll().await;
+    let stalled_c = c.stalled_poll().await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(io.stats().outbound_bytes >= 2 * BIG);
+    // A third does not fit: its connection is closed as a slow consumer.
+    assert_eq!(s.family.emit("/f/d", "big", &big), Ok(0));
+    assert_eq!(s.telemetry.get("send:SlowConsumer"), 1);
+    assert!(io.stats().outbound_bytes <= 20 << 20);
+    // The stalled connections ending gives everything back.
+    drop((stalled_b, stalled_c, d));
+    eventually("stalled answers released", || {
+        io.stats().outbound_bytes == 0
+    })
+    .await;
+    s.server.stop().await;
+}
+
 /// A WebSocket handshake to `/socket.io/`: `Ok` with the client once the open packet arrived,
 /// `Err(status)` when the server answered the handshake with an error status.
 async fn try_open(addr: std::net::SocketAddr) -> Result<impl Sized, Option<u16>> {
@@ -1820,6 +2053,230 @@ async fn a_recovery_the_check_now_refuses_does_not_get_the_session() {
         back.close().await;
         s.server.stop().await;
     }
+}
+
+/// `/q`: the check counts its calls, refuses `deny`, and verifies `user` as the owner; the
+/// recovery hook refuses `revoked`.
+#[derive(Default)]
+struct Rechecked {
+    checks: std::sync::atomic::AtomicUsize,
+}
+
+impl Namespace for Rechecked {
+    type Data = String;
+
+    async fn check(&self, handshake: &Handshake, _nsp: &str) -> Result<String, ConnectError> {
+        self.checks
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if handshake.auth().contains_key("deny") {
+            return Err(ConnectError::new("denied").with_data(json!({"why": "asked"})));
+        }
+        let user = handshake.auth().get("user").and_then(Value::as_str);
+        Ok(user.unwrap_or("nobody").to_owned())
+    }
+
+    fn owner(&self, data: &String) -> dima_socketio::Owner {
+        dima_socketio::Owner::verified(data.as_str())
+    }
+
+    async fn recheck(
+        &self,
+        handshake: &Handshake,
+        _nsp: &str,
+        _data: &String,
+    ) -> Result<(), ConnectError> {
+        if handshake.auth().contains_key("revoked") {
+            return Err(ConnectError::new("revoked"));
+        }
+        Ok(())
+    }
+
+    async fn on_connect(&self, socket: Socket<String>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// `/q2`: the same check, without a recovery hook of its own.
+#[derive(Default)]
+struct PlainCheck(Rechecked);
+
+impl Namespace for PlainCheck {
+    type Data = String;
+
+    async fn check(&self, handshake: &Handshake, nsp: &str) -> Result<String, ConnectError> {
+        self.0.check(handshake, nsp).await
+    }
+
+    fn owner(&self, data: &String) -> dima_socketio::Owner {
+        self.0.owner(data)
+    }
+
+    async fn on_connect(&self, socket: Socket<String>) {
+        let _ = socket.emit("hello", &[]);
+    }
+}
+
+/// H7 (re-check of 2026-11-12): a recovery runs the check once, and its first refusal is the
+/// answer. A recovering client the check now refuses gets exactly what an unknown session gets
+/// (the check's CONNECT_ERROR); one that the check admits but whose recovery is refused (the
+/// namespace's recovery hook, or the check now naming another owner) connects fresh, exactly
+/// as an unknown session does. Before, a refused recovery ran the check a second time.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_failed_recovery_runs_the_check_once_and_answers_as_an_unknown_session() {
+    let slot: Arc<Mutex<Option<NamespaceRef<Rechecked>>>> = Arc::default();
+    let declared = Arc::clone(&slot);
+    let slot2: Arc<Mutex<Option<NamespaceRef<PlainCheck>>>> = Arc::default();
+    let declared2 = Arc::clone(&slot2);
+    let server = TestServer::start_with(Options::default(), Runtime::default(), move |builder| {
+        let q = builder
+            .namespace("/q", NamespaceOptions::default(), Rechecked::default())
+            .unwrap();
+        *declared.lock().unwrap() = Some(q);
+        let q2 = builder
+            .namespace("/q2", NamespaceOptions::default(), PlainCheck::default())
+            .unwrap();
+        *declared2.lock().unwrap() = Some(q2);
+    })
+    .await;
+    let q = slot.lock().unwrap().take().unwrap();
+    let q2 = slot2.lock().unwrap().take().unwrap();
+    let io = server.io.clone();
+    let checks = || q.handler().checks.load(std::sync::atomic::Ordering::SeqCst);
+
+    // Without a hook of its own (where the old default re-ran the check): a refused recovery
+    // runs the check once (it ran twice).
+    {
+        let mut client = Ws::open(server.addr).await;
+        let (_, pid, offset) = join_owned(&mut client, "/q2", &json!({"user": "a"})).await;
+        client.drop_connection();
+        eventually("the session kept", || io.stats().sessions == 1).await;
+        let plain_checks = || {
+            q2.handler()
+                .0
+                .checks
+                .load(std::sync::atomic::Ordering::SeqCst)
+        };
+        let before = plain_checks();
+        let mut back = Ws::open(server.addr).await;
+        let auth = json!({"pid": pid, "offset": offset, "deny": 1, "user": "a"});
+        assert!(back.join("/q2", &auth).await.is_err());
+        assert_eq!(plain_checks() - before, 1, "the check ran once");
+        back.close().await;
+        eventually("the session dropped", || io.stats().sessions == 0).await;
+    }
+    // A session to come back to, as user `a`.
+    let session = || async {
+        let mut client = Ws::open(server.addr).await;
+        let (sid, pid, offset) = join_owned(&mut client, "/q", &json!({"user": "a"})).await;
+        client.drop_connection();
+        eventually("the session kept", || io.stats().sessions == 1).await;
+        (sid, pid, offset)
+    };
+    let attempt = |auth: Value| async move {
+        let mut client = Ws::open(server.addr).await;
+        let before = checks();
+        let answer = client.join("/q", &auth).await;
+        // Leaves the namespace (not recoverable): no session is kept for a fresh socket.
+        client.send("41/q,").await;
+        client.close().await;
+        (answer, checks() - before)
+    };
+
+    // The check refuses: unknown session and known session answer the same, one check each.
+    let (_, pid, offset) = session().await;
+    let unknown = attempt(json!({"pid": "forged", "offset": offset, "deny": 1, "user": "a"})).await;
+    let known = attempt(json!({"pid": pid, "offset": offset, "deny": 1, "user": "a"})).await;
+    assert_eq!(
+        unknown.0,
+        Err(json!({"message": "denied", "data": {"why": "asked"}}))
+    );
+    assert_eq!(known, unknown);
+    assert_eq!(known.1, 1, "the check ran once");
+    eventually("the session dropped", || io.stats().sessions == 0).await;
+
+    // The check admits, the recovery is refused (by the hook, or another owner): a fresh
+    // connect, as for an unknown session, with one check.
+    for refused in [json!({"revoked": 1, "user": "a"}), json!({"user": "b"})] {
+        let (sid, pid, offset) = session().await;
+        let mut auth = refused.clone();
+        auth["offset"] = json!(offset);
+        auth["pid"] = json!("forged");
+        let (unknown, unknown_checks) = attempt(auth.clone()).await;
+        auth["pid"] = json!(pid);
+        let (known, known_checks) = attempt(auth).await;
+        for answer in [&unknown, &known] {
+            let answer = answer.as_ref().unwrap();
+            let keys: Vec<&String> = answer.as_object().unwrap().keys().collect();
+            assert_eq!(keys, ["sid", "pid"]);
+            assert_ne!(answer["sid"], json!(sid));
+            assert_ne!(answer["pid"], json!(pid));
+        }
+        assert_eq!((unknown_checks, known_checks), (1, 1), "{refused}");
+        eventually("the session dropped", || io.stats().sessions == 0).await;
+    }
+    server.stop().await;
+}
+
+/// `/l`: an `on_disconnect` that does not end (a handler stuck in work that never yields
+/// would hold the same way: no deadline can stop it).
+struct Lingering;
+
+impl Namespace for Lingering {
+    type Data = ();
+
+    async fn check(&self, _handshake: &Handshake, _nsp: &str) -> Result<(), ConnectError> {
+        Ok(())
+    }
+
+    async fn on_connect(&self, socket: Socket<()>) {
+        let _ = socket.emit("hello", &[]);
+    }
+
+    async fn on_disconnect(&self, _socket: Socket<()>, _reason: DisconnectReason) {
+        std::future::pending::<()>().await;
+    }
+}
+
+/// H6 (re-check of 2026-11-12): a recovery waits for the old socket's handlers under a
+/// deadline of its own. Past it the recovery fails as one that cannot be served, and the
+/// client connects fresh at once, instead of waiting for a handler that may never end.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovery_does_not_wait_for_old_handlers_past_its_deadline() {
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let server = TestServer::start_with(Options::default(), runtime, |builder| {
+        let options = NamespaceOptions {
+            deadlines: Some(dima_socketio::HandlerDeadlines {
+                disconnect: Duration::from_secs(60),
+                recovery_wait: Duration::from_millis(300),
+                ..dima_socketio::HandlerDeadlines::default()
+            }),
+            ..NamespaceOptions::default()
+        };
+        builder.namespace("/l", options, Lingering).unwrap();
+    })
+    .await;
+    let io = server.io.clone();
+    let mut client = Ws::open(server.addr).await;
+    let (sid, pid, offset) = join_owned(&mut client, "/l", &ok()).await;
+    client.drop_connection();
+    eventually("the session kept", || io.stats().sessions == 1).await;
+    let mut back = Ws::open(server.addr).await;
+    let started = std::time::Instant::now();
+    let connect = back
+        .join("/l", &json!({"pid": pid, "offset": offset}))
+        .await
+        .unwrap();
+    assert!(started.elapsed() < 3 * SECOND, "{:?}", started.elapsed());
+    assert_ne!(connect["sid"], json!(sid), "a fresh socket");
+    assert_ne!(connect["pid"], json!(pid));
+    assert_eq!(telemetry.get("recovery:NotReleased"), 1);
+    assert_eq!(telemetry.get("connected:false"), 2);
+    back.close().await;
+    server.stop().await;
 }
 
 /// Finding 14: shutdown has one deadline and proves it: with a client that stopped reading

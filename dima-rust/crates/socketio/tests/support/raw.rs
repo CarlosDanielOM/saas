@@ -302,6 +302,37 @@ impl Polling {
         .map(|answer| answer.status)
     }
 
+    /// Starts a poll and stops reading once the head of the answer has arrived: a client whose
+    /// receive buffer is a few kilobytes and that never reads the body. The connection stays
+    /// open as long as the returned stream lives.
+    pub async fn stalled_poll(&self) -> TcpStream {
+        let socket = tokio::net::TcpSocket::new_v4().unwrap();
+        socket.set_recv_buffer_size(4096).unwrap();
+        let mut stream = socket.connect(self.addr).await.unwrap();
+        let head = format!(
+            "GET {} HTTP/1.1\r\nHost: {}\r\n\r\n",
+            self.path(),
+            self.addr
+        );
+        stream.write_all(head.as_bytes()).await.unwrap();
+        let mut seen = Vec::new();
+        let mut byte = [0_u8; 1];
+        while !seen.ends_with(b"\r\n\r\n") {
+            let read = tokio::time::timeout(Duration::from_secs(5), stream.read(&mut byte))
+                .await
+                .expect("the head of the answer")
+                .unwrap();
+            assert_eq!(read, 1, "the server closed before answering");
+            seen.push(byte[0]);
+        }
+        assert!(
+            seen.starts_with(b"HTTP/1.1 200"),
+            "{}",
+            String::from_utf8_lossy(&seen)
+        );
+        stream
+    }
+
     /// One poll: the packets, or the answer's status when it is not 200.
     pub async fn poll(&self, timeout: Duration) -> Result<Vec<String>, Option<u16>> {
         match http(self.addr, "GET", &self.path(), &[], b"", timeout).await {

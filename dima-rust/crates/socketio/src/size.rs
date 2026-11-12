@@ -1,6 +1,7 @@
 //! What a value keeps alive on the heap, for the size of recovery sessions.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::hash::{BuildHasher, Hash};
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, AtomicU32, AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
@@ -30,12 +31,25 @@ use serde_json::Value;
 /// }
 /// ```
 ///
-/// The implementations here count a hash map's buckets at their capacity and a B-tree's
-/// entries twice (its nodes may be half full); a value shared through an `Arc` is counted as if
-/// the session owned it alone (it keeps it alive).
+/// The implementations here count strings, vectors and hash maps at their capacity and a
+/// B-tree's entries twice (its nodes may be half full); a value shared through an `Arc` is
+/// counted as if the session owned it alone (it keeps it alive).
+///
+/// A JSON map (`serde_json::Map`, an `IndexMap` here) does not tell its capacity, and keeps its
+/// allocation when entries are removed: grown to a million entries and cleared, it still holds
+/// tens of megabytes while its length says nothing. So a session is measured after it is
+/// compacted: measuring a `Mutex` or an `RwLock` first compacts what it guards
+/// ([`RetainedSize::compact`]: JSON maps rebuilt at their length, strings, vectors and hash
+/// maps shrunk to fit), and the data a check returns is compacted before the socket is created.
+/// Compacting changes no content and no order. A struct whose plain fields hold such values
+/// forwards `compact` to them (fields behind a lock need nothing more than `retained_bytes`).
 pub trait RetainedSize {
     /// Heap bytes kept alive beyond `size_of::<Self>()`.
     fn retained_bytes(&self) -> usize;
+
+    /// Gives back the memory the value holds but does not use (spare capacity), keeping its
+    /// content. Does nothing by default.
+    fn compact(&mut self) {}
 }
 
 macro_rules! nothing_on_the_heap {
@@ -82,17 +96,31 @@ impl RetainedSize for String {
     fn retained_bytes(&self) -> usize {
         self.capacity()
     }
+
+    fn compact(&mut self) {
+        self.shrink_to_fit();
+    }
 }
 
 impl<T: RetainedSize> RetainedSize for Option<T> {
     fn retained_bytes(&self) -> usize {
         self.as_ref().map_or(0, RetainedSize::retained_bytes)
     }
+
+    fn compact(&mut self) {
+        if let Some(value) = self {
+            value.compact();
+        }
+    }
 }
 
 impl<T: RetainedSize> RetainedSize for Box<T> {
     fn retained_bytes(&self) -> usize {
         size_of::<T>() + self.as_ref().retained_bytes()
+    }
+
+    fn compact(&mut self) {
+        self.as_mut().compact();
     }
 }
 
@@ -101,21 +129,43 @@ impl<T: RetainedSize> RetainedSize for Arc<T> {
         // The two reference counts and the value.
         2 * size_of::<usize>() + size_of::<T>() + self.as_ref().retained_bytes()
     }
-}
 
-impl<T: RetainedSize> RetainedSize for Mutex<T> {
-    fn retained_bytes(&self) -> usize {
-        self.lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .retained_bytes()
+    fn compact(&mut self) {
+        // Shared values are compacted through their locks when they are measured.
+        if let Some(value) = Arc::get_mut(self) {
+            value.compact();
+        }
     }
 }
 
+/// Measuring compacts the guarded value first (under the lock): what a handler grew and
+/// emptied again is given back before it is counted.
+impl<T: RetainedSize> RetainedSize for Mutex<T> {
+    fn retained_bytes(&self) -> usize {
+        let mut value = self.lock().unwrap_or_else(PoisonError::into_inner);
+        value.compact();
+        value.retained_bytes()
+    }
+
+    fn compact(&mut self) {
+        self.get_mut()
+            .unwrap_or_else(PoisonError::into_inner)
+            .compact();
+    }
+}
+
+/// Measuring compacts the guarded value first (under the write lock), as for a `Mutex`.
 impl<T: RetainedSize> RetainedSize for RwLock<T> {
     fn retained_bytes(&self) -> usize {
-        self.read()
+        let mut value = self.write().unwrap_or_else(PoisonError::into_inner);
+        value.compact();
+        value.retained_bytes()
+    }
+
+    fn compact(&mut self) {
+        self.get_mut()
             .unwrap_or_else(PoisonError::into_inner)
-            .retained_bytes()
+            .compact();
     }
 }
 
@@ -123,15 +173,27 @@ impl<T: RetainedSize> RetainedSize for Vec<T> {
     fn retained_bytes(&self) -> usize {
         self.capacity() * size_of::<T>() + self.iter().map(T::retained_bytes).sum::<usize>()
     }
+
+    fn compact(&mut self) {
+        self.iter_mut().for_each(T::compact);
+        self.shrink_to_fit();
+    }
 }
 
 impl<T: RetainedSize> RetainedSize for VecDeque<T> {
     fn retained_bytes(&self) -> usize {
         self.capacity() * size_of::<T>() + self.iter().map(T::retained_bytes).sum::<usize>()
     }
+
+    fn compact(&mut self) {
+        self.iter_mut().for_each(T::compact);
+        self.shrink_to_fit();
+    }
 }
 
-impl<K: RetainedSize, V: RetainedSize, S> RetainedSize for HashMap<K, V, S> {
+impl<K: RetainedSize + Eq + Hash, V: RetainedSize, S: BuildHasher> RetainedSize
+    for HashMap<K, V, S>
+{
     fn retained_bytes(&self) -> usize {
         // Buckets of (K, V) plus one control byte each, at the table's capacity.
         self.capacity() * (size_of::<(K, V)>() + 1)
@@ -140,11 +202,20 @@ impl<K: RetainedSize, V: RetainedSize, S> RetainedSize for HashMap<K, V, S> {
                 .map(|(k, v)| k.retained_bytes() + v.retained_bytes())
                 .sum::<usize>()
     }
+
+    fn compact(&mut self) {
+        self.values_mut().for_each(V::compact);
+        self.shrink_to_fit();
+    }
 }
 
-impl<K: RetainedSize, S> RetainedSize for HashSet<K, S> {
+impl<K: RetainedSize + Eq + Hash, S: BuildHasher> RetainedSize for HashSet<K, S> {
     fn retained_bytes(&self) -> usize {
         self.capacity() * (size_of::<K>() + 1) + self.iter().map(K::retained_bytes).sum::<usize>()
+    }
+
+    fn compact(&mut self) {
+        self.shrink_to_fit();
     }
 }
 
@@ -155,6 +226,10 @@ impl<K: RetainedSize, V: RetainedSize> RetainedSize for BTreeMap<K, V> {
                 .iter()
                 .map(|(k, v)| k.retained_bytes() + v.retained_bytes())
                 .sum::<usize>()
+    }
+
+    fn compact(&mut self) {
+        self.values_mut().for_each(V::compact);
     }
 }
 
@@ -168,11 +243,22 @@ impl<A: RetainedSize, B: RetainedSize> RetainedSize for (A, B) {
     fn retained_bytes(&self) -> usize {
         self.0.retained_bytes() + self.1.retained_bytes()
     }
+
+    fn compact(&mut self) {
+        self.0.compact();
+        self.1.compact();
+    }
 }
 
 impl<A: RetainedSize, B: RetainedSize, C: RetainedSize> RetainedSize for (A, B, C) {
     fn retained_bytes(&self) -> usize {
         self.0.retained_bytes() + self.1.retained_bytes() + self.2.retained_bytes()
+    }
+
+    fn compact(&mut self) {
+        self.0.compact();
+        self.1.compact();
+        self.2.compact();
     }
 }
 
@@ -183,6 +269,15 @@ impl RetainedSize for Value {
             Value::Array(items) => items.retained_bytes(),
             Value::Object(map) => map.retained_bytes(),
             Value::Null | Value::Bool(_) | Value::Number(_) => 0,
+        }
+    }
+
+    fn compact(&mut self) {
+        match self {
+            Value::String(text) => text.compact(),
+            Value::Array(items) => items.compact(),
+            Value::Object(map) => map.compact(),
+            Value::Null | Value::Bool(_) | Value::Number(_) => {}
         }
     }
 }
@@ -197,6 +292,19 @@ impl RetainedSize for serde_json::Map<String, Value> {
                 .iter()
                 .map(|(key, value)| key.capacity() + value.retained_bytes())
                 .sum::<usize>()
+    }
+
+    /// Rebuilt at its length (its capacity cannot be read nor shrunk in place), entries in the
+    /// same order.
+    fn compact(&mut self) {
+        *self = std::mem::take(self)
+            .into_iter()
+            .map(|(mut key, mut value)| {
+                key.compact();
+                value.compact();
+                (key, value)
+            })
+            .collect();
     }
 }
 
