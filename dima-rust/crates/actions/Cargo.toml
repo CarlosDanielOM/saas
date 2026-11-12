@@ -1,0 +1,31 @@
+[package]
+name = "dima-actions"
+description = "The engine's host (DimaHost), chat delivery, command execution, AST timers, simulation, AI chat and its tools, the AST catalog."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The crate map's dependencies (ledger/upper-layers.md section 2.3).
+dima-engine = { workspace = true }
+dima-commands = { workspace = true }
+dima-moderation = { workspace = true }
+dima-features = { workspace = true }
+dima-ai = { workspace = true }
+dima-tts = { workspace = true }
+dima-twitch = { workspace = true }
+dima-billing = { workspace = true }
+dima-stream = { workspace = true }
+dima-events = { workspace = true }
+# Foundation crates the host's handles come from.
+dima-core = { workspace = true }
+dima-store = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

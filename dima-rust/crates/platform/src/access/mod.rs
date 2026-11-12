@@ -34,6 +34,7 @@
 //! | site staff (`adminMiddleware`) | [`require_admin`] | [`StaffAdmin::of`] |
 //! | the creator or a super admin (the site catalog, `POST /site/events`) | [`require_global_admin`] | [`GlobalAdmin::of`] |
 //! | the owner of `:channelID` (or a global owner) | [`ChannelGuard::owner`] | [`ChannelScope::of`] |
+//! | the channel's own account, global owners excluded (Overlay Studio, the asset library, pets) | [`ChannelGuard::self_only`] | [`ChannelScope::of`] |
 //! | a manager of `:channelID` with permission X | [`ChannelGuard::permission`]`("commands:manage")` | [`ChannelScope::of`] |
 //!
 //! A [`ChannelScope`] names exactly one channel, the one that was checked: writes take their
@@ -347,6 +348,10 @@ pub enum Need<'a> {
     Permission(&'a str),
     /// `getChannelAccessContext(…, [a, b])`: any one of them.
     AnyOf(&'a [&'a str]),
+    /// The channel's own account only (`req.user.id === channelID`): the strict self checks of
+    /// `overlay-studio.route.ts:84`, `asset-library.route.ts:37` and the pet routes, which do not
+    /// admit global owners. No lookup is made.
+    SelfOnly,
 }
 
 /// Why [`ChannelAccess::scope`] said no.
@@ -881,6 +886,7 @@ impl ChannelAccess {
                         .map(ScopeRole::GlobalOwner)
                 }
             }
+            Need::SelfOnly => (user.id() == channel).then_some(ScopeRole::OwnChannel),
             Need::Permission(permission) => self.decide(user.id(), channel, &[permission]).await?,
             Need::AnyOf(permissions) => self.decide(user.id(), channel, permissions).await?,
         };
@@ -1035,6 +1041,12 @@ impl ChannelGuard {
     /// The channel's owner (or a global owner).
     pub fn owner() -> Self {
         Self::new(Need::Owner)
+    }
+
+    /// The channel's own account only: unlike [`ChannelGuard::owner`], the creator and super
+    /// admins are refused on a channel that is not theirs (`Need::SelfOnly`; plan question 7.6).
+    pub fn self_only() -> Self {
+        Self::new(Need::SelfOnly)
     }
 
     /// A manager with `permission` (or any owner).

@@ -67,6 +67,7 @@
 
 pub mod badges;
 mod base;
+pub mod chat;
 pub mod config;
 mod credentials;
 mod drain;

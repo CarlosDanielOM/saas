@@ -1,0 +1,23 @@
+[package]
+name = "dima-event-handlers"
+description = "The domain-event consumers' handlers and the registry that gives each its dependencies."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The crate map's dependencies (ledger/upper-layers.md section 2.3). Not dima-actions: handlers
+# post chat through dima-twitch's ChatOut trait.
+dima-events = { workspace = true }
+dima-features = { workspace = true }
+dima-stream = { workspace = true }
+dima-billing = { workspace = true }
+dima-twitch = { workspace = true }
+# Foundation crates the handlers' dependencies come from.
+dima-core = { workspace = true }
+dima-store = { workspace = true }
+thiserror = { workspace = true }

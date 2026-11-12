@@ -1,0 +1,13 @@
+[package]
+name = "dima-services"
+description = "The API's services: command mutations and defaults, reward creation, settings, dashboard and usage reads, account deletion."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-actions = { workspace = true }

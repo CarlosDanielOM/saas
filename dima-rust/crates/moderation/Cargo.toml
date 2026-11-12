@@ -1,0 +1,18 @@
+[package]
+name = "dima-moderation"
+description = "Chat moderation: rules, permits, offenses, decisions, semantic review, variation jobs, the moderation handler and action executor."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-commands = { workspace = true }
+dima-ai = { workspace = true }
+dima-twitch = { workspace = true }
+dima-billing = { workspace = true }
+dima-model = { workspace = true }
+dima-store = { workspace = true }
