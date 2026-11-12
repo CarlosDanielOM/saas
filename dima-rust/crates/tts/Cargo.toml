@@ -1,0 +1,30 @@
+[package]
+name = "dima-tts"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-text.workspace = true
+dima-core.workspace = true
+dima-http.workspace = true
+dima-store.workspace = true
+dima-model.workspace = true
+dima-billing.workspace = true
+dima-twitch.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+bytes.workspace = true
+redis.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+dima-http = { workspace = true, features = ["test-util"] }
+dima-core = { workspace = true, features = ["test-util"] }
