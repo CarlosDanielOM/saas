@@ -11,6 +11,7 @@ use serde_json::{Map, Value};
 use tokio::sync::{Semaphore, mpsc};
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::Charge;
 use crate::codec;
 use crate::config::{Dispatch, QueueLimits, Recovery};
 use crate::connection::{Connection, Ticket};
@@ -156,6 +157,7 @@ pub(crate) trait ErasedDef: Send + Sync {
         conn: &Arc<Connection>,
         nsp: &str,
         auth: Map<String, Value>,
+        charge: Charge,
         ticket: Ticket,
     ) -> Result<(), Refusal>;
     /// Applies the recovery store's periodic sweep.
@@ -327,6 +329,7 @@ impl<N: Namespace> ErasedDef for Def<N> {
         conn: &Arc<Connection>,
         nsp: &str,
         auth: Map<String, Value>,
+        charge: Charge,
         ticket: Ticket,
     ) -> Result<(), Refusal> {
         let child = {
@@ -362,7 +365,7 @@ impl<N: Namespace> ErasedDef for Def<N> {
         let nsp = nsp.to_owned();
         shared
             .tasks
-            .spawn(run_socket(self, child, conn, nsp, auth, ticket));
+            .spawn(run_socket(self, child, conn, nsp, auth, charge, ticket));
         Ok(())
     }
 
@@ -429,6 +432,7 @@ async fn run_socket<N: Namespace>(
     conn: Arc<Connection>,
     nsp: String,
     auth: Map<String, Value>,
+    charge: Charge,
     ticket: Ticket,
 ) {
     let shared = Arc::clone(&def.shared);
@@ -455,7 +459,7 @@ async fn run_socket<N: Namespace>(
         }
     }
 
-    let handshake = Handshake::new(Arc::clone(&conn.first), auth, now);
+    let handshake = Handshake::new(Arc::clone(&conn.first), auth, charge, now);
     let (sid, pid, data, cursor) = match restored {
         Some(session) => (session.sid, session.pid, session.data, Some(session.cursor)),
         None => {
@@ -525,6 +529,7 @@ async fn run_socket<N: Namespace>(
         reason: OnceLock::new(),
         joined: std::sync::atomic::AtomicBool::new(false),
         inbound: inbound_tx,
+        inbound_bytes: Arc::default(),
         me: OnceLock::new(),
     });
     let _ = core.me.set(Arc::downgrade(&core));

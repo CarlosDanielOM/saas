@@ -97,9 +97,23 @@ pub enum DecodeError {
     InvalidPayload,
 }
 
-/// Decodes one packet as `Decoder.decodeString` does (see the module documentation for where it
-/// is stricter).
-pub fn decode(text: &str) -> Result<Packet, DecodeError> {
+/// A packet's header, read without touching its JSON: what the server needs to know whom the
+/// packet is for and to reserve the memory its data will take before parsing it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Head<'a> {
+    /// The packet type, `0`–`4`.
+    pub kind: u8,
+    /// The namespace (`/` when the packet names none).
+    pub nsp: &'a str,
+    /// The acknowledgement id, when there is one.
+    pub id: Option<u64>,
+    /// The JSON text, when there is one.
+    pub data: Option<&'a str>,
+}
+
+/// Reads the header of one packet as `Decoder.decodeString` does (see the module documentation
+/// for where it is stricter); [`decode_body`] finishes it once the JSON is parsed.
+pub fn decode_head(text: &str) -> Result<Head<'_>, DecodeError> {
     let mut rest = text;
     let kind = match rest.as_bytes().first() {
         Some(b'0') => 0,
@@ -148,13 +162,17 @@ pub fn decode(text: &str) -> Result<Packet, DecodeError> {
     } else {
         None
     };
+    Ok(Head {
+        kind,
+        nsp,
+        id,
+        data: (!rest.is_empty()).then_some(rest),
+    })
+}
 
-    let data = if rest.is_empty() {
-        None
-    } else {
-        Some(parse_json(rest)?)
-    };
-
+/// Finishes a packet from its header and its parsed JSON (`None` when it had none).
+pub fn decode_body(head: Head<'_>, data: Option<Value>) -> Result<Packet, DecodeError> {
+    let Head { kind, nsp, id, .. } = head;
     let kind = match (kind, data) {
         (0, None) => Kind::Connect(Map::new()),
         (0, Some(Value::Object(auth))) => Kind::Connect(auth),
@@ -177,6 +195,61 @@ pub fn decode(text: &str) -> Result<Packet, DecodeError> {
         nsp: nsp.to_owned(),
         kind,
     })
+}
+
+/// Decodes one packet as `Decoder.decodeString` does: [`decode_head`], the JSON, then
+/// [`decode_body`].
+#[cfg(test)]
+pub fn decode(text: &str) -> Result<Packet, DecodeError> {
+    let head = decode_head(text)?;
+    let data = head.data.map(parse_json).transpose()?;
+    decode_body(head, data)
+}
+
+/// An upper bound of the memory the parsed form of the JSON text `data` takes, computed from
+/// the text without parsing it (one pass, no allocation), so it can be reserved first.
+///
+/// What [`parse_json`] builds, on a 64-bit target: every value is a `Value`
+/// (`size_of::<Value>()`, 80 bytes with `preserve_order`) in a `Vec` that may have grown to
+/// twice its length; every object entry adds a bucket (hash, key `String`, value) in an
+/// `IndexMap` that may have grown to twice its length, plus its hash index; every array or
+/// object has a minimal capacity of four; string contents (keys included) take at most their
+/// text's length, twice over for growth. The number of values is at most the commas plus the
+/// opening brackets plus one, the number of entries at most the colons, both counted outside
+/// strings. So a 1,000,000-byte array of zeros (`[0,0,…]`) is bounded at about 80 MB (it really
+/// takes 40 to 80 MB), and a 1,000,000-byte string at 2 MB.
+pub fn parsed_size_bound(data: &str) -> usize {
+    const VALUE: usize = std::mem::size_of::<Value>();
+    const BUCKET: usize = VALUE + std::mem::size_of::<String>() + std::mem::size_of::<usize>();
+    const ENTRY: usize = 2 * BUCKET + 48;
+    const CONTAINER: usize = 4 * BUCKET + 64;
+    let (mut commas, mut colons, mut opens) = (0_usize, 0_usize, 0_usize);
+    let (mut in_string, mut escaped) = (false, false);
+    for &byte in data.as_bytes() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match byte {
+            b'"' => in_string = true,
+            b',' => commas += 1,
+            b':' => colons += 1,
+            b'[' | b'{' => opens += 1,
+            _ => {}
+        }
+    }
+    let values = commas.saturating_add(opens).saturating_add(1);
+    data.len()
+        .saturating_mul(2)
+        .saturating_add(values.saturating_mul(2 * VALUE))
+        .saturating_add(colons.saturating_mul(ENTRY))
+        .saturating_add(opens.saturating_mul(CONTAINER))
 }
 
 /// `[name, ...args]` with a string name that is not reserved, or a numeric name.
@@ -510,6 +583,74 @@ mod tests {
         assert_eq!(
             decode("2123456789012345678901234567890[\"a\"]"),
             Err(DecodeError::BadAckId)
+        );
+    }
+
+    /// The heap a parsed value holds, from the capacities of its vectors and strings (an
+    /// object's map, whose capacity is not exposed, is counted as grown to twice its length).
+    fn retained(value: &Value) -> usize {
+        const VALUE: usize = std::mem::size_of::<Value>();
+        match value {
+            Value::String(text) => text.capacity(),
+            Value::Array(items) => {
+                items.capacity() * VALUE + items.iter().map(retained).sum::<usize>()
+            }
+            Value::Object(map) => {
+                let bucket = VALUE + std::mem::size_of::<String>() + 8;
+                map.len() * (2 * bucket + 24)
+                    + map
+                        .iter()
+                        .map(|(key, value)| key.capacity() + retained(value))
+                        .sum::<usize>()
+            }
+            _ => 0,
+        }
+    }
+
+    /// Finding 2: the bound reserved before parsing is at least what the parsed value holds,
+    /// for the shapes that cost the most per byte of text.
+    #[test]
+    fn the_size_bound_covers_what_parsing_allocates() {
+        let mut shapes = vec![
+            "[]".to_owned(),
+            "{}".to_owned(),
+            "0".to_owned(),
+            format!("[{}0]", "0,".repeat(10_000)),
+            format!("[{}[]]", "[],".repeat(10_000)),
+            format!("[{}{{}}]", "{},".repeat(10_000)),
+            format!(
+                "{{{}\"z\":0}}",
+                (0..5_000)
+                    .map(|i| format!("\"{i}\":0,"))
+                    .collect::<String>()
+            ),
+            format!("[{}1]", "[1],".repeat(5_000)),
+            format!("\"{}\"", "a".repeat(100_000)),
+            format!("\"{}\"", "\\n".repeat(10_000)),
+            format!("{}0{}", "[".repeat(100), "]".repeat(100)),
+            format!("[{}\"\"]", "\"\",".repeat(10_000)),
+            format!("[{}\"😀é\"]", "\"😀é\",".repeat(3_000)),
+        ];
+        shapes.push(format!("[{}]", shapes.join(",")));
+        for text in &shapes {
+            let value = parse_json(text).unwrap();
+            let held = retained(&value);
+            let bound = parsed_size_bound(text);
+            assert!(
+                bound >= held,
+                "{} bytes of text: bound {bound} < {held}",
+                text.len()
+            );
+        }
+        // A long string costs about its length; dense numbers cost much more per byte.
+        let string = format!("\"{}\"", "a".repeat(1_000_000));
+        assert!(parsed_size_bound(&string) < 2_100_000);
+        let numbers = format!("[{}0]", "0,".repeat(499_999));
+        assert!(parsed_size_bound(&numbers) > 40_000_000);
+        // Commas, colons and brackets inside strings are text, not structure.
+        assert_eq!(
+            parsed_size_bound("\",:[{\\\",:[{\""),
+            parsed_size_bound("\"aaaaaaaaaa\"")
         );
     }
 

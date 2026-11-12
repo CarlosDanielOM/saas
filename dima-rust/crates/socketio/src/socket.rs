@@ -9,6 +9,7 @@ use serde_json::Value;
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::Charge;
 use crate::codec;
 use crate::config::{QueueLimits, Recovery};
 use crate::connection::Connection;
@@ -19,6 +20,9 @@ use crate::outbox::{Delivery, NotSent, Outgoing};
 
 /// An event from the client, as a reference listener receives it: the name, the arguments and,
 /// when the client called `emit` with a callback (or `emitWithAck`), the acknowledgement.
+///
+/// The memory its arguments take was reserved on the socket's inbound budget before they were
+/// parsed; it is given back when the event is dropped (the handler has finished with it).
 #[derive(Debug)]
 pub struct Event {
     /// The event name.
@@ -26,11 +30,17 @@ pub struct Event {
     /// The arguments after the name.
     pub args: Vec<Value>,
     ack: Option<Ack>,
+    _charge: Charge,
 }
 
 impl Event {
-    pub(crate) fn new(name: String, args: Vec<Value>, ack: Option<Ack>) -> Self {
-        Self { name, args, ack }
+    pub(crate) fn new(name: String, args: Vec<Value>, ack: Option<Ack>, charge: Charge) -> Self {
+        Self {
+            name,
+            args,
+            ack,
+            _charge: charge,
+        }
     }
 
     /// Whether the client waits for an acknowledgement.
@@ -77,9 +87,11 @@ pub(crate) trait AckSink: Send + Sync {
 /// The socket as the connection sees it, whatever its data type.
 pub(crate) trait ErasedSocket: Send + Sync {
     /// Queues a client event for the handler; `false` when the inbound queue is full.
-    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>) -> bool;
+    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>, charge: Charge) -> bool;
     /// An ACK from the client.
-    fn resolve_ack(&self, id: u64, args: Vec<Value>);
+    fn resolve_ack(&self, id: u64, args: Vec<Value>, charge: Charge);
+    /// The counter of this socket's inbound budget.
+    fn inbound_budget(&self) -> Arc<std::sync::atomic::AtomicUsize>;
     /// The socket leaves its namespace (`_onclose(reason)`): idempotent.
     fn leave(&self, reason: DisconnectReason);
     /// A server namespace disconnect: DISCONNECT packet, then leave.
@@ -88,9 +100,15 @@ pub(crate) trait ErasedSocket: Send + Sync {
     fn queue(&self) -> (u64, QueueLimits);
 }
 
+/// A client's answer, with the inbound memory it holds until the waiter has it.
+pub(crate) struct Answer {
+    args: Vec<Value>,
+    _charge: Charge,
+}
+
 pub(crate) struct SocketState {
     pub connected: bool,
-    acks: HashMap<u64, oneshot::Sender<Result<Vec<Value>, AckError>>>,
+    acks: HashMap<u64, oneshot::Sender<Result<Answer, AckError>>>,
 }
 
 /// The shared part of a socket.
@@ -111,6 +129,8 @@ pub(crate) struct Core<D> {
     /// Set once the socket is registered and its CONNECT packet went out.
     pub joined: AtomicBool,
     pub inbound: mpsc::Sender<Event>,
+    /// Inbound bytes held by this socket's events and answers (`max_inbound_bytes`).
+    pub inbound_bytes: Arc<std::sync::atomic::AtomicUsize>,
     pub me: OnceLock<std::sync::Weak<Core<D>>>,
 }
 
@@ -186,12 +206,12 @@ impl<D: Send + Sync + 'static> AckSink for Core<D> {
 }
 
 impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
-    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>) -> bool {
+    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>, charge: Charge) -> bool {
         let ack = ack.and_then(|id| {
             let me = self.me.get()?.upgrade()?;
             Some(Ack::new(id, me))
         });
-        match self.inbound.try_send(Event::new(name, args, ack)) {
+        match self.inbound.try_send(Event::new(name, args, ack, charge)) {
             Ok(()) => true,
             // Closed: the socket's task is gone; the reference ignores packets after
             // disconnection too.
@@ -200,11 +220,18 @@ impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
         }
     }
 
-    fn resolve_ack(&self, id: u64, args: Vec<Value>) {
+    fn resolve_ack(&self, id: u64, args: Vec<Value>, charge: Charge) {
         let waiting = self.lock().acks.remove(&id);
         if let Some(tx) = waiting {
-            let _ = tx.send(Ok(args));
+            let _ = tx.send(Ok(Answer {
+                args,
+                _charge: charge,
+            }));
         }
+    }
+
+    fn inbound_budget(&self) -> Arc<std::sync::atomic::AtomicUsize> {
+        Arc::clone(&self.inbound_bytes)
     }
 
     fn leave(&self, reason: DisconnectReason) {
@@ -414,7 +441,7 @@ impl<D: Send + Sync + 'static> Socket<D> {
             return Err(AckError::Send(error));
         }
         let answer = match tokio::time::timeout(timeout, rx).await {
-            Ok(Ok(answer)) => answer,
+            Ok(Ok(answer)) => answer.map(|answer| answer.args),
             Ok(Err(_)) => Err(AckError::Disconnected),
             Err(_) => Err(AckError::Timeout),
         };

@@ -1289,9 +1289,7 @@ async fn try_open(addr: std::net::SocketAddr) -> Result<impl Sized, Option<u16>>
     let url = format!("ws://{addr}/socket.io/?EIO=4&transport=websocket");
     match tokio_tungstenite::connect_async(url).await {
         Ok((mut ws, _)) => match tokio::time::timeout(5 * SECOND, ws.next()).await {
-            Ok(Some(Ok(message))) if message.to_text().is_ok_and(|t| t.starts_with('0')) => {
-                Ok(ws)
-            }
+            Ok(Some(Ok(message))) if message.to_text().is_ok_and(|t| t.starts_with('0')) => Ok(ws),
             _ => Err(None),
         },
         Err(tokio_tungstenite::tungstenite::Error::Http(response)) => {
@@ -1376,8 +1374,7 @@ async fn a_full_stream_quota_refuses_a_websocket_before_its_session_exists() {
         telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
         ..Runtime::default()
     };
-    let server =
-        TestServer::start_serving(options, runtime, serve, support::declare).await;
+    let server = TestServer::start_serving(options, runtime, serve, support::declare).await;
     let addr = server.addr;
     let (mut app_ws, _) = tokio_tungstenite::connect_async(format!("ws://{addr}/raw-ws"))
         .await
@@ -1419,5 +1416,81 @@ async fn a_full_namespace_refuses_further_sockets() {
     let probe = s.probe.clone();
     eventually("the socket left", || probe.sockets("/p").is_empty()).await;
     assert!(b.join("/p", &ok()).await.is_ok());
+    s.server.stop().await;
+}
+
+/// Finding 2: inbound memory is bounded in bytes. The parsed size of an event is reserved on
+/// its socket's budget before it is parsed and held until its handler returns; an event that
+/// does not fit closes the connection as an inbound overflow without being parsed. A long
+/// string costs about its length, so ordinary large events still pass.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn inbound_events_are_bounded_in_bytes() {
+    let options = Options {
+        max_inbound_bytes: 4 << 20,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/p", &ok()).await.unwrap();
+    let io = s.server.io.clone();
+    // The CONNECT data (`auth`, kept by the handshake) stays charged while the socket lives.
+    let joined = io.stats().inbound_bytes;
+    assert!(joined > 0);
+    // A 900 kB string: about 1.8 MB reserved, inside the 4 MiB budget.
+    let text = "x".repeat(900_000);
+    client.send(&format!("42/p,1[\"echo\",\"{text}\"]")).await;
+    let answer = client
+        .until(|t| t.starts_with("43/p,1"), 5 * SECOND)
+        .await
+        .unwrap();
+    assert_eq!(answer.len(), "43/p,1[\"\"]".len() + text.len());
+    eventually("the event's memory came back", || {
+        io.stats().inbound_bytes == joined
+    })
+    .await;
+    // While a handler holds an event, its memory stays reserved.
+    client.send("42/p,[\"sleep\",1500]").await;
+    eventually("the event is held", || io.stats().inbound_bytes > joined).await;
+    // 300 kB of zeros parse to far more than their text: refused before parsing.
+    let zeros = format!("[\"echo\",[{}0]]", "0,".repeat(150_000));
+    client.send(&format!("42/p,{zeros}")).await;
+    assert!(client.closed_within(3 * SECOND).await);
+    let seen = Arc::clone(&s.seen);
+    eventually("the socket left", || {
+        !seen.disconnects.lock().unwrap().is_empty()
+    })
+    .await;
+    assert_eq!(
+        s.seen.disconnects.lock().unwrap()[0],
+        ("/p".to_owned(), DisconnectReason::InboundOverflow)
+    );
+    eventually("everything was given back", || {
+        io.stats().inbound_bytes == 0
+    })
+    .await;
+    s.server.stop().await;
+}
+
+/// Finding 2: the server-wide inbound budget is shared by every client.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_server_wide_inbound_budget_is_shared() {
+    let options = Options {
+        max_inbound_total: 1 << 20,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut a = Ws::open(s.server.addr).await;
+    a.join("/p", &ok()).await.unwrap();
+    let mut b = Ws::open(s.server.addr).await;
+    b.join("/p", &ok()).await.unwrap();
+    // `a` holds about 800 kB in a sleeping handler.
+    let text = "y".repeat(400_000);
+    a.send(&format!("42/p,[\"sleep\",3000,\"{text}\"]")).await;
+    let io = s.server.io.clone();
+    eventually("a's event is held", || io.stats().inbound_bytes > 700_000).await;
+    // `b`'s 400 kB event does not fit in what is left.
+    b.send(&format!("42/p,[\"echo\",\"{text}\"]")).await;
+    assert!(b.closed_within(3 * SECOND).await);
+    assert!(!a.closed_within(Duration::from_millis(200)).await);
     s.server.stop().await;
 }

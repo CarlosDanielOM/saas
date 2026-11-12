@@ -317,9 +317,11 @@ mod tests {
         let requests: Vec<_> = (0..16)
             .map(|_| {
                 tokio::spawn(async {
-                    let response =
-                        serve(&accepting("deflate"), "/socket.io/socket.io.msgpack.min.js.map")
-                            .await;
+                    let response = serve(
+                        &accepting("deflate"),
+                        "/socket.io/socket.io.msgpack.min.js.map",
+                    )
+                    .await;
                     let encoding = response.headers().get(header::CONTENT_ENCODING).cloned();
                     let body = http_body_util::BodyExt::collect(response.into_body())
                         .await

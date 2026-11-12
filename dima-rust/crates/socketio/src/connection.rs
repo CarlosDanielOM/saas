@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::Charge;
 use crate::codec::{self, Kind};
 use crate::error::DisconnectReason;
 use crate::handshake::Origin;
@@ -102,6 +103,8 @@ pub(crate) struct Connection {
     posting: std::sync::atomic::AtomicBool,
     /// `engineioxide` was told to close the session.
     engine_closing: std::sync::atomic::AtomicBool,
+    /// Inbound bytes held for this connection's CONNECT data (the handshakes' `auth`).
+    inbound: Arc<std::sync::atomic::AtomicUsize>,
     /// This connection's slot of `max_connections`, given back when the session ends.
     slot: Mutex<Option<tokio::sync::OwnedSemaphorePermit>>,
 }
@@ -180,6 +183,7 @@ impl Connection {
             posting: std::sync::atomic::AtomicBool::new(false),
             engine_closing: std::sync::atomic::AtomicBool::new(false),
             slot: Mutex::new(Some(slot)),
+            inbound: Arc::default(),
         })
     }
 
@@ -239,41 +243,82 @@ impl Connection {
     // ----- inbound -------------------------------------------------------------------------
 
     /// One Engine.IO message (`Client.ondata` / `ondecoded`).
+    ///
+    /// The memory its data will take once parsed is reserved first, from its text
+    /// ([`codec::parsed_size_bound`]): on the socket's inbound budget for an event or an
+    /// acknowledgement, on the connection's for a CONNECT (its data stays as the handshake's
+    /// `auth`), and on the server-wide one. A packet that does not fit closes the connection
+    /// as an inbound overflow, as an event beyond the inbound queue does, without being parsed.
     pub fn on_message(self: &Arc<Self>, text: &str) {
         if self.is_closed() {
             return;
         }
-        let Ok(codec::Packet { nsp, kind }) = codec::decode(text) else {
+        let Ok(head) = codec::decode_head(text) else {
             self.shared.telemetry.protocol_error();
             self.close(DisconnectReason::ForcedClose);
             return;
         };
-        let kind = match kind {
-            Kind::Connect(auth) => return self.on_connect_packet(nsp, auth),
-            other => other,
-        };
-        let socket = match kind {
-            Kind::ConnectError => None,
-            _ => match self.state().entries.get(&nsp) {
+        let socket = match head.kind {
+            0 | 4 => None,
+            _ => match self.state().entries.get(head.nsp) {
                 Some(Entry::Joined(socket)) => Some(Arc::clone(socket)),
                 _ => None,
             },
         };
-        // A packet for a namespace this connection has not joined: `invalid state`.
-        let Some(socket) = socket else {
+        // A packet for a namespace this connection has not joined: `invalid state` (checked
+        // before its data is parsed).
+        if head.kind != 0 && head.kind != 4 && socket.is_none() {
             self.shared.telemetry.protocol_error();
             self.close(DisconnectReason::ForcedServerClose);
             return;
+        }
+        let amount = head.data.map_or(0, codec::parsed_size_bound);
+        let options = &self.shared.options;
+        let own = match &socket {
+            Some(socket) => socket.inbound_budget(),
+            None => Arc::clone(&self.inbound),
         };
-        match kind {
-            Kind::Event { name, args, ack } => {
-                if !socket.deliver(name, args, ack) {
+        let Some(charge) = Charge::take(
+            amount,
+            &self.shared.inbound_bytes,
+            options.max_inbound_total,
+            Some((&own, options.max_inbound_bytes)),
+        ) else {
+            self.shared.telemetry.inbound_overflow();
+            self.close(DisconnectReason::InboundOverflow);
+            return;
+        };
+        let packet = head
+            .data
+            .map(codec::parse_json)
+            .transpose()
+            .and_then(|data| codec::decode_body(head, data));
+        let Ok(codec::Packet { nsp, kind }) = packet else {
+            self.shared.telemetry.protocol_error();
+            self.close(DisconnectReason::ForcedClose);
+            return;
+        };
+        let socket = match (kind, socket) {
+            (Kind::Connect(auth), _) => return self.on_connect_packet(nsp, auth, charge),
+            (Kind::ConnectError, _) | (_, None) => {
+                // `invalid state`: a client does not send CONNECT_ERROR.
+                self.shared.telemetry.protocol_error();
+                self.close(DisconnectReason::ForcedServerClose);
+                return;
+            }
+            (kind, Some(socket)) => (kind, socket),
+        };
+        match socket {
+            (Kind::Event { name, args, ack }, socket) => {
+                if !socket.deliver(name, args, ack, charge) {
                     self.close(DisconnectReason::InboundOverflow);
                 }
             }
-            Kind::Ack { id, args } => socket.resolve_ack(id, args),
-            Kind::Disconnect => socket.leave(DisconnectReason::ClientNamespaceDisconnect),
-            Kind::Ignored | Kind::Connect(_) | Kind::ConnectError => {}
+            (Kind::Ack { id, args }, socket) => socket.resolve_ack(id, args, charge),
+            (Kind::Disconnect, socket) => {
+                socket.leave(DisconnectReason::ClientNamespaceDisconnect);
+            }
+            (Kind::Ignored | Kind::Connect(_) | Kind::ConnectError, _) => {}
         }
     }
 
@@ -284,7 +329,7 @@ impl Connection {
     }
 
     /// CONNECT (`Client.connect`): admission, then the namespace's own flow.
-    fn on_connect_packet(self: &Arc<Self>, nsp: String, auth: Map<String, Value>) {
+    fn on_connect_packet(self: &Arc<Self>, nsp: String, auth: Map<String, Value>, charge: Charge) {
         if self.shared.stopping() {
             return;
         }
@@ -325,7 +370,7 @@ impl Connection {
                 .entries
                 .insert(nsp.clone(), Entry::Pending(ticket.clone()));
         }
-        if let Err(refusal) = def.admit(self, &nsp, auth, ticket.clone()) {
+        if let Err(refusal) = def.admit(self, &nsp, auth, charge, ticket.clone()) {
             self.remove_pending(&nsp, &ticket);
             self.refuse(&nsp, refusal);
         }
@@ -583,7 +628,10 @@ impl Connection {
         };
         self.outbox().clear(&self.shared.outbound_bytes);
         self.state().guard = None;
-        self.slot.lock().unwrap_or_else(PoisonError::into_inner).take();
+        self.slot
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
         self.engine
             .lock()
             .unwrap_or_else(PoisonError::into_inner)

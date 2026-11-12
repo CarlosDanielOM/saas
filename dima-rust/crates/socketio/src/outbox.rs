@@ -785,7 +785,10 @@ mod tests {
         outbox.open_socket(1);
         let reliable = Delivery::Reliable;
         for packet in ["aaa", "bbb", "ccc"] {
-            assert_eq!(outbox.push(&channel, out(packet, &reliable), &total, 1000), Ok(()));
+            assert_eq!(
+                outbox.push(&channel, out(packet, &reliable), &total, 1000),
+                Ok(())
+            );
         }
         // Engine.IO took all three (its copies are gone) but wrote none.
         assert_eq!(channel.take_unwritten(3).len(), 3);
@@ -813,7 +816,10 @@ mod tests {
         outbox.open_socket(1);
         let reliable = Delivery::Reliable;
         for packet in ["a", "b", "c"] {
-            assert_eq!(outbox.push(&channel, out(packet, &reliable), &total, 1000), Ok(()));
+            assert_eq!(
+                outbox.push(&channel, out(packet, &reliable), &total, 1000),
+                Ok(())
+            );
         }
         let state = Delivery::Replaceable("state".to_owned());
         assert_eq!(
@@ -847,7 +853,10 @@ mod tests {
         assert_eq!(total.load(Ordering::Acquire), 0);
         // A socket that leaves gives its slots back.
         for packet in ["a", "b", "c"] {
-            assert_eq!(outbox.push(&channel, out(packet, &reliable), &total, 1000), Ok(()));
+            assert_eq!(
+                outbox.push(&channel, out(packet, &reliable), &total, 1000),
+                Ok(())
+            );
         }
         let _ = outbox.push(&channel, out("s3", &state), &total, 1000);
         outbox.forget_socket(1, &total);

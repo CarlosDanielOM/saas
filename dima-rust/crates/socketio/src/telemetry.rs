@@ -90,6 +90,8 @@ pub trait Telemetry: Send + Sync + 'static {
     fn recovery_evicted(&self, _namespace: &str, _what: Eviction) {}
     /// A client sent a packet that closed its connection (malformed, binary, wrong state).
     fn protocol_error(&self) {}
+    /// A client packet did not fit the inbound budgets: its connection was closed.
+    fn inbound_overflow(&self) {}
     /// A handler (check, connect, event, disconnect) panicked; the panic was contained.
     fn handler_panicked(&self, _namespace: &str) {}
 }

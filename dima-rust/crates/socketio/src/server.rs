@@ -67,6 +67,8 @@ pub(crate) struct Shared {
     pub recovery: recovery::Totals,
     /// Server-to-client acknowledgements awaited.
     pub pending_acks: AtomicUsize,
+    /// Inbound bytes held (parsed client data not yet finished with).
+    pub inbound_bytes: Arc<AtomicUsize>,
     namespaces: AtomicUsize,
     next_key: AtomicU64,
     next_ack: AtomicU64,
@@ -178,6 +180,7 @@ impl Builder {
             outbound_bytes: AtomicUsize::new(0),
             recovery: recovery::Totals::default(),
             pending_acks: AtomicUsize::new(0),
+            inbound_bytes: Arc::default(),
             namespaces: AtomicUsize::new(0),
             next_key: AtomicU64::new(1),
             next_ack: AtomicU64::new(0),
@@ -307,9 +310,7 @@ impl Builder {
                 }),
                 config,
             ),
-            connection_slots: Arc::new(tokio::sync::Semaphore::new(
-                shared.options.max_connections,
-            )),
+            connection_slots: Arc::new(tokio::sync::Semaphore::new(shared.options.max_connections)),
             capacity,
             shutting_down: AtomicBool::new(false),
             done: CancellationToken::new(),
@@ -532,6 +533,8 @@ pub struct Stats {
     pub sessions: usize,
     /// Server-to-client acknowledgements awaited.
     pub pending_acks: usize,
+    /// Inbound bytes held: client data reserved before parsing and not yet finished with.
+    pub inbound_bytes: usize,
 }
 
 impl SocketIo {
@@ -557,6 +560,7 @@ impl SocketIo {
             stored_bytes: shared.recovery.bytes.load(Ordering::Acquire),
             sessions: shared.recovery.sessions.load(Ordering::Acquire),
             pending_acks: shared.pending_acks.load(Ordering::Acquire),
+            inbound_bytes: shared.inbound_bytes.load(Ordering::Acquire),
         }
     }
 

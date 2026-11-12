@@ -52,6 +52,17 @@ pub struct Options {
     /// Events from one client socket waiting for their handler (256). A client that sends more
     /// while its handlers are busy has its connection closed (reason `inbound overflow`).
     pub max_inbound_queue: usize,
+    /// Memory one client socket's received data may hold at once (16 MiB): its events from the
+    /// moment they are received until their handler has returned, and the answers to its
+    /// acknowledgements until their waiter has them; for a connection, the `auth` data of its
+    /// CONNECT packets for as long as their sockets live. Reserved before the data is parsed,
+    /// from an upper bound of its parsed size (`codec::parsed_size_bound`: about twice the text
+    /// for strings, up to 80 times it for dense arrays of small values). A packet that does not
+    /// fit closes the connection (reason `inbound overflow`, not recoverable), like an event
+    /// beyond `max_inbound_queue`. The reference has no such bound.
+    pub max_inbound_bytes: usize,
+    /// The same, for all clients together (256 MiB).
+    pub max_inbound_total: usize,
     /// Server-to-client events waiting for their acknowledgement, per socket (32). Beyond,
     /// `emit_with_ack` fails at once.
     pub max_pending_acks: usize,
@@ -94,6 +105,8 @@ impl Default for Options {
             max_namespaces_per_connection: 8,
             max_namespace_name: 256,
             max_inbound_queue: 256,
+            max_inbound_bytes: 16 << 20,
+            max_inbound_total: 256 << 20,
             max_pending_acks: 32,
             max_pending_acks_total: 16_384,
             max_outbound_message: 16 << 20,
