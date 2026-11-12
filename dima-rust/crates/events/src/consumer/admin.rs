@@ -74,8 +74,11 @@ impl Listing {
     }
 }
 
+/// The route's cap on `limit` (`MAX_LIMIT`).
+pub const MAX_LIMIT: i64 = 100;
+
 /// The listing (see [`Listing`]): `status` and `consumer` as the route checked and trimmed them
-/// (`None` for all), `limit` already capped.
+/// (`None` for all); `limit` is held to 1 to [`MAX_LIMIT`].
 pub async fn list(
     store: &MongoStore,
     deadline: Duration,
@@ -83,6 +86,7 @@ pub async fn list(
     consumer: Option<&str>,
     limit: i64,
 ) -> Result<Listing, ConsumerError> {
+    let limit = limit.clamp(1, MAX_LIMIT);
     let mut filter = Document::new();
     if let Some(status) = status.filter(|s| !s.is_empty()) {
         filter.insert("status", status);

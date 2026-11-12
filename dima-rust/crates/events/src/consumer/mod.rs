@@ -63,9 +63,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 pub use config::{ConfigError, ConsumerConfig};
-pub use drain::{DeliveryOutcome, DeliveryRecord, DrainResult, Engine};
+pub use drain::{DeliveryOutcome, DeliveryRecord, DrainResult, Engine, HandledRecord};
 pub use handler::{DeliveryContext, Handler, Outcome};
-pub use runtime::{Report, Runtime};
+pub use runtime::{Report, Runtime, Silent};
 
 /// One consumer: its registry entry and its handler.
 #[derive(Clone, Debug)]

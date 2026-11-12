@@ -126,6 +126,22 @@ pub struct DeliveryRecord {
 /// A heartbeat's write in flight (none when terminated).
 type Renewal<'a> = std::pin::Pin<Box<Fuse<BoxFuture<'a, Result<bool, ConsumerError>>>>>;
 
+/// A handler that returned: how long its event waited and took (`observe('queue_wait', …)` before
+/// the handler and `observe('queue_total', …)` after it, both from `journaledAt`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HandledRecord {
+    /// The consumer.
+    pub consumer: &'static str,
+    /// The event's channel, when it has one.
+    pub channel_id: Option<String>,
+    /// From the journal time to the handler's start (at least 0).
+    pub queue_wait_ms: i64,
+    /// From the journal time to the handler's return (at least 0).
+    pub queue_total_ms: i64,
+    /// `ok` when it returned [`Outcome::Done`], `error` otherwise.
+    pub outcome: &'static str,
+}
+
 /// The sources whose events are validated against their contract before a handler sees them.
 const VALIDATED_SOURCES: [&str; 3] = ["twitch-eventsub", "twitch-eventsub-test", "polar-webhook"];
 
@@ -235,6 +251,19 @@ impl Engine {
             .scan(consumer.definition, topic, last, self.config.batch())
             .await?;
         Ok((last, events))
+    }
+
+    /// The journal events a pass of `consumer` would read on `topic` from a checkpoint at
+    /// `after`, read only (a dry run from any point of the journal).
+    pub async fn preview_from(
+        &self,
+        consumer: &Consumer,
+        topic: &str,
+        after: bson::oid::ObjectId,
+    ) -> Result<Vec<Document>, ConsumerError> {
+        self.records
+            .scan(consumer.definition, topic, after, self.config.batch())
+            .await
     }
 
     /// One pass of `consumer` (`drainDomainEvents`). Shutdown (`shutdown` fired) stops it
@@ -616,6 +645,11 @@ impl Engine {
             replay_count: number(claimed, "replayCount", 0.0) as i64,
             stop: stop.clone(),
         };
+        let journaled_at = envelope
+            .journaled_at_ms
+            .unwrap_or_else(|| self.clock.now_ms());
+        let channel_id = envelope.channel_id.clone();
+        let queue_wait_ms = (self.clock.now_ms() - journaled_at).max(0);
         let handler = consumer.handler.clone();
         let limit = Deadline {
             limit: millis(self.config.execution_timeout_ms),
@@ -687,6 +721,20 @@ impl Engine {
         drop(renewal);
         if lost {
             return Err(stopped(StopReason::LeaseLost));
+        }
+        let returned = match &result {
+            Ok(Outcome::Done) => Some("ok"),
+            Ok(_) | Err(DeadlineError::Panicked(_)) => Some("error"),
+            Err(_) => None,
+        };
+        if let Some(outcome) = returned {
+            self.report.handled(&HandledRecord {
+                consumer: definition.consumer,
+                channel_id,
+                queue_wait_ms,
+                queue_total_ms: (self.clock.now_ms() - journaled_at).max(0),
+                outcome,
+            });
         }
         match result {
             Ok(outcome) => Ok(outcome),

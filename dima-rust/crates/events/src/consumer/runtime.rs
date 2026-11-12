@@ -28,7 +28,7 @@
 //!   process must exit.
 
 use super::config::millis;
-use super::drain::{DeliveryRecord, DrainResult, Engine};
+use super::drain::{DeliveryRecord, DrainResult, Engine, HandledRecord};
 use super::{Consumer, ConsumerError};
 use crate::dispatch::{DispatchError, Dispatched, Dispatcher};
 use crate::wakeups::{Listener, PollSignal, WakeupConfig};
@@ -47,6 +47,8 @@ pub trait Report: Send + Sync + std::fmt::Debug {
     fn failed(&self, _consumer: &'static str, _error: &ConsumerError) {}
     /// A failed attempt (the reference's warn / error / info line).
     fn delivery(&self, _record: &DeliveryRecord) {}
+    /// A handler returned (the reference's `queue_wait` and `queue_total` observations).
+    fn handled(&self, _record: &HandledRecord) {}
     /// A dispatch that found events.
     fn dispatched(&self, _result: &Dispatched) {}
     /// A dispatch that failed (`Domain event dispatch failed`).
@@ -136,24 +138,37 @@ impl Runtime {
             .collect();
         // Hints wake the dispatcher, which wakes the consumers after a dispatch that found work
         // (without a dispatcher there is nothing to wake: the consumers sweep).
+        // Its own token, so it also stops when the run ends without a shutdown (a fatal error).
+        let listening = token.child();
         let listener = self
             .wakeups
             .as_ref()
             .filter(|_| self.dispatcher.is_some())
             .map(|(dragonfly, wakeups)| {
-                Listener::start(dragonfly, wakeups, dispatch_signal.clone(), token.clone())
+                Listener::start(
+                    dragonfly,
+                    wakeups,
+                    dispatch_signal.clone(),
+                    listening.clone(),
+                )
             });
 
+        // A consumer that fails for good (a handler that would not stop) ends the whole run:
+        // the other loops are dropped, which stops their handlers.
         let loops = async {
-            let dispatching = self.dispatch_loop(&token, &dispatch_signal, &signals);
+            let dispatching = async {
+                self.dispatch_loop(&token, &dispatch_signal, &signals).await;
+                Ok::<(), ConsumerError>(())
+            };
             let consuming = futures_util::future::try_join_all(
                 self.consumers
                     .iter()
                     .zip(&signals)
                     .map(|(consumer, signal)| self.consumer_loop(consumer, signal, &token)),
             );
-            let ((), consumed) = futures_util::future::join(dispatching, consuming).await;
-            consumed.map(|_| ())
+            futures_util::future::try_join(dispatching, consuming)
+                .await
+                .map(|_| ())
         };
         let backstop = async {
             token.wait().await;
@@ -169,6 +184,7 @@ impl Runtime {
         };
         dispatch_signal.stop();
         signals.iter().for_each(|signal| signal.stop());
+        listening.trigger();
         if let Some(listener) = listener {
             listener.join().await;
         }

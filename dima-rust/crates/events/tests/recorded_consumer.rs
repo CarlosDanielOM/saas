@@ -481,6 +481,12 @@ async fn the_runtime_writes_what_the_reference_writes() -> Result<()> {
                 "listing times {status:?} {consumer:?}"
             );
         }
+        // The limit is held to the route's bounds.
+        let one = admin::list(&store, deadline, None, None, 0).await?;
+        let capped = admin::list(&store, deadline, None, None, 1_000).await?;
+        ensure!(
+            one.deliveries.len() == 1 && capped.deliveries.len() as u64 == capped.total.min(100)
+        );
         Ok(())
     })
     .await

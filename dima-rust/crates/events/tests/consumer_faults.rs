@@ -1270,3 +1270,25 @@ async fn deliveries_left_by_the_typescript_runtime_are_taken_over() -> Result<()
     })
     .await
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_runtime_with_only_the_dispatcher_dispatches() -> Result<()> {
+    with_store(|store| async move {
+        journal(&store, Arc::new(SystemClock), "fault", &[("api", "ok")]).await?;
+        let shutdown = Shutdown::new();
+        let running = spawn(runtime(&store, FAST, Vec::new(), &ONE).await?, &shutdown);
+        until("dispatched", Duration::from_secs(10), || async {
+            Ok(count(&store, doc! { "status": "pending" }).await? == 1)
+        })
+        .await?;
+        shutdown.trigger();
+        running.await??;
+        let marked = store
+            .documents(domain_events::COLLECTION)
+            .count_documents(doc! { "dispatchPending": true })
+            .await?;
+        ensure!(marked == 0, "the marker is cleared");
+        Ok(())
+    })
+    .await
+}
