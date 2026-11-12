@@ -213,8 +213,11 @@ async fn a_grant_is_topped_up_once_on_the_balance_verified_before_it() {
     };
     assert!(newly_stored);
     assert_eq!(top_up, TopUp::Applied);
-    let (_, _, balance) = before.expect("verified before the grant");
-    assert_eq!(env.cached_balance().await, balance + 500.0);
+    let before = before.expect("verified before the grant");
+    assert_eq!(
+        env.cached_balance().await,
+        before.for_spending().balance + 500.0
+    );
     assert_eq!(polar.stored(), 1);
     assert_eq!(
         env.pending(&request).await,
@@ -260,7 +263,7 @@ async fn a_lost_answer_and_a_retry_grant_once_and_top_up_nothing_twice() {
     assert_eq!(top_up, TopUp::Refused);
     assert_eq!(polar.stored(), 1);
     // What the cache shows is Polar's own figure (which holds the grant): counted once.
-    let (_, _, polar_figure) = before.expect("verified");
+    let polar_figure = before.expect("verified").polar_reported().balance;
     assert_eq!(env.cached_balance().await, polar_figure);
     env.cleanup(&request).await;
 }
@@ -279,7 +282,7 @@ async fn two_identical_requests_at_once_grant_once() {
         let AdminGrant::Granted { before, .. } = outcome else {
             panic!("{outcome:?}");
         };
-        highest = highest.max(before.map_or(f64::MIN, |(_, _, b)| b));
+        highest = highest.max(before.map_or(f64::MIN, |b| b.for_spending().balance));
     }
     assert_eq!(polar.stored(), 1);
     assert!(

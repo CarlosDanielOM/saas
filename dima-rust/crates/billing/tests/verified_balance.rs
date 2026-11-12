@@ -179,7 +179,15 @@ async fn a_verified_balance_is_what_was_published() {
         .verified_balance(&owner(), &channel, &NoLookup, &now(1000.0))
         .await
         .unwrap();
-    assert_eq!((verified.used(), verified.balance()), (1500.0, 23_500.0));
+    let spending = verified.for_spending();
+    assert_eq!((spending.used, spending.balance), (1500.0, 23_500.0));
+    let polar = verified.polar_reported();
+    assert_eq!(
+        (polar.used, polar.balance),
+        (1000.0, 24_000.0),
+        "Polar's own figure"
+    );
+    assert_eq!((verified.held(), verified.unsettled_held()), (500.0, 500.0));
     assert_eq!(cached(&dragonfly, &channel).await["balance"], json!(23_500));
     let read = cache
         .get_ai_credits(
@@ -208,7 +216,7 @@ async fn a_top_up_applies_once_on_top_of_the_read_that_verified_it() {
         .verified_balance(&owner(), &channel, &NoLookup, &now(25_000.0))
         .await
         .unwrap();
-    assert_eq!(verified.balance(), 0.0);
+    assert_eq!(verified.for_spending().balance, 0.0);
     assert!(cache.is_ai_credits_exhausted(&channel).await.unwrap());
     cache
         .record_ai_credit_usage(&channel, 10.0, Some("aiu_since"))

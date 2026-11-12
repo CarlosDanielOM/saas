@@ -188,8 +188,8 @@ async fn an_unverified_balance_is_marked_and_never_the_basis_of_a_grant() {
         .unwrap();
     assert_eq!(
         (
-            verified.used(),
-            verified.balance(),
+            verified.polar_reported().used,
+            verified.polar_reported().balance,
             verified.verified_at_ms()
         ),
         (1234.0, 23_766.0, T0)
@@ -220,7 +220,10 @@ async fn an_unverified_balance_is_marked_and_never_the_basis_of_a_grant() {
         .await
         .unwrap();
     assert_eq!(fresh.state, BalanceState::Verified { at_ms: T0 });
-    assert_eq!(fresh.verified().map(|v| v.used()), Some(1234.0));
+    assert_eq!(
+        fresh.verified().map(|v| v.polar_reported().used),
+        Some(1234.0)
+    );
     support::cleanup(&dragonfly, &channel).await.unwrap();
     let no_meter = State(Some(json!({"active_meters": []})));
     let invented = cache

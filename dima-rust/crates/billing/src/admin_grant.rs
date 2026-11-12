@@ -28,6 +28,7 @@
 //! The Dragonfly key is *rebuilt* at cutover (dropped): a pending grant lost with it can be
 //! granted again by a retry, which is the reference's behaviour.
 
+use crate::plans::credits::VerifiedBalance;
 use crate::plans::credits_cache::{
     CreditsCache, CustomerStateSource, PlanLookup, PlanOwner, TopUp, UnverifiedBalance,
 };
@@ -97,8 +98,10 @@ pub enum AdminGrant {
         operation_id: OperationId,
         /// Whether Polar stored it with this call (`false`: it already held it).
         newly_stored: bool,
-        /// The verified balance before the grant (`used`, `limit`, `balance`), when there was one.
-        before: Option<(f64, f64, f64)>,
+        /// The balance verified before the grant, when there was one: Polar's figures
+        /// ([`VerifiedBalance::polar_reported`]) and the spending figures the cache held
+        /// ([`VerifiedBalance::for_spending`], what the reference answered as `before`).
+        before: Option<VerifiedBalance>,
         /// The local top-up.
         top_up: TopUp,
     },
@@ -211,10 +214,7 @@ impl AdminGrants<'_> {
                     .stored
                     .as_ref()
                     .is_some_and(|stored| stored.inserted >= 1.0 && stored.duplicates <= 0.0);
-                let before = verified
-                    .as_ref()
-                    .ok()
-                    .map(|v| (v.used(), v.limit(), v.balance()));
+                let before = verified.as_ref().ok().cloned();
                 let top_up = match (&verified, newly_stored) {
                     (Ok(verified), true) => self
                         .cache

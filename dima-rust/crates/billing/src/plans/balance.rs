@@ -65,6 +65,11 @@
 //! | more than [`MOST_QUEUED`] events wait to be counted | nothing changes ([`Publication::Backlog`]) |
 //! | the figure is older than [`MAX_FIGURE_AGE_MS`] | nothing changes ([`Publication::Stale`]) |
 //!
+//! An accepted publication also answers what it held and how much of that is unsettled at
+//! Polar ([`Held`], item 1 of P2-BILLING-02c): a verified balance carries Polar's own figure
+//! beside the stored one ([`super::credits::VerifiedBalance`]), so a reset computes from Polar's
+//! and waits while a debit Polar may or may not count is held.
+//!
 //! A webhook's snapshot ([`SYNC`]) is ordered by its snapshot version as in the reference (an
 //! equal version is published again), within the generation read when its projection began, and
 //! held the same way, dated by its `occurredAt`. Publishing the same snapshot twice stores the
@@ -245,19 +250,52 @@ pub enum Publication {
     Stale,
 }
 
-/// Decodes `{status, value, publications}`: the publication and, when it was accepted, the
-/// publications accepted in the generation with it.
-pub(crate) fn publication(value: redis::Value) -> Result<(Publication, i64), DragonflyError> {
+/// What an accepted publication held against Polar's figure (item 1 of P2-BILLING-02c), in
+/// whole credits.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Held {
+    /// Every debit held: Polar's figure minus this is the spending figure stored.
+    pub(crate) total: f64,
+    /// The part of `total` whose count at Polar is not settled: an acknowledged debit Polar's
+    /// meter may not count yet, or a queued one Polar has not stored or answered. Polar's figure
+    /// may or may not include it, so nothing computed from Polar's figure (a reset) can be
+    /// sound while it is above 0.
+    pub(crate) unsettled: f64,
+}
+
+/// What [`PUBLISH`] answered.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Published {
+    /// What happened.
+    pub(crate) publication: Publication,
+    /// When accepted: the publications accepted in the generation with it.
+    pub(crate) count: i64,
+    /// When accepted: what was held.
+    pub(crate) held: Held,
+}
+
+/// Decodes `{status, value, publications, held, unsettled}`.
+pub(crate) fn publication(value: redis::Value) -> Result<Published, DragonflyError> {
     let mut items = reply::array(value)?.into_iter();
-    let (Some(status), Some(raw), Some(count), None) =
-        (items.next(), items.next(), items.next(), items.next())
-    else {
+    let (Some(status), Some(raw), Some(count), Some(total), Some(unsettled), None) = (
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+        items.next(),
+    ) else {
         return Err(DragonflyError::Reply("unexpected publication reply"));
     };
     let raw = reply::text(raw)?;
     let count = reply::int(count)?;
-    Ok((
-        match reply::int(status)? {
+    #[allow(clippy::cast_precision_loss)]
+    let held = Held {
+        total: reply::int(total)? as f64,
+        unsettled: reply::int(unsettled)? as f64,
+    };
+    Ok(Published {
+        publication: match reply::int(status)? {
             1 => Publication::Accepted(raw),
             2 => Publication::Superseded(raw),
             0 => Publication::Fenced,
@@ -267,7 +305,8 @@ pub(crate) fn publication(value: redis::Value) -> Result<(Publication, i64), Dra
             _ => return Err(DragonflyError::Reply("unexpected publication status")),
         },
         count,
-    ))
+        held,
+    })
 }
 
 /// The local top-up after a grant ([`super::credits_cache::CreditsCache::top_up`]).
