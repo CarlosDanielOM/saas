@@ -1,0 +1,8033 @@
+[
+  {
+    "stream_activities": [],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "active": {
+          "ids": []
+        },
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberInt": "0"
+        },
+        "owner": "<owner>"
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "2.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "1.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "1.0"
+        },
+        "emotes": {
+          "$numberDouble": "2.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "1.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "2.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "1.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "1.0"
+        },
+        "emotes": {
+          "$numberDouble": "2.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "1.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "1.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "2.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "3.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "5.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "3.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "5.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "3.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": false,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "4.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "4.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "4.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "5.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "5.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "stream_activities": [
+      {
+        "_id": "092ab77f49f1cba4f11afdc9310b7c350a9645a0973c24fb590ee88ea52674b1",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "43bd90b381a7038500b1b29b07911f8db3c8586e3709a8c4a3c507797e82c0ac",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "key": "!hello",
+        "kind": "message",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "offset": {
+          "$numberInt": "1"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "54ba34be208b75476b42ad22a58b7d9381b34633ce5440c96f07ef6614eeba71",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "key": "!hello",
+        "kind": "redemption",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355080000"
+          }
+        },
+        "offset": {
+          "$numberInt": "480"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "94969f81b0e9e05e23df7c5ddde2ca3fd33cbecabeb4a9ce22c0043fea5c599a",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130950000"
+          }
+        },
+        "key": "!hello",
+        "kind": "bits",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "offset": {
+          "$numberInt": "350"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberDouble": "12.5"
+        }
+      },
+      {
+        "_id": "9b8b3b5b97e16844d0b1a96862a7f4c358d5ba83742cf1346d9b2b0488b56270",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131070000"
+          }
+        },
+        "key": "!hello",
+        "kind": "sub",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355070000"
+          }
+        },
+        "offset": {
+          "$numberInt": "470"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "9d33b56012be2a52b314cba99012a0dbbeee2f948bbe5b8d9cbe553da3ca3e66",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131060000"
+          }
+        },
+        "key": "!hello",
+        "kind": "follow",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355060000"
+          }
+        },
+        "offset": {
+          "$numberInt": "460"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "_id": "a7b25fcbd8079d2d74d05dfcb2ce177c29567edd0f4ef53e01b18cc705c79e99",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131000000"
+          }
+        },
+        "key": "!hello",
+        "kind": "raid",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355000000"
+          }
+        },
+        "offset": {
+          "$numberInt": "400"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "30"
+        }
+      },
+      {
+        "_id": "e80d88872340cab8d16fc1f63da2cdf7215b4c1f5695738b76b702177929c952",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131050000"
+          }
+        },
+        "key": "!hello",
+        "kind": "gift",
+        "label": "Hello👋éשם",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794355050000"
+          }
+        },
+        "offset": {
+          "$numberInt": "450"
+        },
+        "outcome": "error",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "5"
+        }
+      },
+      {
+        "_id": "f1d47da3f3acbc65dcc189ce777291ed79c13c9b15215e674054eaf0b5d8c407",
+        "actor": "viewer",
+        "actorLabel": "שם👋é",
+        "channelID": "channel",
+        "dashboardProcessed": null,
+        "emotes": [
+          {
+            "key": "twitch:25",
+            "label": "Kappa👋éשם",
+            "count": {
+              "$numberInt": "2"
+            }
+          }
+        ],
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "key": "",
+        "kind": "message",
+        "label": "",
+        "occurredAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "offset": {
+          "$numberInt": "10"
+        },
+        "outcome": "ok",
+        "processed": true,
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "value": {
+          "$numberInt": "1"
+        }
+      }
+    ],
+    "stream_activity_aggregates": [
+      {
+        "_id": "10967e7f03532c49274aee8f703ac38da651b0bd2e9023eaabd84e914a33e94b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "Kappa👋éשם",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "64230fe0cf3bf2f670585411432af9f6c41e431e91ece85926d0f8f7903c86d8",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "summary",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "7f26e91f5f4e54769fba0c01fdf0a7ff14c25da344bd3cf7cb90aaf9ff6882c2",
+        "actor": "",
+        "bits": {
+          "$numberDouble": "12.5"
+        },
+        "bucket": {
+          "$numberLong": "1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802131080000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354950000"
+          }
+        },
+        "follows": {
+          "$numberDouble": "1.0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "5.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberDouble": "1.0"
+        },
+        "redemptions": {
+          "$numberDouble": "1.0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberDouble": "6.0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "83c04acbf0f5534f70a3a80683c381d45d8a6a2fd6c457504a2f65b8f56f563b",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "Hello👋éשם",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "rank",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "942388e8cfa415f83b253c67390c07d5014d492fac00062c6ff3276a24ce6226",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130601000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstSeq": {
+          "$numberDouble": "1.0"
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "message",
+        "lastSeq": {
+          "$numberInt": "0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "distinct",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        }
+      },
+      {
+        "_id": "c8cabc96c043dcb43fad2c1f9d0df68f662a79ab8fc8c39f3234e4bc23a4eaec",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "4.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "twitch:25",
+        "kind": "emote",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "d861ddd960d296cba338865c91616160fbb219435e93b91fcca2bf201a1ee42d",
+        "actor": "",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "0"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberDouble": "1.0"
+        },
+        "commands": {
+          "$numberDouble": "1.0"
+        },
+        "count": {
+          "$numberInt": "0"
+        },
+        "emoteMessages": {
+          "$numberDouble": "2.0"
+        },
+        "emotes": {
+          "$numberDouble": "4.0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberInt": "0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "",
+        "kind": "",
+        "label": "",
+        "lastSeq": {
+          "$numberDouble": "2.0"
+        },
+        "messageStartedAt": {
+          "$date": {
+            "$numberLong": "1794354601000"
+          }
+        },
+        "messages": {
+          "$numberDouble": "2.0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "chart",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      },
+      {
+        "_id": "e729d51e86f0c6b902c26256cf0e5821094a4c42aa32937ede60fc91c65fb0ff",
+        "actor": "viewer",
+        "bits": {
+          "$numberInt": "0"
+        },
+        "bucket": {
+          "$numberLong": "-1"
+        },
+        "channelID": "channel",
+        "chatters": {
+          "$numberInt": "0"
+        },
+        "commands": {
+          "$numberInt": "0"
+        },
+        "count": {
+          "$numberDouble": "1.0"
+        },
+        "emoteMessages": {
+          "$numberInt": "0"
+        },
+        "emotes": {
+          "$numberInt": "0"
+        },
+        "expiresAt": {
+          "$date": {
+            "$numberLong": "1802130610000"
+          }
+        },
+        "failures": {
+          "$numberDouble": "1.0"
+        },
+        "firstAt": {
+          "$date": {
+            "$numberLong": "1794354610000"
+          }
+        },
+        "follows": {
+          "$numberInt": "0"
+        },
+        "key": "!hello",
+        "kind": "command",
+        "label": "שם👋é",
+        "lastSeq": {
+          "$numberDouble": "1.0"
+        },
+        "messages": {
+          "$numberInt": "0"
+        },
+        "raids": {
+          "$numberInt": "0"
+        },
+        "redemptions": {
+          "$numberInt": "0"
+        },
+        "scope": "actor",
+        "session_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "subs": {
+          "$numberInt": "0"
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ],
+    "stream_activity_states": [
+      {
+        "_id": "projector-v1",
+        "leaseUntil": {
+          "$date": {
+            "$numberLong": "0"
+          }
+        },
+        "seq": {
+          "$numberDouble": "5.0"
+        },
+        "owner": "<owner>",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        }
+      }
+    ]
+  }
+]
