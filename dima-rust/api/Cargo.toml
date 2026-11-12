@@ -1,0 +1,29 @@
+[package]
+name = "dima-server"
+description = "The API process: HTTP and Socket.IO on port 3000. Wiring only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "dima-server"
+path = "src/main.rs"
+
+[dependencies]
+# What the API runs (ledger/upper-layers.md section 2.3): dima-routes, which brings in
+# everything the API serves.
+dima-routes = { workspace = true }
+# Wiring: the environment, the engine's stack contract, telemetry.
+dima-core = { workspace = true }
+dima-engine = { workspace = true }
+dima-telemetry = { workspace = true }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+nix = { workspace = true }

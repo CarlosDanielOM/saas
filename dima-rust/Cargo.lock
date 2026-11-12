@@ -1952,6 +1952,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dima-core",
+ "dima-engine",
+ "dima-routes",
+ "dima-telemetry",
+ "nix",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "dima-services"
 version = "0.1.0"
 dependencies = [
