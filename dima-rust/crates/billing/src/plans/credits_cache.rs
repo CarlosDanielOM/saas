@@ -373,6 +373,7 @@ impl CreditsCache {
             balance::revision_key(channel_id),
             crate::polar::flush::queue_key(channel_id),
             crate::polar::flush::processing_key(channel_id),
+            crate::polar::flush::dead_letter_key(channel_id),
         ];
         let args = [
             version.to_owned(),
@@ -387,6 +388,7 @@ impl CreditsCache {
             balance::MAX_FIGURE_AGE_MS.to_string(),
             balance::QUEUED_HOLD_MS.to_string(),
             balance::MOST_QUEUED.to_string(),
+            balance::DEAD_LETTER_SKEW_MS.to_string(),
         ];
         balance::publication(
             balance::PUBLISH

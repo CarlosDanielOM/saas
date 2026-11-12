@@ -791,6 +791,7 @@ pub async fn project_credit_snapshot(
             super::balance::revision_key(id),
             crate::polar::flush::queue_key(id),
             crate::polar::flush::processing_key(id),
+            crate::polar::flush::dead_letter_key(id),
         ];
         let args = [
             snapshot_version.clone(),
@@ -810,6 +811,7 @@ pub async fn project_credit_snapshot(
             super::balance::MAX_FIGURE_AGE_MS.to_string(),
             super::balance::QUEUED_HOLD_MS.to_string(),
             super::balance::MOST_QUEUED.to_string(),
+            super::balance::DEAD_LETTER_SKEW_MS.to_string(),
         ];
         let reply = super::balance::SYNC
             .run_value(stores.dragonfly, &keys, &args)

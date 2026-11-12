@@ -1,8 +1,10 @@
 -- Rust-only (P2-BILLING-01c item 1): the hold of local debits, shared by every script that
 -- writes a channel's revision hash `twitch:{id}:ai:credits:revision` (see `plans/balance.rs`).
 -- Fields: `gen` (the generation: a random token set when the hash is created), `pub` (the
--- publications accepted in it), `h:{ms}` (credits held for a figure from Polar dated before that
--- time, rounded up). A balance whose hash is gone belongs to a lost generation.
+-- publications accepted in it), `h:{ms}` (credits of acknowledged events held for a figure from
+-- Polar dated before that time, rounded up). A balance whose hash is gone belongs to a lost
+-- generation. An event that is not acknowledged is held by the list that holds it: the queue,
+-- the processing list or the dead-letter list (P2-BILLING-02c item 3: one event, one hold).
 local function holdKind(key)
     local t = redis.call('TYPE', key)
     if type(t) == 'table' then t = t.ok end
@@ -52,9 +54,11 @@ local function heldAt(revision, asOf, floor)
     return held
 end
 -- The credits of the usage events still queued or claimed (Polar has not acknowledged them),
--- each held until its queuing time plus `holdMs`; nil when more than `most` are waiting.
+-- each held until its queuing time plus `holdMs`, and how many items were read; nil when more
+-- than `most` are waiting.
 local function queuedHeld(queue, processing, asOf, holdMs, most)
-    if redis.call('LLEN', queue) + redis.call('LLEN', processing) > most then return nil end
+    local waiting = redis.call('LLEN', queue) + redis.call('LLEN', processing)
+    if waiting > most then return nil, waiting end
     local held = 0
     for _, key in ipairs({queue, processing}) do
         local items = redis.call('LRANGE', key, 0, most - 1)
@@ -65,6 +69,46 @@ local function queuedHeld(queue, processing, asOf, holdMs, most)
                 if not queuedAt or queuedAt + holdMs > asOf then
                     held = held + holdCredits(event.metadata.credits)
                 end
+            end
+        end
+    end
+    return held, waiting
+end
+-- A dead-letter entry (`{"reason","at"[,"held":false]}`, a newline, the event's bytes): its
+-- header and event, each nil when it does not decode.
+local function deadEntry(entry)
+    local newline = string.find(entry, '\n', 1, true)
+    if not newline then return nil, nil end
+    local okHeader, header = pcall(cjson.decode, string.sub(entry, 1, newline - 1))
+    local okEvent, event = pcall(cjson.decode, string.sub(entry, newline + 1))
+    if not okHeader or type(header) ~= 'table' then header = nil end
+    if not okEvent or type(event) ~= 'table' then event = nil end
+    return header, event
+end
+-- The credits of the dead-lettered usage events (Polar refused them for good; an operator
+-- settles or requeues them, and the hold goes with the entry): each held until its queuing time
+-- (else the time it was set aside) plus `holdMs`, except an entry marked `"held":false` (refused
+-- before it was queued: nothing was debited). Entries are appended as they are set aside, so
+-- only the newest `most` are read; nil when the newest entry left unread was set aside less than
+-- `holdMs + skew` before `asOf` (it, or one before it, may still be held).
+local function deadHeld(dead, asOf, holdMs, skew, most)
+    local length = redis.call('LLEN', dead)
+    if length == 0 then return 0 end
+    local count = math.max(0, math.min(length, most))
+    if length > count then
+        local header = deadEntry(redis.call('LINDEX', dead, length - count - 1))
+        local at = header and tonumber(header.at)
+        if not at or at + holdMs + skew > asOf then return nil end
+    end
+    local held = 0
+    if count == 0 then return held end
+    local items = redis.call('LRANGE', dead, length - count, length - 1)
+    for i = 1, #items do
+        local header, event = deadEntry(items[i])
+        if header and header.held ~= false and event and type(event.metadata) == 'table' then
+            local since = tonumber(event.queuedAt) or tonumber(header.at)
+            if since and since + holdMs > asOf then
+                held = held + holdCredits(event.metadata.credits)
             end
         end
     end
