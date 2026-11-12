@@ -31,6 +31,15 @@ pub enum DragonflyError {
     /// fixed category and a position only: serde's own message quotes the offending input.
     #[error(transparent)]
     Decode(#[from] DecodeError),
+    /// A Lua script was refused before it was sent: it has a loop without an iteration bound,
+    /// or a fenced transition does not read its fence (`MIGRATION.md` data rule 7).
+    #[error("Lua script {name} refused: {reason}")]
+    ScriptRefused {
+        /// The script's name.
+        name: &'static str,
+        /// Which rule it breaks.
+        reason: &'static str,
+    },
     /// The subscriber task has stopped (it was shut down or its owner dropped it).
     #[error("Dragonfly subscriber has stopped")]
     SubscriberClosed,

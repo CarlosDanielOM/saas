@@ -7,7 +7,10 @@ mod dragonfly_support;
 
 use anyhow::{Context, Result, ensure};
 use dima_store::dragonfly::queue::presets;
-use dima_store::dragonfly::{DelayQueue, End, ListQueue, ProcessingList, QueueItem};
+use dima_store::dragonfly::{
+    DelayQueue, DragonflyError, End, Fence, FencedTransition, ListQueue, ProcessingList, QueueItem,
+    SetOptions, Transition,
+};
 use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -107,14 +110,14 @@ async fn claim_acknowledge_requeue_and_recover_use_the_popped_bytes() -> Result<
         reencoded != first,
         "the lone surrogate must not survive a re-encode"
     );
-    ensure!(processing.acknowledge(&df, &reencoded).await? == 0);
-    ensure!(processing.acknowledge(&df, &first).await? == 1);
+    ensure!(processing.acknowledge_unfenced(&df, &reencoded).await? == 0);
+    ensure!(processing.acknowledge_unfenced(&df, &first).await? == 1);
     ensure!(!processing.contains(&df, &first).await?);
 
     // The non-UTF-8 item: requeue to the tail with its exact bytes, recover the other claim.
     ensure!(second.as_str().is_none());
     queue.push_at(&df, &second, End::Right).await?;
-    ensure!(processing.acknowledge(&df, &second).await? == 1);
+    ensure!(processing.acknowledge_unfenced(&df, &second).await? == 1);
     let tail: Vec<Vec<u8>> = df
         .query(redis::cmd("LRANGE").arg(queue.key()).arg(-1).arg(-1))
         .await?;
@@ -122,7 +125,7 @@ async fn claim_acknowledge_requeue_and_recover_use_the_popped_bytes() -> Result<
 
     let third = queue.claim(&df, &processing).await?.context("claim")?;
     let recovered = processing
-        .recover_one(&df, &queue)
+        .recover_one_unfenced(&df, &queue)
         .await?
         .context("recover")?;
     ensure!(recovered == third);
@@ -247,4 +250,118 @@ async fn delay_queue_claims_are_single_delivery() -> Result<()> {
     ensure!(winners == 1, "{winners} winners");
     ensure!(queue.pop_min(&df).await? == Some((later, 5_000.0)));
     cleanup(&df, &p).await
+}
+
+/// The stream memory worker's retry after a failed adoption (`stream_memory.worker.ts:399`),
+/// verbatim: lease check, then move the exact claim back to the queue's head.
+static STREAM_MEMORY_RETRY: FencedTransition = FencedTransition::new(
+    "STREAM_MEMORY_RETRY",
+    "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end if redis.call('LREM', KEYS[2], 1, ARGV[2]) > 0 then return redis.call('LPUSH', KEYS[3], ARGV[2]) end return 0",
+);
+
+/// `CLIP_CLAIM_SCRIPTS.deadLetter` (`clip_recommendation_claims.ts`), verbatim (checked below).
+static CLIP_DEAD_LETTER: FencedTransition = FencedTransition::new(
+    "CLIP_CLAIM_SCRIPTS.deadLetter",
+    "
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end
+if not redis.call('LPOS', KEYS[2], ARGV[2]) then return 0 end
+local pushed = redis.pcall('RPUSH', KEYS[3], ARGV[3])
+if type(pushed) == 'table' and pushed.err then return redis.error_reply(pushed.err) end
+redis.call('LREM', KEYS[2], 1, ARGV[2])
+if #KEYS > 3 then redis.call('DEL', KEYS[4]) end
+return 1
+",
+);
+
+/// The worked example: a consumer registers its own fenced transitions and runs them through
+/// the checked runner. A process that lost the lease changes nothing; the owner's retry and dead
+/// letter are atomic with the lease check.
+#[tokio::test]
+async fn fenced_transitions_check_the_lease_inside_the_script() -> Result<()> {
+    let reference = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../dimabot/src/utils/ai/clip_recommendations/clip_recommendation_claims.ts"
+    ))?;
+    ensure!(
+        reference.contains(&format!(
+            "deadLetter: `{}`",
+            CLIP_DEAD_LETTER.script().source()
+        )),
+        "the dead-letter script is not the reference's text"
+    );
+    let Some(df) = connect(DB).await? else {
+        return Ok(());
+    };
+    let p = prefix("fenced");
+    let result = async {
+        let lease = format!("{p}lock");
+        let dedupe = format!("{p}dedupe");
+        let queue = ListQueue::new(Cow::Owned(format!("{p}queue")), End::Left, End::Left);
+        let processing = ProcessingList::new(Cow::Owned(format!("{p}processing")), End::Right);
+        let dead = format!("{p}dead");
+        df.set(&lease, b"owner-a", SetOptions::default()).await?;
+        df.set(&dedupe, b"1", SetOptions::default()).await?;
+        let ours = Fence { lease_key: &lease, owner: b"owner-a" };
+        let stale = Fence { lease_key: &lease, owner: b"owner-b" };
+
+        let item = QueueItem::encode(&Payload { id: 1, text: AWKWARD_TEXT[1], note: None })?;
+        queue.push(&df, &item).await?;
+        let claimed = queue.claim(&df, &processing).await?.context("claim")?;
+
+        // Another process's lease: nothing moves.
+        let lost = STREAM_MEMORY_RETRY
+            .run(&df, stale, &processing, &claimed, &[queue.key()], &[])
+            .await?;
+        ensure!(lost == Transition::LeaseLost, "{lost:?}");
+        ensure!(processing.contains(&df, &claimed).await? && queue.len(&df).await? == 0);
+
+        // Ours: the exact claim goes back to the head, once.
+        let retried = STREAM_MEMORY_RETRY
+            .run(&df, ours, &processing, &claimed, &[queue.key()], &[])
+            .await?;
+        ensure!(retried == Transition::Applied(redis::Value::Int(1)), "{retried:?}");
+        ensure!(!processing.contains(&df, &claimed).await?);
+        let again = STREAM_MEMORY_RETRY
+            .run(&df, ours, &processing, &claimed, &[queue.key()], &[])
+            .await?;
+        ensure!(again == Transition::Applied(redis::Value::Int(0)), "{again:?}");
+
+        // Dead letter with a new payload, releasing the dedupe marker, under the lease.
+        let claimed = queue.claim(&df, &processing).await?.context("claim")?;
+        ensure!(claimed == item);
+        let dead_payload = br#"{"id":1,"attempt":4}"#;
+        let stale_dead = CLIP_DEAD_LETTER
+            .run(&df, stale, &processing, &claimed, &[&dead, &dedupe], &[dead_payload])
+            .await?;
+        ensure!(stale_dead == Transition::LeaseLost);
+        ensure!(df.exists(&[&dedupe]).await? == 1);
+        let moved = CLIP_DEAD_LETTER
+            .run(&df, ours, &processing, &claimed, &[&dead, &dedupe], &[dead_payload])
+            .await?;
+        ensure!(moved == Transition::Applied(redis::Value::Int(1)), "{moved:?}");
+        ensure!(!processing.contains(&df, &claimed).await?);
+        ensure!(df.lpop(&dead).await? == Some(dead_payload.to_vec()));
+        ensure!(df.exists(&[&dedupe]).await? == 0);
+
+        // Scripts that could hang the server, or that skip the fence, are never sent.
+        static UNBOUNDED: FencedTransition = FencedTransition::new(
+            "TEST_UNBOUNDED",
+            "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end while false do end return 0",
+        );
+        static UNFENCED: FencedTransition =
+            FencedTransition::new("TEST_UNFENCED", "return redis.call('LREM', KEYS[2], 1, ARGV[2])");
+        for transition in [&UNBOUNDED, &UNFENCED] {
+            let refused = transition
+                .run(&df, ours, &processing, &claimed, &[], &[])
+                .await;
+            ensure!(
+                matches!(refused, Err(DragonflyError::ScriptRefused { .. })),
+                "{refused:?}"
+            );
+        }
+        Ok(())
+    }
+    .await;
+    cleanup(&df, &p).await?;
+    result
 }

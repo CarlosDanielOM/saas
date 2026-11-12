@@ -209,7 +209,7 @@ async fn node_pushes_and_rust_pops_acknowledges_and_requeues() -> Result<()> {
         .await?
         .context("claim")?;
     ensure!(claimed.as_bytes() == pushed[1].as_slice());
-    ensure!(processing.acknowledge(&df, &claimed).await? == 1);
+    ensure!(processing.acknowledge_unfenced(&df, &claimed).await? == 1);
     let left = node
         .call("lrange", json!({"key": processing.key()}))
         .await?;

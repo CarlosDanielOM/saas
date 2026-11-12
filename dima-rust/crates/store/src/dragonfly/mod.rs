@@ -46,5 +46,7 @@ pub use config::DragonflyConfig;
 pub use error::{DecodeCategory, DecodeError, DragonflyError};
 pub use hooks::{CommandHook, ErrorHook, Hooks};
 pub use pubsub::{Message, Subscriber, Subscription, Topic};
-pub use queue::{DelayQueue, ListQueue, ProcessingList, QueueItem};
+pub use queue::{
+    DelayQueue, Fence, FencedTransition, ListQueue, ProcessingList, QueueItem, Transition,
+};
 pub use script::Script;
