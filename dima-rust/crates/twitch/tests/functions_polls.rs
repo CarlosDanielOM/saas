@@ -97,7 +97,7 @@ async fn create_and_end_requests_and_distinguished_answers() -> Result<()> {
                 let r=requests[0];assert_helix_headers(r);assert_eq!(r.method,method);
                 if method=="GET" {assert_eq!(r.target,"/helix/polls?broadcaster_id=u1&id=p");assert!(r.body.is_empty());}
                 else {
-                    assert_eq!(r.target,"/helix/polls?");
+                    assert_eq!(r.target,"/helix/polls");
                     let expected=if method=="POST"{json!({"broadcaster_id":"u1","title":"👋","choices":[{"title":"Yes"}],"duration":30,"channel_points_voting_enabled":true,"channel_points_per_vote":5})}else{json!({"broadcaster_id":"u1","id":"p","status":"ARCHIVED"})};
                     assert_eq!(serde_json::from_slice::<Value>(&r.body)?,expected);
                 }

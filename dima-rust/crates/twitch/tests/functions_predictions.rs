@@ -100,7 +100,7 @@ async fn create_and_end_requests_and_distinguished_answers() -> Result<()> {
                 let r=requests[0];assert_helix_headers(r);assert_eq!(r.method,method);
                 if method=="GET" {assert_eq!(r.target,"/helix/predictions?broadcaster_id=u1&id=p");assert!(r.body.is_empty());}
                 else {
-                    assert_eq!(r.target,"/helix/predictions?");
+                    assert_eq!(r.target,"/helix/predictions");
                     let expected=if method=="POST"{json!({"broadcaster_id":"u1","title":"👋","outcomes":[{"title":"Yes"}],"prediction_window":30})}else{json!({"broadcaster_id":"u1","id":"p","status":"RESOLVED"})};
                     assert_eq!(serde_json::from_slice::<Value>(&r.body)?,expected);
                 }

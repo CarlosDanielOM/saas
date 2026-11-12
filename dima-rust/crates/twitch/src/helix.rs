@@ -556,9 +556,13 @@ impl Twitch {
         let mut builder = inner
             .http
             .request(&inner.helix, request.method.clone(), request.path.clone())
-            .query(&request.query)
             .credential(header::AUTHORIZATION, bearer, credential)
             .refresh_timeout(inner.config.timings.helix_refresh_deadline);
+        // `getTwitchHelixUrl(endpoint)` writes no `?` without parameters; an empty query here
+        // would (the URL's query pairs exist once touched).
+        if !request.query.is_empty() {
+            builder = builder.query(&request.query);
+        }
         builder = match &request.retry_on_401 {
             Some(delays) => builder.retry(RetryPolicy::twitch_helix_with(delays)),
             None => builder.retry(RetryPolicy::none()),
