@@ -122,6 +122,9 @@ impl Telemetry for Counting {
     fn handler_panicked(&self, _namespace: &str) {
         self.bump("panic".into());
     }
+    fn handler_timed_out(&self, _namespace: &str, handler: dima_socketio::telemetry::Handler) {
+        self.bump(format!("timeout:{handler:?}"));
+    }
 }
 
 struct Setup {
@@ -192,9 +195,13 @@ fn ok() -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn namespace_floods_are_refused_before_anything_is_allocated() {
+    // Changed on purpose by finding 6: the table must hold what the connections may claim
+    // (2 static names + 2 connections × 8), so it can no longer fill before the connection cap;
+    // the old version of this test filled a 15-entry table from two connections.
     let s = setup(
         Options {
-            max_namespaces: 3 + 12,
+            max_connections: 2,
+            max_namespaces: 2 + 2 * 8,
             ..Options::default()
         },
         NamespaceOptions::default(),
@@ -227,19 +234,21 @@ async fn namespace_floods_are_refused_before_anything_is_allocated() {
         );
     }
     assert_eq!(s.server.io.stats().namespaces, base + 8);
-    // Server-wide: 3 + 12 concrete namespaces at most (2 static + 13 members).
+    // Server-wide: every connection gets its 8, and a third connection is refused by the
+    // connection cap before it could claim any.
     let mut joined = 0;
     for i in 0..8 {
         if b.join(&format!("/f/b{i}"), &ok()).await.is_ok() {
             joined += 1;
         }
     }
-    assert_eq!(joined, 5);
-    assert_eq!(s.server.io.stats().namespaces, 15);
+    assert_eq!(joined, 8);
+    assert_eq!(s.server.io.stats().namespaces, 18);
+    assert_eq!(try_open(s.server.addr).await.err(), Some(Some(503)));
     assert_eq!(s.telemetry.get("refusal:TooManyOnConnection"), 1);
     assert_eq!(s.telemetry.get("refusal:NameTooLong"), 1);
     assert_eq!(s.telemetry.get("refusal:InvalidNamespace"), 5);
-    assert_eq!(s.telemetry.get("refusal:TooManyNamespaces"), 3);
+    assert_eq!(s.telemetry.get("refusal:TooManyNamespaces"), 0);
     // Members are released with their last socket.
     a.close().await;
     b.close().await;
@@ -915,7 +924,8 @@ async fn the_web_server_shutting_down_shuts_socket_io_down() {
     let web_token = tokio_util::sync::CancellationToken::new();
     let io =
         dima_socketio::SocketIo::builder(Options::default(), Runtime::default(), io_token.clone())
-            .build();
+            .build(&dima_web::ServeOptions::default())
+            .unwrap();
     let listener = dima_web::bind_to(std::net::SocketAddr::from(([127, 0, 0, 1], 0))).unwrap();
     let addr = listener.local_addr().unwrap();
     let serve = tokio::spawn(dima_web::serve(
@@ -1179,6 +1189,17 @@ impl Namespace for Counted {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
+    recovered_socket_keeps_its_data(false).await;
+}
+
+/// Finding 9: by default the check runs again before the session is given back (it ran twice);
+/// the socket still gets the session's data, not what the second check returned.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovered_socket_keeps_its_data_after_the_check_passes_again() {
+    recovered_socket_keeps_its_data(true).await;
+}
+
+async fn recovered_socket_keeps_its_data(recheck_recovery: bool) {
     let checks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let slot: Arc<Mutex<Option<NamespaceRef<Counted>>>> = Arc::default();
     let declared = Arc::clone(&slot);
@@ -1187,7 +1208,12 @@ async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
         let r = builder
             .namespace(
                 "/k",
-                NamespaceOptions::default(),
+                // Changed on purpose by finding 9: skipping the check on a recovery, as the
+                // reference does, is now a choice of the namespace (the default re-checks).
+                NamespaceOptions {
+                    recheck_recovery,
+                    ..NamespaceOptions::default()
+                },
                 Counted {
                     checks: counted_checks,
                 },
@@ -1223,10 +1249,623 @@ async fn a_recovered_socket_keeps_its_data_and_skips_the_check() {
     );
     assert_eq!(
         checks.load(std::sync::atomic::Ordering::SeqCst),
-        1,
-        "the check was skipped"
+        if recheck_recovery { 2 } else { 1 },
+        "the check ran again only when asked to"
     );
     let after = counted.sockets("/k").pop().unwrap();
     assert!(Arc::ptr_eq(before.data(), after.data()));
     server.stop().await;
+}
+
+// ----- review fixes (F-SOCKETIO-b) ----------------------------------------------------------
+
+/// Finding 13: dropping the future of `emit_with_ack` (a `select!`, a timeout around it) frees
+/// its slot at once, on the socket and in the server's count.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_cancelled_acknowledgement_frees_its_slot() {
+    let options = Options {
+        max_pending_acks: 2,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/p", &ok()).await.unwrap();
+    let socket = s.probe.sockets("/p").pop().unwrap();
+    for _ in 0..5 {
+        let asked = socket.emit_with_ack("q", &[], 60 * SECOND);
+        // The client never answers: the wait is cancelled after the question went out.
+        let outcome = tokio::time::timeout(Duration::from_millis(20), asked).await;
+        assert!(outcome.is_err(), "cancelled, not refused: {outcome:?}");
+    }
+    assert_eq!(s.server.io.stats().pending_acks, 0);
+    assert_eq!(
+        socket
+            .emit_with_ack("q", &[], Duration::from_millis(50))
+            .await,
+        Err(AckError::Timeout)
+    );
+    client.close().await;
+    s.server.stop().await;
+}
+
+/// Finding 16: a polling answer can be compressed, so it names `Accept-Encoding` in `Vary`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn polling_answers_vary_on_the_accepted_encoding() {
+    let s = setup(Options::default(), NamespaceOptions::default()).await;
+    let answer = http(
+        s.server.addr,
+        "GET",
+        "/socket.io/?EIO=4&transport=polling",
+        &[("Accept-Encoding", "gzip")],
+        b"",
+        5 * SECOND,
+    )
+    .await
+    .unwrap();
+    assert_eq!(answer.status, 200);
+    assert_eq!(answer.header("vary"), Some("Accept-Encoding"));
+    s.server.stop().await;
+}
+
+/// A WebSocket handshake to `/socket.io/`: `Ok` with the client once the open packet arrived,
+/// `Err(status)` when the server answered the handshake with an error status.
+async fn try_open(addr: std::net::SocketAddr) -> Result<impl Sized, Option<u16>> {
+    use futures_util::StreamExt as _;
+    let url = format!("ws://{addr}/socket.io/?EIO=4&transport=websocket");
+    match tokio_tungstenite::connect_async(url).await {
+        Ok((mut ws, _)) => match tokio::time::timeout(5 * SECOND, ws.next()).await {
+            Ok(Some(Ok(message))) if message.to_text().is_ok_and(|t| t.starts_with('0')) => Ok(ws),
+            _ => Err(None),
+        },
+        Err(tokio_tungstenite::tungstenite::Error::Http(response)) => {
+            Err(Some(response.status().as_u16()))
+        }
+        Err(_) => Err(None),
+    }
+}
+
+/// Finding 5: the connection cap is a reservation taken before the asynchronous part of a
+/// WebSocket handshake, so handshakes racing each other cannot all pass it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_websocket_handshakes_never_exceed_the_connection_cap() {
+    let options = Options {
+        max_connections: 5,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let addr = s.server.addr;
+    let attempts: Vec<_> = (0..40).map(|_| tokio::spawn(try_open(addr))).collect();
+    let mut open = Vec::new();
+    let mut refused = 0;
+    for attempt in attempts {
+        match attempt.await.unwrap() {
+            Ok(ws) => open.push(ws),
+            Err(Some(503)) => refused += 1,
+            Err(other) => panic!("unexpected handshake outcome {other:?}"),
+        }
+    }
+    assert_eq!((open.len(), refused), (5, 35));
+    assert_eq!(s.server.io.stats().connections, 5);
+    assert_eq!(s.telemetry.get("refused"), 35);
+    // Slots come back when sessions end.
+    drop(open);
+    let io = s.server.io.clone();
+    eventually("the sessions ended", || io.stats().connections == 0).await;
+    assert!(try_open(addr).await.is_ok());
+    s.server.stop().await;
+}
+
+/// Finding 5: the connection cap may not exceed `dima-web`'s stream quota, which every
+/// WebSocket of the server also takes a slot of.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_connection_cap_beyond_the_stream_quota_refuses_to_build() {
+    let builder = dima_socketio::SocketIo::builder(
+        Options {
+            max_connections: 11,
+            ..Options::default()
+        },
+        Runtime::default(),
+        dima_core::Shutdown::new(),
+    );
+    let serve = dima_web::ServeOptions {
+        max_streams: 10,
+        ..dima_web::ServeOptions::default()
+    };
+    assert_eq!(
+        builder.build(&serve).err(),
+        Some(dima_socketio::BuildError::StreamQuota {
+            connections: 11,
+            streams: 10
+        })
+    );
+}
+
+/// Finding 6: the namespace table must hold what the connections may claim.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_namespace_table_smaller_than_the_connections_may_claim_refuses_to_build() {
+    let builder = dima_socketio::SocketIo::builder(
+        Options {
+            max_connections: 100,
+            max_namespaces: 100 * 8,
+            ..Options::default()
+        },
+        Runtime::default(),
+        dima_core::Shutdown::new(),
+    );
+    assert_eq!(
+        builder.build(&dima_web::ServeOptions::default()).err(),
+        Some(dima_socketio::BuildError::NamespaceTable {
+            namespaces: 800,
+            needed: 801
+        })
+    );
+    assert!(
+        dima_socketio::SocketIo::builder(
+            Options::default(),
+            Runtime::default(),
+            dima_core::Shutdown::new()
+        )
+        .build(&dima_web::ServeOptions::default())
+        .is_ok()
+    );
+}
+
+/// Finding 5: a WebSocket reserves its `dima-web` stream slot before Engine.IO sees it; when
+/// other streams (the app's own WebSocket here) took the quota, it is refused with `503` and no
+/// session exists, while polling (no stream) still connects.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_full_stream_quota_refuses_a_websocket_before_its_session_exists() {
+    use futures_util::{SinkExt as _, StreamExt as _};
+    let serve = dima_web::ServeOptions {
+        max_streams: 2,
+        ..dima_web::ServeOptions::default()
+    };
+    let options = Options {
+        max_connections: 2,
+        ..Options::default()
+    };
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let server = TestServer::start_serving(options, runtime, serve, support::declare).await;
+    let addr = server.addr;
+    let (mut app_ws, _) = tokio_tungstenite::connect_async(format!("ws://{addr}/raw-ws"))
+        .await
+        .unwrap();
+    app_ws
+        .send(tokio_tungstenite::tungstenite::Message::text("hi"))
+        .await
+        .unwrap();
+    assert!(app_ws.next().await.is_some());
+    let first = try_open(addr).await;
+    assert!(first.is_ok());
+    assert_eq!(try_open(addr).await.err(), Some(Some(503)));
+    assert_eq!(server.io.stats().connections, 1);
+    assert_eq!(telemetry.get("opened"), 1);
+    let polling = Polling::open(addr).await;
+    assert!(!polling.sid.is_empty());
+    assert_eq!(server.io.stats().connections, 2);
+    drop(first);
+    server.stop().await;
+}
+
+/// Finding 5: sockets per namespace are reserved under the member lock.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_full_namespace_refuses_further_sockets() {
+    let options = Options {
+        max_sockets_per_namespace: 1,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut a = Ws::open(s.server.addr).await;
+    a.join("/p", &ok()).await.unwrap();
+    let mut b = Ws::open(s.server.addr).await;
+    assert_eq!(
+        b.join("/p", &ok()).await,
+        Err(json!({"message": "Invalid namespace"}))
+    );
+    assert_eq!(s.telemetry.get("refusal:NamespaceFull"), 1);
+    a.close().await;
+    let probe = s.probe.clone();
+    eventually("the socket left", || probe.sockets("/p").is_empty()).await;
+    assert!(b.join("/p", &ok()).await.is_ok());
+    s.server.stop().await;
+}
+
+/// Finding 2: inbound memory is bounded in bytes. The parsed size of an event is reserved on
+/// its socket's budget before it is parsed and held until its handler returns; an event that
+/// does not fit closes the connection as an inbound overflow without being parsed. A long
+/// string costs about its length, so ordinary large events still pass.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn inbound_events_are_bounded_in_bytes() {
+    let options = Options {
+        max_inbound_bytes: 4 << 20,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/p", &ok()).await.unwrap();
+    let io = s.server.io.clone();
+    // The CONNECT data (`auth`, kept by the handshake) stays charged while the socket lives.
+    let joined = io.stats().inbound_bytes;
+    assert!(joined > 0);
+    // A 900 kB string: about 1.8 MB reserved, inside the 4 MiB budget.
+    let text = "x".repeat(900_000);
+    client.send(&format!("42/p,1[\"echo\",\"{text}\"]")).await;
+    let answer = client
+        .until(|t| t.starts_with("43/p,1"), 5 * SECOND)
+        .await
+        .unwrap();
+    assert_eq!(answer.len(), "43/p,1[\"\"]".len() + text.len());
+    eventually("the event's memory came back", || {
+        io.stats().inbound_bytes == joined
+    })
+    .await;
+    // While a handler holds an event, its memory stays reserved.
+    client.send("42/p,[\"sleep\",1500]").await;
+    eventually("the event is held", || io.stats().inbound_bytes > joined).await;
+    // 300 kB of zeros parse to far more than their text: refused before parsing.
+    let zeros = format!("[\"echo\",[{}0]]", "0,".repeat(150_000));
+    client.send(&format!("42/p,{zeros}")).await;
+    assert!(client.closed_within(3 * SECOND).await);
+    let seen = Arc::clone(&s.seen);
+    eventually("the socket left", || {
+        !seen.disconnects.lock().unwrap().is_empty()
+    })
+    .await;
+    assert_eq!(
+        s.seen.disconnects.lock().unwrap()[0],
+        ("/p".to_owned(), DisconnectReason::InboundOverflow)
+    );
+    eventually("everything was given back", || {
+        io.stats().inbound_bytes == 0
+    })
+    .await;
+    s.server.stop().await;
+}
+
+/// Finding 2: the server-wide inbound budget is shared by every client.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_server_wide_inbound_budget_is_shared() {
+    let options = Options {
+        max_inbound_total: 1 << 20,
+        ..Options::default()
+    };
+    let s = setup(options, NamespaceOptions::default()).await;
+    let mut a = Ws::open(s.server.addr).await;
+    a.join("/p", &ok()).await.unwrap();
+    let mut b = Ws::open(s.server.addr).await;
+    b.join("/p", &ok()).await.unwrap();
+    // `a` holds about 800 kB in a sleeping handler.
+    let text = "y".repeat(400_000);
+    a.send(&format!("42/p,[\"sleep\",3000,\"{text}\"]")).await;
+    let io = s.server.io.clone();
+    eventually("a's event is held", || io.stats().inbound_bytes > 700_000).await;
+    // `b`'s 400 kB event does not fit in what is left.
+    b.send(&format!("42/p,[\"echo\",\"{text}\"]")).await;
+    assert!(b.closed_within(3 * SECOND).await);
+    assert!(!a.closed_within(Duration::from_millis(200)).await);
+    s.server.stop().await;
+}
+
+// ----- finding 3: each socket owns its handlers --------------------------------------------
+
+type Shared = Arc<Mutex<Vec<String>>>;
+type Handles = Arc<Mutex<Vec<Socket<Mutex<Vec<String>>>>>>;
+
+/// Records `what` in `log` when dropped (a handler future cancelled or ended).
+struct OnDrop(Shared, &'static str);
+
+impl Drop for OnDrop {
+    fn drop(&mut self) {
+        self.0.lock().unwrap().push(self.1.to_owned());
+    }
+}
+
+/// `/z`: full recovery; the socket's data is a list of writes; handlers that hang, write late,
+/// and a slow `on_disconnect`.
+struct Fenced {
+    log: Shared,
+    handles: Handles,
+}
+
+impl Namespace for Fenced {
+    type Data = Mutex<Vec<String>>;
+
+    async fn check(&self, _handshake: &Handshake, _nsp: &str) -> Result<Self::Data, ConnectError> {
+        Ok(Mutex::new(Vec::new()))
+    }
+
+    async fn on_connect(&self, socket: Socket<Self::Data>) {
+        self.handles.lock().unwrap().push(socket.clone());
+        if socket.recovered() {
+            let seen = socket.data().lock().unwrap().clone();
+            self.log
+                .lock()
+                .unwrap()
+                .push(format!("recovered saw {seen:?}"));
+            return;
+        }
+        let _ = socket.emit("hello", &[]);
+        if socket.handshake().auth().contains_key("hang") {
+            let _guard = OnDrop(Arc::clone(&self.log), "connect dropped");
+            std::future::pending::<()>().await;
+        }
+    }
+
+    async fn on_event(&self, socket: Socket<Self::Data>, mut event: Event) {
+        match event.name.as_str() {
+            "slow-write" => {
+                tokio::time::sleep(Duration::from_millis(400)).await;
+                socket.data().lock().unwrap().push("old event".to_owned());
+            }
+            "hang" => {
+                let _guard = OnDrop(Arc::clone(&self.log), "event dropped");
+                std::future::pending::<()>().await;
+            }
+            "ping" => {
+                if let Some(ack) = event.take_ack() {
+                    let _ = ack.send(&[json!("pong")]);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    async fn on_disconnect(&self, socket: Socket<Self::Data>, _reason: DisconnectReason) {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        socket
+            .data()
+            .lock()
+            .unwrap()
+            .push("disconnect done".to_owned());
+        self.log.lock().unwrap().push("disconnect".to_owned());
+    }
+}
+
+struct FencedSetup {
+    server: TestServer,
+    log: Shared,
+    handles: Handles,
+    telemetry: Arc<Counting>,
+}
+
+async fn fenced(options: NamespaceOptions) -> FencedSetup {
+    let log: Shared = Arc::default();
+    let handles: Handles = Arc::default();
+    let telemetry = Arc::new(Counting::default());
+    let runtime = Runtime {
+        telemetry: Arc::clone(&telemetry) as Arc<dyn Telemetry>,
+        ..Runtime::default()
+    };
+    let (l, h) = (Arc::clone(&log), Arc::clone(&handles));
+    let server = TestServer::start_with(Options::default(), runtime, move |builder| {
+        builder
+            .namespace("/z", options, Fenced { log: l, handles: h })
+            .unwrap();
+    })
+    .await;
+    FencedSetup {
+        server,
+        log,
+        handles,
+        telemetry,
+    }
+}
+
+fn logged(log: &Shared, what: &str) -> bool {
+    log.lock().unwrap().iter().any(|entry| entry == what)
+}
+
+/// Finding 3: a socket that leaves while its `on_connect` never returns has it cancelled, and
+/// `on_disconnect` still runs (before, both stayed: the task lived until shutdown).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_socket_that_leaves_cancels_its_running_handlers() {
+    let s = fenced(NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/z", &json!({"hang": true})).await.unwrap();
+    let log = Arc::clone(&s.log);
+    client.close().await;
+    eventually("on_connect cancelled, on_disconnect run", || {
+        logged(&log, "connect dropped") && logged(&log, "disconnect")
+    })
+    .await;
+    // An event handler too.
+    let mut client = Ws::open(s.server.addr).await;
+    client.join("/z", &ok()).await.unwrap();
+    client.send("42/z,[\"hang\"]").await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!logged(&log, "event dropped"));
+    client.close().await;
+    eventually("on_event cancelled", || logged(&log, "event dropped")).await;
+    s.server.stop().await;
+}
+
+/// Finding 3: every handler kind has a deadline; an event handler past it is dropped and the
+/// socket carries on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_handler_past_its_deadline_is_dropped() {
+    for dispatch in [Dispatch::Sequential, Dispatch::Concurrent(4)] {
+        let options = NamespaceOptions {
+            dispatch,
+            deadlines: Some(dima_socketio::HandlerDeadlines {
+                event: Duration::from_millis(200),
+                ..dima_socketio::HandlerDeadlines::default()
+            }),
+            ..NamespaceOptions::default()
+        };
+        let s = fenced(options).await;
+        let mut client = Ws::open(s.server.addr).await;
+        client.join("/z", &ok()).await.unwrap();
+        client.send("42/z,[\"hang\"]").await;
+        let log = Arc::clone(&s.log);
+        eventually("the event handler timed out", || {
+            logged(&log, "event dropped")
+        })
+        .await;
+        assert_eq!(s.telemetry.get("timeout:Event"), 1);
+        client.send("42/z,5[\"ping\"]").await;
+        assert_eq!(
+            client
+                .until(|t| t.starts_with("43/z,5"), 3 * SECOND)
+                .await
+                .as_deref(),
+            Some("43/z,5[\"pong\"]")
+        );
+        client.close().await;
+        s.server.stop().await;
+    }
+}
+
+/// Finding 3: work of a socket that left cannot touch what a recovered socket now holds. Its
+/// running event handler is cancelled when it leaves (the late write never happens); the
+/// recovered socket starts only after the old `on_disconnect` has finished; and an emit
+/// through a handle of the old socket after the recovery is not stored for the new one.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn old_work_cannot_touch_a_recovered_socket() {
+    let s = fenced(NamespaceOptions::default()).await;
+    let mut client = Ws::open(s.server.addr).await;
+    let connect = client.join("/z", &ok()).await.unwrap();
+    let hello = client
+        .until(|t| event(t, "/z").is_some(), 3 * SECOND)
+        .await
+        .unwrap();
+    let offset = event(&hello, "/z")
+        .unwrap()
+        .last()
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let pid = connect["pid"].as_str().unwrap().to_owned();
+    // The write is 400 ms away when the connection drops.
+    client.send("42/z,[\"slow-write\"]").await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    client.drop_connection();
+    let io = s.server.io.clone();
+    eventually("the session is kept", || io.stats().sessions == 1).await;
+    let mut back = Ws::open(s.server.addr).await;
+    let again = back
+        .join("/z", &json!({"pid": pid, "offset": offset}))
+        .await
+        .unwrap();
+    assert_eq!(again["pid"].as_str(), Some(pid.as_str()));
+    let log = Arc::clone(&s.log);
+    eventually("the recovered socket connected", || {
+        log.lock()
+            .unwrap()
+            .iter()
+            .any(|e| e.starts_with("recovered saw"))
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(600)).await;
+    let entries = s.log.lock().unwrap().clone();
+    assert!(
+        entries.contains(&"recovered saw [\"disconnect done\"]".to_owned()),
+        "{entries:?}"
+    );
+    let handles = s.handles.lock().unwrap().clone();
+    assert_eq!(handles.len(), 2);
+    assert_eq!(
+        *handles[1].data().lock().unwrap(),
+        ["disconnect done".to_owned()]
+    );
+    // The old handle: disconnected, and nothing is stored on behalf of the new socket.
+    let stored = io.stats().stored_packets;
+    assert_eq!(
+        handles[0].emit("stale", &[]),
+        Err(dima_socketio::SendError::Disconnected)
+    );
+    assert_eq!(io.stats().stored_packets, stored);
+    // While the new one is connected, its own emits are stored as usual.
+    assert_eq!(handles[1].emit("fresh", &[]), Ok(()));
+    assert_eq!(io.stats().stored_packets, stored + 1);
+    back.close().await;
+    s.server.stop().await;
+}
+
+/// Finding 9: a recovery whose handshake the check now refuses (a revoked token) does not get
+/// the session back: it answers as an unknown session does, and the fresh connect's check
+/// refuses it with its own error. With the re-check off, the reference's behaviour: recovered.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_recovery_the_check_now_refuses_does_not_get_the_session() {
+    for recheck_recovery in [true, false] {
+        let options = NamespaceOptions {
+            recheck_recovery,
+            ..NamespaceOptions::default()
+        };
+        let s = setup(Options::default(), options).await;
+        let mut client = Ws::open(s.server.addr).await;
+        let (_, pid, offset) = join_and_hello(&mut client, &ok()).await;
+        client.drop_connection();
+        let io = s.server.io.clone();
+        eventually("the session is kept", || io.stats().sessions == 1).await;
+        let mut back = Ws::open(s.server.addr).await;
+        let answer = back
+            .join("/p", &json!({"pid": pid, "offset": offset, "deny": true}))
+            .await;
+        if recheck_recovery {
+            assert_eq!(
+                answer,
+                Err(json!({"message": "denied", "data": {"why": "asked"}}))
+            );
+            assert_eq!(s.telemetry.get("recovery:RecheckRefused"), 1);
+            assert_eq!(io.stats().sessions, 0);
+        } else {
+            assert_eq!(answer.unwrap()["pid"].as_str(), Some(pid.as_str()));
+            assert_eq!(s.telemetry.get("connected:true"), 1);
+        }
+        back.close().await;
+        s.server.stop().await;
+    }
+}
+
+/// Finding 14: shutdown has one deadline and proves it: with a client that stopped reading
+/// (output queued in the transport), handlers that never end on their own, and a polling
+/// session, it returns within `shutdown_drain` (no extra second), and its report says every
+/// task of the crate and every transport task had ended.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn shutdown_ends_everything_within_its_deadline_and_says_so() {
+    let drain = 2 * SECOND;
+    let options = Options {
+        shutdown_drain: drain,
+        ..Options::default()
+    };
+    let namespace = NamespaceOptions {
+        dispatch: Dispatch::Concurrent(4),
+        ..NamespaceOptions::default()
+    };
+    let s = setup(options, namespace).await;
+    let mut stuck = Ws::open(s.server.addr).await;
+    stuck.join("/p", &ok()).await.unwrap();
+    let socket = s.probe.sockets("/p").pop().unwrap();
+    let big = json!("x".repeat(100_000));
+    for _ in 0..200 {
+        if socket.emit_with(&Delivery::Lossy, "big", std::slice::from_ref(&big))
+            == Err(SendError::Dropped)
+        {
+            break;
+        }
+    }
+    let mut busy = Ws::open(s.server.addr).await;
+    busy.join("/p", &ok()).await.unwrap();
+    busy.send("42/p,[\"sleep\",60000]").await;
+    busy.send("42/p,[\"sleep\",60000]").await;
+    let polling = Polling::open(s.server.addr).await;
+    assert_eq!(polling.post(&["40/p,{}"]).await, Some(200));
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let started = tokio::time::Instant::now();
+    let report = s.server.io.shutdown().await;
+    let elapsed = started.elapsed();
+    assert!(report.deadline_met, "{report:?}");
+    assert_eq!(report.still_running, 0, "{report:?}");
+    assert!(elapsed <= drain + Duration::from_millis(250), "{elapsed:?}");
+    assert!(report.elapsed <= drain, "{report:?}");
+    // A second call, and `closed`, give the same report.
+    assert_eq!(s.server.io.shutdown().await, report);
+    assert_eq!(s.server.io.closed().await, report);
+    drop(stuck);
+    s.server.stop().await;
 }

@@ -5,6 +5,8 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
+use crate::budget::Charge;
+
 /// `socket.handshake.query`: the query of the connection's first HTTP request, read as
 /// `Object.fromEntries(new URL(req.url).searchParams)` reads it: `+` is a space, percent escapes
 /// are decoded (invalid UTF-8 becomes U+FFFD), and of repeated keys the last value wins.
@@ -73,19 +75,29 @@ pub(crate) struct Origin {
 }
 
 /// `socket.handshake`, built when the socket is created, as `Socket.buildHandshake` builds it.
+///
+/// The `auth` data is charged to the connection's and the server's inbound budgets for as long
+/// as a copy of the handshake lives.
 #[derive(Debug, Clone)]
 pub struct Handshake {
     origin: Arc<Origin>,
-    auth: Map<String, Value>,
+    auth: Arc<Map<String, Value>>,
     issued: i64,
+    _charge: Arc<Charge>,
 }
 
 impl Handshake {
-    pub(crate) fn new(origin: Arc<Origin>, auth: Map<String, Value>, issued: i64) -> Self {
+    pub(crate) fn new(
+        origin: Arc<Origin>,
+        auth: Map<String, Value>,
+        charge: Charge,
+        issued: i64,
+    ) -> Self {
         Self {
             origin,
-            auth,
+            auth: Arc::new(auth),
             issued,
+            _charge: Arc::new(charge),
         }
     }
 

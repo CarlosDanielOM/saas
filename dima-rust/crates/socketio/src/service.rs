@@ -25,6 +25,7 @@ use bytes::Bytes;
 use dima_web::{Body, UpgradeGuard};
 use http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode, header};
 use http_body_util::BodyExt as _;
+use tokio::sync::OwnedSemaphorePermit;
 use tower::ServiceExt as _;
 
 use crate::client_files;
@@ -38,11 +39,21 @@ use crate::server::ServerInner;
 pub(crate) struct FirstRequest {
     pub origin: Arc<Origin>,
     guard: Arc<Mutex<Option<UpgradeGuard>>>,
+    /// The connection's slot, reserved before the handshake reached Engine.IO (for a WebSocket,
+    /// before its asynchronous part). Dropped with the request when no session comes of it.
+    permit: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
 }
 
 impl FirstRequest {
     pub fn take_guard(&self) -> Option<UpgradeGuard> {
         self.guard
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
+    }
+
+    pub fn take_permit(&self) -> Option<OwnedSemaphorePermit> {
+        self.permit
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .take()
@@ -190,6 +201,15 @@ fn plain(
     response
 }
 
+/// The answer when no connection or stream slot is free.
+fn unavailable() -> Response<Body> {
+    plain(
+        StatusCode::SERVICE_UNAVAILABLE,
+        Some("text/plain; charset=utf-8"),
+        "Service Unavailable",
+    )
+}
+
 /// `abortRequest` / `abortUpgrade`.
 fn abort(upgrade: bool, code: u8) -> Response<Body> {
     if upgrade {
@@ -242,17 +262,32 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             if params.eio.as_deref() != Some("4") {
                 return abort(upgrade, 5);
             }
-            if io.shared.stopping() || io.connection_count() >= io.shared.options.max_connections {
-                io.shared.telemetry.connection_refused();
-                return plain(
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    Some("text/plain; charset=utf-8"),
-                    "Service Unavailable",
-                );
-            }
             None
         }
     };
+    // A new session takes its connection slot now, before Engine.IO creates anything (for a
+    // WebSocket, before the asynchronous part of its handshake); the slot is released when the
+    // session ends, or with the request when none comes of it.
+    let permit = match &conn {
+        Some(_) => None,
+        None => match io.reserve_connection() {
+            Some(permit) => Some(permit),
+            None => {
+                io.shared.telemetry.connection_refused();
+                return unavailable();
+            }
+        },
+    };
+    // A WebSocket (a new session or an upgrade) holds one of `dima-web`'s stream slots once it
+    // is upgraded: reserve it before Engine.IO sees the request, so a full quota refuses here
+    // instead of after the session was created.
+    if upgrade
+        && let Some(admission) = req.extensions().get::<dima_web::StreamAdmission>()
+        && admission.reserve().is_err()
+    {
+        io.shared.telemetry.connection_refused();
+        return unavailable();
+    }
     if let (Some(conn), true) = (&conn, polling) {
         if method == Method::POST {
             let binary = req
@@ -301,6 +336,7 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             req.extensions_mut().insert(FirstRequest {
                 origin,
                 guard: Arc::new(Mutex::new(guard)),
+                permit: Arc::new(Mutex::new(permit)),
             });
         }
     }
@@ -368,11 +404,26 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
         return Response::from_parts(parts, Body::new(body));
     }
-    // A poll: the payload is complete (`engineioxide` answers with a full body).
-    let payload = match body.collect().await {
-        Ok(collected) => collected.to_bytes(),
-        Err(never) => match never {},
-    };
+    // A poll: whether its body is compressed depends on `Accept-Encoding` (from the threshold
+    // on), which a shared cache must know; the reference sends no `Vary`.
+    parts
+        .headers
+        .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+    // The payload is complete (`engineioxide` answers with a full body). Its frames are read
+    // without consuming the body: Engine.IO counts the messages in it as done when the body is
+    // dropped, so the body travels inside this answer's until that is written (finding 4).
+    let mut body = Box::pin(body);
+    let mut payload = bytes::BytesMut::new();
+    while let Some(frame) = body.frame().await {
+        let frame = match frame {
+            Ok(frame) => frame,
+            Err(never) => match never {},
+        };
+        if let Ok(data) = frame.into_data() {
+            payload.extend_from_slice(&data);
+        }
+    }
+    let payload = payload.freeze();
     let threshold = io.shared.options.http_compression_threshold;
     let encoding = (payload.len() >= threshold)
         .then(|| negotiate::preferred(accept.as_deref(), &["gzip", "deflate"]))
@@ -402,7 +453,48 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
     parts
         .headers
         .insert(header::CONTENT_LENGTH, HeaderValue::from(payload.len()));
-    Response::from_parts(parts, Body::from(payload))
+    Response::from_parts(parts, Body::new(Holding::new(payload, body)))
+}
+
+/// A complete answer body that keeps another value (Engine.IO's own body) alive until it is
+/// dropped itself, which the HTTP server does once the answer is written or abandoned.
+struct Holding<H> {
+    data: Option<Bytes>,
+    _held: H,
+}
+
+impl<H> Holding<H> {
+    fn new(data: Bytes, held: H) -> Self {
+        Self {
+            data: (!data.is_empty()).then_some(data),
+            _held: held,
+        }
+    }
+}
+
+impl<H: Unpin> hyper::body::Body for Holding<H> {
+    type Data = Bytes;
+    type Error = Infallible;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<hyper::body::Frame<Bytes>, Infallible>>> {
+        Poll::Ready(
+            self.get_mut()
+                .data
+                .take()
+                .map(|data| Ok(hyper::body::Frame::data(data))),
+        )
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.data.is_none()
+    }
+
+    fn size_hint(&self) -> hyper::body::SizeHint {
+        hyper::body::SizeHint::with_exact(self.data.as_ref().map_or(0, |d| d.len() as u64))
+    }
 }
 
 /// `zlib.createGzip()` / `createDeflate()` with the default level.
@@ -416,4 +508,35 @@ fn compress(data: &[u8], gzip: bool) -> Option<Bytes> {
         encoder.write_all(data).and_then(|()| encoder.finish())
     };
     written.ok().map(Bytes::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Flag(Arc<std::sync::atomic::AtomicBool>);
+
+    impl Drop for Flag {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::Release);
+        }
+    }
+
+    /// Finding 4: Engine.IO's body (whose drop marks its messages written) lives as long as
+    /// the answer's body, not only until its bytes were copied out.
+    #[tokio::test]
+    async fn a_polling_answer_holds_the_engine_body_until_it_is_dropped() {
+        let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let body = Body::new(Holding::new(
+            Bytes::from_static(b"40"),
+            Flag(Arc::clone(&dropped)),
+        ));
+        let mut body = Box::pin(body);
+        let frame = body.frame().await;
+        assert!(frame.is_some_and(|frame| frame.is_ok()));
+        assert!(body.frame().await.is_none());
+        assert!(!dropped.load(std::sync::atomic::Ordering::Acquire));
+        drop(body);
+        assert!(dropped.load(std::sync::atomic::Ordering::Acquire));
+    }
 }

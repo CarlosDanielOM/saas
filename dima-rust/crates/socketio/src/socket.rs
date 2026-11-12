@@ -9,6 +9,7 @@ use serde_json::Value;
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::Charge;
 use crate::codec;
 use crate::config::{QueueLimits, Recovery};
 use crate::connection::Connection;
@@ -19,6 +20,9 @@ use crate::outbox::{Delivery, NotSent, Outgoing};
 
 /// An event from the client, as a reference listener receives it: the name, the arguments and,
 /// when the client called `emit` with a callback (or `emitWithAck`), the acknowledgement.
+///
+/// The memory its arguments take was reserved on the socket's inbound budget before they were
+/// parsed; it is given back when the event is dropped (the handler has finished with it).
 #[derive(Debug)]
 pub struct Event {
     /// The event name.
@@ -26,11 +30,17 @@ pub struct Event {
     /// The arguments after the name.
     pub args: Vec<Value>,
     ack: Option<Ack>,
+    _charge: Charge,
 }
 
 impl Event {
-    pub(crate) fn new(name: String, args: Vec<Value>, ack: Option<Ack>) -> Self {
-        Self { name, args, ack }
+    pub(crate) fn new(name: String, args: Vec<Value>, ack: Option<Ack>, charge: Charge) -> Self {
+        Self {
+            name,
+            args,
+            ack,
+            _charge: charge,
+        }
     }
 
     /// Whether the client waits for an acknowledgement.
@@ -77,9 +87,11 @@ pub(crate) trait AckSink: Send + Sync {
 /// The socket as the connection sees it, whatever its data type.
 pub(crate) trait ErasedSocket: Send + Sync {
     /// Queues a client event for the handler; `false` when the inbound queue is full.
-    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>) -> bool;
+    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>, charge: Charge) -> bool;
     /// An ACK from the client.
-    fn resolve_ack(&self, id: u64, args: Vec<Value>);
+    fn resolve_ack(&self, id: u64, args: Vec<Value>, charge: Charge);
+    /// The counter of this socket's inbound budget.
+    fn inbound_budget(&self) -> Arc<std::sync::atomic::AtomicUsize>;
     /// The socket leaves its namespace (`_onclose(reason)`): idempotent.
     fn leave(&self, reason: DisconnectReason);
     /// A server namespace disconnect: DISCONNECT packet, then leave.
@@ -88,9 +100,15 @@ pub(crate) trait ErasedSocket: Send + Sync {
     fn queue(&self) -> (u64, QueueLimits);
 }
 
+/// A client's answer, with the inbound memory it holds until the waiter has it.
+pub(crate) struct Answer {
+    args: Vec<Value>,
+    _charge: Charge,
+}
+
 pub(crate) struct SocketState {
     pub connected: bool,
-    acks: HashMap<u64, oneshot::Sender<Result<Vec<Value>, AckError>>>,
+    acks: HashMap<u64, oneshot::Sender<Result<Answer, AckError>>>,
 }
 
 /// The shared part of a socket.
@@ -111,6 +129,10 @@ pub(crate) struct Core<D> {
     /// Set once the socket is registered and its CONNECT packet went out.
     pub joined: AtomicBool,
     pub inbound: mpsc::Sender<Event>,
+    /// Inbound bytes held by this socket's events and answers (`max_inbound_bytes`).
+    pub inbound_bytes: Arc<std::sync::atomic::AtomicUsize>,
+    /// Fires when every handler of the socket, `on_disconnect` included, has ended.
+    pub ended: CancellationToken,
     pub me: OnceLock<std::sync::Weak<Core<D>>>,
 }
 
@@ -186,12 +208,12 @@ impl<D: Send + Sync + 'static> AckSink for Core<D> {
 }
 
 impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
-    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>) -> bool {
+    fn deliver(&self, name: String, args: Vec<Value>, ack: Option<u64>, charge: Charge) -> bool {
         let ack = ack.and_then(|id| {
             let me = self.me.get()?.upgrade()?;
             Some(Ack::new(id, me))
         });
-        match self.inbound.try_send(Event::new(name, args, ack)) {
+        match self.inbound.try_send(Event::new(name, args, ack, charge)) {
             Ok(()) => true,
             // Closed: the socket's task is gone; the reference ignores packets after
             // disconnection too.
@@ -200,11 +222,18 @@ impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
         }
     }
 
-    fn resolve_ack(&self, id: u64, args: Vec<Value>) {
+    fn resolve_ack(&self, id: u64, args: Vec<Value>, charge: Charge) {
         let waiting = self.lock().acks.remove(&id);
         if let Some(tx) = waiting {
-            let _ = tx.send(Ok(args));
+            let _ = tx.send(Ok(Answer {
+                args,
+                _charge: charge,
+            }));
         }
+    }
+
+    fn inbound_budget(&self) -> Arc<std::sync::atomic::AtomicUsize> {
+        Arc::clone(&self.inbound_bytes)
     }
 
     fn leave(&self, reason: DisconnectReason) {
@@ -235,6 +264,20 @@ impl<D: Send + Sync + 'static> ErasedSocket for Core<D> {
 
     fn queue(&self) -> (u64, QueueLimits) {
         (self.key, self.def.queue())
+    }
+}
+
+/// One awaited acknowledgement: its entry in the socket's table and its share of the server-wide
+/// count, both released when the awaiting future ends or is dropped.
+struct AckSlot<'a, D> {
+    core: &'a Core<D>,
+    id: u64,
+}
+
+impl<D> Drop for AckSlot<'_, D> {
+    fn drop(&mut self) {
+        self.core.lock().acks.remove(&self.id);
+        crate::budget::release(&self.core.def.shared().pending_acks, 1);
     }
 }
 
@@ -310,9 +353,12 @@ impl<D: Send + Sync + 'static> Socket<D> {
     /// `socket.emit(event, ...args)` with a delivery policy for a full send queue.
     ///
     /// In a namespace with full recovery the event gets an offset and is stored, also when the
-    /// socket has already disconnected: a client that recovers this socket receives it (as in
-    /// the reference, where `socket.emit` goes through the adapter). The result is then
-    /// [`SendError::Disconnected`], though the event is kept.
+    /// socket has already disconnected, as long as its session waits unclaimed: a client that
+    /// recovers this socket receives it (as in the reference, where `socket.emit` goes through
+    /// the adapter). The result is then [`SendError::Disconnected`], though the event is kept.
+    /// Once the session was recovered by a new socket (or was never kept), an emit through
+    /// this old handle stores nothing: work of the old socket cannot add to what the new one
+    /// receives.
     pub fn emit_with(
         &self,
         delivery: &Delivery,
@@ -341,6 +387,7 @@ impl<D: Send + Sync + 'static> Socket<D> {
                 Some(&core.id),
                 &offset,
                 Arc::from(json.as_str()),
+                (!core.is_connected()).then_some((core.pid.as_str(), core.key)),
                 &mut || core.push(packet.clone(), delivery),
             ),
             _ => core.push(packet, delivery),
@@ -360,45 +407,52 @@ impl<D: Send + Sync + 'static> Socket<D> {
             return Err(AckError::Send(SendError::Reserved));
         }
         let core = &self.core;
-        let max = core.def.shared().options.max_pending_acks;
+        let shared = core.def.shared();
         let (tx, rx) = oneshot::channel();
-        let id = {
+        // The slot is held by this future: dropping it (a `select!`, a timeout around the call)
+        // removes the entry and gives the server-wide slot back at once.
+        let slot = {
             let mut state = core.lock();
             if !state.connected {
                 return Err(AckError::Disconnected);
             }
-            if state.acks.len() >= max {
+            if state.acks.len() >= shared.options.max_pending_acks {
+                return Err(AckError::TooMany);
+            }
+            if !crate::budget::reserve(
+                &shared.pending_acks,
+                1,
+                shared.options.max_pending_acks_total,
+            ) {
                 return Err(AckError::TooMany);
             }
             // Never reused, also across a recovery (the reference counts per namespace and never
             // restarts): a late answer to a question of the socket's previous life can never
             // resolve a new one.
-            let id = core.def.shared().next_ack_id();
+            let id = shared.next_ack_id();
             state.acks.insert(id, tx);
-            id
+            AckSlot { core, id }
         };
         let packet = codec::encode_event(
             &core.nsp,
-            Some(id),
+            Some(slot.id),
             &codec::array_json(Some(event), args, None),
         );
-        let sent = if packet.len() > core.def.shared().options.max_outbound_message {
+        let sent = if packet.len() > shared.options.max_outbound_message {
             Err(SendError::TooLarge)
         } else {
             core.push(packet, &Delivery::Reliable)
         };
         if let Err(error) = sent {
-            core.lock().acks.remove(&id);
             return Err(AckError::Send(error));
         }
-        match tokio::time::timeout(timeout, rx).await {
-            Ok(Ok(answer)) => answer,
+        let answer = match tokio::time::timeout(timeout, rx).await {
+            Ok(Ok(answer)) => answer.map(|answer| answer.args),
             Ok(Err(_)) => Err(AckError::Disconnected),
-            Err(_) => {
-                core.lock().acks.remove(&id);
-                Err(AckError::Timeout)
-            }
-        }
+            Err(_) => Err(AckError::Timeout),
+        };
+        drop(slot);
+        answer
     }
 
     /// `socket.disconnect()`: sends DISCONNECT (the client sees `io server disconnect` and does

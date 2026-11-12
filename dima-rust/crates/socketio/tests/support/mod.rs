@@ -539,17 +539,27 @@ impl TestServer {
         runtime: Runtime,
         declare: impl FnOnce(&mut dima_socketio::Builder),
     ) -> Self {
+        Self::start_serving(options, runtime, ServeOptions::default(), declare).await
+    }
+
+    /// Starts a server with the namespaces `declare` adds, served with `serve`.
+    pub async fn start_serving(
+        options: Options,
+        runtime: Runtime,
+        serve: ServeOptions,
+        declare: impl FnOnce(&mut dima_socketio::Builder),
+    ) -> Self {
         let shutdown = Shutdown::new();
         let mut builder = SocketIo::builder(options, runtime, shutdown.clone());
         declare(&mut builder);
-        let io = builder.build();
+        let io = builder.build(&serve).expect("server builds");
         let listener = dima_web::bind_to(SocketAddr::from(([127, 0, 0, 1], 0))).unwrap();
         let addr = listener.local_addr().unwrap();
         let serve = tokio::spawn(dima_web::serve(
             listener,
             io.layer(app()),
             shutdown.cancellation_token(),
-            ServeOptions::default(),
+            serve,
         ));
         Self {
             addr,

@@ -15,8 +15,8 @@
 //! ```
 //! use std::time::Duration;
 //! use dima_socketio::{
-//!     ConnectError, Event, Handshake, Namespace, NamespaceOptions, Options, Runtime, Socket,
-//!     SocketIo,
+//!     ConnectError, Event, Handshake, Namespace, NamespaceOptions, Options, RetainedSize, Runtime,
+//!     Socket, SocketIo,
 //! };
 //! use serde_json::json;
 //!
@@ -26,6 +26,13 @@
 //! /// `socket.data` of a trigger overlay.
 //! struct Overlay {
 //!     channel: String,
+//! }
+//!
+//! // What a recovery session of the socket keeps (see `RetainedSize`).
+//! impl RetainedSize for Overlay {
+//!     fn retained_bytes(&self) -> usize {
+//!         self.channel.retained_bytes()
+//!     }
 //! }
 //!
 //! impl Namespace for Triggers {
@@ -61,7 +68,7 @@
 //! let shutdown = dima_core::Shutdown::new();
 //! let mut builder = SocketIo::builder(Options::default(), Runtime::default(), shutdown.clone());
 //! let triggers = builder.family(r"^\/overlays\/triggers\/\w+$", NamespaceOptions::default(), Triggers)?;
-//! let io = builder.build();
+//! let io = builder.build(&dima_web::ServeOptions::default())?;
 //! // Later, from an HTTP route: `io.of('/overlays/triggers/123').emit('trigger', payload)`.
 //! let sent = triggers.emit("/overlays/triggers/123", "trigger", &[json!({"name": "wave"})])?;
 //! assert_eq!(sent, 0); // nobody connected (with recovery the event is still kept)
@@ -72,8 +79,9 @@
 //! ```
 //!
 //! Serving, in the binary: `dima_web::serve(listener, io.layer(app), shutdown.cancellation_token(),
-//! options)` next to `io.closed().await`, with the same [`dima_core::Shutdown`] given to the
-//! builder, so the Socket.IO drain (5 s) finishes inside the web server's (10 s). `/socket.io/`
+//! options)` next to `io.closed().await`, with the same `options` given to [`Builder::build`]
+//! (which refuses a connection cap larger than the web server's stream quota) and the same
+//! [`dima_core::Shutdown`] given to the builder, so the Socket.IO drain (5 s) finishes inside the web server's (10 s). `/socket.io/`
 //! requests (Engine.IO sessions and the browser client files) are answered here; every other path
 //! and upgrade, `/v1/desktop/ws` included, reaches the app.
 //!
@@ -105,7 +113,17 @@
 //!   in the connection handler misses events that arrive first; here they wait in the socket's
 //!   inbound queue until `on_connect` returns, and `on_disconnect` is called exactly once even
 //!   when the socket left during `on_connect` (the reference then never ran a `disconnect`
-//!   listener registered late, and leaked its intervals). [`Dispatch::Sequential`] (the default)
+//!   listener registered late, and leaked its intervals).
+//! - **Handlers belong to their socket.** `on_connect` and `on_event` are cancelled (dropped at
+//!   their next await) when the socket leaves, and every handler has a deadline
+//!   ([`HandlerDeadlines`]: 60 s, 120 s, 10 s); `on_disconnect` runs afterwards under its own.
+//!   Work that must outlive the socket belongs in a task of the feature, not in a handler. A
+//!   recovered socket starts once the old socket's handlers have all ended.
+//! - **Socket data implements [`RetainedSize`]** (add up the fields), so a recovery session is
+//!   measured by what it really keeps.
+//! - **Recovery re-runs the check** ([`Namespace::recheck`], on by default; the reference skips
+//!   its middlewares): a namespace whose check cannot pass twice (a one-time ticket) sets
+//!   [`NamespaceOptions::recheck_recovery`] to `false` or overrides `recheck`. [`Dispatch::Sequential`] (the default)
 //!   handles one event at a time; use [`Dispatch::Concurrent`] where a slow handler (speech
 //!   preview) must not hold up the next event, and lock in the data where order matters.
 //! - **Disconnected sockets.** An emit on a socket that has left is never written to the
@@ -125,14 +143,16 @@
 //!   declare it as a family whose check answers `ConnectError::new("Invalid namespace")` for ids
 //!   not created yet, which the client sees exactly as the reference's refusal.
 //! - **Admission refusals** (unknown name, name over 256 bytes, more than 8 namespaces on one
-//!   connection, 4096 namespaces in the server) all answer `Invalid namespace`.
+//!   connection, a full namespace table, `max_sockets_per_namespace` sockets in the namespace)
+//!   all answer `Invalid namespace`. A handshake beyond `max_connections`, or a WebSocket when
+//!   `dima-web`'s stream quota is full, is answered `503 Service Unavailable`.
 //!
 //! # Differences from the reference
 //!
 //! Besides the bounds (see [`Options`], all new: the reference has none):
 //!
 //! - Malformed client packets are refused more strictly (see the codec's rules: packet type,
-//!   acknowledgement id, JSON depth 128); binary packets close the connection. A second CONNECT
+//!   acknowledgement id, JSON depth 127); binary packets close the connection. A second CONNECT
 //!   to a namespace whose check is still running closes the connection (the reference would
 //!   create a second socket).
 //! - A recovery claims its session: two reconnects with the same private id cannot both get the
@@ -140,18 +160,22 @@
 //!   is not kept.
 //! - Family members are released with their last socket (the reference keeps them for ever);
 //!   their recovery state is kept apart and outlives them.
-//! - From `engineioxide`: the first heartbeat ping goes out when the session opens instead of
-//!   after 25 s; a polling response carries at most 1 MB (the rest follows in the next poll);
-//!   session ids are 16 characters instead of 20; a WebSocket upgrade that fails after the
-//!   WebSocket handshake (wrong probe, upgrade timeout) ends the whole session where `engine.io`
-//!   keeps the client on polling; a client closing its WebSocket right after the upgrade can make
-//!   `engineioxide`'s writer task panic on a lock it expects free (`transport/ws.rs:259`; the
-//!   panic stays in that task, the session was ending anyway).
+//! - Recovery: a session is restored only if the check still accepts the recovering handshake
+//!   (above); an event too large to store breaks recovery from earlier offsets (the client
+//!   connects fresh) where the reference, which stores everything, replays it; the stores are
+//!   bounded and evict fairly between namespaces (see the `recovery` module).
+//! - A client packet whose parsed size does not fit the inbound budgets closes the connection
+//!   (`inbound overflow`) without being parsed (see [`Options::max_inbound_bytes`]).
+//! - From the transport (`engineioxide` with the patches of `vendor/README.md`): a polling
+//!   response carries at most 1 MB (the rest follows in the next poll); session ids are 16
+//!   characters instead of 20; the small differences listed at the end of that file.
 //! - The browser client files are compressed with `flate2` for gzip and deflate (other bytes,
-//!   same content) and served from the vendored Brotli form for `br`.
+//!   same content) and served from the vendored Brotli form for `br`; they and the polling
+//!   answers carry `Vary: Accept-Encoding`, which the reference does not send.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod budget;
 mod client_files;
 mod codec;
 pub mod config;
@@ -166,17 +190,20 @@ mod pattern;
 mod recovery;
 mod server;
 mod service;
+mod size;
 mod socket;
+mod tasks;
 pub mod telemetry;
 
 pub use client_files::CLIENT_VERSION;
-pub use config::{Dispatch, Options, QueueLimits, Recovery, RecoveryLimits};
+pub use config::{Dispatch, HandlerDeadlines, Options, QueueLimits, Recovery, RecoveryLimits};
 pub use error::{AckError, BuildError, ConnectError, DisconnectReason, SendError};
 pub use handshake::{Handshake, Query};
 pub use namespace::{Namespace, NamespaceOptions, NamespaceRef};
 pub use outbox::{Delivery, MAX_PENDING_KEYS};
 pub use pattern::{Pattern, PatternError};
-pub use server::{Builder, Runtime, SocketIo, Stats};
+pub use server::{Builder, Runtime, ShutdownReport, SocketIo, Stats};
 pub use service::SocketIoService;
+pub use size::RetainedSize;
 pub use socket::{Ack, Event, Socket};
 pub use telemetry::{NoTelemetry, Telemetry};

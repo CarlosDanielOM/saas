@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
+use crate::budget::Charge;
 use crate::codec::{self, Kind};
 use crate::error::DisconnectReason;
 use crate::handshake::Origin;
@@ -48,6 +49,10 @@ impl Transport for EngineSocket {
             tokio::sync::mpsc::error::TrySendError::Closed(_) => TransportFull::Closed,
         })
     }
+
+    fn done(&self) -> u64 {
+        self.messages_done()
+    }
 }
 
 /// A namespace this connection is joining or has joined.
@@ -71,7 +76,7 @@ struct State {
     guard: Option<UpgradeGuard>,
 }
 
-/// How often a busy connection's queue is swept while nothing else happens.
+/// How often a restore waiting for room in a full queue tries again, besides being woken.
 const TICK: Duration = Duration::from_millis(100);
 
 pub(crate) struct Connection {
@@ -98,6 +103,10 @@ pub(crate) struct Connection {
     posting: std::sync::atomic::AtomicBool,
     /// `engineioxide` was told to close the session.
     engine_closing: std::sync::atomic::AtomicBool,
+    /// Inbound bytes held for this connection's CONNECT data (the handshakes' `auth`).
+    inbound: Arc<std::sync::atomic::AtomicUsize>,
+    /// This connection's slot of `max_connections`, given back when the session ends.
+    slot: Mutex<Option<tokio::sync::OwnedSemaphorePermit>>,
 }
 
 /// One polling request in Engine.IO, a poll or a POST. Dropped before [`PollGuard::finish`]
@@ -150,6 +159,7 @@ impl Connection {
         engine: Arc<EngineSocket>,
         first: Arc<Origin>,
         guard: Option<UpgradeGuard>,
+        slot: tokio::sync::OwnedSemaphorePermit,
         capacity: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -172,6 +182,8 @@ impl Connection {
             polls: std::sync::atomic::AtomicUsize::new(0),
             posting: std::sync::atomic::AtomicBool::new(false),
             engine_closing: std::sync::atomic::AtomicBool::new(false),
+            slot: Mutex::new(Some(slot)),
+            inbound: Arc::default(),
         })
     }
 
@@ -231,41 +243,82 @@ impl Connection {
     // ----- inbound -------------------------------------------------------------------------
 
     /// One Engine.IO message (`Client.ondata` / `ondecoded`).
+    ///
+    /// The memory its data will take once parsed is reserved first, from its text
+    /// ([`codec::parsed_size_bound`]): on the socket's inbound budget for an event or an
+    /// acknowledgement, on the connection's for a CONNECT (its data stays as the handshake's
+    /// `auth`), and on the server-wide one. A packet that does not fit closes the connection
+    /// as an inbound overflow, as an event beyond the inbound queue does, without being parsed.
     pub fn on_message(self: &Arc<Self>, text: &str) {
         if self.is_closed() {
             return;
         }
-        let Ok(codec::Packet { nsp, kind }) = codec::decode(text) else {
+        let Ok(head) = codec::decode_head(text) else {
             self.shared.telemetry.protocol_error();
             self.close(DisconnectReason::ForcedClose);
             return;
         };
-        let kind = match kind {
-            Kind::Connect(auth) => return self.on_connect_packet(nsp, auth),
-            other => other,
-        };
-        let socket = match kind {
-            Kind::ConnectError => None,
-            _ => match self.state().entries.get(&nsp) {
+        let socket = match head.kind {
+            0 | 4 => None,
+            _ => match self.state().entries.get(head.nsp) {
                 Some(Entry::Joined(socket)) => Some(Arc::clone(socket)),
                 _ => None,
             },
         };
-        // A packet for a namespace this connection has not joined: `invalid state`.
-        let Some(socket) = socket else {
+        // A packet for a namespace this connection has not joined: `invalid state` (checked
+        // before its data is parsed).
+        if head.kind != 0 && head.kind != 4 && socket.is_none() {
             self.shared.telemetry.protocol_error();
             self.close(DisconnectReason::ForcedServerClose);
             return;
+        }
+        let amount = head.data.map_or(0, codec::parsed_size_bound);
+        let options = &self.shared.options;
+        let own = match &socket {
+            Some(socket) => socket.inbound_budget(),
+            None => Arc::clone(&self.inbound),
         };
-        match kind {
-            Kind::Event { name, args, ack } => {
-                if !socket.deliver(name, args, ack) {
+        let Some(charge) = Charge::take(
+            amount,
+            &self.shared.inbound_bytes,
+            options.max_inbound_total,
+            Some((&own, options.max_inbound_bytes)),
+        ) else {
+            self.shared.telemetry.inbound_overflow();
+            self.close(DisconnectReason::InboundOverflow);
+            return;
+        };
+        let packet = head
+            .data
+            .map(codec::parse_json)
+            .transpose()
+            .and_then(|data| codec::decode_body(head, data));
+        let Ok(codec::Packet { nsp, kind }) = packet else {
+            self.shared.telemetry.protocol_error();
+            self.close(DisconnectReason::ForcedClose);
+            return;
+        };
+        let socket = match (kind, socket) {
+            (Kind::Connect(auth), _) => return self.on_connect_packet(nsp, auth, charge),
+            (Kind::ConnectError, _) | (_, None) => {
+                // `invalid state`: a client does not send CONNECT_ERROR.
+                self.shared.telemetry.protocol_error();
+                self.close(DisconnectReason::ForcedServerClose);
+                return;
+            }
+            (kind, Some(socket)) => (kind, socket),
+        };
+        match socket {
+            (Kind::Event { name, args, ack }, socket) => {
+                if !socket.deliver(name, args, ack, charge) {
                     self.close(DisconnectReason::InboundOverflow);
                 }
             }
-            Kind::Ack { id, args } => socket.resolve_ack(id, args),
-            Kind::Disconnect => socket.leave(DisconnectReason::ClientNamespaceDisconnect),
-            Kind::Ignored | Kind::Connect(_) | Kind::ConnectError => {}
+            (Kind::Ack { id, args }, socket) => socket.resolve_ack(id, args, charge),
+            (Kind::Disconnect, socket) => {
+                socket.leave(DisconnectReason::ClientNamespaceDisconnect);
+            }
+            (Kind::Ignored | Kind::Connect(_) | Kind::ConnectError, _) => {}
         }
     }
 
@@ -276,7 +329,7 @@ impl Connection {
     }
 
     /// CONNECT (`Client.connect`): admission, then the namespace's own flow.
-    fn on_connect_packet(self: &Arc<Self>, nsp: String, auth: Map<String, Value>) {
+    fn on_connect_packet(self: &Arc<Self>, nsp: String, auth: Map<String, Value>, charge: Charge) {
         if self.shared.stopping() {
             return;
         }
@@ -317,7 +370,7 @@ impl Connection {
                 .entries
                 .insert(nsp.clone(), Entry::Pending(ticket.clone()));
         }
-        if let Err(refusal) = def.admit(self, &nsp, auth, ticket.clone()) {
+        if let Err(refusal) = def.admit(self, &nsp, auth, charge, ticket.clone()) {
             self.remove_pending(&nsp, &ticket);
             self.refuse(&nsp, refusal);
         }
@@ -383,14 +436,12 @@ impl Connection {
         let Some(engine) = self.engine() else {
             return Err(NotSent::Closed);
         };
-        let result = self.outbox().push(
+        self.outbox().push(
             engine.as_ref(),
             outgoing,
             &self.shared.outbound_bytes,
             self.shared.options.max_outbound_total,
-        );
-        self.poke.notify_one();
-        result
+        )
     }
 
     /// A packet that belongs to no socket (CONNECT_ERROR). A client that never reads them is a
@@ -437,29 +488,41 @@ impl Connection {
         }
     }
 
+    /// A socket of this connection is created: its packets may be sent from now on.
+    pub fn open_socket(&self, key: u64) {
+        self.outbox().open_socket(key);
+    }
+
+    /// The socket has left: its slots are dropped, its entry goes with its last packet.
     pub fn forget_socket(&self, key: u64) {
-        self.outbox().forget_socket(key);
+        self.outbox()
+            .forget_socket(key, &self.shared.outbound_bytes);
+        self.drained.notify_waiters();
+    }
+
+    /// How many messages the transport has finished (everything, once the session is gone).
+    fn done(&self) -> u64 {
+        self.engine()
+            .map_or(u64::MAX, |engine| engine.messages_done())
     }
 
     /// Whether packets still wait for the client.
     pub fn has_queued(&self) -> bool {
+        let done = self.done();
         let mut outbox = self.outbox();
-        outbox.sweep(&self.shared.outbound_bytes);
-        outbox.queued() > 0
+        outbox.sweep(done, &self.shared.outbound_bytes);
+        outbox.busy()
     }
 
     fn sweep_and_flush(&self) {
+        let done = self.done();
         let released = {
             let mut outbox = self.outbox();
-            let released = outbox.sweep(&self.shared.outbound_bytes);
+            let released = outbox.sweep(done, &self.shared.outbound_bytes);
             if outbox.has_waiting()
                 && let Some(engine) = self.engine()
             {
-                outbox.flush_waiting(
-                    engine.as_ref(),
-                    &self.shared.outbound_bytes,
-                    self.shared.options.max_outbound_total,
-                );
+                outbox.flush_waiting(engine.as_ref(), &self.shared.outbound_bytes);
             }
             released
         };
@@ -564,7 +627,12 @@ impl Connection {
                 .unwrap_or(DisconnectReason::TransportClose),
         };
         self.outbox().clear(&self.shared.outbound_bytes);
-        self.state().guard = None;
+        // The upgrade guard stays until the connection's task has seen the transport's tasks
+        // end: it is what aborts a writer stuck on a peer that stopped reading.
+        self.slot
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
         self.engine
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -603,13 +671,22 @@ impl Connection {
         self.close_engine();
     }
 
-    /// The connection's own task: the connect timeout and the queue sweeps.
+    /// The connection's own task: the connect timeout, and releasing output as the transport
+    /// finishes it (woken by its count of finished messages).
     pub async fn run(self: Arc<Self>) {
         let timeout = tokio::time::sleep(self.shared.options.connect_timeout);
         tokio::pin!(timeout);
         let mut waiting_for_join = true;
+        // Kept until the session's transport tasks have ended (see the end).
+        let engine = self.engine();
+        let mut finished = engine.as_ref().map(|engine| engine.watch_messages_done());
         loop {
-            let busy = self.outbox().busy();
+            let progress = async {
+                match finished.as_mut() {
+                    Some(finished) => finished.changed().await.is_ok(),
+                    None => std::future::pending().await,
+                }
+            };
             tokio::select! {
                 biased;
                 () = self.closed.cancelled() => break,
@@ -624,23 +701,49 @@ impl Connection {
                         self.close(*reason);
                     }
                 }
-                () = tokio::time::sleep(TICK), if busy => self.sweep_and_flush(),
+                alive = progress => {
+                    if alive {
+                        self.sweep_and_flush();
+                    } else {
+                        finished = None;
+                    }
+                }
             }
         }
-        if self.gone.is_cancelled() {
-            return;
+        if !self.gone.is_cancelled() {
+            if !self
+                .engine_closing
+                .load(std::sync::atomic::Ordering::Acquire)
+            {
+                self.drain_then_close().await;
+            }
+            // The session must end within the close timeout.
+            tokio::select! {
+                () = self.gone.cancelled() => {}
+                () = tokio::time::sleep(self.shared.options.close_timeout) => self.abort_transport(),
+                () = self.shared.hard_stop.cancelled() => self.abort_transport(),
+            }
         }
-        if !self
-            .engine_closing
-            .load(std::sync::atomic::Ordering::Acquire)
-        {
-            self.drain_then_close().await;
+        // The session has ended; its transport tasks (a writer flushing to a peer that stopped
+        // reading, the close task) end with it, within the close timeout, or at once when a
+        // shutdown's hard stop aborts the upgraded socket. This task, which the shutdown waits
+        // for, ends only after them.
+        if let Some(engine) = engine {
+            let ended = engine.tasks_ended();
+            tokio::pin!(ended);
+            tokio::select! {
+                biased;
+                () = &mut ended => {}
+                () = tokio::time::sleep(self.shared.options.close_timeout) => {
+                    self.abort_transport();
+                    (&mut ended).await;
+                }
+                () = self.shared.hard_stop.cancelled() => {
+                    self.abort_transport();
+                    (&mut ended).await;
+                }
+            }
         }
-        // The session must end within the close timeout.
-        tokio::select! {
-            () = self.gone.cancelled() => {}
-            () = tokio::time::sleep(self.shared.options.close_timeout) => self.abort_transport(),
-            () = self.shared.hard_stop.cancelled() => self.abort_transport(),
-        }
+        self.state().guard = None;
     }
 }

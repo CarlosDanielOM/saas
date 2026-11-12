@@ -18,6 +18,8 @@ pub enum Refusal {
     TooManyOnConnection,
     /// `max_namespaces` concrete namespaces exist.
     TooManyNamespaces,
+    /// The namespace has `max_sockets_per_namespace` sockets joined or joining.
+    NamespaceFull,
     /// The namespace's check refused it (a CONNECT_ERROR with the check's message).
     Check,
     /// The check panicked (a CONNECT_ERROR `Internal server error`).
@@ -53,6 +55,12 @@ pub enum RecoveryOutcome {
     UnknownOffset,
     /// Packets were evicted while the missed ones were being sent: the connection was closed.
     Gap,
+    /// An event after the client's offset could not be stored (too large): the replay would
+    /// miss it, so the client connects fresh.
+    Discontinuity,
+    /// The namespace's check refused the recovering connection (`Namespace::recheck`): the
+    /// session was dropped and the connect went the fresh way.
+    RecheckRefused,
 }
 
 /// Something the stores had to drop to stay within their bounds.
@@ -64,6 +72,20 @@ pub enum Eviction {
     Session,
     /// A session larger than `session_bytes`, not kept.
     SessionTooLarge,
+    /// An event too large to store: delivered live, and earlier offsets of its namespace can
+    /// no longer be recovered.
+    NotStored,
+}
+
+/// A kind of handler.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Handler {
+    /// `on_connect`.
+    Connect,
+    /// `on_event`.
+    Event,
+    /// `on_disconnect`.
+    Disconnect,
 }
 
 /// The seam. All methods default to doing nothing.
@@ -88,8 +110,12 @@ pub trait Telemetry: Send + Sync + 'static {
     fn recovery_evicted(&self, _namespace: &str, _what: Eviction) {}
     /// A client sent a packet that closed its connection (malformed, binary, wrong state).
     fn protocol_error(&self) {}
+    /// A client packet did not fit the inbound budgets: its connection was closed.
+    fn inbound_overflow(&self) {}
     /// A handler (check, connect, event, disconnect) panicked; the panic was contained.
     fn handler_panicked(&self, _namespace: &str) {}
+    /// A handler ran past its deadline and was dropped.
+    fn handler_timed_out(&self, _namespace: &str, _handler: Handler) {}
 }
 
 /// Reports nothing.
