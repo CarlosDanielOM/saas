@@ -8,8 +8,8 @@
 use std::any::Any;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -109,6 +109,30 @@ pub trait Observer: Send + Sync + 'static {
     fn on_response(&self, end: RequestEnd);
 }
 
+/// The route dispatch selected last, shared by the request and the exchange's completion guard
+/// so that an exchange abandoned while its route runs still reports the route.
+#[derive(Clone, Default)]
+pub(crate) struct RouteSlot(Arc<Mutex<Option<MatchedRoute>>>);
+
+impl RouteSlot {
+    pub(crate) fn set(&self, route: MatchedRoute) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(route);
+    }
+
+    fn get(&self) -> Option<MatchedRoute> {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+}
+
+impl std::fmt::Debug for RouteSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("RouteSlot").field(&self.get()).finish()
+    }
+}
+
 /// Everything needed to report the end of one exchange, taken exactly once.
 struct Completion {
     observer: Option<Arc<dyn Observer>>,
@@ -116,7 +140,7 @@ struct Completion {
     started: Instant,
     method: Method,
     url: String,
-    route: Option<MatchedRoute>,
+    route: RouteSlot,
     status: Option<u16>,
     trace: Option<TraceContext>,
 }
@@ -128,7 +152,7 @@ impl Completion {
             observer.on_response(RequestEnd {
                 method: self.method,
                 url: self.url,
-                route: self.route,
+                route: self.route.get(),
                 status: self.status,
                 duration: self.started.elapsed(),
                 bytes_sent,
@@ -150,6 +174,7 @@ impl Exchange {
         closed: CancellationToken,
         method: Method,
         url: String,
+        route: RouteSlot,
         trace: Option<TraceContext>,
     ) -> Self {
         Self {
@@ -159,7 +184,7 @@ impl Exchange {
                 started: Instant::now(),
                 method,
                 url,
-                route: None,
+                route,
                 status: None,
                 trace,
             }),
@@ -170,7 +195,6 @@ impl Exchange {
     pub(crate) fn finish(
         mut self,
         response: http::Response<Body>,
-        route: Option<MatchedRoute>,
         trace: Option<TraceContext>,
     ) -> http::Response<Body> {
         let Some(mut completion) = self.completion.take() else {
@@ -178,7 +202,6 @@ impl Exchange {
         };
         let status = response.status().as_u16();
         completion.status = Some(status);
-        completion.route = route;
         if trace.is_some() {
             completion.trace = trace;
         }

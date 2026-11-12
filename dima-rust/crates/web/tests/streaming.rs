@@ -336,7 +336,12 @@ async fn a_client_leaving_before_the_answer_cancels_the_handler() {
     let ended = recording.wait_for(1).await;
     assert_eq!(ended[0].status, None);
     assert!(ended[0].aborted);
-    assert_eq!(ended[0].route.as_ref().map(|r| r.pattern.as_str()), None);
+    // Review finding: the route was copied only when the answer was ready, so a client
+    // abandoning a slow handler that had matched was reported as unmatched.
+    assert_eq!(
+        ended[0].route.as_ref().map(|r| r.pattern.as_str()),
+        Some("/slow")
+    );
     token.cancel();
     server.await.expect("join").expect("serve");
 }

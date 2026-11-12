@@ -111,6 +111,7 @@ impl<S: Send + Sync + 'static> App<S> {
             req.closed.clone(),
             req.method().clone(),
             req.original_url().to_owned(),
+            req.route_slot.clone(),
             trace,
         );
         let outcome = AssertUnwindSafe(self.inner.router.handle(&mut req))
@@ -121,7 +122,7 @@ impl<S: Send + Sync + 'static> App<S> {
             Ok(Exit::Fell(error)) => final_response(&mut req, error),
             Err(_) => final_response(&mut req, Some(Error::panicked())),
         };
-        exchange.finish(response, req.route.take(), req.trace.take())
+        exchange.finish(response, req.trace.take())
     }
 }
 
