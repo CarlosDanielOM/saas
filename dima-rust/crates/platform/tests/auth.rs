@@ -746,3 +746,83 @@ async fn a_forget_that_fails_is_returned() -> Result<()> {
     })
     .await
 }
+
+/// `/validate`'s `expires_in` (A2): zero or less is an expired token, refused without `/users`;
+/// absent or not a number is accepted but not cached; a positive one bounds the cache, and a
+/// lifetime of a few seconds is not cached at all.
+#[tokio::test]
+async fn a_token_without_life_left_is_not_cached() -> Result<()> {
+    let cases: Value = serde_json::from_str(include_str!("auth-cases.json"))?;
+    with_stores(14, |stores| async move {
+        let client_id = cases["client_id"].as_str().context("client_id")?.to_owned();
+        let run = stores.run.clone();
+        // kind, `expires_in` as JSON (None: absent), status, cached.
+        let rows: [(&str, Option<&str>, u16, bool); 8] = [
+            ("life_zero", Some("0"), 401, false),
+            ("life_negative", Some("-30"), 401, false),
+            ("life_absent", None, 200, false),
+            ("life_null", Some("null"), 200, false),
+            ("life_text", Some("\"3600\""), 200, false),
+            ("life_fraction", Some("0.5"), 200, false),
+            ("life_three", Some("3"), 200, false),
+            ("life_hundred", Some("100"), 200, true),
+        ];
+        let server = MockServer::start().await?;
+        let answers: Vec<(String, Option<String>)> = rows
+            .iter()
+            .map(|(kind, life, _, _)| (token_of(kind, &run), life.map(str::to_owned)))
+            .collect();
+        let (mock_client, user_id) = (client_id.clone(), id_of("life", &run));
+        server.fallback(move |request| {
+            let auth = request.header("authorization").unwrap_or_default();
+            let token = auth.strip_prefix("Bearer ").unwrap_or(auth);
+            let Some((_, life)) = answers.iter().find(|(t, _)| t == token) else {
+                return MockResponse::json(401, r#"{"status":401}"#);
+            };
+            if endpoint(request) == "validate" {
+                let life = life
+                    .as_deref()
+                    .map(|life| format!(r#","expires_in":{life}"#))
+                    .unwrap_or_default();
+                MockResponse::json(
+                    200,
+                    &format!(
+                        r#"{{"client_id":"{mock_client}","login":"l","scopes":[],"user_id":"{user_id}"{life}}}"#
+                    ),
+                )
+            } else {
+                MockResponse::json(
+                    200,
+                    &format!(r#"{{"data":[{{"id":"{user_id}","login":"l","display_name":"L"}}]}}"#),
+                )
+            }
+        });
+        let app = app(authenticator(&stores, &server, &client_id, None)?)?;
+        stores.track(activity_touch_key(&id_of("life", &run)));
+        for (kind, _, status, cached) in rows {
+            let token = token_of(kind, &run);
+            stores.track(token_cache_key(&token));
+            let before = server.requests().len();
+            let (got, _, body) = send(&app, "/probe", Some(&format!("Bearer {token}"))).await?;
+            assert_eq!(got, status, "{kind}: {body}");
+            let calls: Vec<_> = server.requests()[before..].iter().map(endpoint).collect();
+            if status == 401 {
+                assert_eq!(
+                    body,
+                    r#"{"error":true,"message":"Invalid token","status":401,"type":"invalid_token"}"#
+                );
+                assert_eq!(calls, ["validate"], "{kind}");
+            }
+            let key = token_cache_key(&token);
+            assert_eq!(stores.cache.exists(&[&key]).await? == 1, cached, "{kind}: cached");
+            if cached {
+                let Ttl::Seconds(ttl) = stores.cache.ttl(&key).await? else {
+                    panic!("{kind}: no lifetime");
+                };
+                assert!(ttl > 0 && ttl < 100, "{kind}: lifetime {ttl}");
+            }
+        }
+        Ok(())
+    })
+    .await
+}

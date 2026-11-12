@@ -7,7 +7,7 @@
 //! |---|---|---|
 //! | key | the raw bearer token | `auth:token:{sha256(token) base64url}`: the token cannot be read back from the key space |
 //! | value | hash `id, login, display_name, profile_image_url` (HSET, then a separate EXPIRE) | JSON of the same four fields and `since` (when the authentication began), written with `SET … EX` inside the publication script |
-//! | lifetime | 14000 s | `min(cache_ttl, expires_in − time spent)`: [`super::DEFAULT_CACHE_TTL`] (3600 s, Twitch's hourly validation rule) and never past the token's own expiry |
+//! | lifetime | 14000 s | `min(cache_ttl, expires_in − time spent)`: [`super::DEFAULT_CACHE_TTL`] (3600 s, Twitch's hourly validation rule) and never past the token's own expiry; not written below [`super::MIN_CACHE_TTL`] or when `expires_in` is unknown |
 //!
 //! Why the differences: a raw token in a key is readable by anyone who can list keys; a
 //! separate `EXPIRE` that fails after the `HSET` leaves an entry that never expires (a revoked
