@@ -61,8 +61,22 @@ impl Path {
         }
     }
 
-    /// Renders `template`, replacing each `{}` with the next argument, percent-encoded.
+    /// Renders path arguments with strict RFC 3986 escaping, including `!*'()`.
+    /// Use this default for request signing or a provider requiring canonical escaping.
     pub fn template(template: &'static str, args: &[&str]) -> Result<Self, PathError> {
+        Self::render(template, args, false)
+    }
+
+    /// Renders arguments exactly as JavaScript's `encodeURIComponent` (leaves `!*'()` alone).
+    /// Use when reproducing a URL built by TypeScript. Segment validation remains the same.
+    pub fn template_encode_uri_component(
+        template: &'static str,
+        args: &[&str],
+    ) -> Result<Self, PathError> {
+        Self::render(template, args, true)
+    }
+
+    fn render(template: &'static str, args: &[&str], javascript: bool) -> Result<Self, PathError> {
         if !template.starts_with('/') {
             return Err(PathError::Relative);
         }
@@ -81,7 +95,11 @@ impl Path {
                 if arg.is_empty() || *arg == "." || *arg == ".." {
                     return Err(PathError::Segment);
                 }
-                out.extend(utf8_percent_encode(arg, SEGMENT));
+                if javascript {
+                    out.push_str(&dima_text::encode_uri_component(arg));
+                } else {
+                    out.extend(utf8_percent_encode(arg, SEGMENT));
+                }
             }
         }
         Ok(Self {
@@ -110,6 +128,40 @@ impl From<&'static str> for Path {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn javascript_arguments_match_shared_encoder() {
+        for arg in ["!*'()~", "café 😀 مرحبا e\u{301}", "a/b?c#d%20+", "\0"] {
+            let path = Path::template_encode_uri_component("/{}", &[arg]).unwrap();
+            assert_eq!(
+                path.as_str(),
+                format!("/{}", dima_text::encode_uri_component(arg))
+            );
+            assert_eq!(path.template_str(), "/{}");
+        }
+        for arg in ["", ".", ".."] {
+            assert_eq!(
+                Path::template_encode_uri_component("/{}", &[arg]),
+                Err(PathError::Segment)
+            );
+        }
+        assert_eq!(
+            Path::template_encode_uri_component("/{}", &[]),
+            Err(PathError::Arity)
+        );
+        assert_eq!(
+            Path::template_encode_uri_component("relative", &[]),
+            Err(PathError::Relative)
+        );
+    }
+
+    #[test]
+    fn signing_escapes_javascript_punctuation() {
+        assert_eq!(
+            Path::template("/{}", &["!*'()"]).unwrap().as_str(),
+            "/%21%2A%27%28%29"
+        );
+    }
 
     #[test]
     fn arguments_cannot_escape_their_segment() {

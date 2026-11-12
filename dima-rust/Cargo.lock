@@ -1843,6 +1843,7 @@ dependencies = [
  "dima-core",
  "dima-http",
  "dima-store",
+ "dima-text",
  "dima-web",
  "futures-util",
  "http",

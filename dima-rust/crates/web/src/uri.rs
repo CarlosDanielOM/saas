@@ -6,55 +6,9 @@
 /// sequence must be complete and well-formed UTF-8 (no overlong forms, no surrogates), exactly as
 /// the ECMAScript `Decode` operation requires. Characters that are not escapes pass through.
 pub fn decode_uri_component(input: &str) -> Option<String> {
-    if !input.contains('%') {
-        return Some(input.to_owned());
-    }
-    let bytes = input.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut k = 0;
-    while k < bytes.len() {
-        let byte = bytes.get(k).copied()?;
-        if byte != b'%' {
-            out.push(byte);
-            k += 1;
-            continue;
-        }
-        let first = escape_at(bytes, k)?;
-        k += 3;
-        if first & 0x80 == 0 {
-            out.push(first);
-            continue;
-        }
-        let n = first.leading_ones() as usize;
-        if n == 1 || n > 4 {
-            return None;
-        }
-        let mut octets = [first, 0, 0, 0];
-        for slot in octets.iter_mut().take(n).skip(1) {
-            let next = escape_at(bytes, k)?;
-            if next & 0xC0 != 0x80 {
-                return None;
-            }
-            *slot = next;
-            k += 3;
-        }
-        let sequence = octets.get(..n)?;
-        // `from_utf8` rejects exactly what the specification rejects: overlong forms,
-        // surrogate code points and values above U+10FFFF.
-        std::str::from_utf8(sequence).ok()?;
-        out.extend_from_slice(sequence);
-    }
-    String::from_utf8(out).ok()
-}
-
-/// The byte of a `%XX` escape starting at `at`, or `None` when there is none.
-fn escape_at(bytes: &[u8], at: usize) -> Option<u8> {
-    if bytes.get(at) != Some(&b'%') {
-        return None;
-    }
-    let high = hex_value(*bytes.get(at + 1)?)?;
-    let low = hex_value(*bytes.get(at + 2)?)?;
-    Some(high << 4 | low)
+    dima_text::decode_uri_component(input)
+        .ok()
+        .map(std::borrow::Cow::into_owned)
 }
 
 pub(crate) fn hex_value(byte: u8) -> Option<u8> {
@@ -112,44 +66,8 @@ fn url_allowed(c: char) -> bool {
 
 /// JavaScript `encodeURI` for one character.
 fn push_encode_uri(out: &mut String, c: char) {
-    let keep = c.is_ascii_alphanumeric()
-        || matches!(
-            c,
-            '-' | '_'
-                | '.'
-                | '!'
-                | '~'
-                | '*'
-                | '\''
-                | '('
-                | ')'
-                | ';'
-                | ','
-                | '/'
-                | '?'
-                | ':'
-                | '@'
-                | '&'
-                | '='
-                | '+'
-                | '$'
-                | '#'
-        );
-    if keep {
-        out.push(c);
-        return;
-    }
-    let mut buf = [0u8; 4];
-    for byte in c.encode_utf8(&mut buf).bytes() {
-        push_percent(out, byte);
-    }
-}
-
-pub(crate) fn push_percent(out: &mut String, byte: u8) {
-    const HEX: &[u8; 16] = b"0123456789ABCDEF";
-    out.push('%');
-    out.push(char::from(HEX[usize::from(byte >> 4)]));
-    out.push(char::from(HEX[usize::from(byte & 0x0F)]));
+    let mut buf = [0; 4];
+    out.push_str(&dima_text::encode_uri(c.encode_utf8(&mut buf)));
 }
 
 /// `escape-html`: `& < > " '`.

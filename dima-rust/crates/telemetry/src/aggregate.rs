@@ -17,6 +17,7 @@
 
 use crate::label::{self, CHANNEL_MAX, Channel, KIND_MAX, Label, MetricKey, NAME_MAX, OUTCOME_MAX};
 use crate::trace::{SpanId, TraceId};
+use dima_text::js_truthy as truthy;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -407,22 +408,14 @@ pub const LOG_FIELDS: [&str; 9] = [
     "durationMs",
 ];
 
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(value) => *value,
-        Value::Number(number) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(_) | Value::Object(_) => true,
-    }
-}
-
 fn name_of(value: &Value) -> String {
     match value {
         Value::String(text) => Label::<NAME_MAX>::clean(text).as_str().to_owned(),
-        Value::Number(number) => Label::<NAME_MAX>::clean(&number.to_string())
-            .as_str()
-            .to_owned(),
+        Value::Number(number) => Label::<NAME_MAX>::clean(&dima_text::number_to_string(
+            number.as_f64().unwrap_or(f64::NAN),
+        ))
+        .as_str()
+        .to_owned(),
         Value::Bool(flag) => flag.to_string(),
         Value::Array(_) => "application".to_owned(),
         Value::Object(_) => "_object Object_".to_owned(),
@@ -453,8 +446,8 @@ impl LogRow {
         }
         let name = data
             .get("function")
-            .filter(|value| truthy(value))
-            .or_else(|| data.get("operation").filter(|value| truthy(value)))
+            .filter(|value| truthy(*value))
+            .or_else(|| data.get("operation").filter(|value| truthy(*value)))
             .map(name_of)
             .unwrap_or_else(|| "application".to_owned());
         Self {
@@ -602,6 +595,29 @@ mod tests {
 
     fn key(name: &str) -> MetricKey {
         MetricKey::new("command", name, &Channel::EMPTY, "ok")
+    }
+
+    #[test]
+    fn numeric_name_shared_contract() {
+        // Node String(number) drops negative zero and the integral .0 suffix.
+        assert_eq!(name_of(&serde_json::json!(-0.0)), "0");
+        assert_eq!(name_of(&serde_json::json!(1.0)), "1");
+    }
+
+    #[test]
+    fn coercion_contract() {
+        for (value, expected) in [
+            (serde_json::json!(null), false),
+            (serde_json::json!(false), false),
+            (serde_json::json!(-0.0), false),
+            (serde_json::json!(""), false),
+            (serde_json::json!([]), true),
+            (serde_json::json!({}), true),
+            (serde_json::json!("😀"), true),
+            (serde_json::json!(1e30), true),
+        ] {
+            assert_eq!(truthy(&value), expected);
+        }
     }
 
     #[test]

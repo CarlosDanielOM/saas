@@ -498,30 +498,7 @@ fn string_of_bson(value: RawBsonRef<'_>) -> String {
 
 /// `Date.prototype.toString()` in UTC.
 fn date_to_string(ms: i64) -> String {
-    let Some(fields) = dima_text::utc_fields(ms) else {
-        return "Invalid Date".to_owned();
-    };
-    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let day = DAYS
-        .get(usize::try_from(fields.weekday).unwrap_or(0))
-        .copied()
-        .unwrap_or("Sun");
-    let month = MONTHS
-        .get(usize::try_from(fields.month).unwrap_or(0))
-        .copied()
-        .unwrap_or("Jan");
-    let year = if fields.year < 0 {
-        format!("-{:06}", -fields.year)
-    } else {
-        format!("{:04}", fields.year)
-    };
-    format!(
-        "{day} {month} {:02} {year} {:02}:{:02}:{:02} GMT+0000 (Coordinated Universal Time)",
-        fields.day, fields.hour, fields.minute, fields.second
-    )
+    dima_text::to_string_utc(ms).unwrap_or_else(|| "Invalid Date".to_owned())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -588,14 +565,19 @@ impl Js {
         matches!(value, None | Some(Js::Null))
     }
 
-    fn truthy(&self) -> bool {
+    fn view(&self) -> dima_text::Js<'_, Self> {
         match self {
-            Self::Null => false,
-            Self::Bool(flag) => *flag,
-            Self::Number(n) => *n != 0.0 && !n.is_nan(),
-            Self::String(text) => !text.is_empty(),
-            _ => true,
+            Self::Null => dima_text::Js::Null,
+            Self::Bool(flag) => dima_text::Js::Bool(*flag),
+            Self::Number(n) => dima_text::Js::Number(*n),
+            Self::String(text) => dima_text::Js::String(text),
+            Self::Array(items) => dima_text::Js::Array(items),
+            _ => dima_text::Js::Other,
         }
+    }
+
+    fn truthy(&self) -> bool {
+        dima_text::js_truthy_with(self, Self::view)
     }
 
     fn type_of(&self) -> &'static str {
@@ -609,24 +591,11 @@ impl Js {
 
     /// `String(value)` for the values a codec reads as text.
     fn text(&self) -> String {
-        match self {
-            Self::String(text) | Self::Symbol(text) => text.clone(),
-            Self::Number(n) => dima_text::number_to_string(*n),
-            Self::Bool(flag) => flag.to_string(),
-            Self::Null => "null".to_owned(),
-            Self::Array(items) => items
-                .iter()
-                .map(|item| {
-                    if matches!(item, Js::Null) {
-                        String::new()
-                    } else {
-                        item.text()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(","),
-            _ => "[object Object]".to_owned(),
-        }
+        dima_text::js_string_with(self, |value| match value {
+            // BSONSymbol is an object (truthy) but its driver text is the symbol's text.
+            Self::Symbol(text) => dima_text::Js::String(text),
+            _ => value.view(),
+        })
     }
 
     /// The JSON text `JSON.stringify` writes for a value that is still plain JSON.
@@ -1219,6 +1188,41 @@ pub fn number_bson(n: f64) -> Bson {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bson_value_text_contract() {
+        let value = Js::Array(vec![
+            Js::Null,
+            Js::Number(-0.0),
+            Js::Array(vec![Js::String("😀".into()), Js::Null]),
+            Js::Symbol("symbol".into()),
+        ]);
+        assert_eq!(value.text(), ",0,😀,,symbol");
+        assert!(Js::Symbol(String::new()).truthy());
+        assert_eq!(Js::Symbol(String::new()).text(), "");
+        assert!(!Js::Number(f64::NAN).truthy());
+    }
+
+    #[test]
+    fn shared_date_contract() {
+        for ms in [
+            -8_640_000_000_000_000,
+            -1,
+            0,
+            8_640_000_000_000_000,
+            i64::MAX,
+        ] {
+            let expected =
+                dima_text::to_string_utc(ms).unwrap_or_else(|| "Invalid Date".to_owned());
+            assert_eq!(date_to_string(ms), expected);
+        }
+        let ms = dima_text::date_utc(-1, 0, 1, 0, 0, 0, 0).unwrap();
+        // Node vectors: non-ISO negative years have four digits; the old copy used six.
+        assert_eq!(
+            date_to_string(ms),
+            "Fri Jan 01 -0001 00:00:00 GMT+0000 (Coordinated Universal Time)"
+        );
+    }
 
     #[test]
     fn regexp_source_escapes_like_v8() {

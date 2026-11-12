@@ -23,6 +23,7 @@
 use super::digest::{constant_time_eq, hmac_sha256};
 use super::encoding::{decode_base64_lenient, encode_base64url, latin1_to_string};
 use crate::secret::SecretBytes;
+use dima_text::{js_number as to_number, js_number_value as js_number, js_truthy as truthy};
 use hmac::{Hmac, Mac};
 use serde_json::{Map, Value};
 use sha2::{Sha384, Sha512};
@@ -318,42 +319,16 @@ fn timespan(time: Timespan<'_>, timestamp: f64) -> Option<f64> {
     }
 }
 
-/// A JavaScript number as a JSON value: integers stay integers, NaN and infinities are `null`.
-fn js_number(n: f64) -> Value {
-    if n.fract() == 0.0 && n.abs() <= 9_007_199_254_740_991.0 {
-        #[allow(clippy::cast_possible_truncation)]
-        return Value::from(n as i64);
-    }
-    serde_json::Number::from_f64(n).map_or(Value::Null, Value::Number)
-}
-
-/// JavaScript truthiness of a JSON value.
-fn truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(flag) => *flag,
-        Value::Number(n) => n.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
-        Value::String(text) => !text.is_empty(),
-        Value::Array(_) | Value::Object(_) => true,
-    }
-}
-
-/// JavaScript `ToNumber` of a JSON value.
-fn to_number(value: &Value) -> f64 {
-    match value {
-        Value::Null => 0.0,
-        Value::Bool(flag) => f64::from(u8::from(*flag)),
-        Value::Number(n) => n.as_f64().unwrap_or(f64::NAN),
-        Value::String(text) => dima_text::parse_number(text),
-        Value::Array(_) => dima_text::parse_number(&dima_text::string_of(value)),
-        Value::Object(_) => f64::NAN,
-    }
-}
-
 /// `JSON.parse(text)`, with lone surrogate escapes repaired (text rule 3).
 fn json_parse(text: &str) -> Option<Value> {
-    let bytes = dima_text::sanitize_lone_surrogates(text.as_bytes());
-    serde_json::from_slice(&bytes).ok()
+    dima_text::parse_js_json(
+        text,
+        dima_text::JsonLimits {
+            max_depth: 127,
+            max_bytes: usize::MAX,
+        },
+    )
+    .ok()
 }
 
 /// `jwt.sign(payload, key, options)` at `now_ms` (`Date.now()`).
@@ -397,7 +372,7 @@ pub fn sign(
     let now_secs = now_ms.div_euclid(1000) as f64;
     let timestamp = payload
         .get("iat")
-        .filter(|iat| truthy(iat))
+        .filter(|iat| truthy(*iat))
         .and_then(Value::as_f64)
         .unwrap_or(now_secs);
     if options.no_timestamp {
@@ -690,7 +665,7 @@ pub fn verify_twitch_extension_jwt(
     }
     let payload =
         json_parse(&String::from_utf8_lossy(&decode_base64_lenient(payload))).filter(truthy)?;
-    if let Some(exp) = claim(&payload, "exp").filter(|exp| truthy(exp)) {
+    if let Some(exp) = claim(&payload, "exp").filter(|exp| truthy(*exp)) {
         #[allow(clippy::cast_precision_loss)]
         if to_number(exp) * 1000.0 < now_ms as f64 {
             return None;
@@ -706,6 +681,60 @@ mod tests {
 
     fn object(value: Value) -> Map<String, Value> {
         value.as_object().cloned().unwrap()
+    }
+
+    #[test]
+    fn negative_zero_is_preserved() {
+        // dima-text agrees with Number(-0); the old wrapper made positive integer zero.
+        assert!(js_number(-0.0).as_f64().unwrap().is_sign_negative());
+        assert!(js_number(9007199254740992.0).is_i64());
+        assert_eq!(js_number(f64::NAN), Value::Null);
+    }
+
+    #[test]
+    fn json_shared_contract() {
+        // Node rounds large integers and enumerates index keys first; the old copy did neither.
+        let value =
+            json_parse(r#"{"b":1,"2":2,"b":3,"1":9007199254740993,"z":-0,"e":1e2}"#).unwrap();
+        assert_eq!(value["1"].as_u64(), Some(9007199254740992));
+        assert_eq!(
+            value
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            ["1", "2", "b", "z", "e"]
+        );
+    }
+
+    #[test]
+    fn coercion_contract() {
+        for (value, expected) in [
+            (serde_json::json!(null), false),
+            (serde_json::json!(false), false),
+            (serde_json::json!(-0.0), false),
+            (serde_json::json!(""), false),
+            (serde_json::json!([]), true),
+            (serde_json::json!({}), true),
+            (serde_json::json!("😀"), true),
+            (serde_json::json!(1e30), true),
+        ] {
+            assert_eq!(truthy(&value), expected);
+        }
+        for (value, expected) in [
+            (serde_json::json!(null), 0.0),
+            (serde_json::json!(true), 1.0),
+            (serde_json::json!("0x10"), 16.0),
+            (serde_json::json!([null]), 0.0),
+            (serde_json::json!([["1e2"]]), 100.0),
+            (serde_json::json!(9007199254740993_u64), 9007199254740992.0),
+        ] {
+            assert_eq!(to_number(&value), expected);
+        }
+        assert!(to_number(&serde_json::json!({})).is_nan());
+        assert!(to_number(&serde_json::json!([1, 2])).is_nan());
+        assert!(to_number(&serde_json::json!("-0")).is_sign_negative());
     }
 
     #[test]

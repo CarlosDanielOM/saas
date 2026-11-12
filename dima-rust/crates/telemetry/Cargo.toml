@@ -10,6 +10,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+dima-text = { workspace = true }
 dima-core = { workspace = true }
 dima-http = { workspace = true }
 dima-store = { workspace = true }

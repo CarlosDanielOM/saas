@@ -293,31 +293,19 @@ fn canonical_integer(key: &str) -> Option<f64> {
     if key.len() > 1 && key.starts_with('0') {
         return None;
     }
-    let exact: u128 = key.parse().ok()?;
     let double: f64 = key.parse().ok()?;
-    (double < 1e21 && double as u128 == exact).then_some(double)
+    (double < 1e21 && dima_text::number_to_string(double) == key).then_some(double)
 }
 
 /// `String(n)` for a non-negative integral double below 1e21.
 fn number_key(n: f64) -> String {
-    if n.fract() == 0.0 && (0.0..1e21).contains(&n) {
-        (n as u128).to_string()
-    } else {
-        format!("{n}")
-    }
+    dima_text::number_to_string(n)
 }
 
 /// JavaScript `parseInt(key, 10)` as qs uses it when shifting overflow keys.
 fn js_parse_int_key(key: &str) -> Option<f64> {
-    let s = key.trim_start_matches(crate::mediatype::is_js_whitespace);
-    let (negative, digits) = match s.as_bytes().first() {
-        Some(b'-') => (true, s.get(1..).unwrap_or("")),
-        Some(b'+') => (false, s.get(1..).unwrap_or("")),
-        _ => (false, s),
-    };
-    let end = digits.bytes().take_while(u8::is_ascii_digit).count();
-    let number: f64 = digits.get(..end).filter(|d| !d.is_empty())?.parse().ok()?;
-    Some(if negative { -number } else { number })
+    let number = dima_text::parse_int(key, dima_text::Radix::Decimal);
+    (!number.is_nan()).then_some(number)
 }
 
 fn array_to_object(array: Arr) -> Obj {
@@ -675,6 +663,46 @@ mod tests {
 
     fn q(input: &str) -> Value {
         parse_query(input)
+    }
+
+    #[test]
+    fn parse_int_key_contract() {
+        for (key, expected) in [
+            ("  +17tail", 17.0),
+            ("-0", -0.0),
+            ("9007199254740993x", 9007199254740992.0),
+            ("\u{feff}12", 12.0),
+        ] {
+            let actual = js_parse_int_key(key).unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(actual.is_sign_negative(), expected.is_sign_negative());
+        }
+        for key in ["", "++1", "😀", "x1"] {
+            assert!(js_parse_int_key(key).is_none());
+        }
+    }
+
+    #[test]
+    fn canonical_integer_matches_javascript_text() {
+        // The old binary-integer comparison rejected ...0100 and accepted ...0128.
+        // Node String(Number(key)) does the reverse, as the shared formatter does.
+        assert!(canonical_integer("1000000000000000100").is_some());
+        assert!(canonical_integer("1000000000000000128").is_none());
+        for key in ["0", "17", "4294967294", "9007199254740992"] {
+            assert!(canonical_integer(key).is_some());
+        }
+        for key in ["01", "-0", "1e2", "9007199254740993"] {
+            assert!(canonical_integer(key).is_none());
+        }
+    }
+
+    #[test]
+    fn number_key_shared_contract() {
+        // Node prints shortest decimal text; the old cast exposed binary rounding.
+        // Node uses the shortest decimal that round-trips; the old u128 cast printed 0128.
+        assert_eq!(number_key(1000000000000000100.0), "1000000000000000100");
+        assert_eq!(number_key(-0.0), "0");
+        assert_eq!(number_key(1e2), "100");
     }
 
     #[test]

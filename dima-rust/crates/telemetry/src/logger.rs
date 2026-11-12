@@ -546,6 +546,10 @@ fn civil(millis: i64) -> (i64, i64, i64, i64, i64, i64, i64) {
 
 /// `new Date(ms).toLocaleString('en-US', {timeZone: 'UTC'})`: `11/11/2026, 3:04:05 PM`.
 pub fn format_timestamp(millis: i64) -> String {
+    if let Some(text) = dima_text::to_locale_string_en_us_utc(millis) {
+        return text;
+    }
+    // Preserve this total formatter's historical contract outside JavaScript's Date range.
     let (year, month, day, hour, minute, second, _) = civil(millis);
     let year = if year <= 0 { 1 - year } else { year };
     format!(
@@ -557,6 +561,11 @@ pub fn format_timestamp(millis: i64) -> String {
 
 /// ISO 8601 UTC with milliseconds, for console lines.
 pub fn iso_timestamp(millis: i64) -> String {
+    if let Some(text) = dima_text::to_iso_string(millis) {
+        return text;
+    }
+    // Unlike Date.toISOString, this internal formatter has no error channel.
+    // Preserve its historical out-of-range output.
     let (year, month, day, hour, minute, second, ms) = civil(millis);
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{ms:03}Z")
 }
@@ -564,6 +573,16 @@ pub fn iso_timestamp(millis: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn timestamp_shared_contract() {
+        let negative = dima_text::date_utc(-1, 0, 1, 0, 0, 0, 0).unwrap();
+        let extended = dima_text::date_utc(10000, 0, 1, 0, 0, 0, 0).unwrap();
+        // Node ISO vectors require signed six-digit years outside 0000..9999.
+        assert!(iso_timestamp(negative).starts_with("-000001-"));
+        assert!(iso_timestamp(extended).starts_with("+010000-"));
+        assert_eq!(format_timestamp(-1), "12/31/1969, 11:59:59 PM");
+    }
 
     #[test]
     fn timestamps() {
