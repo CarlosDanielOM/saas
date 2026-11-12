@@ -5,7 +5,7 @@
 # is removed. New code never depends on it and never goes into it.
 [workspace]
 resolver = "3"
-members = [".", "crates/*", "rig", "services/*"]
+members = [".", "bot", "crates/*", "rig", "services/*"]
 # Third-party crates carried with local patches (vendor/README.md). Their own workspace runs
 # their tests; they stay out of this workspace's lint and format gate.
 exclude = ["vendor"]
