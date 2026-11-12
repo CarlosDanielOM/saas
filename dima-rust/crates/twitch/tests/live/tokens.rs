@@ -112,8 +112,8 @@ async fn an_expired_token_is_refreshed_and_stored_like_the_reference() -> Result
             after.get("access_token_expires_at"),
             Some(&Bson::Int32(i32::try_from(NOW_SECS + 14_400)?))
         );
-        assert_eq!(after.get_bool("has_permissions")?, true);
-        assert_eq!(after.get_bool("up_to_date_permissions")?, true);
+        assert!(after.get_bool("has_permissions")?);
+        assert!(after.get_bool("up_to_date_permissions")?);
         // Nothing else of the account changed, and the keys kept their order.
         let keys = |d: &bson::Document| d.keys().cloned().collect::<Vec<_>>();
         assert_eq!(keys(&after), keys(&before));
@@ -241,8 +241,8 @@ async fn refused_refreshes_wipe_only_for_a_dead_refresh_token() -> Result<()> {
                     );
                 }
                 assert_eq!(after.get("access_token_expires_at"), Some(&Bson::Null));
-                assert_eq!(after.get_bool("has_permissions")?, false);
-                assert_eq!(after.get_bool("up_to_date_permissions")?, false);
+                assert!(!after.get_bool("has_permissions")?);
+                assert!(!after.get_bool("up_to_date_permissions")?);
                 assert_eq!(cache["access_token"], "");
                 assert_eq!(cache["refresh_token"], "");
                 assert_eq!(cache["expires_at"], "");
@@ -495,7 +495,7 @@ async fn a_newer_token_in_mongodb_is_never_wiped() -> Result<()> {
         assert_eq!(token_requests(&server).len(), 1, "one refused attempt with the stale token");
         let after = stored_account(&stores, "u1").await?;
         assert_eq!(decrypt_field(&after, "refresh_token").as_deref(), Some("ts-refresh"));
-        assert_eq!(after.get_bool("has_permissions")?, true);
+        assert!(after.get_bool("has_permissions")?);
         let cache = cache_fields(&stores, "u1").await?;
         assert_eq!(cache["refresh_token"], "ts-refresh");
         assert_eq!(cache["access_token"], "ts-access");

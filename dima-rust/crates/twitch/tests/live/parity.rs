@@ -35,7 +35,7 @@ fn expected_bson(value: &Value) -> Bson {
         Value::Number(number) => {
             dima_store::mongo::number::js_number(number.as_f64().unwrap_or(f64::NAN))
         }
-        other => panic!("unexpected $set value {other}"),
+        other => unreachable!("unexpected $set value {other}"),
     }
 }
 

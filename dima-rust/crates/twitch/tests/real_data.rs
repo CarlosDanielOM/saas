@@ -26,7 +26,7 @@ struct Shapes {
 }
 
 fn is_hex(text: &str) -> bool {
-    text.len() % 2 == 0 && text.bytes().all(|b| b.is_ascii_hexdigit())
+    text.len().is_multiple_of(2) && text.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 /// What `crypto.ts` accepts: no envelope, an empty one (`''` or `null` parts: `decrypt` gives

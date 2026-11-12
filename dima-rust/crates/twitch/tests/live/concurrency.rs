@@ -43,7 +43,9 @@ async fn assert_consistent(stores: &Stores, state: &Shared) -> Result<String> {
     let stored =
         decrypt_field(&stored_account(stores, "u1").await?, "refresh_token").unwrap_or_default();
     assert!(
-        state.lock().unwrap().valid.contains_key(&stored),
+        state
+            .lock()
+            .is_ok_and(|state| state.valid.contains_key(&stored)),
         "MongoDB holds a refresh token Twitch still accepts"
     );
     let cache = cache_fields(stores, "u1").await?;
@@ -170,7 +172,7 @@ async fn a_refresh_slower_than_the_lease_never_stores_an_older_token() -> Result
             };
             assert_eq!(stored, expected);
             let after = stored_account(&stores, "u1").await?;
-            assert_eq!(after.get_bool("has_permissions")?, true);
+            assert!(after.get_bool("has_permissions")?);
             Ok(())
         })
         .await?;
@@ -227,7 +229,7 @@ async fn a_process_that_dies_between_the_answer_and_the_write() -> Result<()> {
                     matches!(result, Err(TokenError::Refresh { .. })),
                     "{result:?}"
                 );
-                assert_eq!(after.get_bool("has_permissions")?, false);
+                assert!(!after.get_bool("has_permissions")?);
             } else {
                 assert_eq!(result?.expose(), "u1-access-2");
                 assert_eq!(
