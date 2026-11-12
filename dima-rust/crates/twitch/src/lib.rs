@@ -14,7 +14,9 @@
 //! - [`oauth`]: the token endpoint and the classification of refused refreshes.
 //! - [`badges`], [`emotes`]: `formatBadges` and `getChannelEmoteCatalog`.
 //! - Recovery of answers MongoDB has not taken (`recovery.rs`): [`Twitch::start_recovery`] once
-//!   per process, [`Twitch::reconcile_recovery`] on a tick and before a rollback, and the last
+//!   per process, [`Twitch::reconcile_recovery`] on a tick and before a rollback,
+//!   [`Twitch::recovery_records`] and [`Twitch::settle_recovery_record`] for an operator
+//!   (`operator.rs`), [`Twitch::store_sign_in`] for the sign-in route, and the last
 //!   step of [`Twitch::shutdown`].
 //! - [`eventsub`]: EventSub subscriptions: the table, create, list, delete, the bits migration
 //!   and the reconciliation.
@@ -76,6 +78,7 @@ pub mod helix;
 pub mod keys;
 mod lease;
 pub mod oauth;
+mod operator;
 mod recovery;
 mod refresh;
 mod secret;
@@ -95,6 +98,7 @@ pub use helix::{
 };
 pub use keys::{KeySpace, RecoveryKey};
 pub use oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason};
+pub use operator::{MAX_LISTED_RECORDS, RecordState, RecoveryRecord, SettleAction, SettleOutcome};
 pub use recovery::RecoveryReport;
 pub use secret::{AccessToken, RefreshToken};
 pub use streamers::StreamerAccount;

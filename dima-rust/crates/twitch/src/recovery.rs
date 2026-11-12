@@ -42,8 +42,25 @@
 //! - [`crate::Twitch::start_recovery`], once when a process starts, and
 //!   [`crate::Twitch::reconcile_recovery`] on a tick ([`crate::Timings::recovery_interval`]),
 //!   resolve every record;
-//! - the rollback procedure runs [`crate::Twitch::reconcile_recovery`] until `left` is 0
-//!   before the TypeScript starts, which cannot read these records.
+//! - the rollback procedure (below) runs [`crate::Twitch::reconcile_recovery`] before the
+//!   TypeScript starts, which cannot read these records.
+//!
+//! What the reconciliation cannot settle alone (unmatched, unreadable) is listed and settled by
+//! an operator: `crate::operator`.
+//!
+//! # Rollback to the TypeScript
+//!
+//! 1. Stop every Rust process (bot, API, cron); each one's shutdown parks what its registry
+//!    still holds. Do not flush Rust's Dragonfly database.
+//! 2. Run the reconciliation (with the services stopped) until a run returns `Ok` with
+//!    `failed` and `left` at 0. A `failed` that stays is a store failure (fix it and run again)
+//!    or an unreadable record (step 3).
+//! 3. List the records ([`crate::Twitch::recovery_records`]) and settle what is left by the
+//!    operator procedure of `crate::operator`: discard an unreadable record; for each unmatched
+//!    one, discard it when MongoDB's token works, otherwise apply one; then run the
+//!    reconciliation again until `failed`, `left` and `unmatched` are 0. Quarantined records do
+//!    not matter to the TypeScript and can stay.
+//! 4. Start the TypeScript processes (same `SECRET_KEY`).
 //!
 //! **How records are found**: a `SCAN` of their key pattern
 //! ([`crate::KeySpace::recovery_pattern`]), page by page. No index is kept beside them, so
@@ -103,6 +120,7 @@ use crate::base::{Inner, Twitch};
 use crate::credentials::{CAS_ROUNDS, StoredAccount, Written, rotation_fields};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
+use crate::keys::RecoveryKey;
 use crate::oauth::RefreshContext;
 use crate::refresh::stored_refresh;
 use crate::secret::{AccessToken, RefreshToken};
@@ -165,7 +183,7 @@ pub(crate) struct Rotation {
     /// encrypted; `None` when there was none.
     base: Option<StoredCredential>,
     /// MongoDB's generation of the state the exchange started from (0 when there was none).
-    generation: i64,
+    pub(crate) generation: i64,
     pub(crate) access: StoredCredential,
     pub(crate) refresh: StoredCredential,
     #[serde(rename = "expiresAt")]
@@ -252,7 +270,7 @@ impl Registry {
 
     /// The answer whose record text is `text` leaves the registry (it was settled from its
     /// record).
-    fn remove_text(&self, user_id: &str, text: &str) {
+    pub(crate) fn remove_text(&self, user_id: &str, text: &str) {
         self.remove_where(user_id, |held| held.text == text);
     }
 
@@ -273,9 +291,18 @@ pub(crate) enum Parked {
     Conflict,
 }
 
+/// A recovery record as read.
+#[derive(Clone)]
+pub(crate) struct Record {
+    pub(crate) key: String,
+    /// The `rotation` field, compared byte for byte.
+    pub(crate) text: String,
+    pub(crate) rotation: Rotation,
+}
+
 /// How MongoDB's state compares with an answer (the table in the module docs).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Verdict {
+pub(crate) enum Verdict {
     Held,
     Newer,
     Apply,
@@ -858,46 +885,35 @@ impl Inner {
         context: &RefreshContext,
     ) -> Result<Recovery, TwitchError> {
         let mut recovery = Recovery::default();
-        let keys = &self.config.keys;
-        let mut records: Vec<(String, String, Rotation)> = Vec::with_capacity(2);
-        for key in [keys.parked_rotation(user_id), keys.parked_conflict(user_id)] {
-            let Some(text) = self.read_record(&key).await? else {
-                continue;
-            };
-            let rotation: Rotation = serde_json::from_str(&text).map_err(|_| {
-                TwitchError::Decode("the recovery record is not an answer".to_owned())
-            })?;
-            records.push((key, text, rotation));
+        let mut records: Vec<Record> = Vec::with_capacity(2);
+        for slot in [RecoveryKey::Parked, RecoveryKey::Conflict] {
+            if let Some(record) = self.read_slot(user_id, slot).await? {
+                records.push(record);
+            }
         }
         // A side record older than the record, or holding the same token (two exchanges Twitch
         // answered alike), says nothing the record does not: it goes.
-        if let [(_, _, first), (key, text, second)] = records.as_slice() {
-            let same = first.refresh_token(&self.cipher).is_some()
-                && first.refresh_token(&self.cipher) == second.refresh_token(&self.cipher);
-            if same || second.generation < first.generation {
-                self.answers.remove_text(user_id, text);
-                recovery.already_newer += 1;
-                recovery.left += usize::from(!self.remove_record(user_id, key, text).await);
-                records.truncate(1);
-            }
+        if let [first, second] = records.as_slice()
+            && self.redundant_side(&first.rotation, &second.rotation)
+        {
+            self.answers.remove_text(user_id, &second.text);
+            recovery.already_newer += 1;
+            recovery.left +=
+                usize::from(!self.remove_record(user_id, &second.key, &second.text).await);
+            records.truncate(1);
         }
-        let contested = records.len() == 2 && {
-            match self.load_stored(user_id).await? {
+        let contested = records.len() == 2
+            && match self.load_stored(user_id).await? {
                 None => false,
-                Some(stored) => {
-                    let mut contested = true;
-                    for (_, _, rotation) in &records {
-                        let (answered, base) = self.answer_tokens(rotation)?;
-                        contested &= matches!(
-                            self.judge(&stored, rotation.generation, &answered, base.as_ref()),
-                            Verdict::Apply | Verdict::Unmatched
-                        );
-                    }
-                    contested
-                }
-            }
-        };
-        for (key, text, rotation) in &records {
+                Some(stored) => self.contested(&stored, &records)?,
+            };
+        for Record {
+            key,
+            text,
+            rotation,
+            ..
+        } in &records
+        {
             let settlement = if contested {
                 Settlement::Unmatched
             } else {
@@ -918,9 +934,70 @@ impl Inner {
         Ok(recovery)
     }
 
+    /// The record (`RecoveryKey::Parked`) or side record (`RecoveryKey::Conflict`) of
+    /// `user_id`; `Err` when it cannot be read (a key of another type, an answer that is not
+    /// one).
+    pub(crate) async fn read_slot(
+        &self,
+        user_id: &str,
+        slot: RecoveryKey,
+    ) -> Result<Option<Record>, TwitchError> {
+        let keys = &self.config.keys;
+        let key = if slot == RecoveryKey::Conflict {
+            keys.parked_conflict(user_id)
+        } else {
+            keys.parked_rotation(user_id)
+        };
+        let Some(text) = self.read_record(&key).await? else {
+            return Ok(None);
+        };
+        let rotation: Rotation = serde_json::from_str(&text)
+            .map_err(|_| TwitchError::Decode("the recovery record is not an answer".to_owned()))?;
+        Ok(Some(Record {
+            key,
+            text,
+            rotation,
+        }))
+    }
+
+    /// Whether a side record says nothing its record does not: an older generation, or the
+    /// same refresh token.
+    pub(crate) fn redundant_side(&self, record: &Rotation, side: &Rotation) -> bool {
+        let token = record.refresh_token(&self.cipher);
+        side.generation < record.generation
+            || (token.is_some() && token == side.refresh_token(&self.cipher))
+    }
+
+    /// Whether two records are contested: MongoDB settles neither (each would be applied, or is
+    /// unmatched), so both are unmatched (review G2).
+    pub(crate) fn contested(
+        &self,
+        stored: &StoredAccount,
+        records: &[Record],
+    ) -> Result<bool, TwitchError> {
+        let mut contested = records.len() == 2;
+        for record in records {
+            contested &= matches!(
+                self.verdict(stored, &record.rotation)?,
+                Verdict::Apply | Verdict::Unmatched
+            );
+        }
+        Ok(contested)
+    }
+
+    /// [`Inner::judge`] for a rotation.
+    pub(crate) fn verdict(
+        &self,
+        stored: &StoredAccount,
+        rotation: &Rotation,
+    ) -> Result<Verdict, TwitchError> {
+        let (answered, base) = self.answer_tokens(rotation)?;
+        Ok(self.judge(stored, rotation.generation, &answered, base.as_ref()))
+    }
+
     /// Removes the record at `key` while it holds `text`; `true` when it is gone (removed now,
     /// or replaced or removed meanwhile by another process: `false` only if `key` still exists).
-    async fn remove_record(&self, user_id: &str, key: &str, text: &str) -> bool {
+    pub(crate) async fn remove_record(&self, user_id: &str, key: &str, text: &str) -> bool {
         match self.unpark(user_id, text).await {
             Ok(true) => true,
             Ok(false) => self
@@ -1180,7 +1257,7 @@ impl Inner {
                 else {
                     continue;
                 };
-                if kind == crate::keys::RecoveryKey::Quarantine {
+                if kind == RecoveryKey::Quarantine {
                     // Counted, never read.
                     report.quarantined += usize::from(quarantines.insert(user_id.to_owned()));
                     continue;
@@ -1253,10 +1330,12 @@ impl Twitch {
     /// ([`RecoveryReport::unmatched`]). Safe from several processes at once and safe to
     /// interrupt; in one process, a call while a run is going joins it.
     ///
-    /// This is also the **tick**: call it every [`crate::Timings::recovery_interval`]. The
-    /// rollback procedure calls it until `left` is 0 (with every Rust process stopped) before
-    /// the TypeScript starts. `Err` when the scan could not finish (Dragonfly failed, or the
-    /// process is stopping): the counts are then incomplete, run it again.
+    /// This is also the **tick**: call it every [`crate::Timings::recovery_interval`]. It returns
+    /// `Ok` with unmatched and quarantined records counted and does not try them again in a loop;
+    /// the rollback procedure (`crate::recovery`) calls it, with every Rust process stopped,
+    /// until `failed` and `left` are 0, then looks at `unmatched`. `Err` when the scan could not
+    /// finish (Dragonfly failed, or the process is stopping): the counts are then incomplete,
+    /// run it again.
     pub async fn reconcile_recovery(&self) -> Result<RecoveryReport, TwitchError> {
         let inner = Arc::clone(&self.inner);
         let kill = self.inner.kill.clone();

@@ -729,3 +729,231 @@ async fn a_sign_in_quarantines_older_records_and_keeps_newer_ones() -> Result<()
     })
     .await
 }
+
+/// Item 4: the reconciliation reports unmatched and quarantined records and returns `Ok` (it
+/// does not loop on them); the operator lists them by streamer id with their generations (no
+/// token) and settles named records, each decision logged at warning level with its operation
+/// id and operator.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn an_operator_lists_and_settles_what_the_reconciliation_leaves() -> Result<()> {
+    use dima_twitch::{RecordState, RecoveryKey, SettleAction, SettleOutcome};
+    with_stores(|stores| async move {
+        let state = state_for(&["u1", "u4"]);
+        let server = twitch_mock(Arc::clone(&state), helix_ok).await?;
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .consume = false;
+        // u1: two answers of G0 (unmatched); u4: parked, then a sign-in (quarantined); u3: a
+        // record that cannot be read.
+        two_answers_for_one_generation(&stores, &server, false).await?;
+        park_answers_at(&stores, &server, &["u4"], Some(G0)).await?;
+        let mut user = user_document(
+            "u3",
+            "u3",
+            "u3-access-0",
+            "u3-refresh-0",
+            Some(NOW_SECS - 10),
+        );
+        user.insert("refreshed_at", bson::DateTime::from_millis(G0));
+        insert_user(&stores, user).await?;
+        stores
+            .dragonfly
+            .hset(
+                &stores.keys.parked_rotation("u3"),
+                &[
+                    ("generation", G0.to_string().as_bytes()),
+                    ("rotation", b"[]".as_slice()),
+                ],
+            )
+            .await?;
+        let op = process(&stores, &server, fast_timings())?;
+        let signed = op
+            .twitch
+            .store_sign_in("u4", &sign_in("u4-access-s", "u4-refresh-s", 14_400.0))
+            .await?
+            .context("the account exists")?;
+
+        let report = op.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            RecoveryReport {
+                unmatched: 2,
+                quarantined: 1,
+                failed: 1,
+                left: 1,
+                ..Default::default()
+            }
+        );
+
+        let listed = op.twitch.recovery_records().await?;
+        let summary: Vec<_> = listed
+            .iter()
+            .map(|row| {
+                (
+                    row.streamer_id.as_str(),
+                    row.key,
+                    row.origin,
+                    row.state,
+                    row.generation,
+                    row.stored_generation,
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                (
+                    "u1",
+                    RecoveryKey::Parked,
+                    None,
+                    RecordState::Unmatched,
+                    Some(G0),
+                    Some(G0)
+                ),
+                (
+                    "u1",
+                    RecoveryKey::Conflict,
+                    None,
+                    RecordState::Unmatched,
+                    Some(G0),
+                    Some(G0)
+                ),
+                (
+                    "u3",
+                    RecoveryKey::Parked,
+                    None,
+                    RecordState::Unreadable,
+                    None,
+                    None
+                ),
+                (
+                    "u4",
+                    RecoveryKey::Quarantine,
+                    Some(RecoveryKey::Parked),
+                    RecordState::Quarantined,
+                    Some(G0),
+                    None
+                ),
+            ]
+        );
+        assert_eq!(listed[3].quarantined_at, Some(NOW_MS));
+        assert!(signed.generation > G0);
+        let shown = format!("{listed:?}");
+        for secret in ["u1-refresh-1", "u1-refresh-2", "u4-refresh-1", "refresh\":"] {
+            assert!(!shown.contains(secret));
+        }
+
+        // Apply the side record of u1: MongoDB takes R1, the record (now older) is removed by
+        // the next reconciliation.
+        assert!(
+            op.twitch
+                .settle_recovery_record("u1", RecoveryKey::Conflict, SettleAction::Apply, "", "ops")
+                .await
+                .is_err(),
+            "an operation id is required"
+        );
+        let applied = op
+            .twitch
+            .settle_recovery_record(
+                "u1",
+                RecoveryKey::Conflict,
+                SettleAction::Apply,
+                "op-1",
+                "alice",
+            )
+            .await?;
+        let SettleOutcome::Applied { generation } = applied else {
+            anyhow::bail!("not applied: {applied:?}");
+        };
+        assert_eq!(stored_generation(&stores, "u1").await?, generation);
+        assert_eq!(
+            stored_refresh(&stores, "u1").await?.as_deref(),
+            Some("u1-refresh-1")
+        );
+        assert!(!key_exists(&stores, &stores.keys.parked_conflict("u1")).await?);
+        assert_eq!(
+            cache_fields(&stores, "u1").await?["refresh_token"],
+            "u1-refresh-1"
+        );
+        // The unreadable record and the quarantine are discarded; applying a quarantine is
+        // refused; a record that is not there is reported so.
+        assert_eq!(
+            op.twitch
+                .settle_recovery_record(
+                    "u3",
+                    RecoveryKey::Parked,
+                    SettleAction::Discard,
+                    "op-2",
+                    "alice"
+                )
+                .await?,
+            SettleOutcome::Discarded
+        );
+        assert!(
+            op.twitch
+                .settle_recovery_record(
+                    "u4",
+                    RecoveryKey::Quarantine,
+                    SettleAction::Apply,
+                    "op-3",
+                    "alice"
+                )
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            op.twitch
+                .settle_recovery_record(
+                    "u4",
+                    RecoveryKey::Quarantine,
+                    SettleAction::Discard,
+                    "op-3",
+                    "alice"
+                )
+                .await?,
+            SettleOutcome::Discarded
+        );
+        assert_eq!(
+            op.twitch
+                .settle_recovery_record(
+                    "u3",
+                    RecoveryKey::Parked,
+                    SettleAction::Apply,
+                    "op-4",
+                    "alice"
+                )
+                .await?,
+            SettleOutcome::NotFound
+        );
+        let report = op.twitch.reconcile_recovery().await?;
+        assert_eq!(
+            report,
+            RecoveryReport {
+                already_newer: 1,
+                ..Default::default()
+            }
+        );
+        assert!(op.twitch.recovery_records().await?.is_empty());
+        let settled: Vec<_> = op
+            .events
+            .entries()
+            .into_iter()
+            .filter(|entry| entry.action() == Some("token_recovery_settled"))
+            .collect();
+        assert_eq!(settled.len(), 4);
+        assert!(
+            settled
+                .iter()
+                .all(|entry| entry.level == dima_twitch::Level::Warn)
+        );
+        assert_eq!(settled[0].data["operationId"], "op-1");
+        assert_eq!(settled[0].data["operator"], "alice");
+        assert_eq!(settled[0].data["record"], "conflict");
+        assert_eq!(settled[0].data["decision"], "apply");
+        assert_eq!(settled[0].data["recordGeneration"], G0);
+        assert_no_secrets(&op.events, &["u1-refresh-1", "u1-access-1", "u1-refresh-2"]);
+        Ok(())
+    })
+    .await
+}
