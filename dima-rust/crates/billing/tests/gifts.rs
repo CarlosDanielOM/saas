@@ -745,6 +745,8 @@ fn gift_values_never_print_secrets() {
     assert!(!format!("{recipient:?}").contains("secret"));
     assert!(!format!("{recipient:?}").contains("Secret"));
     let request = dima_billing::admin_grant::AdminGrantRequest {
+        user_id: bson::oid::ObjectId::new(),
+        request_id: None,
         channel_id: "1".into(),
         customer_id: dima_model::Private::from("cust-secret".to_owned()),
         credits: 1.0,
