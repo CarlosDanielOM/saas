@@ -65,6 +65,8 @@ struct TimeObs {
     c: i64,
     /// Millisecond precision on both sides.
     fine: bool,
+    /// A value the seed wrote (`$rigNow`): anchored at the seed, not at the run start.
+    seeded: bool,
 }
 const SHOW: usize = 240;
 /// Above this many reference × candidate items, skip the quadratic matching passes.
@@ -560,6 +562,7 @@ impl<'a> Comparator<'a> {
                 r,
                 c,
                 fine,
+                seeded: matches!(a, Moment::Seed { .. }),
             });
         }
     }
@@ -606,7 +609,10 @@ impl<'a> Comparator<'a> {
                 .into_iter()
                 .chain(self.allow.tolerance(&b.path, false))
                 .fold(self.relation, i64::max);
-            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, a.fine && b.fine, tol) {
+            // A seeded time and a run time have different anchors (the process start lies
+            // between them, and varies): only their order means something.
+            let fine = a.fine && b.fine && a.seeded == b.seeded;
+            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, fine, tol) {
                 let what = format!("time relation to {ka}{} differs: {why}", a.label);
                 self.diff(
                     &b.path,

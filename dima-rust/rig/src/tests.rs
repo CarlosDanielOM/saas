@@ -1615,6 +1615,27 @@ fn seeded_times_compare_by_their_seed_offset() {
         slow,
         &Allowances::default(),
     ));
+    // Next to a run time, only the order counts: here the reference's gap is a whole number
+    // of seconds by chance, the slower candidate's is not.
+    let both = |w: Window| {
+        raw(
+            vec![],
+            vec![(
+                "c",
+                coll(vec![
+                    doc! {"_id": "a", "createdAt": date(w.start), "leaseUntil": (w.seeded_at + MIN) as f64},
+                ]),
+            )],
+            vec![],
+        )
+    };
+    assert_match(&diff_w(
+        &both(w),
+        w,
+        &both(slow),
+        slow,
+        &Allowances::default(),
+    ));
     // The candidate rewrote it with its own clock: a run time, not the seeded one.
     assert_one(
         &diff_w(
