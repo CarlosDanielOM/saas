@@ -319,6 +319,7 @@ pub mod channel_configs;
 pub mod channel_extension_items;
 pub mod channel_fish_voice_favorites;
 pub mod channel_moderation_settings;
+pub mod channel_stream_summaries;
 pub mod channel_tts_settings;
 pub mod command_user_variables;
 pub mod commands;
@@ -327,6 +328,9 @@ pub mod credit_gifts;
 pub mod credit_transactions;
 pub mod cron_job_intents;
 pub mod custom_timers;
+pub mod dashboard_activity_dailies;
+pub mod dashboard_activity_summaries;
+pub mod dashboard_insights;
 pub mod dimafx_playbacks;
 pub mod domain_event_checkpoints;
 pub mod domain_event_deliveries;
@@ -397,6 +401,10 @@ pub use writes::UpdateOptions;
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
+    &channel_stream_summaries::INFO,
+    &dashboard_activity_dailies::INFO,
+    &dashboard_activity_summaries::INFO,
+    &dashboard_insights::INFO,
     &stream_activities::INFO,
     &stream_activity_aggregates::INFO,
     &stream_activity_states::INFO,

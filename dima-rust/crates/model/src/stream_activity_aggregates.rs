@@ -6,6 +6,8 @@
 //! firstAt, messageStartedAt and updatedAt; ordinary aggregates lack firstSeq.
 //! Rust stores bucket as int64, increments and sequence as double; TypeScript uses int32
 //! for integral numbers. Defaults remain int32. IDs hash the same JSON key tuples.
+//! Aggregate ids hash [channelID, sessionHex, scope, kind, key, actor, bucket]; distinct
+//! receipts hash [channelID, sessionHex, "distinct", actor, bucket].
 //! Server-only nulls/removals in READ_NEEDS are refused; census shows none there.
 
 use crate::decode::decode_boxed;

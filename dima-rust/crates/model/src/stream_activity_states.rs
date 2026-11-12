@@ -6,6 +6,8 @@
 //! Legacy seq is int32/double; active absent after completion. Both projector-v1 and dashboard-daily-v1
 //! use string ids. Rust initializes active.ids=[] explicitly; Mongoose supplies the nested array default.
 //! Active seq and ids preserve in-flight membership; owner, leaseUntil, updatedAt may be absent.
+//! Native lease owners are 24-character ObjectId hex strings; TypeScript uses UUID strings.
+//! Both are opaque strings here.
 //! Server-only nulls/removals in READ_NEEDS are refused; census shows none there.
 
 use crate::decode::decode_boxed;

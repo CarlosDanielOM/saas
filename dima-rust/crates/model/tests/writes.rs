@@ -349,6 +349,101 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("channelstreamsummaries", "typed") => {
+            use dima_model::channel_stream_summaries::*;
+            let input = NewChannelStreamSummary {
+                channel_id: "seed".into(),
+                channel: "seed".into(),
+                stream_session_id: oid(2)?,
+                stream_id: "seed".into(),
+                started_at: JsDate(1623053350011),
+                ended_at: JsDate(1623053350011),
+                duration_minutes: Some(JsNumber(1.0)),
+                average_viewers: Some(JsNumber(1.0)),
+                peak_viewers: Some(JsNumber(1.0)),
+                follows: Some(JsNumber(1.0)),
+                subs: Some(JsNumber(1.0)),
+                bits: Some(JsNumber(1.0)),
+                donations: Some(JsNumber(1.0)),
+                headline: Some(crate::Private::new("seed".into())),
+                recap: Some(crate::Private::new("seed".into())),
+                highlights: Some(crate::Private::new(vec![Some("seed".into())])),
+                chat_messages_sampled: Some(JsNumber(1.0)),
+                snapshot_count: Some(JsNumber(1.0)),
+                proposed_actions: Some(vec![Some(NewChannelStreamSummaryProposedActions {
+                    action: ChannelStreamSummaryProposedActionsActionValue::Create,
+                    r#type: Some("seed".into()),
+                    target_memory_id: Some("seed".into()),
+                    summary: Some(crate::Private::new("seed".into())),
+                    content: Some(crate::Private::new("seed".into())),
+                    confidence: Some(JsNumber(1.0)),
+                    risk: Some(ChannelStreamSummaryProposedActionsRiskValue::Low),
+                    reason: Some(crate::Private::new("seed".into())),
+                    evidence: Some(crate::Private::new(vec![Some("seed".into())])),
+                })]),
+                applied_actions: Some(vec![Some(NewChannelStreamSummaryAppliedActions {
+                    action: ChannelStreamSummaryAppliedActionsActionValue::Create,
+                    target_memory_id: Some("seed".into()),
+                    status: ChannelStreamSummaryAppliedActionsStatusValue::Applied,
+                    reason: Some(crate::Private::new("seed".into())),
+                    error: Some(crate::Private::new("seed".into())),
+                })]),
+                totals: Some(NewChannelStreamSummaryTotals {
+                    proposed: Some(JsNumber(1.0)),
+                    applied: Some(JsNumber(1.0)),
+                    skipped: Some(JsNumber(1.0)),
+                    failed: Some(JsNumber(1.0)),
+                }),
+                status: ChannelStreamSummaryStatusValue::Pending,
+                error_message: Some(crate::Private::new("seed".into())),
+                source: ChannelStreamSummarySourceValue::StreamOffline,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("dashboard_activity_dailies", "typed") => {
+            use dima_model::dashboard_activity_dailies::*;
+            let input = NewDashboardActivityDaily {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                day: JsDate(1623053350011),
+                kind: DashboardActivityDailyKindValue::Command,
+                key: Some("seed".into()),
+                label: Some("seed".into()),
+                count: Some(JsNumber(1.0)),
+                first_at: Some(JsDate(1623053350011)),
+                last_seq: Some(JsNumber(1.0)),
+                expires_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("dashboard_activity_summaries", "typed") => {
+            use dima_model::dashboard_activity_summaries::*;
+            let input = NewDashboardActivitySummary {
+                id: "seed".into(),
+                dirty_at: Some(JsDate(1623053350011)),
+                next_refresh_at: Some(JsDate(1623053350011)),
+                lease_until: Some(JsDate(1623053350011)),
+                owner: Some("seed".into()),
+                updated_at: Some(JsDate(1623053350011)),
+                payload: Some(Bson::Document(bson::doc! {"message":text})),
+                error: Some(true),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("dashboard_insights", "typed") => {
+            use dima_model::dashboard_insights::*;
+            let input = NewDashboardInsights {
+                id: "seed".into(),
+                next_refresh_at: Some(JsDate(1623053350011)),
+                lease_until: Some(JsDate(1623053350011)),
+                owner: Some("seed".into()),
+                updated_at: Some(JsDate(1623053350011)),
+                payload: Some(Bson::Document(bson::doc! {"message":text})),
+                error: Some(true),
+                expires_at: Some(JsDate(1623053350011)),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
         ("stream_activities", "typed") => {
             use dima_model::stream_activities::*;
             let input = NewStreamActivity {

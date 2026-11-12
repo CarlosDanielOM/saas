@@ -191,6 +191,8 @@ impl IndexPolicy {
 ///
 /// - `pet_requests` / `pet_runtimes` (unique): `pets/admission.ts:49` and
 ///   `pets/state.ts:18` await init; origin/action dedupe and capability uniqueness must hold;
+/// - `channelstreamsummaries` (unique): duplicate channel/session/source reports would
+///   count one workflow twice in summary lists;
 /// - `stream_markers` / `stream_participants` (unique): duplicate moment or bucket/user
 ///   receipts would count the same event or participant twice;
 /// - `pet_settings` (unique): `server/services/pet_settings.service.ts:184` awaits init
@@ -219,6 +221,7 @@ pub fn startup_policy(info: &CollectionInfo) -> Option<IndexPolicy> {
         | crate::temporary_moderators::COLLECTION
         | crate::pet_requests::COLLECTION
         | crate::pet_runtimes::COLLECTION
+        | crate::channel_stream_summaries::COLLECTION
         | crate::stream_markers::COLLECTION
         | crate::stream_participants::COLLECTION
         | crate::pet_settings::COLLECTION

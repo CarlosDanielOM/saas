@@ -660,6 +660,10 @@
    "sha256": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653"
   },
   {
+   "path": "src/schemas/channel_stream_summary.schema.ts",
+   "sha256": "55e087369f44756b0c5b389f56b611baefd5438c5b02a26b1492107aa7a2c8f5"
+  },
+  {
    "path": "src/schemas/channel_tts_settings.schema.ts",
    "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2"
   },
@@ -702,6 +706,14 @@
   {
    "path": "src/schemas/custom_timer.schema.ts",
    "sha256": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f"
+  },
+  {
+   "path": "src/schemas/dashboard_activity.schema.ts",
+   "sha256": "38dffd5aa3db17d8b007eb002d59a45d958322fb012ed48381a007f1da031713"
+  },
+  {
+   "path": "src/schemas/dashboard_insights.schema.ts",
+   "sha256": "9ef9f26a6649de413cb908a47c534e0091c525d909734624f6c42c58753ee58c"
   },
   {
    "path": "src/schemas/dimafx_playback.schema.ts",
@@ -1633,6 +1645,1025 @@
   }
  ],
  "models": {
+  "channelstreamsummaries": {
+   "model": "ChannelStreamSummary",
+   "file": "src/schemas/channel_stream_summary.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "Unknown"
+      }
+     },
+     {
+      "name": "stream_session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "stream_id",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "started_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "ended_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "duration_minutes",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "average_viewers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "peak_viewers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "follows",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "subs",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "bits",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "donations",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "headline",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "recap",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "highlights",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "chat_messages_sampled",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "snapshot_count",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "proposed_actions",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "action",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "type",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "targetMemoryId",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "summary",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "content",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "confidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "risk",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "low"
+         }
+        },
+        {
+         "name": "reason",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "evidence",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "applied_actions",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "action",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "targetMemoryId",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "status",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "reason",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "error",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "totals",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "proposed",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "applied",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "skipped",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "failed",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "proposed": {
+         "$numberInt": "0"
+        },
+        "applied": {
+         "$numberInt": "0"
+        },
+        "skipped": {
+         "$numberInt": "0"
+        },
+        "failed": {
+         "$numberInt": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "error_message",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "source",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "stream_offline"
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "stream_session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "stream_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "started_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ended_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "proposed_actions.$.action",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "proposed_actions.$.action",
+     "type": "enum",
+     "values": [
+      "create",
+      "edit",
+      "archive",
+      "delete",
+      "noop"
+     ]
+    },
+    {
+     "path": "proposed_actions.$.risk",
+     "type": "enum",
+     "values": [
+      "low",
+      "medium",
+      "high"
+     ]
+    },
+    {
+     "path": "applied_actions.$.action",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "applied_actions.$.action",
+     "type": "enum",
+     "values": [
+      "create",
+      "edit",
+      "archive",
+      "delete",
+      "noop"
+     ]
+    },
+    {
+     "path": "applied_actions.$.status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "applied_actions.$.status",
+     "type": "enum",
+     "values": [
+      "applied",
+      "skipped",
+      "failed"
+     ]
+    },
+    {
+     "path": "status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "pending",
+      "applied",
+      "noop",
+      "failed"
+     ]
+    },
+    {
+     "path": "source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "source",
+     "type": "enum",
+     "values": [
+      "stream_offline",
+      "weekly_maintenance",
+      "monthly_maintenance",
+      "manual"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "stream_session_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "started_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "ended_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "source",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "stream_session_id",
+       1
+      ],
+      [
+       "source",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "ended_at",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ],
+      [
+       "created_at",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "dashboard_activity_dailies": {
+   "model": "dashboard_activity_daily",
+   "file": "src/schemas/dashboard_activity.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "day",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "kind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "key",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "label",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "count",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "firstAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "lastSeq",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "day",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "enum",
+     "values": [
+      "command",
+      "emote",
+      "coverage"
+     ]
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "day",
+       1
+      ],
+      [
+       "kind",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "dashboard_activity_summaries": {
+   "model": "dashboard_activity_summary",
+   "file": "src/schemas/dashboard_activity.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "dirtyAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "nextRefreshAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "payload",
+      "kind": "mixed"
+     },
+     {
+      "name": "error",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "nextRefreshAt",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "dashboard_insights": {
+   "model": "dashboard_insights",
+   "file": "src/schemas/dashboard_insights.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "nextRefreshAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "payload",
+      "kind": "mixed"
+     },
+     {
+      "name": "error",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "nextRefreshAt",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
   "stream_activities": {
    "model": "stream_activity",
    "file": "src/schemas/stream_activity.schema.ts",
@@ -18729,7 +19760,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416ef37da011979d5469"
+          "value": "6af4416ef3cc1d98223b320e"
          }
         },
         {

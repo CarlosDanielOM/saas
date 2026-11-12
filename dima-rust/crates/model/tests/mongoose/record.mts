@@ -60,6 +60,11 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/channel_stream_summary.schema.ts', 'ChannelStreamSummary'],
+    ['src/schemas/dashboard_activity.schema.ts', 'dashboard_activity_daily'],
+    ['src/schemas/dashboard_activity.schema.ts', 'dashboard_activity_summary'],
+    ['src/schemas/dashboard_insights.schema.ts', 'dashboard_insights'],
+
     ['src/schemas/stream_activity.schema.ts', 'stream_activity'],
     ['src/schemas/stream_activity.schema.ts', 'stream_activity_aggregate'],
     ['src/schemas/stream_activity.schema.ts', 'stream_activity_state'],
@@ -411,6 +416,34 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+"channelstreamsummaries": [
+ {name:'missing_required',op:'validate',doc:{}},
+ {name:'duplicate_identity',op:'create',seed:[{...{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"},_id:OID(10)}],doc:{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"}},
+{name:'create',op:'create',rust:'typed',doc:{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"}},
+{name:'update',op:'updateOne',seed:[{...{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:OID(1)},update:{$set:{"channelID":"seed","channel":"seed","stream_session_id":OID(2),"stream_id":"seed","started_at":T2,"ended_at":T2,"duration_minutes":1,"average_viewers":1,"peak_viewers":1,"follows":1,"subs":1,"bits":1,"donations":1,"headline":"seed","recap":"seed","highlights":["seed"],"chat_messages_sampled":1,"snapshot_count":1,"proposed_actions":[{"action":"create","type":"seed","targetMemoryId":"seed","summary":"seed","content":"seed","confidence":1,"risk":"low","reason":"seed","evidence":["seed"]}],"applied_actions":[{"action":"create","targetMemoryId":"seed","status":"applied","reason":"seed","error":"seed"}],"totals":{"proposed":1,"applied":1,"skipped":1,"failed":1},"status":"pending","error_message":"seed","source":"stream_offline"}},options:{upsert:true,new:true}},
+],
+"dashboard_activity_dailies": [
+ {name:'missing_required',op:'validate',doc:{}},
+ {name:'fenced_projection',op:'updateOne',filter:{_id:'daily-hash',$or:[{lastSeq:{$lt:2}},{lastSeq:{$exists:false}}]},update:{$setOnInsert:{channelID:'seed',day:T2,kind:'command',key:'seed',label:'seed'},$inc:{count:2},$set:{lastSeq:2},$min:{firstAt:T2},$max:{expiresAt:T2}},options:{upsert:true}},
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","channelID":"seed","day":T2,"kind":"command","key":"seed","label":"seed","count":1,"firstAt":T2,"lastSeq":1,"expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","channelID":"seed","day":T2,"kind":"command","key":"seed","label":"seed","count":1,"firstAt":T2,"lastSeq":1,"expiresAt":T2},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"channelID":"seed"}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","channelID":"seed","day":T2,"kind":"command","key":"seed","label":"seed","count":1,"firstAt":T2,"lastSeq":1,"expiresAt":T2}},options:{upsert:true,new:true}},
+],
+"dashboard_activity_summaries": [
+ {name:'missing_required',op:'validate',doc:{},refused:'string _id is required by read type'},
+ {name:'queue',op:'updateOne',filter:{_id:'channel'},update:{$set:{dirtyAt:T2,nextRefreshAt:T2},$setOnInsert:{leaseUntil:new Date(0)}},options:{upsert:true}},
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","dirtyAt":T2,"nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","dirtyAt":T2,"nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"dirtyAt":T2}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","dirtyAt":T2,"nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true}},options:{upsert:true,new:true}},
+],
+"dashboard_insights": [
+ {name:'missing_required',op:'validate',doc:{},refused:'string _id is required by read type'},
+ {name:'queue',op:'updateOne',filter:{_id:'channel'},update:{$setOnInsert:{nextRefreshAt:T2,leaseUntil:new Date(0),expiresAt:T2}},options:{upsert:true}},
+{name:'create',op:'create',rust:'typed',doc:{"_id":"seed","nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true,"expiresAt":T2}},
+{name:'update',op:'updateOne',seed:[{...{"_id":"seed","nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true,"expiresAt":T2},_id:'seed'}],filter:{_id:'seed'},update:{$set:{"nextRefreshAt":T2}}},
+{name:'upsert',op:'findOneAndUpdate',filter:{_id:'seed'},update:{$setOnInsert:{"_id":"seed","nextRefreshAt":T2,"leaseUntil":T2,"owner":"seed","updatedAt":T2,"payload":{"message":TEXT},"error":true,"expiresAt":T2}},options:{upsert:true,new:true}},
+],
 "stream_activities": [
  {name:'missing_required',op:'validate',doc:{}},
 {name:'create',op:'create',rust:'typed',doc:{"_id":"seed","channelID":"seed","session_id":OID(2),"occurredAt":T2,"offset":1,"kind":"message","key":"seed","label":"seed","actor":"seed","actorLabel":"seed","value":1,"outcome":"seed","emotes":[{"key":"seed","label":"seed","count":1}],"processed":true,"dashboardProcessed":true,"expiresAt":T2}},
