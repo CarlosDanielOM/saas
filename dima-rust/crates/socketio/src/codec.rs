@@ -15,7 +15,8 @@
 //! - **Acknowledgement ids** are ASCII digits up to 2^53 − 1. The reference also takes JavaScript
 //!   whitespace in the digit run (`Number(" ") == " "`, so `2 ["a"]` asks for ack 0) and rounds
 //!   longer runs to a double; whitespace where an id may start is refused here.
-//! - **JSON** nested deeper than 128 levels is refused (`serde_json`'s recursion limit); V8 parses
+//! - **JSON** with more than 127 arrays and objects open at once is refused (the bound
+//!   `serde_json`'s recursion limit set before the shared parser was used); V8 parses
 //!   thousands of levels.
 //!
 //! Everything else is read as the reference reads it, including its odd corners: a namespace
@@ -271,54 +272,18 @@ fn event(mut items: Vec<Value>, ack: Option<u64>) -> Result<Kind, DecodeError> {
 }
 
 /// `JSON.parse` of a packet's data, holding what JavaScript holds: lone surrogate escapes become
-/// U+FFFD, object keys enumerate in JavaScript order, numbers are doubles.
+/// U+FFFD, object keys enumerate in JavaScript order, numbers are doubles. The shared
+/// `dima_text::parse_js_json`, with 127 open containers at most (the bound `serde_json`'s
+/// recursion limit set before) and no length limit of its own (the transport's 1 MB applies).
 pub fn parse_json(text: &str) -> Result<Value, DecodeError> {
-    let text = dima_text::sanitize_lone_surrogates(text.as_bytes());
-    // serde_json refuses nesting beyond 128 levels (its recursion limit).
-    let mut value: Value =
-        serde_json::from_slice(&text).map_err(|_| DecodeError::InvalidPayload)?;
-    dima_text::js_key_order(&mut value);
-    javascript_numbers(&mut value);
-    Ok(value)
-}
-
-/// Integers beyond 2^53 become the nearest double and integral doubles within it become integers,
-/// so a value is what `JSON.parse` would hold (the same rule as the body parser of `dima-web`).
-fn javascript_numbers(value: &mut Value) {
-    const EXACT: u64 = 1 << 53;
-    let mut pending = vec![value];
-    while let Some(value) = pending.pop() {
-        match value {
-            Value::Number(number) => {
-                let replacement = if let Some(integer) = number.as_i64() {
-                    (integer.unsigned_abs() > EXACT)
-                        .then(|| serde_json::Number::from_f64(integer as f64))
-                        .flatten()
-                } else if let Some(integer) = number.as_u64() {
-                    (integer > EXACT)
-                        .then(|| serde_json::Number::from_f64(integer as f64))
-                        .flatten()
-                } else {
-                    number.as_f64().and_then(|double| {
-                        let integral = double.fract() == 0.0 && double.abs() <= EXACT as f64;
-                        if !integral || (double == 0.0 && double.is_sign_negative()) {
-                            None
-                        } else if double < 0.0 {
-                            Some(serde_json::Number::from(double as i64))
-                        } else {
-                            Some(serde_json::Number::from(double as u64))
-                        }
-                    })
-                };
-                if let Some(replacement) = replacement {
-                    *number = replacement;
-                }
-            }
-            Value::Array(items) => pending.extend(items.iter_mut()),
-            Value::Object(map) => pending.extend(map.values_mut()),
-            _ => {}
-        }
-    }
+    dima_text::parse_js_json(
+        text,
+        dima_text::JsonLimits {
+            max_depth: 127,
+            max_bytes: usize::MAX,
+        },
+    )
+    .map_err(|_| DecodeError::InvalidPayload)
 }
 
 /// The start of a packet: type, then the namespace and its comma unless it is `/`.

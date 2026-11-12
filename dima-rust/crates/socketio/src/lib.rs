@@ -140,7 +140,7 @@
 //! Besides the bounds (see [`Options`], all new: the reference has none):
 //!
 //! - Malformed client packets are refused more strictly (see the codec's rules: packet type,
-//!   acknowledgement id, JSON depth 128); binary packets close the connection. A second CONNECT
+//!   acknowledgement id, JSON depth 127); binary packets close the connection. A second CONNECT
 //!   to a namespace whose check is still running closes the connection (the reference would
 //!   create a second socket).
 //! - A recovery claims its session: two reconnects with the same private id cannot both get the
