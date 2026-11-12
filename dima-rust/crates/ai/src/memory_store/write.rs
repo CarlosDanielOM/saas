@@ -420,8 +420,12 @@ impl MemoryStore {
             settings,
         };
         // A duplicate fingerprint on insert means an identical create won a race: once more,
-        // through the dedupe update.
-        for _ in 0..2 {
+        // through the dedupe update. An insert that found the limit passed by a concurrent
+        // create removed itself: it tries again after a jittered pause (at most
+        // `LIMIT_RETRIES` times), so a race near the limit does not refuse every racer.
+        let mut duplicates = 0;
+        let mut raced = 0;
+        loop {
             let existing = self
                 .load(
                     doc! { "channelID": &prepared.channel_id, "fingerprint": &prepared.fingerprint },
@@ -436,12 +440,21 @@ impl MemoryStore {
                     .map_err(|e| e.generic(CREATE_FAILED));
             }
             match self.insert_new(&input, &prepared).await {
-                Err(Inserted::Duplicate) => continue,
+                Err(Inserted::Duplicate) if duplicates == 0 => duplicates += 1,
+                Err(Inserted::Duplicate) => {
+                    return Err(MemoryError::new(ErrorKind::Store, CREATE_FAILED));
+                }
+                Err(Inserted::Raced { message, jitter_ms }) => {
+                    raced += 1;
+                    if raced > LIMIT_RETRIES {
+                        return Err(MemoryError::new(ErrorKind::Limit, message));
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(jitter_ms * raced)).await;
+                }
                 Err(Inserted::Failed(e)) => return Err(e.generic(CREATE_FAILED)),
                 Ok(stored) => return Ok(CreateOutcome::Created(stored)),
             }
         }
-        Err(MemoryError::new(ErrorKind::Store, CREATE_FAILED))
     }
 
     async fn update_duplicate(
@@ -680,7 +693,11 @@ impl MemoryStore {
                 Ok(false) => {}
                 Ok(true) => {
                     self.remove_document(&id, &p.channel_id).await?;
-                    return Err(MemoryError::new(ErrorKind::Limit, message).into());
+                    // The pause comes from the id's random bytes (the injected id source).
+                    let bytes = id.bytes();
+                    let jitter_ms =
+                        20 + u64::from(u16::from_be_bytes([bytes[10], bytes[11]]) % 230);
+                    return Err(Inserted::Raced { message, jitter_ms });
                 }
                 Err(e) => {
                     // Unknown count: undo rather than risk passing the limit.
@@ -1019,8 +1036,15 @@ struct Prepared {
     settings: LearningSettings,
 }
 
+/// Retries of a create that found the limit passed by a concurrent create.
+const LIMIT_RETRIES: u64 = 3;
+
 enum Inserted {
     Duplicate,
+    Raced {
+        message: &'static str,
+        jitter_ms: u64,
+    },
     Failed(MemoryError),
 }
 

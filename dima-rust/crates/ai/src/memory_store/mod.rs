@@ -86,7 +86,7 @@ pub use write::{
     ActorInput, CreateMemory, CreateOutcome, EvidenceInput, SetStatus, SubjectInput, UpdateMemory,
 };
 
-pub use index::RepairReport;
+pub use index::{RepairReport, RepairScope};
 
 use crate::{embeddings, qdrant};
 use bson::{Document, doc, oid::ObjectId};
