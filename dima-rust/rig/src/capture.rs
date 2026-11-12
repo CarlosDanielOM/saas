@@ -19,10 +19,10 @@ use serde_json::{Map, Value, json};
 use crate::value::{self, Moment, Text, Val};
 
 /// Version of the capture file format. Bump it only when old files cannot be read any more;
-/// normalisation changes do not need a bump (captures are raw).
-pub const CAPTURE_VERSION: u64 = 3;
-/// Older versions this rig still reads (version 2 has no outbound calls).
-pub const READS_VERSIONS: &[u64] = &[2, 3];
+/// normalisation changes do not need a bump (captures are raw). Version 4 adds Socket.IO steps.
+pub const CAPTURE_VERSION: u64 = 4;
+/// Older versions this rig still reads (2 has no outbound calls; 3 has no Socket.IO steps).
+pub const READS_VERSIONS: &[u64] = &[2, 3, 4];
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
@@ -48,6 +48,10 @@ pub struct RawCapture {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawStep {
+    Socketio {
+        at: i64,
+        value: Value,
+    },
     Http(RawHttp),
     Reply(RawReplyStep),
     /// A step that produces nothing to compare (pause, waits); the string is its kind.
@@ -646,6 +650,7 @@ fn dec_value(kind: &str, v: &Value, ctx: &str) -> Result<RawValue, String> {
 
 fn enc_step(s: &RawStep) -> Value {
     match s {
+        RawStep::Socketio { at, value } => json!({"socketio": {"at": at, "observations": value}}),
         RawStep::Http(h) => json!({ "http": {
             "at": h.at,
             "status": h.status,
@@ -665,6 +670,13 @@ fn dec_step(v: &Value, i: usize) -> Result<RawStep, String> {
     let ctx = format!("steps[{i}]");
     let (kind, inner) = one_key(v, &ctx)?;
     match kind {
+        "socketio" => {
+            let h = obj(inner, &ctx)?;
+            Ok(RawStep::Socketio {
+                at: int(field(h, "at", &ctx)?, &ctx)?,
+                value: field(h, "observations", &ctx)?.clone(),
+            })
+        }
         "http" => {
             let h = obj(inner, &ctx)?;
             let headers = arr(field(h, "headers", &ctx)?, &ctx)?

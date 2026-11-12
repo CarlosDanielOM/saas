@@ -690,10 +690,58 @@ impl Runner<'_> {
     }
 
     pub async fn run(&mut self, steps: &[Step]) -> Result<Vec<RawStep>, StepError> {
+        let mut socketio = None;
+        let result = self.run_inner(steps, &mut socketio).await;
+        if let Some(client) = socketio {
+            client.stop().await;
+        }
+        result
+    }
+
+    async fn run_inner(
+        &mut self,
+        steps: &[Step],
+        socketio: &mut Option<crate::socketio::Client>,
+    ) -> Result<Vec<RawStep>, StepError> {
         let mut out = Vec::with_capacity(steps.len());
         for (i, s) in steps.iter().enumerate() {
             self.alive(i, "before the step")?;
             let r = match &s.kind {
+                StepKind::Socketio(a) => {
+                    if socketio.is_none() {
+                        *socketio = Some(crate::socketio::Client::start().map_err(|e| err(i, e))?);
+                    }
+                    let input = serde_json::to_value(a).map_err(|e| err(i, e.to_string()))?;
+                    let mut input = scenario::resolve_json(
+                        &input,
+                        &self.values(),
+                        timefmt::now_ms(),
+                        "socketio",
+                    )
+                    .map_err(|e| err(i, e))?;
+                    let resolved: crate::socketio::Action =
+                        serde_json::from_value(input.clone()).map_err(|e| err(i, e.to_string()))?;
+                    resolved.validate().map_err(|e| err(i, e))?;
+                    if let crate::socketio::Action::Open { port, .. } = a {
+                        let name = port.as_deref().unwrap_or(&self.proc.primary_port);
+                        let port = self
+                            .proc
+                            .port(name)
+                            .ok_or_else(|| err(i, format!("no port named {name}")))?;
+                        input["url"] = Value::String(format!("http://127.0.0.1:{port}"));
+                    }
+                    let client = socketio
+                        .as_mut()
+                        .ok_or_else(|| err(i, "Socket.IO helper missing"))?;
+                    let value = client
+                        .request(&input, a.timeout_ms())
+                        .await
+                        .map_err(|e| err(i, e))?;
+                    RawStep::Socketio {
+                        at: timefmt::now_ms(),
+                        value,
+                    }
+                }
                 StepKind::Http(h) => self.http(i, h).await?,
                 StepKind::Dragonfly(args) => {
                     let now = timefmt::now_ms();

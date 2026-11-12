@@ -1,2 +1,3 @@
 # Logs and reports of rig runs.
 out/
+node/node_modules/

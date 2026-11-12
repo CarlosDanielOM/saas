@@ -1,0 +1,15 @@
+{
+  "name": "dima-socketio-differential",
+  "private": true,
+  "description": "JavaScript clients for the dima-socketio differential test (see ../differential.rs). The 4.8.3 client uses engine.io-client 6.6.6, as dimasite and admin resolve it.",
+  "type": "module",
+  "dependencies": {
+    "client-4.7.5": "npm:socket.io-client@4.7.5",
+    "client-4.8.3": "npm:socket.io-client@4.8.3"
+  },
+  "overrides": {
+    "client-4.8.3": {
+      "engine.io-client": "6.6.6"
+    }
+  }
+}

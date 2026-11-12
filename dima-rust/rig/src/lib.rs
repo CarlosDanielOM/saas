@@ -21,6 +21,7 @@ pub mod report;
 pub mod run;
 pub mod scenario;
 pub mod side;
+pub mod socketio;
 pub mod steps;
 pub mod stores;
 pub mod target;

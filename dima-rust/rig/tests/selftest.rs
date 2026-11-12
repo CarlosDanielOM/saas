@@ -244,7 +244,10 @@ fn check_variant(work: &Path, variant: &str) -> u32 {
         // A lease deadline replayed from the reference's recording (an absolute time).
         "lease-replay" => assert_only(&run, variant, &["items/lease"], |p, w| {
             p == "mongo.items[0].leaseUntil"
-                && (w.contains("run-relative times differ") || w.contains("time relation"))
+                && (w.contains("run-relative times differ")
+                    || w.contains("time relation")
+                    // Under load the recorded deadline can precede candidate startup.
+                    || w == "candidate wrote this time during start-up, reference during the run or another time")
         }),
         // updatedAt not bumped by the second operation: only the relation sees it.
         "no-bump" => assert_only(&run, variant, &["items/lease"], |p, w| {
@@ -405,7 +408,11 @@ fn self_test_end_to_end() {
         std::fs::read_to_string(work.join("captures/selftest/items/create.json")).unwrap();
     // Raw: what was observed, with the run's metadata and provenance.
     let parsed: Value = serde_json::from_str(&capture).unwrap();
-    assert_eq!(parsed["rig_capture"], 3, "{capture}");
+    assert_eq!(
+        parsed["rig_capture"],
+        dima_rig::capture::CAPTURE_VERSION,
+        "{capture}"
+    );
     assert!(
         parsed["calls"].as_array().is_some_and(Vec::is_empty),
         "{capture}"

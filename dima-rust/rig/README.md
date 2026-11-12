@@ -201,7 +201,7 @@ expected keys.
 }
 ```
 
-Top level: `rig_scenario` (1), `description` (required), `seed`, `steps` (required), `compare`,
+Top level: `rig_scenario` (2; version 1 remains readable), `description` (required), `seed`, `steps` (required), `compare`,
 `allow`, `mock` (see the mock section), `restart` (only with shared processes),
 `share_process` (default `false`), `allow_scripts` (default `false`), `tolerance_ms` (default
 2000), `relation_tolerance_ms` (default 50).
@@ -230,6 +230,52 @@ the including file. Includes run first.
 | `eventsub` | a Twitch EventSub delivery to the target's `webhooks.eventsub` (see below); its answer compares like an `http` step |
 | `polar` | a Polar webhook (standardwebhooks) to `webhooks.polar`; its answer compares like an `http` step |
 | `wait_call` | `{"host": "api.twitch.tv"}` or `{"provider": "twitch"}`, plus `method`, `path` (with `*`, `**`, `{name}`), `query`, `body` (JSON fields), `body_contains`, `count` (default 1), `timeout_ms`: until the mock has seen that many matching calls; on timeout the error names the call and the latest ones |
+
+**Socket.IO (`rig_scenario: 2`).** Each `socketio` step has an `action`, a `client`
+label, and a required `timeout_ms` (1–600000). Labels identify independent real Node clients
+for this scenario; multiple clients can stay connected while HTTP or store steps run.
+
+```json
+{"socketio":{"action":"open","client":"overlay","namespace":"/triggers/123","version":"4.8.3","transports":["polling","websocket"],"auth":{"token":"${token}"},"timeout_ms":5000}}
+{"socketio":{"action":"emit","client":"overlay","event":"ready","args":[{"revision":1}],"ack":true,"timeout_ms":5000}}
+{"socketio":{"action":"wait","client":"overlay","count":2,"timeout_ms":5000}}
+{"socketio":{"action":"disconnect","client":"overlay","transport":true,"timeout_ms":5000}}
+{"socketio":{"action":"reconnect","client":"overlay","timeout_ms":5000}}
+{"socketio":{"action":"quiet","client":"overlay","timeout_ms":100}}
+```
+
+- `open`: required `namespace`, `version` (`4.8.3` or `4.7.5`), `transports` (polling,
+  websocket, or both), `auth` (JSON); optional named `port`. The URL is always the side's
+  loopback port. Automatic reconnection is disabled so scenarios control each reconnect.
+- `emit`: `event`, `args` array, optional `ack` (false). An acknowledgement records all its
+  arguments or `timeout: true`; an unacknowledged emit records an empty list.
+- `wait`: consume exactly `count` queued observations, in arrival order; a missing observation
+  fails with the pending observations and timeout. Events received during other steps stay queued.
+- `disconnect`: `transport: true` closes the Engine.IO transport, retaining the client's recovery
+  cursor; false (default) intentionally disconnects the namespace. Records queued observations
+  through disconnection, including its reason. `reconnect` reuses that client's instance and
+  records queued replay events and the new connect/connect_error outcome.
+- `quiet`: wait the full timeout and fail on any queued observation, including earlier extras.
+  Add this after the last expected event to catch extras. Server emissions outside a connected
+  client are not observable, except when the server replays them after recovery.
+
+Records are ordered objects: `connect` with `recovered`, `connect_error` with `message` and
+`data`, `event` with `event` and `args`, `ack` with `event`, `timeout` and `args`, `disconnect`
+with `reason`. They use response JSON normalization and compare at `steps[i].body[j]` in reports
+and allowances. Recovery offsets appended to application event arguments are preserved: declare
+only their exact paths as `generated`, with a reason, when required. Never ignore whole events.
+The test examples in `tests/selftest-rig/scenarios/sockets/` cover both versions and all three
+transport lists, including transport-loss recovery and structured errors.
+
+`node/socketio.mjs` speaks JSON lines over stdin/stdout to the rig, using the actual clients;
+there is no Socket.IO protocol implementation in the rig. Copy the already installed client
+packages into `node/node_modules` (ignored), or install the pinned `node/package.json` once.
+The helper closes all clients on stdin EOF; the rig joins it after every successful or failed
+scenario and kills it on cancellation. Client queues and RPC sizes are bounded; overflow fails.
+No new Rust dependency is required.
+
+Capture format **4** adds raw `socketio: {at, observations}` steps. Capture versions 2 and 3
+and scenario version 1 still load unchanged; existing captures need no migration or recording.
 
 **`eventsub`**: `type`, `version` (default `1`), `condition`, `event`, `message_type`
 (`notification` default, `webhook_callback_verification`, `revocation`), `message_id` (default
@@ -475,8 +521,8 @@ writes were possible. When the server does not enforce authentication, the repor
 
 ## What the rig cannot see
 
-- Socket.IO and raw WebSocket traffic, SSE streams the side serves, and pub/sub messages: not
-  captured yet (the next rig package). Outbound calls, webhooks and emails are (through the
+- Raw WebSocket traffic, SSE streams the side serves, and pub/sub messages are not captured.
+  Socket.IO is captured only through the scenario clients; use `wait` and `quiet` to cover emissions. Outbound calls, webhooks and emails are (through the
   mock); start-up calls only when a scenario sets `mock.startup` to `compare`.
 - Qdrant state: requests through the proxy are recorded but not compared, and the collections'
   content is not captured.
