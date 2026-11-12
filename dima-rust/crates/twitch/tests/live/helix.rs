@@ -338,3 +338,184 @@ async fn the_channel_emote_catalog_is_fetched_cached_and_kept_on_failure() -> Re
     })
     .await
 }
+
+/// Helix for the 401 tests: `/helix/scoped` always answers 401 (a missing scope: no token
+/// cures it); anything else accepts the app tokens after the first and the user tokens Twitch
+/// issued, and refuses the rest (the first app token and the bot's seeded token were revoked).
+fn helix_strict(request: &dima_http::testing::RecordedRequest, state: &Shared) -> MockResponse {
+    let unauthorized = || {
+        MockResponse::json(
+            401,
+            r#"{"error":"Unauthorized","status":401,"message":"Invalid OAuth token"}"#,
+        )
+    };
+    if request.path() == "/helix/scoped" {
+        return unauthorized();
+    }
+    let token = request
+        .header("authorization")
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .unwrap_or_default()
+        .to_owned();
+    let known = state.lock().is_ok_and(|state| {
+        state.access.contains_key(&token)
+            || (token.starts_with("app-token-") && token != "app-token-1")
+    });
+    if known {
+        MockResponse::json(200, r#"{"data":[]}"#)
+    } else {
+        unauthorized()
+    }
+}
+
+fn grants(server: &dima_http::testing::MockServer, grant: &str) -> usize {
+    token_requests(server)
+        .iter()
+        .filter(|request| form_value(request, "grant_type").as_deref() == Some(grant))
+        .count()
+}
+
+/// Review finding 10, app token: a 401 replaces the refused token once (the reference sent the
+/// same token again, so the call failed until the key expired); a 401 that a new token does not
+/// cure (a missing scope) does not refresh again for every request; a token another caller
+/// stored meanwhile is used as it is.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_app_token_401_refreshes_once_for_the_refused_token() -> Result<()> {
+    with_stores(|stores| async move {
+        let state = state("unused");
+        let server = twitch_mock(Arc::clone(&state), helix_strict).await?;
+        let process = process(&stores, &server, fast_timings())?;
+        let first = process
+            .twitch
+            .app_token()
+            .await
+            .map(|t| t.expose().to_owned());
+        assert_eq!(first.as_deref(), Some("app-token-1"));
+        let ok = || {
+            HelixRequest::get(Path::fixed("/users"), Auth::App)
+                .retry_on_401_with(&[Duration::from_millis(5)])
+        };
+        let answer = process.twitch.helix(ok()).await?;
+        assert_eq!(answer.status(), 200, "the retry carried a new app token");
+        assert_eq!(grants(&server, "client_credentials"), 2);
+        assert_eq!(
+            cached_app_token(&stores).await?.as_deref(),
+            Some("app-token-2")
+        );
+
+        let scoped = || {
+            HelixRequest::get(Path::fixed("/scoped"), Auth::App)
+                .retry_on_401_with(&[Duration::from_millis(5), Duration::from_millis(5)])
+        };
+        for _ in 0..3 {
+            assert_eq!(process.twitch.helix(scoped()).await?.status(), 401);
+        }
+        assert_eq!(
+            grants(&server, "client_credentials"),
+            2,
+            "a 401 the new token does not cure costs no refresh per request"
+        );
+
+        // Another process stored a newer token while this call waited for its 401.
+        set_cache_app_token(&stores, "app-token-1").await?;
+        server.push(
+            MockResponse::json(401, r#"{"status":401,"message":"Invalid OAuth token"}"#)
+                .delay(Duration::from_millis(200)),
+        );
+        let call = {
+            let twitch = process.twitch.clone();
+            tokio::spawn(async move { twitch.helix(ok()).await })
+        };
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        set_cache_app_token(&stores, "app-token-7").await?;
+        assert_eq!(call.await??.status(), 200);
+        assert_eq!(
+            grants(&server, "client_credentials"),
+            2,
+            "the winner was used"
+        );
+        assert_eq!(
+            cached_app_token(&stores).await?.as_deref(),
+            Some("app-token-7")
+        );
+        let last = helix_requests(&server).last().cloned().expect("a request");
+        assert_eq!(last.header("authorization"), Some("Bearer app-token-7"));
+        assert_no_secrets(
+            &process.events,
+            &["app-token-1", "app-token-2", "app-token-7"],
+        );
+        Ok(())
+    })
+    .await
+}
+
+async fn set_cache_app_token(stores: &Stores, token: &str) -> Result<()> {
+    let sealed = serde_json::to_string(&encrypt(token))?;
+    stores
+        .dragonfly
+        .set(
+            &stores.keys.app_token(),
+            sealed.as_bytes(),
+            Default::default(),
+        )
+        .await?;
+    Ok(())
+}
+
+/// Review finding 10, bot and moderator calls: the refused bot token is passed to the refresh
+/// (the reference read the same, still unexpired, token again); a missing scope does not cost
+/// a refresh per request.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_bot_token_401_refreshes_once_for_the_refused_token() -> Result<()> {
+    with_stores(|stores| async move {
+        let bot = dima_twitch::TWITCH_BOT_ACCOUNT_ID;
+        let mut seeded = TwitchState {
+            consume: true,
+            expires_in: 14_400,
+            ..TwitchState::default()
+        };
+        seeded
+            .valid
+            .insert("bot-refresh-0".to_owned(), bot.to_owned());
+        let state = Arc::new(Mutex::new(seeded));
+        let server = twitch_mock(Arc::clone(&state), helix_strict).await?;
+        let process = process(&stores, &server, fast_timings())?;
+        insert_user(
+            &stores,
+            user_document(
+                bot,
+                "domdimabot",
+                "bot-access-0",
+                "bot-refresh-0",
+                Some(NOW_SECS + 3600),
+            ),
+        )
+        .await?;
+        process.twitch.load_streamers().await?;
+        let announce = HelixRequest::post(Path::fixed("/chat/announcements"), Auth::Moderator)
+            .query("broadcaster_id", "123")
+            .query("moderator_id", bot)
+            .json(json!({ "message": "hola 👋" }))
+            .retry_on_401_with(&[Duration::from_millis(5)]);
+        assert_eq!(process.twitch.helix(announce).await?.status(), 200);
+        assert_eq!(grants(&server, "refresh_token"), 1);
+        let last = helix_requests(&server).last().cloned().expect("a request");
+        assert_eq!(
+            last.header("authorization").map(str::to_owned),
+            Some(format!("Bearer {bot}-access-1"))
+        );
+        for auth in [Auth::Bot, Auth::Moderator, Auth::Bot] {
+            let scoped = HelixRequest::get(Path::fixed("/scoped"), auth)
+                .retry_on_401_with(&[Duration::from_millis(5), Duration::from_millis(5)]);
+            assert_eq!(process.twitch.helix(scoped).await?.status(), 401);
+        }
+        assert_eq!(
+            grants(&server, "refresh_token"),
+            1,
+            "no refresh per request"
+        );
+        assert_no_secrets(&process.events, &["bot-access-0", "bot-refresh-0"]);
+        Ok(())
+    })
+    .await
+}

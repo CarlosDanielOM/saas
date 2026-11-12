@@ -76,6 +76,7 @@ impl fmt::Debug for TwitchConfig {
 /// | `persist_retry` | 200 ms doubling to 2 s | Rust only: the pause between writes of a rotation MongoDB refused (never a new exchange) |
 /// | `park_ttl` | 30 days | Rust only: how long a parked rotation waits for the next refresh of its streamer |
 /// | `directory_read` | 500 ms | Rust only: the default deadline of a directory read ([`crate::Twitch::streamer`]); the chat path uses it. A read is one Dragonfly script round trip (well under a millisecond on the host), a miss adds one MongoDB read and one write (a few milliseconds), so it fires only when a store is unhealthy; a hydration it started goes on in the background |
+/// | `unhelpful_refresh_window` | 60 s | Rust only: after a 401-driven refresh of the app or bot token, how long a 401 for the token it produced (or for the one it could not replace) does not refresh again |
 /// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Timings {
@@ -118,6 +119,9 @@ pub struct Timings {
     pub permission_recheck: Duration,
     /// The default deadline of a directory read.
     pub directory_read: Duration,
+    /// How long a 401 for a token a refresh just produced (or could not replace) does not
+    /// refresh the app or bot token again.
+    pub unhelpful_refresh_window: Duration,
 }
 
 impl Timings {
@@ -143,6 +147,7 @@ impl Timings {
             park_ttl: Duration::from_secs(30 * 24 * 3600),
             permission_recheck: Duration::from_secs(30),
             directory_read: Duration::from_millis(500),
+            unhelpful_refresh_window: Duration::from_secs(60),
         }
     }
 

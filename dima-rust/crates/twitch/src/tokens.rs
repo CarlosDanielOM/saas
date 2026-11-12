@@ -88,7 +88,13 @@ use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::oauth::{Field, RefreshContext, RefreshFailureKind, RefreshFailureReason, parse_answer};
 use crate::secret::{AccessToken, RefreshToken, open_cached, seal};
-use dima_store::dragonfly::SetOptions;
+use dima_store::dragonfly::script::Script;
+
+/// Stores a new app token only while the cache holds the expected value (Rust only).
+static REPLACE_APP_TOKEN: Script = Script::new(
+    "RUST_REPLACE_APP_TOKEN_SCRIPT",
+    include_str!("lua/replace_app_token.lua"),
+);
 use serde_json::json;
 use std::sync::Arc;
 
@@ -290,8 +296,83 @@ impl Inner {
         waiter.await
     }
 
-    /// `getNewTwitchAppToken` + the `SET` of `getAppToken`.
-    async fn new_app_token(&self) -> Option<AccessToken> {
+    /// The cached app token and the cached text it was read from (`None` when there is none
+    /// or it does not decrypt).
+    async fn cached_app_token(&self) -> Result<Option<(AccessToken, String)>, TwitchError> {
+        let text = self
+            .dragonfly
+            .get_text(&self.config.keys.app_token())
+            .await
+            .map_err(|error| TwitchError::cache("get app token", error))?;
+        Ok(text.and_then(|text| {
+            open_cached(&self.cipher, &text).map(|token| (AccessToken::from_secret(token), text))
+        }))
+    }
+
+    /// A new app token, one request per process at a time, stored if the cache still holds
+    /// `expected` (`""`: nothing).
+    async fn request_app_token(self: &Arc<Self>, expected: String) -> Option<AccessToken> {
+        if self.shutdown.is_triggered() {
+            return None;
+        }
+        let worker = Arc::clone(self);
+        let kill = self.kill.clone();
+        let waiter = self
+            .app_flight
+            .join((), &self.tracker, None, move || async move {
+                tokio::select! {
+                    biased;
+                    () = kill.cancelled() => None,
+                    token = worker.new_app_token(&expected) => token,
+                }
+            })?;
+        waiter.await
+    }
+
+    /// Whether a 401-driven refresh for `rejected` did not help within the window.
+    fn refresh_did_not_help(&self, rejected: &AccessToken) -> bool {
+        let key = dima_core::crypto::sha256(rejected.expose().as_bytes()).0;
+        let window = self.config.timings.unhelpful_refresh_window;
+        let unhelpful = self
+            .unhelpful_refreshes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+            .is_some_and(|at| at.elapsed() < window);
+        if unhelpful {
+            self.log(
+                Level::Warn,
+                Destination::Both,
+                None,
+                json!({
+                    "message": "Twitch refused a token that a refresh just produced (or could not replace); not refreshing again for now.",
+                }),
+            );
+        }
+        unhelpful
+    }
+
+    /// After a 401-driven refresh for `rejected`: a new token is remembered (if Twitch refuses
+    /// it too within the window, the refresh did not help); no new token marks `rejected`.
+    fn remember_refresh(&self, rejected: &AccessToken, fresh: Option<&AccessToken>) {
+        let token = match fresh {
+            Some(fresh) if fresh != rejected => fresh,
+            _ => rejected,
+        };
+        let key = dima_core::crypto::sha256(token.expose().as_bytes()).0;
+        let mut memory = self
+            .unhelpful_refreshes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if memory.len() >= crate::base::MAX_FLIGHTS {
+            memory.clear();
+        }
+        memory.insert(key, tokio::time::Instant::now());
+    }
+
+    /// `getNewTwitchAppToken` + the `SET` of `getAppToken`, as a compare-and-set: the new token
+    /// replaces the cached one only if the cache still holds `expected` (`""`: nothing).
+    async fn new_app_token(&self, expected: &str) -> Option<AccessToken> {
         let internal_error = |error: String| {
             self.log(
                 Level::Error,
@@ -350,17 +431,19 @@ impl Inner {
             Ok(sealed) => sealed,
             Err(error) => return internal_error(error.to_string()),
         };
-        if let Err(error) = self
-            .dragonfly
-            .set(
-                &self.config.keys.app_token(),
-                sealed.as_bytes(),
-                SetOptions::ex(seconds),
+        let seconds = seconds.to_string();
+        if let Err(error) = REPLACE_APP_TOKEN
+            .run_value(
+                &self.dragonfly,
+                &[self.config.keys.app_token()],
+                &[expected, sealed.as_str(), seconds.as_str()],
             )
             .await
         {
             return internal_error(error.to_string());
         }
+        // Not stored when another token replaced the expected one meanwhile: that one is kept,
+        // and this one (also valid) is used by this caller.
         Some(AccessToken::from_secret(token))
     }
 }
@@ -402,17 +485,8 @@ impl Twitch {
     /// a time).
     pub async fn app_token(&self) -> Option<AccessToken> {
         let inner = &self.inner;
-        match inner
-            .dragonfly
-            .get_text(&inner.config.keys.app_token())
-            .await
-        {
-            Ok(Some(text)) => {
-                if let Some(token) = open_cached(&inner.cipher, &text) {
-                    return Some(AccessToken::from_secret(token));
-                }
-            }
-            Ok(None) => {}
+        let cached = match inner.cached_app_token().await {
+            Ok(cached) => cached,
             Err(error) => {
                 inner.log(
                     Level::Error,
@@ -422,22 +496,59 @@ impl Twitch {
                 );
                 return None;
             }
+        };
+        if let Some((token, _)) = cached {
+            return Some(token);
         }
-        if inner.shutdown.is_triggered() {
-            return None;
+        inner.request_app_token(String::new()).await
+    }
+
+    /// The app token after Helix refused `rejected` (review finding 10): a different cached
+    /// token (another caller's or process's new one) is used as it is; otherwise one new token
+    /// is requested, and stored only if the cache still holds the refused one (or none), so a
+    /// concurrent winner is kept. When a refresh for this token did not help a moment ago
+    /// ([`crate::Timings::unhelpful_refresh_window`]: the refused token is one a refresh just
+    /// produced, or a refresh for it just failed), nothing is requested and the token is
+    /// returned as it is: a 401 that a new token does not cure (a missing scope) costs one
+    /// refresh per window, not one per request.
+    pub(crate) async fn app_token_after_rejection(
+        &self,
+        rejected: &AccessToken,
+    ) -> Option<AccessToken> {
+        let inner = &self.inner;
+        let cached = inner.cached_app_token().await.ok()?;
+        let expected = match cached {
+            Some((token, _)) if token != *rejected => return Some(token),
+            Some((_, text)) => text,
+            None => String::new(),
+        };
+        if inner.refresh_did_not_help(rejected) {
+            return Some(rejected.clone());
         }
-        let worker = Arc::clone(inner);
-        let kill = inner.kill.clone();
-        let waiter = inner
-            .app_flight
-            .join((), &inner.tracker, None, move || async move {
-                tokio::select! {
-                    biased;
-                    () = kill.cancelled() => None,
-                    token = worker.new_app_token() => token,
-                }
-            })?;
-        waiter.await
+        let fresh = inner.request_app_token(expected).await;
+        inner.remember_refresh(rejected, fresh.as_ref());
+        fresh
+    }
+
+    /// The bot's token after Helix refused `rejected` (review finding 10; moderator calls run
+    /// as the bot): the streamer refresh with `rejected` passed, so a concurrent winner is
+    /// used and the refused token is never handed back; suppressed like
+    /// [`Twitch::app_token_after_rejection`] when a refresh for it did not help a moment ago.
+    pub(crate) async fn bot_token_after_rejection(
+        &self,
+        rejected: &AccessToken,
+    ) -> Option<AccessToken> {
+        let inner = &self.inner;
+        if inner.refresh_did_not_help(rejected) {
+            return Some(rejected.clone());
+        }
+        let bot = inner.config.bot_user_id.clone();
+        let fresh = inner
+            .streamer_token(&bot, Some(rejected), "getTwitchBotHeader")
+            .await
+            .ok();
+        inner.remember_refresh(rejected, fresh.as_ref());
+        fresh
     }
 
     /// `refreshTwitchToken(refreshToken, userId, context)` as the sign-in routes call it. Unlike
