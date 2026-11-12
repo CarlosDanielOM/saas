@@ -68,6 +68,8 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/dimafx_playback.schema.ts', 'DimafxPlayback'],
     ['src/schemas/channel_fish_voice_favorites.schema.ts', 'channel_fish_voice_favorites'],
     ['src/schemas/channel_tts_settings.schema.ts', 'channel_tts_settings'],
+    ['src/schemas/channel_ai_memory.schema.ts', 'ChannelAIMemory'],
+    ['src/schemas/channel_ai_personality.schema.ts', 'ChannelAIPersonality'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

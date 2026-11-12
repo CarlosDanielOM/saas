@@ -241,8 +241,14 @@ impl Probe<'_> {
             .load_for_save(self.store, &doc! { "_id": self.base_id.clone() }, &mut ctx)
             .await?
             .context("the base document")?;
-        let Ok(prepared) = support::entry::save(self.info, &loaded, &[change], &mut ctx, &random)
-        else {
+        let Ok(prepared) = support::entry::save(
+            self.info,
+            &loaded,
+            &[change],
+            Some("pro"),
+            &mut ctx,
+            &random,
+        ) else {
             self.counts.refused += 1;
             return Ok(());
         };

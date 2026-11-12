@@ -252,6 +252,8 @@ pub mod ai_usage_receipts;
 pub mod app_configs;
 pub mod ast_variables;
 pub mod availability;
+pub mod channel_ai_memories;
+pub mod channel_ai_personalities;
 pub mod channel_configs;
 pub mod channel_extension_items;
 pub mod channel_fish_voice_favorites;
@@ -335,4 +337,6 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &dimafx_playbacks::INFO,
     &channel_fish_voice_favorites::INFO,
     &channel_tts_settings::INFO,
+    &channel_ai_memories::INFO,
+    &channel_ai_personalities::INFO,
 ];

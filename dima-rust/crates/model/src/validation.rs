@@ -519,7 +519,23 @@ fn validate_level(
         errors.extend(missing.into_iter().map(|(_, e)| e));
         errors.extend(present.into_iter().map(|(_, _, e)| e));
     }
-    children.sort_by(|a, b| a.position.cmp(&b.position));
+    // Mongoose runs a path's validators one after the other, each asynchronously, and a
+    // sub-document's own errors come from its last one: those of a `required` sub-document
+    // arrive after those of the others (recorded: `channelaimemories/validate_enums`).
+    let required_here: Vec<Vec<usize>> = rules
+        .iter()
+        .filter(|rule| matches!(rule.check, Check::Required | Check::RequiredWhen(_)))
+        .filter_map(|rule| match locate(fields, rule.segments) {
+            Some(Located::Leaf { position, .. }) => Some(position),
+            _ => None,
+        })
+        .collect();
+    children.sort_by_key(|child| {
+        (
+            required_here.contains(&child.position),
+            child.position.clone(),
+        )
+    });
     for child in children {
         if failed.contains(&child.position) {
             continue;

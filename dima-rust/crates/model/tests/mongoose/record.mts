@@ -98,6 +98,8 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/dimafx_playback.schema.ts', 'DimafxPlayback'],
     ['src/schemas/channel_fish_voice_favorites.schema.ts', 'channel_fish_voice_favorites'],
     ['src/schemas/channel_tts_settings.schema.ts', 'channel_tts_settings'],
+    ['src/schemas/channel_ai_memory.schema.ts', 'ChannelAIMemory'],
+    ['src/schemas/channel_ai_personality.schema.ts', 'ChannelAIPersonality'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -332,7 +334,58 @@ const ttsLegacySeed = () => ({
     queue: { maxItems: 5 }, createdAt: T1, updatedAt: T1, __v: 0,
 });
 
+const memoryDoc = (extra: any = {}) => ({
+    _id: OID(0x61), qdrantPointID: 123456789, channelID: '111', channel: 'seed', type: 'known_user_fact', status: 'pending_review', risk: 'medium',
+    confidence: 0.7, subject: { scope: 'user', username: 'viewer', userID: '9' }, content: TEXT, summary: `sum ${TEXT}`, fingerprint: 'fp1',
+    sourceEvidence: [{ source: 'chat', username: 'viewer', userID: '9', message: TEXT, messageId: 'm1', timestamp: 1577934245 }],
+    createdBy: { source: 'system', username: '', userID: '' }, reviewReason: 'awaiting_review', createdAt: T1, updatedAt: T1, ...extra,
+});
+const memorySeed = (extra: any = {}) => ({ ...memoryDoc(), _id: OID(1), useCount: 0, __v: 0, ...extra });
+const voice = (tone: string) => ({ tone, cadence: 'short and dynamic', style: 'chat-native and expressive', catchphrases: ['ey'] });
+const profile = (id: string, extra: any = {}) => ({ profileID: id, name: `Profile ${id}`, personality: `I am ${id} ${TEXT}`, personaMode: 'inspired', personaReference: 'Gojo', tonePreset: 'dark_humor', voiceProfile: voice(`tone ${id}`), createdAt: T1, updatedAt: T1, ...extra });
+const personalitySeed = (extra: any = {}) => ({
+    _id: OID(1), channelID: '111', channel: 'seed', enabled: true, streamSummariesEnabled: true, recommendationsEnabled: true,
+    profiles: [profile('p1'), profile('p2', { personaMode: 'original', tonePreset: 'balanced' })], activeProfileId: 'p1',
+    personality: 'old', personaMode: 'original', personaReference: '', tonePreset: 'balanced', language: null, voiceProfile: voice('old'),
+    rules: ['r1'], knownUsers: [{ username: 'cdom201', description: 'Creator', lastInteraction: T1, relationship: 'professional' }],
+    contextWindow: 7, createdAt: T1, updatedAt: T1, __v: 0, ...extra,
+});
+// From before profiles existed (15 documents of the copy).
+const personalityLegacySeed = () => ({
+    _id: OID(1), channelID: '111', channel: 'seed', personality: `legacy ${TEXT}`, rules: ['r1'],
+    knownUsers: [{ _id: OID(0x71), username: 'old', description: 'd', lastInteraction: T1, relationship: '' }],
+    contextWindow: 7, recommendationsEnabled: true, streamSummariesEnabled: true, createdAt: T1, updatedAt: T1, __v: 0,
+});
+
 const CASES: Record<string, any[]> = {
+    channelaimemories: [
+        { name: 'create_memory', op: 'create', rust: 'memory', doc: memoryDoc() },
+        { name: 'create_defaults', op: 'create', rust: 'defaults', doc: { channelID: '111', type: 'channel_lore', content: 'c', summary: 's', fingerprint: 'fp2', sourceEvidence: [{ message: 'hi', timestamp: 5 }] } },
+        { name: 'validate_enums', op: 'validate', doc: { type: 'gossip', status: 'lost', confidence: 1.5, subject: { scope: 'world' }, sourceEvidence: [{ source: 'pigeon', timestamp: 1 }], reviewedBy: { source: 'x' } } },
+        // `memory.service.ts:168`: the Qdrant point id (above int32: a double).
+        { name: 'set_point', op: 'updateOne', seed: [memorySeed()], filter: { _id: OID(1) }, update: { $set: { qdrantPointID: 4294967297 } } },
+        { name: 'record_usage', op: 'updateMany', seed: [memorySeed()], filter: { channelID: '111', _id: { $in: [OID(1)] } }, update: { $inc: { useCount: 1 }, $set: { lastUsedAt: T2, updatedAt: T2 } } },
+        { name: 'save_status', op: 'save', seed: [memorySeed()], id: OID(1), changes: [{ set: 'status', value: 'confirmed' }, { set: 'reviewedBy', value: { source: 'streamer', username: 'seed', userID: '111' } }, { set: 'reviewedAt', value: T2 }, { set: 'reviewReason', value: 'manual_status_set' }] },
+        { name: 'save_content', op: 'save', seed: [memorySeed()], id: OID(1), changes: [{ set: 'content', value: `new ${TEXT}` }, { set: 'subject', value: { scope: 'channel', username: '', userID: '' } }, { set: 'confidence', value: 2 }] },
+        { name: 'duplicate_fingerprint', op: 'create', seed: [memorySeed()], doc: { channelID: '111', type: 'boundary', content: 'c', summary: 's', fingerprint: 'fp1' } },
+    ],
+    channelaipersonalities: [
+        // `openrouter/ai.ts:357`: no profiles given, `ensureProfiles` builds one; the pro owner sets 35.
+        { name: 'create_default', op: 'create', rust: 'default', owner: 'pro', doc: { channelID: '111', channel: 'seed', streamSummariesEnabled: true, recommendationsEnabled: true, contextWindow: 15, personality: `friendly ${TEXT}`, rules: ['Be respectful and friendly with users'], knownUsers: [{ username: 'cdom201', description: 'Creator', relationship: 'professional', lastInteraction: T1 }] } },
+        { name: 'create_profiles', op: 'create', rust: 'profiles', owner: 'premium', doc: { channelID: '111', channel: 'seed', profiles: [profile('p1'), without(profile('p2'), 'createdAt')], activeProfileId: 'p2' } },
+        { name: 'create_no_owner', op: 'create', rust: 'no_owner', owner: null, doc: { channelID: '111', channel: 'seed' } },
+        { name: 'create_too_many', op: 'create', rust: 'too_many', owner: 'free', doc: { channelID: '111', channel: 'seed', profiles: [profile('p1'), profile('p2')] } },
+        { name: 'save_legacy', op: 'save', owner: 'premium', seed: [personalityLegacySeed()], id: OID(1), changes: [{ set: 'enabled', value: false }] },
+        { name: 'save_active', op: 'save', owner: 'pro', seed: [personalitySeed()], id: OID(1), changes: [{ set: 'activeProfileId', value: 'p2' }, { set: 'updatedAt', value: T2 }] },
+        // The caller's invalid persona mode is replaced by the active profile's before validation.
+        { name: 'save_overridden', op: 'save', owner: 'pro', seed: [personalitySeed()], id: OID(1), changes: [{ set: 'personaMode', value: 'robot' }] },
+        { name: 'save_invalid_profile', op: 'save', owner: 'pro', seed: [personalitySeed()], id: OID(1), changes: [{ set: 'profiles.1.tonePreset', value: 'grim' }] },
+        { name: 'save_rules_limit', op: 'save', owner: 'free', seed: [personalitySeed({ profiles: [profile('p1')] })], id: OID(1), changes: [{ set: 'rules', value: ['a', 'b', 'c', 'd'] }] },
+        { name: 'save_profile_limit', op: 'save', owner: 'free', seed: [personalitySeed()], id: OID(1), changes: [{ set: 'enabled', value: false }] },
+        { name: 'save_no_owner', op: 'save', owner: null, seed: [personalitySeed()], id: OID(1), changes: [{ set: 'enabled', value: false }] },
+        // `migrate_ai_feature_flags.script.ts:39`: no hook on updates.
+        { name: 'update_flags', op: 'updateMany', seed: [personalityLegacySeed()], filter: { streamSummariesEnabled: { $exists: true } }, update: { $set: { streamSummariesEnabled: false } } },
+    ],
     channel_fish_voice_favorites: [
         { name: 'create_favorites', op: 'create', rust: 'favorites', doc: { channelID: '111', favorites: [{ id: 'm1', name: TEXT, alias: 'gojo_2' }] } },
         { name: 'validate_missing', op: 'validate', doc: { favorites: [{ id: 'x' }] } },
@@ -763,6 +816,7 @@ const CASES: Record<string, any[]> = {
 
 const isPlain = (v: any) => v != null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const HEX_ID = /^[0-9a-f]{24}$/;
 
 function collect(value: any, ids: Set<string>, strings: Set<string>) {
     if (value instanceof ObjectId) ids.add(value.toHexString());
@@ -777,6 +831,7 @@ function normaliser(known: any[]) {
     known.forEach((v) => collect(v, ids, strings));
     const generated = new Map<string, string>();
     const uuids = new Map<string, string>();
+    const hexes = new Map<string, string>();
     const walk = (value: any): any => {
         if (value instanceof ObjectId) {
             const hex = value.toHexString();
@@ -787,6 +842,11 @@ function normaliser(known: any[]) {
         if (typeof value === 'string' && UUID.test(value) && !strings.has(value)) {
             if (!uuids.has(value)) uuids.set(value, `uuid-${uuids.size + 1}`);
             return uuids.get(value);
+        }
+        // A generated ObjectId as text (`new Types.ObjectId().toString()`).
+        if (typeof value === 'string' && HEX_ID.test(value) && !strings.has(value)) {
+            if (!hexes.has(value)) hexes.set(value, `hex-${hexes.size + 1}`);
+            return hexes.get(value);
         }
         if (Array.isArray(value)) return value.map(walk);
         if (isPlain(value)) return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v)]));
@@ -833,6 +893,11 @@ async function runCase(name: string, model: any, spec: any) {
     await collection.deleteMany({});
     if (spec.seed?.length) await collection.insertMany(clone(spec.seed));
     const seedStored = await storedDocs(collection);
+    // `owner`: the plan of the user owning channel 111 (a hook looks it up), `null` for none.
+    if ('owner' in spec) {
+        await MODELS.users.collection.deleteMany({});
+        if (spec.owner) await MODELS.users.collection.insertOne({ _id: OID(0x77), accounts: [{ type: 'twitch', id: '111' }], plan_tier: spec.owner });
+    }
     const intent = Object.fromEntries(Object.entries(spec).filter(([k]) => !['name', 'seed', 'rust', 'differs', 'refused'].includes(k)));
     let error: any = null;
     let result: any = null;
@@ -877,12 +942,14 @@ async function runCase(name: string, model: any, spec: any) {
                 errors: Object.entries(caught.errors).map(([p, e]: any) => ({ path: p, kind: e.kind, message: e.message })),
             };
         } else if (caught instanceof mongoose.Error) error = { name: caught.name, message: caught.message };
+        else if ('owner' in spec && caught instanceof Error && caught.constructor === Error) error = { hook: caught.message };
         else throw caught;
     } finally {
         frozen = null;
         capturing = null;
     }
     const stored = await storedDocs(collection);
+    if ('owner' in spec) await MODELS.users.collection.deleteMany({});
     if (result != null) result = mongoose.mongo.BSON.deserialize(mongoose.mongo.BSON.serialize(result), RAW);
     // Generated ids are numbered walking the commands, then the result, then the stored documents.
     const walk = normaliser([spec.seed ?? [], intent]);

@@ -10684,6 +10684,1601 @@
      }
     }
    ]
+  },
+  "channelaimemories": {
+   "model": "ChannelAIMemory",
+   "file": "src/schemas/channel_ai_memory.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "qdrantPointID",
+      "kind": "value",
+      "type": "Number"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "Unknown"
+      }
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "candidate"
+      }
+     },
+     {
+      "name": "risk",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "low"
+      }
+     },
+     {
+      "name": "confidence",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberDouble": "0.5"
+       }
+      }
+     },
+     {
+      "name": "subject",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "scope",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "channel"
+         }
+        },
+        {
+         "name": "username",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "userID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "scope": "channel",
+        "username": "",
+        "userID": ""
+       }
+      }
+     },
+     {
+      "name": "content",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "summary",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "fingerprint",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "sourceEvidence",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "source",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "chat"
+         }
+        },
+        {
+         "name": "username",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "userID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "message",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "messageId",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "timestamp",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "$numberInt": "1794392430"
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "createdBy",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "source",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "system"
+         }
+        },
+        {
+         "name": "username",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "userID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "source": "system",
+        "username": "",
+        "userID": ""
+       }
+      }
+     },
+     {
+      "name": "reviewedBy",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "source",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "system"
+         }
+        },
+        {
+         "name": "username",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "userID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        }
+       ]
+      }
+     },
+     {
+      "name": "reviewReason",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "reviewedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "useCount",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "lastUsedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "enum",
+     "values": [
+      "preference",
+      "running_joke",
+      "known_user_fact",
+      "channel_lore",
+      "boundary"
+     ]
+    },
+    {
+     "path": "status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "candidate",
+      "pending_review",
+      "confirmed",
+      "rejected",
+      "archived"
+     ]
+    },
+    {
+     "path": "risk",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "risk",
+     "type": "enum",
+     "values": [
+      "low",
+      "medium",
+      "high"
+     ]
+    },
+    {
+     "path": "confidence",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "confidence",
+     "type": "min",
+     "min": 0
+    },
+    {
+     "path": "confidence",
+     "type": "max",
+     "max": 1
+    },
+    {
+     "path": "subject",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "subject.scope",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "subject.scope",
+     "type": "enum",
+     "values": [
+      "channel",
+      "user"
+     ]
+    },
+    {
+     "path": "content",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "summary",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "fingerprint",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sourceEvidence.$.source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sourceEvidence.$.source",
+     "type": "enum",
+     "values": [
+      "chat",
+      "mod",
+      "streamer",
+      "system",
+      "oauth_desktop"
+     ]
+    },
+    {
+     "path": "sourceEvidence.$.timestamp",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "createdBy",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "createdBy.source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "createdBy.source",
+     "type": "enum",
+     "values": [
+      "chat",
+      "mod",
+      "streamer",
+      "system",
+      "oauth_desktop"
+     ]
+    },
+    {
+     "path": "reviewedBy.source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "reviewedBy.source",
+     "type": "enum",
+     "values": [
+      "chat",
+      "mod",
+      "streamer",
+      "system",
+      "oauth_desktop"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "qdrantPointID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "sparse": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "fingerprint",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "updatedAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "subject.username",
+       1
+      ],
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "subject.userID",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "channelaipersonalities": {
+   "model": "ChannelAIPersonality",
+   "file": "src/schemas/channel_ai_personality.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "streamSummariesEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "recommendationsEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "profiles",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "profileID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": "6af4416ef72e35ad4e2373c9"
+         }
+        },
+        {
+         "name": "name",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "Default Personality"
+         }
+        },
+        {
+         "name": "personality",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "You are a friendly Twitch chat moderator who speaks in Spanish by default but can adapt to other languages. You have a good sense of humor and can be playful with chat users."
+         }
+        },
+        {
+         "name": "personaMode",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "original"
+         }
+        },
+        {
+         "name": "personaReference",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "tonePreset",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "balanced"
+         }
+        },
+        {
+         "name": "voiceProfile",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "tone",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "friendly and playful"
+            }
+           },
+           {
+            "name": "cadence",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "short and dynamic"
+            }
+           },
+           {
+            "name": "style",
+            "kind": "value",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": "chat-native and expressive"
+            }
+           },
+           {
+            "name": "catchphrases",
+            "kind": "array",
+            "type": "String",
+            "default": {
+             "function": false,
+             "implicit": false,
+             "value": []
+            }
+           }
+          ]
+         },
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "tone": "friendly and playful",
+           "cadence": "short and dynamic",
+           "style": "chat-native and expressive",
+           "catchphrases": []
+          }
+         }
+        },
+        {
+         "name": "createdAt",
+         "kind": "value",
+         "type": "Date",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "$date": {
+            "$numberLong": "1794392430456"
+           }
+          }
+         }
+        },
+        {
+         "name": "updatedAt",
+         "kind": "value",
+         "type": "Date",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "$date": {
+            "$numberLong": "1794392430456"
+           }
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "activeProfileId",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "personality",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "You are a friendly Twitch chat moderator who speaks in Spanish by default but can adapt to other languages. You have a good sense of humor and can be playful with chat users."
+      }
+     },
+     {
+      "name": "personaMode",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "original"
+      }
+     },
+     {
+      "name": "personaReference",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "tonePreset",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "balanced"
+      }
+     },
+     {
+      "name": "language",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "voiceProfile",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "tone",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "friendly and playful"
+         }
+        },
+        {
+         "name": "cadence",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "short and dynamic"
+         }
+        },
+        {
+         "name": "style",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "chat-native and expressive"
+         }
+        },
+        {
+         "name": "catchphrases",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "tone": "friendly and playful",
+        "cadence": "short and dynamic",
+        "style": "chat-native and expressive",
+        "catchphrases": []
+       }
+      }
+     },
+     {
+      "name": "learningConfig",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "enabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoConfirmEnabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoConfirmThreshold",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.82"
+          }
+         }
+        },
+        {
+         "name": "minMessageLength",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "12"
+          }
+         }
+        },
+        {
+         "name": "maxPendingMemories",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "250"
+          }
+         }
+        },
+        {
+         "name": "maxConfirmedMemories",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "2000"
+          }
+         }
+        },
+        {
+         "name": "postStreamSummaryEnabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "weeklyMaintenanceEnabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "monthlyMaintenanceEnabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoApplyCreates",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoApplyEdits",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoApplyArchives",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "autoApplyPermanentDeletes",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "summaryMinDurationMinutes",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "20"
+          }
+         }
+        },
+        {
+         "name": "summaryMinChatMessages",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "30"
+          }
+         }
+        },
+        {
+         "name": "createMinConfidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.72"
+          }
+         }
+        },
+        {
+         "name": "editMinConfidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.74"
+          }
+         }
+        },
+        {
+         "name": "archiveMinConfidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.8"
+          }
+         }
+        },
+        {
+         "name": "deleteMinConfidence",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.88"
+          }
+         }
+        },
+        {
+         "name": "maxActionsPerRun",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "20"
+          }
+         }
+        },
+        {
+         "name": "maxDeletesPerRun",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "5"
+          }
+         }
+        },
+        {
+         "name": "minMemoryAgeDaysForDelete",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "30"
+          }
+         }
+        },
+        {
+         "name": "minUnusedDaysForDelete",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "21"
+          }
+         }
+        },
+        {
+         "name": "semanticChatHistoryEnabled",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "semanticChatHistoryLimit",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": null
+         }
+        },
+        {
+         "name": "semanticChatHistoryPrimaryMinScore",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.75"
+          }
+         }
+        },
+        {
+         "name": "semanticChatHistoryFallbackMinScore",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberDouble": "0.69"
+          }
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "enabled": true,
+        "autoConfirmEnabled": true,
+        "autoConfirmThreshold": {
+         "$numberDouble": "0.82"
+        },
+        "minMessageLength": {
+         "$numberInt": "12"
+        },
+        "maxPendingMemories": {
+         "$numberInt": "250"
+        },
+        "maxConfirmedMemories": {
+         "$numberInt": "2000"
+        },
+        "postStreamSummaryEnabled": true,
+        "weeklyMaintenanceEnabled": true,
+        "monthlyMaintenanceEnabled": true,
+        "autoApplyCreates": true,
+        "autoApplyEdits": true,
+        "autoApplyArchives": true,
+        "autoApplyPermanentDeletes": true,
+        "summaryMinDurationMinutes": {
+         "$numberInt": "20"
+        },
+        "summaryMinChatMessages": {
+         "$numberInt": "30"
+        },
+        "createMinConfidence": {
+         "$numberDouble": "0.72"
+        },
+        "editMinConfidence": {
+         "$numberDouble": "0.74"
+        },
+        "archiveMinConfidence": {
+         "$numberDouble": "0.8"
+        },
+        "deleteMinConfidence": {
+         "$numberDouble": "0.88"
+        },
+        "maxActionsPerRun": {
+         "$numberInt": "20"
+        },
+        "maxDeletesPerRun": {
+         "$numberInt": "5"
+        },
+        "minMemoryAgeDaysForDelete": {
+         "$numberInt": "30"
+        },
+        "minUnusedDaysForDelete": {
+         "$numberInt": "21"
+        },
+        "semanticChatHistoryEnabled": true,
+        "semanticChatHistoryLimit": null,
+        "semanticChatHistoryPrimaryMinScore": {
+         "$numberDouble": "0.75"
+        },
+        "semanticChatHistoryFallbackMinScore": {
+         "$numberDouble": "0.69"
+        }
+       }
+      }
+     },
+     {
+      "name": "memoryPolicy",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "prioritizeRecentChat",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "allowSensitiveMemories",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": false
+         }
+        },
+        {
+         "name": "allowUserPreferenceMemories",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        },
+        {
+         "name": "allowRunningJokes",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": true
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "prioritizeRecentChat": true,
+        "allowSensitiveMemories": false,
+        "allowUserPreferenceMemories": true,
+        "allowRunningJokes": true
+       }
+      }
+     },
+     {
+      "name": "rules",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "knownUsers",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "username",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "description",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "lastInteraction",
+         "kind": "value",
+         "type": "Date",
+         "default": {
+          "function": true,
+          "implicit": false,
+          "value": {
+           "$date": {
+            "$numberLong": "1794392430456"
+           }
+          }
+         }
+        },
+        {
+         "name": "relationship",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "contextWindow",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "7"
+       }
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "profiles.$.profileID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "profiles.$.name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "profiles.$.personality",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "profiles.$.personaMode",
+     "type": "enum",
+     "values": [
+      "original",
+      "inspired",
+      "strict_roleplay"
+     ]
+    },
+    {
+     "path": "profiles.$.tonePreset",
+     "type": "enum",
+     "values": [
+      "family_friendly",
+      "balanced",
+      "dark_humor"
+     ]
+    },
+    {
+     "path": "personality",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "personaMode",
+     "type": "enum",
+     "values": [
+      "original",
+      "inspired",
+      "strict_roleplay"
+     ]
+    },
+    {
+     "path": "tonePreset",
+     "type": "enum",
+     "values": [
+      "family_friendly",
+      "balanced",
+      "dark_humor"
+     ]
+    },
+    {
+     "path": "language",
+     "type": "enum",
+     "values": [
+      "en",
+      "es"
+     ]
+    },
+    {
+     "path": "contextWindow",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
   }
  }
 }

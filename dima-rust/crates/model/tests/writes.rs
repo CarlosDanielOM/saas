@@ -23,6 +23,11 @@ use dima_model::ai_usage_receipts::{EntryKind, NewAiUsageReceipt, RetentionTier}
 use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
+use dima_model::channel_ai_memories::{
+    MemoryRisk, MemorySource, MemoryStatus, MemoryType, NewChannelAiMemory, NewMemoryActor,
+    NewMemoryEvidence, NewMemorySubject, SubjectScope,
+};
+use dima_model::channel_ai_personalities::{NewChannelAiPersonality, NewKnownUser};
 use dima_model::channel_configs::{ChannelConfigDate, NewChannelConfig};
 use dima_model::channel_extension_items::{
     ItemCategory, MediaType, NewChannelExtensionItem, NewItemTts, TtsLanguage, TtsMode,
@@ -206,13 +211,14 @@ fn canonical(value: Bson) -> String {
 
 // -------------------------------------------------------------------------------- normalisation
 
-/// What the recorder does to its output: generated ObjectIds and UUIDs numbered by first
-/// appearance; ids and strings found in the seed or the intent are kept.
+/// What the recorder does to its output: generated ObjectIds, UUIDs and ObjectId hex strings
+/// numbered by first appearance; ids and strings found in the seed or the intent are kept.
 struct Normaliser {
     ids: HashSet<ObjectId>,
     strings: HashSet<String>,
     generated: HashMap<ObjectId, ObjectId>,
     uuids: HashMap<String, String>,
+    hexes: HashMap<String, String>,
 }
 
 impl Normaliser {
@@ -222,6 +228,7 @@ impl Normaliser {
             strings: HashSet::new(),
             generated: HashMap::new(),
             uuids: HashMap::new(),
+            hexes: HashMap::new(),
         };
         for value in known {
             normaliser.collect(value);
@@ -259,6 +266,20 @@ impl Normaliser {
                     self.uuids
                         .entry(text)
                         .or_insert_with(|| format!("uuid-{next}"))
+                        .clone(),
+                )
+            }
+            // A generated ObjectId as text (`new Types.ObjectId().toString()`).
+            Bson::String(text)
+                if text.len() == 24
+                    && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+                    && !self.strings.contains(&text) =>
+            {
+                let next = self.hexes.len() + 1;
+                Bson::String(
+                    self.hexes
+                        .entry(text)
+                        .or_insert_with(|| format!("hex-{next}"))
                         .clone(),
                 )
             }
@@ -1147,6 +1168,107 @@ fn typed_create(
             let prepared = dima_model::channel_tts_settings::INFO.prepare_create(&given, ctx);
             pair(given, prepared)
         }
+        ("channelaimemories", "memory") => {
+            let t1 = ms("2020-01-02T03:04:05.006Z")?;
+            let memory = NewChannelAiMemory {
+                id: oid(0x61)?,
+                qdrant_point_id: JsNumber(123_456_789.0),
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                kind: MemoryType::KnownUserFact,
+                status: MemoryStatus::PendingReview,
+                risk: MemoryRisk::Medium,
+                confidence: JsNumber(0.7),
+                subject: NewMemorySubject {
+                    scope: SubjectScope::User,
+                    username: "viewer".into(),
+                    user_id: "9".into(),
+                },
+                content: text.into(),
+                summary: format!("sum {text}").into(),
+                fingerprint: "fp1".into(),
+                source_evidence: vec![NewMemoryEvidence {
+                    source: MemorySource::Chat,
+                    username: "viewer".into(),
+                    user_id: "9".into(),
+                    message: text.into(),
+                    message_id: "m1".into(),
+                    timestamp: JsNumber(1_577_934_245.0),
+                }]
+                .into(),
+                created_by: NewMemoryActor {
+                    source: MemorySource::System,
+                    username: String::new(),
+                    user_id: String::new(),
+                },
+                review_reason: "awaiting_review".into(),
+                created_at: t1,
+                updated_at: t1,
+            };
+            pair(memory.to_document()?, memory.prepare(ctx))
+        }
+        ("channelaimemories", "defaults") => {
+            let given = doc! {
+                "channelID": "111", "type": "channel_lore", "content": "c", "summary": "s",
+                "fingerprint": "fp2", "sourceEvidence": [{ "message": "hi", "timestamp": 5 }],
+            };
+            let prepared = dima_model::channel_ai_memories::INFO.prepare_create(&given, ctx);
+            pair(given, prepared)
+        }
+        ("channelaipersonalities", "default" | "profiles" | "no_owner" | "too_many") => {
+            let t1 = ms("2020-01-02T03:04:05.006Z")?;
+            let profile = |id: &str, created: bool| -> Document {
+                let mut profile = doc! {
+                    "profileID": id, "name": format!("Profile {id}"),
+                    "personality": format!("I am {id} {text}"), "personaMode": "inspired",
+                    "personaReference": "Gojo", "tonePreset": "dark_humor",
+                    "voiceProfile": {
+                        "tone": format!("tone {id}"), "cadence": "short and dynamic",
+                        "style": "chat-native and expressive", "catchphrases": ["ey"],
+                    },
+                };
+                if created {
+                    profile.insert("createdAt", t1.to_bson());
+                }
+                profile.insert("updatedAt", t1.to_bson());
+                profile
+            };
+            let mut personality = NewChannelAiPersonality {
+                channel_id: "111".into(),
+                channel: "seed".into(),
+                ..NewChannelAiPersonality::default()
+            };
+            let owner = match key {
+                "default" => {
+                    personality.stream_summaries_enabled = Some(true);
+                    personality.recommendations_enabled = Some(true);
+                    personality.context_window = Some(JsNumber(15.0));
+                    personality.personality = Some(format!("friendly {text}"));
+                    personality.rules = Some(vec!["Be respectful and friendly with users".into()]);
+                    personality.known_users = Some(
+                        vec![NewKnownUser {
+                            username: "cdom201".into(),
+                            description: "Creator".into(),
+                            relationship: "professional".into(),
+                            last_interaction: t1,
+                        }]
+                        .into(),
+                    );
+                    Some("pro")
+                }
+                "profiles" => {
+                    personality.profiles = Some(vec![profile("p1", true), profile("p2", false)]);
+                    personality.active_profile_id = Some("p2".into());
+                    Some("premium")
+                }
+                "too_many" => {
+                    personality.profiles = Some(vec![profile("p1", true), profile("p2", true)]);
+                    Some("free")
+                }
+                _ => None,
+            };
+            pair(personality.to_document()?, personality.prepare(owner, ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
 }
@@ -1299,7 +1421,17 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
         "create" | "journal" => {
             let prepared = match case.get("rust").and_then(Value::as_str) {
                 Some(key) => {
-                    let (given, prepared) = typed_create(collection, key, &mut ctx)?;
+                    let (given, prepared) = match typed_create(collection, key, &mut ctx) {
+                        Err(error) => match error.downcast::<ModelError>() {
+                            Ok(ModelError::Refused { message, .. }) => {
+                                outcome.error = Some(serde_json::json!({ "hook": message }));
+                                return Ok(outcome);
+                            }
+                            Ok(other) => return Err(other.into()),
+                            Err(other) => return Err(other),
+                        },
+                        Ok(pair) => pair,
+                    };
                     let expected = bson_of(intent.get("doc").context("doc")?)?;
                     if !same_values(&Bson::Document(given.clone()), &expected) {
                         bail!("typed input {key} gives {given:?}, the case creates {expected:?}");
@@ -1422,11 +1554,16 @@ async fn run_case(store: &MongoStore, case: &Value, now_ms: i64) -> Result<Outco
                 .await?
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
-            let prepared = support::entry::save(info, &loaded, &changes, &mut ctx, &random);
+            let owner = intent.get("owner").and_then(Value::as_str);
+            let prepared = support::entry::save(info, &loaded, &changes, owner, &mut ctx, &random);
             let prepared = match prepared {
                 Ok(prepared) => prepared,
                 Err(ModelError::Validation(error)) => {
                     outcome.error = Some(validation_json(&error));
+                    return Ok(outcome);
+                }
+                Err(ModelError::Refused { message, .. }) => {
+                    outcome.error = Some(serde_json::json!({ "hook": message }));
                     return Ok(outcome);
                 }
                 Err(other) => return Err(other.into()),

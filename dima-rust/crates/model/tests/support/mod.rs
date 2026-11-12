@@ -99,8 +99,8 @@ pub mod entry {
     use dima_core::Random;
     use dima_model::availability::Writer;
     use dima_model::{
-        CollectionInfo, LoadedForSave, ModelError, admins, app_configs, commands, events,
-        redemption_rewards, referral_codes,
+        CollectionInfo, LoadedForSave, ModelError, admins, app_configs, channel_ai_personalities,
+        commands, events, redemption_rewards, referral_codes,
     };
     use dima_store::mongo::WriteContext;
     use dima_store::mongo::save::{Change, PreparedSave};
@@ -152,15 +152,20 @@ pub mod entry {
         }
     }
 
-    /// `doc.save()`.
+    /// `doc.save()`. `owner` is the plan of the channel owner a save hook looks up
+    /// (`channelaipersonalities`).
     pub fn save(
         info: &CollectionInfo,
         loaded: &LoadedForSave,
         changes: &[Change],
+        owner: Option<&str>,
         ctx: &mut WriteContext,
         random: &dyn Random,
     ) -> Result<PreparedSave, ModelError> {
         match info.name {
+            channel_ai_personalities::COLLECTION => {
+                channel_ai_personalities::prepare_save(loaded, changes, owner, ctx)
+            }
             admins::COLLECTION => admins::prepare_save(loaded, changes, ctx),
             app_configs::COLLECTION => app_configs::prepare_save(loaded, changes, ctx),
             events::COLLECTION => events::prepare_save(loaded, changes, ctx),
