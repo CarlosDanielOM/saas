@@ -1,0 +1,18 @@
+[package]
+name = "dima-recap"
+description = "Cron-side AI jobs over finished streams: stream summaries, stream memory, VOD clip recommendations."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dima-ai = { workspace = true }
+dima-stream = { workspace = true }
+dima-billing = { workspace = true }
+dima-email = { workspace = true }
+dima-platform = { workspace = true }
+dima-events = { workspace = true }
