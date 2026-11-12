@@ -1104,12 +1104,13 @@ async fn overlapping_polling_requests_end_the_session() {
     s.server.stop().await;
 }
 
-/// A known difference: `engineioxide` ends the whole session when a WebSocket upgrade fails
-/// after its handshake (a wrong probe, or no probe within the upgrade timeout), where
-/// `engine.io` only closes the probe and keeps the client on polling. The client reconnects.
+/// A WebSocket upgrade that fails after its handshake (here a wrong probe) closes the probe
+/// only; the client stays on polling, as in `engine.io` (socket.js 243-246). Upstream
+/// `engineioxide` ended the whole session; the vendored copy is patched (vendor/README.md,
+/// change 1).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_failed_upgrade_ends_the_session() {
-    use futures_util::SinkExt as _;
+async fn a_failed_upgrade_keeps_the_session_on_polling() {
+    use futures_util::{SinkExt as _, StreamExt as _};
     use tokio_tungstenite::tungstenite::Message;
     let s = setup(Options::default(), NamespaceOptions::default()).await;
     let polling = Polling::open(s.server.addr).await;
@@ -1121,17 +1122,32 @@ async fn a_failed_upgrade_ends_the_session() {
     );
     let (mut ws, _) = tokio_tungstenite::connect_async(url).await.unwrap();
     ws.send(Message::text("4not a probe")).await.unwrap();
-    let mut gone = false;
+    let closed = tokio::time::timeout(2 * SECOND, async {
+        loop {
+            match ws.next().await {
+                Some(Ok(Message::Close(_))) | None | Some(Err(_)) => return,
+                Some(Ok(_)) => {}
+            }
+        }
+    })
+    .await;
+    assert!(closed.is_ok(), "the probe WebSocket was not closed");
+    assert_eq!(
+        polling.post(&["42/p,1[\"echo\",\"still\"]"]).await,
+        Some(200)
+    );
+    let mut answered = false;
     for _ in 0..20 {
-        if matches!(polling.poll(SECOND).await, Err(Some(400))) {
-            gone = true;
-            break;
+        match polling.poll(SECOND).await {
+            Ok(packets) if packets.iter().any(|p| p.starts_with("43/p,1")) => {
+                answered = true;
+                break;
+            }
+            Ok(_) => {}
+            Err(status) => panic!("the polling session ended: {status:?}"),
         }
     }
-    assert!(
-        gone,
-        "engineioxide closed the polling session with the failed upgrade"
-    );
+    assert!(answered, "no answer over polling after the failed upgrade");
     s.server.stop().await;
 }
 
