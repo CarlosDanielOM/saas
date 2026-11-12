@@ -14,13 +14,16 @@ mod support;
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
+use dima_model::accounts::NewAccount as NewSignIn;
 use dima_model::admins::NewAdmin;
 use dima_model::app_configs::NewAppConfig;
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::availability::Writer;
+use dima_model::channel_configs::{ChannelConfigDate, NewChannelConfig};
 use dima_model::command_user_variables::NewCommandUserVariables;
 use dima_model::commands::{self, Activation, MatchMode, NewCommand, NewKeywordSettings};
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
+use dima_model::cron_job_intents::{IntentStatus, NewCronJobIntent};
 use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
 use dima_model::domain_event_deliveries::NewDelivery;
@@ -28,7 +31,12 @@ use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, T
 use dima_model::events::{ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
 use dima_model::index::{IndexDifference, IndexError, IndexStatus};
+use dima_model::oauth_clients::{ClientType, NewOAuthClient};
+use dima_model::oauth_grants::NewOAuthGrant;
+use dima_model::oauth_refresh_tokens::NewOAuthRefreshToken;
+use dima_model::oauth_sessions::NewOAuthSession;
 use dima_model::redemption_rewards::NewRedemptionReward;
+use dima_model::site_analytics::{BotPlatform, NewLiveChannel, NewSiteAnalytics};
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
@@ -79,6 +87,73 @@ fn recording() -> Result<Recording> {
         indexes: list("indexes")?,
         cases: list("cases")?,
     })
+}
+
+const RECORD: &str = "eval \"$(\"$REPO/dima-rust/tools/test-env\")\" && cd \"$DIMABOT_DIR\" && \
+    TZ=UTC node_modules/.bin/tsx \"$REPO/dima-rust/crates/model/tests/mongoose/record.mts\" \
+    \"$REPO/dima-rust/crates/model/tests/mongoose/writes.json\"";
+
+/// The recording is only as current as the TypeScript it was made from: it names the reference
+/// commit and the SHA-256 of every source file `record.mts` loaded (the schema files, the
+/// availability helpers and what they import); a file of this checkout that differs fails here,
+/// naming it. Every registered collection's schema file must be among them.
+#[test]
+fn recording_sources_are_current() -> Result<()> {
+    use sha2::{Digest, Sha256};
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/mongoose/writes.json");
+    let value: Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+    let reference = value
+        .get("reference")
+        .and_then(Value::as_str)
+        .context("the recording names no reference commit")?;
+    if reference.len() != 40 || !reference.bytes().all(|b| b.is_ascii_hexdigit()) {
+        bail!("the recording's reference commit is not a commit id: {reference}");
+    }
+    let sources = value
+        .get("sources")
+        .and_then(Value::as_array)
+        .context("the recording names no source hashes")?;
+    let dimabot = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../dimabot");
+    let mut recorded = HashSet::new();
+    let mut problems = Vec::new();
+    for source in sources {
+        let file = source
+            .get("path")
+            .and_then(Value::as_str)
+            .context("source path")?;
+        let expected = source
+            .get("sha256")
+            .and_then(Value::as_str)
+            .context("source hash")?;
+        recorded.insert(file.to_owned());
+        match std::fs::read(format!("{dimabot}/{file}")) {
+            Ok(bytes) => {
+                let actual: String = Sha256::digest(&bytes)
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                if actual != expected {
+                    problems.push(format!("dimabot/{file} changed since the recording"));
+                }
+            }
+            Err(error) => problems.push(format!("dimabot/{file}: {error}")),
+        }
+    }
+    for info in REGISTRY {
+        let file = info.source.strip_prefix("dimabot/").unwrap_or(info.source);
+        if !recorded.contains(file) {
+            problems.push(format!("{}: {file} has no recorded hash", info.name));
+        }
+    }
+    if !problems.is_empty() {
+        bail!(
+            "the write recording (reference {reference}) is stale:\n{}\n\
+             dimabot/src is frozen: if the change is intended, record again and re-check every \
+             collection against it:\n{RECORD}",
+            problems.join("\n")
+        );
+    }
+    Ok(())
 }
 
 fn bson_of(value: &Value) -> Result<Bson> {
@@ -560,6 +635,159 @@ fn typed_create(
                 is_enabled: None,
             };
             pair(reward.to_document()?, reward.prepare(ctx))
+        }
+        ("accounts", "account") => {
+            let account = NewSignIn {
+                user_id: Some("111".into()),
+                user_login: Some("seed".into()),
+                user_email: Some("seed@example.com".into()),
+                channel_id: Some("111".into()),
+                channel_name: Some(text.into()),
+                user_type: Some(String::new()),
+                user_token: Some(token().into()),
+                user_refresh_token: Some(token().into()),
+            };
+            pair(account.to_document()?, account.prepare(ctx))
+        }
+        ("accounts", "empty") => {
+            let account = NewSignIn::default();
+            pair(account.to_document()?, account.prepare(ctx))
+        }
+        ("channelconfigs", "config") => {
+            let config = NewChannelConfig {
+                channel_id: Some(oid(0x11)?),
+                channel: Some(text.into()),
+                commands: Some(vec![Bson::Document(doc! { "cmd": "!a", "n": 1.5 })]),
+                created_at: Some(ms("2020-01-02T03:04:05.006Z")?),
+                date: Some(ChannelConfigDate {
+                    day: Some("2".into()),
+                    month: Some("1".into()),
+                    year: Some("2020".into()),
+                }),
+            };
+            pair(config.to_document()?, config.prepare(ctx))
+        }
+        ("channelconfigs", "empty") => {
+            let config = NewChannelConfig::default();
+            pair(config.to_document()?, config.prepare(ctx))
+        }
+        ("oauth_clients", "client") => {
+            let client = NewOAuthClient {
+                client_id: "dima-desktop".into(),
+                name: text.into(),
+                kind: ClientType::Public,
+                redirect_uris: vec![
+                    "http://127.0.0.1/oauth/callback".into(),
+                    "http://[::1]/oauth/callback".into(),
+                ],
+                allowed_scopes: vec!["desktop:connect".into(), "pet:receive".into()],
+                enabled: None,
+            };
+            pair(client.to_document()?, client.prepare(ctx))
+        }
+        ("oauth_grants", "grant") => {
+            let grant = NewOAuthGrant {
+                user_id: oid(0x11)?,
+                client_id: "dima-desktop".into(),
+                channel_id: "111".into(),
+                scopes: vec!["desktop:connect".into()],
+            };
+            pair(grant.to_document()?, grant.prepare(ctx))
+        }
+        ("oauth_refresh_tokens", "token") => {
+            let record = NewOAuthRefreshToken {
+                token_hash: "aGFzaA".into(),
+                session_id: oid(0x31)?,
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            pair(record.to_document()?, record.prepare(ctx))
+        }
+        ("oauth_sessions", "session") => {
+            let session = NewOAuthSession {
+                grant_id: oid(0x21)?,
+                user_id: oid(0x11)?,
+                client_id: "dima-desktop".into(),
+                channel_id: "111".into(),
+                device_name: text.into(),
+                scopes: vec!["desktop:connect".into()],
+                current_refresh_hash: "h1".into(),
+                last_used_at: ms("2020-01-02T03:04:05.006Z")?,
+                idle_expires_at: ms("2021-06-07T08:09:10.011Z")?,
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            pair(session.to_document()?, session.prepare(ctx))
+        }
+        ("cron_job_intents", "queued" | "plain") => {
+            let job = |id: &str, channel: Bson| {
+                doc! {
+                    "id": id, "job": "stream_offline_summary", "channelID": channel, "accountID": "acc",
+                    "dedupeKey": "dk", "requestedAt": "2020-01-02T03:04:05.006Z", "requestedBy": "bot",
+                    "data": { "source": "eventsub", "reason": text, "notBeforeUnix": 1_577_934_245 },
+                }
+            };
+            let t1 = ms("2020-01-02T03:04:05.006Z")?;
+            let t2 = ms("2021-06-07T08:09:10.011Z")?;
+            let intent = if key == "queued" {
+                NewCronJobIntent {
+                    job_id: "job-1".into(),
+                    queue_key: "queue:a".into(),
+                    payload: job("job-1", Bson::String("111".into())),
+                    status: IntentStatus::Queued,
+                    automatic_key: Some("auto-1".into()),
+                    active_key: "active-1".into(),
+                    dedupe_until: t2,
+                    due_at: t1,
+                    next_publish_at: t1,
+                }
+            } else {
+                NewCronJobIntent {
+                    job_id: "job-2".into(),
+                    queue_key: "queue:a".into(),
+                    payload: job("job-2", Bson::Null),
+                    status: IntentStatus::LegacyAccepted,
+                    automatic_key: None,
+                    active_key: "active-2".into(),
+                    dedupe_until: t2,
+                    due_at: t1,
+                    next_publish_at: t1,
+                }
+            };
+            pair(intent.to_document()?, intent.prepare(ctx))
+        }
+        ("site_analytics", "snapshot") => {
+            let snapshot = NewSiteAnalytics {
+                registered_users: Some(JsNumber(10.0)),
+                live_users: Some(JsNumber(1.0)),
+                total_live_viewers: Some(JsNumber(12.0)),
+                authorized_accounts: Some(JsNumber(9.0)),
+                total_messages: Some(JsNumber(3_000_000_000.0)),
+                total_commands: Some(JsNumber(1.5)),
+                live_channels: Some(vec![NewLiveChannel {
+                    channel_id: Some("111".into()),
+                    channel: Some("seed".into()),
+                    stream_id: Some("s1".into()),
+                    title: Some(text.into()),
+                    game_name: Some("Just Chatting".into()),
+                    viewers: Some(JsNumber(12.0)),
+                    profile_image_url: Some("https://example.com/a.png".into()),
+                    started_at: Some("2020-01-02T03:04:05Z".into()),
+                    fetched_at: Some("2020-01-02T03:05:00.000Z".into()),
+                    bot_platforms: Some(vec![BotPlatform::Twitch, BotPlatform::Kick]),
+                    plan_tier: Some(PlanTier::Pro),
+                }]),
+                ..NewSiteAnalytics::default()
+            };
+            pair(snapshot.to_document()?, snapshot.prepare(ctx))
+        }
+        ("site_analytics", "defaults") => {
+            let snapshot = NewSiteAnalytics {
+                live_channels: Some(vec![NewLiveChannel {
+                    channel_id: Some("1".into()),
+                    ..NewLiveChannel::default()
+                }]),
+                ..NewSiteAnalytics::default()
+            };
+            pair(snapshot.to_document()?, snapshot.prepare(ctx))
         }
         _ => bail!("{collection}: no typed input named {key}"),
     }

@@ -17,13 +17,18 @@ use futures_util::TryStreamExt;
 
 const SAMPLE: u64 = 50_000;
 
-/// Every registered collection exists in the copy (an empty one included).
+/// Registered collections production never created: their schema is ported, but no code of the
+/// reference imports the model (`channelconfigs`, ledger status `schema-without-collection`).
+const NEVER_CREATED: &[&str] = &["channelconfigs"];
+
+/// Every registered collection exists in the copy (an empty one included), except
+/// [`NEVER_CREATED`].
 async fn expected_collections(store: &dima_store::mongo::MongoStore) -> Result<()> {
     let names = store.database().list_collection_names().await?;
     let absent: Vec<&str> = REGISTRY
         .iter()
         .map(|info| info.name)
-        .filter(|name| !names.iter().any(|n| n == name))
+        .filter(|name| !names.iter().any(|n| n == name) && !NEVER_CREATED.contains(name))
         .collect();
     if !absent.is_empty() {
         let message = format!("collections missing from the copy: {}", absent.join(", "));

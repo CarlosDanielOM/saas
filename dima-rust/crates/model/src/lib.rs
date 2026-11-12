@@ -208,7 +208,9 @@
 //!    write commands and the stored documents are compared exactly (types, key order, missing
 //!    versus null). A case Rust refuses on purpose (the write guard) is marked `refused` with the
 //!    reason; one it accepts on purpose, `differs`. Fixture keys are left out, never
-//!    `undefined`; a dotted update carries a filter that proves what it writes into.
+//!    `undefined`; a dotted update carries a filter that proves what it writes into. Like the
+//!    schema snapshot, the recording names the reference commit and the SHA-256 of every source
+//!    file it loaded, and a file that changed fails the test.
 //! 4. **Write then read** (`tests/write_read.rs`, throwaway database): automatic; every path and
 //!    probe value through every write the helpers offer, every written document decoded. Its
 //!    base document merges the collection's recorded create cases, so they should fill every
@@ -241,20 +243,28 @@ pub mod validation;
 pub mod values;
 mod writes;
 
+pub mod accounts;
 pub mod admins;
 pub mod app_configs;
 pub mod ast_variables;
 pub mod availability;
+pub mod channel_configs;
 pub mod command_user_variables;
 pub mod commands;
 pub mod countdown_timers;
+pub mod cron_job_intents;
 pub mod custom_timers;
 pub mod domain_event_checkpoints;
 pub mod domain_event_deliveries;
 pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
+pub mod oauth_clients;
+pub mod oauth_grants;
+pub mod oauth_refresh_tokens;
+pub mod oauth_sessions;
 pub mod redemption_rewards;
+pub mod site_analytics;
 pub mod stream_sessions;
 pub mod timer_commands;
 pub mod users;
@@ -291,4 +301,12 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &domain_events::INFO,
     &domain_event_deliveries::INFO,
     &domain_event_checkpoints::INFO,
+    &accounts::INFO,
+    &channel_configs::INFO,
+    &oauth_clients::INFO,
+    &oauth_grants::INFO,
+    &oauth_refresh_tokens::INFO,
+    &oauth_sessions::INFO,
+    &cron_job_intents::INFO,
+    &site_analytics::INFO,
 ];

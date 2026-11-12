@@ -16,6 +16,10 @@
    "sha256": "2743fa9f21e3e0b441185382b9e2c412b707248627cc6cd879a65aeeb92ea17a"
   },
   {
+   "path": "src/schemas/accounts.schema.ts",
+   "sha256": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1"
+  },
+  {
    "path": "src/schemas/admin.schema.ts",
    "sha256": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0"
   },
@@ -26,6 +30,10 @@
   {
    "path": "src/schemas/ast_variables.schema.ts",
    "sha256": "b6ae8e21c7db3c0dbbda6e426573f0f913d06750d44b8a153159ec8bcf794f85"
+  },
+  {
+   "path": "src/schemas/channel_config.schema.ts",
+   "sha256": "331e11d6f3487f0695080a02dba8f85b554e91b0eb3eed0b78bc3d92085c6a36"
   },
   {
    "path": "src/schemas/command_timer.schema.ts",
@@ -46,6 +54,10 @@
   {
    "path": "src/schemas/countdown_timer_config.schema.ts",
    "sha256": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a"
+  },
+  {
+   "path": "src/schemas/cron_job_intent.schema.ts",
+   "sha256": "2fd9445fe005052405990ab2259db262761cf699df3648cb6b4702f46657254c"
   },
   {
    "path": "src/schemas/custom_timer.schema.ts",
@@ -72,8 +84,28 @@
    "sha256": "9d641eb036d2dba0907ab5b70bfb58265bbd7174915ddfd8f87b676319d75bf3"
   },
   {
+   "path": "src/schemas/oauth_client.schema.ts",
+   "sha256": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8"
+  },
+  {
+   "path": "src/schemas/oauth_grant.schema.ts",
+   "sha256": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1"
+  },
+  {
+   "path": "src/schemas/oauth_refresh_token.schema.ts",
+   "sha256": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae"
+  },
+  {
+   "path": "src/schemas/oauth_session.schema.ts",
+   "sha256": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556"
+  },
+  {
    "path": "src/schemas/redemption_reward.schema.ts",
    "sha256": "acc13c1d532d1078bbbb3d8260c7815565e63cae003fbad00564930b6b53e5a2"
+  },
+  {
+   "path": "src/schemas/site_analytics.schema.ts",
+   "sha256": "6a187e768b8a246143a9ea04b8000583b60090639b0a904fc265bed22b6090d3"
   },
   {
    "path": "src/schemas/stream_session.schema.ts",
@@ -92,8 +124,16 @@
    "sha256": "98785af1992534d8d723cd429626d4da268aa8bf41023b3e12b01b2bdc4a2b26"
   },
   {
+   "path": "src/utils/cron_jobs_queue.ts",
+   "sha256": "ec51cf63af3ce0ba5472cac1c9f4284181a8d5dd5ca615777fbb9eb56e00bbdf"
+  },
+  {
    "path": "src/utils/databases/dragonfly.database.ts",
    "sha256": "0d08dd4cdb931633473227fb59f043251b7be59a09a034ef6f392e0f64aebe9c"
+  },
+  {
+   "path": "src/utils/durable_cron_jobs.ts",
+   "sha256": "a32eb5e2e14a827c0645b7eeef071c6cb07d61d879f6d24ac0f9bc8c26b711c4"
   },
   {
    "path": "src/utils/keywords.ts",
@@ -4235,6 +4275,1157 @@
      ],
      "options": {
       "sparse": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "accounts": {
+   "model": "Account",
+   "file": "src/schemas/accounts.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "user_id",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "user_login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "user_email",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "channelName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "user_type",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "user_token",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "iv",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "content",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     },
+     {
+      "name": "user_refresh_token",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "iv",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "content",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "channelconfigs": {
+   "model": "channelconfig",
+   "file": "src/schemas/channel_config.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channel_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "commands",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "date",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "day",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "month",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "year",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "oauth_clients": {
+   "model": "OAuthClient",
+   "file": "src/schemas/oauth_client.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "client_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "redirect_uris",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "allowed_scopes",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "client_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "enum",
+     "values": [
+      "public"
+     ]
+    },
+    {
+     "path": "redirect_uris",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "allowed_scopes",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "client_id",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "oauth_grants": {
+   "model": "OAuthGrant",
+   "file": "src/schemas/oauth_grant.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "user_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "client_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "scopes",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "revoked_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "user_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "client_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "scopes",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "user_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "user_id",
+       1
+      ],
+      [
+       "client_id",
+       1
+      ],
+      [
+       "channel_id",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "oauth_refresh_tokens": {
+   "model": "OAuthRefreshToken",
+   "file": "src/schemas/oauth_refresh_token.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "token_hash",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "session_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "used_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "expires_at",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "token_hash",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "session_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expires_at",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "token_hash",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "session_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expires_at",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "oauth_sessions": {
+   "model": "OAuthSession",
+   "file": "src/schemas/oauth_session.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "grant_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "user_id",
+      "kind": "value",
+      "type": "ObjectId"
+     },
+     {
+      "name": "client_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "device_name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "scopes",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "current_refresh_hash",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "last_used_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "idle_expires_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expires_at",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "revoked_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "revoke_reason",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     }
+    ]
+   },
+   "hidden": [
+    "current_refresh_hash"
+   ],
+   "validators": [
+    {
+     "path": "grant_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "user_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "client_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channel_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "device_name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "device_name",
+     "type": "maxlength",
+     "maxlength": 80
+    },
+    {
+     "path": "scopes",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "current_refresh_hash",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "last_used_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "idle_expires_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expires_at",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "grant_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "user_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expires_at",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "cron_job_intents": {
+   "model": "cron_job_intent",
+   "file": "src/schemas/cron_job_intent.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "jobID",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "queueKey",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "payload",
+      "kind": "mixed"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "automaticKey",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "activeKey",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "dedupeUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "dueAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "nextPublishAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "owner",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "token",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "leaseUntil",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "reason",
+      "kind": "value",
+      "type": "String"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "jobID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "queueKey",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "payload",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "queued",
+      "processing",
+      "completed",
+      "dead",
+      "uncertain",
+      "legacy_accepted"
+     ]
+    },
+    {
+     "path": "dedupeUntil",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "dueAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "nextPublishAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "jobID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "automaticKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "sparse": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "activeKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "sparse": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "queueKey",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "nextPublishAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "queueKey",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "leaseUntil",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "site_analytics": {
+   "model": "site_analytics",
+   "file": "src/schemas/site_analytics.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "singletonKey",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "global"
+      }
+     },
+     {
+      "name": "registeredUsers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "liveUsers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "totalLiveViewers",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "authorizedAccounts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "totalMessages",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "totalCommands",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "liveChannels",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "channelID",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "channel",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "streamId",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "title",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "gameName",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "viewers",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        },
+        {
+         "name": "profileImageUrl",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "startedAt",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "fetchedAt",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "botPlatforms",
+         "kind": "array",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": []
+         }
+        },
+        {
+         "name": "planTier",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "free"
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "singletonKey",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "liveChannels.$.planTier",
+     "type": "enum",
+     "values": [
+      "free",
+      "premium",
+      "pro"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "singletonKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
       "background": true
      }
     }

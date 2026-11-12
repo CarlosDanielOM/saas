@@ -166,14 +166,27 @@ impl IndexPolicy {
     }
 }
 
-/// The reference's policy: `domain_events` needs its unique indexes before the first journal
-/// insert (`DomainEventSchema.init()` is awaited there); every other collection's indexes are
-/// built in the background and only logged when they fail.
+/// The reference's policy: the collections whose `Model.init()` the reference awaits before it
+/// writes need those indexes first, every other collection's indexes are built in the background
+/// and only logged when they fail.
+///
+/// - `domain_events` (unique): `DomainEventSchema.init()` is awaited before every journal insert,
+///   a duplicate `eventKey` is how it knows an event is already journaled;
+/// - `cron_job_intents` (unique): `model.init()` is awaited before every acceptance and claim, a
+///   duplicate key is how it knows a job is already accepted;
+/// - the four OAuth collections (all): the API awaits their `init()` before it starts
+///   (`server/oauth/service.ts:27`); the unique ones keep one grant per user, client and channel
+///   and one record per refresh token hash.
 pub fn startup_policy(info: &CollectionInfo) -> IndexPolicy {
-    if info.name == crate::domain_events::COLLECTION {
-        IndexPolicy::RequireUnique
-    } else {
-        IndexPolicy::BestEffort
+    match info.name {
+        crate::domain_events::COLLECTION | crate::cron_job_intents::COLLECTION => {
+            IndexPolicy::RequireUnique
+        }
+        crate::oauth_clients::COLLECTION
+        | crate::oauth_grants::COLLECTION
+        | crate::oauth_refresh_tokens::COLLECTION
+        | crate::oauth_sessions::COLLECTION => IndexPolicy::RequireAll,
+        _ => IndexPolicy::BestEffort,
     }
 }
 

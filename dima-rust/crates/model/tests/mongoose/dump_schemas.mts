@@ -47,6 +47,14 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/domain_event.schema.ts', 'domain_event'],
     ['src/schemas/commands.schema.ts', 'Commands'],
     ['src/schemas/redemption_reward.schema.ts', 'redemptionreward'],
+    ['src/schemas/accounts.schema.ts', 'Account'],
+    ['src/schemas/channel_config.schema.ts', 'channelconfig'],
+    ['src/schemas/oauth_client.schema.ts', 'OAuthClient'],
+    ['src/schemas/oauth_grant.schema.ts', 'OAuthGrant'],
+    ['src/schemas/oauth_refresh_token.schema.ts', 'OAuthRefreshToken'],
+    ['src/schemas/oauth_session.schema.ts', 'OAuthSession'],
+    ['src/schemas/cron_job_intent.schema.ts', 'cron_job_intent'],
+    ['src/schemas/site_analytics.schema.ts', 'site_analytics'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);
