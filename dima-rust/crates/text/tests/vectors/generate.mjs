@@ -243,7 +243,40 @@ const sanitizeInputs = [
 ];
 const sanitize = sanitizeInputs.map((input) => ({ input, expected: JSON.stringify(wellFormed(JSON.parse(input))) }));
 
-write('json.json', { stringify, sanitize });
+// `JSON.stringify(value, null, space)`. The Rust input is the compact text (what the value is
+// after JavaScript's own conversion: holes and NaN become null, undefined members vanish).
+const indents = [0, 1, 2, 3, 4, 8, 10, 11, 100, -1, -0, 0.5, 0.999, 1.5, 2.7, -2.7, 9.99, 10.5, NaN, Infinity, -Infinity, 1e-9,
+    Number.MAX_VALUE, '', ' ', '  ', '\t', '\n', '--', '\r\n', 'abcdefghij', 'abcdefghijklmnop', '<br>', '\u00e9\u00e9', 'ñ', '😀',
+    '😀😀😀😀😀', '😀😀😀😀😀😀', 'ab😀😀😀😀', 'a😀😀😀😀😀', '\u0000', 'ab\u0000cd', '\u0000ab', '\u0000😀😀😀😀😀😀', '"', '\\', ' \u{a0}\u{3000}', '\u{2028}'];
+const prettyValues = [
+    ...jsonTexts.map((text) => JSON.parse(text)),
+    [1, , 3], [, ,], [NaN, Infinity, -Infinity, -0, undefined, () => 1], { a: undefined, b: () => 1, c: NaN, d: [undefined] },
+    { '': {}, ' ': [], x: [[]], y: [{}], z: { a: [], b: {} } }, [[[[[[[[[[[[1, [], {}]]]]]]]]]]]],
+    { 2: 'b', 1: 'a', x: { 10: [1, { 3: 'c', 0: 'z' }] } }, [0.1, 1e21, 1e-7, 5e-324, 2 ** 64, -(2 ** 53) - 2],
+    Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`k${i}`, i % 3 ? [i, { i }] : {}])),
+    Array.from({ length: 40 }, (_, i) => (i % 5 === 0 ? [] : i % 5 === 1 ? {} : i % 5 === 2 ? [i] : i % 5 === 3 ? { i } : i)),
+];
+let nested = 0;
+for (let i = 0; i < 30; i++) nested = i % 2 ? { [`d${i}`]: nested, e: [] } : [nested, {}];
+prettyValues.push(nested);
+const indentKey = (space) => (typeof space === 'number' ? { number: bits(space) } : { text: space });
+const pretty = [];
+for (const value of prettyValues) {
+    const input = JSON.stringify(value);
+    for (const space of indents) {
+        // A cut inside a surrogate pair leaves a lone half in JavaScript's gap; Rust drops the half
+        // (documented on `JsonIndent::gap`), so those indents are not compared.
+        if (typeof space === 'string' && space.slice(0, 10) !== space.slice(0, 10).toWellFormed()) continue;
+        pretty.push({ input, indent: indentKey(space), expected: JSON.stringify(value, null, space) });
+    }
+}
+const lone = (space) => typeof space === 'string' && space.slice(0, 10) !== space.slice(0, 10).toWellFormed();
+const gaps = indents.filter((space) => !lone(space)).map((space) => {
+    const text = JSON.stringify([1], null, space);
+    return { indent: indentKey(space), pretty: text !== '[1]', gap: text === '[1]' ? '' : text.slice(2, -3) };
+});
+
+write('json.json', { stringify, sanitize, pretty, gaps });
 
 // ---------------------------------------------------------------- dates
 

@@ -321,6 +321,50 @@ fn json_stringify_matches_node() {
     check.finish();
 }
 
+fn indent(value: &Value) -> JsonIndent<'_> {
+    match (value.get("number"), value.get("text")) {
+        (Some(bits), _) => JsonIndent::Number(double(bits)),
+        (_, Some(space)) => JsonIndent::Text(text(space)),
+        _ => panic!("bad indent {value}"),
+    }
+}
+
+#[test]
+fn json_stringify_pretty_matches_node() {
+    let file = load("json.json");
+    let mut check = Check::new("JSON.stringify(value, null, space)");
+    for row in rows(&file, "pretty") {
+        let input = text(&row["input"]);
+        let space = indent(&row["indent"]);
+        let mut value: Value =
+            serde_json::from_str(input).unwrap_or_else(|error| panic!("{input}: {error}"));
+        js_key_order(&mut value);
+        let expected = text(&row["expected"]);
+        let actual = to_js_json_pretty(&value, space);
+        check.expect(actual == expected, || {
+            format!("{input} {space:?}\n  rust {actual}\n  node {expected}")
+        });
+        let one_pass = to_js_json_pretty_from(&value, space)
+            .ok()
+            .and_then(|bytes| String::from_utf8(bytes).ok());
+        check.expect(one_pass.as_deref() == Some(expected), || {
+            format!("one pass {input} {space:?}: {one_pass:?} != {expected}")
+        });
+    }
+    for row in rows(&file, "gaps") {
+        let space = indent(&row["indent"]);
+        let expected = row["pretty"]
+            .as_bool()
+            .is_some_and(|pretty| pretty)
+            .then(|| text(&row["gap"]));
+        let actual = space.gap();
+        check.expect(actual == expected, || {
+            format!("gap {space:?}: {actual:?} != {expected:?}")
+        });
+    }
+    check.finish();
+}
+
 #[test]
 fn lone_surrogate_repair_matches_node_well_formed_strings() {
     let file = load("json.json");

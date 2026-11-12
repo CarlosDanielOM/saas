@@ -49,8 +49,8 @@ pub use date::{
     to_locale_string_en_us_utc, utc_day_start, utc_fields,
 };
 pub use json::{
-    SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,
-    to_js_json_sorted,
+    JsonIndent, SortedKeys, js_key_order, sanitize_lone_surrogates, to_js_json, to_js_json_from,
+    to_js_json_pretty, to_js_json_pretty_from, to_js_json_sorted,
 };
 pub use number::{
     NumberLocale, math_round, number_to_string, string_of, to_fixed, to_locale_string,
