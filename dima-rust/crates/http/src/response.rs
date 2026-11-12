@@ -258,22 +258,44 @@ impl Response {
         })
     }
 
-    /// Writes the body to `writer`, returning the bytes written.
+    /// Writes the body to `writer`, returning the bytes written. Waiting on the writer counts
+    /// against the request's total deadline and stops on shutdown, so a stalled destination
+    /// cannot hold the response (and its provider slot) forever.
     pub async fn write_to<W: AsyncWrite + Unpin>(mut self, writer: &mut W) -> Result<u64> {
         while let Some(chunk) = self.chunk().await? {
-            writer
-                .write_all(&chunk)
-                .await
-                .map_err(|error| Error::Transport {
+            self.write_step(writer.write_all(&chunk)).await?;
+        }
+        self.write_step(writer.flush()).await?;
+        Ok(self.received)
+    }
+
+    /// One write to the destination under the deadline and shutdown.
+    async fn write_step(&mut self, write: impl Future<Output = std::io::Result<()>>) -> Result<()> {
+        enum Step {
+            Cancelled,
+            Total,
+            Done(std::io::Result<()>),
+        }
+        let step = tokio::select! {
+            biased;
+            () = self.cancel.wait() => Step::Cancelled,
+            () = tokio::time::sleep_until(self.limits.deadline) => Step::Total,
+            result = write => Step::Done(result),
+        };
+        match step {
+            Step::Cancelled => Err(self.fail(FailureClass::Cancelled)),
+            Step::Total => Err(self.fail(FailureClass::Timeout(TimeoutKind::Total))),
+            Step::Done(Ok(())) => Ok(()),
+            Step::Done(Err(error)) => {
+                if let Some(end) = &mut self.end {
+                    end.fail(FailureClass::Transport);
+                }
+                Err(Error::Transport {
                     info: self.info(),
                     source: Box::new(error),
-                })?;
+                })
+            }
         }
-        writer.flush().await.map_err(|error| Error::Transport {
-            info: self.info(),
-            source: Box::new(error),
-        })?;
-        Ok(self.received)
     }
 
     /// Reads the body as a Server-Sent Events stream.

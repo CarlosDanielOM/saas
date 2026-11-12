@@ -1317,3 +1317,81 @@ async fn a_redirect_to_get_does_not_strip_the_body_from_a_retry() {
         ]
     );
 }
+
+/// A destination that never accepts a byte.
+struct StalledWriter;
+
+impl tokio::io::AsyncWrite for StalledWriter {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+        _buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::task::Poll::Pending
+    }
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::task::Poll::Pending
+    }
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::task::Poll::Pending
+    }
+}
+
+#[tokio::test]
+async fn a_stalled_destination_is_bounded_by_the_deadline_and_shutdown() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200).body("payload"));
+    let provider = Provider::builder("s3", &server.url())
+        .max_concurrency(1)
+        .build()
+        .unwrap();
+    let shutdown = Shutdown::new();
+    let client = HttpClient::builder()
+        .shutdown(shutdown.clone())
+        .build()
+        .unwrap();
+    let started = Instant::now();
+    let error = client
+        .get(&provider, "/a")
+        .timeout(ms(200))
+        .send()
+        .await
+        .unwrap()
+        .write_to(&mut StalledWriter)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            Error::Timeout {
+                kind: TimeoutKind::Total,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert!(started.elapsed() < Duration::from_secs(2));
+    // The slot was released with the response.
+    client.get(&provider, "/b").send().await.unwrap();
+
+    let response = client.get(&provider, "/c").send().await.unwrap();
+    let trigger = shutdown.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(ms(100)).await;
+        trigger.trigger();
+    });
+    let error = tokio::time::timeout(
+        Duration::from_secs(2),
+        response.write_to(&mut StalledWriter),
+    )
+    .await
+    .unwrap()
+    .unwrap_err();
+    assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
+}
