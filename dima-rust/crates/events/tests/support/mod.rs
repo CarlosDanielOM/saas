@@ -244,9 +244,11 @@ pub async fn clean_keys(client: &dima_store::dragonfly::Dragonfly, prefix: &str)
 ///   direction, as a hung server or a network partition would.
 /// - [`Proxy::lose_reply_to`]: the next MongoDB request that contains every given byte string
 ///   reaches the server (so a write commits), and everything the server sends back on that
-///   connection is discarded: the caller sees its deadline pass on a write that was applied. The
-///   proxy reads requests whole (the wire protocol's 4-byte little-endian length), so a request
-///   is matched as one message. Other connections, and connections opened afterwards, work.
+///   connection is discarded: the caller sees its deadline pass on a write that was applied.
+///   [`Proxy::drop_request_to`]: the request never reaches the server (the write is lost on the
+///   way). The proxy reads requests whole (the wire protocol's 4-byte little-endian length), so
+///   a request is matched as one message. Other connections, and connections opened afterwards,
+///   work.
 ///
 /// Dropping it stops it.
 pub struct Proxy {
@@ -257,31 +259,43 @@ pub struct Proxy {
     task: tokio::task::JoinHandle<()>,
 }
 
-/// The armed "lose the reply" request.
+/// What the armed trap does to its request.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TrapKind {
+    /// Deliver it, lose the reply.
+    LoseReply,
+    /// Never deliver it (nor anything after it on that connection).
+    DropRequest,
+}
+
+/// The armed request.
 #[derive(Default)]
 struct Trap {
-    needles: std::sync::Mutex<Option<Vec<Vec<u8>>>>,
+    needles: std::sync::Mutex<Option<(TrapKind, Vec<Vec<u8>>)>>,
     fired: std::sync::atomic::AtomicUsize,
 }
 
 impl Trap {
-    /// Whether `message` is the armed request (disarming the trap).
-    fn take(&self, message: &[u8]) -> bool {
+    /// What to do with `message`, if it is the armed request (disarming the trap).
+    fn take(&self, message: &[u8]) -> Option<TrapKind> {
         let Ok(mut armed) = self.needles.lock() else {
-            return false;
+            return None;
         };
-        let matches = armed.as_ref().is_some_and(|needles| {
-            needles.iter().all(|needle| {
-                message
-                    .windows(needle.len())
-                    .any(|w| w == needle.as_slice())
-            })
+        let kind = armed.as_ref().and_then(|(kind, needles)| {
+            needles
+                .iter()
+                .all(|needle| {
+                    message
+                        .windows(needle.len())
+                        .any(|w| w == needle.as_slice())
+                })
+                .then_some(*kind)
         });
-        if matches {
+        if kind.is_some() {
             *armed = None;
             self.fired.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
-        matches
+        kind
     }
 }
 
@@ -323,8 +337,18 @@ async fn relay(
             if client_read.read_exact(&mut message[4..]).await.is_err() {
                 return;
             }
-            if trap.take(&message) {
-                dropping.store(true, std::sync::atomic::Ordering::SeqCst);
+            match trap.take(&message) {
+                Some(TrapKind::LoseReply) => {
+                    dropping.store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+                Some(TrapKind::DropRequest) => {
+                    // Silent from here on: nothing reaches the server, nothing comes back.
+                    dropping.store(true, std::sync::atomic::Ordering::SeqCst);
+                    let mut sink = [0_u8; 4096];
+                    while matches!(client_read.read(&mut sink).await, Ok(n) if n > 0) {}
+                    return;
+                }
+                None => {}
             }
             if server_write.write_all(&message).await.is_err() {
                 return;
@@ -410,12 +434,22 @@ impl Proxy {
     /// Arms the trap: the next request containing every one of `needles` is delivered and its
     /// reply (with everything after it on that connection) is lost.
     pub fn lose_reply_to(&self, needles: &[&[u8]]) {
+        self.arm(TrapKind::LoseReply, needles);
+    }
+
+    /// Arms the trap: the next request containing every one of `needles` never reaches the
+    /// server, and its connection goes silent (a write lost on the way).
+    pub fn drop_request_to(&self, needles: &[&[u8]]) {
+        self.arm(TrapKind::DropRequest, needles);
+    }
+
+    fn arm(&self, kind: TrapKind, needles: &[&[u8]]) {
         if let Ok(mut armed) = self.trap.needles.lock() {
-            *armed = Some(needles.iter().map(|n| n.to_vec()).collect());
+            *armed = Some((kind, needles.iter().map(|n| n.to_vec()).collect()));
         }
     }
 
-    /// How many replies the trap has lost so far.
+    /// How many requests the trap has caught so far.
     pub fn replies_lost(&self) -> usize {
         self.trap.fired.load(std::sync::atomic::Ordering::SeqCst)
     }

@@ -207,6 +207,36 @@ impl Engine {
         &self.report
     }
 
+    /// The deliveries a pass of `consumer` would take now, read only (no claim, no write): the
+    /// ready query of [`Engine::drain`].
+    pub async fn select(&self, consumer: &Consumer) -> Result<Vec<Document>, ConsumerError> {
+        self.records
+            .ready(
+                consumer.definition,
+                self.config.batch(),
+                self.clock.now_ms(),
+            )
+            .await
+    }
+
+    /// The journal events a pass of `consumer` would read next on `topic`, read only: its
+    /// checkpoint and the events after it (at most a batch).
+    pub async fn preview(
+        &self,
+        consumer: &Consumer,
+        topic: &str,
+    ) -> Result<(bson::oid::ObjectId, Vec<Document>), ConsumerError> {
+        let last = self
+            .records
+            .checkpoint(consumer.definition.consumer, topic)
+            .await?;
+        let events = self
+            .records
+            .scan(consumer.definition, topic, last, self.config.batch())
+            .await?;
+        Ok((last, events))
+    }
+
     /// One pass of `consumer` (`drainDomainEvents`). Shutdown (`shutdown` fired) stops it
     /// between deliveries; a handler in flight gets the shutdown grace. Work it starts is
     /// registered in `shutdown`'s registry, if it carries one.
