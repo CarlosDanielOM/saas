@@ -333,6 +333,12 @@ pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
 pub mod extension_wallet_transactions;
+pub mod follow_attack_logs;
+pub mod follow_defense_actions;
+pub mod follow_defense_controls;
+pub mod follow_defense_settings;
+pub mod follow_hate_raid_sources;
+pub mod follow_relationship_ledgers;
 pub mod media_assets;
 pub mod oauth_clients;
 pub mod oauth_grants;
@@ -384,6 +390,12 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &raid_moderation_requests::INFO,
     &raid_sessions::INFO,
     &raid_subscription_preferences::INFO,
+    &follow_defense_actions::INFO,
+    &follow_defense_controls::INFO,
+    &follow_defense_settings::INFO,
+    &follow_hate_raid_sources::INFO,
+    &follow_relationship_ledgers::INFO,
+    &follow_attack_logs::INFO,
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,

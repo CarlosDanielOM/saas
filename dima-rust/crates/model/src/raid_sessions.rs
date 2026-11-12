@@ -5,6 +5,7 @@
 //! Writers: utils/raid_sessions.ts recordRaidSession and recordRaidFollow construct event fields and dates. No direct body copy. Legacy endedAt null; optional cursor/progress fields use schema defaults. No timestamps or __v; TTL purgeAt.
 
 use crate::decode::decode_boxed;
+use crate::values::Nullable;
 use crate::{ClientNulls, CollectionInfo, Hooks, IndexSpec, ModelError, ReadNeed, Rule};
 use bson::Document;
 use dima_store::mongo::schema::{DefaultValue as D, Field, Schema};
@@ -195,8 +196,8 @@ pub struct NewRaidSession {
     #[serde(rename = "startedAt")]
     pub started_at: JsDate,
     /// `endedAt`.
-    #[serde(rename = "endedAt", skip_serializing_if = "Option::is_none")]
-    pub ended_at: Option<JsDate>,
+    #[serde(rename = "endedAt", skip_serializing_if = "Nullable::is_unset")]
+    pub ended_at: Nullable<JsDate>,
     /// `captureUntil`.
     #[serde(rename = "captureUntil")]
     pub capture_until: JsDate,

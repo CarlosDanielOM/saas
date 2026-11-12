@@ -30,6 +30,12 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/schemas/follow_attack_log.schema.ts', 'follow_attack_log'],
+    ['src/schemas/follow_relationship_ledger.schema.ts', 'follow_relationship_ledger'],
+    ['src/schemas/follow_hate_raid_source.schema.ts', 'follow_hate_raid_source'],
+    ['src/schemas/follow_defense_settings.schema.ts', 'follow_defense_settings'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_control'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_action'],
     ['src/schemas/raid_subscription_preference.schema.ts', 'raid_subscription_preference'],
     ['src/schemas/raid_session.schema.ts', 'raid_session'],
     ['src/schemas/raid_session.schema.ts', 'raid_moderation_request'],

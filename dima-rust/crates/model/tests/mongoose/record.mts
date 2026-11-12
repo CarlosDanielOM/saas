@@ -60,6 +60,12 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/follow_attack_log.schema.ts', 'follow_attack_log'],
+    ['src/schemas/follow_relationship_ledger.schema.ts', 'follow_relationship_ledger'],
+    ['src/schemas/follow_hate_raid_source.schema.ts', 'follow_hate_raid_source'],
+    ['src/schemas/follow_defense_settings.schema.ts', 'follow_defense_settings'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_control'],
+    ['src/schemas/follow_defense_action.schema.ts', 'follow_defense_action'],
     ['src/schemas/raid_subscription_preference.schema.ts', 'raid_subscription_preference'],
     ['src/schemas/raid_session.schema.ts', 'raid_session'],
     ['src/schemas/raid_session.schema.ts', 'raid_moderation_request'],
@@ -386,6 +392,42 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+follow_attack_logs:[{name:'create',op:'create',rust:'typed',doc:{_id:OID(1),"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]}},{name:'update',op:'updateOne',seed:[{...{"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{totalFollows:5}}}],
+    follow_relationship_ledgers: [
+        { name: 'duplicate_active', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', follower_id: 'seed', followed_id: 'seed', status: 'active' }], doc: { follower_id: 'seed', followed_id: 'seed' } },
+        { name: 'ended_edge_not_unique', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', follower_id: 'seed', followed_id: 'seed', status: 'ended' }], doc: { follower_id: 'seed', followed_id: 'seed', status: 'ended' } },
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"platform":"twitch","follower_id":"seed","followed_id":"seed","followed_at":T2,"ended_at":null,"ended_reason":null,"last_event_at":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"platform":"twitch","follower_id":"seed","followed_id":"seed","followed_at":T2,"last_event_at":T2}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "follower_id": TEXT } } },
+    ],
+
+    follow_hate_raid_sources: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"targetChannelID":"seed","raiderChannelID":"seed","firstSeenAt":T2,"lastSeenAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"targetChannelID":"seed","raiderChannelID":"seed","firstSeenAt":T2,"lastSeenAt":T2}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "targetChannelID": TEXT } } },
+    ],
+
+    follow_defense_settings: [
+        { name: 'unchecked_zero_threshold', op: 'updateOne', seed: [{ _id: OID(1), channelID: 'seed' }], filter: { _id: OID(1) }, update: { $set: { silentThresholdX: 0 } } },
+        { name: 'invalid_threshold', op: 'validate', doc: { channelID: 'seed', silentThresholdX: 0 } },
+        { name: 'duplicate_channel', op: 'create', seed: [{ _id: OID(1), channelID: 'seed' }], doc: { channelID: 'seed' } },
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"channelID":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"channelID":"seed"}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    follow_defense_controls: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "leaseToken": TEXT } } },
+    ],
+
+    follow_defense_actions: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","eventID":"seed","kind":"ban","mode":"protection","authorizedAt":T2,"status":"pending","nextAttemptAt":T2,"expiresAt":T2,"purgeAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","eventID":"seed","kind":"ban","mode":"protection","authorizedAt":T2,"status":"pending","nextAttemptAt":T2,"expiresAt":T2,"purgeAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
     raid_subscription_preferences: [
         { name: 'duplicate_direction', op: 'create', seed: [{ _id: 'old', channelID: 'seed', direction: 'incoming' }], doc: { _id: 'new', channelID: 'seed', direction: 'incoming' } },
         { name: 'invalid_direction', op: 'validate', doc: { _id: 'seed', channelID: 'seed', direction: 'unknown' } },
@@ -396,7 +438,7 @@ const CASES: Record<string, any[]> = {
 
     raid_sessions: [
         { name: 'missing_required', op: 'validate', doc: {} },
-        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","eventID":"seed","raiderID":"seed","startedAt":T2,"captureUntil":T2,"retentionHours":2,"expiresAt":T2,"purgeAt":T2,"backfillUntil":T2} },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","channelID":"seed","eventID":"seed","raiderID":"seed","startedAt":T2,"endedAt":null,"captureUntil":T2,"retentionHours":2,"expiresAt":T2,"purgeAt":T2,"backfillUntil":T2} },
         { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","channelID":"seed","eventID":"seed","raiderID":"seed","startedAt":T2,"captureUntil":T2,"retentionHours":2,"expiresAt":T2,"purgeAt":T2,"backfillUntil":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
     ],
 

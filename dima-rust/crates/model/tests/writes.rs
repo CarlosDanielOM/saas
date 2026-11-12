@@ -348,6 +348,147 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("follow_attack_logs", "typed") => {
+            use dima_model::follow_attack_logs::*;
+            let input = NewFollowAttackLog {
+                id: Some(ObjectId::from_bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])),
+                target_channel_id: "seed".into(),
+                target_channel_login: None,
+                target_channel_name: None,
+                mode_triggered: Modetriggered::Silent,
+                triggered_by: Triggeredby::Threshold,
+                total_follows: None,
+                velocity: None,
+                duration_seconds: None,
+                is_raid: None,
+                raid_info: Some(NewFollowAttackLogRaidInfo {
+                    raider_channel_id: "seed".into(),
+                    raider_channel_login: None,
+                    raider_channel_name: None,
+                    raid_viewers: None,
+                }),
+                tracked_follows: Some(vec![NewFollowAttackLogTrackedFollows {
+                    follower_id: "seed".into(),
+                    follower_login: None,
+                    follower_name: None,
+                    followed_at: JsDate(1623053350011),
+                    event_id: "seed".into(),
+                    banned: None,
+                    ban_status: None,
+                    ban_message: None,
+                }]),
+                is_hate_raid: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("follow_relationship_ledgers", "typed") => {
+            use dima_model::follow_relationship_ledgers::*;
+            let input = NewFollowRelationshipLedger {
+                platform: dima_model::follow_relationship_ledgers::PlatformKind::Twitch,
+                follower_id: "seed".into(),
+                follower_login: None,
+                follower_name: None,
+                followed_id: "seed".into(),
+                followed_login: None,
+                followed_name: None,
+                mutual: None,
+                status: None,
+                followed_at: JsDate(1623053350011),
+                ended_at: dima_model::values::Nullable::Null,
+                ended_reason: dima_model::values::Nullable::Null,
+                last_event_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("follow_hate_raid_sources", "typed") => {
+            use dima_model::follow_hate_raid_sources::*;
+            let input = NewFollowHateRaidSource {
+                target_channel_id: "seed".into(),
+                target_channel_login: None,
+                target_channel_name: None,
+                raider_channel_id: "seed".into(),
+                raider_channel_login: None,
+                raider_channel_name: None,
+                count: None,
+                applied_log_i_ds: None,
+                first_seen_at: JsDate(1623053350011),
+                last_seen_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("follow_defense_settings", "typed") => {
+            use dima_model::follow_defense_settings::*;
+            let input = NewFollowDefenseSettings {
+                channel_id: "seed".into(),
+                channel: None,
+                enabled: None,
+                silent_mode_enabled: None,
+                protection_mode_enabled: None,
+                attack_mode_enabled: None,
+                reset_attack_on_new_raid: None,
+                silent_threshold_x: None,
+                silent_window_y_seconds: None,
+                protection_threshold_b: None,
+                attack_threshold: None,
+                silent_duration_seconds: None,
+                baseline_follows_per_hour: None,
+                language: None,
+                settings_version: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("follow_defense_controls", "typed") => {
+            use dima_model::follow_defense_controls::*;
+            let input = NewFollowDefenseControl {
+                id: "seed".into(),
+                cancelled_through: None,
+                pending_until: None,
+                next_allowed_at: None,
+                last_served_at: None,
+                rate_per_second: None,
+                success_streak: None,
+                locked_until: None,
+                lease_token: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("follow_defense_actions", "typed") => {
+            use dima_model::follow_defense_actions::*;
+            let input = NewFollowDefenseAction {
+                id: "seed".into(),
+                channel_id: "seed".into(),
+                event_id: "seed".into(),
+                kind: dima_model::follow_defense_actions::KindKind::Ban,
+                follower_id: None,
+                authorization: None,
+                raid_session_id: None,
+                raid_follower_id: None,
+                raid_request_id: None,
+                reason: None,
+                message: None,
+                mode: dima_model::follow_defense_actions::ModeKind::Protection,
+                authorized_at: JsDate(1623053350011),
+                followed_at: None,
+                status: dima_model::follow_defense_actions::StatusKind::Pending,
+                next_attempt_at: JsDate(1623053350011),
+                locked_until: None,
+                lease_token: None,
+                attempts: None,
+                failures: None,
+                last_status: None,
+                last_message: None,
+                completed_at: None,
+                expires_at: JsDate(1623053350011),
+                purge_at: JsDate(1623053350011),
+                audit_pending: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
         ("raid_subscription_preferences", "typed") => {
             use dima_model::raid_subscription_preferences::*;
             let input = NewRaidSubscriptionPreference {
@@ -372,7 +513,7 @@ fn typed_create(
                 raider_name: None,
                 viewers: None,
                 started_at: JsDate(1623053350011),
-                ended_at: None,
+                ended_at: dima_model::values::Nullable::Null,
                 capture_until: JsDate(1623053350011),
                 retention_hours: JsNumber(2.0),
                 expires_at: JsDate(1623053350011),

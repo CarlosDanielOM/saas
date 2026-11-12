@@ -748,6 +748,10 @@
    "sha256": "c9b6ab99f8e01ce2f80d486d2e80c21095140a2497c24aa916f2d733c0f4b90f"
   },
   {
+   "path": "src/schemas/follow_hate_raid_source.schema.ts",
+   "sha256": "8b2321fcf3eed917304bd3d2e03bf975b5351a3a37494cbe1e8ad54947c1215e"
+  },
+  {
    "path": "src/schemas/follow_relationship_ledger.schema.ts",
    "sha256": "653d1702e9c1ea7936431ec990a017923f6305a3b989558facaee4e93e2c48c0"
   },
@@ -1617,6 +1621,1653 @@
   }
  ],
  "models": {
+  "follow_attack_logs": {
+   "model": "follow_attack_log",
+   "file": "src/schemas/follow_attack_log.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "targetChannelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "targetChannelLogin",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "targetChannelName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "modeTriggered",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "triggeredBy",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "totalFollows",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "velocity",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "durationSeconds",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "isRaid",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "raidInfo",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "raiderChannelID",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "raiderChannelLogin",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "raiderChannelName",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "raidViewers",
+         "kind": "value",
+         "type": "Number",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": {
+           "$numberInt": "0"
+          }
+         }
+        }
+       ]
+      }
+     },
+     {
+      "name": "trackedFollows",
+      "kind": "documentArray",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "followerID",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "followerLogin",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "followerName",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": ""
+         }
+        },
+        {
+         "name": "followedAt",
+         "kind": "value",
+         "type": "Date"
+        },
+        {
+         "name": "eventID",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "banned",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": false
+         }
+        },
+        {
+         "name": "banStatus",
+         "kind": "value",
+         "type": "Number"
+        },
+        {
+         "name": "banMessage",
+         "kind": "value",
+         "type": "String"
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "isHateRaid",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "targetChannelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "modeTriggered",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "modeTriggered",
+     "type": "enum",
+     "values": [
+      "silent",
+      "protection",
+      "attack"
+     ]
+    },
+    {
+     "path": "triggeredBy",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "triggeredBy",
+     "type": "enum",
+     "values": [
+      "threshold",
+      "manual"
+     ]
+    },
+    {
+     "path": "raidInfo.raiderChannelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "trackedFollows.$.followerID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "trackedFollows.$.followedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "trackedFollows.$.eventID",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "targetChannelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "modeTriggered",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "isRaid",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "isHateRaid",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "targetChannelID",
+       1
+      ],
+      [
+       "createdAt",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "raidInfo.raiderChannelID",
+       1
+      ],
+      [
+       "isHateRaid",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "follow_relationship_ledgers": {
+   "model": "follow_relationship_ledger",
+   "file": "src/schemas/follow_relationship_ledger.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "created_at",
+     "updatedAt": "updated_at"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "platform",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "twitch"
+      }
+     },
+     {
+      "name": "follower_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "follower_login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "follower_name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "followed_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "followed_login",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "followed_name",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "mutual",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "active"
+      }
+     },
+     {
+      "name": "followed_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "ended_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "ended_reason",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "last_event_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "platform",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "platform",
+     "type": "enum",
+     "values": [
+      "twitch"
+     ]
+    },
+    {
+     "path": "follower_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "followed_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "active",
+      "ended"
+     ]
+    },
+    {
+     "path": "followed_at",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ended_reason",
+     "type": "enum",
+     "values": [
+      "missing_in_followers_scan",
+      "missing_in_following_scan",
+      "event_unfollow",
+      "unknown"
+     ]
+    },
+    {
+     "path": "last_event_at",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "platform",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "follower_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "followed_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "mutual",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "last_event_at",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "followed_id",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "followed_id",
+       1
+      ],
+      [
+       "mutual",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "follower_id",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "platform",
+       1
+      ],
+      [
+       "follower_id",
+       1
+      ],
+      [
+       "followed_id",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "partialFilterExpression": {
+       "status": "active"
+      },
+      "background": true
+     }
+    }
+   ]
+  },
+  "follow_hate_raid_sources": {
+   "model": "follow_hate_raid_source",
+   "file": "src/schemas/follow_hate_raid_source.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "targetChannelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "targetChannelLogin",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "targetChannelName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "raiderChannelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "raiderChannelLogin",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "raiderChannelName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "count",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "appliedLogIDs",
+      "kind": "array",
+      "type": "ObjectId"
+     },
+     {
+      "name": "firstSeenAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "lastSeenAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [
+    "appliedLogIDs"
+   ],
+   "validators": [
+    {
+     "path": "targetChannelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "raiderChannelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "firstSeenAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "lastSeenAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "targetChannelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "raiderChannelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "targetChannelID",
+       1
+      ],
+      [
+       "raiderChannelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "targetChannelID",
+       1
+      ],
+      [
+       "count",
+       -1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "follow_defense_settings": {
+   "model": "follow_defense_settings",
+   "file": "src/schemas/follow_defense_settings.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channel",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "silentModeEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "protectionModeEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "attackModeEnabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "resetAttackOnNewRaid",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "silentThresholdX",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "10"
+       }
+      }
+     },
+     {
+      "name": "silentWindowYSeconds",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "5"
+       }
+      }
+     },
+     {
+      "name": "protectionThresholdB",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "100"
+       }
+      }
+     },
+     {
+      "name": "attackThreshold",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "silentDurationSeconds",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "60"
+       }
+      }
+     },
+     {
+      "name": "baselineFollowsPerHour",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "language",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "en"
+      }
+     },
+     {
+      "name": "settingsVersion",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "silentThresholdX",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "silentWindowYSeconds",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "protectionThresholdB",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "attackThreshold",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "silentDurationSeconds",
+     "type": "min",
+     "min": 1
+    },
+    {
+     "path": "language",
+     "type": "enum",
+     "values": [
+      "en",
+      "es"
+     ]
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    }
+   ]
+  },
+  "follow_defense_controls": {
+   "model": "follow_defense_control",
+   "file": "src/schemas/follow_defense_action.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "cancelledThrough",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "pendingUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "nextAllowedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "lastServedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "ratePerSecond",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "5"
+       }
+      }
+     },
+     {
+      "name": "successStreak",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "lockedUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "leaseToken",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "nextAllowedAt",
+       1
+      ],
+      [
+       "lastServedAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    }
+   ]
+  },
+  "follow_defense_actions": {
+   "model": "follow_defense_action",
+   "file": "src/schemas/follow_defense_action.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": {
+     "createdAt": "createdAt",
+     "updatedAt": "updatedAt"
+    },
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "eventID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "kind",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "followerID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "authorization",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "automatic"
+      }
+     },
+     {
+      "name": "raidSessionID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "raidFollowerID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "raidRequestID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "reason",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "message",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "mode",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "authorizedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "followedAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "status",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "pending"
+      }
+     },
+     {
+      "name": "nextAttemptAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "lockedUntil",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "0"
+        }
+       }
+      }
+     },
+     {
+      "name": "leaseToken",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "attempts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "failures",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "lastStatus",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     },
+     {
+      "name": "lastMessage",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "completedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "purgeAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "auditPending",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "eventID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "kind",
+     "type": "enum",
+     "values": [
+      "ban",
+      "announcement"
+     ]
+    },
+    {
+     "path": "authorization",
+     "type": "enum",
+     "values": [
+      "automatic",
+      "manual"
+     ]
+    },
+    {
+     "path": "mode",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "mode",
+     "type": "enum",
+     "values": [
+      "protection",
+      "attack"
+     ]
+    },
+    {
+     "path": "authorizedAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "status",
+     "type": "enum",
+     "values": [
+      "pending",
+      "processing",
+      "succeeded",
+      "failed",
+      "cancelled",
+      "expired"
+     ]
+    },
+    {
+     "path": "nextAttemptAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "purgeAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "status",
+       1
+      ],
+      [
+       "nextAttemptAt",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "status",
+       1
+      ],
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "auditPending",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "raidSessionID",
+       1
+      ],
+      [
+       "followerID",
+       1
+      ],
+      [
+       "status",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "purgeAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
   "raid_subscription_preferences": {
    "model": "raid_subscription_preference",
    "file": "src/schemas/raid_subscription_preference.schema.ts",
@@ -12822,7 +14473,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416e6aadb6e5b882efc8"
+          "value": "6af4416e1b49f841fe2dc81b"
          }
         },
         {
