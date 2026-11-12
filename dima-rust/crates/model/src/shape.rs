@@ -516,6 +516,7 @@ impl<'i> Checker<'i> {
         } else {
             Err(ValidationError {
                 model: self.info.model,
+                on_update: false,
                 errors: self.errors,
             })
         }

@@ -104,16 +104,14 @@ pub mod entry {
     };
     use dima_store::mongo::WriteContext;
     use dima_store::mongo::save::{Change, PreparedSave};
-    use dima_store::mongo::update::{
-        PreparedFindAndModify, PreparedUpdate, Returned, UpdateOptions,
-    };
+    use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned};
 
     /// `Model.updateOne` / `updateMany`.
     pub fn update(
         info: &CollectionInfo,
         filter: &Document,
         update: Document,
-        options: UpdateOptions,
+        options: impl Into<dima_model::UpdateOptions>,
         writer: Writer,
         ctx: &mut WriteContext,
         random: &dyn Random,
@@ -135,7 +133,7 @@ pub mod entry {
         info: &CollectionInfo,
         filter: &Document,
         update: Document,
-        options: UpdateOptions,
+        options: impl Into<dima_model::UpdateOptions>,
         returned: Returned,
         writer: Writer,
         ctx: &mut WriteContext,

@@ -137,8 +137,12 @@
 //!   with `store.writes(COLLECTION)`.
 //! - Update, `findOneAndUpdate`: [`CollectionInfo::prepare_update`],
 //!   [`CollectionInfo::prepare_find_one_and_update`] (paths below an immutable `Mixed` path are
-//!   immutable too, which the store does not do). Updates do not validate (no reference call
-//!   sets `runValidators`), but they pass the write guard.
+//!   immutable too, which the store does not do). An update validates only when the reference
+//!   call passes `runValidators: true` (find them with `grep -rn runValidators dimabot/src`, and
+//!   check for a `mongoose.set('runValidators')` or a schema option too): pass
+//!   [`UpdateOptions::run_validators`], and name the call site in the module header. Mongoose's
+//!   update validators look at the paths the update names only, with `this` the query; their
+//!   scope is in [`update_validation`]. Every update passes the write guard after them.
 //! - Save: [`CollectionInfo::prepare_save`] takes a [`LoadedForSave`], which only
 //!   [`CollectionInfo::load_for_save`] creates (the whole document, `select: false` paths
 //!   included: a save writes the defaults of the paths the loaded document lacks, so a projected
@@ -242,6 +246,7 @@ pub mod index;
 pub mod loaded;
 pub mod private;
 pub mod shape;
+pub mod update_validation;
 pub mod validation;
 pub mod values;
 mod writes;
@@ -301,6 +306,7 @@ pub use loaded::LoadedForSave;
 pub use private::Private;
 pub use shape::ReadNeed;
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
+pub use writes::UpdateOptions;
 
 /// Every collection, one entry per collection (a module may hold two, like the countdown and its
 /// configuration).

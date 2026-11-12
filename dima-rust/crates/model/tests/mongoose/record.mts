@@ -413,6 +413,8 @@ const CASES: Record<string, any[]> = {
         { name: 'save_status', op: 'save', seed: [memorySeed()], id: OID(1), changes: [{ set: 'status', value: 'confirmed' }, { set: 'reviewedBy', value: { source: 'streamer', username: 'seed', userID: '111' } }, { set: 'reviewedAt', value: T2 }, { set: 'reviewReason', value: 'manual_status_set' }] },
         { name: 'save_content', op: 'save', seed: [memorySeed()], id: OID(1), changes: [{ set: 'content', value: `new ${TEXT}` }, { set: 'subject', value: { scope: 'channel', username: '', userID: '' } }, { set: 'confidence', value: 2 }] },
         { name: 'duplicate_fingerprint', op: 'create', seed: [memorySeed()], doc: { channelID: '111', type: 'boundary', content: 'c', summary: 's', fingerprint: 'fp1' } },
+        { name: 'rv_single_nested', op: 'updateOne', seed: [memorySeed()], filter: { _id: OID(1) }, update: { $set: { subject: { scope: 'robot' }, 'createdBy.source': null } }, options: { runValidators: true } },
+        { name: 'rv_nested_path', op: 'updateOne', seed: [memorySeed()], filter: { _id: OID(1) }, update: { $set: { 'subject.scope': 'robot', 'sourceEvidence.0.source': 'x' } }, options: { runValidators: true } },
     ],
     channelaipersonalities: [
         // `openrouter/ai.ts:357`: no profiles given, `ensureProfiles` builds one; the pro owner sets 35.
@@ -466,6 +468,9 @@ const CASES: Record<string, any[]> = {
         { name: 'save_tts', op: 'save', seed: [itemSeed({ assetID: null, category: 'tts', mediaType: 'audio', tts: { mode: 'custom', text: '', voice: '', language: 'en' } })], id: OID(1), changes: [{ set: 'tts', value: { mode: 'fixed', text: ` ${TEXT} `, voice: '', language: 'es' } }] },
         { name: 'save_delete', op: 'save', seed: [itemSeed()], id: OID(1), changes: [{ set: 'isEnabled', value: false }, { set: 'deletedAt', value: T2 }] },
         { name: 'save_invalid', op: 'save', seed: [itemSeed()], id: OID(1), changes: [{ set: 'volume', value: 150 }, { set: 'assetID', value: null }] },
+        // `required: function () { return this.category !== 'tts' }` in an update validator: `this`
+        // is the query, so `assetID` is required.
+        { name: 'rv_unset_required_function', op: 'updateOne', seed: [itemSeed()], filter: { _id: OID(1) }, update: { $unset: { assetID: 1 }, $set: { volume: 101 } }, options: { runValidators: true } },
         { name: 'migrate_category', op: 'updateMany', seed: [itemSeed({ mediaType: 'audio' })], filter: { mediaType: 'audio', category: 'video' }, update: { $set: { category: 'audio' } } },
     ],
     userextensioninventories: [
@@ -485,6 +490,16 @@ const CASES: Record<string, any[]> = {
         // `dimafx.route.ts:1312`: a deleted item's saved copies are refunded with a save.
         { name: 'save_refund', op: 'save', seed: [walletSeed()], id: OID(1), changes: [{ set: 'items.0.quantity', value: 0 }, { set: 'balance', value: 200 }] },
         { name: 'save_negative', op: 'save', seed: [walletSeed()], id: OID(1), changes: [{ set: 'balance', value: -1 }] },
+        // Update validators inside arrays and nested objects.
+        { name: 'rv_push_invalid', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $push: { items: { $each: [{ quantity: -1, source: 'stolen' }, walletItem({ channelExtensionItemID: OID(2), quantity: -2 })] } } }, options: { runValidators: true } },
+        { name: 'rv_add_to_set_invalid', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $addToSet: { items: { channelExtensionItemID: OID(2), quantity: -1, source: 'gift' } } }, options: { runValidators: true } },
+        { name: 'rv_positional', op: 'updateOne', seed: [walletSeed()], filter: { ...identity, 'items.channelExtensionItemID': OID(1) }, update: { $set: { 'items.$.quantity': -5 } }, options: { runValidators: true } },
+        { name: 'rv_numeric_position', op: 'updateOne', seed: [walletSeed()], filter: { ...identity, 'items.0': { $exists: true } }, update: { $set: { 'items.0.quantity': -5, 'items.0.source': 'stolen' } }, options: { runValidators: true } },
+        { name: 'rv_whole_array', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $set: { items: [walletItem({ quantity: -1 }), { quantity: 2, source: 'x' }] } }, options: { runValidators: true } },
+        { name: 'rv_whole_element', op: 'updateOne', seed: [walletSeed()], filter: { ...identity, 'items.0': { $exists: true } }, update: { $set: { 'items.0': { quantity: -1 } } }, options: { runValidators: true } },
+        { name: 'rv_nested_enum', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $set: { 'config.quickPurchaseAction': 'nope', balance: -1 } }, options: { runValidators: true } },
+        { name: 'rv_nested_object', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $set: { config: { quickPurchaseAction: 'nope' } } }, options: { runValidators: true } },
+        { name: 'rv_pull_skipped', op: 'updateOne', seed: [walletSeed()], filter: identity, update: { $pull: { items: { quantity: -1 }, dimafxReceipts: 'x' } }, options: { runValidators: true } },
         { name: 'duplicate_wallet', op: 'create', seed: [walletSeed()], doc: identity },
     ],
     extensionwallettransactions: [
@@ -798,6 +813,20 @@ const CASES: Record<string, any[]> = {
         // Error order: stored keys out of schema order, a missing required path, two changes.
         { name: 'save_error_order', op: 'save', seed: [{ _id: OID(1), frequency: 2000, channelID: '1', message: 'm', frequencyUnit: 'weeks', name: 'x'.repeat(31), active: true, created_at: T1, updated_at: T1, __v: 0 }], id: OID(1), changes: [{ set: 'message', value: 'y'.repeat(351) }, { set: 'frequency', value: 1.5 }] },
         { name: 'save_error_order_changes', op: 'save', seed: [timerSeed()], id: OID(1), changes: [{ set: 'frequencyUnit', value: 'days' }, { set: 'frequency', value: 0 }, { set: 'name', value: 'z'.repeat(31) }, { unset: 'channelID' }] },
+        // Update validators (`runValidators: true`, `commands/timer_manager.command.ts:511`): which
+        // operators and paths they look at, in which order, and the message.
+        { name: 'rv_edit', op: 'findOneAndUpdate', seed: [timerSeed()], filter: { channelID: '1', name: 'a' }, update: { $set: { message: ` ${TEXT} `, frequency: 10, frequencyUnit: 'minutes', active: false } }, options: { new: true, runValidators: true } },
+        { name: 'rv_invalid_many', op: 'findOneAndUpdate', seed: [timerSeed()], filter: { channelID: '1', name: 'a' }, update: { $set: { name: 'x'.repeat(31), frequency: 1.5, frequencyUnit: 'hours', message: '   ' } }, options: { new: true, runValidators: true } },
+        { name: 'rv_set_null_required', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $set: { channel: null, frequency: 0 } }, options: { runValidators: true } },
+        { name: 'rv_unset_required', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $unset: { message: 1, frequencyUnit: 1 } }, options: { runValidators: true } },
+        { name: 'rv_unset_optional', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $unset: { frequencyUnit: 1 } }, options: { runValidators: true } },
+        { name: 'rv_inc_max_min_skipped', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $inc: { frequency: -100 }, $max: { __v: 3 } }, options: { runValidators: true } },
+        { name: 'rv_bare_keys', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { frequency: 2000, name: 'ok' }, options: { runValidators: true } },
+        { name: 'rv_upsert_set_on_insert', op: 'updateOne', filter: { channelID: '2', name: 'b' }, update: { $setOnInsert: { message: 'm', frequency: 0, channel: 'c' } }, options: { upsert: true, runValidators: true } },
+        { name: 'rv_upsert_missing_required', op: 'updateOne', refused: 'write guard: the upsert inserts a timer without message, frequency and channel, which the read type needs (validators only see the paths an update names)', filter: { channelID: '2', name: 'b' }, update: { $set: { active: false } }, options: { upsert: true, runValidators: true } },
+        { name: 'rv_set_on_insert_no_upsert', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $setOnInsert: { frequency: 0 }, $set: { active: false } }, options: { runValidators: true } },
+        { name: 'rv_update_many', op: 'updateMany', seed: [timerSeed()], filter: { channelID: '1' }, update: { $set: { frequencyUnit: 'weeks' } }, options: { runValidators: true } },
+        { name: 'rv_off', op: 'updateOne', seed: [timerSeed()], filter: { _id: OID(1) }, update: { $set: { frequency: 0 } } },
     ],
     countdowntimers: [
         { name: 'create_basic', op: 'create', rust: 'basic', doc: { channel: 'c', channelID: '1', startTime: 7200 } },

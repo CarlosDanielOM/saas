@@ -41,7 +41,7 @@ use dima_store::mongo::insert::PreparedInsert;
 use dima_store::mongo::number::JsNumber;
 use dima_store::mongo::save::{Change, PreparedSave};
 use dima_store::mongo::schema::{DefaultValue as D, Field, MapOf, Schema, ValueType};
-use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned, UpdateOptions};
+use dima_store::mongo::update::{PreparedFindAndModify, PreparedUpdate, Returned};
 use serde::{Deserialize, Serialize};
 
 /// The collection name.
@@ -457,7 +457,7 @@ impl NewCommand {
 pub fn prepare_update(
     filter: &Document,
     mut update: Document,
-    options: UpdateOptions,
+    options: impl Into<crate::UpdateOptions>,
     writer: Writer,
     ctx: &mut WriteContext,
     random: &dyn Random,
@@ -465,14 +465,14 @@ pub fn prepare_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    update_after_hooks(&INFO, filter, update.into(), options, ctx)
+    update_after_hooks(&INFO, filter, update.into(), options.into(), ctx)
 }
 
 /// `Model.findOneAndUpdate` with the availability hook (unless `writer` is internal).
 pub fn prepare_find_one_and_update(
     filter: &Document,
     mut update: Document,
-    options: UpdateOptions,
+    options: impl Into<crate::UpdateOptions>,
     returned: Returned,
     writer: Writer,
     ctx: &mut WriteContext,
@@ -481,7 +481,7 @@ pub fn prepare_find_one_and_update(
     if writer == Writer::Client {
         availability::guard_update(&mut update, ENABLED, ctx.now_ms(), random)?;
     }
-    find_and_update_after_hooks(&INFO, filter, update.into(), options, returned, ctx)
+    find_and_update_after_hooks(&INFO, filter, update.into(), options.into(), returned, ctx)
 }
 
 /// `doc.save()` of a loaded command (read without projection) after `changes`, with the save hook.

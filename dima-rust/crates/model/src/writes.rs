@@ -14,6 +14,7 @@ use crate::collection::{CollectionInfo, Hooks};
 use crate::error::ModelError;
 use crate::loaded::LoadedForSave;
 use crate::shape::Against;
+use crate::update_validation::validate_update;
 use crate::validation::{validate_given, validate_ordered};
 use bson::{Bson, Document};
 use dima_store::mongo::WriteContext;
@@ -21,9 +22,38 @@ use dima_store::mongo::insert::{InsertStyle, PreparedInsert, prepare_insert};
 use dima_store::mongo::save::{Change, PreparedSave, prepare_save};
 use dima_store::mongo::schema::{DefaultValue, Field, Kind, Schema};
 use dima_store::mongo::update::{
-    PreparedFindAndModify, PreparedUpdate, Returned, Update, UpdateDoc, UpdateOptions,
-    prepare_find_one_and_update, prepare_update,
+    PreparedFindAndModify, PreparedUpdate, Returned, Update, UpdateDoc,
+    UpdateOptions as StoreUpdateOptions, prepare_find_one_and_update, prepare_update,
 };
+
+/// The options of a model update: the store's (`upsert`, `setDefaultsOnInsert`,
+/// `arrayFilters`), and whether Mongoose's update validators run (`runValidators`, off unless a
+/// call asks for it; [`crate::update_validation`] has their scope). Every update entry point
+/// takes `impl Into<UpdateOptions>`, so the store's options alone mean "no validators".
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UpdateOptions {
+    /// What the store's helpers need.
+    pub store: StoreUpdateOptions,
+    /// `runValidators: true`.
+    pub run_validators: bool,
+}
+
+impl UpdateOptions {
+    /// The same options with `runValidators: true`.
+    pub fn run_validators(mut self) -> Self {
+        self.run_validators = true;
+        self
+    }
+}
+
+impl From<StoreUpdateOptions> for UpdateOptions {
+    fn from(store: StoreUpdateOptions) -> Self {
+        Self {
+            store,
+            run_validators: false,
+        }
+    }
+}
 
 impl CollectionInfo {
     /// `Model.updateOne` / `updateMany` of a collection without hooks.
@@ -31,11 +61,11 @@ impl CollectionInfo {
         &self,
         filter: &Document,
         update: impl Into<Update>,
-        options: UpdateOptions,
+        options: impl Into<UpdateOptions>,
         ctx: &mut WriteContext,
     ) -> Result<PreparedUpdate, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "update")?;
-        update_after_hooks(self, filter, update.into(), options, ctx)
+        update_after_hooks(self, filter, update.into(), options.into(), ctx)
     }
 
     /// `Model.findOneAndUpdate` of a collection without hooks.
@@ -43,12 +73,12 @@ impl CollectionInfo {
         &self,
         filter: &Document,
         update: impl Into<Update>,
-        options: UpdateOptions,
+        options: impl Into<UpdateOptions>,
         returned: Returned,
         ctx: &mut WriteContext,
     ) -> Result<PreparedFindAndModify, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "findOneAndUpdate")?;
-        find_and_update_after_hooks(self, filter, update.into(), options, returned, ctx)
+        find_and_update_after_hooks(self, filter, update.into(), options.into(), returned, ctx)
     }
 
     /// `Model.updateOne` / `updateMany` with an update pipeline, **not checked by the write
@@ -65,7 +95,7 @@ impl CollectionInfo {
         &self,
         filter: &Document,
         stages: Vec<Document>,
-        options: UpdateOptions,
+        options: StoreUpdateOptions,
         ctx: &mut WriteContext,
     ) -> Result<PreparedUpdate, ModelError> {
         self.refuse_hooked(Hooks::UpdatesAndSave, "update")?;
@@ -113,8 +143,8 @@ impl CollectionInfo {
 }
 
 /// [`CollectionInfo::prepare_update`] without the hooks check: what a module's adapter calls
-/// once it applied its hooks to the update. Validation (when asked for) and the write guard run;
-/// a pipeline is refused.
+/// once it applied its hooks to the update. The update validators (when asked for) run on the
+/// update as it will be sent, then the write guard; a pipeline is refused.
 pub(crate) fn update_after_hooks(
     info: &CollectionInfo,
     filter: &Document,
@@ -123,9 +153,14 @@ pub(crate) fn update_after_hooks(
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, ModelError> {
     refuse_pipeline(info, &update)?;
-    let update = immutable_mixed_children(info.schema, update, options.upsert);
-    let prepared = prepare_update(info.schema, filter, update, options, ctx)?;
+    let update = immutable_mixed_children(info.schema, update, options.store.upsert);
+    let prepared = prepare_update(info.schema, filter, update, options.store, ctx)?;
     if let Some(update) = &prepared.update {
+        if options.run_validators
+            && let UpdateDoc::Document(sent) = update
+        {
+            validate_update(info, sent)?;
+        }
         info.check_update(
             update,
             Against::Filter {
@@ -148,10 +183,15 @@ pub(crate) fn find_and_update_after_hooks(
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, ModelError> {
     refuse_pipeline(info, &update)?;
-    let update = immutable_mixed_children(info.schema, update, options.upsert);
+    let update = immutable_mixed_children(info.schema, update, options.store.upsert);
     let prepared =
-        prepare_find_one_and_update(info.schema, filter, update, options, returned, ctx)?;
+        prepare_find_one_and_update(info.schema, filter, update, options.store, returned, ctx)?;
     if let Some(update) = &prepared.update {
+        if options.run_validators
+            && let UpdateDoc::Document(sent) = update
+        {
+            validate_update(info, sent)?;
+        }
         info.check_update(
             update,
             Against::Filter {
@@ -661,7 +701,7 @@ mod tests {
         let filter = doc! { "_id": bson::oid::ObjectId::new() };
         let stages = vec![doc! { "$set": { "accounts": { "$literal": "bad" } } }];
         let users = &crate::users::INFO;
-        for options in [UpdateOptions::default(), UpdateOptions::upsert()] {
+        for options in [StoreUpdateOptions::default(), StoreUpdateOptions::upsert()] {
             let update = users.prepare_update(&filter, stages.clone(), options.clone(), &mut ctx);
             assert!(
                 matches!(
@@ -687,7 +727,7 @@ mod tests {
         let unchecked = users.prepare_pipeline_update_unchecked(
             &filter,
             stages.clone(),
-            UpdateOptions::default(),
+            StoreUpdateOptions::default(),
             &mut ctx,
         );
         assert!(unchecked.is_ok(), "{unchecked:?}");
@@ -696,7 +736,7 @@ mod tests {
         let hooked = commands.prepare_pipeline_update_unchecked(
             &filter,
             stages,
-            UpdateOptions::default(),
+            StoreUpdateOptions::default(),
             &mut ctx,
         );
         assert!(

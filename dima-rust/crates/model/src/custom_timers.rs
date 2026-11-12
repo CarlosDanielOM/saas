@@ -5,6 +5,11 @@
 //! a whole frequency of 1 to 1440 minutes) are the only ones in this package with ranges, so the
 //! input type checks them in its constructor.
 //!
+//! Update validators: the dashboard's timer edit (`commands/timer_manager.command.ts:511`,
+//! `findOneAndUpdate` of `message`, `frequency`, `frequencyUnit`, `active`) passes
+//! `runValidators: true`; its port passes [`crate::UpdateOptions::run_validators`]. No other
+//! reference write to this collection does, and no schema or global option sets it.
+//!
 //! Intended difference (`crate::shape`): the write helpers refuse a value of the wrong BSON type,
 //! and `null` or a removal where [`READ_NEEDS`] says the read type has none; the census of the
 //! production copy shows none stored there, so Mongoose's acceptance of them is not reproduced.
