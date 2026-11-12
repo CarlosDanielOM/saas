@@ -12,7 +12,10 @@ use std::collections::HashSet;
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
-use dima_commands::patterns::{self, Boundary, CompiledPattern, MAX_SOURCE_BYTES, PatternError};
+use dima_commands::patterns::{
+    self, AlternationLimits, Boundary, CompiledAlternation, CompiledPattern, MAX_COMPONENT_BYTES,
+    MAX_SOURCE_BYTES, PatternError,
+};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -21,6 +24,23 @@ struct Recording {
     re2: String,
     cases: Vec<Case>,
     validation: Vec<Validation>,
+    alternations: Vec<Rule>,
+}
+
+/// A combined variation rule run through the reference's `rulePatterns` and
+/// `findBlacklistMatches`.
+#[derive(Deserialize)]
+struct Rule {
+    name: String,
+    components: Vec<String>,
+    results: Vec<RuleResult>,
+}
+
+#[derive(Deserialize)]
+struct RuleResult {
+    text: String,
+    /// The reported match in UTF-16 units, `null` for none (or an empty one), `"error"`.
+    expected: Value,
 }
 
 #[derive(Deserialize)]
@@ -223,6 +243,135 @@ fn every_intended_difference_is_recorded() {
             "{source}: {reason}"
         );
     }
+}
+
+/// Combined rules RE2 accepts and this crate refuses on purpose, with the reason.
+const INTENDED_RULES: &[(&str, &str)] = &[(
+    "valid components too large together",
+    "200 components of three {1000} counts fit RE2's 8 MB program but need 46 MiB as regex NFAs, \
+     over the 32 MiB a rule may use (MAX_ALTERNATION_COMPILED_BYTES)",
+)];
+
+fn rule_outcome(rule: &Result<CompiledAlternation, PatternError>, text: &str) -> String {
+    match rule {
+        Err(_) => "error".into(),
+        Ok(rule) => match rule.find(text) {
+            None => "no match".into(),
+            Some(found) => {
+                let range = found.utf16_range(text);
+                format!("{}..{}", range.start, range.end)
+            }
+        },
+    }
+}
+
+/// Combined rules as the reference builds and matches them, compiled in one chunk where they
+/// fit and with every component in its own chunk: the first match is the same.
+#[test]
+fn combined_rules_match_the_recording_however_they_are_chunked() {
+    let one_per_chunk = AlternationLimits {
+        chunk_source_bytes: 1,
+        ..AlternationLimits::default()
+    };
+    let mut mismatches = Vec::new();
+    for limits in [AlternationLimits::default(), one_per_chunk] {
+        for rule in &RECORDING.alternations {
+            let compiled = CompiledAlternation::with_limits(
+                rule.components.iter().map(String::as_str),
+                limits,
+            );
+            if INTENDED_RULES.iter().any(|(name, _)| *name == rule.name) {
+                assert_eq!(compiled.as_ref().unwrap_err(), &PatternError::TooLarge);
+                assert!(
+                    rule.results
+                        .iter()
+                        .all(|result| recorded(&result.expected) != "error")
+                );
+                continue;
+            }
+            for result in &rule.results {
+                let actual = rule_outcome(&compiled, &result.text);
+                let wanted = recorded(&result.expected);
+                if actual != wanted {
+                    mismatches.push(format!(
+                        "{} (chunk {} bytes) on {:?}: re2 {wanted}, rust {actual} ({:?})",
+                        rule.name,
+                        limits.chunk_source_bytes,
+                        result.text,
+                        compiled.as_ref().map(CompiledAlternation::chunk_count)
+                    ));
+                }
+            }
+        }
+    }
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
+    assert!(RECORDING.alternations.len() >= 17);
+}
+
+/// The reference accepts up to 200 edited sources of 16,000 characters in one rule; their
+/// alternation is far over the single-pattern cap, and is compiled in chunks.
+#[test]
+fn a_combined_rule_over_the_single_pattern_cap_compiles_in_chunks() {
+    let rule = RECORDING
+        .alternations
+        .iter()
+        .find(|rule| rule.name == "200 long components over 256 KiB")
+        .unwrap();
+    let combined = format!(
+        "(?:{})",
+        rule.components
+            .iter()
+            .map(|component| format!("(?:{component})"))
+            .collect::<Vec<_>>()
+            .join("|")
+    );
+    assert!(combined.len() > MAX_SOURCE_BYTES);
+    assert_eq!(
+        CompiledPattern::new(&combined, Boundary::WholeWord, true).unwrap_err(),
+        PatternError::TooLong
+    );
+    let compiled = CompiledAlternation::new(rule.components.iter().map(String::as_str)).unwrap();
+    assert!(compiled.chunk_count() > 1, "{}", compiled.chunk_count());
+}
+
+/// The largest rule the reference accepts: 200 components of 16,000 characters. Compiling it
+/// is bounded in time and memory, or refused as too large; never unbounded.
+#[test]
+fn the_largest_combined_rules_are_bounded() {
+    let class = format!("[{}]", "中".repeat((MAX_COMPONENT_BYTES - 2) / 3));
+    let literal: String = "abcdefghij".repeat(1_600);
+    for (name, component) in [("class", class), ("literal", literal)] {
+        assert!(component.len() <= MAX_COMPONENT_BYTES);
+        let components = vec![component.as_str(); 200];
+        let started = Instant::now();
+        let compiled = CompiledAlternation::new(components.iter().copied());
+        let elapsed = started.elapsed();
+        match &compiled {
+            Ok(rule) => assert!(
+                rule.memory_usage() <= patterns::MAX_ALTERNATION_COMPILED_BYTES,
+                "{name}: {}",
+                rule.memory_usage()
+            ),
+            Err(error) => assert_eq!(*error, PatternError::TooLarge, "{name}"),
+        }
+        eprintln!(
+            "{name}: {:?} in {elapsed:?}",
+            compiled
+                .as_ref()
+                .map(|rule| (rule.chunk_count(), rule.memory_usage()))
+        );
+        assert!(elapsed < Duration::from_secs(60), "{name}: {elapsed:?}");
+    }
+    // More than 200 components, or one over the reference's length.
+    assert_eq!(
+        CompiledAlternation::new(vec!["a"; 201]).unwrap_err(),
+        PatternError::TooLong
+    );
+    let long = "a".repeat(MAX_COMPONENT_BYTES + 1);
+    assert_eq!(
+        CompiledAlternation::new([long.as_str()]).unwrap_err(),
+        PatternError::TooLong
+    );
 }
 
 /// `advanced.test.ts`/`variations.test.ts` behaviour that lives in this module.

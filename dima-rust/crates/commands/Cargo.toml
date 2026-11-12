@@ -19,6 +19,9 @@ bson = { workspace = true }
 regex = { workspace = true }
 # The complement of a Unicode property as explicit ranges, as the `re2` package writes it.
 regex-syntax = { workspace = true }
+# The combined variation rule is compiled in chunks whose heap use is counted (`memory_usage`),
+# on the same engine `regex` uses, with its performance features.
+regex-automata = { workspace = true, features = ["hybrid", "nfa-backtrack", "dfa-onepass", "perf-literal"] }
 # The keyword index cache coalesces cold loads (`sync`) and resolves roles concurrently (`macros`).
 tokio = { workspace = true }
 thiserror = { workspace = true }

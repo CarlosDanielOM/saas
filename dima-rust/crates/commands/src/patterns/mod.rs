@@ -39,6 +39,16 @@
 //! process, keyed by the pattern's JSON); matching then allocates only the capture slots of a
 //! whole-word match.
 //!
+//! The combined variation rule (`rulePatterns` joins up to 200 component sources of up to
+//! 16,000 characters each into one whole-word alternation, which RE2 compiles within its own
+//! memory budget) is a [`CompiledAlternation`]: components are compiled in chunks of at most
+//! [`MAX_SOURCE_BYTES`] of source each, all chunks together within
+//! [`MAX_ALTERNATION_COMPILED_BYTES`], and the chunks' matches are combined so the first
+//! match is the one the single alternation finds. Worst case allowed for one rule:
+//! [`MAX_ALTERNATION_COMPONENTS`] components of [`MAX_COMPONENT_BYTES`] (9.6 MB of source),
+//! parsed a chunk at a time, at most 32 MiB compiled, and per matching thread a lazy DFA cache
+//! of at most [`DFA_SIZE_LIMIT`] per chunk (a chat message only fills a small part of it).
+//!
 //! Text: match offsets are byte offsets inside the server; the moderation match positions that
 //! the reference stores and sends (`ModerationMatch.start` and `end`, UTF-16 units, end
 //! exclusive) come from [`PatternMatch::utf16_range`] only.
@@ -47,10 +57,15 @@ mod js;
 mod re2;
 mod re2_names;
 
+use std::collections::HashSet;
 use std::fmt;
 use std::ops::Range;
 
 use regex::{Regex, RegexBuilder};
+use regex_automata::util::syntax;
+use regex_automata::{Input, meta};
+
+use js::{Rewriter, Tok};
 
 /// The longest source compiled, in bytes. The reference's own limits are 250 characters for a
 /// rule pattern and 16,000 for an edited variation.
@@ -63,6 +78,15 @@ pub const DFA_SIZE_LIMIT: usize = 2 * 1024 * 1024;
 pub const NEST_LIMIT: u32 = 250;
 /// RE2's largest repetition count, and the largest product of nested counts.
 pub const MAX_REPEAT: u64 = 1_000;
+
+/// The most components of one combined rule: `variationTerms` allows 200 blocked words, and
+/// each has one entry.
+pub const MAX_ALTERNATION_COMPONENTS: usize = 200;
+/// The longest component, in bytes: the reference's 16,000 UTF-16 units
+/// (`MAX_VARIATION_SOURCE`, for edited and generated sources alike), at most 3 bytes each.
+pub const MAX_COMPONENT_BYTES: usize = 48_000;
+/// The heap all chunks of one combined rule may use once compiled.
+pub const MAX_ALTERNATION_COMPILED_BYTES: usize = 32 * 1024 * 1024;
 
 /// The reference's whole-word wrapper, as `compilePattern` writes it.
 const WHOLE_WORD_START: &str = r"(^|[^\p{L}\p{N}])(";
@@ -207,6 +231,235 @@ impl CompiledPattern {
     /// The compiled regex.
     pub fn regex(&self) -> &Regex {
         &self.regex
+    }
+}
+
+/// How a [`CompiledAlternation`] is cut and bounded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlternationLimits {
+    /// The most component source bytes compiled together (one component alone may reach
+    /// [`MAX_COMPONENT_BYTES`]).
+    pub chunk_source_bytes: usize,
+    /// The heap all chunks may use once compiled.
+    pub compiled_bytes: usize,
+}
+
+impl Default for AlternationLimits {
+    fn default() -> Self {
+        Self {
+            chunk_source_bytes: MAX_SOURCE_BYTES,
+            compiled_bytes: MAX_ALTERNATION_COMPILED_BYTES,
+        }
+    }
+}
+
+/// The combined variation rule (`rulePatterns`): the components joined as
+/// `(?:(?:c1)|(?:c2)|...)`, whole word, case-insensitive. Compiled in chunks of consecutive
+/// components; [`find`](Self::find) returns the match the single alternation would find.
+/// `Send + Sync`; build it once per rule configuration and keep it.
+#[derive(Debug, Clone)]
+pub struct CompiledAlternation {
+    chunks: Vec<meta::Regex>,
+    memory: usize,
+}
+
+/// One component after the package's rewrite.
+struct Component {
+    bytes: usize,
+    toks: Vec<Tok>,
+    /// Whether its text holds `:]`, which a class-name lookup earlier in the rule would reach.
+    colon_bracket: bool,
+}
+
+fn push_text(toks: &mut Vec<Tok>, text: &str) {
+    toks.extend(text.chars().map(Tok::Char));
+}
+
+/// The combined pattern's text for components `start..end`: the wrapper and the alternation
+/// as `rulePatterns` and `compilePattern` write them, with each component's edges marked.
+fn chunk_toks(parts: &[Component], start: usize, end: usize) -> Vec<Tok> {
+    let bytes: usize = parts
+        .iter()
+        .take(end)
+        .skip(start)
+        .map(|part| part.toks.len())
+        .sum();
+    let mut toks = Vec::with_capacity(bytes + 64);
+    let _ = Rewriter::default().piece(WHOLE_WORD_START, &mut toks);
+    push_text(&mut toks, "(?:");
+    for (offset, part) in parts.iter().take(end).skip(start).enumerate() {
+        if offset > 0 {
+            push_text(&mut toks, "|");
+        }
+        push_text(&mut toks, "(?:");
+        toks.push(Tok::Boundary);
+        toks.extend_from_slice(&part.toks);
+        toks.push(Tok::Boundary);
+        push_text(&mut toks, ")");
+    }
+    push_text(&mut toks, ")");
+    let _ = Rewriter::default().piece(WHOLE_WORD_END, &mut toks);
+    toks
+}
+
+fn build_chunk(pattern: &str, size_limit: usize) -> Result<meta::Regex, PatternError> {
+    meta::Regex::builder()
+        .syntax(
+            syntax::Config::new()
+                .case_insensitive(true)
+                .nest_limit(NEST_LIMIT),
+        )
+        .configure(
+            meta::Config::new()
+                .nfa_size_limit(Some(size_limit))
+                .onepass_size_limit(Some(size_limit))
+                .hybrid_cache_capacity(DFA_SIZE_LIMIT),
+        )
+        .build(pattern)
+        .map_err(|error| {
+            let nested = error
+                .syntax_error()
+                .is_some_and(|error| error.to_string().contains("nest"));
+            if error.size_limit().is_some() || nested {
+                PatternError::TooLarge
+            } else {
+                PatternError::Invalid
+            }
+        })
+}
+
+impl CompiledAlternation {
+    /// The rule of `components` (each an edited or generated variation source, in the rule's
+    /// order), with the default limits.
+    pub fn new<'a>(components: impl IntoIterator<Item = &'a str>) -> Result<Self, PatternError> {
+        Self::with_limits(components, AlternationLimits::default())
+    }
+
+    /// The rule of `components` with chosen limits.
+    ///
+    /// Refused as the reference refuses the combined pattern: a component that is invalid, a
+    /// group name used in two components, an unterminated `\Q` (it swallows what follows).
+    /// Refused here only: more than [`MAX_ALTERNATION_COMPONENTS`] components or one longer
+    /// than [`MAX_COMPONENT_BYTES`] ([`PatternError::TooLong`]); more compiled heap than the
+    /// limit ([`PatternError::TooLarge`]); a component whose text runs into the next one,
+    /// which only a component that is invalid alone can do ([`PatternError::Invalid`]).
+    pub fn with_limits<'a>(
+        components: impl IntoIterator<Item = &'a str>,
+        limits: AlternationLimits,
+    ) -> Result<Self, PatternError> {
+        let mut rewriter = Rewriter::default();
+        let mut parts = Vec::new();
+        for source in components {
+            if parts.len() >= MAX_ALTERNATION_COMPONENTS || source.len() > MAX_COMPONENT_BYTES {
+                return Err(PatternError::TooLong);
+            }
+            // The package's rewrite runs over the whole combined text: its class state carries
+            // from one component to the next.
+            let mut toks = Vec::new();
+            rewriter
+                .piece(source, &mut toks)
+                .map_err(|_| PatternError::Invalid)?;
+            let colon_bracket = toks
+                .windows(2)
+                .any(|pair| pair == [Tok::Char(':'), Tok::Char(']')]);
+            parts.push(Component {
+                bytes: source.len(),
+                toks,
+                colon_bracket,
+            });
+        }
+        let mut chunks = Vec::new();
+        let mut names = HashSet::new();
+        let mut memory = 0_usize;
+        let mut start = 0;
+        // The most components a chunk has needed to be cut to, so later chunks start there.
+        let mut fit = usize::MAX;
+        while start < parts.len() {
+            // Consecutive components up to the source limit (at least one).
+            let mut end = start + 1;
+            let mut bytes = parts.get(start).map_or(0, |part| part.bytes);
+            while let Some(part) = parts.get(end) {
+                if bytes + part.bytes > limits.chunk_source_bytes || end - start >= fit {
+                    break;
+                }
+                bytes += part.bytes;
+                end += 1;
+            }
+            // A chunk whose program is over the per-chunk limit is halved until it fits; a
+            // single component over it is too large.
+            let (chunk, translation) = loop {
+                let colon_after = parts.iter().skip(end).any(|part| part.colon_bracket);
+                let translation = re2::translate(&chunk_toks(&parts, start, end), colon_after)?;
+                let remaining = limits.compiled_bytes.saturating_sub(memory);
+                match build_chunk(&translation.regex, remaining.min(COMPILED_SIZE_LIMIT)) {
+                    Err(PatternError::TooLarge)
+                        if end - start > 1 && remaining > COMPILED_SIZE_LIMIT =>
+                    {
+                        end = start + (end - start) / 2;
+                        fit = end - start;
+                    }
+                    built => break (built?, translation),
+                }
+            };
+            for name in translation.names {
+                if !names.insert(name) {
+                    return Err(PatternError::Unsupported("duplicate capture group name"));
+                }
+            }
+            memory = memory.saturating_add(chunk.memory_usage());
+            if memory > limits.compiled_bytes {
+                return Err(PatternError::TooLarge);
+            }
+            chunks.push(chunk);
+            start = end;
+        }
+        Ok(Self { chunks, memory })
+    }
+
+    /// The first match, as `findBlacklistMatches` takes it from the combined pattern: the
+    /// leftmost match; at the same start, the one whose guard group is empty (the wrapper's
+    /// `^` comes before its guard character), then the earliest component; none when its text
+    /// is empty.
+    pub fn find<'t>(&self, text: &'t str) -> Option<PatternMatch<'t>> {
+        let input = Input::new(text);
+        // (start, guard character taken, group 2)
+        let mut best: Option<(usize, bool, Range<usize>)> = None;
+        let mut slots = [None; 6];
+        for chunk in &self.chunks {
+            if chunk.search_slots(&input, &mut slots).is_none() {
+                continue;
+            }
+            let slot = |index: usize| slots.get(index).copied().flatten().map(|value| value.get());
+            let (Some(start), Some(guard_start), Some(guard_end), Some(word_start), Some(word_end)) =
+                (slot(0), slot(2), slot(3), slot(4), slot(5))
+            else {
+                continue;
+            };
+            let guard = guard_end > guard_start;
+            let better = best.as_ref().is_none_or(|(best_start, best_guard, _)| {
+                start < *best_start || (start == *best_start && *best_guard && !guard)
+            });
+            if better {
+                best = Some((start, guard, word_start..word_end));
+                if start == 0 && !guard {
+                    // Nothing can come before it.
+                    break;
+                }
+            }
+        }
+        let (_, _, range) = best?;
+        let found = text.get(range.clone())?;
+        (!found.is_empty()).then_some(PatternMatch { range, text: found })
+    }
+
+    /// How many chunks the rule was compiled in.
+    pub fn chunk_count(&self) -> usize {
+        self.chunks.len()
+    }
+
+    /// The heap the compiled chunks use, in bytes (matching caches not included).
+    pub fn memory_usage(&self) -> usize {
+        self.memory
     }
 }
 

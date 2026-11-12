@@ -44,10 +44,6 @@ pub(super) enum Tok {
     Char(char),
     Expansion(Expansion),
     /// Not text: the edge between two components of a combined rule.
-    #[expect(
-        dead_code,
-        reason = "the combined variation rule arrives in the next commit"
-    )]
     Boundary,
 }
 

@@ -264,10 +264,10 @@ addRule('generated variations with spaces', { generated: [['spam', ['spm']], ['s
     ['s p a m', 'sc a m', 'spam']);
 addRule('broad generated variations', { generated: [['spam', ['spm']], ['toast', []]], mode: 'broad' },
     ['5p4m', 'T0@57', '$$pam']);
-// Over the old 256 KiB cap: 200 components of about 1,500 characters each.
-const long = Array.from({ length: 200 }, (_, index) => `(?:${Array.from({ length: 60 }, (_, word) =>
+// Over the old 256 KiB cap: 200 components of about 1,600 characters each.
+const long = Array.from({ length: 200 }, (_, index) => `(?:${Array.from({ length: 100 }, (_, word) =>
     `w${index}x${word}[é3]+z`).join('|')})`);
-addRule('200 long components over 256 KiB', { components: long }, ['hello w199x59ééz and', 'w0x0éz', 'w100x7333z', 'nothing']);
+addRule('200 long components over 256 KiB', { components: long }, ['hello w199x99ééz and', 'w0x0éz', 'w100x7333z', 'nothing']);
 // Valid alone but too large for RE2's memory budget once combined.
 const wide = Array.from({ length: 200 }, (_, index) => `${String.fromCharCode(97 + (index % 26))}[ab]{1000}[cd]{1000}[ef]{1000}`);
 addRule('valid components too large together', { components: wide }, ['a' + 'a'.repeat(1000) + 'c'.repeat(1000) + 'e'.repeat(1000)]);

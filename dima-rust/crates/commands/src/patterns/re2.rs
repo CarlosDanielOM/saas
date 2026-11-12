@@ -35,10 +35,6 @@ static CAPTURE_NAME: LazyLock<Option<Regex>> = LazyLock::new(|| {
 /// The translated pattern and its group names (in order).
 pub(super) struct Translation {
     pub(super) regex: String,
-    #[expect(
-        dead_code,
-        reason = "the combined variation rule arrives in the next commit"
-    )]
     pub(super) names: Vec<String>,
 }
 
