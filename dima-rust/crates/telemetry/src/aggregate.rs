@@ -312,7 +312,7 @@ pub struct SpanRow {
 }
 
 /// What a finished span contributes when it is kept.
-pub(crate) struct FinishedSpan<'a> {
+pub(crate) struct FinishedSpan {
     pub(crate) trace_id: TraceId,
     pub(crate) span_id: SpanId,
     pub(crate) parent: Option<SpanId>,
@@ -321,13 +321,13 @@ pub(crate) struct FinishedSpan<'a> {
     /// The start, when known; otherwise computed from the end only if the span is kept.
     pub(crate) at: Option<u64>,
     pub(crate) duration_ms: f64,
-    pub(crate) kind: &'a str,
-    pub(crate) name: &'a str,
-    pub(crate) outcome: &'a str,
+    pub(crate) kind: &'static str,
+    pub(crate) name: &'static str,
+    pub(crate) outcome: &'static str,
 }
 
 impl SpanRow {
-    pub(crate) fn from_finished(span: &FinishedSpan<'_>, at: u64) -> Self {
+    pub(crate) fn from_finished(span: &FinishedSpan, at: u64) -> Self {
         Self {
             trace_id: span.trace_id.hex().as_str().to_owned(),
             span_id: span.span_id.hex().as_str().to_owned(),

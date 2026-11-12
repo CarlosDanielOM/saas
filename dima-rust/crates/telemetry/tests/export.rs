@@ -124,8 +124,8 @@ async fn batches_split_and_the_inbox_keeps_one_hundred() {
             .await
             .unwrap();
     }
-    for index in 0..250 {
-        telemetry.observe("command", &format!("name{index}"), 1.0);
+    for name in support::names("name", 250) {
+        telemetry.observe("command", name, 1.0);
     }
     for index in 0..60 {
         telemetry.warn(
@@ -195,8 +195,8 @@ async fn a_hung_store_costs_data_not_time() {
 #[tokio::test]
 async fn series_beyond_the_bound_are_dropped_and_counted() {
     let telemetry = support::in_memory(0.0);
-    for index in 0..2500 {
-        telemetry.observe("command", &format!("name{index}"), 10.0);
+    for name in support::names("name", 2500) {
+        telemetry.observe("command", name, 10.0);
     }
     assert_eq!(telemetry.stats().pipeline_dropped, 500);
     assert_eq!(telemetry.stats().series, 2000);

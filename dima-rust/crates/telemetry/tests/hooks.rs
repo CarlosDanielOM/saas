@@ -105,6 +105,20 @@ async fn http_templates_errors_and_self_observation_exclusion() {
         call(service.clone(), "/duels/1234567/duel/state", &[]).await,
         200
     );
+    // A login in the same mount: the reference kept it in the name (one series per login).
+    assert_eq!(
+        call(service.clone(), "/duels/some_login/duel/state", &[]).await,
+        200
+    );
+    // An extension method is not a name of its own either.
+    let brew = http::Request::builder()
+        .method(http::Method::from_bytes(b"BREW").unwrap())
+        .uri("/nowhere")
+        .body(Body::empty())
+        .unwrap();
+    let response = service.clone().oneshot(brew).await.unwrap();
+    assert_eq!(response.status().as_u16(), 404);
+    let _ = response.into_body().collect().await;
     queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let rows: Vec<_> = snapshot
@@ -114,17 +128,24 @@ async fn http_templates_errors_and_self_observation_exclusion() {
         .collect();
     let mut names: Vec<_> = rows
         .iter()
-        .map(|r| (r.name.as_str(), r.outcome.as_str()))
+        .map(|r| (r.name.as_str(), r.outcome.as_str(), r.count))
         .collect();
     names.sort_unstable();
-    // A literal channel id in a dynamic mount (`req.baseUrl`) is hidden; templates are kept.
+    // Names come from the registered patterns only: a mount parameter is `:id` whatever the
+    // request held (the reference's name for a numeric id); route templates are kept.
     assert_eq!(
         names,
         [
-            ("GET /duels/:id/duel/state", "200"),
-            ("GET /speech/:channelID", "error"),
-            ("GET /unmatched", "404")
+            ("GET /duels/:id/duel/state", "200", 2),
+            ("GET /speech/:channelID", "error", 1),
+            ("GET /unmatched", "404", 1),
+            ("OTHER /unmatched", "404", 1)
         ]
+    );
+    assert!(
+        !serde_json::to_string(&snapshot.metrics)
+            .unwrap()
+            .contains("some_login")
     );
     assert!(
         !serde_json::to_string(&snapshot.metrics)
@@ -162,7 +183,7 @@ async fn http_templates_errors_and_self_observation_exclusion() {
     queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let span = &snapshot.spans[0];
-    // `req.baseUrl + req.route.path`: the mount is literal, the route is the template.
+    // The mount's pattern and the route's template.
     assert_eq!(span.name, "GET /widgets/:channelID/state");
     assert_eq!(span.parent_id, Some("cd".repeat(8)));
     assert_eq!(span.span_id, signed.span_id.hex().as_str());
@@ -292,6 +313,13 @@ async fn mongo_commands_are_database_spans() {
                 duration: Duration::from_millis(1500),
                 code: Some(11600),
             });
+            // A command name this backend does not send makes no series of its own.
+            hook.succeeded(&CommandSucceeded {
+                request_id: 3,
+                command_name: "someNewCommand",
+                collection: None,
+                duration: Duration::from_millis(1),
+            });
         })
         .await;
     let snapshot = telemetry.take_snapshot();
@@ -305,6 +333,12 @@ async fn mongo_commands_are_database_spans() {
         ("database", "ok", "4242")
     );
     assert_eq!(snapshot.metric("mongo.listCollections")[0].outcome, "error");
+    assert_eq!(snapshot.metric("mongo.other")[0].count, 1);
+    assert!(
+        !serde_json::to_string(&snapshot.metrics)
+            .unwrap()
+            .contains("someNewCommand")
+    );
     let span = &snapshot.spans[0];
     assert_eq!(span.name, "mongo.listCollections");
     assert_eq!(span.parent_id, Some(root.span_id.hex().as_str().to_owned()));

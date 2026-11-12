@@ -175,18 +175,18 @@ impl ProcessSampler {
         let names = &telemetry.0.names;
         let now = Instant::now();
         if let Some(rss) = resident_bytes() {
-            telemetry.observe_with("runtime", &names.rss, rss as f64, "ok", Some(""));
+            telemetry.observe_with("runtime", names.rss, rss as f64, "ok", Some(""));
         }
         if let Some(cores) = cpu_time().and_then(|cpu| self.cpu.sample(cpu, now)) {
-            telemetry.observe_with("runtime", &names.cpu, cores, "ok", Some(""));
+            telemetry.observe_with("runtime", names.cpu, cores, "ok", Some(""));
         }
         if let Some(lag) = telemetry.0.probe.take_p99_ms() {
-            telemetry.observe_with("runtime", &names.lag, lag, "ok", Some(""));
+            telemetry.observe_with("runtime", names.lag, lag, "ok", Some(""));
         }
         let dropped = telemetry.stats().total_dropped().min(1_000_000_000_000_000);
-        telemetry.observe_with("runtime", &names.dropped, dropped as f64, "ok", Some(""));
+        telemetry.observe_with("runtime", names.dropped, dropped as f64, "ok", Some(""));
         let uptime = now.duration_since(self.started).as_secs_f64().floor();
-        telemetry.observe_with("runtime", &names.uptime, uptime, "ok", Some(""));
+        telemetry.observe_with("runtime", names.uptime, uptime, "ok", Some(""));
         crate::worker::sample_workers(telemetry, now);
     }
 }

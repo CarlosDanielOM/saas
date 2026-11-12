@@ -98,17 +98,18 @@ async fn hot_paths() {
 }
 
 fn fill(telemetry: &Telemetry) {
-    for index in 0..2000 {
-        telemetry.observe_with(
-            "command",
-            &format!("{index:0>60}"),
-            10.0,
-            "ok",
-            Some("123456789"),
-        );
+    for name in support::names(
+        "series-of-a-sixty-character-name-at-the-reference-bound-",
+        2000,
+    ) {
+        telemetry.observe_with("command", name, 10.0, "ok", Some("123456789"));
     }
+    let long = support::names(
+        "a-span-name-of-one-hundred-characters-a-span-name-of-one-hundred-characters-a-span-name-of-one-",
+        1,
+    )[0];
     for _ in 0..300 {
-        telemetry.span("http", &"n".repeat(100)).end("error");
+        telemetry.span("http", long).end("error");
     }
     for _ in 0..100 {
         telemetry.error(
@@ -120,6 +121,8 @@ fn fill(telemetry: &Telemetry) {
 
 fn memory_at_the_reference_bounds_is_bounded() {
     let telemetry = handle();
+    // Names are made once, before the measurement (in a binary they are in the source).
+    fill(&support::in_memory(0.0));
     let before = rss();
     fill(&telemetry);
     assert_eq!(telemetry.stats().series, 2000);

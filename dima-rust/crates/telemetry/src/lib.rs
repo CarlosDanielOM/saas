@@ -85,6 +85,7 @@ mod bounded;
 pub mod hooks;
 pub mod label;
 pub mod logger;
+pub mod names;
 pub mod otlp;
 pub mod process;
 pub mod redact;

@@ -106,6 +106,25 @@ pub fn lines(buffer: &Arc<Mutex<Vec<u8>>>) -> Vec<serde_json::Value> {
         .collect()
 }
 
+/// `count` distinct metric names `<prefix><index>`, made once per process and prefix. Names are
+/// `&'static str` in the API (fixed in the source); tests that need many build them here.
+pub fn names(prefix: &'static str, count: usize) -> &'static [&'static str] {
+    static MADE: Mutex<Vec<(&'static str, &'static [&'static str])>> = Mutex::new(Vec::new());
+    let mut made = MADE.lock().unwrap();
+    if let Some((_, names)) = made
+        .iter()
+        .find(|(known, names)| *known == prefix && names.len() >= count)
+    {
+        return &names[..count];
+    }
+    let names: Vec<&'static str> = (0..count)
+        .map(|index| &*Box::leak(format!("{prefix}{index}").into_boxed_str()))
+        .collect();
+    let names: &'static [&'static str] = Box::leak(names.into_boxed_slice());
+    made.push((prefix, names));
+    names
+}
+
 /// A port where nothing listens.
 pub fn closed_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

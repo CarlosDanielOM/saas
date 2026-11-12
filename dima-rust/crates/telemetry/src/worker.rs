@@ -77,19 +77,21 @@ impl RunOutcome {
 }
 
 struct Names {
-    run: String,
-    runs: String,
-    restarts: String,
-    errors: String,
-    state: String,
-    since_success: String,
-    cpu: String,
-    lag: String,
-    project_batch: String,
+    run: &'static str,
+    runs: &'static str,
+    restarts: &'static str,
+    errors: &'static str,
+    state: &'static str,
+    since_success: &'static str,
+    cpu: &'static str,
+    lag: &'static str,
+    project_batch: &'static str,
+    health_query: &'static str,
+    health_errors: &'static str,
 }
 
 pub(crate) struct WorkerCell {
-    prefix: String,
+    prefix: &'static str,
     names: Names,
     busy_ns: AtomicU64,
     max_poll_ns: AtomicU64,
@@ -99,9 +101,8 @@ pub(crate) struct WorkerCell {
 }
 
 impl WorkerCell {
-    pub(crate) fn new(prefix: &str, _now_ms: u64) -> Self {
-        let prefix = crate::label::Label::<60>::clean(prefix).as_str().to_owned();
-        let name = |suffix: &str| format!("{prefix}.{suffix}");
+    pub(crate) fn new(prefix: &'static str, _now_ms: u64) -> Self {
+        let name = |suffix: &'static str| crate::names::join(prefix, ".", suffix);
         Self {
             names: Names {
                 run: name("run"),
@@ -113,6 +114,8 @@ impl WorkerCell {
                 cpu: name("cpu_cores"),
                 lag: name("event_loop_p99_ms"),
                 project_batch: name("project_batch"),
+                health_query: name("health_query"),
+                health_errors: name("health_errors"),
             },
             prefix,
             busy_ns: AtomicU64::new(0),
@@ -123,8 +126,8 @@ impl WorkerCell {
         }
     }
 
-    pub(crate) fn prefix(&self) -> &str {
-        &self.prefix
+    pub(crate) fn prefix(&self) -> &'static str {
+        self.prefix
     }
 
     fn polled(&self, elapsed: Duration) {
@@ -155,8 +158,8 @@ impl Worker {
     }
 
     /// The prefix every metric of this worker carries.
-    pub fn prefix(&self) -> &str {
-        &self.cell.prefix
+    pub fn prefix(&self) -> &'static str {
+        self.cell.prefix
     }
 
     /// Wraps the worker's future so the time spent polling it is counted (two clock reads per
@@ -191,7 +194,7 @@ impl Worker {
             span: Some(Span::start(
                 &self.telemetry,
                 "queue_run",
-                &self.cell.names.run,
+                self.cell.names.run,
                 Some(Channel::EMPTY),
             )),
         }
@@ -201,15 +204,15 @@ impl Worker {
     pub fn restarted(&self) {
         self.set_state(WorkerState::Restarting);
         self.telemetry
-            .observe_with("worker", &self.cell.names.restarts, 1.0, "ok", Some(""));
+            .observe_with("worker", self.cell.names.restarts, 1.0, "ok", Some(""));
     }
 
     /// A failure worth an operator's attention (`recordWorkerError`): the `<prefix>.errors` count
     /// and a metadata-only telemetry log `{function: prefix, step, code}`. `step` and `code` must be
     /// fixed labels from the source, never error text.
-    pub fn error(&self, step: &str, code: &str) {
+    pub fn error(&self, step: &'static str, code: &'static str) {
         self.telemetry
-            .observe_with("worker", &self.cell.names.errors, 1.0, "error", Some(""));
+            .observe_with("worker", self.cell.names.errors, 1.0, "error", Some(""));
         let code = if !code.is_empty()
             && code.len() <= 40
             && code
@@ -229,7 +232,7 @@ impl Worker {
     /// One batch, as the native frames report it: `worker <prefix>.<metric>` = items and
     /// `queue_run <prefix>.project_batch` = duration, outcome `error` on failure, `ok` with items,
     /// `idle` without.
-    pub fn batch(&self, metric: &str, items: u64, duration: Duration, success: bool) {
+    pub fn batch(&self, metric: &'static str, items: u64, duration: Duration, success: bool) {
         let outcome = if !success {
             "error"
         } else if items > 0 {
@@ -237,12 +240,12 @@ impl Worker {
         } else {
             "idle"
         };
-        let name = format!("{}.{metric}", self.cell.prefix);
+        let name = crate::names::join(self.cell.prefix, ".", metric);
         self.telemetry
-            .observe_with("worker", &name, items as f64, outcome, Some(""));
+            .observe_with("worker", name, items as f64, outcome, Some(""));
         self.telemetry.observe_with(
             "queue_run",
-            &self.cell.names.project_batch,
+            self.cell.names.project_batch,
             duration.as_secs_f64() * 1000.0,
             outcome,
             Some(""),
@@ -250,11 +253,11 @@ impl Worker {
     }
 
     /// One phase of a batch: `queue_run <prefix>.phase.<phase>`.
-    pub fn phase(&self, phase: &str, duration: Duration, outcome: &str) {
-        let name = format!("{}.phase.{phase}", self.cell.prefix);
+    pub fn phase(&self, phase: &'static str, duration: Duration, outcome: &'static str) {
+        let name = crate::names::join(self.cell.prefix, ".phase.", phase);
         self.telemetry.observe_with(
             "queue_run",
-            &name,
+            name,
             duration.as_secs_f64() * 1000.0,
             outcome,
             Some(""),
@@ -263,10 +266,9 @@ impl Worker {
 
     /// A health probe: `health_query` = 1 or 0, and `health_errors` on failure.
     pub fn health(&self, success: bool) {
-        let prefix = &self.cell.prefix;
         self.telemetry.observe_with(
             "worker",
-            &format!("{prefix}.health_query"),
+            self.cell.names.health_query,
             if success { 1.0 } else { 0.0 },
             "ok",
             Some(""),
@@ -274,7 +276,7 @@ impl Worker {
         if !success {
             self.telemetry.observe_with(
                 "worker",
-                &format!("{prefix}.health_errors"),
+                self.cell.names.health_errors,
                 1.0,
                 "error",
                 Some(""),
@@ -283,10 +285,10 @@ impl Worker {
     }
 
     /// A gauge: `worker <prefix>.<metric>`.
-    pub fn gauge(&self, metric: &str, value: f64) {
-        let name = format!("{}.{metric}", self.cell.prefix);
+    pub fn gauge(&self, metric: &'static str, value: f64) {
+        let name = crate::names::join(self.cell.prefix, ".", metric);
         self.telemetry
-            .observe_with("worker", &name, value, "ok", Some(""));
+            .observe_with("worker", name, value, "ok", Some(""));
     }
 }
 
@@ -318,7 +320,7 @@ impl Run<'_> {
         let worker = self.worker;
         worker.telemetry.observe_with(
             "worker",
-            &worker.cell.names.runs,
+            worker.cell.names.runs,
             0.0,
             outcome.as_str(),
             Some(""),
@@ -360,10 +362,10 @@ pub(crate) fn sample_workers(telemetry: &Telemetry, now: Instant) {
             let wall = now.saturating_duration_since(previous).as_secs_f64();
             if wall > 0.0 {
                 let cores = busy as f64 / 1e9 / wall;
-                telemetry.observe_with("runtime", &cell.names.cpu, cores, "ok", Some(""));
+                telemetry.observe_with("runtime", cell.names.cpu, cores, "ok", Some(""));
                 telemetry.observe_with(
                     "runtime",
-                    &cell.names.lag,
+                    cell.names.lag,
                     longest as f64 / 1e6,
                     "ok",
                     Some(""),
@@ -371,11 +373,11 @@ pub(crate) fn sample_workers(telemetry: &Telemetry, now: Instant) {
             }
         }
         let state = f64::from(cell.state.load(Ordering::Relaxed));
-        telemetry.observe_with("worker", &cell.names.state, state, "ok", Some(""));
+        telemetry.observe_with("worker", cell.names.state, state, "ok", Some(""));
         let last = cell.last_success_ms.load(Ordering::Relaxed);
         if last != i64::MIN {
             let age = (now_ms - last).max(0) as f64;
-            telemetry.observe_with("worker", &cell.names.since_success, age, "ok", Some(""));
+            telemetry.observe_with("worker", cell.names.since_success, age, "ok", Some(""));
         }
     }
 }

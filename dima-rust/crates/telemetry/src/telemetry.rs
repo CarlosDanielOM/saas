@@ -292,11 +292,11 @@ pub(crate) struct Shared {
 
 /// The process's runtime metric names, built once.
 pub(crate) struct ProcessNames {
-    pub(crate) rss: String,
-    pub(crate) cpu: String,
-    pub(crate) lag: String,
-    pub(crate) dropped: String,
-    pub(crate) uptime: String,
+    pub(crate) rss: &'static str,
+    pub(crate) cpu: &'static str,
+    pub(crate) lag: &'static str,
+    pub(crate) dropped: &'static str,
+    pub(crate) uptime: &'static str,
 }
 
 /// The handle every part of a process reports through. Cheap to clone.
@@ -352,12 +352,13 @@ impl Telemetry {
         let process = label::Label::<60>::clean(&config.process)
             .as_str()
             .to_owned();
+        let name = |suffix: &str| crate::names::intern(&format!("{process}.{suffix}"));
         let names = ProcessNames {
-            rss: format!("{process}.rss_bytes"),
-            cpu: format!("{process}.cpu_cores"),
-            lag: format!("{process}.event_loop_p99_ms"),
-            dropped: format!("{process}.telemetry_dropped"),
-            uptime: format!("{process}.uptime_s"),
+            rss: name("rss_bytes"),
+            cpu: name("cpu_cores"),
+            lag: name("event_loop_p99_ms"),
+            dropped: name("telemetry_dropped"),
+            uptime: name("uptime_s"),
         };
         Self(Arc::new(Shared {
             service: label::Label::<50>::clean(&config.service)
@@ -457,7 +458,10 @@ impl Telemetry {
     // ---------- metrics ----------
 
     /// One observation with outcome `ok` in the current channel (`observe(kind, name, value)`).
-    pub fn observe(&self, kind: &str, name: &str, value: f64) {
+    ///
+    /// Kinds, names and outcomes are `&'static str`: fixed in the source, never text from a
+    /// request, so the set of series is fixed when the program is compiled ([`crate::names`]).
+    pub fn observe(&self, kind: &'static str, name: &'static str, value: f64) {
         if self.0.export {
             self.record(kind, name, value, "ok", trace::current_channel());
         }
@@ -466,10 +470,10 @@ impl Telemetry {
     /// One observation with an outcome and, when given, a channel (otherwise the current one).
     pub fn observe_with(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         value: f64,
-        outcome: &str,
+        outcome: &'static str,
         channel: Option<&str>,
     ) {
         if self.0.export {
@@ -479,16 +483,16 @@ impl Telemetry {
     }
 
     /// A count of one event (`observe(kind, name, 0)`).
-    pub fn count(&self, kind: &str, name: &str) {
+    pub fn count(&self, kind: &'static str, name: &'static str) {
         self.observe(kind, name, 0.0);
     }
 
     pub(crate) fn record(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         value: f64,
-        outcome: &str,
+        outcome: &'static str,
         channel: Channel,
     ) {
         let key = MetricKey::new(kind, name, &channel, outcome);
@@ -500,18 +504,23 @@ impl Telemetry {
     // ---------- spans ----------
 
     /// Starts a span (`beginSpan(kind, name)`): a child of the current context, or a new trace.
-    pub fn span<'a>(&'a self, kind: &'a str, name: &'a str) -> Span<'a> {
+    pub fn span(&self, kind: &'static str, name: &'static str) -> Span<'_> {
         Span::start(self, kind, name, None)
     }
 
     /// Starts a span for a channel (`beginSpan(kind, name, channel)`).
-    pub fn span_for<'a>(&'a self, kind: &'a str, name: &'a str, channel: &str) -> Span<'a> {
+    pub fn span_for(&self, kind: &'static str, name: &'static str, channel: &str) -> Span<'_> {
         Span::start(self, kind, name, Some(label::channel(channel)))
     }
 
     /// `traced(kind, name, run)`: runs `future` in a new span that ends `error` when it returns
     /// `Err` (or when an outcome was set from inside), `ok` otherwise.
-    pub async fn traced<T, E, F>(&self, kind: &str, name: &str, future: F) -> Result<T, E>
+    pub async fn traced<T, E, F>(
+        &self,
+        kind: &'static str,
+        name: &'static str,
+        future: F,
+    ) -> Result<T, E>
     where
         F: Future<Output = Result<T, E>>,
     {
@@ -550,7 +559,7 @@ impl Telemetry {
 
     /// Ends a span: its metric, and its row when it is sampled, slow (at least one second) or
     /// failed.
-    pub(crate) fn finish_span(&self, span: &FinishedSpan<'_>) {
+    pub(crate) fn finish_span(&self, span: &FinishedSpan) {
         if !self.0.export {
             return;
         }
@@ -577,10 +586,10 @@ impl Telemetry {
     /// A span that already happened (seams that report a duration at the end).
     pub(crate) fn completed_span(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         duration: Duration,
-        outcome: &str,
+        outcome: &'static str,
         channel: Option<Channel>,
     ) {
         if !self.0.export {
@@ -740,7 +749,7 @@ impl Telemetry {
     // ---------- workers ----------
 
     /// The telemetry of one supervised task, reported under `prefix` (see [`crate::worker`]).
-    pub fn worker(&self, prefix: &str) -> Worker {
+    pub fn worker(&self, prefix: &'static str) -> Worker {
         let cell = Arc::new(WorkerCell::new(prefix, self.now_ms()));
         let mut workers = self
             .0
