@@ -328,12 +328,17 @@ struct Shared {
 ///   [`ServeOptions::drain_timeout`]. After it, the socket's reads and writes fail with
 ///   `ConnectionAborted` (a pending read is woken); drop it then. `serve` returns at most one
 ///   more second later whatever the owners do.
+/// - An owner whose socket's I/O cannot finish on its own (a write pending to a peer that
+///   stopped reading) can end it before that with [`UpgradeGuard::abort`]: the same failure,
+///   for this connection only.
 ///
 /// The connection counts against [`ServeOptions::max_streams`] once the `101` is sent, until the
 /// socket is dropped. A clone is a second guard: shutdown waits for every one.
 #[derive(Clone)]
 pub struct UpgradeGuard {
     shutdown: CancellationToken,
+    /// This connection's share of the drain deadline: cancelled by it, or by [`Self::abort`].
+    abort: CancellationToken,
     _tracked: TaskTrackerToken,
 }
 
@@ -355,11 +360,20 @@ impl UpgradeGuard {
     pub async fn shutting_down(&self) {
         self.shutdown.cancelled().await;
     }
+
+    /// Fails this connection's reads and writes from now on with `ConnectionAborted` (a pending
+    /// read or write is woken), as the drain deadline does for every connection. For an owner
+    /// that cannot otherwise stop I/O it does not drive itself, such as a library's writer stuck
+    /// on a peer that stopped reading. The owner then drops the socket, which closes it.
+    pub fn abort(&self) {
+        self.abort.cancel();
+    }
 }
 
 /// The connection's socket: notes reads for the keep-alive watcher, holds the connection's slot
 /// for as long as the socket lives (an upgrade takes the socket, and the slot with it), keeps
-/// shutdown waiting, and fails every read and write once shutdown forces it closed.
+/// shutdown waiting, and fails every read and write once shutdown forces it closed or its
+/// upgrade owner aborts it.
 struct ConnectionIo {
     stream: TcpStream,
     activity: Arc<Activity>,
@@ -554,13 +568,15 @@ async fn connection<T, B>(
     let _ = stream.set_nodelay(true);
     let activity = Arc::new(Activity::new());
     let slot = Arc::new(Slot::http(permit));
+    // Fires at the drain deadline, or when an upgrade owner aborts this connection.
+    let abort = shared.force.child_token();
     let io = ConnectionIo {
         stream,
         activity: Arc::clone(&activity),
         _slot: Arc::clone(&slot),
         _tracked: shared.sockets.token(),
-        forced_read: Box::pin(shared.force.clone().cancelled_owned()),
-        forced_write: Box::pin(shared.force.clone().cancelled_owned()),
+        forced_read: Box::pin(abort.clone().cancelled_owned()),
+        forced_write: Box::pin(abort.clone().cancelled_owned()),
     };
     let tracker = Arc::clone(&activity);
     let shutdown = shared.shutdown.clone();
@@ -576,6 +592,7 @@ async fn connection<T, B>(
         {
             request.extensions_mut().insert(UpgradeGuard {
                 shutdown: shared.shutdown.clone(),
+                abort: abort.clone(),
                 _tracked: shared.sockets.token(),
             });
         }
