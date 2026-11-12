@@ -1,0 +1,749 @@
+{
+  "sha256": "c72d24defb085a3c917e8406945b4a62c648eb1fcccffd7cf40c3e616ac53c50",
+  "now": 1794355200000,
+  "seed": {
+    "_id": {
+      "$oid": "000000000000000000000001"
+    },
+    "platform": "twitch",
+    "channelID": "123",
+    "userID": "456",
+    "balance": {
+      "$numberInt": "100"
+    }
+  },
+  "initial": [
+    {
+      "_id": {
+        "$oid": "000000000000000000000001"
+      },
+      "platform": "twitch",
+      "userID": "456",
+      "channelID": "123",
+      "displayName": null,
+      "balance": {
+        "$numberInt": "100"
+      },
+      "config": {
+        "quickPurchasePriority": "credits_first",
+        "quickPurchaseAction": "use_now"
+      },
+      "dimafxReceipts": [],
+      "items": [],
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1794355200000"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1794355200000"
+        }
+      },
+      "__v": {
+        "$numberInt": "0"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "name": "refund",
+      "kind": "refund",
+      "amount": 12.5,
+      "key": "refund:one",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one"
+          ],
+          "items": [],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "refund-repeat",
+      "kind": "refund",
+      "amount": 12.5,
+      "key": "refund:one",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one"
+          ],
+          "items": [],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "zero",
+      "kind": "refund",
+      "amount": 0,
+      "key": "refund:zero",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one"
+          ],
+          "items": [],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "negative",
+      "kind": "refund",
+      "amount": -5,
+      "key": "refund:negative",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one"
+          ],
+          "items": [],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "save",
+      "kind": "save",
+      "amount": 20,
+      "key": "ledger-one",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "save-repeat",
+      "kind": "save",
+      "amount": 20,
+      "key": "ledger-one",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fraction-price",
+      "kind": "save",
+      "amount": 0.5,
+      "key": "ledger-two",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "112.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one",
+            "save:ledger-two"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            },
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberDouble": "0.5"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "new-refund",
+      "kind": "refund",
+      "amount": 1,
+      "key": "refund:two",
+      "error": null,
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "113.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one",
+            "save:ledger-two",
+            "refund:two"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            },
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberDouble": "0.5"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "refund-missing",
+      "kind": "missing-refund",
+      "amount": 10,
+      "key": "missing",
+      "error": "DimaFX refund inventory is unavailable",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "113.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one",
+            "save:ledger-two",
+            "refund:two"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            },
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberDouble": "0.5"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "save-missing",
+      "kind": "missing-save",
+      "amount": 20,
+      "key": "missing",
+      "error": "DimaFX inventory is unavailable",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "platform": "twitch",
+          "userID": "456",
+          "channelID": "123",
+          "displayName": null,
+          "balance": {
+            "$numberDouble": "113.5"
+          },
+          "config": {
+            "quickPurchasePriority": "credits_first",
+            "quickPurchaseAction": "use_now"
+          },
+          "dimafxReceipts": [
+            "refund:one",
+            "save:ledger-one",
+            "save:ledger-two",
+            "refund:two"
+          ],
+          "items": [
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberInt": "20"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            },
+            {
+              "channelExtensionItemID": {
+                "$oid": "000000000000000000000002"
+              },
+              "quantity": {
+                "$numberInt": "1"
+              },
+              "purchasePriceBits": {
+                "$numberDouble": "0.5"
+              },
+              "acquiredAt": {
+                "$date": {
+                  "$numberLong": "1794355200000"
+                }
+              },
+              "source": "bits_purchase"
+            }
+          ],
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    }
+  ],
+  "singleEffects": {
+    "refund": [
+      {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "platform": "twitch",
+        "userID": "456",
+        "channelID": "123",
+        "displayName": null,
+        "balance": {
+          "$numberDouble": "112.5"
+        },
+        "config": {
+          "quickPurchasePriority": "credits_first",
+          "quickPurchaseAction": "use_now"
+        },
+        "dimafxReceipts": [
+          "refund:one"
+        ],
+        "items": [],
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        },
+        "__v": {
+          "$numberInt": "0"
+        }
+      }
+    ],
+    "save": [
+      {
+        "_id": {
+          "$oid": "000000000000000000000001"
+        },
+        "platform": "twitch",
+        "userID": "456",
+        "channelID": "123",
+        "displayName": null,
+        "balance": {
+          "$numberInt": "100"
+        },
+        "config": {
+          "quickPurchasePriority": "credits_first",
+          "quickPurchaseAction": "use_now"
+        },
+        "dimafxReceipts": [
+          "save:ledger-one"
+        ],
+        "items": [
+          {
+            "channelExtensionItemID": {
+              "$oid": "000000000000000000000002"
+            },
+            "quantity": {
+              "$numberInt": "1"
+            },
+            "purchasePriceBits": {
+              "$numberInt": "20"
+            },
+            "acquiredAt": {
+              "$date": {
+                "$numberLong": "1794355200000"
+              }
+            },
+            "source": "bits_purchase"
+          }
+        ],
+        "createdAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        },
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1794355200000"
+          }
+        },
+        "__v": {
+          "$numberInt": "0"
+        }
+      }
+    ]
+  }
+}

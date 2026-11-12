@@ -6,6 +6,8 @@ publish.workspace = true
 rust-version.workspace = true
 [lints]
 workspace = true
+[features]
+test-util = []
 [dependencies]
 dima-http.workspace = true
 dima-core.workspace = true
@@ -23,8 +25,9 @@ mongodb.workspace = true
 tokio.workspace = true
 unicode-normalization.workspace = true
 [dev-dependencies]
+dima-platform = { path = ".", features = ["test-util"] }
 anyhow.workspace = true
 regex.workspace = true
 dima-http = { workspace = true, features = ["test-util"] }
-tokio.workspace = true
+tokio = { workspace = true, features = ["io-util", "io-std", "process"] }
 serde_json.workspace = true
