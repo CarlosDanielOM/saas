@@ -168,6 +168,24 @@ impl Stats {
     }
 }
 
+/// Rows taken by [`Telemetry::take_snapshot`].
+#[derive(Clone, Debug, Default)]
+pub struct Snapshot {
+    /// Metric rows, one per series and bucket.
+    pub metrics: Vec<crate::aggregate::MetricRow>,
+    /// Span rows.
+    pub spans: Vec<SpanRow>,
+    /// Telemetry log rows.
+    pub logs: Vec<LogRow>,
+}
+
+impl Snapshot {
+    /// The rows of one metric name.
+    pub fn metric(&self, name: &str) -> Vec<&crate::aggregate::MetricRow> {
+        self.metrics.iter().filter(|row| row.name == name).collect()
+    }
+}
+
 /// The shared Dragonfly connection of the telemetry pipeline: opened on first use with a short
 /// timeout, never instrumented (telemetry does not observe itself), dropped after a failure and
 /// not retried for [`RECONNECT_BACKOFF`].
@@ -718,6 +736,16 @@ impl Telemetry {
         }
     }
 
+    /// Takes what is aggregated now without exporting it (tests and diagnostics). The taken data
+    /// is not exported later.
+    pub fn take_snapshot(&self) -> Snapshot {
+        Snapshot {
+            metrics: self.0.metrics.take(),
+            spans: self.0.spans.take(),
+            logs: self.0.logs.take(),
+        }
+    }
+
     /// Records the process and worker samples now (the exporter does this every 10 seconds).
     pub fn sample(&self) {
         if !self.0.export {
@@ -874,10 +902,21 @@ impl Running {
         if self.console
             && let Some(console) = &self.telemetry.0.sinks.console
         {
+            // The queue may be full: retry until the writer takes the flush marker, then wait
+            // for it to reach the marker.
             let (tx, rx) = tokio::sync::oneshot::channel();
-            if console.try_send(ConsoleMessage::Flush(tx)).is_ok() {
-                clean &= tokio::time::timeout_at(until, rx).await.is_ok();
-            }
+            let mut message = ConsoleMessage::Flush(tx);
+            let queued = loop {
+                match console.try_send(message) {
+                    Ok(()) => break true,
+                    Err(std::sync::mpsc::TrySendError::Full(back)) if Instant::now() < until => {
+                        message = back;
+                        tokio::time::sleep(Duration::from_millis(1)).await;
+                    }
+                    Err(_) => break false,
+                }
+            };
+            clean &= queued && tokio::time::timeout_at(until, rx).await.is_ok();
             let _ = console.try_send(ConsoleMessage::Stop);
         }
         ShutdownReport {

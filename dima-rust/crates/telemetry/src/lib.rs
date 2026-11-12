@@ -88,8 +88,8 @@ pub use logger::{ConsoleTarget, Destination, Level, LogOptions};
 pub use otlp::PosthogConfig;
 pub use span::Span;
 pub use telemetry::{
-    ENQUEUE, FLUSH_DEADLINE, Running, ShutdownReport, Stats, TELEMETRY_INBOX, TELEMETRY_OVERFLOW,
-    Telemetry, TelemetryConfig, TelemetryError,
+    ENQUEUE, FLUSH_DEADLINE, Running, ShutdownReport, Snapshot, Stats, TELEMETRY_INBOX,
+    TELEMETRY_OVERFLOW, Telemetry, TelemetryConfig, TelemetryError,
 };
 pub use trace::{SavedTrace, SpanIds, TraceContext};
 pub use worker::{RunOutcome, Worker, WorkerState};
