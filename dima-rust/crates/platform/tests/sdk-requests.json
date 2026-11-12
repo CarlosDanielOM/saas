@@ -1,0 +1,174 @@
+[
+  {
+    "canonical": "PUT\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=PutObject\namz-sdk-invocation-id:f657f98b-18a0-44c3-b5b4-19eb39fd3aa9\namz-sdk-request:attempt=1; max=3\ncontent-length:5\ncontent-type:text/plain\nhost:127.0.0.1:18743\nx-amz-acl:public-read\nx-amz-checksum-crc32:NhCmhg==\nx-amz-content-sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\nx-amz-date:20130524T000000Z\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent\n2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    "method": "PUT",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=PutObject",
+    "headers": {
+      "x-amz-acl": "public-read",
+      "cache-control": "public, max-age=31536000",
+      "content-type": "text/plain",
+      "content-length": "5",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "x-amz-checksum-crc32": "NhCmhg==",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "f657f98b-18a0-44c3-b5b4-19eb39fd3aa9",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent, Signature=97ae5716e66bd8055924cf008c00b1d994b4e7bb8bba3c37b975c256399af05b",
+      "connection": "keep-alive"
+    },
+    "body": "aGVsbG8="
+  },
+  {
+    "canonical": "PUT\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=PutObject\namz-sdk-invocation-id:03223f60-4d61-4243-9903-e40519f4bba5\namz-sdk-request:attempt=1; max=3\ncontent-length:5\ncontent-type:text/plain; charset=utf-8\nhost:127.0.0.1:18743\nx-amz-checksum-crc32:NhCmhg==\nx-amz-content-sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\nx-amz-date:20130524T000000Z\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent\n2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    "method": "PUT",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=PutObject",
+    "headers": {
+      "cache-control": "private, max-age=31536000, immutable",
+      "content-type": "text/plain; charset=utf-8",
+      "content-length": "5",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "x-amz-checksum-crc32": "NhCmhg==",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "03223f60-4d61-4243-9903-e40519f4bba5",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent, Signature=e8576c60f7fcc36c24fbcb48601c4791a52041611471d3ede4ad15481e00fbfd",
+      "connection": "keep-alive"
+    },
+    "body": "aGVsbG8="
+  },
+  {
+    "canonical": "PUT\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=PutObject\namz-sdk-invocation-id:fb6ce164-cc2b-440a-896a-e699262dfabb\namz-sdk-request:attempt=1; max=3\ncontent-length:5\ncontent-type:image/jpeg\nhost:127.0.0.1:18743\nx-amz-acl:public-read\nx-amz-checksum-crc32:NhCmhg==\nx-amz-content-sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\nx-amz-date:20130524T000000Z\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent\n2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    "method": "PUT",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=PutObject",
+    "headers": {
+      "x-amz-acl": "public-read",
+      "cache-control": "public, max-age=31536000, immutable",
+      "content-type": "image/jpeg",
+      "content-length": "5",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "x-amz-checksum-crc32": "NhCmhg==",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "fb6ce164-cc2b-440a-896a-e699262dfabb",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent, Signature=809e8e3389a5777f53e202929c07a0fbded4f75aa545cef043486483da524b00",
+      "connection": "keep-alive"
+    },
+    "body": "aGVsbG8="
+  },
+  {
+    "canonical": "PUT\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=PutObject\namz-sdk-invocation-id:155e46e1-b3c7-420f-bba9-81aeaacf2610\namz-sdk-request:attempt=1; max=3\ncontent-length:5\ncontent-type:video/mp4\nhost:127.0.0.1:18743\nx-amz-acl:public-read\nx-amz-checksum-crc32:NhCmhg==\nx-amz-content-sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\nx-amz-date:20130524T000000Z\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent\n2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    "method": "PUT",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=PutObject",
+    "headers": {
+      "x-amz-acl": "public-read",
+      "cache-control": "private, max-age=86400",
+      "content-type": "video/mp4",
+      "content-length": "5",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "x-amz-checksum-crc32": "NhCmhg==",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "155e46e1-b3c7-420f-bba9-81aeaacf2610",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-acl;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent, Signature=a13457d6f77936a75eb3f9a548ba8941f8377856c0bc2a9ba9d93127684464e4",
+      "connection": "keep-alive"
+    },
+    "body": "aGVsbG8="
+  },
+  {
+    "canonical": "PUT\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=PutObject\namz-sdk-invocation-id:06b11b5c-5c27-4b11-9b55-9e3fbd604822\namz-sdk-request:attempt=1; max=3\ncontent-encoding:aws-chunked\ncontent-type:text/plain\nhost:127.0.0.1:18743\nx-amz-acl:public-read\nx-amz-content-sha256:STREAMING-UNSIGNED-PAYLOAD-TRAILER\nx-amz-date:20130524T000000Z\nx-amz-decoded-content-length:5\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-trailer:x-amz-checksum-crc32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-encoding;content-type;host;x-amz-acl;x-amz-content-sha256;x-amz-date;x-amz-decoded-content-length;x-amz-sdk-checksum-algorithm;x-amz-trailer;x-amz-user-agent\nSTREAMING-UNSIGNED-PAYLOAD-TRAILER",
+    "method": "PUT",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=PutObject",
+    "headers": {
+      "x-amz-acl": "public-read",
+      "cache-control": "public, max-age=31536000",
+      "content-type": "text/plain",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "content-encoding": "aws-chunked",
+      "transfer-encoding": "chunked",
+      "x-amz-decoded-content-length": "5",
+      "x-amz-content-sha256": "STREAMING-UNSIGNED-PAYLOAD-TRAILER",
+      "x-amz-trailer": "x-amz-checksum-crc32",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "06b11b5c-5c27-4b11-9b55-9e3fbd604822",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-encoding;content-type;host;x-amz-acl;x-amz-content-sha256;x-amz-date;x-amz-decoded-content-length;x-amz-sdk-checksum-algorithm;x-amz-trailer;x-amz-user-agent, Signature=c3f0ac81a6101cfb12788429d9616606ab99686be7bd89386e1380e814647937",
+      "connection": "keep-alive"
+    },
+    "body": "NQ0KaGVsbG8NCjANCngtYW16LWNoZWNrc3VtLWNyYzMyOk5oQ21oZz09DQoNCg=="
+  },
+  {
+    "canonical": "GET\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=GetObject\namz-sdk-invocation-id:ffe85fdf-2305-410b-8f69-7927c7d55424\namz-sdk-request:attempt=1; max=3\nhost:127.0.0.1:18743\nx-amz-checksum-mode:ENABLED\nx-amz-content-sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nx-amz-date:20130524T000000Z\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;host;x-amz-checksum-mode;x-amz-content-sha256;x-amz-date;x-amz-user-agent\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "method": "GET",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=GetObject",
+    "headers": {
+      "x-amz-checksum-mode": "ENABLED",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "ffe85fdf-2305-410b-8f69-7927c7d55424",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;host;x-amz-checksum-mode;x-amz-content-sha256;x-amz-date;x-amz-user-agent, Signature=1dec63784bf8d732ec202511d7682479af12ef6fde0c483cc70ece93b309330f",
+      "connection": "keep-alive"
+    },
+    "body": ""
+  },
+  {
+    "canonical": "DELETE\n/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt\nx-id=DeleteObject\namz-sdk-invocation-id:fd331479-d02c-44bf-8b0b-71661036c00a\namz-sdk-request:attempt=1; max=3\nhost:127.0.0.1:18743\nx-amz-content-sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nx-amz-date:20130524T000000Z\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;host;x-amz-content-sha256;x-amz-date;x-amz-user-agent\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "method": "DELETE",
+    "target": "/examplebucket/folder/a%20b%2B%21%2A%27%28%29%C3%A9%F0%9F%98%80/file.txt?x-id=DeleteObject",
+    "headers": {
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "fd331479-d02c-44bf-8b0b-71661036c00a",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;host;x-amz-content-sha256;x-amz-date;x-amz-user-agent, Signature=9aca2bc9b87fccd4f59bf67fc32388aaec9c2620917c3b85798b706c18915c6c",
+      "connection": "keep-alive"
+    },
+    "body": ""
+  },
+  {
+    "canonical": "POST\n/examplebucket/\ndelete=\namz-sdk-invocation-id:1db22fc9-eafe-4426-8eb6-45c5494f6949\namz-sdk-request:attempt=1; max=3\ncontent-length:225\ncontent-type:application/xml\nhost:127.0.0.1:18743\nx-amz-checksum-crc32:WuRfkw==\nx-amz-content-sha256:2711631b5939f69f372e70ec8f5d4163000e583204118a6439eb00e654416c8e\nx-amz-date:20130524T000000Z\nx-amz-sdk-checksum-algorithm:CRC32\nx-amz-user-agent:aws-sdk-js/3.1110.0\n\namz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent\n2711631b5939f69f372e70ec8f5d4163000e583204118a6439eb00e654416c8e",
+    "method": "POST",
+    "target": "/examplebucket/?delete=",
+    "headers": {
+      "content-type": "application/xml",
+      "content-length": "225",
+      "x-amz-sdk-checksum-algorithm": "CRC32",
+      "x-amz-checksum-crc32": "WuRfkw==",
+      "x-amz-user-agent": "aws-sdk-js/3.1110.0",
+      "user-agent": "aws-sdk-js/3.1110.0 ua/2.1 os/linux#7.3.3-1-cachyos lang/js md/nodejs#26.13.0 api/s3#3.1110.0 m/N,Z,b,U,E,e",
+      "host": "127.0.0.1:18743",
+      "amz-sdk-invocation-id": "1db22fc9-eafe-4426-8eb6-45c5494f6949",
+      "amz-sdk-request": "attempt=1; max=3",
+      "x-amz-date": "20130524T000000Z",
+      "x-amz-content-sha256": "2711631b5939f69f372e70ec8f5d4163000e583204118a6439eb00e654416c8e",
+      "authorization": "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=amz-sdk-invocation-id;amz-sdk-request;content-length;content-type;host;x-amz-checksum-crc32;x-amz-content-sha256;x-amz-date;x-amz-sdk-checksum-algorithm;x-amz-user-agent, Signature=798a9143337b05b953957a3ab576449a0a30665a58ddb929c1d4a445f7d1f496",
+      "connection": "keep-alive"
+    },
+    "body": "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48RGVsZXRlIHhtbG5zPSJodHRwOi8vczMuYW1hem9uYXdzLmNvbS9kb2MvMjAwNi0wMy0wMS8iPjxPYmplY3Q+PEtleT5mb2xkZXIvYSBiKyEqJmFwb3M7KCnDqfCfmIAvZmlsZS50eHQ8L0tleT48L09iamVjdD48T2JqZWN0PjxLZXk+YSZhbXA7Jmx0O2I8L0tleT48L09iamVjdD48UXVpZXQ+dHJ1ZTwvUXVpZXQ+PC9EZWxldGU+"
+  }
+]

@@ -37,6 +37,7 @@ dima-twitch = { path = "crates/twitch" }
 dima-events = { path = "crates/events" }
 dima-billing = { path = "crates/billing" }
 dima-tts = { path = "crates/tts" }
+dima-platform = { path = "crates/platform" }
 # Runtime.
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net", "process", "fs", "io-util"] }
 tokio-util = { version = "0.7.20", features = ["rt", "io"] }
