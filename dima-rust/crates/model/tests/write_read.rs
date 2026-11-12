@@ -2,8 +2,8 @@
 //! section 8), for every registered collection.
 //!
 //! For each collection the test builds a base document (the recorded `create` and `journal`
-//! cases of the collection, merged), then, for every schema path (array element `0`, Map key
-//! `k`, and a key below `Mixed` and Map values included) and every probe value (`null`, each
+//! cases of the collection, merged), then, for every schema path (array element `0`, Map keys
+//! `k` and `123`, keys `x` and `123` below `Mixed`, and a key below Map values included) and every probe value (`null`, each
 //! scalar type, empty and filled objects and arrays), it tries each write the helpers offer:
 //! create, `$set`, `$unset`, `$push`, upsert, and save `set`/`unset` (through the module's
 //! adapter for a collection with hooks). Every write a helper prepares is run against a throwaway
@@ -57,7 +57,11 @@ fn paths(schema: &Schema) -> Vec<String> {
             out.push(path.clone());
             match field.kind {
                 Kind::Value(_) => {}
-                Kind::Mixed => out.push(format!("{path}.x")),
+                // A key below `Mixed`, a numeric one too (a plain object's key, not a position).
+                Kind::Mixed => {
+                    out.push(format!("{path}.x"));
+                    out.push(format!("{path}.123"));
+                }
                 Kind::Nested(children) => walk(children, &format!("{path}."), out),
                 Kind::Subdocument(schema) => walk(schema.fields, &format!("{path}."), out),
                 Kind::DocumentArray(schema) => {
@@ -65,13 +69,17 @@ fn paths(schema: &Schema) -> Vec<String> {
                     walk(schema.fields, &format!("{path}.0."), out);
                 }
                 Kind::Array(_) | Kind::MixedArray => out.push(format!("{path}.0")),
+                // Map keys, a numeric one too (`variables.123`: a key, not a position).
                 Kind::Map(MapOf::Values(_) | MapOf::Mixed) => {
                     out.push(format!("{path}.k"));
                     out.push(format!("{path}.k.x"));
+                    out.push(format!("{path}.123"));
                 }
                 Kind::Map(MapOf::Subdocuments(schema)) => {
                     out.push(format!("{path}.k"));
                     walk(schema.fields, &format!("{path}.k."), out);
+                    out.push(format!("{path}.123"));
+                    walk(schema.fields, &format!("{path}.123."), out);
                 }
             }
         }

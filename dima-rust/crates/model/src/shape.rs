@@ -385,9 +385,12 @@ impl<'i> Checker<'i> {
             let Some(Resolved::At(node, place, pattern)) = resolve(schema, &prefix) else {
                 return;
             };
-            let numeric = segments
-                .get(end - 1)
-                .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
+            // Only a real array position: a numeric Map key (`variables.123`) or a numeric key of
+            // a plain object below `Mixed` is a key like any other, and the server creates it.
+            let numeric = place == Place::ArrayElement
+                && segments
+                    .get(end - 1)
+                    .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
             let object = end < segments.len()
                 && matches!(node, Node::Subdocument(_) | Node::Nested(_))
                 && place != Place::ArrayElement;
@@ -879,5 +882,32 @@ mod tests {
             info.check_update(&numeric, Against::Loaded(&doc! { "_id": 1 }))
                 .is_err()
         );
+    }
+
+    /// A numeric Map key or a numeric key below `Mixed` is no array position: the reference
+    /// upserts `variables.123` (`handlers/special_parser.handler.ts:288`), and Mongoose takes it.
+    #[test]
+    fn numeric_keys_are_not_positions() {
+        let filter = doc! { "channelID": "1", "scopeType": "channel", "scopeName": "s" };
+        let upsert = Against::Filter {
+            filter: &filter,
+            upsert: true,
+        };
+        let ast = &crate::ast_variables::INFO;
+        let numeric_key = UpdateDoc::Document(doc! {
+            "$set": { "variables.123": "v" },
+            "$setOnInsert": { "channelID": "1", "scopeType": "channel", "scopeName": "s" },
+        });
+        assert_eq!(ast.check_update(&numeric_key, upsert), Ok(()));
+        let by_id = doc! { "_id": 1 };
+        let plain = Against::Filter {
+            filter: &by_id,
+            upsert: false,
+        };
+        let commands = &crate::commands::INFO;
+        let map_key = UpdateDoc::Document(doc! { "$set": { "variables.7": "v" } });
+        assert_eq!(commands.check_update(&map_key, plain), Ok(()));
+        let mixed_key = UpdateDoc::Document(doc! { "$set": { "permissions.0": "v" } });
+        assert_eq!(commands.check_update(&mixed_key, plain), Ok(()));
     }
 }
