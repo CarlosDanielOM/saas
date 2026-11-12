@@ -46,6 +46,7 @@ static SYNTAX: LazyLock<SyntaxEngine> = LazyLock::new(|| {
         PreparedGrammar::default(),
         Limits {
             source_chars: MAX_COMMAND_TEXT * ROUND_TRIP_EXPANSION,
+            input_chars: MAX_COMMAND_TEXT * ROUND_TRIP_EXPANSION,
             tokens: MAX_COMMAND_TEXT * ROUND_TRIP_EXPANSION,
             nodes: MAX_BLOCK_NODES * 4 + 2,
             nesting: crate::syntax::HARD_NESTING_CEILING,

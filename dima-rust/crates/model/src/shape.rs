@@ -640,8 +640,8 @@ pub(crate) enum Against<'a> {
     Loaded(&'a Document),
 }
 
-/// The document an upsert inserts: the filter's equality fields, then `$setOnInsert` and `$set`
-/// applied.
+/// The document an upsert inserts: the filter's equality fields, then `$setOnInsert`, `$set`,
+/// `$min`, `$max` and `$inc` applied.
 fn upserted(filter: &Document, update: &Document) -> Document {
     let mut document = Document::new();
     for (key, value) in filter {
@@ -650,7 +650,8 @@ fn upserted(filter: &Document, update: &Document) -> Document {
             crate::writes::put(&mut document, key, value.clone());
         }
     }
-    for operator in ["$setOnInsert", "$set"] {
+    // `$min`, `$max` and `$inc` of a missing path store their value on insert.
+    for operator in ["$setOnInsert", "$set", "$min", "$max", "$inc"] {
         if let Ok(paths) = update.get_document(operator) {
             for (path, value) in paths {
                 crate::writes::put(&mut document, path, value.clone());

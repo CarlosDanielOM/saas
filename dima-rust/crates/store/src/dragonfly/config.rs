@@ -37,6 +37,29 @@ pub const DEFAULT_RECONNECT_RETRIES: usize = 6;
 /// Default bound on undelivered messages per subscription (see [`super::pubsub`]).
 pub const DEFAULT_SUBSCRIPTION_BUFFER: usize = 1024;
 
+/// Default cap on the topics (channels and patterns) of one subscriber: 10 000.
+///
+/// The reference has no cap. The bot subscribes once per joined channel (clip requests,
+/// `twitch:{id}:clip:request`) plus a few global channels, so the cap sits far above any
+/// channel count one process serves while still bounding a subscriber's memory to
+/// `max_subscriptions × (subscription_buffer + 1)` events.
+pub const DEFAULT_MAX_SUBSCRIPTIONS: usize = 10_000;
+
+/// Default limit on one received pub/sub message (payload, channel or pattern): 1 MiB.
+///
+/// The reference has none (node-redis buffers whatever arrives). The largest payloads it
+/// publishes are a few kilobytes (a chat message with its emotes on `widget-feed`, a clip
+/// request); a message over the limit discards the connection (see [`super::pubsub`]).
+pub const DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES: usize = 1024 * 1024;
+
+/// Default interval of silence after which a subscriber connection is sent `PING`: 30 seconds.
+///
+/// The reference sets no `pingInterval` (node-redis 5 then never pings), so a subscriber whose
+/// peer stopped answering without closing would wait for ever. By charter rule 6 this is a
+/// generous bound that only fires on a real hang: the reply must come within
+/// [`DragonflyConfig::response_timeout`], else the connection is replaced.
+pub const DEFAULT_SUBSCRIBER_PING_INTERVAL: Duration = Duration::from_secs(30);
+
 /// Connection settings, read once at startup by the binary from `DRAGONFLY_HOST` and
 /// `DRAGONFLY_PORT` and passed in (this crate never reads the environment).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,8 +77,16 @@ pub struct DragonflyConfig {
     pub connect_timeout: Duration,
     /// Reconnection attempts per outage; see [`DEFAULT_RECONNECT_RETRIES`].
     pub reconnect_retries: usize,
-    /// Messages buffered per subscription before new ones are dropped and counted.
+    /// Messages buffered per subscription before its overflow policy applies.
     pub subscription_buffer: usize,
+    /// Silence on a subscriber connection before it is sent `PING`; see
+    /// [`DEFAULT_SUBSCRIBER_PING_INTERVAL`].
+    pub subscriber_ping_interval: Duration,
+    /// Topics one subscriber may hold; see [`DEFAULT_MAX_SUBSCRIPTIONS`].
+    pub max_subscriptions: usize,
+    /// Largest received message, channel or pattern; see
+    /// [`DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES`].
+    pub subscription_max_message_bytes: usize,
 }
 
 impl DragonflyConfig {
@@ -70,6 +101,9 @@ impl DragonflyConfig {
             connect_timeout: DEFAULT_CONNECT_TIMEOUT,
             reconnect_retries: DEFAULT_RECONNECT_RETRIES,
             subscription_buffer: DEFAULT_SUBSCRIPTION_BUFFER,
+            subscriber_ping_interval: DEFAULT_SUBSCRIBER_PING_INTERVAL,
+            max_subscriptions: DEFAULT_MAX_SUBSCRIPTIONS,
+            subscription_max_message_bytes: DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES,
         }
     }
 

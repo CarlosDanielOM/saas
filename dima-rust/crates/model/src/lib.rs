@@ -164,7 +164,10 @@
 //!   `find_and_update_unchecked`); a save adapter calls `writes::save_with_hooks(&INFO, loaded,
 //!   changes, hook, ctx)`, where `hook` returns the changes the middleware makes (`hooks.rs` has
 //!   the `updatedAt`-on-save one). Both run validation and the guard; never call the store's
-//!   helpers directly.
+//!   helpers directly. A create with document middleware uses `writes::create_with_hooks`
+//!   (`pre('validate')` before validation, `pre('save')` after); a hook that reads another
+//!   collection takes what it reads as an argument (`channel_ai_personalities` takes the owner's
+//!   plan), and a hook that throws is [`ModelError::Refused`] with the reference's message.
 //! - Filters: `dima_store::mongo::filter::prepare_filter(INFO.schema, …)`; responses:
 //!   [`CollectionInfo::find_json`] and friends leave out the hidden paths.
 //! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry with
@@ -208,7 +211,9 @@
 //!    write commands and the stored documents are compared exactly (types, key order, missing
 //!    versus null). A case Rust refuses on purpose (the write guard) is marked `refused` with the
 //!    reason; one it accepts on purpose, `differs`. Fixture keys are left out, never
-//!    `undefined`; a dotted update carries a filter that proves what it writes into.
+//!    `undefined`; a dotted update carries a filter that proves what it writes into. Like the
+//!    schema snapshot, the recording names the reference commit and the SHA-256 of every source
+//!    file it loaded, and a file that changed fails the test.
 //! 4. **Write then read** (`tests/write_read.rs`, throwaway database): automatic; every path and
 //!    probe value through every write the helpers offer, every written document decoded. Its
 //!    base document merges the collection's recorded create cases, so they should fill every
@@ -241,22 +246,47 @@ pub mod validation;
 pub mod values;
 mod writes;
 
+pub mod accounts;
 pub mod admins;
+pub mod ai_usage_dailies;
+pub mod ai_usage_dashboards;
+pub mod ai_usage_ledger_states;
+pub mod ai_usage_receipts;
 pub mod app_configs;
 pub mod ast_variables;
 pub mod availability;
+pub mod channel_ai_memories;
+pub mod channel_ai_personalities;
+pub mod channel_configs;
+pub mod channel_extension_items;
+pub mod channel_fish_voice_favorites;
+pub mod channel_tts_settings;
 pub mod command_user_variables;
 pub mod commands;
 pub mod countdown_timers;
+pub mod credit_gifts;
+pub mod credit_transactions;
+pub mod cron_job_intents;
 pub mod custom_timers;
+pub mod dimafx_playbacks;
 pub mod domain_event_checkpoints;
 pub mod domain_event_deliveries;
 pub mod domain_events;
 pub mod events;
 pub mod eventsubs;
+pub mod extension_wallet_transactions;
+pub mod media_assets;
+pub mod oauth_clients;
+pub mod oauth_grants;
+pub mod oauth_refresh_tokens;
+pub mod oauth_sessions;
 pub mod redemption_rewards;
+pub mod referral_codes;
+pub mod site_analytics;
 pub mod stream_sessions;
 pub mod timer_commands;
+pub mod user_extension_inventories;
+pub mod user_media_library_items;
 pub mod users;
 
 pub use collection::{CollectionInfo, Hooks, ReadError};
@@ -291,4 +321,29 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &domain_events::INFO,
     &domain_event_deliveries::INFO,
     &domain_event_checkpoints::INFO,
+    &accounts::INFO,
+    &channel_configs::INFO,
+    &oauth_clients::INFO,
+    &oauth_grants::INFO,
+    &oauth_refresh_tokens::INFO,
+    &oauth_sessions::INFO,
+    &cron_job_intents::INFO,
+    &site_analytics::INFO,
+    &ai_usage_receipts::INFO,
+    &ai_usage_dailies::INFO,
+    &ai_usage_ledger_states::INFO,
+    &ai_usage_dashboards::INFO,
+    &credit_gifts::INFO,
+    &credit_transactions::INFO,
+    &referral_codes::INFO,
+    &channel_extension_items::INFO,
+    &user_extension_inventories::INFO,
+    &extension_wallet_transactions::INFO,
+    &dimafx_playbacks::INFO,
+    &channel_fish_voice_favorites::INFO,
+    &channel_tts_settings::INFO,
+    &channel_ai_memories::INFO,
+    &channel_ai_personalities::INFO,
+    &media_assets::INFO,
+    &user_media_library_items::INFO,
 ];

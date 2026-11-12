@@ -1,7 +1,12 @@
 //! Bounded, allocation-free labels: the reference's `clean` and `channelId` filters.
 //!
-//! Only fixed, sanitised metadata leaves the process. Every label is ASCII by construction, so its
-//! byte length is its character count and the analytics consumer's `.length` checks hold.
+//! Only fixed, sanitised metadata leaves the process. Kinds, names and outcomes are
+//! `&'static str` in the API (fixed in the source, or derived from a registered pattern through
+//! [`crate::names`]); [`Label::clean`] is applied on top so that what is exported always meets the
+//! consumer's character set, not as what makes a name safe. Channel ids are the one label taken
+//! from data: they are validated ([`channel`]), never cleaned. Every label is ASCII by
+//! construction, so its byte length is its character count and the analytics consumer's
+//! `.length` checks hold.
 
 use std::fmt;
 

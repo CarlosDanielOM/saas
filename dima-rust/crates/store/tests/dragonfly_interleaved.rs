@@ -1,14 +1,18 @@
 //! TypeScript and Rust on the same keys at the same time. `record.mjs peer` is the TypeScript
 //! side: node-redis 5.12.1, the reference's Lua read from `dimabot/src`, the reference's producers.
 //!
+//! Rust never runs beside TypeScript in production (one cutover, `MIGRATION.md` section 3), so
+//! this is not a compatibility contract. It is kept as an independent check of the reference's
+//! Lua scripts and of claim and acknowledge by the claimed bytes. Queue items and envelopes are
+//! Rust's own encoding; nothing here requires Node to produce the same bytes as Rust.
+//!
 //! - Node pushes, Rust pops, acknowledges and requeues; Node sees the exact bytes.
-//! - Rust pushes, Node claims and acknowledges by value, including by its *own* `JSON.stringify` of
-//!   the same job, which only matches if Rust wrote identical bytes.
+//! - Rust pushes, Node claims and acknowledges by the bytes it claimed.
 //! - Both race the plan fence scripts; Lua's cjson rewrite of the credits value is accepted by
 //!   Rust's read mode with the exact bytes and refused when re-serialised.
 //! - Pub/sub envelopes in both directions.
 //!
-//! Logical database 15, unique prefixes. Skipped with a message when `DIMA_TEST_DRAGONFLY` is not
+//! Logical database 9, unique prefixes. Skipped with a message when `DIMA_TEST_DRAGONFLY` is not
 //! set, when `node` is missing, or when no node-redis install is found (see `record.mjs`).
 
 mod dragonfly_support;
@@ -20,8 +24,10 @@ use dima_store::dragonfly::plan_cache_fence::{
     self, Acceptance, AccountRead, AccountVersion, CreditMode, PlanCacheFence, TtlSeconds,
 };
 use dima_store::dragonfly::pubsub::{envelope, parse_envelope};
-use dima_store::dragonfly::{Dragonfly, End, ListQueue, ProcessingList, QueueItem, Topic};
-use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
+use dima_store::dragonfly::{
+    Dragonfly, End, ListQueue, Overflow, ProcessingList, QueueItem, Topic,
+};
+use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, expect_message, prefix};
 use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::process::Stdio;
@@ -29,7 +35,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 
-const DB: u8 = 15;
+const DB: u8 = 9;
 const NOW_ISO: &str = "2026-11-11T12:00:00.000Z";
 
 struct Peer {
@@ -205,7 +211,7 @@ async fn node_pushes_and_rust_pops_acknowledges_and_requeues() -> Result<()> {
         .await?
         .context("claim")?;
     ensure!(claimed.as_bytes() == pushed[1].as_slice());
-    ensure!(processing.acknowledge(&df, &claimed).await? == 1);
+    ensure!(processing.acknowledge_unfenced(&df, &claimed).await? == 1);
     let left = node
         .call("lrange", json!({"key": processing.key()}))
         .await?;
@@ -241,41 +247,6 @@ async fn rust_pushes_and_node_claims_and_acknowledges_by_value() -> Result<()> {
         .await?;
     ensure!(reply["removed"] == 1);
     ensure!(unb64(&reply["base64"])? == pushed.job.to_item()?.into_bytes());
-
-    // Rust claims; Node acknowledges with its OWN JSON.stringify of the same job. LREM matches
-    // whole elements byte for byte, so this removes the entry only if both writers agree.
-    let queue2 = format!("{p}jobs2");
-    let (input, node_input) = job_input(&queue2, &format!("{p}token-b"), 11);
-    ensure!(
-        cron_queue::enqueue_cron_job(&df, &input, config, NOW_ISO, &uuid(11))
-            .await?
-            .enqueued
-    );
-    let node_json = node
-        .call("job_json", json!({"input": node_input, "uuid": uuid(11)}))
-        .await?;
-    let list = ListQueue::new(Cow::Owned(queue2.clone()), End::Left, End::Left);
-    let processing = ProcessingList::new(Cow::Owned(format!("{p}processing")), End::Right);
-    let mut blocking = df.blocking();
-    let claimed = list
-        .blocking_claim(&mut blocking, &processing, Duration::from_secs(2))
-        .await?
-        .context("claim")?;
-    ensure!(
-        claimed.as_str() == node_json.as_str(),
-        "rust: {:?}\nnode: {node_json}",
-        claimed.as_str()
-    );
-    let removed = node
-        .call(
-            "ack_job",
-            json!({"processing": processing.key(), "input": node_input, "uuid": uuid(11)}),
-        )
-        .await?;
-    ensure!(
-        removed == 1,
-        "Node could not acknowledge Rust's bytes by value"
-    );
 
     // A raw item Rust encodes from a struct is acknowledged by Node by value too.
     let item = QueueItem::encode(&json!({"id": "raw", "text": AWKWARD_TEXT[1]}))?;
@@ -457,16 +428,15 @@ async fn pubsub_envelopes_cross_both_ways() -> Result<()> {
     let to_rust = prefix("interleaved-to-rust");
     let subscriber = df.subscriber();
     let mut subscription = subscriber
-        .subscribe(Topic::Channel(to_rust.clone()))
+        .subscribe(Topic::Channel(to_rust.clone()), Overflow::Gap)
         .await?;
     node.call(
         "publish_envelope",
         json!({"channel": to_rust, "data": data, "now": now}),
     )
     .await?;
-    let message = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
-        .await?
-        .context("message")?;
+    let message =
+        expect_message(tokio::time::timeout(Duration::from_secs(2), subscription.recv()).await?)?;
     ensure!(message.payload == envelope(&data, now)?);
     let parsed: Value = parse_envelope(&message.payload)?;
     ensure!(parsed["session"] == AWKWARD_TEXT[1] && parsed["timestamp"].as_f64() == Some(now));

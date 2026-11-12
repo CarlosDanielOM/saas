@@ -1,6 +1,6 @@
 //! The four seams: inbound HTTP (`dima_web`), outbound HTTP (`dima_http`, loopback mock),
 //! MongoDB command events, and Dragonfly commands and connection errors (local Dragonfly,
-//! logical database 14).
+//! logical database 13).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod support;
@@ -105,6 +105,20 @@ async fn http_templates_errors_and_self_observation_exclusion() {
         call(service.clone(), "/duels/1234567/duel/state", &[]).await,
         200
     );
+    // A login in the same mount: the reference kept it in the name (one series per login).
+    assert_eq!(
+        call(service.clone(), "/duels/some_login/duel/state", &[]).await,
+        200
+    );
+    // An extension method is not a name of its own either.
+    let brew = http::Request::builder()
+        .method(http::Method::from_bytes(b"BREW").unwrap())
+        .uri("/nowhere")
+        .body(Body::empty())
+        .unwrap();
+    let response = service.clone().oneshot(brew).await.unwrap();
+    assert_eq!(response.status().as_u16(), 404);
+    let _ = response.into_body().collect().await;
     queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let rows: Vec<_> = snapshot
@@ -114,17 +128,24 @@ async fn http_templates_errors_and_self_observation_exclusion() {
         .collect();
     let mut names: Vec<_> = rows
         .iter()
-        .map(|r| (r.name.as_str(), r.outcome.as_str()))
+        .map(|r| (r.name.as_str(), r.outcome.as_str(), r.count))
         .collect();
     names.sort_unstable();
-    // A literal channel id in a dynamic mount (`req.baseUrl`) is hidden; templates are kept.
+    // Names come from the registered patterns only: a mount parameter is `:id` whatever the
+    // request held (the reference's name for a numeric id); route templates are kept.
     assert_eq!(
         names,
         [
-            ("GET /duels/:id/duel/state", "200"),
-            ("GET /speech/:channelID", "error"),
-            ("GET /unmatched", "404")
+            ("GET /duels/:id/duel/state", "200", 2),
+            ("GET /speech/:channelID", "error", 1),
+            ("GET /unmatched", "404", 1),
+            ("OTHER /unmatched", "404", 1)
         ]
+    );
+    assert!(
+        !serde_json::to_string(&snapshot.metrics)
+            .unwrap()
+            .contains("some_login")
     );
     assert!(
         !serde_json::to_string(&snapshot.metrics)
@@ -162,7 +183,7 @@ async fn http_templates_errors_and_self_observation_exclusion() {
     queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let span = &snapshot.spans[0];
-    // `req.baseUrl + req.route.path`: the mount is literal, the route is the template.
+    // The mount's pattern and the route's template.
     assert_eq!(span.name, "GET /widgets/:channelID/state");
     assert_eq!(span.parent_id, Some("cd".repeat(8)));
     assert_eq!(span.span_id, signed.span_id.hex().as_str());
@@ -292,6 +313,13 @@ async fn mongo_commands_are_database_spans() {
                 duration: Duration::from_millis(1500),
                 code: Some(11600),
             });
+            // A command name this backend does not send makes no series of its own.
+            hook.succeeded(&CommandSucceeded {
+                request_id: 3,
+                command_name: "someNewCommand",
+                collection: None,
+                duration: Duration::from_millis(1),
+            });
         })
         .await;
     let snapshot = telemetry.take_snapshot();
@@ -305,6 +333,12 @@ async fn mongo_commands_are_database_spans() {
         ("database", "ok", "4242")
     );
     assert_eq!(snapshot.metric("mongo.listCollections")[0].outcome, "error");
+    assert_eq!(snapshot.metric("mongo.other")[0].count, 1);
+    assert!(
+        !serde_json::to_string(&snapshot.metrics)
+            .unwrap()
+            .contains("someNewCommand")
+    );
     let span = &snapshot.spans[0];
     assert_eq!(span.name, "mongo.listCollections");
     assert_eq!(span.parent_id, Some(root.span_id.hex().as_str().to_owned()));
@@ -313,7 +347,7 @@ async fn mongo_commands_are_database_spans() {
 
 #[tokio::test]
 async fn dragonfly_commands_lookups_and_suppressed_connection_errors() {
-    let Some(store) = support::config(14) else {
+    let Some(store) = support::config(13) else {
         return;
     };
     let console = Arc::new(Mutex::new(Vec::new()));
@@ -322,54 +356,58 @@ async fn dragonfly_commands_lookups_and_suppressed_connection_errors() {
     config.console = ConsoleTarget::Memory(console.clone());
     let telemetry = Telemetry::new(config).unwrap();
     let running = telemetry.start();
-    let dragonfly = dima_store::dragonfly::Dragonfly::connect(store, telemetry.dragonfly_hooks())
-        .await
-        .unwrap();
+    let dragonfly =
+        dima_store::dragonfly::Dragonfly::connect(store.clone(), telemetry.dragonfly_hooks())
+            .await
+            .unwrap();
     let key = support::unique("dima-test-telemetry-hook");
-    assert_eq!(dragonfly.get(&key).await.unwrap(), None);
-    dragonfly
-        .set(&key, b"v", dima_store::dragonfly::SetOptions::ex(60))
-        .await
-        .unwrap();
-    assert!(dragonfly.get(&key).await.unwrap().is_some());
-    let _: i64 = dragonfly.query(redis::cmd("DEL").arg(&key)).await.unwrap();
-    let snapshot = telemetry.take_snapshot();
-    let count = |kind: &str, name: &str, outcome: &str| {
-        snapshot
-            .metrics
-            .iter()
-            .filter(|m| m.kind == kind && m.name == name && m.outcome == outcome)
-            .map(|m| m.count)
-            .sum::<u64>()
-    };
-    assert_eq!(count("cache", "get", "ok"), 2);
-    assert_eq!(count("cache", "set", "ok"), 1);
-    assert_eq!(count("cache", "del", "ok"), 1);
-    assert_eq!(count("cache_lookup", "get", "miss"), 1);
-    assert_eq!(count("cache_lookup", "get", "hit"), 1);
+    support::with_cleanup(&store, std::slice::from_ref(&key), async {
+        assert_eq!(dragonfly.get(&key).await.unwrap(), None);
+        dragonfly
+            .set(&key, b"v", dima_store::dragonfly::SetOptions::ex(60))
+            .await
+            .unwrap();
+        assert!(dragonfly.get(&key).await.unwrap().is_some());
+        let _: i64 = dragonfly.query(redis::cmd("DEL").arg(&key)).await.unwrap();
+        let snapshot = telemetry.take_snapshot();
+        let count = |kind: &str, name: &str, outcome: &str| {
+            snapshot
+                .metrics
+                .iter()
+                .filter(|m| m.kind == kind && m.name == name && m.outcome == outcome)
+                .map(|m| m.count)
+                .sum::<u64>()
+        };
+        assert_eq!(count("cache", "get", "ok"), 2);
+        assert_eq!(count("cache", "set", "ok"), 1);
+        assert_eq!(count("cache", "del", "ok"), 1);
+        assert_eq!(count("cache_lookup", "get", "miss"), 1);
+        assert_eq!(count("cache_lookup", "get", "hit"), 1);
 
-    // Connection errors: one line, then suppressed within 30 seconds.
-    let hooks = telemetry.dragonfly_hooks();
-    let mut dead = support::local_store(support::closed_port());
-    dead.connect_timeout = Duration::from_millis(300);
-    dead.reconnect_retries = 0;
-    for _ in 0..3 {
-        assert!(
-            dima_store::dragonfly::Dragonfly::connect(dead.clone(), hooks.clone())
-                .await
-                .is_err()
-        );
-    }
-    running.shutdown(Duration::from_secs(2)).await;
-    let lines = support::lines(&console);
-    let errors: Vec<_> = lines
-        .iter()
-        .filter(|line| {
-            line["data"]
-                .as_str()
-                .unwrap_or_default()
-                .starts_with("Error connecting to DragonFlyDB from hung")
-        })
-        .collect();
-    assert_eq!(errors.len(), 1, "{lines:?}");
+        // Connection errors: one line, then suppressed within 30 seconds.
+        let hooks = telemetry.dragonfly_hooks();
+        let mut dead = support::local_store(support::closed_port());
+        dead.connect_timeout = Duration::from_millis(300);
+        dead.reconnect_retries = 0;
+        for _ in 0..3 {
+            assert!(
+                dima_store::dragonfly::Dragonfly::connect(dead.clone(), hooks.clone())
+                    .await
+                    .is_err()
+            );
+        }
+        running.shutdown(Duration::from_secs(2)).await;
+        let lines = support::lines(&console);
+        let errors: Vec<_> = lines
+            .iter()
+            .filter(|line| {
+                line["data"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .starts_with("Error connecting to DragonFlyDB from hung")
+            })
+            .collect();
+        assert_eq!(errors.len(), 1, "{lines:?}");
+    })
+    .await;
 }

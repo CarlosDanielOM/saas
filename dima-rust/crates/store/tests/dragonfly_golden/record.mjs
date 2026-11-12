@@ -14,7 +14,7 @@
 // the reference where importing them would pull in the whole application (enqueueCronJob's job
 // construction, PubSubManager.publish's envelope, planCacheVersion); each is marked with its source.
 //
-// Everything runs in logical database 15 (`redis://HOST:PORT/15`) under a unique key prefix, and
+// Everything runs in logical database 9 (`redis://HOST:PORT/9`) under a unique key prefix, and
 // every key it creates is deleted at the end. Pub/sub channels are global: they carry the prefix.
 // Values are recorded as base64 of the exact bytes (node-redis with BLOB_STRING mapped to Buffer),
 // plus the text for readable diffs. Clock and UUIDs are fixed (FIXED below), so the file is stable.
@@ -119,7 +119,7 @@ async function connect() {
     if (!address) throw new Error('DIMA_TEST_DRAGONFLY is not set (eval "$(dima-rust/tools/test-env)")');
     const [host, port] = [address.slice(0, address.lastIndexOf(':')), address.slice(address.lastIndexOf(':') + 1)];
     // The reference's address: `redis://${HOST}:${PORT}`, here with the database in the port.
-    const client = createClient({ url: `redis://${host}:${port}/15` });
+    const client = createClient({ url: `redis://${host}:${port}/9` });
     client.on('error', () => {});
     await client.connect();
     const raw = client.withTypeMapping({ [RESP_TYPES.BLOB_STRING]: Buffer });

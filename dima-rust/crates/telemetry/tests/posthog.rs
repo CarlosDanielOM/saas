@@ -6,16 +6,21 @@ mod support;
 
 use dima_core::SecretString;
 use dima_http::testing::{MockResponse, MockServer};
-use dima_telemetry::{LogOptions, PosthogConfig, Telemetry};
+use dima_telemetry::{Level, LogOptions, PosthogConfig, Telemetry};
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
 fn with_posthog(url: &str) -> Telemetry {
+    with_posthog_from(url, None)
+}
+
+fn with_posthog_from(url: &str, min_level: Option<Level>) -> Telemetry {
     let (mut config, _console) = support::memory_config("api", None);
     config.posthog = Some(PosthogConfig {
         base_url: url.to_owned(),
         token: SecretString::new("phc_test_key".to_owned()),
         service_name: "DomDimaBot".to_owned(),
+        min_level,
     });
     config.sample_rate = 1.0;
     Telemetry::new(config).unwrap()
@@ -199,4 +204,90 @@ async fn an_unreachable_endpoint_never_reaches_the_caller() {
     assert!(started.elapsed() < Duration::from_millis(200));
     let report = running.shutdown(Duration::from_secs(6)).await;
     assert_eq!(report.stats.posthog_dropped, 200);
+}
+
+fn exported_levels(server: &MockServer) -> Vec<String> {
+    server
+        .requests()
+        .iter()
+        .flat_map(|request| {
+            let body: Value = serde_json::from_slice(&request.body).unwrap();
+            body["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|record| record["severityText"].as_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+fn log_every_level(telemetry: &Telemetry) {
+    for level in [
+        Level::Trace,
+        Level::Debug,
+        Level::Info,
+        Level::Warn,
+        Level::Error,
+        Level::Fatal,
+    ] {
+        telemetry.log(level, &level.as_str(), LogOptions::console());
+    }
+}
+
+/// The default is the reference's behaviour: `utils/logger.ts` calls `openLog.emit` for every log
+/// call whatever its level, and only the logger's own minimum level filters. Gating at `warn` by
+/// default would silently remove the info and debug records PostHog shows today.
+#[tokio::test]
+async fn by_default_every_enabled_level_is_exported_as_in_the_reference() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200));
+    assert_eq!(PosthogConfig::reference().min_level, None);
+    let telemetry = with_posthog(&server.url());
+    let running = telemetry.start();
+    log_every_level(&telemetry);
+    let report = running.shutdown(Duration::from_secs(5)).await;
+    assert_eq!(
+        exported_levels(&server),
+        ["trace", "debug", "info", "warn", "error", "fatal"]
+    );
+    assert_eq!(report.stats.posthog_below_level, 0);
+}
+
+/// An operator may choose a minimum export level; what it keeps out is counted, not lost
+/// silently, and is not reported as a failure.
+#[tokio::test]
+async fn an_optional_minimum_export_level_keeps_lower_entries_out_and_counts_them() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200));
+    let telemetry = with_posthog_from(&server.url(), Some(Level::Warn));
+    let running = telemetry.start();
+    log_every_level(&telemetry);
+    let report = running.shutdown(Duration::from_secs(5)).await;
+    assert_eq!(exported_levels(&server), ["warn", "error", "fatal"]);
+    assert_eq!(report.stats.posthog_below_level, 3);
+    assert_eq!(report.stats.posthog_dropped, 0);
+    assert_eq!(report.stats.total_dropped(), 0);
+}
+
+/// An export still waiting at the shutdown deadline is aborted; its records are counted.
+#[tokio::test]
+async fn records_an_aborted_export_abandoned_are_counted() {
+    let server = MockServer::start().await.unwrap();
+    server.fallback(|_| MockResponse::new(200).delay(Duration::from_secs(5)));
+    let telemetry = with_posthog(&server.url());
+    let running = telemetry.start();
+    for index in 0..5 {
+        telemetry.info(&json!({ "index": index }), LogOptions::console());
+    }
+    // The first batch goes out after the export interval and hangs on the slow endpoint.
+    tokio::time::sleep(Duration::from_millis(1300)).await;
+    for index in 5..8 {
+        telemetry.info(&json!({ "index": index }), LogOptions::console());
+    }
+    let started = Instant::now();
+    let report = running.shutdown(Duration::from_millis(300)).await;
+    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(!report.clean);
+    assert_eq!(report.stats.posthog_dropped, 8, "{:?}", report.stats);
 }

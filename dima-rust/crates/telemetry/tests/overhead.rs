@@ -2,8 +2,10 @@
 //!
 //! Prints the measured figures (`cargo test --test overhead -- --nocapture`). The assertions are
 //! loose ceilings for an unoptimised test build on a loaded machine; the printed numbers are the
-//! measurement. Resident memory is read from `/proc/self/status` before and after: a hot path
-//! that allocated per call would grow it by hundreds of megabytes over these loops.
+//! measurement. Resident memory is read from `/proc/self/status` before and after. That shows
+//! that the hot paths do not retain memory (no growth over millions of calls); it does not show
+//! that they never allocate, since memory allocated and freed per call leaves the resident size
+//! unchanged. Counting allocations needs a counting global allocator, which needs `unsafe`.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod support;
@@ -40,8 +42,8 @@ fn handle() -> Telemetry {
 /// One test, so nothing else in this process allocates while resident memory is measured: the
 /// memory part runs first, on the test thread, before any runtime thread exists.
 #[test]
-fn hot_paths_cost_nanoseconds_and_memory_stays_bounded() {
-    memory_at_the_reference_bounds_is_bounded();
+fn hot_paths_cost_nanoseconds_and_resident_memory_does_not_grow() {
+    resident_memory_at_the_reference_bounds_settles();
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -92,23 +94,24 @@ async fn hot_paths() {
     // 1.2 µs per clock read; a span reads the monotonic clock twice).
     assert!(filtered < 100.0, "{filtered}");
     assert!(counter < 5_000.0 && observe < 5_000.0 && span < 15_000.0);
-    // 8 million calls that each allocated even 16 bytes would add over 100 MiB.
+    // 8 million calls that each retained even 16 bytes would add over 100 MiB.
     assert!(grown < 8 * 1024 * 1024, "{grown}");
     running.shutdown(std::time::Duration::from_secs(2)).await;
 }
 
 fn fill(telemetry: &Telemetry) {
-    for index in 0..2000 {
-        telemetry.observe_with(
-            "command",
-            &format!("{index:0>60}"),
-            10.0,
-            "ok",
-            Some("123456789"),
-        );
+    for name in support::names(
+        "series-of-a-sixty-character-name-at-the-reference-bound-",
+        2000,
+    ) {
+        telemetry.observe_with("command", name, 10.0, "ok", Some("123456789"));
     }
+    let long = support::names(
+        "a-span-name-of-one-hundred-characters-a-span-name-of-one-hundred-characters-a-span-name-of-one-",
+        1,
+    )[0];
     for _ in 0..300 {
-        telemetry.span("http", &"n".repeat(100)).end("error");
+        telemetry.span("http", long).end("error");
     }
     for _ in 0..100 {
         telemetry.error(
@@ -118,26 +121,34 @@ fn fill(telemetry: &Telemetry) {
     }
 }
 
-fn memory_at_the_reference_bounds_is_bounded() {
+fn resident_memory_at_the_reference_bounds_settles() {
     let telemetry = handle();
+    // Names are made once, before the measurement (in a binary they are in the source).
+    fill(&support::in_memory(0.0));
     let before = rss();
     fill(&telemetry);
     assert_eq!(telemetry.stats().series, 2000);
     let held = rss().saturating_sub(before);
-    // Steady state: a flush empties the rows and keeps the series; filling again reuses them.
-    let _ = telemetry.take_snapshot();
-    let refilled = rss();
-    fill(&telemetry);
-    let regrown = rss().saturating_sub(refilled);
+    // Steady state: a flush frees the rows and the series, and the next fill allocates them
+    // again. The first cycles grow the heap (a flush merges while the taken series are alive);
+    // after that the cycles reuse what was freed: no trend over ten cycles.
+    let mut cycles = Vec::new();
+    for _ in 0..10 {
+        let _ = telemetry.take_snapshot();
+        fill(&telemetry);
+        cycles.push(rss().saturating_sub(before) / 1024);
+    }
+    let early = cycles[..5].iter().copied().max().unwrap();
+    let late = cycles[5..].iter().copied().max().unwrap();
     eprintln!(
-        "held at the bounds (2000 series, 300 spans, 100 logs): {} KiB resident; \
-         a second fill after a flush: +{} KiB",
-        held / 1024,
-        regrown / 1024
+        "held at the bounds (2000 series, 300 spans, 100 logs): {} KiB resident; after each \
+         flush and refill: {cycles:?} KiB",
+        held / 1024
     );
     // The first fill also counts transient allocations (names built with `format!`, JSON values,
     // redaction) and the allocator touching fresh pages; what stays live at these bounds is about
     // 1.2 MB (2000 series of ~300 bytes plus their hash table, 300 span rows, 100 log rows).
     assert!(held < 4 * 1024 * 1024, "{held}");
-    assert!(regrown < 512 * 1024, "{regrown}");
+    assert!(late * 1024 < 3 * held, "{cycles:?}");
+    assert!(late <= early + 256, "{cycles:?}");
 }

@@ -8,7 +8,7 @@ use crate::logger::{
     ConsoleMessage, ConsoleTarget, Level, LogOptions, Receivers, Sinks, cache_entry,
 };
 use crate::otlp::{self, PosthogConfig};
-use crate::process::{Probe, ProcessSampler};
+use crate::process::{ProcessSampler, WakeProbe};
 use crate::redact::Redactor;
 use crate::span::Span;
 use crate::trace::{self, SavedTrace, SpanId, SpanIds, TraceContext, TraceId};
@@ -49,7 +49,9 @@ pub const FLUSH_OFFSET_MS: i64 = 1_000;
 pub const MAX_WORKERS: usize = 128;
 
 /// The reference's enqueue script: newest batch first, at most 100 batches, the excess counted in
-/// the overflow key, one hour of expiry. No loop: bounded by construction.
+/// the overflow key, one hour of expiry for the inbox. Changed: the overflow key gets the same
+/// hour of expiry each time it grows (the reference left it without one, so it lived forever).
+/// No loop: bounded by construction.
 pub static ENQUEUE: Script = Script::new("ENQUEUE", include_str!("lua/enqueue.lua"));
 
 /// How a process reports. Built by the binary from its configuration; nothing here reads the
@@ -145,8 +147,12 @@ pub enum TelemetryError {
 /// Counters for health pages and tests.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Stats {
-    /// Metric observations, spans, telemetry logs and payloads lost by the pipeline.
+    /// Metric observations, spans and telemetry logs lost by the pipeline (each observation of a
+    /// lost batch counts, not the batch).
     pub pipeline_dropped: u64,
+    /// Batches not sent because they were over the payload limit (their content is counted in
+    /// [`Stats::pipeline_dropped`]; this is the number of batches).
+    pub oversized_batches: u64,
     /// Console lines lost.
     pub console_dropped: u64,
     /// Cache log entries lost (queue full, budget spent, store unavailable or failed).
@@ -159,12 +165,25 @@ pub struct Stats {
     pub payloads_sent: u64,
     /// Cache log entries written.
     pub cache_written: u64,
+    /// Log calls whose data's `Serialize` failed or panicked (logged as `[unserializable]`).
+    pub unserializable: u64,
+    /// Log platforms and channel ids that were not valid identifiers and were replaced by
+    /// [`crate::logger::INVALID_IDENTIFIER`] (not a loss: the entry is still written).
+    pub log_metadata_replaced: u64,
+    /// Log entries not exported to PostHog because they are below
+    /// [`crate::PosthogConfig::min_level`]. A configured choice, not a loss: not part of
+    /// [`Stats::total_dropped`].
+    pub posthog_below_level: u64,
 }
 
 impl Stats {
     /// Everything this process failed to report: the admin page's `telemetry_dropped`.
     pub fn total_dropped(&self) -> u64 {
-        self.pipeline_dropped + self.console_dropped + self.cache_dropped + self.posthog_dropped
+        self.pipeline_dropped
+            + self.console_dropped
+            + self.cache_dropped
+            + self.posthog_dropped
+            + self.unserializable
     }
 }
 
@@ -256,8 +275,9 @@ pub(crate) struct Shared {
     pub(crate) secret: Option<SecretString>,
     pub(crate) min_level: Level,
     pub(crate) clock: Arc<dyn Clock>,
-    /// The wall clock as the probe task last read it (every 20 ms), 0 when it is not running.
-    /// It picks the 10-second bucket of an observation without a clock read per call.
+    /// The wall clock as the probe task last read it, 0 when it is not running. It picks the
+    /// 10-second bucket of an observation without a clock read per call. It is as old as the
+    /// probe's last wake: normally under 20 ms, more when the runtime is starved.
     pub(crate) coarse_ms: AtomicU64,
     pub(crate) metrics: Metrics,
     pub(crate) spans: Rows<SpanRow>,
@@ -265,6 +285,8 @@ pub(crate) struct Shared {
     pub(crate) dropped: AtomicU64,
     pub(crate) payloads_sent: AtomicU64,
     pub(crate) cache_written: AtomicU64,
+    pub(crate) unserializable: AtomicU64,
+    pub(crate) oversized_batches: AtomicU64,
     pub(crate) sinks: Sinks,
     pub(crate) receivers: Mutex<Option<Receivers>>,
     pub(crate) posthog: Mutex<Option<otlp::Exporter>>,
@@ -272,7 +294,7 @@ pub(crate) struct Shared {
     pub(crate) store: Store,
     pub(crate) redactor: Redactor,
     pub(crate) http_exclude: Vec<String>,
-    pub(crate) probe: Probe,
+    pub(crate) wake_probe: WakeProbe,
     pub(crate) inbox_key: String,
     pub(crate) overflow_key: String,
     pub(crate) flushing: tokio::sync::Mutex<()>,
@@ -282,11 +304,12 @@ pub(crate) struct Shared {
 
 /// The process's runtime metric names, built once.
 pub(crate) struct ProcessNames {
-    pub(crate) rss: String,
-    pub(crate) cpu: String,
-    pub(crate) lag: String,
-    pub(crate) dropped: String,
-    pub(crate) uptime: String,
+    pub(crate) rss: &'static str,
+    pub(crate) cpu: &'static str,
+    /// Wire name `<process>.event_loop_p99_ms`.
+    pub(crate) wake_lateness_p99_ms: &'static str,
+    pub(crate) dropped: &'static str,
+    pub(crate) uptime: &'static str,
 }
 
 /// The handle every part of a process reports through. Cheap to clone.
@@ -332,22 +355,27 @@ impl Telemetry {
 
     fn build(config: TelemetryConfig, posthog: Option<otlp::Exporter>) -> Self {
         let export = config.export && config.dragonfly.is_some();
-        let (sinks, receivers) = Sinks::new(
+        let (mut sinks, receivers) = Sinks::new(
             config.console.clone(),
             config.dragonfly.is_some(),
             config.posthog.is_some(),
             config.log_queue,
             config.log_budget,
         );
+        sinks.posthog_min = config
+            .posthog
+            .as_ref()
+            .and_then(|posthog| posthog.min_level);
         let process = label::Label::<60>::clean(&config.process)
             .as_str()
             .to_owned();
+        let name = |suffix: &str| crate::names::intern(&format!("{process}.{suffix}"));
         let names = ProcessNames {
-            rss: format!("{process}.rss_bytes"),
-            cpu: format!("{process}.cpu_cores"),
-            lag: format!("{process}.event_loop_p99_ms"),
-            dropped: format!("{process}.telemetry_dropped"),
-            uptime: format!("{process}.uptime_s"),
+            rss: name("rss_bytes"),
+            cpu: name("cpu_cores"),
+            wake_lateness_p99_ms: name("event_loop_p99_ms"),
+            dropped: name("telemetry_dropped"),
+            uptime: name("uptime_s"),
         };
         Self(Arc::new(Shared {
             service: label::Label::<50>::clean(&config.service)
@@ -367,6 +395,8 @@ impl Telemetry {
             dropped: AtomicU64::new(0),
             payloads_sent: AtomicU64::new(0),
             cache_written: AtomicU64::new(0),
+            unserializable: AtomicU64::new(0),
+            oversized_batches: AtomicU64::new(0),
             sinks,
             receivers: Mutex::new(Some(receivers)),
             posthog: Mutex::new(posthog),
@@ -374,7 +404,7 @@ impl Telemetry {
             store: Store::new(config.dragonfly),
             redactor: Redactor::new(),
             http_exclude: config.http_exclude,
-            probe: Probe::new(),
+            wake_probe: WakeProbe::new(),
             inbox_key: config.inbox_key,
             overflow_key: config.overflow_key,
             flushing: tokio::sync::Mutex::new(()),
@@ -427,9 +457,10 @@ impl Telemetry {
         u64::try_from(self.0.clock.now_ms()).unwrap_or_default()
     }
 
-    /// The time that picks an observation's bucket: the probe's last reading when it runs (at
-    /// most 20 ms old: an observation that close after a boundary lands in the previous bucket),
-    /// otherwise the clock.
+    /// The time that picks an observation's bucket: the probe's last reading when it runs,
+    /// otherwise the clock. The reading is as old as the probe's last wake, normally under 20 ms
+    /// but more when the runtime is starved; an observation made within that age after a
+    /// boundary lands in the previous bucket.
     pub(crate) fn bucket_ms(&self) -> u64 {
         match self.0.coarse_ms.load(Ordering::Relaxed) {
             0 => self.now_ms(),
@@ -446,7 +477,10 @@ impl Telemetry {
     // ---------- metrics ----------
 
     /// One observation with outcome `ok` in the current channel (`observe(kind, name, value)`).
-    pub fn observe(&self, kind: &str, name: &str, value: f64) {
+    ///
+    /// Kinds, names and outcomes are `&'static str`: fixed in the source, never text from a
+    /// request, so the set of series is fixed when the program is compiled ([`crate::names`]).
+    pub fn observe(&self, kind: &'static str, name: &'static str, value: f64) {
         if self.0.export {
             self.record(kind, name, value, "ok", trace::current_channel());
         }
@@ -455,10 +489,10 @@ impl Telemetry {
     /// One observation with an outcome and, when given, a channel (otherwise the current one).
     pub fn observe_with(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         value: f64,
-        outcome: &str,
+        outcome: &'static str,
         channel: Option<&str>,
     ) {
         if self.0.export {
@@ -468,16 +502,16 @@ impl Telemetry {
     }
 
     /// A count of one event (`observe(kind, name, 0)`).
-    pub fn count(&self, kind: &str, name: &str) {
+    pub fn count(&self, kind: &'static str, name: &'static str) {
         self.observe(kind, name, 0.0);
     }
 
     pub(crate) fn record(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         value: f64,
-        outcome: &str,
+        outcome: &'static str,
         channel: Channel,
     ) {
         let key = MetricKey::new(kind, name, &channel, outcome);
@@ -489,18 +523,23 @@ impl Telemetry {
     // ---------- spans ----------
 
     /// Starts a span (`beginSpan(kind, name)`): a child of the current context, or a new trace.
-    pub fn span<'a>(&'a self, kind: &'a str, name: &'a str) -> Span<'a> {
+    pub fn span(&self, kind: &'static str, name: &'static str) -> Span<'_> {
         Span::start(self, kind, name, None)
     }
 
     /// Starts a span for a channel (`beginSpan(kind, name, channel)`).
-    pub fn span_for<'a>(&'a self, kind: &'a str, name: &'a str, channel: &str) -> Span<'a> {
+    pub fn span_for(&self, kind: &'static str, name: &'static str, channel: &str) -> Span<'_> {
         Span::start(self, kind, name, Some(label::channel(channel)))
     }
 
     /// `traced(kind, name, run)`: runs `future` in a new span that ends `error` when it returns
     /// `Err` (or when an outcome was set from inside), `ok` otherwise.
-    pub async fn traced<T, E, F>(&self, kind: &str, name: &str, future: F) -> Result<T, E>
+    pub async fn traced<T, E, F>(
+        &self,
+        kind: &'static str,
+        name: &'static str,
+        future: F,
+    ) -> Result<T, E>
     where
         F: Future<Output = Result<T, E>>,
     {
@@ -539,7 +578,7 @@ impl Telemetry {
 
     /// Ends a span: its metric, and its row when it is sampled, slow (at least one second) or
     /// failed.
-    pub(crate) fn finish_span(&self, span: &FinishedSpan<'_>) {
+    pub(crate) fn finish_span(&self, span: &FinishedSpan) {
         if !self.0.export {
             return;
         }
@@ -566,10 +605,10 @@ impl Telemetry {
     /// A span that already happened (seams that report a duration at the end).
     pub(crate) fn completed_span(
         &self,
-        kind: &str,
-        name: &str,
+        kind: &'static str,
+        name: &'static str,
         duration: Duration,
-        outcome: &str,
+        outcome: &'static str,
         channel: Option<Channel>,
     ) {
         if !self.0.export {
@@ -613,8 +652,12 @@ impl Telemetry {
 
     #[cold]
     fn emit<T: Serialize + ?Sized>(&self, level: Level, data: &T, options: &LogOptions<'_>) {
-        let mut value = serde_json::to_value(data)
-            .unwrap_or_else(|_| serde_json::Value::String("[unserializable]".to_owned()));
+        // Bounded while it is walked; a failing or panicking `Serialize` is contained.
+        let bounded = crate::bounded::to_value(data);
+        if bounded.failed {
+            self.0.unserializable.fetch_add(1, Ordering::Relaxed);
+        }
+        let mut value = bounded.value;
         let size = self.0.redactor.redact(&mut value);
         let context = trace::current();
         let trace_ids = context.as_ref().map(TraceContext::ids);
@@ -656,7 +699,7 @@ impl Telemetry {
                 if options.destination != crate::logger::Destination::Console {
                     drops.cache.fetch_add(1, Ordering::Relaxed);
                 }
-                if self.0.sinks.posthog.is_some() {
+                if self.0.sinks.to_posthog(level) {
                     drops.posthog.fetch_add(1, Ordering::Relaxed);
                 }
             }
@@ -725,7 +768,7 @@ impl Telemetry {
     // ---------- workers ----------
 
     /// The telemetry of one supervised task, reported under `prefix` (see [`crate::worker`]).
-    pub fn worker(&self, prefix: &str) -> Worker {
+    pub fn worker(&self, prefix: &'static str) -> Worker {
         let cell = Arc::new(WorkerCell::new(prefix, self.now_ms()));
         let mut workers = self
             .0
@@ -748,12 +791,16 @@ impl Telemetry {
         let drops = &self.0.sinks.drops;
         Stats {
             pipeline_dropped: self.0.dropped.load(Ordering::Relaxed),
+            oversized_batches: self.0.oversized_batches.load(Ordering::Relaxed),
             console_dropped: drops.console.load(Ordering::Relaxed),
             cache_dropped: drops.cache.load(Ordering::Relaxed),
             posthog_dropped: drops.posthog.load(Ordering::Relaxed),
             series: self.0.metrics.series(),
             payloads_sent: self.0.payloads_sent.load(Ordering::Relaxed),
             cache_written: self.0.cache_written.load(Ordering::Relaxed),
+            unserializable: self.0.unserializable.load(Ordering::Relaxed),
+            log_metadata_replaced: self.0.sinks.replaced.load(Ordering::Relaxed),
+            posthog_below_level: self.0.sinks.posthog_below.load(Ordering::Relaxed),
         }
     }
 
@@ -799,8 +846,17 @@ impl Telemetry {
         }
         let (payloads, oversized) =
             taken.encode(&self.0.service, &self.0.instance, self.now_ms(), uuid);
-        self.lose(oversized);
-        let mut sent = 0;
+        // A batch the consumer would refuse is not sent: its observations are lost.
+        self.lose(oversized.items);
+        self.0
+            .oversized_batches
+            .fetch_add(oversized.batches, Ordering::Relaxed);
+        // Whatever is not acknowledged by the store is lost and counted, also when this future
+        // is dropped half-way (an abort at shutdown).
+        let mut unsent = Unsent {
+            telemetry: self,
+            items: payloads.iter().map(|payload| payload.items).sum(),
+        };
         let send = async {
             let dragonfly = self.0.store.get().await.ok_or(())?;
             for payload in &payloads {
@@ -812,21 +868,14 @@ impl Telemetry {
                     )
                     .await
                     .map_err(|_| ())?;
-                sent += 1;
+                unsent.items -= payload.items;
+                self.0.payloads_sent.fetch_add(1, Ordering::Relaxed);
             }
             Ok::<(), ()>(())
         };
         let ok = matches!(tokio::time::timeout(FLUSH_DEADLINE, send).await, Ok(Ok(())));
-        self.0
-            .payloads_sent
-            .fetch_add(sent as u64, Ordering::Relaxed);
+        drop(unsent);
         if !ok {
-            let lost: u64 = payloads
-                .iter()
-                .skip(sent)
-                .map(|payload| payload.items)
-                .sum();
-            self.lose(lost);
             self.0.store.failed().await;
         }
     }
@@ -873,7 +922,7 @@ impl Telemetry {
                 )));
             }
             if self.0.export {
-                tasks.push(tokio::spawn(crate::process::run_probe(
+                tasks.push(tokio::spawn(crate::process::run_wake_probe(
                     self.clone(),
                     stop.clone(),
                 )));
@@ -889,6 +938,21 @@ impl Telemetry {
     }
 }
 
+/// The items of a flush not yet acknowledged; counted as lost when it goes away.
+struct Unsent<'a> {
+    telemetry: &'a Telemetry,
+    items: u64,
+}
+
+impl Drop for Unsent<'_> {
+    fn drop(&mut self) {
+        self.telemetry.lose(self.items);
+    }
+}
+
+/// How long an aborted background task gets to finish being dropped.
+pub const ABORT_GRACE: Duration = Duration::from_millis(200);
+
 /// The background work started by [`Telemetry::start`].
 pub struct Running {
     telemetry: Telemetry,
@@ -900,7 +964,8 @@ pub struct Running {
 /// What [`Running::shutdown`] managed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ShutdownReport {
-    /// Every task finished its final flush within the deadline.
+    /// Every task finished its final flush within the deadline, none of them had panicked, and
+    /// the console writer reached its flush marker.
     pub clean: bool,
     /// Counters after the final flush.
     pub stats: Stats,
@@ -908,16 +973,23 @@ pub struct ShutdownReport {
 
 impl Running {
     /// Final sample and flush, then drains the log queues, all within `deadline`. Tasks still
-    /// running at the deadline are aborted.
+    /// running at the deadline are aborted and joined (each within [`ABORT_GRACE`]); what an
+    /// aborted task still held (a batch being written, its queue) is counted as dropped. A task
+    /// that panicked makes the report unclean.
     pub async fn shutdown(mut self, deadline: Duration) -> ShutdownReport {
         self.stop.trigger();
         let until = Instant::now() + deadline;
         let mut clean = true;
-        for task in std::mem::take(&mut self.tasks) {
-            let abort = task.abort_handle();
-            if tokio::time::timeout_at(until, task).await.is_err() {
-                abort.abort();
-                clean = false;
+        for mut task in std::mem::take(&mut self.tasks) {
+            match tokio::time::timeout_at(until, &mut task).await {
+                Ok(Ok(())) => {}
+                // It panicked (it is never cancelled from here before the deadline).
+                Ok(Err(_)) => clean = false,
+                Err(_) => {
+                    clean = false;
+                    task.abort();
+                    let _ = tokio::time::timeout(ABORT_GRACE, task).await;
+                }
             }
         }
         if self.console
@@ -937,7 +1009,8 @@ impl Running {
                     Err(_) => break false,
                 }
             };
-            clean &= queued && tokio::time::timeout_at(until, rx).await.is_ok();
+            // `Ok(Err(_))`: the writer thread is gone without reaching the marker.
+            clean &= queued && matches!(tokio::time::timeout_at(until, rx).await, Ok(Ok(())));
             let _ = console.try_send(ConsoleMessage::Stop);
         }
         ShutdownReport {
@@ -978,30 +1051,69 @@ async fn run_exporter(telemetry: Telemetry, stop: Shutdown) {
     telemetry.flush().await;
 }
 
+/// A log queue's receiving end and the batch taken from it. Whatever it still holds when it goes
+/// away (the writer returned, was aborted at shutdown, or panicked) is counted as dropped, and
+/// the queue is closed so later entries are refused and counted by the sender.
+pub(crate) struct Drain {
+    pub(crate) rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+    pub(crate) batch: Vec<Arc<crate::logger::LogRecord>>,
+    telemetry: Telemetry,
+    counter: fn(&crate::logger::LogDrops) -> &AtomicU64,
+}
+
+impl Drain {
+    pub(crate) fn new(
+        telemetry: &Telemetry,
+        rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+        capacity: usize,
+        counter: fn(&crate::logger::LogDrops) -> &AtomicU64,
+    ) -> Self {
+        Self {
+            rx,
+            batch: Vec::with_capacity(capacity),
+            telemetry: telemetry.clone(),
+            counter,
+        }
+    }
+}
+
+impl Drop for Drain {
+    fn drop(&mut self) {
+        self.rx.close();
+        let mut left = self.batch.len() as u64;
+        while self.rx.try_recv().is_ok() {
+            left += 1;
+        }
+        if left > 0 {
+            (self.counter)(&self.telemetry.0.sinks.drops).fetch_add(left, Ordering::Relaxed);
+        }
+    }
+}
+
 async fn run_cache_writer(
     telemetry: Telemetry,
-    mut rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
+    rx: tokio::sync::mpsc::Receiver<Arc<crate::logger::LogRecord>>,
     stop: Shutdown,
 ) {
-    let mut batch = Vec::with_capacity(CACHE_BATCH);
+    let mut drain = Drain::new(&telemetry, rx, CACHE_BATCH, |drops| &drops.cache);
     loop {
         let stopping = tokio::select! {
             biased;
             () = stop.wait() => true,
-            record = rx.recv() => match record {
-                Some(record) => { batch.push(record); false }
+            record = drain.rx.recv() => match record {
+                Some(record) => { drain.batch.push(record); false }
                 None => true,
             },
         };
-        while batch.len() < CACHE_BATCH {
-            match rx.try_recv() {
-                Ok(record) => batch.push(record),
+        while drain.batch.len() < CACHE_BATCH {
+            match drain.rx.try_recv() {
+                Ok(record) => drain.batch.push(record),
                 Err(_) => break,
             }
         }
-        if !batch.is_empty() {
-            write_cache_batch(&telemetry, &batch).await;
-            batch.clear();
+        if !drain.batch.is_empty() {
+            write_cache_batch(&telemetry, &drain.batch).await;
+            drain.batch.clear();
             if stopping {
                 continue;
             }
@@ -1054,6 +1166,51 @@ async fn write_cache_batch(telemetry: &Telemetry, batch: &[Arc<crate::logger::Lo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn running(tasks: Vec<JoinHandle<()>>) -> Running {
+        Running {
+            telemetry: Telemetry::disabled(),
+            stop: Shutdown::new(),
+            tasks,
+            console: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_panicked_background_task_makes_shutdown_unclean() {
+        let ok = running(vec![tokio::spawn(async {})]).shutdown(Duration::from_secs(1));
+        assert!(ok.await.clean);
+        let panicked = tokio::spawn(async { panic!("a background task panicked") });
+        tokio::task::yield_now().await;
+        let report = running(vec![panicked])
+            .shutdown(Duration::from_secs(1))
+            .await;
+        assert!(!report.clean);
+    }
+
+    #[tokio::test]
+    async fn a_task_past_the_deadline_is_aborted_and_joined() {
+        struct Dropped(Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+        let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let guard = Dropped(dropped.clone());
+        let stuck = tokio::spawn(async move {
+            let _guard = guard;
+            std::future::pending::<()>().await;
+        });
+        let started = Instant::now();
+        let report = running(vec![stuck])
+            .shutdown(Duration::from_millis(50))
+            .await;
+        assert!(!report.clean);
+        assert!(started.elapsed() < Duration::from_millis(50) + ABORT_GRACE);
+        // Joined: its state was dropped before shutdown returned.
+        assert!(dropped.load(Ordering::SeqCst));
+    }
 
     #[test]
     fn flushes_land_one_second_after_each_boundary() {

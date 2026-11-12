@@ -406,3 +406,85 @@ fn stored_lists_with_lone_surrogate_escapes_read_as_replacement_characters() {
         "[\"a\u{fffd}b\",\"\u{fffd}\",\"😀😀\",\"new\"]"
     );
 }
+
+#[test]
+fn a_tree_16000_levels_deep_is_an_error_text_not_a_stack_overflow() {
+    let engine = engine_with(&[]);
+    let nested = |levels: usize| format!("{}x{}", "$(upper ".repeat(levels), ")".repeat(levels));
+    // The parser accepts it (up to MAX_NESTING levels, parsed on its own thread).
+    let template = engine
+        .compile(&format!("before {} after *(1 + 1)", nested(16_000)))
+        .unwrap();
+    let rendered = render_template(&engine, &template);
+    let expected = format!(
+        "before [Parse error: {}] after 2",
+        LimitKind::Nesting.message()
+    );
+    assert!(
+        rendered == expected,
+        "got {} bytes: {:?}",
+        rendered.len(),
+        rendered.get(..200)
+    );
+    // The same through evaluate(), and nothing in the tree ran.
+    let program = engine
+        .parse(&format!("%(ran yes) {}", nested(16_000)))
+        .unwrap();
+    let result = block_on(engine.evaluate_program(
+        &program,
+        &Context::default(),
+        State::default(),
+        &mut MemoryHost::new(1),
+    ));
+    assert_eq!(
+        result.unwrap_err(),
+        dima_engine::eval::EvalError::Limit(LimitKind::Nesting)
+    );
+    // Below the limit, every kind of nesting either evaluates or stops with the same error
+    // text; none may overflow the test thread's 2 MiB stack (a debug build spends several
+    // kilobytes per level, so some kinds reach the stack guard before 256 levels).
+    let wrap = |open: &str, inner: &str, close: &str, levels: usize| {
+        format!("{}{inner}{}", open.repeat(levels), close.repeat(levels))
+    };
+    let limit_text = format!("[Parse error: {}]", LimitKind::Nesting.message());
+    for (open, inner, close, levels, value) in [
+        ("$(upper ", "x", ")", 255, "X"),
+        // List-index chains stay at 100 levels: the parser itself overflows a 2 MiB debug
+        // stack at about 130 of them (its 128-level inline ceiling), before evaluation.
+        ("%(*l[", "0", "])", 100, "0"),
+        ("%del(*l[", "0", "])", 100, ""),
+        ("^(*l[", "0", "])", 100, "false"),
+        ("%(a ", "x", ")", 255, ""),
+        ("%(**u(", "caller", "))", 255, ""),
+        ("*(1 ? ", "x", " : 0)", 255, "x"),
+        ("*(1 + ", "1", ")", 255, "256"),
+        ("#(", "x", ")", 255, ""),
+        ("*(\"${", "x", "}\")", 120, "x"),
+    ] {
+        let source = wrap(open, inner, close, levels);
+        let context = Context {
+            user_plan: Plan::Pro,
+            user_login: "caller".into(),
+            ..Context::default()
+        };
+        let mut host = MemoryHost::new(1);
+        host.channel.insert("l".into(), "[\"0\",\"1\"]".into());
+        let text = render(&engine, &source, &context, State::default(), &mut host).text;
+        assert!(
+            text == value || text == limit_text,
+            "{open}: {:?}",
+            text.get(..80)
+        );
+        let shallow = wrap(open, inner, close, 40);
+        let text = render(&engine, &shallow, &context, State::default(), &mut host).text;
+        assert!(text != limit_text, "{open} at 40 levels");
+    }
+    assert!(render_with(&engine, &nested(300), Plan::Pro).contains(LimitKind::Nesting.message()));
+}
+
+fn render_template(engine: &Engine, template: &dima_engine::syntax::CompiledTemplate) -> String {
+    let mut host = MemoryHost::new(1);
+    block_on(engine.render(template, &Context::default(), State::default(), &mut host))
+        .unwrap()
+        .text
+}

@@ -14,8 +14,16 @@ pub struct EvalLimits {
     /// The longest text any value, stored variable or the output may become, in bytes. Text
     /// that doubles in a loop would otherwise grow without bound.
     pub text_bytes: usize,
-    /// AST nesting accepted by [`crate::eval::Engine::evaluate`] (the parser's own ceiling).
+    /// The deepest tree evaluated. The parser accepts up to [`crate::syntax::MAX_NESTING`]
+    /// levels, but the evaluator recurses on the thread's stack, one level per tree level; a
+    /// deeper program is refused before it runs (its segment shows `[Parse error: …]`) and the
+    /// running depth is checked again as a guard. The deepest stored command in the production
+    /// copy has 12 levels.
     pub nesting: usize,
+    /// The most stack, in bytes, an evaluation may use below its entry point before going a
+    /// level deeper; beyond it the expression fails as if it were too deeply nested. Half of
+    /// the 2 MiB stack a tokio worker thread has by default.
+    pub stack_bytes: usize,
 }
 
 impl Default for EvalLimits {
@@ -24,7 +32,8 @@ impl Default for EvalLimits {
             steps: 200_000,
             host_calls: 2_000,
             text_bytes: 256 * 1024,
-            nesting: crate::syntax::HARD_NESTING_CEILING,
+            nesting: 256,
+            stack_bytes: 1024 * 1024,
         }
     }
 }

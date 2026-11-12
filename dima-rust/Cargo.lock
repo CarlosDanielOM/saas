@@ -1508,6 +1508,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-commands"
+version = "0.1.0"
+dependencies = [
+ "bson",
+ "dima-core",
+ "dima-text",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-core"
 version = "0.1.0"
 dependencies = [
@@ -1535,8 +1549,12 @@ dependencies = [
 name = "dima-engine"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bson",
  "dima-core",
  "dima-text",
+ "futures-util",
+ "mongodb",
  "regex",
  "serde",
  "serde_json",
@@ -1650,6 +1668,34 @@ dependencies = [
  "tower-http 0.7.1",
  "unicode-normalization",
  "uuid",
+]
+
+[[package]]
+name = "dima-socketio"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "dima-core",
+ "dima-text",
+ "dima-web",
+ "engineioxide",
+ "flate2",
+ "futures-util",
+ "http",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "tokio-util",
+ "tower 0.5.3",
+ "url",
 ]
 
 [[package]]

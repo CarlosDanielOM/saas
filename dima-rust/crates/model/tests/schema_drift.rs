@@ -87,7 +87,7 @@ fn field_json(field: &Field, fixed_ms: i64) -> Value {
         }
     }
     if let Some(default) = field.default {
-        let value = ejson(default.value.build(fixed_ms));
+        let value = generated_hex(ejson(default.value.build(fixed_ms)), default.function);
         // Mongoose wraps every array default in a function; only the declared value is compared
         // for an implicit `[]` (see `normalize_dump_field`).
         let function = if implicit_array && value == json!([]) {
@@ -138,6 +138,10 @@ fn normalize_dump(value: &mut Value) {
             );
             if let Some(Value::Object(default)) = object.get_mut("default") {
                 default.remove("implicit");
+                let function = default.get("function") == Some(&json!(true));
+                if let Some(value) = default.get_mut("value") {
+                    *value = generated_hex(value.take(), function);
+                }
                 if array_kind && default.get("value") == Some(&json!([])) {
                     default.insert("function".into(), Value::Null);
                 }
@@ -146,6 +150,21 @@ fn normalize_dump(value: &mut Value) {
         }
         Value::Array(items) => items.iter_mut().for_each(normalize_dump),
         _ => {}
+    }
+}
+
+/// A function default that makes a new ObjectId as text (`() => new Types.ObjectId().toString()`)
+/// differs on every call: both sides compare its shape.
+fn generated_hex(value: Value, function: bool) -> Value {
+    match value {
+        Value::String(text)
+            if function
+                && text.len() == 24
+                && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) =>
+        {
+            json!("<new ObjectId as hex>")
+        }
+        other => other,
     }
 }
 
@@ -200,6 +219,9 @@ fn rules_json(info: &CollectionInfo) -> Value {
                 }
                 Check::Custom { message, .. } => {
                     json!({ "path": rule.path, "type": "user defined", "message": message })
+                }
+                Check::CustomWith { declared, .. } => {
+                    json!({ "path": rule.path, "type": "user defined", "message": declared })
                 }
             })
             .collect(),

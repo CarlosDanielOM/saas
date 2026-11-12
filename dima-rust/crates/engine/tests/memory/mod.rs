@@ -293,6 +293,7 @@ pub fn engine_with(extra: &[(&str, Option<f64>)]) -> Engine {
     Engine::new(
         Arc::new(registry),
         Arc::new(dima_engine::permissions::ReferencePermissions),
+        dima_engine::syntax::Limits::default(),
     )
 }
 

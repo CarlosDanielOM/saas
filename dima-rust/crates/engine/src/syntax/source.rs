@@ -1,16 +1,39 @@
-use super::{Diagnostic, DiagnosticCode, HARD_NESTING_CEILING, Limits, ParseStats, Span};
+use super::{
+    BUDGET_BASE, Diagnostic, DiagnosticCode, Limits, MAX_NESTING, NODES_PER_INPUT_BYTE, ParseStats,
+    Span, TOKENS_PER_INPUT_BYTE, WORK_BASE, WORK_PER_INPUT_BYTE,
+};
 use crate::text::sub;
-use std::{ops::Range, sync::Arc};
+use std::{cell::Cell, ops::Range, sync::Arc};
 
-/// Refuses a source longer than the limit, counted in characters (row A2).
+/// Refuses a text to parse that is longer than the input limit, counted in characters (row A2).
 pub(crate) fn check_length(input: &str, limits: Limits) -> Result<(), Diagnostic> {
+    check_chars(
+        input,
+        limits.input_chars,
+        DiagnosticCode::InputLimit,
+        "Input character limit exceeded",
+    )
+}
+
+/// Refuses a stored command text longer than the source limit, counted in characters (row A2).
+pub(crate) fn check_source(input: &str, limits: Limits) -> Result<(), Diagnostic> {
+    check_chars(
+        input,
+        limits.source_chars,
+        DiagnosticCode::SourceLimit,
+        "Source character limit exceeded",
+    )
+}
+
+fn check_chars(
+    input: &str,
+    limit: usize,
+    code: DiagnosticCode,
+    message: &str,
+) -> Result<(), Diagnostic> {
     // A character is at least one byte, so short inputs need no count.
-    if input.len() > limits.source_chars && dima_text::char_len(input) > limits.source_chars {
-        return Err(Diagnostic::new(
-            DiagnosticCode::SourceLimit,
-            "Source character limit exceeded",
-            Span::new(0, input.len()),
-        ));
+    if input.len() > limit && dima_text::char_len(input) > limit {
+        return Err(Diagnostic::new(code, message, Span::new(0, input.len())));
     }
     Ok(())
 }
@@ -59,23 +82,60 @@ impl View {
     }
 }
 
-/// The compilation budget, shared by every nested array, interpolation and template segment.
+/// The budget of one program (a whole parse, or one template segment), shared by every nested
+/// array and interpolation in it. Token, node and work budgets are derived from the program's
+/// length ([`TOKENS_PER_INPUT_BYTE`], [`NODES_PER_INPUT_BYTE`], [`WORK_PER_INPUT_BYTE`]); the
+/// fixed caps in [`Limits`] apply on top.
 pub(crate) struct Budget {
     pub limits: Limits,
     pub stats: ParseStats,
+    /// Bytes the lexer and the array index may visit, nested regions counted again, plus the
+    /// tokens and bytes the parser's own scans visit (loop bodies, interpolations).
+    work: usize,
+    /// What the parser's own scans visited.
+    scanned: usize,
+    /// The nesting this attempt may use on the current thread's stack.
+    stack_nesting: usize,
+    /// Set when the stack, not the nesting limit, refused a level: the program is parsed again
+    /// on a thread with a stack for [`Limits::nesting`].
+    needs_stack: Cell<bool>,
 }
 
 impl Budget {
-    pub fn new(mut limits: Limits) -> Self {
-        limits.nesting = limits.nesting.min(HARD_NESTING_CEILING);
+    pub fn new(mut limits: Limits, bytes: usize, stack_nesting: usize) -> Self {
+        limits.nesting = limits.nesting.min(MAX_NESTING);
+        limits.tokens = limits.tokens.min(
+            bytes
+                .saturating_mul(TOKENS_PER_INPUT_BYTE)
+                .saturating_add(BUDGET_BASE),
+        );
+        limits.nodes = limits.nodes.min(
+            bytes
+                .saturating_mul(NODES_PER_INPUT_BYTE)
+                .saturating_add(BUDGET_BASE),
+        );
         Self {
             limits,
             stats: ParseStats::default(),
+            work: bytes.saturating_mul(WORK_PER_INPUT_BYTE).max(WORK_BASE),
+            scanned: 0,
+            stack_nesting: stack_nesting.min(limits.nesting),
+            needs_stack: Cell::new(false),
         }
     }
 
+    /// Whether the stack refused a level that the nesting limit allows.
+    pub fn needs_stack(&self) -> bool {
+        self.needs_stack.get()
+    }
+
+    /// Checks a level of recursion. Only recursive calls check: an iterative counter (open
+    /// braces in a quoted string, open delimiters in the tokenizer) needs no stack.
     pub fn depth(&self, depth: usize, span: Span) -> Result<(), Diagnostic> {
-        if depth > self.limits.nesting {
+        if depth > self.stack_nesting {
+            if depth <= self.limits.nesting {
+                self.needs_stack.set(true);
+            }
             return Err(Diagnostic::new(
                 DiagnosticCode::NestingLimit,
                 "Nesting limit exceeded",
@@ -83,6 +143,31 @@ impl Budget {
             ));
         }
         Ok(())
+    }
+
+    /// Checks the lexer's and array index's visited bytes against the work budget.
+    pub fn work(&self, span: Span) -> Result<(), Diagnostic> {
+        let used = self
+            .stats
+            .lexed_bytes
+            .saturating_add(self.stats.array_indexed_bytes)
+            .saturating_add(self.scanned);
+        if used > self.work {
+            return Err(Diagnostic::new(
+                DiagnosticCode::WorkLimit,
+                "Parse work limit exceeded",
+                span,
+            ));
+        }
+        Ok(())
+    }
+
+    /// Charges a scan of the parser (tokens or bytes it visited) to the work budget. Loops
+    /// nested in loop bodies and interpolations nested in templates are scanned once per
+    /// enclosing level, as the reference scans them.
+    pub fn scan(&mut self, visited: usize, span: Span) -> Result<(), Diagnostic> {
+        self.scanned = self.scanned.saturating_add(visited);
+        self.work(span)
     }
 
     pub fn token(&mut self, span: Span) -> Result<(), Diagnostic> {

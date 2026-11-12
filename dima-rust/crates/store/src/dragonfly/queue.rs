@@ -7,9 +7,11 @@
 //! copy ([`QueueItem::parse`]), and every operation that removes, acknowledges or requeues takes
 //! the item itself, never a parsed value.
 //!
-//! Items Rust creates are written with [`QueueItem::encode`]: `JSON.stringify` bytes
-//! ([`dima_text::to_js_json_from`]) of a struct whose fields follow the producer's object, absent
-//! optional fields skipped (`#[serde(skip_serializing_if = "Option::is_none")]`).
+//! Items Rust creates are written with [`QueueItem::encode`]. The encoding is Rust's own (queues
+//! are drained at the cutover, `MIGRATION.md` section 3): compact JSON from one deterministic
+//! writer, so the same value always gives the same bytes. Nothing depends on it matching what
+//! Node's `JSON.stringify` would write; that it currently does for plain values is incidental.
+//! What matters is that acknowledgement and requeue use the popped bytes, never a re-encoding.
 //!
 //! Direction is part of the contract and differs per queue (ledger, "Queues"); [`presets`] lists
 //! the reference's list queues. Two are newest-first (`LPUSH` + head pop): `cron:jobs:queue` and
@@ -18,10 +20,12 @@
 use super::blocking::BlockingConnection;
 use super::client::Dragonfly;
 use super::commands::{End, reply};
-use super::error::Result;
+use super::error::{DragonflyError, Result};
+use super::script::Script;
 use dima_text::{number_to_string, sanitize_lone_surrogates, to_js_json, to_js_json_from};
 use serde::de::{Deserialize, DeserializeOwned};
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 /// One queue element, exactly as stored.
@@ -44,14 +48,15 @@ impl QueueItem {
         Self { raw }
     }
 
-    /// A new item Rust creates: `JSON.stringify` bytes of `value` (see the module docs).
+    /// A new item Rust creates: compact JSON of `value`, Rust's own deterministic encoding (see
+    /// the module docs).
     pub fn encode<T: serde::Serialize + ?Sized>(value: &T) -> Result<Self> {
         Ok(Self {
             raw: to_js_json_from(value)?,
         })
     }
 
-    /// A new item from a JSON value built in Rust, written as `JSON.stringify` would write it.
+    /// A new item from a JSON value built in Rust, with the same writer as [`Self::encode`].
     /// Prefer [`Self::encode`] with a struct; this is for producers that spread free-form data.
     pub fn encode_value(value: &serde_json::Value) -> Self {
         Self {
@@ -73,16 +78,15 @@ impl QueueItem {
     /// `Cow<str>`, `&RawValue`). Strict JSON: a lone surrogate escape (which `JSON.parse` accepts)
     /// is an error here; use [`Self::parse`] for such input.
     pub fn view<'a, T: Deserialize<'a>>(&'a self) -> Result<T> {
-        Ok(serde_json::from_slice(&self.raw)?)
+        super::error::decode(&self.raw)
     }
 
     /// A parsed copy, after replacing lone surrogate escapes with U+FFFD as `JSON.parse` input
     /// is repaired at the edge (text rule 3). The item keeps its original bytes for
-    /// acknowledgement and requeue.
+    /// acknowledgement and requeue. Failures of both are [`super::DragonflyError::Decode`]:
+    /// a category and a position, never the item's text.
     pub fn parse<T: DeserializeOwned>(&self) -> Result<T> {
-        Ok(serde_json::from_slice(&sanitize_lone_surrogates(
-            &self.raw,
-        ))?)
+        super::error::decode(&sanitize_lone_surrogates(&self.raw))
     }
 
     /// Gives up the item and returns its bytes.
@@ -226,6 +230,21 @@ impl ListQueue {
 }
 
 /// The list claimed items wait in until they are acknowledged.
+///
+/// # Unfenced helpers
+///
+/// The helpers here ([`Self::acknowledge_unfenced`], [`Self::recover_one_unfenced`],
+/// [`Self::contains`]) check no owner: any process that holds the item's bytes can remove or
+/// move it, even after its lease (the worker lock) has passed to another process. They are one
+/// command each, so composing them is not atomic either: "check the lease, then `LREM`, then
+/// `LPUSH`" can interleave with another owner's moves. That is enough only where the reference
+/// itself is unfenced (stream memory's success path `LREM processing 1 raw`, its recovery
+/// `RPOPLPUSH` while holding the worker lock).
+///
+/// Wherever the reference fences a transition with a Lua script that first compares the lease
+/// (`clip_recommendation_claims.ts`, the stream memory retry at `stream_memory.worker.ts:399`,
+/// the AI usage receipt claims), use a [`FencedTransition`]: the consumer's own script, run
+/// atomically with the lease check inside it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProcessingList {
     key: Cow<'static, str>,
@@ -243,9 +262,14 @@ impl ProcessingList {
         &self.key
     }
 
-    /// Acknowledges an item: `LREM processing 1 <exact bytes>`. Returns how many were removed
-    /// (0: it was not there, for example already acknowledged or recovered elsewhere).
-    pub async fn acknowledge(&self, dragonfly: &Dragonfly, item: &QueueItem) -> Result<i64> {
+    /// Acknowledges an item without an owner check: `LREM processing 1 <exact bytes>`. Returns
+    /// how many were removed (0: it was not there, for example already acknowledged or recovered
+    /// elsewhere). Unfenced (see the type docs); a fenced queue uses a [`FencedTransition`].
+    pub async fn acknowledge_unfenced(
+        &self,
+        dragonfly: &Dragonfly,
+        item: &QueueItem,
+    ) -> Result<i64> {
         reply::int(
             dragonfly
                 .query_value(
@@ -258,9 +282,11 @@ impl ProcessingList {
         )
     }
 
-    /// Recovers one item into `queue` with `RPOPLPUSH processing queue` (the reference's
-    /// recovery for stream memory and clips: the oldest claim goes back to the queue's head).
-    pub async fn recover_one(
+    /// Recovers one item into `queue` with `RPOPLPUSH processing queue` (stream memory's
+    /// recovery: the oldest claim goes back to the queue's head). Unfenced (see the type docs):
+    /// call it only while holding the worker lock, as the reference does; the clip queue's
+    /// recovery checks the lease inside Lua and needs a [`FencedTransition`].
+    pub async fn recover_one_unfenced(
         &self,
         dragonfly: &Dragonfly,
         queue: &ListQueue,
@@ -287,6 +313,107 @@ impl ProcessingList {
             )
             .await?;
         Ok(!matches!(value, redis::Value::Nil))
+    }
+}
+
+/// Who may move a processing list's items: the lease key and the owner token stored in it.
+#[derive(Clone, Copy, Debug)]
+pub struct Fence<'a> {
+    /// The lease key (the worker lock), `KEYS[1]` of a [`FencedTransition`].
+    pub lease_key: &'a str,
+    /// The token this process stored in it, `ARGV[1]`.
+    pub owner: &'a [u8],
+}
+
+/// How a [`FencedTransition`] ended.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Transition {
+    /// The script answered `-1`: the lease is not ours (any more), and nothing was changed.
+    LeaseLost,
+    /// The lease held and the script ran; its reply, decoded by the caller.
+    Applied(redis::Value),
+}
+
+/// A consumer's own owner-fenced transition on a processing list (acknowledge, retry, dead
+/// letter, recover), run as one Lua script so the lease check and the moves are atomic.
+///
+/// The layout is the reference's (`clip_recommendation_claims.ts`: "KEYS start with the worker
+/// lock and processing list; ARGV start with owner and raw claim"), so its scripts are reused
+/// verbatim:
+///
+/// - `KEYS[1]` the lease key, `KEYS[2]` the processing list, then the caller's keys;
+/// - `ARGV[1]` the owner token, `ARGV[2]` the item's exact bytes, then the caller's arguments;
+/// - the script starts with `if redis.call('GET', KEYS[1]) ~= ARGV[1] then return -1 end`,
+///   and `-1` means [`Transition::LeaseLost`].
+///
+/// It runs through [`Script::run_value`], which refuses scripts with unbounded loops
+/// (`MIGRATION.md` data rule 7); [`Self::check`] also refuses a script that never reads
+/// `KEYS[1]` and `ARGV[1]`. Register each as a `static`, one `.lua` file per script:
+///
+/// ```ignore
+/// pub static REQUEUE: FencedTransition =
+///     FencedTransition::new("STREAM_MEMORY_REQUEUE", include_str!("lua/stream_memory_requeue.lua"));
+/// ```
+#[derive(Debug)]
+pub struct FencedTransition {
+    script: Script,
+}
+
+impl FencedTransition {
+    /// A transition from its embedded source; `name` is the reference's name for it.
+    pub const fn new(name: &'static str, source: &'static str) -> Self {
+        Self {
+            script: Script::new(name, source),
+        }
+    }
+
+    /// The script.
+    pub fn script(&self) -> &Script {
+        &self.script
+    }
+
+    /// Refuses a script with an unbounded loop or one that does not read its fence.
+    pub fn check(&self) -> Result<()> {
+        self.script.check()?;
+        let source = self.script.source();
+        if !(source.contains("KEYS[1]") && source.contains("ARGV[1]")) {
+            return Err(DragonflyError::ScriptRefused {
+                name: self.script.name(),
+                reason: "a fenced transition must compare KEYS[1] (the lease) with ARGV[1] (the owner)",
+            });
+        }
+        Ok(())
+    }
+
+    /// Runs the transition for `item` under `fence` (see the type docs for the layout).
+    /// `keys` and `args` follow the fixed ones. A lost reply leaves the outcome unknown
+    /// ([`DragonflyError::outcome_unknown`]): read the lists to learn what happened.
+    pub async fn run(
+        &self,
+        dragonfly: &Dragonfly,
+        fence: Fence<'_>,
+        processing: &ProcessingList,
+        item: &QueueItem,
+        keys: &[&str],
+        args: &[&[u8]],
+    ) -> Result<Transition> {
+        self.check()?;
+        let mut all_keys: Vec<&[u8]> = Vec::with_capacity(2 + keys.len());
+        all_keys.push(fence.lease_key.as_bytes());
+        all_keys.push(processing.key().as_bytes());
+        all_keys.extend(keys.iter().map(|key| key.as_bytes()));
+        let mut all_args: Vec<&[u8]> = Vec::with_capacity(2 + args.len());
+        all_args.push(fence.owner);
+        all_args.push(item.as_bytes());
+        all_args.extend_from_slice(args);
+        match self
+            .script
+            .run_value(dragonfly, &all_keys, &all_args)
+            .await?
+        {
+            redis::Value::Int(-1) => Ok(Transition::LeaseLost),
+            value => Ok(Transition::Applied(value)),
+        }
     }
 }
 
@@ -319,18 +446,37 @@ impl DelayQueue {
             .await
     }
 
-    /// Members due between `min` and `max` inclusive, lowest score first (`ZRANGEBYSCORE key min
-    /// max`; the reference reads `0 .. now` and slices the batch itself).
-    pub async fn due(&self, dragonfly: &Dragonfly, min: f64, max: f64) -> Result<Vec<QueueItem>> {
+    /// At most `limit` members due between `min` and `max` inclusive, lowest score first
+    /// (`ZRANGEBYSCORE key min max LIMIT 0 limit`). The limit is sent to the server, so one call
+    /// never reads more than `limit` members however far behind the queue is. The reference reads
+    /// every due member (`0 .. now`) and slices its batch in memory; the batch it then works on is
+    /// the same. A caller that needs every due member loops: claim (remove) the batch, then ask
+    /// again until a call returns fewer than `limit`.
+    pub async fn due(
+        &self,
+        dragonfly: &Dragonfly,
+        min: f64,
+        max: f64,
+        limit: NonZeroUsize,
+    ) -> Result<Vec<QueueItem>> {
         let value = dragonfly
             .query_value(
                 redis::cmd("ZRANGEBYSCORE")
                     .arg(self.key.as_ref())
                     .arg(number_to_string(min))
-                    .arg(number_to_string(max)),
+                    .arg(number_to_string(max))
+                    .arg("LIMIT")
+                    .arg(0)
+                    .arg(limit.get()),
             )
             .await?;
-        reply::array(value)?
+        let members = reply::array(value)?;
+        if members.len() > limit.get() {
+            return Err(super::DragonflyError::Reply(
+                "ZRANGEBYSCORE returned more members than its LIMIT",
+            ));
+        }
+        members
             .into_iter()
             .map(|member| reply::bytes(member).map(QueueItem::from_popped))
             .collect()
@@ -374,9 +520,10 @@ pub mod presets {
     pub const CRON_JOBS_DEAD_LETTER: &str = "cron:jobs:dead-letter";
 
     /// `cron:stream-memory:queue`: `LPUSH` (Lua `PUBLISH_DURABLE_CRON_JOB`) + `BLMOVE LEFT RIGHT`
-    /// into the processing list = **newest first**. Acknowledge is `LREM processing 1 raw`; the
-    /// owner-checked requeue moves the raw item back with `LPUSH` (head); recovery is
-    /// `RPOPLPUSH processing queue`.
+    /// into the processing list = **newest first**. Acknowledge is `LREM processing 1 raw`
+    /// ([`ProcessingList::acknowledge_unfenced`]); the owner-checked requeue (Lua, moves the raw
+    /// item back with `LPUSH` to the head) is a [`super::FencedTransition`] of the worker's;
+    /// recovery is `RPOPLPUSH processing queue` under the worker lock.
     pub const STREAM_MEMORY: ListQueue =
         ListQueue::new(Borrowed("cron:stream-memory:queue"), End::Left, End::Left);
     /// `cron:stream-memory:processing` (claims inserted at the tail).
@@ -387,7 +534,7 @@ pub mod presets {
 
     /// `cron:clip-recommendations:queue`: `LPUSH` + `BLMOVE RIGHT LEFT` = oldest first. Every
     /// later transition (acknowledge, requeue, dead letter, recover) is owner-fenced Lua
-    /// (`CLIP_CLAIM_SCRIPTS`), ported with the clip worker, not here.
+    /// (`CLIP_CLAIM_SCRIPTS`): [`super::FencedTransition`]s ported with the clip worker.
     pub const CLIP_RECOMMENDATIONS: ListQueue = ListQueue::new(
         Borrowed("cron:clip-recommendations:queue"),
         End::Left,
@@ -434,8 +581,9 @@ mod tests {
         attempt: f64,
     }
 
+    /// Pins Rust's own encoding (stable bytes for the same value), not Node's.
     #[test]
-    fn encode_writes_javascript_bytes() {
+    fn encode_is_deterministic_compact_json() {
         let item = QueueItem::encode(&Job {
             id: "a\"/\u{2028}é",
             absent: None,

@@ -1,20 +1,31 @@
 //! Shared helpers for the `dragonfly_*` tests: the local Dragonfly from `DIMA_TEST_DRAGONFLY`,
-//! logical databases 10 to 15 only, a unique key prefix per test, and clean-up of what it made.
+//! logical databases 8 to 11 only (the range these tests own on the shared server), a unique key
+//! prefix per test, and clean-up of what it made. With `DIMA_TEST_REQUIRE_STORES=1` (set by
+//! `tools/test-env`, `MIGRATION.md` section 8) a missing server fails the test instead of skipping.
 #![allow(dead_code)]
 
 use anyhow::{Context, Result};
-use dima_store::dragonfly::{Dragonfly, DragonflyConfig, Hooks};
+use dima_store::dragonfly::{Dragonfly, DragonflyConfig, Event, Hooks, Message};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Settings for logical database `db` (10 to 15), or `None` (with a message) when
-/// `DIMA_TEST_DRAGONFLY` is not set.
+/// `DIMA_TEST_REQUIRE_STORES=1`: a test that needs the server must fail when it is missing.
+pub fn stores_required() -> bool {
+    std::env::var("DIMA_TEST_REQUIRE_STORES").is_ok_and(|value| value == "1")
+}
+
+/// Settings for logical database `db` (8 to 11), or `None` (with a message) when
+/// `DIMA_TEST_DRAGONFLY` is not set. Panics (fails the test) instead when stores are required.
 pub fn config(db: u8) -> Option<DragonflyConfig> {
     assert!(
-        (10..=15).contains(&db),
-        "tests use logical databases 10 to 15 only"
+        (8..=11).contains(&db),
+        "tests use logical databases 8 to 11 only"
     );
     let Ok(address) = std::env::var("DIMA_TEST_DRAGONFLY") else {
+        assert!(
+            !stores_required(),
+            "DIMA_TEST_DRAGONFLY is not set but DIMA_TEST_REQUIRE_STORES=1: a missing store fails the test"
+        );
         eprintln!("skipped: DIMA_TEST_DRAGONFLY is not set (eval \"$(dima-rust/tools/test-env)\")");
         return None;
     };
@@ -79,3 +90,11 @@ pub const AWKWARD_TEXT: &[&str] = &[
     "slash / and \u{2028} separator \u{7}",
     "",
 ];
+
+/// The message of a received event; an error for a gap marker or the end of the stream.
+pub fn expect_message(event: Option<Event>) -> Result<Message> {
+    match event {
+        Some(Event::Message(message)) => Ok(message),
+        other => anyhow::bail!("expected a message, got {other:?}"),
+    }
+}

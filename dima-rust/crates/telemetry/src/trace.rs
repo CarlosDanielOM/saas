@@ -7,7 +7,7 @@
 //! (`restoreContext`). A task that was spawned without it simply has no context, like a callback
 //! the reference runs outside `context.run`.
 
-use crate::label::{self, Channel, Label, OUTCOME_MAX};
+use crate::label::{self, Channel};
 use dima_core::SecretString;
 use dima_core::crypto::keys::{trace_signature, verify_trace_signature};
 use serde::{Deserialize, Serialize};
@@ -179,7 +179,7 @@ pub struct SpanIds {
 pub struct TraceContext {
     ids: SpanIds,
     channel: Cell<Channel>,
-    outcome: Cell<Label<OUTCOME_MAX>>,
+    outcome: Cell<Option<&'static str>>,
     link: Option<Arc<Link>>,
 }
 
@@ -191,7 +191,7 @@ pub(crate) struct Link {
     pub(crate) parent: Option<SpanId>,
     pub(crate) at: u64,
     pub(crate) channel: Mutex<Channel>,
-    pub(crate) outcome: Mutex<Label<OUTCOME_MAX>>,
+    pub(crate) outcome: Mutex<Option<&'static str>>,
 }
 
 impl Clone for TraceContext {
@@ -225,7 +225,7 @@ impl TraceContext {
         Self {
             ids,
             channel: Cell::new(channel),
-            outcome: Cell::new(Label::EMPTY),
+            outcome: Cell::new(None),
             link: None,
         }
     }
@@ -236,7 +236,7 @@ impl TraceContext {
             parent,
             at,
             channel: Mutex::new(Channel::EMPTY),
-            outcome: Mutex::new(Label::EMPTY),
+            outcome: Mutex::new(None),
         });
         let context = Self {
             link: Some(link.clone()),
@@ -268,7 +268,8 @@ impl TraceContext {
         }
     }
 
-    fn set_outcome(&self, outcome: Label<OUTCOME_MAX>) {
+    fn set_outcome(&self, outcome: &'static str) {
+        let outcome = Some(outcome);
         self.outcome.set(outcome);
         if let Some(link) = &self.link {
             *link.outcome.lock().unwrap_or_else(PoisonError::into_inner) = outcome;
@@ -286,9 +287,8 @@ impl TraceContext {
     }
 
     /// The outcome set from inside the span, if any.
-    pub fn outcome(&self) -> Option<Label<OUTCOME_MAX>> {
-        let outcome = self.outcome.get();
-        (!outcome.is_empty()).then_some(outcome)
+    pub fn outcome(&self) -> Option<&'static str> {
+        self.outcome.get()
     }
 
     /// Runs `future` with this context as the current one.
@@ -325,9 +325,9 @@ pub fn bind_channel(channel: &str) {
     let _ = CONTEXT.try_with(|context| context.set_channel(channel));
 }
 
-/// `traceOutcome`: sets the outcome the current span ends with.
-pub fn set_outcome(outcome: &str) {
-    let outcome = Label::clean(outcome);
+/// `traceOutcome`: sets the outcome the current span ends with. Outcomes are fixed labels from
+/// the source (`&'static str`), never text from a request.
+pub fn set_outcome(outcome: &'static str) {
     let _ = CONTEXT.try_with(|context| context.set_outcome(outcome));
 }
 
@@ -453,6 +453,13 @@ pub fn sign(secret: &SecretString, ids: &SpanIds) -> Option<(HexId<55>, String)>
 
 /// The remote parent of an incoming request: trusted only when the signature verifies, so public
 /// callers cannot force capture or join a trace.
+///
+/// The signature covers the `traceparent` text only: it has no expiry and no audience, so a
+/// header captured from one of our calls can be replayed. That is accepted: a replayed header can
+/// only make the request continue that trace, sampled or not as the header says, so the most it
+/// can do is force the capture of that request's spans. Those spans carry only fixed names,
+/// validated channel ids and durations, and are bounded and aggregated like any others (300 per
+/// flush, then dropped and counted); the header grants no access and reveals nothing.
 pub fn verify(
     secret: Option<&SecretString>,
     traceparent: &str,

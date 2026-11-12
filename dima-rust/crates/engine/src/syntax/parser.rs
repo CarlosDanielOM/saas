@@ -23,7 +23,8 @@ pub(crate) struct Built {
 }
 
 pub(crate) struct Parser<'a, 'b> {
-    pub tokens: &'a Tokens,
+    /// The arena. Loop headers append filtered copies of their tokens to it (see [`Self::single`]).
+    pub tokens: &'a mut Tokens,
     pub grammar: &'a PreparedGrammar,
     pub budget: &'b mut Budget,
 }
@@ -138,18 +139,20 @@ impl Parser<'_, '_> {
     }
 
     /// `parseTokensToSingleNode`: one expression, or a root of several.
+    ///
+    /// The reference parses the rest of the header after the first expression from a copy of
+    /// its tokens without any `;`, `)` or `}` (`tokens.slice(…).filter(…)`), so a call's closer in
+    /// `a $(upper b) c` is gone and `c` becomes another argument of `upper`.
     fn single(&mut self, range: Range<usize>, depth: usize) -> Result<Built, Diagnostic> {
         if range.is_empty() {
             return self.literal("", range.start);
         }
-        let (first, mut i) = self.star(range.start, range.end, 0, depth)?;
-        while i < range.end && matches!(self.text(i, range.end), ";" | ")" | "}") {
-            i = self.next(i);
-        }
-        if i >= range.end {
+        let (first, i) = self.star(range.start, range.end, 0, depth)?;
+        let rest = self.filtered(i..range.end);
+        if rest.is_empty() {
             return Ok(first);
         }
-        let (rest, rest_depth) = self.nodes(i..range.end, depth)?;
+        let (rest, rest_depth) = self.nodes(rest, depth)?;
         let max = first.depth.max(rest_depth);
         let mut children = Vec::with_capacity(rest.len() + 1);
         children.push(first.node);
@@ -157,13 +160,37 @@ impl Parser<'_, '_> {
         self.make(AstNode::Root { children }, max, range.start)
     }
 
+    /// Appends to the arena a copy of the top-level tokens of `range` without `;`, `)` and `}`
+    /// and returns where the copy is. An array or a quoted string is one token in the
+    /// reference, so only top-level tokens are filtered; a copied array keeps pointing at its
+    /// items where they are. Each token is copied at most once: a loop inside the copy cannot
+    /// find the `}` of its body (all of them are gone), so it never filters again, and a loop
+    /// inside an array item filters that item's own tokens.
+    fn filtered(&mut self, range: Range<usize>) -> Range<usize> {
+        let start = self.tokens.tokens.len();
+        let mut i = range.start;
+        while i < range.end {
+            let next = self.next(i);
+            if !matches!(self.text(i, range.end), ";" | ")" | "}")
+                && let Some(token) = self.tokens.tokens.get(i)
+            {
+                let mut copy = token.clone();
+                copy.next = self.tokens.tokens.len() + 1;
+                self.tokens.tokens.push(copy);
+            }
+            i = next;
+        }
+        start..self.tokens.tokens.len()
+    }
+
     /// `parseExpression`.
     fn expression(&mut self, i: usize, end: usize, depth: usize) -> Parsed {
         self.budget.depth(depth, self.span(i))?;
         if i >= end {
             // The reference throws a TypeError here (`unescapeLiteral(undefined)`); only a user
-            // selector left open at the end of an array item gets here.
-            return Ok((self.literal("", i)?, self.next(i)));
+            // selector left open at the end of an array item gets here, and [`Self::variable`]
+            // reports that first. An enclosing interpolation turns the error into its text.
+            return Err(missing_user_selector(self.span(i)));
         }
         let token = self.text(i, end);
         if matches!(token, ";" | "}" | ")") {
@@ -498,6 +525,10 @@ impl Parser<'_, '_> {
         let mut user_selector = None;
         let mut max_depth = 0;
         if storage.is_user_scoped() && self.text(i, end) == "(" {
+            if self.next(i) >= end {
+                // `parseExpression(tokens, i + 1)` past the last token throws a TypeError.
+                return Err(missing_user_selector(self.span(i)));
+            }
             let (selector, next) = self.expression(self.next(i), end, depth)?;
             max_depth = max_depth.max(selector.depth);
             user_selector = Some(Box::new(selector.node));
@@ -600,7 +631,20 @@ impl Parser<'_, '_> {
 
     /// `findTopLevelToken`: the first `target` outside parentheses, brackets and braces. A token
     /// whose reference string ends with `(` opens a parenthesis.
-    fn top_level(&self, target: &str, start: usize, end: usize) -> Option<usize> {
+    fn top_level(
+        &mut self,
+        target: &str,
+        start: usize,
+        end: usize,
+    ) -> Result<Option<usize>, Diagnostic> {
+        let found = self.find_top_level(target, start, end);
+        let stop = found.unwrap_or(end);
+        self.budget
+            .scan(stop.saturating_sub(start), self.span(start))?;
+        Ok(found)
+    }
+
+    fn find_top_level(&self, target: &str, start: usize, end: usize) -> Option<usize> {
         let (mut parens, mut brackets, mut braces) = (0usize, 0usize, 0usize);
         let mut i = start;
         while i < end {
@@ -651,7 +695,7 @@ impl Parser<'_, '_> {
             ));
         }
         let mode_at = self.next(name_at);
-        let Some(body_start) = self.top_level("{", mode_at, end) else {
+        let Some(body_start) = self.top_level("{", mode_at, end)? else {
             return Ok((
                 self.literal(error("missing loop body"), start)?,
                 self.next(start),
@@ -669,6 +713,8 @@ impl Parser<'_, '_> {
             closing = body_end;
             body_end = self.next(body_end);
         }
+        self.budget
+            .scan(body_end.saturating_sub(body_start), self.span(start))?;
         if braces != 0 {
             return Ok((
                 self.literal(error("unclosed loop body"), start)?,
@@ -683,8 +729,11 @@ impl Parser<'_, '_> {
             iterable = Some(Box::new(value.node));
             LoopMode::Foreach
         } else {
-            let first = self.top_level(";", mode_at, body_start);
-            let second = first.and_then(|first| self.top_level(";", self.next(first), body_start));
+            let first = self.top_level(";", mode_at, body_start)?;
+            let second = match first {
+                Some(first) => self.top_level(";", self.next(first), body_start)?,
+                None => None,
+            };
             let (Some(first), Some(second)) = (first, second) else {
                 return Ok((
                     self.literal(error("invalid range loop syntax"), start)?,
@@ -747,16 +796,13 @@ impl Parser<'_, '_> {
             let mut end = opening + 2;
             while end < range.end && braces > 0 {
                 match byte(&text, end) {
-                    b'{' => {
-                        braces += 1;
-                        self.budget
-                            .depth(depth + braces, view.span(opening..end + 1))?;
-                    }
+                    b'{' => braces += 1,
                     b'}' => braces -= 1,
                     _ => {}
                 }
                 end += 1;
             }
+            self.budget.scan(end - i, view.span(opening..end))?;
             if braces != 0 {
                 segments.push(TemplateSegment::Text {
                     value: sub(&text, opening..range.end).into(),
@@ -764,6 +810,12 @@ impl Parser<'_, '_> {
                 break;
             }
             let inner = opening + 2..end - 1;
+            // The reference's `try` also catches a stack overflow (`RangeError`) and shows the
+            // interpolation's text; a nesting limit here stands for it ([`MAX_NESTING`] is above
+            // the deepest nesting the reference parses). Other resource limits fail the program.
+            let caught = |error: &Diagnostic, budget: &Budget| {
+                error.code == DiagnosticCode::NestingLimit && !budget.needs_stack()
+            };
             match tokenize(
                 view.clone(),
                 inner.clone(),
@@ -771,6 +823,9 @@ impl Parser<'_, '_> {
                 self.budget,
                 depth,
             ) {
+                Err(error) if caught(&error, self.budget) => segments.push(TemplateSegment::Text {
+                    value: format!("[Parse error: {}]", sub(&text, inner)),
+                }),
                 Err(error) if error.is_resource_limit() => return Err(error),
                 Err(error) => segments.push(TemplateSegment::Text {
                     value: format!("[Parse error: {}]", error.message),
@@ -778,13 +833,19 @@ impl Parser<'_, '_> {
                 Ok(tokens) if tokens.range.is_empty() => segments.push(TemplateSegment::Text {
                     value: String::new(),
                 }),
-                Ok(tokens) => {
+                Ok(mut tokens) => {
+                    let range = tokens.range.clone();
                     let mut parser = Parser {
-                        tokens: &tokens,
+                        tokens: &mut tokens,
                         grammar: self.grammar,
                         budget: self.budget,
                     };
-                    match parser.star(tokens.range.start, tokens.range.end, 0, depth) {
+                    match parser.star(range.start, range.end, 0, depth) {
+                        Err(error) if caught(&error, parser.budget) => {
+                            segments.push(TemplateSegment::Text {
+                                value: format!("[Parse error: {}]", sub(&text, inner)),
+                            });
+                        }
                         Err(error) if error.is_resource_limit() => return Err(error),
                         // The reference catches the throw and shows the expression's text.
                         Err(_) => segments.push(TemplateSegment::Text {
@@ -806,6 +867,14 @@ impl Parser<'_, '_> {
         }
         self.make(AstNode::Template { segments }, max_depth, at)
     }
+}
+
+fn missing_user_selector(span: Span) -> Diagnostic {
+    Diagnostic::new(
+        DiagnosticCode::MissingUserSelector,
+        "Missing user selector",
+        span,
+    )
 }
 
 /// `/^[a-zA-Z_][a-zA-Z0-9_]*$/`.

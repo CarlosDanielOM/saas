@@ -4,6 +4,7 @@ use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
 use super::frame::{Frames, Scalars};
+use super::stack::StackBase;
 use super::{Engine, EvalError, EvalStats, LimitKind};
 use crate::context::{
     BudgetSnapshot, CommandReference, Context, LoopExit, Origin, ReferenceAuthorization,
@@ -14,7 +15,8 @@ use crate::host::{Host, HostCall, HostFuture};
 use crate::map::OrderedMap;
 use crate::registry::{Builtin, FunctionKind};
 use crate::syntax::{
-    ArrayAccessor, AstNode, BinaryOp, LoopMode, TemplateSegment, UnaryOp, VariableStorage,
+    ArrayAccessor, AstNode, BinaryOp, LoopAssignOp, LoopMode, TemplateSegment, UnaryOp,
+    VariableStorage,
 };
 use crate::value::Value;
 use dima_text::{to_lower, trim};
@@ -41,18 +43,21 @@ pub(super) struct Run<'a> {
     pub(super) state: State,
     pub(super) frames: Frames,
     pub(super) stats: EvalStats,
+    /// How deep the evaluation recursion is.
+    depth: usize,
+    /// Where the current poll's stack started.
+    stack: StackBase,
 }
 
-/// Whether `node` nests deeper than `limit` (checked without recursion).
+/// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
+/// accepted at any depth is measured safely).
 pub(super) fn depth_exceeds(node: &AstNode, limit: usize) -> bool {
-    let mut pending = vec![(node, 0usize)];
+    let mut pending = vec![(node, 1usize)];
     while let Some((node, depth)) = pending.pop() {
         if depth > limit {
             return true;
         }
-        for child in children(node) {
-            pending.push((child, depth + 1));
-        }
+        children(node, |child| pending.push((child, depth + 1)));
     }
     false
 }
@@ -68,25 +73,29 @@ fn accessor_index(accessor: Option<&ArrayAccessor>) -> Option<&AstNode> {
     }
 }
 
-fn children(node: &AstNode) -> Vec<&AstNode> {
-    let mut out: Vec<&AstNode> = Vec::new();
+/// Calls `visit` with each child of `node`.
+fn children<'a>(node: &'a AstNode, mut visit: impl FnMut(&'a AstNode)) {
     match node {
         AstNode::Root { children: nodes }
         | AstNode::Function { args: nodes, .. }
-        | AstNode::CommandRef { args: nodes, .. }
-        | AstNode::ArrayLiteral { items: nodes, .. } => out.extend(nodes.iter()),
-        _ => {}
-    }
-    match node {
+        | AstNode::CommandRef { args: nodes, .. } => nodes.iter().for_each(visit),
+        AstNode::ArrayLiteral { items, accessor } => {
+            items.iter().for_each(&mut visit);
+            accessor_index(accessor.as_ref())
+                .into_iter()
+                .for_each(visit);
+        }
         AstNode::SetVar {
             value,
             accessor,
             user_selector,
             ..
         } => {
-            out.push(value);
-            out.extend(user_selector.as_deref());
-            out.extend(accessor_index(accessor.as_ref()));
+            visit(value);
+            user_selector.as_deref().into_iter().for_each(&mut visit);
+            accessor_index(accessor.as_ref())
+                .into_iter()
+                .for_each(visit);
         }
         AstNode::GetVar {
             accessor,
@@ -103,24 +112,33 @@ fn children(node: &AstNode) -> Vec<&AstNode> {
             user_selector,
             ..
         } => {
-            out.extend(user_selector.as_deref());
-            out.extend(accessor_index(accessor.as_ref()));
+            user_selector.as_deref().into_iter().for_each(&mut visit);
+            accessor_index(accessor.as_ref())
+                .into_iter()
+                .for_each(visit);
         }
-        AstNode::ArrayLiteral { accessor, .. } => out.extend(accessor_index(accessor.as_ref())),
-        AstNode::Binary { left, right, .. } => out.extend([left.as_ref(), right.as_ref()]),
-        AstNode::Unary { argument, .. } => out.push(argument),
+        AstNode::Binary { left, right, .. } => {
+            visit(left);
+            visit(right);
+        }
+        AstNode::Unary { argument, .. } => visit(argument),
         AstNode::Ternary {
             test,
             consequent,
             alternate,
         } => {
-            out.extend([test.as_ref(), consequent.as_ref(), alternate.as_ref()]);
+            visit(test);
+            visit(consequent);
+            visit(alternate);
         }
-        AstNode::Template { segments } => out.extend(segments.iter().filter_map(|s| match s {
-            TemplateSegment::Expr { node } => Some(node),
-            TemplateSegment::Text { .. } => None,
-        })),
-        AstNode::LoopAssign { value, .. } => out.extend(value.as_deref()),
+        AstNode::Template { segments } => {
+            for segment in segments {
+                if let TemplateSegment::Expr { node } = segment {
+                    visit(node);
+                }
+            }
+        }
+        AstNode::LoopAssign { value, .. } => value.as_deref().into_iter().for_each(visit),
         AstNode::ForLoop {
             init,
             condition,
@@ -129,17 +147,13 @@ fn children(node: &AstNode) -> Vec<&AstNode> {
             body,
             ..
         } => {
-            out.extend(
-                [init, condition, update, iterable]
-                    .into_iter()
-                    .flatten()
-                    .map(|n| n.as_ref()),
-            );
-            out.extend(body.iter());
+            for part in [init, condition, update, iterable].into_iter().flatten() {
+                visit(part);
+            }
+            body.iter().for_each(visit);
         }
-        _ => {}
+        AstNode::Literal { .. } | AstNode::LoopVar { .. } | AstNode::Custom { .. } => {}
     }
-    out
 }
 
 /// `parseIterableValue`: a list's items, a JSON list's items, otherwise the text as one item
@@ -162,6 +176,43 @@ fn iterable_values(value: Value) -> Vec<String> {
         Value::Undefined | Value::Null => Vec::new(),
         other => vec![other.into_text()],
     }
+}
+
+/// `String(value ?? '')`, reusing text.
+fn text_of(value: Value) -> String {
+    match value {
+        Value::Text(text) => text,
+        other => other.to_text_or_empty().into_owned(),
+    }
+}
+
+/// Arithmetic or comparison of two evaluated operands.
+fn binary_result(operator: BinaryOp, left: &Value, right: &Value) -> Value {
+    match operator {
+        BinaryOp::Add
+        | BinaryOp::Subtract
+        | BinaryOp::Multiply
+        | BinaryOp::Divide
+        | BinaryOp::Modulo => Value::Text(arithmetic(
+            operator,
+            to_number_safe(left),
+            to_number_safe(right),
+        )),
+        _ => Value::flag(compare(&left.to_text(), operator, &right.to_text())),
+    }
+}
+
+/// A root keeps every value but `undefined` and empty text, joined by spaces.
+fn push_root_value(out: &mut String, first: &mut bool, value: &Value) -> bool {
+    if matches!(value, Value::Undefined) || value.as_str() == Some("") {
+        return false;
+    }
+    if !*first {
+        out.push(' ');
+    }
+    *first = false;
+    out.push_str(&value.to_text());
+    true
 }
 
 /// `snapshotTimerContext`.
@@ -219,6 +270,7 @@ impl<'a> Run<'a> {
         context: &'a Context,
         mut state: State,
         host: &'a mut dyn Host,
+        stack: StackBase,
     ) -> Self {
         let scalars = Scalars {
             count: state.count,
@@ -235,6 +287,8 @@ impl<'a> Run<'a> {
             state,
             frames: Frames::new(scalars, loop_vars),
             stats: EvalStats::default(),
+            depth: 0,
+            stack,
         }
     }
 
@@ -251,6 +305,7 @@ impl<'a> Run<'a> {
     /// After a limit stopped an expression midway: forget the watches it left open.
     pub(super) fn after_limit(&mut self) {
         self.frames.abandon_from(0);
+        self.depth = 0;
     }
 
     // ---- limits ----
@@ -305,28 +360,134 @@ impl<'a> Run<'a> {
 
     // ---- evaluation ----
 
-    /// A root program (or any node) at the top of a run.
-    pub(super) async fn root(&mut self, node: &AstNode) -> Result<Value, EvalError> {
-        self.eval(node).await
+    /// A program (or any node) at the top of a run. A tree deeper than the evaluation's nesting
+    /// limit is refused before anything in it runs, as a parse limit would be.
+    pub(super) async fn program(&mut self, node: &AstNode) -> Result<Value, EvalError> {
+        if depth_exceeds(node, self.engine.limits.nesting) {
+            return Err(EvalError::Limit(LimitKind::Nesting));
+        }
+        self.child(node).await
     }
 
-    /// Evaluates a child; leaves are evaluated in place, the rest through a boxed future (the
-    /// recursion's one allocation per non-leaf node).
-    fn eval<'s>(&'s mut self, node: &'s AstNode) -> HostFuture<'s, Result<Value, EvalError>> {
-        Box::pin(self.node(node))
-    }
-
+    /// Evaluates a child. Leaves are evaluated in place; any other node runs as its own boxed
+    /// future (one allocation per non-leaf node), whose depth is checked against the nesting
+    /// limit as a guard (the stack grows with it: every level polls the one below).
     pub(super) async fn child(&mut self, node: &AstNode) -> Result<Value, EvalError> {
+        self.step()?;
         match node {
+            AstNode::Literal { value } => return Ok(Value::Text(value.clone())),
+            AstNode::LoopVar { name } => return Ok(Value::Text(self.loop_var(name))),
+            _ => {}
+        }
+        if self.depth >= self.engine.limits.nesting
+            || self.stack.used() > self.engine.limits.stack_bytes
+        {
+            return Err(EvalError::Limit(LimitKind::Nesting));
+        }
+        self.depth += 1;
+        let result = self.eval(node).await;
+        self.depth -= 1;
+        self.checked(result?)
+    }
+
+    /// The node's own future. A plain function, so a level of the tree costs only the frames of
+    /// the node's method and of [`Run::child`].
+    fn eval<'s>(&'s mut self, node: &'s AstNode) -> HostFuture<'s, Result<Value, EvalError>> {
+        match node {
+            AstNode::LoopAssign {
+                name,
+                operator,
+                value,
+            } => Box::pin(self.loop_assign(name, *operator, value.as_deref())),
+            AstNode::GetVar {
+                name,
+                storage,
+                accessor,
+                user_selector,
+            } => {
+                Box::pin(self.get_var(name, *storage, accessor.as_ref(), user_selector.as_deref()))
+            }
+            AstNode::SetVar {
+                name,
+                storage,
+                value,
+                accessor,
+                user_selector,
+            } => Box::pin(self.set_var(
+                name,
+                *storage,
+                value,
+                accessor.as_ref(),
+                user_selector.as_deref(),
+            )),
+            AstNode::Exists {
+                name,
+                storage,
+                accessor,
+                user_selector,
+            } => Box::pin(self.exists(name, *storage, accessor.as_ref(), user_selector.as_deref())),
+            AstNode::DeleteVar {
+                name,
+                storage,
+                accessor,
+                user_selector,
+            } => Box::pin(self.delete_var(
+                name,
+                *storage,
+                accessor.as_ref(),
+                user_selector.as_deref(),
+            )),
+            AstNode::Function { name, args } => Box::pin(self.function(name, args)),
+            AstNode::Binary {
+                operator,
+                left,
+                right,
+            } => Box::pin(self.binary(*operator, left, right)),
+            AstNode::Unary { operator, argument } => Box::pin(self.unary(*operator, argument)),
+            AstNode::Ternary {
+                test,
+                consequent,
+                alternate,
+            } => Box::pin(self.ternary(test, consequent, alternate)),
+            AstNode::Template { segments } => Box::pin(self.template(segments)),
+            AstNode::ArrayLiteral { items, accessor } => {
+                Box::pin(self.array_literal(items, accessor.as_ref()))
+            }
+            AstNode::ForLoop {
+                loop_var,
+                mode,
+                init,
+                condition,
+                update,
+                iterable,
+                body,
+            } => Box::pin(self.for_loop(
+                loop_var,
+                *mode,
+                [
+                    init.as_deref(),
+                    condition.as_deref(),
+                    update.as_deref(),
+                    iterable.as_deref(),
+                ],
+                body,
+            )),
+            AstNode::CommandRef { command_name, args } => {
+                Box::pin(self.command_ref(command_name, args))
+            }
+            AstNode::Root { children } => Box::pin(self.root(children)),
+            AstNode::Custom { custom_type, .. } => {
+                let value = Value::Text(format!("[Custom node not implemented: {custom_type}]"));
+                Box::pin(async move { Ok(value) })
+            }
             AstNode::Literal { value } => {
-                self.step()?;
-                Ok(Value::Text(value.clone()))
+                let value = Value::Text(value.clone());
+                Box::pin(async move { Ok(value) })
             }
             AstNode::LoopVar { name } => {
-                self.step()?;
-                Ok(Value::Text(self.loop_var(name)))
+                let value = Value::Text(self.loop_var(name));
+                Box::pin(async move { Ok(value) })
             }
-            _ => self.eval(node).await,
         }
     }
 
@@ -340,10 +501,7 @@ impl<'a> Run<'a> {
 
     /// `String(value ?? '')` of a child.
     async fn child_text(&mut self, node: &AstNode) -> Result<String, EvalError> {
-        Ok(match self.child(node).await? {
-            Value::Text(text) => text,
-            other => other.to_text_or_empty().into_owned(),
-        })
+        Ok(text_of(self.child(node).await?))
     }
 
     /// A child whose returned context the reference throws away.
@@ -381,199 +539,130 @@ impl<'a> Run<'a> {
         Ok(items.get(index as usize).cloned())
     }
 
-    async fn node(&mut self, node: &AstNode) -> Result<Value, EvalError> {
-        self.step()?;
-        let value = match node {
-            AstNode::Literal { value } => Value::Text(value.clone()),
-            AstNode::LoopVar { name } => Value::Text(self.loop_var(name)),
-            AstNode::LoopAssign {
-                name,
-                operator,
-                value,
-            } => {
-                let next = match value {
-                    Some(value) => self.child(value).await?,
-                    None => Value::Undefined,
-                };
-                let current = self.frames.loop_vars.get(name.as_str()).map(String::as_str);
-                let resolved = loop_assignment(current, *operator, &next);
-                self.check_size(resolved.len())?;
-                self.frames.loop_vars.insert(name.clone(), resolved.clone());
-                Value::Text(resolved)
-            }
-            AstNode::GetVar {
-                name,
-                storage,
-                accessor,
-                user_selector,
-            } => {
-                self.get_var(name, *storage, accessor.as_ref(), user_selector.as_deref())
-                    .await?
-            }
-            AstNode::SetVar {
-                name,
-                storage,
-                value,
-                accessor,
-                user_selector,
-            } => {
-                self.set_var(
-                    name,
-                    *storage,
-                    value,
-                    accessor.as_ref(),
-                    user_selector.as_deref(),
-                )
-                .await?
-            }
-            AstNode::Exists {
-                name,
-                storage,
-                accessor,
-                user_selector,
-            } => {
-                self.exists(name, *storage, accessor.as_ref(), user_selector.as_deref())
-                    .await?
-            }
-            AstNode::DeleteVar {
-                name,
-                storage,
-                accessor,
-                user_selector,
-            } => {
-                let target = self.selector(*storage, user_selector.as_deref()).await?;
-                let watch = self.frames.watch();
-                let result = self
-                    .delete_value(name, *storage, accessor.as_ref(), target.as_deref())
-                    .await;
-                self.frames.unwatch(watch);
-                result?;
-                Value::empty()
-            }
-            AstNode::Function { name, args } => self.function(name, args).await?,
-            AstNode::Binary {
-                operator,
-                left,
-                right,
-            } => {
-                let left = self.child(left).await?;
-                let right = self.child(right).await?;
-                match operator {
-                    BinaryOp::Add
-                    | BinaryOp::Subtract
-                    | BinaryOp::Multiply
-                    | BinaryOp::Divide
-                    | BinaryOp::Modulo => Value::Text(arithmetic(
-                        *operator,
-                        to_number_safe(&left),
-                        to_number_safe(&right),
-                    )),
-                    _ => Value::flag(compare(&left.to_text(), *operator, &right.to_text())),
-                }
-            }
-            AstNode::Unary { operator, argument } => {
-                let number = to_number_safe(&self.child(argument).await?);
-                let result = match operator {
-                    UnaryOp::Plus => number,
-                    UnaryOp::Minus => -number,
-                };
-                Value::Text(dima_text::number_to_string(result))
-            }
-            AstNode::Ternary {
-                test,
-                consequent,
-                alternate,
-            } => {
-                let test = self.child(test).await?;
-                let branch = if is_truthy(&test) {
-                    consequent
-                } else {
-                    alternate
-                };
-                self.child(branch).await?
-            }
-            AstNode::Template { segments } => {
-                let mut out = String::new();
-                for segment in segments {
-                    match segment {
-                        TemplateSegment::Text { value } => out.push_str(value),
-                        TemplateSegment::Expr { node } => {
-                            let text = self.child_text(node).await?;
-                            out.push_str(&text);
-                        }
-                    }
-                    self.check_size(out.len())?;
-                }
-                Value::Text(out)
-            }
-            AstNode::ArrayLiteral { items, accessor } => {
-                let mut values = Vec::with_capacity(items.len());
-                for item in items {
-                    values.push(self.child_text(item).await?);
-                }
-                match accessor {
-                    Some(ArrayAccessor::Index { index }) => {
-                        let index = self.child(index).await?;
-                        match resolve_array_index(&index, values.len()) {
-                            Some(at) => Value::Text(values.swap_remove(at)),
-                            None => Value::empty(),
-                        }
-                    }
-                    Some(ArrayAccessor::Random) => match self.random_item(&values)? {
-                        Some(item) => Value::Text(item),
-                        None => Value::empty(),
-                    },
-                    Some(ArrayAccessor::Length) => Value::Text(values.len().to_string()),
-                    _ => Value::List(values.into_iter().map(Value::Text).collect()),
-                }
-            }
-            AstNode::ForLoop {
-                loop_var,
-                mode,
-                init,
-                condition,
-                update,
-                iterable,
-                body,
-            } => {
-                self.for_loop(
-                    loop_var,
-                    *mode,
-                    [
-                        init.as_deref(),
-                        condition.as_deref(),
-                        update.as_deref(),
-                        iterable.as_deref(),
-                    ],
-                    body,
-                )
-                .await?
-            }
-            AstNode::Custom { custom_type, .. } => {
-                Value::Text(format!("[Custom node not implemented: {custom_type}]"))
-            }
-            AstNode::CommandRef { command_name, args } => {
-                self.command_ref(command_name, args).await?
-            }
-            AstNode::Root { children } => {
-                let mut out = String::new();
-                let mut first = true;
-                for child in children {
-                    let value = self.child(child).await?;
-                    if matches!(value, Value::Undefined) || value.as_str() == Some("") {
-                        continue;
-                    }
-                    if !first {
-                        out.push(' ');
-                    }
-                    first = false;
-                    out.push_str(&value.to_text());
-                    self.check_size(out.len())?;
-                }
-                Value::Text(out)
-            }
+    async fn loop_assign(
+        &mut self,
+        name: &str,
+        operator: LoopAssignOp,
+        value: Option<&AstNode>,
+    ) -> Result<Value, EvalError> {
+        let next = match value {
+            Some(value) => self.child(value).await?,
+            None => Value::Undefined,
         };
-        self.checked(value)
+        let current = self.frames.loop_vars.get(name).map(String::as_str);
+        let resolved = loop_assignment(current, operator, &next);
+        self.check_size(resolved.len())?;
+        self.frames
+            .loop_vars
+            .insert(name.to_owned(), resolved.clone());
+        Ok(Value::Text(resolved))
+    }
+
+    async fn delete_var(
+        &mut self,
+        name: &str,
+        storage: VariableStorage,
+        accessor: Option<&ArrayAccessor>,
+        selector: Option<&AstNode>,
+    ) -> Result<Value, EvalError> {
+        let target = self.selector(storage, selector).await?;
+        let watch = self.frames.watch();
+        let result = self
+            .delete_value(name, storage, accessor, target.as_deref())
+            .await;
+        self.frames.unwatch(watch);
+        result?;
+        Ok(Value::empty())
+    }
+
+    async fn binary(
+        &mut self,
+        operator: BinaryOp,
+        left: &AstNode,
+        right: &AstNode,
+    ) -> Result<Value, EvalError> {
+        let left = self.child(left).await?;
+        let right = self.child(right).await?;
+        Ok(binary_result(operator, &left, &right))
+    }
+
+    async fn unary(&mut self, operator: UnaryOp, argument: &AstNode) -> Result<Value, EvalError> {
+        let number = to_number_safe(&self.child(argument).await?);
+        let result = match operator {
+            UnaryOp::Plus => number,
+            UnaryOp::Minus => -number,
+        };
+        Ok(Value::Text(dima_text::number_to_string(result)))
+    }
+
+    async fn ternary(
+        &mut self,
+        test: &AstNode,
+        consequent: &AstNode,
+        alternate: &AstNode,
+    ) -> Result<Value, EvalError> {
+        let test = self.child(test).await?;
+        let branch = if is_truthy(&test) {
+            consequent
+        } else {
+            alternate
+        };
+        self.child(branch).await
+    }
+
+    async fn template(&mut self, segments: &[TemplateSegment]) -> Result<Value, EvalError> {
+        let mut out = String::new();
+        for segment in segments {
+            match segment {
+                TemplateSegment::Text { value } => out.push_str(value),
+                TemplateSegment::Expr { node } => {
+                    let value = self.child(node).await?;
+                    out.push_str(&value.to_text_or_empty());
+                }
+            }
+            self.check_size(out.len())?;
+        }
+        Ok(Value::Text(out))
+    }
+
+    async fn array_literal(
+        &mut self,
+        items: &[AstNode],
+        accessor: Option<&ArrayAccessor>,
+    ) -> Result<Value, EvalError> {
+        let mut values = Vec::with_capacity(items.len());
+        for item in items {
+            let value = self.child(item).await?;
+            values.push(text_of(value));
+        }
+        Ok(match accessor {
+            Some(ArrayAccessor::Index { index }) => {
+                let index = self.child(index).await?;
+                match resolve_array_index(&index, values.len()) {
+                    Some(at) => Value::Text(values.swap_remove(at)),
+                    None => Value::empty(),
+                }
+            }
+            Some(ArrayAccessor::Random) => match self.random_item(&values)? {
+                Some(item) => Value::Text(item),
+                None => Value::empty(),
+            },
+            Some(ArrayAccessor::Length) => Value::Text(values.len().to_string()),
+            _ => Value::List(values.into_iter().map(Value::Text).collect()),
+        })
+    }
+
+    async fn root(&mut self, children: &[AstNode]) -> Result<Value, EvalError> {
+        let mut out = String::new();
+        let mut first = true;
+        for child in children {
+            let value = self.child(child).await?;
+            if !push_root_value(&mut out, &mut first, &value) {
+                continue;
+            }
+            self.check_size(out.len())?;
+        }
+        Ok(Value::Text(out))
     }
 
     // ---- variables ----

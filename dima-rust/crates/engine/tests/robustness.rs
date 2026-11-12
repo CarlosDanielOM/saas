@@ -9,8 +9,9 @@ use dima_engine::blocks::{
     compile_blocks, import_command_text_with, read_block_root, shape_eq_root,
 };
 use dima_engine::syntax::{
-    AstNode, Diagnostic, DiagnosticCode, GrammarBuilder, HARD_JSON_NESTING_CEILING, Limits,
-    SegmentKind, SegmentStep, Span, SyntaxEngine, SyntaxHandler,
+    AstNode, BUDGET_BASE, Diagnostic, DiagnosticCode, GrammarBuilder, HARD_JSON_NESTING_CEILING,
+    Limits, MAX_NESTING, NODES_PER_INPUT_BYTE, SegmentKind, SegmentStep, Span, SyntaxEngine,
+    SyntaxHandler, TOKENS_PER_INPUT_BYTE,
 };
 use serde_json::Value;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -126,14 +127,33 @@ fn json_depth(value: &Value) -> usize {
     }
 }
 
+/// A program's counters stay within its fixed caps and within the budgets derived from its
+/// length (which the parser must never need more than); a tree whose JSON a bounded reader can
+/// read back round-trips. Deeper trees are not serialized here: serializing recurses.
 fn check_program(program: &dima_engine::syntax::CompiledProgram, limits: Limits) {
+    let stats = program.stats();
+    let bytes = program.source().len();
+    assert!(stats.nodes <= limits.nodes);
+    assert!(stats.tokens <= limits.tokens);
+    assert!(
+        stats.nodes <= NODES_PER_INPUT_BYTE * bytes + BUDGET_BASE,
+        "{} nodes for {bytes} bytes: {}",
+        stats.nodes,
+        dima_text::truncate_chars(program.source(), 80)
+    );
+    assert!(
+        stats.tokens <= TOKENS_PER_INPUT_BYTE * bytes + BUDGET_BASE,
+        "{} tokens for {bytes} bytes",
+        stats.tokens
+    );
+    if program.check_json_depth().is_err() {
+        return;
+    }
     let value = program.to_value();
     assert!(json_depth(&value) < HARD_JSON_NESTING_CEILING);
     let text = serde_json::to_string(&value).expect("serialises");
     let back: AstNode = serde_json::from_str(&text).expect("the bounded reader accepts it");
     assert_eq!(&back, program.root());
-    assert!(program.stats().nodes <= limits.nodes);
-    assert!(program.stats().tokens <= limits.tokens);
 }
 
 fn exercise_syntax(engine: &SyntaxEngine, source: &str) {
@@ -267,6 +287,7 @@ fn arbitrary_utf8_syntax_never_panics_and_respects_every_limit() {
     let engine = SyntaxEngine::default();
     let tight = engine.clone().with_limits(Limits {
         source_chars: 200,
+        input_chars: 200,
         tokens: 40,
         nodes: 30,
         nesting: 6,
@@ -284,7 +305,9 @@ fn arbitrary_utf8_syntax_never_panics_and_respects_every_limit() {
 }
 
 #[test]
-fn deep_nesting_is_refused_without_recursion_trouble() {
+fn deep_nesting_parses_like_the_reference_and_stops_at_the_ceiling() {
+    // Runs on the test harness's ordinary thread (2 MiB): deep programs are parsed on their own
+    // stack and their trees are freed without recursion.
     let engine = SyntaxEngine::default();
     let n = 4_000;
     let inputs = [
@@ -320,16 +343,50 @@ fn deep_nesting_is_refused_without_recursion_trouble() {
             dima_text::truncate_chars(source, 40)
         );
     }
-    let deep = format!("{}1{}", "%[".repeat(140), "]".repeat(140));
+    // Within the 10,000-character source limit, what the reference parses parses here too
+    // (it parses 5,632 parentheses, 7,673 ternary branches, 11,264 unary operators, 2,048
+    // arrays in a fresh Node 24 stack).
+    for source in [
+        format!("*({}1{})", "(".repeat(4_998), ")".repeat(4_998)),
+        format!("*({}1)", "1?".repeat(4_998)),
+        format!("*({}1)", "-+".repeat(4_998)),
+        format!("{}1{}", "%[".repeat(2_048), "]".repeat(2_048)),
+        format!("{}x{}", "$(s ".repeat(1_999), ")".repeat(1_999)),
+    ] {
+        assert!(dima_text::char_len(&source) <= 10_000);
+        let program = engine.parse(&source).unwrap_or_else(|error| {
+            panic!("{error:?}: {}", dima_text::truncate_chars(&source, 30))
+        });
+        let plan = engine.compile_template(&format!("*({source})")).unwrap();
+        assert!(matches!(plan.segments()[0].step(), SegmentStep::Program(_)));
+        drop((program.clone(), plan.clone()));
+    }
+    // Past the ceiling: a nesting diagnostic, at the top level and per template segment.
+    let deep = format!("*({}1)", "-+".repeat(MAX_NESTING / 2 + 10));
+    assert_eq!(
+        engine.parse(&deep).unwrap_err().code,
+        DiagnosticCode::NestingLimit
+    );
+    let plan = engine
+        .compile_template(&format!("a {deep} $(user)"))
+        .unwrap();
+    let steps: Vec<_> = plan.segments().iter().map(|s| s.step()).collect();
+    assert!(
+        matches!(steps[1], SegmentStep::ParseError(e) if e.code == DiagnosticCode::NestingLimit)
+    );
+    assert!(matches!(steps[3], SegmentStep::Program(_)));
+    // Inside an interpolation the reference catches its stack overflow and shows the text.
+    let program = engine.parse(&format!("\"${{{deep}}}\"")).unwrap();
+    let shown = format!("[Parse error: {deep}]");
+    assert_eq!(
+        program.to_value()["children"][0]["segments"][0]["value"],
+        shown.as_str()
+    );
     let raised = engine.with_limits(Limits {
         nesting: usize::MAX,
         ..Limits::default()
     });
-    assert_eq!(raised.limits().nesting, 128, "the hard ceiling holds");
-    assert_eq!(
-        raised.parse(&deep).unwrap_err().code,
-        DiagnosticCode::NestingLimit
-    );
+    assert_eq!(raised.limits().nesting, MAX_NESTING, "the ceiling holds");
 }
 
 /// A JSON text with random structure, string escapes that include unpaired surrogates, astral
@@ -584,43 +641,69 @@ fn where_the_reference_throws_the_port_reports_or_parses() {
         assert_eq!(error.code, DiagnosticCode::MissingVariableName, "{source}");
     }
     // `unescapeLiteral(undefined)`: a per-viewer selector left open at the end of an item.
-    let program = engine.parse("%[%(##x(]").expect("parses");
-    let text = program.to_value().to_string();
-    assert!(
-        text.contains("\"userSelector\":{\"type\":\"literal\",\"value\":\"\"}"),
-        "{text}"
-    );
+    for source in ["%[%(##x(]", "%[^(**x(]", "*(%[%del(##x(])"] {
+        let error = engine.parse(source).unwrap_err();
+        assert_eq!(error.code, DiagnosticCode::MissingUserSelector, "{source}");
+        assert_eq!(source.get(error.span.start..error.span.end), Some("("));
+    }
     // Inside an interpolation the reference catches the throw and shows the expression.
-    let program = engine.parse("\"${%[%(]}\"").expect("parses");
-    assert!(
-        program
-            .to_value()
-            .to_string()
-            .contains("[Parse error: %[%(]]")
-    );
+    for (source, shown) in [
+        ("\"${%[%(]}\"", "[Parse error: %[%(]]"),
+        ("*(\"${%[%(##x(]}\")", "[Parse error: %[%(##x(]]"),
+    ] {
+        let program = engine.parse(source).expect("parses");
+        let segments = serde_json::json!([{"type": "text", "value": shown}]);
+        assert_eq!(
+            program.to_value()["children"][0]["segments"],
+            segments,
+            "{source}"
+        );
+    }
 }
 
 #[test]
-fn shared_budgets_cover_every_segment_and_nested_region() {
+fn budgets_are_per_segment_and_cover_nested_regions() {
     let engine = SyntaxEngine::default();
     let source = "$(user) $(user) $(user)";
     let plan = engine.compile_template(source).unwrap();
     let one = engine.compile_template("$(user)").unwrap().stats();
-    assert!(plan.stats().tokens >= one.tokens * 3);
-    assert!(plan.stats().nodes >= one.nodes * 3);
+    assert_eq!(plan.stats().tokens, one.tokens * 3);
+    assert_eq!(plan.stats().nodes, one.nodes * 3);
+    // A cap one below a segment's need fails every segment on its own, not the plan.
     for limits in [
         Limits {
-            tokens: plan.stats().tokens - 1,
+            tokens: one.tokens - 1,
             ..Limits::default()
         },
         Limits {
-            nodes: plan.stats().nodes - 1,
+            nodes: one.nodes - 1,
             ..Limits::default()
         },
     ] {
-        let error = engine.clone().with_limits(limits).compile_template(source);
-        assert!(error.unwrap_err().is_resource_limit());
+        let plan = engine
+            .clone()
+            .with_limits(limits)
+            .compile_template(source)
+            .unwrap();
+        for segment in plan.segments() {
+            match segment.step() {
+                SegmentStep::ParseError(error) => assert!(error.is_resource_limit()),
+                SegmentStep::Text => {}
+                other => panic!("{other:?}"),
+            }
+        }
     }
+    // One expression over a cap does not fail the others.
+    let mixed = "$(user) $(say a b c d e f) $(user)";
+    let capped = engine.clone().with_limits(Limits {
+        nodes: one.nodes,
+        ..Limits::default()
+    });
+    let plan = capped.compile_template(mixed).unwrap();
+    let steps: Vec<_> = plan.segments().iter().map(|s| s.step()).collect();
+    assert!(matches!(steps[0], SegmentStep::Program(_)));
+    assert!(matches!(steps[2], SegmentStep::ParseError(e) if e.code == DiagnosticCode::NodeLimit));
+    assert!(matches!(steps[4], SegmentStep::Program(_)));
     for nested in ["%[%[1,2],%[3,4]]", "\"${1}${2}${3}\""] {
         let stats = engine.parse(nested).unwrap().stats();
         let tokens = engine.clone().with_limits(Limits {
@@ -667,15 +750,17 @@ fn shared_budgets_cover_every_segment_and_nested_region() {
 }
 
 #[test]
-fn the_json_shape_stays_below_the_standard_reader_limit() {
+fn arrays_nest_like_the_reference_and_the_json_depth_is_checked_on_request() {
     let engine = SyntaxEngine::default();
-    // Each nested array adds two JSON containers (the node and its `items`).
+    // Each nested array adds two JSON containers (the node and its `items`). The reference
+    // parses 2,048 nested arrays; a caller that stores a tree as JSON asks for the check.
     let wrapped = |n: usize| format!("{}1{}", "%[".repeat(n), "]".repeat(n));
-    let mut accepted = 0;
-    for n in 1..=80 {
-        match engine.parse(&wrapped(n)) {
-            Ok(program) => {
-                accepted = n;
+    let mut readable = 0;
+    for n in (1..=80).chain([2_048]) {
+        let program = engine.parse(&wrapped(n)).unwrap();
+        match program.check_json_depth() {
+            Ok(()) => {
+                readable = n;
                 let text = serde_json::to_string(&program.to_value()).unwrap();
                 assert!(serde_json::from_str::<Value>(&text).is_ok(), "depth {n}");
             }
@@ -688,7 +773,7 @@ fn the_json_shape_stays_below_the_standard_reader_limit() {
             }
         }
     }
-    assert_eq!(accepted, 62);
+    assert_eq!(readable, 62);
 }
 
 #[test]

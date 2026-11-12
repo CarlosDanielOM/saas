@@ -8,7 +8,8 @@
 use super::EvalError;
 use super::coerce::resolve_array_index;
 use super::run::Run;
-use crate::syntax::{ArrayAccessor, VariableStorage};
+use crate::host::HostFuture;
+use crate::syntax::{ArrayAccessor, AstNode, VariableStorage};
 use crate::value::Value;
 use dima_text::{to_lower, trim};
 
@@ -285,109 +286,153 @@ impl Run<'_> {
         Ok(())
     }
 
-    /// `deleteValueFromStorage`.
-    pub(super) async fn delete_value(
+    /// `deleteValueFromStorage`. Each case runs as its own future, so the recursion through a
+    /// list index (`%del(list[%del(…)])`) keeps a small stack frame per level.
+    pub(super) fn delete_value<'s>(
+        &'s mut self,
+        name: &'s str,
+        storage: VariableStorage,
+        accessor: Option<&'s ArrayAccessor>,
+        target: Option<&'s str>,
+    ) -> HostFuture<'s, Result<(), EvalError>> {
+        let stripped = strip(name, storage);
+        match (storage, accessor) {
+            (VariableStorage::Memory, None | Some(ArrayAccessor::Clear)) => {
+                self.state.variables.remove(stripped);
+                self.state.arrays.remove(stripped);
+                Box::pin(async { Ok(()) })
+            }
+            (VariableStorage::Memory, Some(ArrayAccessor::Remove { index })) => {
+                Box::pin(self.delete_memory_item(stripped, index))
+            }
+            (
+                VariableStorage::Cache | VariableStorage::CacheUser,
+                None | Some(ArrayAccessor::Clear),
+            ) => Box::pin(self.delete_cache_keys(name, storage, target)),
+            (
+                VariableStorage::Cache | VariableStorage::CacheUser,
+                Some(ArrayAccessor::Remove { index }),
+            ) => Box::pin(self.delete_cache_item(name, storage, index, target)),
+            (VariableStorage::Db | VariableStorage::DbUser, None) => {
+                Box::pin(self.delete_db_variable(stripped, storage, target))
+            }
+            (
+                VariableStorage::Db | VariableStorage::DbUser,
+                Some(ArrayAccessor::Clear | ArrayAccessor::Remove { .. }),
+            ) => Box::pin(self.delete_db_item(name, storage, accessor, target)),
+            _ => Box::pin(async { Ok(()) }),
+        }
+    }
+
+    async fn delete_memory_item(&mut self, name: &str, index: &AstNode) -> Result<(), EvalError> {
+        let mut list = match self.state.variables.get(name) {
+            Some(raw) if !raw.is_empty() => match Value::parse_json(raw) {
+                Some(Value::List(items)) => items,
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        };
+        let index = self.child(index).await?;
+        if let Some(at) = resolve_array_index(&index, list.len()) {
+            list.remove(at);
+            let json = self.write_json(&list)?;
+            self.state.variables.insert(name.to_owned(), json);
+        }
+        Ok(())
+    }
+
+    async fn delete_cache_keys(
+        &mut self,
+        name: &str,
+        storage: VariableStorage,
+        target: Option<&str>,
+    ) -> Result<(), EvalError> {
+        for key in self.cache_keys(name, storage, target) {
+            self.host_op()?;
+            self.host.cache_delete(&key).await?;
+        }
+        Ok(())
+    }
+
+    async fn delete_cache_item(
+        &mut self,
+        name: &str,
+        storage: VariableStorage,
+        index: &AstNode,
+        target: Option<&str>,
+    ) -> Result<(), EvalError> {
+        let index = self.child(index).await?;
+        for key in self.cache_keys(name, storage, target) {
+            self.host_op()?;
+            let Some(raw) = self
+                .host
+                .cache_get(&key)
+                .await?
+                .filter(|raw| !raw.is_empty())
+            else {
+                continue;
+            };
+            self.charge_bytes(raw.len())?;
+            let Some(Value::List(mut list)) = Value::parse_json(&raw) else {
+                continue;
+            };
+            let Some(at) = resolve_array_index(&index, list.len()) else {
+                continue;
+            };
+            list.remove(at);
+            let json = self.write_json(&list)?;
+            // The reference ignores failures from here on (`catch {}`).
+            self.host_op()?;
+            if self.host.cache_set(&key, &json).await.is_ok() {
+                self.host_op()?;
+                let _ = self.host.cache_expire(&key, CACHE_TTL_SECONDS).await;
+            }
+        }
+        Ok(())
+    }
+
+    async fn delete_db_variable(
+        &mut self,
+        name: &str,
+        storage: VariableStorage,
+        target: Option<&str>,
+    ) -> Result<(), EvalError> {
+        self.host_op()?;
+        if storage == VariableStorage::Db {
+            self.host.delete_channel_variable(name).await?;
+            self.state.command_variables.remove(name);
+        } else {
+            self.host.delete_user_variable(name, target).await?;
+            let memo = self.user_memo_key(name, target);
+            self.state.user_command_variables.remove(&memo);
+        }
+        Ok(())
+    }
+
+    async fn delete_db_item(
         &mut self,
         name: &str,
         storage: VariableStorage,
         accessor: Option<&ArrayAccessor>,
         target: Option<&str>,
     ) -> Result<(), EvalError> {
-        let stripped = strip(name, storage);
-        match (storage, accessor) {
-            (VariableStorage::Memory, None | Some(ArrayAccessor::Clear)) => {
-                self.state.variables.remove(stripped);
-                self.state.arrays.remove(stripped);
-            }
-            (VariableStorage::Memory, Some(ArrayAccessor::Remove { index })) => {
-                let mut list = match self.state.variables.get(stripped) {
-                    Some(raw) if !raw.is_empty() => match Value::parse_json(raw) {
-                        Some(Value::List(items)) => items,
-                        _ => Vec::new(),
-                    },
-                    _ => Vec::new(),
-                };
-                let index = self.child(index).await?;
-                if let Some(at) = resolve_array_index(&index, list.len()) {
-                    list.remove(at);
-                    let json = self.write_json(&list)?;
-                    self.state.variables.insert(stripped.to_owned(), json);
-                }
-            }
-            (
-                VariableStorage::Cache | VariableStorage::CacheUser,
-                None | Some(ArrayAccessor::Clear),
-            ) => {
-                for key in self.cache_keys(name, storage, target) {
-                    self.host_op()?;
-                    self.host.cache_delete(&key).await?;
-                }
-            }
-            (
-                VariableStorage::Cache | VariableStorage::CacheUser,
-                Some(ArrayAccessor::Remove { index }),
-            ) => {
-                let index = self.child(index).await?;
-                for key in self.cache_keys(name, storage, target) {
-                    self.host_op()?;
-                    let Some(raw) = self
-                        .host
-                        .cache_get(&key)
-                        .await?
-                        .filter(|raw| !raw.is_empty())
-                    else {
-                        continue;
-                    };
-                    self.charge_bytes(raw.len())?;
-                    let Some(Value::List(mut list)) = Value::parse_json(&raw) else {
-                        continue;
-                    };
-                    let Some(at) = resolve_array_index(&index, list.len()) else {
-                        continue;
-                    };
-                    list.remove(at);
-                    let json = self.write_json(&list)?;
-                    // The reference ignores failures from here on (`catch {}`).
-                    self.host_op()?;
-                    if self.host.cache_set(&key, &json).await.is_ok() {
-                        self.host_op()?;
-                        let _ = self.host.cache_expire(&key, CACHE_TTL_SECONDS).await;
-                    }
-                }
-            }
-            (VariableStorage::Db | VariableStorage::DbUser, None) => {
-                self.host_op()?;
-                if storage == VariableStorage::Db {
-                    self.host.delete_channel_variable(stripped).await?;
-                    self.state.command_variables.remove(stripped);
-                } else {
-                    self.host.delete_user_variable(stripped, target).await?;
-                    let memo = self.user_memo_key(stripped, target);
-                    self.state.user_command_variables.remove(&memo);
-                }
-            }
-            (
-                VariableStorage::Db | VariableStorage::DbUser,
-                Some(ArrayAccessor::Clear | ArrayAccessor::Remove { .. }),
-            ) => {
-                let current = self.read_value(name, storage, target).await?;
-                if current.is_empty() {
-                    return Ok(());
-                }
-                // Everything from parsing to saving is inside the reference's `try { } catch {}`.
-                let level = self.frames.watch_depth();
-                match self
-                    .rewrite_db_list(name, storage, accessor, target, &current)
-                    .await
-                {
-                    Err(EvalError::Limit(kind)) => return Err(EvalError::Limit(kind)),
-                    Err(_) => self.frames.abandon_from(level),
-                    Ok(()) => {}
-                }
-            }
-            _ => {}
+        let current = self.read_value(name, storage, target).await?;
+        if current.is_empty() {
+            return Ok(());
         }
-        Ok(())
+        // Everything from parsing to saving is inside the reference's `try { } catch {}`.
+        let level = self.frames.watch_depth();
+        match self
+            .rewrite_db_list(name, storage, accessor, target, &current)
+            .await
+        {
+            Err(EvalError::Limit(kind)) => Err(EvalError::Limit(kind)),
+            Err(_) => {
+                self.frames.abandon_from(level);
+                Ok(())
+            }
+            Ok(()) => Ok(()),
+        }
     }
 
     async fn rewrite_db_list(

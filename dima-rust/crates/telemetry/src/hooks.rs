@@ -4,17 +4,22 @@
 //!   request runs inside its context (adopting the signed `traceparent` of our own services,
 //!   otherwise a new trace); [`WebObserver`] (installed with `dima_web::App::observe`) ends the
 //!   request's span as `<METHOD> <route>` with outcome `aborted`, `error` (5xx) or the status.
-//!   `/observability` requests are not observed.
+//!   The route comes from the registered patterns only (a mount parameter is `:id`); a method
+//!   outside the standard set is `OTHER`. `/observability` requests are not observed.
+//!
+//! Every derived name goes through the bounded registry of [`crate::names`].
 //! - Outbound HTTP (`instrumentFetch`): [`HttpObserver`] records an `http_client` span
 //!   `<provider> <METHOD>` per attempt (outcome `error` for a failure or a status of 400 and above,
 //!   else the status); PostHog and analytics are not instrumented. [`Injector`] adds the signed
 //!   `traceparent` to calls to providers marked internal.
-//! - MongoDB: [`MongoHook`] records a `database` span `mongo.<command>` per command.
+//! - MongoDB: [`MongoHook`] records a `database` span `mongo.<command>` per command this backend
+//!   sends (`mongo.other` for any other command name).
 //! - Dragonfly: [`DragonflyHook`] records a `cache` span per instrumented command and the
 //!   `cache_lookup` hit or miss of `get` and `hGet`; [`Telemetry::dragonfly_hooks`] adds the
 //!   connection-error report with the reference's 30-second suppression.
 
 use crate::label::safe_route;
+use crate::names;
 use crate::telemetry::Telemetry;
 use crate::trace::{self, SIGNATURE, TRACEPARENT, TraceContext};
 use dima_http::observe::{RequestEnd as HttpEnd, TraceInjector};
@@ -154,27 +159,18 @@ impl dima_web::Observer for WebObserver {
             return;
         };
         let link = &span.link;
-        let route = end.route.as_ref().map_or_else(
-            || "/unmatched".to_owned(),
-            |route| safe_route(&format!("{}{}", route.base_url, route.path)),
-        );
-        let set = *link.outcome.lock().unwrap_or_else(PoisonError::into_inner);
-        let status;
-        let outcome = if !set.is_empty() {
-            set.as_str()
-        } else if end.aborted {
-            "aborted"
-        } else {
-            match end.status {
-                Some(code) if code >= 500 => "error",
-                Some(code) => {
-                    status = code.to_string();
-                    status.as_str()
-                }
-                None => "aborted",
-            }
+        let method = names::method(&end.method);
+        let name = match &end.route {
+            None => names::join(method, " ", "/unmatched"),
+            Some(route) => names::intern(&format!("{method} {}", route_name(route))),
         };
-        let name = format!("{} {route}", end.method.as_str());
+        let set = *link.outcome.lock().unwrap_or_else(PoisonError::into_inner);
+        let outcome = match (set, end.aborted, end.status) {
+            (Some(outcome), _, _) => outcome,
+            (None, true, _) | (None, false, None) => "aborted",
+            (None, false, Some(code)) if code >= 500 => "error",
+            (None, false, Some(code)) => names::status(code),
+        };
         let ids = span.ids;
         let channel = *link.channel.lock().unwrap_or_else(PoisonError::into_inner);
         self.telemetry.finish_span(&crate::aggregate::FinishedSpan {
@@ -186,10 +182,36 @@ impl dima_web::Observer for WebObserver {
             at: Some(link.at),
             duration_ms: end.duration.as_secs_f64() * 1000.0,
             kind: "http",
-            name: &name,
+            name,
             outcome,
         });
     }
+}
+
+/// The route's name from its registered patterns only: the reference's
+/// `safeRoute(req.baseUrl + req.route.path)`, except that a parameter of a mount (`baseUrl` holds
+/// its value as requested) is written `:id` whatever its value, where the reference hides only
+/// values of five or more digits or 24 or more hex characters and keeps a login or any other
+/// text as it came. Numeric channel ids therefore give the reference's names
+/// (`/duels/:id/duel/state`); no request value ever becomes part of a name.
+fn route_name(route: &dima_web::MatchedRoute) -> String {
+    let mount = route
+        .pattern
+        .strip_suffix(route.path.as_str())
+        .unwrap_or(route.pattern.as_str());
+    let mut name = String::with_capacity(route.pattern.len());
+    for (index, segment) in mount.split('/').enumerate() {
+        if index > 0 {
+            name.push('/');
+        }
+        name.push_str(if segment.starts_with(':') {
+            ":id"
+        } else {
+            segment
+        });
+    }
+    name.push_str(&route.path);
+    safe_route(&name)
 }
 
 /// See [`Telemetry::traced_service`].
@@ -232,19 +254,15 @@ impl dima_http::observe::Observer for HttpObserver {
         if !self.telemetry.exporting() || self.telemetry.excluded(end.provider) {
             return;
         }
-        let status;
         let outcome = match (end.failure, end.status) {
             (Some(_), _) => "error",
             (None, Some(code)) if code >= 400 => "error",
-            (None, Some(code)) => {
-                status = code.to_string();
-                status.as_str()
-            }
+            (None, Some(code)) => names::status(code),
             (None, None) => "aborted",
         };
-        let name = format!("{} {}", end.provider, end.method.as_str());
+        let name = names::join(end.provider, " ", names::method(end.method));
         self.telemetry
-            .completed_span("http_client", &name, end.duration, outcome, None);
+            .completed_span("http_client", name, end.duration, outcome, None);
     }
 }
 
@@ -282,8 +300,11 @@ pub struct MongoHook {
     telemetry: Telemetry,
 }
 
-fn mongo_name(command: &str) -> std::borrow::Cow<'static, str> {
-    const KNOWN: [(&str, &str); 14] = [
+/// The span name of a command: `mongo.<command>` for the commands this backend sends, and
+/// `mongo.other` for anything else (a driver's internal command, a new command), so a command
+/// name never creates a series of its own.
+fn mongo_name(command: &str) -> &'static str {
+    const KNOWN: [(&str, &str); 20] = [
         ("find", "mongo.find"),
         ("insert", "mongo.insert"),
         ("update", "mongo.update"),
@@ -298,18 +319,24 @@ fn mongo_name(command: &str) -> std::borrow::Cow<'static, str> {
         ("killCursors", "mongo.killCursors"),
         ("commitTransaction", "mongo.commitTransaction"),
         ("abortTransaction", "mongo.abortTransaction"),
+        ("listCollections", "mongo.listCollections"),
+        ("listIndexes", "mongo.listIndexes"),
+        ("create", "mongo.create"),
+        ("drop", "mongo.drop"),
+        ("dropIndexes", "mongo.dropIndexes"),
+        ("ping", "mongo.ping"),
     ];
-    KNOWN.iter().find(|(name, _)| *name == command).map_or_else(
-        || std::borrow::Cow::Owned(format!("mongo.{command}")),
-        |(_, label)| std::borrow::Cow::Borrowed(*label),
-    )
+    KNOWN
+        .iter()
+        .find(|(name, _)| *name == command)
+        .map_or("mongo.other", |(_, label)| label)
 }
 
 impl dima_store::mongo::CommandHook for MongoHook {
     fn succeeded(&self, event: &CommandSucceeded<'_>) {
         self.telemetry.completed_span(
             "database",
-            &mongo_name(event.command_name),
+            mongo_name(event.command_name),
             event.duration,
             "ok",
             None,
@@ -319,7 +346,7 @@ impl dima_store::mongo::CommandHook for MongoHook {
     fn failed(&self, event: &CommandFailed<'_>) {
         self.telemetry.completed_span(
             "database",
-            &mongo_name(event.command_name),
+            mongo_name(event.command_name),
             event.duration,
             "error",
             None,

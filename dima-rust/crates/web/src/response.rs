@@ -202,6 +202,10 @@ impl Response {
     /// 500 error on the error path (router error handlers see it, with the `std::io::Error` as
     /// its source when there is one); a directory continues with the next layer (`next()`); a
     /// relative path is a 500 error.
+    ///
+    /// A file that exists but cannot be opened (no read permission) answers `HEAD` with `500`,
+    /// like `GET`: the file is opened before any header is set. Express answered `HEAD` from
+    /// `stat` alone (`200` with the headers) and failed only the `GET`, while streaming.
     pub fn send_file(mut self, path: impl Into<String>) -> Self {
         self.payload = Payload::File(path.into());
         self

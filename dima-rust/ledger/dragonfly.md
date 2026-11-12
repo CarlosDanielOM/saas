@@ -2,6 +2,12 @@
 
 Generated 2026-11-11T18:21:12Z by `dima-rust/tools/ledger/dragonfly_ledger.py` (branch `rust-v2`). Machine-readable twin: [`dragonfly.json`](dragonfly.json) — every key record there carries every writer/reader/Lua call site as `file:line` with its process.
 
+> **Rust side (2026-11-11).** Queue items and pub/sub envelopes are Rust's own encoding (one cutover, no
+> mixed runtime). Every subscription states what happens when its buffer is full: `DropNewest` for samples
+> the next message replaces, `Gap` (an explicit marker, the consumer resynchronises) for channels that
+> carry deletions or terminal states. The channel-by-channel table is in the module docs of
+> `crates/store/src/dragonfly/pubsub.rs`; the package that ports a consumer confirms its row.
+
 ## Headline
 
 | Item | Count |

@@ -17,8 +17,14 @@
 //!   per-character spread of text event data into a command reference);
 //! - text ordering (`<`, `>`, …) is by code point;
 //! - resource limits ([`EvalLimits`]): when one is hit inside an expression, that expression's
-//!   output is `[Parse error: …]` and rendering goes on (every later expression then hits it
-//!   too); [`Engine::evaluate`] returns [`EvalError::Limit`];
+//!   output is `[Parse error: …]` and rendering goes on (once the work, call or text budget is
+//!   spent, every later expression hits it too); [`Engine::evaluate`] returns
+//!   [`EvalError::Limit`]. A tree deeper than [`EvalLimits::nesting`] (256; the parser accepts
+//!   16,384) is refused before any of it runs, and the stack an evaluation uses is measured
+//!   against [`EvalLimits::stack_bytes`] as it recurses, so no tree can overflow the thread's
+//!   stack in any build;
+//! - parse limits are the caller's ([`Engine::new`] takes the syntax [`Limits`]): the bot passes
+//!   the input size its substituted texts need;
 //! - a timer's snapshot is a copy taken when it is scheduled (the reference shares the
 //!   responses array with the live context until the scheduler serialises it, which it does
 //!   immediately);
@@ -29,6 +35,7 @@ mod coerce;
 mod frame;
 mod limits;
 mod run;
+mod stack;
 mod storage;
 
 pub use limits::{EvalLimits, LimitKind};
@@ -38,7 +45,8 @@ use crate::host::{Host, HostError};
 use crate::permissions::{Permissions, ReferencePermissions};
 use crate::registry::Registry;
 use crate::syntax::{
-    AstNode, CompiledProgram, CompiledTemplate, Diagnostic, SegmentStep, SyntaxEngine,
+    AstNode, CompiledProgram, CompiledTemplate, Diagnostic, Limits, PreparedGrammar, SegmentStep,
+    SyntaxEngine,
 };
 use crate::value::Value;
 use std::sync::Arc;
@@ -98,9 +106,15 @@ pub struct Engine {
 }
 
 impl Default for Engine {
-    /// The reference grammar, the reference registry, [`ReferencePermissions`], default limits.
+    /// The reference grammar and registry, [`ReferencePermissions`], the syntax's default
+    /// [`Limits`] and default [`EvalLimits`]. Production callers use [`Engine::new`] with the
+    /// parse limits they need.
     fn default() -> Self {
-        Self::new(Registry::standard(), Arc::new(ReferencePermissions))
+        Self::new(
+            Registry::standard(),
+            Arc::new(ReferencePermissions),
+            Limits::default(),
+        )
     }
 }
 
@@ -114,10 +128,11 @@ impl std::fmt::Debug for Engine {
 }
 
 impl Engine {
-    /// An engine with the default syntax and limits.
-    pub fn new(registry: Arc<Registry>, permissions: Arc<dyn Permissions>) -> Self {
+    /// An engine for the reference grammar with the caller's parse limits (the bot sets
+    /// [`Limits::input_chars`] for its substituted texts) and default evaluation limits.
+    pub fn new(registry: Arc<Registry>, permissions: Arc<dyn Permissions>, syntax: Limits) -> Self {
         Self {
-            syntax: SyntaxEngine::default(),
+            syntax: SyntaxEngine::new(PreparedGrammar::default(), syntax),
             registry,
             permissions,
             limits: EvalLimits::default(),
@@ -151,10 +166,11 @@ impl Engine {
         self.limits
     }
 
-    /// Compiles command text for [`Engine::render`]. A syntax resource limit inside one
-    /// expression stays with that expression; only a source over the length limit fails.
+    /// Compiles command text (placeholders already substituted) for [`Engine::render`]. A
+    /// syntax resource limit inside one expression stays with that expression; only a text over
+    /// [`Limits::input_chars`] fails.
     pub fn compile(&self, text: &str) -> Result<CompiledTemplate, Diagnostic> {
-        self.syntax.compile_segments(text)
+        self.syntax.compile_template(text)
     }
 
     /// Parses one program for [`Engine::evaluate_program`] (`parse`).
@@ -170,7 +186,20 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Rendered, EvalError> {
-        let mut run = run::Run::new(self, context, state, host);
+        let base = stack::StackBase::default();
+        let inner = self.render_metered(template, context, state, host, base.clone());
+        stack::Metered::new(inner, base).await
+    }
+
+    async fn render_metered(
+        &self,
+        template: &CompiledTemplate,
+        context: &Context,
+        state: State,
+        host: &mut dyn Host,
+        base: stack::StackBase,
+    ) -> Result<Rendered, EvalError> {
+        let mut run = run::Run::new(self, context, state, host, base);
         let mut text = String::new();
         for plan in template.segments() {
             match plan.step() {
@@ -184,7 +213,7 @@ impl Engine {
                     text.push_str(&error.message);
                     text.push(']');
                 }
-                SegmentStep::Program(program) => match run.root(program.root()).await {
+                SegmentStep::Program(program) => match run.program(program.root()).await {
                     Ok(value) => text.push_str(&value.to_text_or_empty()),
                     Err(EvalError::Limit(kind)) => {
                         run.after_limit();
@@ -219,7 +248,8 @@ impl Engine {
     }
 
     /// Evaluates any node (`evaluate(node, ctx)`), for instance a timer body read back from the
-    /// cache. Nodes nested deeper than [`EvalLimits::nesting`] are refused.
+    /// cache. A tree deeper than [`EvalLimits::nesting`] is refused before it runs
+    /// ([`EvalError::Limit`] with [`LimitKind::Nesting`]).
     pub async fn evaluate(
         &self,
         node: &AstNode,
@@ -227,11 +257,16 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        if run::depth_exceeds(node, self.limits.nesting) {
-            return Err(EvalError::Limit(LimitKind::Nesting));
-        }
-        let mut run = run::Run::new(self, context, state, host);
-        let value = run.root(node).await?;
+        let base = stack::StackBase::default();
+        let run = run::Run::new(self, context, state, host, base.clone());
+        stack::Metered::new(Self::finish_program(run, node), base).await
+    }
+
+    async fn finish_program<'a>(
+        mut run: run::Run<'a>,
+        node: &AstNode,
+    ) -> Result<Evaluated, EvalError> {
+        let value = run.program(node).await?;
         let (state, stats) = run.finish();
         Ok(Evaluated {
             value,
@@ -248,7 +283,15 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let mut run = run::Run::new(self, context, state, host);
+        let base = stack::StackBase::default();
+        let run = run::Run::new(self, context, state, host, base.clone());
+        stack::Metered::new(Self::finish_timer(run, args), base).await
+    }
+
+    async fn finish_timer<'a>(
+        mut run: run::Run<'a>,
+        args: &[AstNode],
+    ) -> Result<Evaluated, EvalError> {
         let value = run.timer(args).await?;
         let (state, stats) = run.finish();
         Ok(Evaluated {

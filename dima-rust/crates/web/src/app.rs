@@ -81,7 +81,8 @@ impl<S: Send + Sync + 'static> App<S> {
     ///
     /// Completion records reach the observer on its own thread through a queue of
     /// [`OBSERVER_QUEUE`] records (see [`Observer`]); [`App::observer_queue`] reports drops and
-    /// panics.
+    /// panics. When [`crate::serve`] returns, the observer has delivered what was queued (for
+    /// up to two seconds) and is shut down: an app served again records nothing more.
     #[must_use]
     pub fn observe(self, observer: impl Observer) -> Self {
         self.observe_bounded(observer, OBSERVER_QUEUE)
@@ -113,6 +114,12 @@ impl<S: Send + Sync + 'static> App<S> {
         B::Error: Into<BoxError>,
     {
         let (parts, body) = request.into_parts();
+        if let (Some(observer), Some(link)) = (
+            &self.observer,
+            parts.extensions.get::<crate::server::ServerLink>(),
+        ) {
+            observer.register(link);
+        }
         let mut req = Req::new(Arc::clone(&self.inner.state), parts, Body::new(body));
         let trace = self.observer.as_ref().and_then(|observer| {
             observer.on_request(&RequestStart {
@@ -123,6 +130,7 @@ impl<S: Send + Sync + 'static> App<S> {
             })
         });
         req.trace = trace.clone();
+        req.observer = self.observer.clone();
         // Dropped with this future if the client goes away first; then it reports the abort.
         let exchange = Exchange::start(
             self.observer.clone(),

@@ -1049,8 +1049,12 @@ pub fn observe(outcome: &Outcome, initial: &State, context: &Context, host: &Cor
 // Running a case.
 
 pub fn engine_for(registry: Registry) -> Engine {
-    Engine::new(Arc::new(registry), Arc::new(ReferencePermissions))
-        .with_limits(EvalLimits::default())
+    Engine::new(
+        Arc::new(registry),
+        Arc::new(ReferencePermissions),
+        dima_engine::syntax::Limits::default(),
+    )
+    .with_limits(EvalLimits::default())
 }
 
 pub fn runtime() -> tokio::runtime::Runtime {

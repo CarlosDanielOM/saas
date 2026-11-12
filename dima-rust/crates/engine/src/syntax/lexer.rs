@@ -60,13 +60,9 @@ fn whitespace_at(text: &str, at: usize) -> bool {
 }
 
 /// The double-quote rules of the tokenizer: a backslash skips the next character, and quotes
-/// inside `${…}` stay inside until its braces balance. Returns the closing quote's offset.
-pub(crate) fn double_quote_end(
-    view: &View,
-    bytes: Range<usize>,
-    budget: &Budget,
-    depth: usize,
-) -> Result<Option<usize>, Diagnostic> {
+/// inside `${…}` stay inside until its braces balance. Returns the closing quote's offset. The
+/// brace count is a counter, not recursion, so it needs no nesting check.
+pub(crate) fn double_quote_end(view: &View, bytes: Range<usize>) -> Option<usize> {
     let text = &view.text;
     let (start, end) = (bytes.start, bytes.end);
     let mut i = start + 1;
@@ -79,14 +75,12 @@ pub(crate) fn double_quote_end(
         }
         if starts_with_at(text, i, end, "${") {
             braces += 1;
-            budget.depth(depth + braces + 1, view.span(start..i + 2))?;
             i += 2;
             continue;
         }
         if braces > 0 {
             if ch == b'{' {
                 braces += 1;
-                budget.depth(depth + braces + 1, view.span(start..i + 1))?;
             } else if ch == b'}' {
                 braces -= 1;
             }
@@ -94,11 +88,11 @@ pub(crate) fn double_quote_end(
             continue;
         }
         if ch == b'"' {
-            return Ok(Some(i));
+            return Some(i);
         }
         i = next_char(text, i);
     }
-    Ok(None)
+    None
 }
 
 /// An item's range without the JavaScript whitespace around it, or `None` when it is blank.
@@ -115,7 +109,8 @@ fn item_range(text: &str, range: Range<usize>) -> Option<Range<usize>> {
 
 /// Indexes a whole nested array region (starting at `%[`) in one pass: where each array ends
 /// and where its items are, with the reference's rules (quotes, `[` `]` depth for the end;
-/// brackets, parentheses and braces for the commas). Returns the end offset.
+/// brackets, parentheses and braces for the commas). Returns the end offset. Nested arrays are
+/// frames of a loop, not recursion; the parser checks the nesting when it builds them.
 pub(crate) fn index_arrays(
     view: &View,
     bytes: Range<usize>,
@@ -165,7 +160,6 @@ pub(crate) fn index_arrays(
                 items: Vec::new(),
                 array,
             });
-            budget.depth(depth + frames.len(), view.span(i..i + width))?;
             i += width;
             continue;
         }
@@ -188,6 +182,7 @@ pub(crate) fn index_arrays(
                 }
                 if frames.is_empty() {
                     budget.stats.array_indexed_bytes += i + 1 - at;
+                    budget.work(view.span(at..i + 1))?;
                     return Ok(i + 1);
                 }
             }
@@ -203,23 +198,11 @@ pub(crate) fn index_arrays(
                     frame.item = i + 1;
                 }
             }
-            b'(' => {
-                parens.push(i);
-                budget.depth(
-                    depth + frames.len() + parens.len() + braces.len(),
-                    view.span(i..i + 1),
-                )?;
-            }
+            b'(' => parens.push(i),
             b')' => {
                 parens.pop();
             }
-            b'{' => {
-                braces.push(i);
-                budget.depth(
-                    depth + frames.len() + parens.len() + braces.len(),
-                    view.span(i..i + 1),
-                )?;
-            }
+            b'{' => braces.push(i),
             b'}' => {
                 braces.pop();
             }
@@ -228,6 +211,7 @@ pub(crate) fn index_arrays(
         i = next_char(text, i);
     }
     budget.stats.array_indexed_bytes += end - at;
+    budget.work(view.span(at..end))?;
     Err(Diagnostic::new(
         DiagnosticCode::UnclosedArray,
         "Unclosed array literal",
@@ -309,13 +293,7 @@ impl Lexer<'_> {
             let definition = self.grammar.match_start(sub(&text, 0..end), i, false);
             if starts_with_at(&text, i, end, "%[") {
                 if !self.arrays.contains_key(&i) {
-                    index_arrays(
-                        &self.view,
-                        i..end,
-                        budget,
-                        depth + stack.len(),
-                        &mut self.arrays,
-                    )?;
+                    index_arrays(&self.view, i..end, budget, depth, &mut self.arrays)?;
                 }
                 let Some(layout) = self.arrays.get(&i).cloned() else {
                     return Err(Diagnostic::new(
@@ -368,9 +346,8 @@ impl Lexer<'_> {
                     opening: start..i,
                     closer: ")",
                 });
-                budget.depth(depth + stack.len(), self.view.span(start..i))?;
             } else if ch == b'"' {
-                let Some(closing) = double_quote_end(&self.view, start..end, budget, depth)? else {
+                let Some(closing) = double_quote_end(&self.view, start..end) else {
                     return Err(Diagnostic::new(
                         DiagnosticCode::UnclosedQuote,
                         "Unclosed quoted string",
@@ -393,7 +370,6 @@ impl Lexer<'_> {
                         opening: start..i,
                         closer,
                     });
-                    budget.depth(depth + stack.len(), self.view.span(start..i))?;
                 } else if matches!(ch, b')' | b']' | b'}') {
                     let token = sub(&text, start..i);
                     if stack.last().is_none_or(|open| open.closer != token) {
@@ -426,6 +402,7 @@ impl Lexer<'_> {
             } else {
                 i - start
             };
+            budget.work(self.view.span(start..i))?;
         }
         if let Some(error) = closing_error {
             return Err(error);

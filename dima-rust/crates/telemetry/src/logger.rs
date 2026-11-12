@@ -2,7 +2,9 @@
 //!
 //! The call site is [`crate::Telemetry::log`] and the six level methods. A call whose level is
 //! below the configured minimum returns after one comparison: no allocation, no serialisation.
-//! Otherwise the data is serialised once into JSON, redacted ([`crate::redact`]), and handed to
+//! Otherwise the data is serialised once into JSON under fixed limits that apply while the value
+//! is walked (a `Serialize` that fails or panics is contained and counted as
+//! [`crate::Stats::unserializable`]), redacted ([`crate::redact`]), and handed to
 //! each selected destination through its own bounded queue; the caller never waits for a socket
 //! or a pipe. A full queue, or the shared byte budget being spent, drops the entry for that
 //! destination and counts it.
@@ -10,6 +12,13 @@
 //! - **console**: one JSON object per line on stdout, written by a dedicated thread (a slow
 //!   reader of the pipe cannot stall the runtime). The reference prints Node's `util.inspect`
 //!   format, which nothing parses.
+//! - **metadata**: `platform` and `channelId` reach every destination and the cache key, so they
+//!   are validated as bounded identifiers before anything is queued: a platform is
+//!   `[a-z0-9_-]{1,32}` (the reference passes only `twitch`), a channel id `[A-Za-z0-9_-]{1,80}`
+//!   (Twitch user ids, and the reference's own telemetry filter); an empty channel id means none,
+//!   as the reference's `channelId || 'global'`. Anything else is replaced by
+//!   [`INVALID_IDENTIFIER`] and counted ([`crate::Stats::log_metadata_replaced`]); never dropped
+//!   silently. Their bytes are charged to the byte budget with the data.
 //! - **cache**: `SET logger:<platform>:<channelId|global>:<level>:<epochMs>-<8 hex> <json> EX 604800`
 //!   in one command (the reference sets the expiry in a second command). The value keeps the
 //!   reference's fields in its order: `{data, timestamp, level, platform, channelId}` with the
@@ -17,8 +26,12 @@
 //! - **telemetry**: warn and above also become metadata-only rows in the telemetry pipeline
 //!   (`recordLog`), whatever the destination.
 //! - **PostHog**: every entry, whatever the destination (`openLog.emit` in the reference), when the
-//!   process exports logs there (API and bot); see [`crate::otlp`].
+//!   process exports logs there (API and bot); see [`crate::otlp`]. An optional minimum level
+//!   ([`crate::PosthogConfig::min_level`]) keeps lower entries out and counts them
+//!   ([`crate::Stats::posthog_below_level`]); unset, as in the reference, every enabled entry is
+//!   exported.
 
+use crate::label::{self, Channel, Label};
 use crate::trace::SpanIds;
 use serde::Serialize;
 use serde_json::Value;
@@ -30,6 +43,43 @@ use std::sync::{Arc, Mutex, PoisonError};
 pub const CACHE_TTL_SECONDS: u64 = 604_800;
 /// The default platform.
 pub const DEFAULT_PLATFORM: &str = "twitch";
+/// Longest platform name.
+pub const PLATFORM_MAX: usize = 32;
+/// What replaces a platform or channel id that is not a valid identifier.
+pub const INVALID_IDENTIFIER: &str = "invalid";
+
+/// A platform as the logger keeps it.
+pub(crate) type Platform = Label<PLATFORM_MAX>;
+
+/// `[a-z0-9_-]{1,32}`, or [`INVALID_IDENTIFIER`] (and `true`: replaced).
+pub(crate) fn platform(value: &str) -> (Platform, bool) {
+    let valid = !value.is_empty()
+        && value.len() <= PLATFORM_MAX
+        && value.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+        });
+    if valid {
+        (Label::clean(value), false)
+    } else {
+        (Label::clean(INVALID_IDENTIFIER), true)
+    }
+}
+
+/// No channel for `None` or empty; `[A-Za-z0-9_-]{1,80}`; otherwise [`INVALID_IDENTIFIER`] (and
+/// `true`: replaced).
+pub(crate) fn channel_id(value: Option<&str>) -> (Option<Channel>, bool) {
+    match value {
+        None | Some("") => (None, false),
+        Some(value) => {
+            let channel = label::channel(value);
+            if channel.is_empty() {
+                (Some(Label::clean(INVALID_IDENTIFIER)), true)
+            } else {
+                (Some(channel), false)
+            }
+        }
+    }
+}
 
 /// A log level, in increasing severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -181,8 +231,8 @@ pub(crate) struct LogRecord {
     pub(crate) level: Level,
     pub(crate) at_ms: i64,
     pub(crate) data: Value,
-    pub(crate) platform: String,
-    pub(crate) channel_id: Option<String>,
+    pub(crate) platform: Platform,
+    pub(crate) channel_id: Option<Channel>,
     pub(crate) destination: Destination,
     pub(crate) trace: Option<SpanIds>,
     charge: usize,
@@ -218,6 +268,12 @@ pub(crate) struct Sinks {
     pub(crate) budget: Arc<AtomicUsize>,
     pub(crate) budget_max: usize,
     pub(crate) drops: LogDrops,
+    /// Platforms and channel ids replaced by [`INVALID_IDENTIFIER`].
+    pub(crate) replaced: AtomicU64,
+    /// Entries below this level are not exported to PostHog (`None`: every entry).
+    pub(crate) posthog_min: Option<Level>,
+    /// Entries kept from PostHog by [`Sinks::posthog_min`].
+    pub(crate) posthog_below: AtomicU64,
 }
 
 /// The receiving ends, taken by [`crate::Telemetry::start`].
@@ -262,6 +318,9 @@ impl Sinks {
                 budget: Arc::new(AtomicUsize::new(0)),
                 budget_max,
                 drops: LogDrops::default(),
+                replaced: AtomicU64::new(0),
+                posthog_min: None,
+                posthog_below: AtomicU64::new(0),
             },
             Receivers {
                 console: console_rx,
@@ -271,7 +330,8 @@ impl Sinks {
         )
     }
 
-    /// Builds the shared record, charging the budget; `None` when the budget is spent.
+    /// Builds the shared record with validated metadata, charging the budget (data and
+    /// metadata); `None` when the budget is spent.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn record(
         &self,
@@ -282,7 +342,14 @@ impl Sinks {
         options: &LogOptions<'_>,
         trace: Option<SpanIds>,
     ) -> Option<Arc<LogRecord>> {
-        let charge = size.saturating_add(128);
+        let (platform, bad_platform) = platform(options.platform);
+        let (channel_id, bad_channel) = channel_id(options.channel_id);
+        let replaced = u64::from(bad_platform) + u64::from(bad_channel);
+        if replaced > 0 {
+            self.replaced.fetch_add(replaced, Ordering::Relaxed);
+        }
+        let metadata = platform.as_str().len() + channel_id.map_or(0, |id| id.as_str().len());
+        let charge = size.saturating_add(128).saturating_add(metadata);
         let admitted = self
             .budget
             .try_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
@@ -295,8 +362,8 @@ impl Sinks {
             level,
             at_ms,
             data,
-            platform: options.platform.to_owned(),
-            channel_id: options.channel_id.map(str::to_owned),
+            platform,
+            channel_id,
             destination: options.destination,
             trace,
             charge,
@@ -327,12 +394,28 @@ impl Sinks {
             }
         }
         if let Some(posthog) = &self.posthog
+            && self.to_posthog(record.level)
             && posthog.try_send(record.clone()).is_err()
         {
             self.drops.posthog.fetch_add(1, Ordering::Relaxed);
             lost += 1;
         }
         lost
+    }
+
+    /// Whether an entry at `level` is exported to PostHog; counts the ones the minimum level
+    /// keeps out. Without an exporter nothing is exported or counted.
+    pub(crate) fn to_posthog(&self, level: Level) -> bool {
+        if self.posthog.is_none() {
+            return false;
+        }
+        match self.posthog_min {
+            Some(min) if level < min => {
+                self.posthog_below.fetch_add(1, Ordering::Relaxed);
+                false
+            }
+            _ => true,
+        }
     }
 
     /// A pre-formatted line for the console only (connection-error reports).
@@ -363,8 +446,8 @@ pub(crate) fn console_line(record: &LogRecord) -> String {
     let line = ConsoleLine {
         level: record.level.as_str(),
         time: iso_timestamp(record.at_ms),
-        platform: &record.platform,
-        channel_id: record.channel_id.as_deref(),
+        platform: record.platform.as_str(),
+        channel_id: record.channel_id.as_ref().map(Label::as_str),
         trace_id: trace.as_ref().map(|hex| hex.as_str()),
         data: &record.data,
     };
@@ -414,29 +497,11 @@ struct CacheEntry<'a> {
     trace_id: Option<&'a str>,
 }
 
-fn key_part(value: &str, max: usize) -> String {
-    value
-        .chars()
-        .take(max)
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.') {
-                character
-            } else {
-                '_'
-            }
-        })
-        .collect()
-}
-
 /// The key and value of one cache entry.
 pub(crate) fn cache_entry(record: &LogRecord, suffix: u32) -> (String, String) {
-    let platform = key_part(&record.platform, 32);
-    let channel = record
-        .channel_id
-        .as_deref()
-        .filter(|id| !id.is_empty())
-        .map(|id| key_part(id, 80))
-        .unwrap_or_else(|| "global".to_owned());
+    // Both are validated identifiers: no `:` or other key syntax.
+    let platform = record.platform.as_str();
+    let channel = record.channel_id.as_ref().map_or("global", Label::as_str);
     let key = format!(
         "logger:{platform}:{channel}:{}:{}-{suffix:08x}",
         record.level.as_str(),
@@ -447,8 +512,8 @@ pub(crate) fn cache_entry(record: &LogRecord, suffix: u32) -> (String, String) {
         data: &record.data,
         timestamp: format_timestamp(record.at_ms),
         level: record.level.as_str(),
-        platform: &record.platform,
-        channel_id: record.channel_id.as_deref(),
+        platform: record.platform.as_str(),
+        channel_id: record.channel_id.as_ref().map(Label::as_str),
         trace_id: trace.as_ref().map(|hex| hex.as_str()),
     };
     (key, serde_json::to_string(&entry).unwrap_or_default())
@@ -529,7 +594,7 @@ mod tests {
     #[test]
     fn cache_entries_keep_the_reference_shape() {
         let (sinks, _rx) = Sinks::new(ConsoleTarget::Off, true, false, 4, 1 << 20);
-        let options = LogOptions::cache().channel("123:4");
+        let options = LogOptions::cache().channel("123");
         let record = sinks
             .record(
                 Level::Warn,
@@ -541,10 +606,10 @@ mod tests {
             )
             .unwrap_or_else(|| panic!("budget"));
         let (key, value) = cache_entry(&record, 0xab);
-        assert_eq!(key, "logger:twitch:123_4:warn:1794409445000-000000ab");
+        assert_eq!(key, "logger:twitch:123:warn:1794409445000-000000ab");
         assert_eq!(
             value,
-            r#"{"data":{"a":1},"timestamp":"11/11/2026, 3:04:05 PM","level":"warn","platform":"twitch","channelId":"123:4"}"#
+            r#"{"data":{"a":1},"timestamp":"11/11/2026, 3:04:05 PM","level":"warn","platform":"twitch","channelId":"123"}"#
         );
         let global = sinks
             .record(Level::Info, 0, Value::Null, 1, &LogOptions::cache(), None)
@@ -554,6 +619,44 @@ mod tests {
                 .0
                 .starts_with("logger:twitch:global:info:0-")
         );
+    }
+
+    #[test]
+    fn platform_and_channel_are_bounded_identifiers_and_charged() {
+        let (sinks, _rx) = Sinks::new(ConsoleTarget::Off, true, false, 4, 1 << 20);
+        let long = "1".repeat(10_000);
+        let cases = [
+            ("twitch", Some("123:4"), "twitch", Some("invalid"), 1),
+            ("twitch:x\n*", None, "invalid", None, 1),
+            (
+                long.as_str(),
+                Some(long.as_str()),
+                "invalid",
+                Some("invalid"),
+                2,
+            ),
+            ("TWITCH", Some("chan_a-b"), "invalid", Some("chan_a-b"), 1),
+            ("twitch", Some(""), "twitch", None, 0),
+            ("youtube", Some("😀"), "youtube", Some("invalid"), 1),
+        ];
+        let mut replaced = 0;
+        for (platform, channel, want_platform, want_channel, bad) in cases {
+            let mut options = LogOptions::cache().platform(platform);
+            options.channel_id = channel;
+            let record = sinks
+                .record(Level::Info, 0, Value::Null, 10, &options, None)
+                .unwrap_or_else(|| panic!("budget"));
+            assert_eq!(record.platform.as_str(), want_platform, "{platform}");
+            assert_eq!(record.channel_id.as_ref().map(Label::as_str), want_channel);
+            replaced += bad;
+            assert_eq!(sinks.replaced.load(Ordering::Relaxed), replaced);
+            let (key, value) = cache_entry(&record, 1);
+            assert_eq!(key.split(':').count(), 5, "{key}");
+            assert!(key.len() < 160 && value.len() < 200, "{key} {value}");
+            // The metadata is charged with the data.
+            let metadata = want_platform.len() + want_channel.map_or(0, str::len);
+            assert_eq!(sinks.budget.load(Ordering::Relaxed), 10 + 128 + metadata);
+        }
     }
 
     #[test]

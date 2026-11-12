@@ -1,5 +1,9 @@
-//! Shared helpers: the local Dragonfly from `DIMA_TEST_DRAGONFLY` (logical databases 10 to 15),
-//! unique key names per test, clean-up, and stand-ins for an unreachable or a hung server.
+//! Shared helpers: the local Dragonfly from `DIMA_TEST_DRAGONFLY` (logical databases 12 and 13,
+//! shared with other agents' tests), unique key names per test, clean-up that also runs when an
+//! assertion fails, and stand-ins for an unreachable or a hung server.
+//!
+//! Without `DIMA_TEST_DRAGONFLY` a test that needs the store is skipped with a message, unless
+//! `DIMA_TEST_REQUIRE_STORES=1` (set by `tools/test-env`): then it fails.
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use dima_core::ManualClock;
@@ -9,17 +13,38 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Settings for logical database `db`, or `None` (with a message) when the store is not set.
+/// Whether a missing store fails the test instead of skipping it.
+pub fn stores_required() -> bool {
+    std::env::var("DIMA_TEST_REQUIRE_STORES").as_deref() == Ok("1")
+}
+
+/// Settings for logical database `db`, or `None` (with a message) when the store is not set and
+/// not required.
 pub fn config(db: u8) -> Option<DragonflyConfig> {
+    config_from(
+        std::env::var("DIMA_TEST_DRAGONFLY").ok().as_deref(),
+        stores_required(),
+        db,
+    )
+}
+
+/// [`config`] from the variable's value and the requirement.
+pub fn config_from(address: Option<&str>, required: bool, db: u8) -> Option<DragonflyConfig> {
     assert!(
-        (10..=15).contains(&db),
-        "tests use logical databases 10 to 15 only"
+        (12..=13).contains(&db),
+        "tests use logical databases 12 and 13 only"
     );
-    let Ok(address) = std::env::var("DIMA_TEST_DRAGONFLY") else {
+    let Some(address) = address else {
+        assert!(
+            !required,
+            "DIMA_TEST_REQUIRE_STORES=1 but DIMA_TEST_DRAGONFLY is not set"
+        );
         eprintln!("skipped: DIMA_TEST_DRAGONFLY is not set (eval \"$(dima-rust/tools/test-env)\")");
         return None;
     };
-    let (host, port) = address.rsplit_once(':')?;
+    let Some((host, port)) = address.rsplit_once(':') else {
+        panic!("DIMA_TEST_DRAGONFLY is not host:port: {address}");
+    };
     Some(DragonflyConfig::from_env_values(
         Some(host),
         Some(&format!("{port}/{db}")),
@@ -67,13 +92,44 @@ pub async fn keys_and_cleanup(dragonfly: &Dragonfly, pattern: &str) -> Vec<Strin
     keys
 }
 
-/// A configuration writing console lines to memory, with the given store.
+/// Runs `body`, then deletes every key matching `patterns` in `store`, also when `body` panicked
+/// (a failed assertion); the panic is then resumed.
+pub async fn with_cleanup<F: std::future::Future<Output = ()>>(
+    store: &DragonflyConfig,
+    patterns: &[String],
+    body: F,
+) {
+    use futures_util::FutureExt as _;
+    let outcome = std::panic::AssertUnwindSafe(body).catch_unwind().await;
+    let dragonfly = connect(store).await;
+    for pattern in patterns {
+        keys_and_cleanup(&dragonfly, pattern).await;
+    }
+    if let Err(panic) = outcome {
+        std::panic::resume_unwind(panic);
+    }
+}
+
+/// Points the inbox and overflow keys at a unique prefix and returns the pattern of both.
+pub fn unique_inbox(config: &mut TelemetryConfig, name: &str) -> String {
+    let prefix = unique(name);
+    config.inbox_key = format!("{prefix}:inbox");
+    config.overflow_key = format!("{prefix}:overflow");
+    format!("{prefix}:*")
+}
+
+/// A configuration writing console lines to memory, with the given store. With a store, the
+/// inbox and overflow keys are unique to this configuration (see [`inbox_pattern`]), never the
+/// production names.
 pub fn memory_config(
     service: &str,
     dragonfly: Option<DragonflyConfig>,
 ) -> (TelemetryConfig, Arc<Mutex<Vec<u8>>>) {
     let console = Arc::new(Mutex::new(Vec::new()));
     let mut config = TelemetryConfig::new(service, "index");
+    if dragonfly.is_some() {
+        unique_inbox(&mut config, "dima-test-telemetry-inbox");
+    }
     config.export = dragonfly.is_some();
     config.dragonfly = dragonfly;
     config.console = ConsoleTarget::Memory(console.clone());
@@ -96,6 +152,15 @@ pub fn in_memory(sample_rate: f64) -> Telemetry {
     Telemetry::new(config).expect("telemetry")
 }
 
+/// The pattern of a configuration's inbox and overflow keys.
+pub fn inbox_pattern(config: &TelemetryConfig) -> String {
+    let prefix = config
+        .inbox_key
+        .strip_suffix(":inbox")
+        .expect("a test inbox key");
+    format!("{prefix}:*")
+}
+
 /// Console lines as JSON.
 pub fn lines(buffer: &Arc<Mutex<Vec<u8>>>) -> Vec<serde_json::Value> {
     let bytes = buffer.lock().unwrap().clone();
@@ -104,6 +169,25 @@ pub fn lines(buffer: &Arc<Mutex<Vec<u8>>>) -> Vec<serde_json::Value> {
         .lines()
         .map(|line| serde_json::from_str(line).expect("a JSON line"))
         .collect()
+}
+
+/// `count` distinct metric names `<prefix><index>`, made once per process and prefix. Names are
+/// `&'static str` in the API (fixed in the source); tests that need many build them here.
+pub fn names(prefix: &'static str, count: usize) -> &'static [&'static str] {
+    static MADE: Mutex<Vec<(&'static str, &'static [&'static str])>> = Mutex::new(Vec::new());
+    let mut made = MADE.lock().unwrap();
+    if let Some((_, names)) = made
+        .iter()
+        .find(|(known, names)| *known == prefix && names.len() >= count)
+    {
+        return &names[..count];
+    }
+    let names: Vec<&'static str> = (0..count)
+        .map(|index| &*Box::leak(format!("{prefix}{index}").into_boxed_str()))
+        .collect();
+    let names: &'static [&'static str] = Box::leak(names.into_boxed_slice());
+    made.push((prefix, names));
+    names
 }
 
 /// A port where nothing listens.

@@ -11,7 +11,8 @@
 use super::client::Dragonfly;
 use super::error::{DragonflyError, Result};
 use dima_text::{number_to_string, parse_number};
-use redis::Value;
+use redis::{Pipeline, Value};
+use std::num::NonZeroUsize;
 
 /// `SET` conditions (node-redis `{NX: true}` / `{XX: true}`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -229,6 +230,108 @@ pub mod reply {
         }
     }
 
+    /// Member/score pairs of a `WITHSCORES` range (`ZRANGE`, `ZRANGEBYSCORE`, `ZREVRANGE` ...)
+    /// or a counted pop (`ZPOPMIN key n`, `ZPOPMAX key n`): RESP2 sends them flat, member then
+    /// score. Scores read like node-redis ([`score`]: `inf`, `-inf`, `nan`). A missing key is `[]`.
+    pub fn scored(value: Value) -> Result<Vec<(Vec<u8>, f64)>> {
+        let items = array(value)?;
+        if items.len() % 2 != 0 {
+            return Err(DragonflyError::Reply(
+                "a scored reply has an odd number of items",
+            ));
+        }
+        let mut pairs = Vec::with_capacity(items.len() / 2);
+        let mut items = items.into_iter();
+        while let (Some(member), Some(score)) = (items.next(), items.next()) {
+            pairs.push((bytes(member)?, self::score(&bytes(score)?)));
+        }
+        Ok(pairs)
+    }
+
+    /// `LPOP key count` / `RPOP key count` (node-redis `string[] | null`): nil when the key does
+    /// not exist, otherwise the popped elements (at most `count`).
+    pub fn count_pop(value: Value) -> Result<Option<Vec<Vec<u8>>>> {
+        match value {
+            Value::Nil => Ok(None),
+            Value::Array(items) => items
+                .into_iter()
+                .map(bytes)
+                .collect::<Result<_>>()
+                .map(Some),
+            _ => Err(DragonflyError::Reply("expected an array or nil")),
+        }
+    }
+
+    /// One stream entry: its id and its field/value pairs in the order they were added.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct StreamEntry {
+        /// `<ms>-<seq>`.
+        pub id: String,
+        /// Field/value pairs (bytes, as stored). Empty for an entry the server reports without
+        /// fields (deleted, in claim replies).
+        pub fields: Vec<(Vec<u8>, Vec<u8>)>,
+    }
+
+    /// `XRANGE` / `XREVRANGE` (and the entries of `XCLAIM`): `[[id, [field, value, ...]], ...]`.
+    pub fn stream_entries(value: Value) -> Result<Vec<StreamEntry>> {
+        array(value)?.into_iter().map(stream_entry).collect()
+    }
+
+    fn stream_entry(value: Value) -> Result<StreamEntry> {
+        let mut parts = array(value)?.into_iter();
+        let (Some(id), Some(fields), None) = (parts.next(), parts.next(), parts.next()) else {
+            return Err(DragonflyError::Reply("a stream entry is not [id, fields]"));
+        };
+        let flat = array(fields)?;
+        if flat.len() % 2 != 0 {
+            return Err(DragonflyError::Reply(
+                "a stream entry has an odd number of field items",
+            ));
+        }
+        let mut pairs = Vec::with_capacity(flat.len() / 2);
+        let mut flat = flat.into_iter();
+        while let (Some(field), Some(value)) = (flat.next(), flat.next()) {
+            pairs.push((bytes(field)?, bytes(value)?));
+        }
+        Ok(StreamEntry {
+            id: text(id)?,
+            fields: pairs,
+        })
+    }
+
+    /// `XREAD` / `XREADGROUP`: `[[key, entries], ...]` per stream that had entries; nil (nothing
+    /// new, or a blocking read that timed out) is an empty list.
+    pub fn stream_read(value: Value) -> Result<Vec<(Vec<u8>, Vec<StreamEntry>)>> {
+        array(value)?
+            .into_iter()
+            .map(|stream| {
+                let mut parts = array(stream)?.into_iter();
+                let (Some(key), Some(entries), None) = (parts.next(), parts.next(), parts.next())
+                else {
+                    return Err(DragonflyError::Reply(
+                        "an XREAD stream is not [key, entries]",
+                    ));
+                };
+                Ok((bytes(key)?, stream_entries(entries)?))
+            })
+            .collect()
+    }
+
+    /// The replies of a `MULTI` ... `EXEC` run with errors kept per command (see
+    /// [`super::Dragonfly::transaction`]): one result per queued command, in order. A command
+    /// that failed at run time (`WRONGTYPE` ...) is an `Err` in its slot while the others ran, as
+    /// Redis transactions do not roll back; nested replies stay [`Value`]s for the other
+    /// decoders here (`scored`, `field_pairs` ...).
+    pub fn transaction(value: Value) -> Result<Vec<Result<Value>>> {
+        Ok(array(value)?
+            .into_iter()
+            .map(|reply| match reply {
+                Value::ServerError(error) => Err(DragonflyError::Redis(error.into())),
+                other => Ok(other),
+            })
+            .collect())
+    }
+
     /// `ZPOPMIN key` (node-redis `{value, score} | null`).
     pub fn pop_min(value: Value) -> Result<Option<(Vec<u8>, f64)>> {
         let items = array(value)?;
@@ -414,6 +517,84 @@ impl Dragonfly {
         reply::pop_min(self.query_value(redis::cmd("ZPOPMIN").arg(key)).await?)
     }
 
+    /// `ZRANGE key start stop WITHSCORES` (node-redis `zRangeWithScores`: `{value, score}[]`).
+    pub async fn zrange_with_scores(
+        &self,
+        key: &str,
+        start: i64,
+        stop: i64,
+    ) -> Result<Vec<(Vec<u8>, f64)>> {
+        reply::scored(
+            self.query_value(
+                redis::cmd("ZRANGE")
+                    .arg(key)
+                    .arg(start)
+                    .arg(stop)
+                    .arg("WITHSCORES"),
+            )
+            .await?,
+        )
+    }
+
+    /// `ZPOPMIN key count` (node-redis `zPopMinCount`: `{value, score}[]`, `[]` when missing).
+    pub async fn zpopmin_count(
+        &self,
+        key: &str,
+        count: NonZeroUsize,
+    ) -> Result<Vec<(Vec<u8>, f64)>> {
+        reply::scored(
+            self.query_value(redis::cmd("ZPOPMIN").arg(key).arg(count.get()))
+                .await?,
+        )
+    }
+
+    /// `LPOP key count` (node-redis `lPopCount`: `string[] | null`, null when missing).
+    pub async fn lpop_count(&self, key: &str, count: NonZeroUsize) -> Result<Option<Vec<Vec<u8>>>> {
+        reply::count_pop(
+            self.query_value(redis::cmd("LPOP").arg(key).arg(count.get()))
+                .await?,
+        )
+    }
+
+    /// `RPOP key count` (node-redis `rPopCount`: `string[] | null`, null when missing).
+    pub async fn rpop_count(&self, key: &str, count: NonZeroUsize) -> Result<Option<Vec<Vec<u8>>>> {
+        reply::count_pop(
+            self.query_value(redis::cmd("RPOP").arg(key).arg(count.get()))
+                .await?,
+        )
+    }
+
+    /// `XRANGE key start end COUNT count` (ids such as `-`, `+`, `1700000000000-0`).
+    pub async fn xrange(
+        &self,
+        key: &str,
+        start: &str,
+        end: &str,
+        count: NonZeroUsize,
+    ) -> Result<Vec<reply::StreamEntry>> {
+        reply::stream_entries(
+            self.query_value(
+                redis::cmd("XRANGE")
+                    .arg(key)
+                    .arg(start)
+                    .arg(end)
+                    .arg("COUNT")
+                    .arg(count.get()),
+            )
+            .await?,
+        )
+    }
+
+    /// Runs `pipeline` as one `MULTI` ... `EXEC` transaction and returns one result per command
+    /// ([`reply::transaction`]), instead of failing the whole call when one command fails at run
+    /// time (the others have run by then). An error while queueing (an unknown command) aborts
+    /// the transaction (`EXECABORT`, nothing ran) and is the call's error. Not instrumented,
+    /// like `multi()` in the reference.
+    pub async fn transaction(&self, mut pipeline: Pipeline) -> Result<Vec<Result<Value>>> {
+        pipeline.atomic().ignore_errors();
+        reply::transaction(self.query_pipeline(&pipeline).await?)
+    }
+
     /// Starts a `SCAN 0 MATCH pattern [COUNT count]` iteration.
     pub fn scan(&self, pattern: &str, count: Option<u32>) -> Scan {
         Scan {
@@ -439,6 +620,48 @@ impl Dragonfly {
 mod tests {
     use super::reply::*;
     use super::*;
+
+    fn bulk(text: &str) -> Value {
+        Value::BulkString(text.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn scored_count_pop_and_stream_shapes() {
+        assert_eq!(
+            scored(Value::Array(vec![
+                bulk("a"),
+                bulk("1.5"),
+                bulk("b"),
+                bulk("-inf")
+            ]))
+            .unwrap(),
+            vec![(b"a".to_vec(), 1.5), (b"b".to_vec(), f64::NEG_INFINITY)]
+        );
+        assert!(scored(Value::Array(vec![]),).unwrap().is_empty());
+        assert!(scored(Value::Array(vec![bulk("a")])).is_err());
+        assert_eq!(count_pop(Value::Nil).unwrap(), None);
+        assert_eq!(count_pop(Value::Array(vec![])).unwrap(), Some(vec![]));
+        assert!(count_pop(Value::Int(1)).is_err());
+        let entry = Value::Array(vec![bulk("1-0"), Value::Array(vec![bulk("f"), bulk("v")])]);
+        let entries = stream_entries(Value::Array(vec![entry.clone()])).unwrap();
+        assert_eq!(entries[0].id, "1-0");
+        assert_eq!(entries[0].fields, vec![(b"f".to_vec(), b"v".to_vec())]);
+        let deleted = Value::Array(vec![bulk("2-0"), Value::Nil]);
+        assert!(
+            stream_entries(Value::Array(vec![deleted])).unwrap()[0]
+                .fields
+                .is_empty()
+        );
+        assert!(stream_entries(Value::Array(vec![Value::Array(vec![bulk("1-0")])])).is_err());
+        assert!(stream_read(Value::Nil).unwrap().is_empty());
+        let read = stream_read(Value::Array(vec![Value::Array(vec![
+            bulk("k"),
+            Value::Array(vec![entry]),
+        ])]))
+        .unwrap();
+        assert_eq!(read[0].0, b"k".to_vec());
+        assert_eq!(read[0].1.len(), 1);
+    }
 
     #[test]
     fn nil_and_empty_string_stay_distinct() {

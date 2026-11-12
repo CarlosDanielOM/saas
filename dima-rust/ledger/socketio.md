@@ -27,6 +27,26 @@ cannot carry this, the fallback is option B, decided before more is built.
 The raw WebSocket endpoint `/v1/desktop/ws` (section 1, point 23) is not part of this crate; it comes
 with the API's desktop package on the upgrade contract of `dima-web`.
 
+## Corrections found while building (F-SOCKETIO, 2026-11-11)
+
+Checked against the installed 4.8.3 server and adapter 2.5.8 by the differential test (30 cases for
+each of two client versions over three transports, all matching):
+
+- Section 4, point 1: binary events *are* stored for recovery by the adapter; only events that carry an
+  acknowledgement id and volatile events are skipped. (The Rust server refuses binary packets, so this
+  changes nothing for it.)
+- Section 3, point 3: retention is not a hard 120 seconds. The adapter sweeps every 60 seconds, so a
+  packet stays findable for up to about 180 seconds; the Rust server follows the sweep.
+- Section 3, point 6: 128 queued events per socket closes a polling client on an ordinary burst before
+  a poll can drain it. The default is 1,024 packets; the 2 MiB bound is the memory guard.
+- Section 1, point 13: the families with session persistence disabled still append an offset to every
+  event, which clients see. The Rust server has a mode for it (`OffsetsOnly`).
+- Not built: the cap of 64 connections per client address (section 3, point 2). Behind the proxy every
+  client has the proxy's address; it needs a trusted-proxy rule first.
+- Open: `engineioxide` ends the whole session when an upgrade fails after the WebSocket handshake,
+  where `engine.io` keeps the client on polling; and its writer task can panic when a client closes
+  right after upgrading (contained). Both go into a patched copy of the crate (F-SOCKETIO-b).
+
 ---
 
 ## 1. Client requirements and evidence
