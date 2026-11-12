@@ -346,6 +346,10 @@ pub struct ReferenceState {
     pub command_ref_depth: u32,
     /// The shared `commandRefBudget`.
     pub budget: Budget,
+    /// The budget of the message the reference belongs to: run the referenced command with
+    /// [`crate::eval::Engine::render_reference`], which draws from it (not this port's
+    /// reference: each reference ran with fresh limits there).
+    pub message: crate::eval::MessageBudget,
     /// `timerDepth`.
     pub timer_depth: Option<u32>,
 }

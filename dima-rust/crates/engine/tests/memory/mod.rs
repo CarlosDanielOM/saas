@@ -369,3 +369,86 @@ pub fn with_variable(name: &str, value: &str) -> State {
     state.variables.insert(name.into(), value.into());
     state
 }
+
+/// What one message produced, run the way the bot delivers it.
+#[derive(Debug)]
+pub struct Delivery {
+    /// Each run's outcome, the message's command first, then its references depth first
+    /// (`deliverAstMessage`).
+    pub runs: Vec<(String, Result<String, dima_engine::eval::EvalError>)>,
+    /// The message's budget.
+    pub budget: dima_engine::eval::MessageBudget,
+}
+
+/// The context a referenced command runs with (`commandHandler` with the reference's state).
+pub fn reference_context(
+    base: &Context,
+    reference: &dima_engine::context::CommandReference,
+) -> Context {
+    Context {
+        argument: Some(reference.argument.clone()),
+        event_data: reference.event_data.clone(),
+        command_name: reference.command_name.clone(),
+        budget: reference.state.budget.clone(),
+        visited_commands: reference.state.visited_commands.clone(),
+        command_ref_depth: Some(reference.state.command_ref_depth),
+        timer_depth: reference.state.timer_depth,
+        ..base.clone()
+    }
+}
+
+/// Runs `source` as one message: the command, then every command reference it starts, depth
+/// first, each referenced command's text taken from `commands` (by name; an unknown name is
+/// skipped, as the bot skips a command it does not find). A reference refused because the
+/// message stopped ends the delivery.
+pub fn deliver(
+    engine: &Engine,
+    commands: &HashMap<String, String>,
+    source: &str,
+    context: &Context,
+    host: &mut MemoryHost,
+) -> Delivery {
+    block_on(async {
+        let template = engine.compile(source).unwrap();
+        let top = engine
+            .render(&template, context, State::default(), host)
+            .await
+            .unwrap();
+        let budget = top.budget.clone();
+        let mut runs = vec![(context.command_name.clone(), Ok(top.text))];
+        let mut pending: Vec<_> = top.state.command_references.into_iter().rev().collect();
+        while let Some(reference) = pending.pop() {
+            assert!(reference.state.message.same(&budget));
+            let Some(source) = commands.get(&reference.command_name) else {
+                continue;
+            };
+            let Ok(template) = engine.compile(source) else {
+                continue;
+            };
+            let context = reference_context(context, &reference);
+            match engine
+                .render_reference(
+                    &template,
+                    &context,
+                    State::default(),
+                    host,
+                    &reference.state.message,
+                )
+                .await
+            {
+                Ok(rendered) => {
+                    runs.push((reference.command_name.clone(), Ok(rendered.text)));
+                    pending.extend(rendered.state.command_references.into_iter().rev());
+                }
+                Err(error) => {
+                    let stop = matches!(error, dima_engine::eval::EvalError::Limit(_));
+                    runs.push((reference.command_name.clone(), Err(error)));
+                    if stop {
+                        break;
+                    }
+                }
+            }
+        }
+        Delivery { runs, budget }
+    })
+}

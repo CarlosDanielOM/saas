@@ -95,7 +95,19 @@ pub struct EvalLimits {
     /// checked again as a guard. The deepest stored command in the production copy has 10
     /// levels.
     pub nesting: usize,
+    /// How many times one command's figures a whole message may spend
+    /// ([`super::MessageLimits`]): the command a chat message (or a timer, or a redemption)
+    /// runs and every command reference it starts, at any depth, draw their work, host calls,
+    /// memory and output from one budget of [`Self::steps`], [`Self::host_calls`],
+    /// [`Self::memory_bytes`] and [`Self::text_bytes`] times this. Each run still has its own
+    /// limits. Two: a command with a few references runs as before, fifty heavy ones do not
+    /// (the stored commands of the production copy use at most a small share of it,
+    /// `tests/real_commands.rs`).
+    pub message_factor: u64,
 }
+
+/// The default [`EvalLimits::message_factor`].
+pub const MESSAGE_FACTOR: u64 = 2;
 
 /// The deepest nesting [`EvalLimits::nesting`] may allow: the depth the stack contract is
 /// proven for ([`crate::stack::EVAL_STACK_BYTES`]).
@@ -109,6 +121,7 @@ impl Default for EvalLimits {
             text_bytes: 256 * 1024,
             memory_bytes: 4 * 1024 * 1024,
             nesting: MAX_EVAL_NESTING,
+            message_factor: MESSAGE_FACTOR,
         }
     }
 }
@@ -116,15 +129,15 @@ impl Default for EvalLimits {
 /// Which limit was hit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LimitKind {
-    /// [`EvalLimits::steps`].
+    /// [`EvalLimits::steps`], or the message's ([`super::MessageLimits::steps`]).
     Steps,
-    /// [`EvalLimits::host_calls`].
+    /// [`EvalLimits::host_calls`], or the message's.
     HostCalls,
-    /// [`EvalLimits::text_bytes`].
+    /// [`EvalLimits::text_bytes`], or the message's output.
     TextSize,
     /// [`EvalLimits::nesting`].
     Nesting,
-    /// [`EvalLimits::memory_bytes`].
+    /// [`EvalLimits::memory_bytes`], or the message's.
     Memory,
 }
 

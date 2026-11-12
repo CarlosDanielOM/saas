@@ -26,6 +26,11 @@
 //!   are counted as they are gathered, and what a run keeps (variables, the database memo, loop
 //!   variables, reference arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper
 //!   than [`EvalLimits::nesting`] (32, as the parser) is refused before any of it runs;
+//! - one budget per message ([`MessageBudget`]): the command a message runs and every command
+//!   reference it starts, at any depth, draw their work, host calls, memory and output from one
+//!   budget of [`EvalLimits::message_factor`] times one run's figures ([`MessageLimits`]). The
+//!   reference gave each reference fresh limits (it had none but its loop bounds), so one
+//!   message could cost fifty-one runs' worth;
 //! - the stack contract ([`crate::stack`]): every poll of an evaluation needs
 //!   [`crate::stack::EVAL_STACK_BYTES`] left on a registered thread, or it stops with
 //!   [`EvalError::Stack`]; within it, the deepest tree fits, as `tests/stack_contract.rs`
@@ -45,6 +50,7 @@
 //! - `JSON.parse` of stored values ([`crate::json`]) refuses nesting deeper than
 //!   [`crate::json::MAX_JSON_NESTING`] (V8 reads any depth).
 
+mod budget;
 mod coerce;
 mod frame;
 mod limits;
@@ -52,8 +58,9 @@ mod run;
 mod stack;
 mod storage;
 
+pub use budget::{MessageBudget, MessageLimits, MessageUsage};
 pub use limits::{
-    EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, PerPlan,
+    EvalLimits, HOST_CALLS_PER_STATEMENT, LimitKind, MAX_EVAL_NESTING, MESSAGE_FACTOR, PerPlan,
     STEPS_PER_STATEMENT, SUPPORTED_STATEMENTS,
 };
 
@@ -108,8 +115,10 @@ pub struct Evaluated {
     pub value: Value,
     /// The state afterwards.
     pub state: State,
-    /// Work counters.
+    /// Work counters of this run.
     pub stats: EvalStats,
+    /// The budget of the message this run belongs to.
+    pub budget: MessageBudget,
 }
 
 /// The result of [`Engine::render`].
@@ -119,8 +128,10 @@ pub struct Rendered {
     pub text: String,
     /// The state afterwards.
     pub state: State,
-    /// Work counters.
+    /// Work counters of this run.
     pub stats: EvalStats,
+    /// The budget of the message this run belongs to.
+    pub budget: MessageBudget,
 }
 
 /// Syntax, registry, permission rules and limits, shared by every evaluation.
@@ -201,7 +212,8 @@ impl Engine {
         self.syntax.parse(text)
     }
 
-    /// Renders compiled command text (`renderAstWithSourceReference`).
+    /// Renders compiled command text (`renderAstWithSourceReference`) as a message of its own,
+    /// with a fresh [`MessageBudget`].
     pub async fn render(
         &self,
         template: &CompiledTemplate,
@@ -209,7 +221,28 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Rendered, EvalError> {
-        stack::Guarded::new(self.render_guarded(template, context, state, host)).await
+        let budget = self.message_budget(context);
+        stack::Guarded::new(self.render_guarded(template, context, state, host, budget)).await
+    }
+
+    /// Renders a command started by a command reference of a message, drawing from that
+    /// message's budget ([`crate::context::ReferenceState::message`]). Refused with
+    /// [`EvalError::Limit`] when the message has already stopped.
+    pub async fn render_reference(
+        &self,
+        template: &CompiledTemplate,
+        context: &Context,
+        state: State,
+        host: &mut dyn Host,
+        budget: &MessageBudget,
+    ) -> Result<Rendered, EvalError> {
+        budget.running().map_err(EvalError::Limit)?;
+        stack::Guarded::new(self.render_guarded(template, context, state, host, budget.clone()))
+            .await
+    }
+
+    fn message_budget(&self, context: &Context) -> MessageBudget {
+        MessageBudget::new(&self.limits, context.user_plan)
     }
 
     async fn render_guarded(
@@ -218,8 +251,9 @@ impl Engine {
         context: &Context,
         state: State,
         host: &mut dyn Host,
+        budget: MessageBudget,
     ) -> Result<Rendered, EvalError> {
-        let mut run = run::Run::new(self, context, state, host);
+        let mut run = run::Run::new(self, context, state, host, budget);
         let mut text = String::new();
         for plan in template.segments() {
             match plan.step() {
@@ -244,19 +278,32 @@ impl Engine {
                     Err(error) => return Err(error),
                 },
             }
-            if text.len() > self.limits.text_bytes {
-                text = dima_text::truncate_bytes(&text, self.limits.text_bytes).to_owned();
+            // A run's own text limit, then the message's output: what fits is kept, and the
+            // limit is shown after it.
+            let mut keep = text.len().min(self.limits.text_bytes);
+            let mut over = keep < text.len();
+            if let Err(room) = run.output_to(keep) {
+                keep = room;
+                over = true;
+            }
+            if over {
+                text = dima_text::truncate_bytes(&text, keep).to_owned();
                 text.push_str("[Parse error: ");
                 text.push_str(LimitKind::TextSize.message());
                 text.push(']');
                 break;
             }
         }
-        let (state, stats) = run.finish();
-        Ok(Rendered { text, state, stats })
+        let (state, stats, budget) = run.finish();
+        Ok(Rendered {
+            text,
+            state,
+            stats,
+            budget,
+        })
     }
 
-    /// Evaluates a parsed program (`evaluate(parse(text).ast, ctx)`).
+    /// Evaluates a parsed program (`evaluate(parse(text).ast, ctx)`) as a message of its own.
     pub async fn evaluate_program(
         &self,
         program: &CompiledProgram,
@@ -267,9 +314,9 @@ impl Engine {
         self.evaluate(program.root(), context, state, host).await
     }
 
-    /// Evaluates any node (`evaluate(node, ctx)`), for instance a timer body read back from the
-    /// cache. A tree deeper than [`EvalLimits::nesting`] is refused before it runs
-    /// ([`EvalError::Limit`] with [`LimitKind::Nesting`]).
+    /// Evaluates any node (`evaluate(node, ctx)`) as a message of its own, for instance a timer
+    /// body read back from the cache. A tree deeper than [`EvalLimits::nesting`] is refused
+    /// before it runs ([`EvalError::Limit`] with [`LimitKind::Nesting`]).
     pub async fn evaluate(
         &self,
         node: &AstNode,
@@ -277,7 +324,24 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let run = run::Run::new(self, context, state, host);
+        let budget = self.message_budget(context);
+        let run = run::Run::new(self, context, state, host, budget);
+        stack::Guarded::new(Self::finish_program(run, node)).await
+    }
+
+    /// Evaluates a node started by a command reference of a message, drawing from that
+    /// message's budget. Refused with [`EvalError::Limit`] when the message has already
+    /// stopped.
+    pub async fn evaluate_reference(
+        &self,
+        node: &AstNode,
+        context: &Context,
+        state: State,
+        host: &mut dyn Host,
+        budget: &MessageBudget,
+    ) -> Result<Evaluated, EvalError> {
+        budget.running().map_err(EvalError::Limit)?;
+        let run = run::Run::new(self, context, state, host, budget.clone());
         stack::Guarded::new(Self::finish_program(run, node)).await
     }
 
@@ -286,15 +350,18 @@ impl Engine {
         node: &AstNode,
     ) -> Result<Evaluated, EvalError> {
         let value = run.program(node).await?;
-        let (state, stats) = run.finish();
+        run.output_value(&value)?;
+        let (state, stats, budget) = run.finish();
         Ok(Evaluated {
             value,
             state,
             stats,
+            budget,
         })
     }
 
-    /// `evaluateTimer(node, ctx)` on its own: a `$(timer …)` function node.
+    /// `evaluateTimer(node, ctx)` on its own, as a message of its own: a `$(timer …)`
+    /// function node.
     pub async fn evaluate_timer(
         &self,
         args: &[AstNode],
@@ -302,7 +369,8 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let run = run::Run::new(self, context, state, host);
+        let budget = self.message_budget(context);
+        let run = run::Run::new(self, context, state, host, budget);
         stack::Guarded::new(Self::finish_timer(run, args)).await
     }
 
@@ -311,11 +379,12 @@ impl Engine {
         args: &[AstNode],
     ) -> Result<Evaluated, EvalError> {
         let value = run.timer(args).await?;
-        let (state, stats) = run.finish();
+        let (state, stats, budget) = run.finish();
         Ok(Evaluated {
             value,
             state,
             stats,
+            budget,
         })
     }
 

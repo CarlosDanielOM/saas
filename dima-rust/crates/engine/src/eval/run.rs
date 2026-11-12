@@ -1,5 +1,6 @@
 //! One evaluation: `evaluate()` of `evaluator.ts`, node by node.
 
+use super::budget::{MessageBudget, STEP_LEASE};
 use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
@@ -72,6 +73,12 @@ pub(super) struct Run<'a> {
     memory: usize,
     /// The stack left where the evaluation started (at its first level).
     stack_start: Option<usize>,
+    /// The budget of the message this run belongs to.
+    pub(super) budget: MessageBudget,
+    /// Work units taken from the message's budget and not spent yet.
+    lease: u64,
+    /// Bytes of output charged to the message's budget.
+    output: usize,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -202,6 +209,7 @@ impl<'a> Run<'a> {
         context: &'a Context,
         mut state: State,
         host: &'a mut dyn Host,
+        budget: MessageBudget,
     ) -> Self {
         let scalars = Scalars {
             count: state.count,
@@ -221,23 +229,33 @@ impl<'a> Run<'a> {
             depth: 0,
             memory: 0,
             stack_start: None,
+            budget,
+            lease: 0,
+            output: 0,
         }
     }
 
-    /// The state with the final scalars.
-    pub(super) fn finish(mut self) -> (State, EvalStats) {
-        self.state.count = self.frames.scalars.count;
-        self.state.count_modified = self.frames.scalars.count_modified;
-        self.state.loop_exit = self.frames.scalars.loop_exit;
-        self.state.loop_depth = self.frames.scalars.loop_depth;
-        self.state.loop_vars = std::mem::take(&mut self.frames.loop_vars);
-        (self.state, self.stats)
+    /// The state with the final scalars, the run's counters and the message's budget (the
+    /// work units the run took and did not spend go back to it).
+    pub(super) fn finish(mut self) -> (State, EvalStats, MessageBudget) {
+        let mut state = std::mem::take(&mut self.state);
+        state.count = self.frames.scalars.count;
+        state.count_modified = self.frames.scalars.count_modified;
+        state.loop_exit = self.frames.scalars.loop_exit;
+        state.loop_depth = self.frames.scalars.loop_depth;
+        state.loop_vars = std::mem::take(&mut self.frames.loop_vars);
+        (state, self.stats, self.budget.clone())
     }
 
-    /// After a limit stopped an expression midway: forget the watches it left open.
+    /// After a limit stopped an expression midway: forget the watches it left open. When the
+    /// message has stopped, the run gives back its unspent work, so its next expression hits
+    /// the message's limit at once.
     pub(super) fn after_limit(&mut self) {
         self.frames.abandon_from(0);
         self.depth = 0;
+        if self.budget.stopped().is_some() {
+            self.budget.return_steps(std::mem::take(&mut self.lease));
+        }
     }
 
     // ---- limits ----
@@ -251,6 +269,14 @@ impl<'a> Run<'a> {
         if self.stats.steps > self.engine.limits.steps.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::Steps));
         }
+        if units > self.lease {
+            let least = units - self.lease;
+            self.lease += self
+                .budget
+                .draw_steps(least.max(STEP_LEASE), least)
+                .map_err(EvalError::Limit)?;
+        }
+        self.lease -= units;
         Ok(())
     }
 
@@ -264,17 +290,66 @@ impl<'a> Run<'a> {
         if self.stats.host_calls > self.engine.limits.host_calls.of(self.context.user_plan) {
             return Err(EvalError::Limit(LimitKind::HostCalls));
         }
+        self.budget.host_call().map_err(EvalError::Limit)?;
         self.step()
+    }
+
+    /// Charges the run's output up to `len` bytes in all. When the message's output is spent,
+    /// returns how many bytes of the run's output fit.
+    pub(super) fn output_to(&mut self, len: usize) -> Result<(), usize> {
+        let more = len.saturating_sub(self.output);
+        if more == 0 {
+            return Ok(());
+        }
+        match self.budget.output(more as u64) {
+            Ok(()) => {
+                self.output = len;
+                Ok(())
+            }
+            Err(taken) => {
+                self.output = self.output.saturating_add(taken as usize);
+                Err(self.output)
+            }
+        }
+    }
+
+    /// Charges an evaluated program's value as output.
+    pub(super) fn output_value(&mut self, value: &Value) -> Result<(), EvalError> {
+        match self.output_to(value.weight()) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(EvalError::Limit(LimitKind::TextSize)),
+        }
+    }
+
+    /// Sets what the run keeps to `memory` bytes, within the run's limit and the message's.
+    fn keep_total(&mut self, memory: usize) -> Result<(), EvalError> {
+        if memory > self.engine.limits.memory_bytes {
+            return Err(EvalError::Limit(LimitKind::Memory));
+        }
+        if memory > self.memory {
+            self.budget
+                .reserve_memory((memory - self.memory) as u64)
+                .map_err(EvalError::Limit)?;
+        } else {
+            self.budget.release_memory((self.memory - memory) as u64);
+        }
+        self.memory = memory;
+        Ok(())
+    }
+
+    /// Sets what the run keeps to `memory` bytes without a check (what it had before).
+    fn restore_total(&mut self, memory: usize) {
+        if memory > self.memory {
+            self.budget.add_memory((memory - self.memory) as u64);
+        } else {
+            self.budget.release_memory((self.memory - memory) as u64);
+        }
+        self.memory = memory;
     }
 
     /// Charges what the run keeps: `added` bytes in, `removed` bytes out.
     fn keep(&mut self, added: usize, removed: usize) -> Result<(), EvalError> {
-        let memory = self.memory.saturating_sub(removed).saturating_add(added);
-        if memory > self.engine.limits.memory_bytes {
-            return Err(EvalError::Limit(LimitKind::Memory));
-        }
-        self.memory = memory;
-        Ok(())
+        self.keep_total(self.memory.saturating_sub(removed).saturating_add(added))
     }
 
     fn kept(&mut self, which: Kept) -> &mut OrderedMap<String, String> {
@@ -299,7 +374,9 @@ impl<'a> Run<'a> {
         if memory > self.engine.limits.memory_bytes {
             return Err(EvalError::Limit(LimitKind::Memory));
         }
-        Ok(())
+        self.budget
+            .memory_fits(memory.saturating_sub(self.memory) as u64)
+            .map_err(EvalError::Limit)
     }
 
     /// Inserts into a kept map, within the memory budget (checked before the insert).
@@ -316,17 +393,18 @@ impl<'a> Run<'a> {
     /// Removes from a kept map.
     pub(super) fn forget(&mut self, which: Kept, key: &str) {
         if let Some(old) = self.kept(which).remove(key) {
-            self.memory = self.memory.saturating_sub(entry_size(key, &old));
+            self.restore_total(self.memory.saturating_sub(entry_size(key, &old)));
         }
     }
 
     /// Restores the loop variables a loop started with.
     fn restore_loop_vars(&mut self, outer: OrderedMap<String, String>) {
         let inner = map_size(&self.frames.loop_vars);
-        self.memory = self
-            .memory
-            .saturating_sub(inner)
-            .saturating_add(map_size(&outer));
+        self.restore_total(
+            self.memory
+                .saturating_sub(inner)
+                .saturating_add(map_size(&outer)),
+        );
         self.frames.loop_vars = outer;
     }
 
@@ -1189,6 +1267,7 @@ impl<'a> Run<'a> {
                 visited_commands: visited,
                 command_ref_depth: depth + 1,
                 budget,
+                message: self.budget.clone(),
                 timer_depth: context.timer_depth,
             },
         };
@@ -1301,4 +1380,11 @@ pub(crate) fn permission_denied(name: &str, required: f64, actual: f64) -> Strin
         dima_text::number_to_string(required),
         dima_text::number_to_string(actual)
     )
+}
+
+impl Drop for Run<'_> {
+    /// The work units the run took and did not spend go back to the message.
+    fn drop(&mut self) {
+        self.budget.return_steps(self.lease);
+    }
 }

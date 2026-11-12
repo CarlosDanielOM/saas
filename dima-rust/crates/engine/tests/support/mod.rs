@@ -1063,6 +1063,29 @@ pub fn runtime() -> tokio::runtime::Runtime {
         .unwrap()
 }
 
+thread_local! {
+    /// Cases the message's shared budget stopped, and references that do not carry their
+    /// message's budget, on this thread.
+    static BUDGET_NOTES: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+/// Notes whether the message's budget stopped a run and whether every reference it started
+/// carries that budget.
+fn note_budget(budget: &dima_engine::eval::MessageBudget, state: &State) {
+    let outside = state
+        .command_references
+        .iter()
+        .filter(|reference| !reference.state.message.same(budget))
+        .count();
+    BUDGET_NOTES.with(|notes| {
+        let (stops, refs) = notes.get();
+        notes.set((
+            stops + usize::from(budget.stopped().is_some()),
+            refs + outside,
+        ));
+    });
+}
+
 /// Runs a case. `Err` when its input cannot exist in Rust.
 pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrepresentable> {
     let input = &case["input"];
@@ -1091,7 +1114,10 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                 engine
                     .evaluate(&ast, &context, state, &mut host)
                     .await
-                    .map(|done| (Some(done.value), done.state))
+                    .map(|done| {
+                        note_budget(&done.budget, &done.state);
+                        (Some(done.value), done.state)
+                    })
             }
             "parseEvaluate" => match engine.parse(input["text"].as_str().unwrap()) {
                 Err(error) => {
@@ -1101,14 +1127,20 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                 Ok(program) => engine
                     .evaluate_program(&program, &context, state, &mut host)
                     .await
-                    .map(|done| (Some(done.value), done.state)),
+                    .map(|done| {
+                        note_budget(&done.budget, &done.state);
+                        (Some(done.value), done.state)
+                    }),
             },
             "render" | "preparedRender" => {
                 let template = engine.compile(input["text"].as_str().unwrap()).unwrap();
                 engine
                     .render(&template, &context, state, &mut host)
                     .await
-                    .map(|done| (Some(Value::Text(done.text)), done.state))
+                    .map(|done| {
+                        note_budget(&done.budget, &done.state);
+                        (Some(Value::Text(done.text)), done.state)
+                    })
             }
             "timer" => {
                 let ast: AstNode = serde_json::from_value(input["ast"].clone()).unwrap();
@@ -1118,7 +1150,10 @@ pub fn run_case(rt: &tokio::runtime::Runtime, case: &Json) -> Result<Json, Unrep
                 engine
                     .evaluate_timer(&args, &context, state, &mut host)
                     .await
-                    .map(|done| (Some(done.value), done.state))
+                    .map(|done| {
+                        note_budget(&done.budget, &done.state);
+                        (Some(done.value), done.state)
+                    })
             }
             "snapshot" => {
                 let snapshot = engine.snapshot(&context, &state);
@@ -1573,6 +1608,12 @@ pub struct Tally {
     pub differences: BTreeMap<Difference, usize>,
     pub unrepresentable: BTreeMap<Unrepresentable, usize>,
     pub failures: Vec<String>,
+    /// Cases the message's shared budget (`dima_engine::eval::MessageBudget`) stopped. The
+    /// reference has no such budget; every corpus case is one run, which its own limits stop
+    /// first (the message's are twice as large), so none is expected.
+    pub message_budget_stops: usize,
+    /// Command references that do not carry the budget of the message that started them.
+    pub references_outside_their_message: usize,
 }
 
 pub fn run_corpus(name: &str) -> Tally {
@@ -1584,6 +1625,7 @@ fn run_corpus_here(name: &str) -> Tally {
     let corpus = load(name);
     let rt = runtime();
     let mut tally = Tally::default();
+    BUDGET_NOTES.with(|notes| notes.set((0, 0)));
     for case in corpus["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap().to_owned();
         match run_case(&rt, case) {
@@ -1611,5 +1653,9 @@ fn run_corpus_here(name: &str) -> Tally {
             }
         }
     }
+    (
+        tally.message_budget_stops,
+        tally.references_outside_their_message,
+    ) = BUDGET_NOTES.with(std::cell::Cell::get);
     tally
 }
