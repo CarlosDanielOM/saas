@@ -19,8 +19,268 @@
   "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13",
   "src/schemas/raid_subscription_preference.schema.ts": "dfbb334ed17ac9557d9c90e648dd69eebd558f89b08547098919c1030848a27f",
   "src/schemas/admin.schema.ts": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
-  "src/middleware/admin.middleware.ts": "f0a4fc3f23d3ba8b355f701b3fc5189ffb31498317205ca06bee90d02a764a49"
+  "src/middleware/admin.middleware.ts": "f0a4fc3f23d3ba8b355f701b3fc5189ffb31498317205ca06bee90d02a764a49",
+  "src/utils/eventsub.test-data.ts": "e26b72d8377d56403e1aac6d5820fbe0cc1345312da2b01c850a308a9f868f44"
  },
+ "testPayloads": [
+  {
+   "type": "channel.chat.message",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345",
+    "user_id": "698614112"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.chat.notification",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345",
+    "user_id": "698614112"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.follow",
+   "version": "2",
+   "condition": {
+    "broadcaster_user_id": "12345",
+    "moderator_user_id": "698614112"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "stream.online",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "stream.offline",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.raid",
+   "version": "1",
+   "condition": {
+    "to_broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.channel_points_custom_reward_redemption.add",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.ad_break.begin",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.ban",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.subscribe",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.subscription.gift",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.subscription.message",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.subscription.end",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.bits.use",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.poll.progress",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.prediction.progress",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.hype_train.begin",
+   "version": "2",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.hype_train.progress",
+   "version": "2",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.hype_train.end",
+   "version": "2",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.shoutout.receive",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345",
+    "moderator_user_id": "698614112"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "channel.update",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "user.update",
+   "version": "1",
+   "condition": {
+    "user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  },
+  {
+   "type": "automod.message.hold",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "12345"
+   },
+   "transport": {
+    "method": "webhook",
+    "callback": "https://subscriptions.domdimabot.com/eventsub"
+   }
+  }
+ ],
  "table": [
   {
    "type": "channel.chat.message",

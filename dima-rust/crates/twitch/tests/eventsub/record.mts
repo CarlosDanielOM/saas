@@ -44,7 +44,7 @@ const SOURCES = [
   'src/utils/notifications.ts', 'src/overlays/interaction-model.ts',
   'src/schemas/eventsub.schema.ts', 'src/schemas/users.schema.ts',
   'src/schemas/raid_subscription_preference.schema.ts', 'src/schemas/admin.schema.ts',
-  'src/middleware/admin.middleware.ts',
+  'src/middleware/admin.middleware.ts', 'src/utils/eventsub.test-data.ts',
 ];
 const sources: Record<string, string> = {};
 for (const file of SOURCES) sources[file] = createHash('sha256').update(readFileSync(`${root}/${file}`)).digest('hex');
@@ -312,7 +312,13 @@ async function main() {
     }
   }
 
-  const part1 = { reference, sources, table, conditions, extraTemplates, bitsTypes, raidConditions, bitsCases, breaker, catalog: catalogCases, bodies, adminRows, accessCases };
+  // `eventsub.test-data.ts` states each testable type's version and condition a second time.
+  const testData = await imported('src/utils/eventsub.test-data.ts');
+  const testPayloads = testData.getTestableEventTypes().map((type: string) => {
+    const { subscription } = testData.generateTestPayload(type, '12345');
+    return { type, version: subscription.version, condition: subscription.condition, transport: subscription.transport };
+  });
+  const part1 = { reference, sources, testPayloads, table, conditions, extraTemplates, bitsTypes, raidConditions, bitsCases, breaker, catalog: catalogCases, bodies, adminRows, accessCases };
   writeFileSync(`${outDir}/part1.json`, `${JSON.stringify(part1, null, 1)}\n`);
   console.log(`part 1: ${conditions.length} conditions, ${bodies.length} bodies, ${accessCases.length} access cases`);
 

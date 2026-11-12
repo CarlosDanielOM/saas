@@ -146,6 +146,33 @@ fn create_bodies_for_every_type_and_kind_of_channel() -> Result<()> {
     Ok(())
 }
 
+/// `eventsub.test-data.ts` (the payload generator of the ingress tests) states each testable
+/// type's version and condition again: where the table has the type, they agree.
+#[test]
+fn test_payload_subscriptions_agree_with_the_table() -> Result<()> {
+    let recording = part1()?;
+    let mut checked = 0;
+    for case in items(&recording, "testPayloads")? {
+        let kind = case["type"].as_str().context("type")?;
+        let Some(entry) = SUBSCRIPTION_TYPES.iter().find(|entry| entry.kind == kind) else {
+            continue;
+        };
+        assert_eq!(case["version"], entry.version, "{kind}");
+        assert_eq!(
+            text(&case["condition"]),
+            text(&entry.condition_for("12345").to_value()),
+            "{kind}"
+        );
+        assert_eq!(
+            case["transport"]["callback"],
+            dima_twitch::eventsub::REFERENCE_CALLBACK
+        );
+        checked += 1;
+    }
+    assert!(checked >= 20, "{checked}");
+    Ok(())
+}
+
 #[test]
 fn bits_helpers_and_raid_directions() -> Result<()> {
     let recording = part1()?;
