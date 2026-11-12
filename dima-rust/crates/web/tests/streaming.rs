@@ -401,3 +401,129 @@ async fn the_observer_sees_routes_status_size_and_trace() {
     token.cancel();
     server.await.expect("join").expect("serve");
 }
+
+/// An observer that panics in both calls.
+struct Panicky;
+
+impl Observer for Panicky {
+    fn on_request(&self, _start: &RequestStart<'_>) -> Option<TraceContext> {
+        panic!("observer on_request")
+    }
+
+    fn on_response(&self, _end: RequestEnd) {
+        panic!("observer on_response")
+    }
+}
+
+/// An observer whose `on_response` waits for the test: it reports each call as it enters and
+/// returns once released.
+struct Gated {
+    entered: Mutex<std::sync::mpsc::Sender<()>>,
+    release: Mutex<std::sync::mpsc::Receiver<()>>,
+    seen: Mutex<Vec<String>>,
+}
+
+struct GatedObserver(Arc<Gated>);
+
+impl Observer for GatedObserver {
+    fn on_response(&self, end: RequestEnd) {
+        let _ = self.0.entered.lock().unwrap().send(());
+        let _ = self.0.release.lock().unwrap().recv();
+        self.0.seen.lock().unwrap().push(end.url);
+    }
+}
+
+async fn plain(_req: &mut Req) -> Response {
+    Response::new().text("plain")
+}
+
+async fn serve_observed(
+    app: App,
+) -> (
+    std::net::SocketAddr,
+    CancellationToken,
+    tokio::task::JoinHandle<std::io::Result<()>>,
+) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    let token = CancellationToken::new();
+    let server = tokio::spawn(serve(listener, app, token.clone(), ServeOptions::default()));
+    (addr, token, server)
+}
+
+async fn get(addr: std::net::SocketAddr, path: &str) -> String {
+    let mut stream = TcpStream::connect(addr).await.expect("connect");
+    let request = format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+    stream.write_all(request.as_bytes()).await.expect("write");
+    let mut raw = Vec::new();
+    let _ = tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut raw)).await;
+    String::from_utf8_lossy(&raw).into_owned()
+}
+
+/// Review finding: `on_request` ran before the panic guard and `on_response` ran directly, also
+/// from destructors, so a panicking observer broke the request (or aborted the process).
+#[tokio::test]
+async fn observer_panics_never_reach_the_request() {
+    let mut root = Router::new();
+    root.get("/plain", plain);
+    let app = App::new(root, ()).expect("app").observe(Panicky);
+    let queue = app.observer_queue().expect("observed");
+    let (addr, token, server) = serve_observed(app).await;
+    for _ in 0..2 {
+        let response = get(addr, "/plain").await;
+        assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+        assert!(response.ends_with("plain"), "{response}");
+    }
+    tokio::time::timeout(Duration::from_secs(2), queue.idle())
+        .await
+        .expect("delivered");
+    assert_eq!((queue.panicked(), queue.dropped()), (4, 0));
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: a slow observer held the request (its call ran on the request's task), and
+/// nothing bounded what waited for it. Records now go through a bounded queue: the requests are
+/// answered while the observer is stuck, and what does not fit is dropped and counted.
+#[tokio::test]
+async fn a_stuck_observer_never_holds_requests_and_its_queue_is_bounded() {
+    let (entered_tx, entered) = std::sync::mpsc::channel();
+    let (release, release_rx) = std::sync::mpsc::channel();
+    let gated = Arc::new(Gated {
+        entered: Mutex::new(entered_tx),
+        release: Mutex::new(release_rx),
+        seen: Mutex::new(Vec::new()),
+    });
+    let mut root = Router::new();
+    root.get("/plain", plain);
+    let app = App::new(root, ())
+        .expect("app")
+        .observe_bounded(GatedObserver(Arc::clone(&gated)), 1);
+    let queue = app.observer_queue().expect("observed");
+    let (addr, token, server) = serve_observed(app).await;
+
+    let response = get(addr, "/plain?n=1").await;
+    assert!(response.ends_with("plain"), "{response}");
+    // The observer is now stuck in its first call.
+    tokio::task::spawn_blocking(move || entered.recv_timeout(Duration::from_secs(2)))
+        .await
+        .expect("join")
+        .expect("observer entered");
+    let started = std::time::Instant::now();
+    for n in 2..=4 {
+        let response = get(addr, &format!("/plain?n={n}")).await;
+        assert!(response.ends_with("plain"), "{response}");
+    }
+    assert!(started.elapsed() < Duration::from_secs(2));
+    // One record fits in the queue; the other two were dropped.
+    assert_eq!(queue.dropped(), 2);
+    for _ in 0..2 {
+        release.send(()).expect("release");
+    }
+    tokio::time::timeout(Duration::from_secs(2), queue.idle())
+        .await
+        .expect("delivered");
+    assert_eq!(*gated.seen.lock().unwrap(), ["/plain?n=1", "/plain?n=2"]);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}

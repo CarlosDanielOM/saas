@@ -148,7 +148,9 @@ pub type Body = axum::body::Body;
 pub use app::{App, ConfigError};
 pub use envelope::Envelope;
 pub use error::{Error, Result, RouteError};
-pub use exchange::{MatchedRoute, Observer, RequestEnd, RequestStart, TraceContext};
+pub use exchange::{
+    MatchedRoute, OBSERVER_QUEUE, Observer, ObserverQueue, RequestEnd, RequestStart, TraceContext,
+};
 pub use handler::{
     BoxFuture, ErrorHandler, ErrorHandlerFn, Flow, FnHandler, FromFn, Handler, HandlerFn, IntoFlow,
     IntoHandler, Seq, SetHeaders, ViaFn, ViaHandler, from_fn, set_headers,
