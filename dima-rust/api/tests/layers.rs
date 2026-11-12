@@ -10,8 +10,8 @@
 //! - `dima-event-handlers` and `dima-features` never link `dima-actions`, at any depth (they
 //!   reach chat through `dima_twitch::chat::ChatOut`), and `dima-moderation` never links it
 //!   either (the host's moderation functions call it, not the other way);
-//! - once `cron/` exists (P2-CRON-01), `dima-cron` never links `dima-chat`, `dima-realtime`,
-//!   `dima-routes`, `dima-site-agent` or `dima-services`.
+//! - `dima-cron` never links `dima-chat`, `dima-realtime`, `dima-routes`, `dima-site-agent` or
+//!   `dima-services`, at any depth.
 //!
 //! Only normal dependencies count: a test may use a crate above it (`dima-event-handlers` tests
 //! may use the real `ChatDelivery`). Dependencies outside the workspace are not checked here.
@@ -194,7 +194,13 @@ fn every_crate_has_a_layer() -> anyhow::Result<()> {
     if !missing.is_empty() {
         bail!("crates without a layer in api/tests/layers.rs: {missing:?}");
     }
-    for name in ["dima-server", "dima-bot", "dima-routes", "dima-actions"] {
+    for name in [
+        "dima-server",
+        "dima-bot",
+        "dima-cron",
+        "dima-routes",
+        "dima-actions",
+    ] {
         anyhow::ensure!(graph.contains_key(name), "{name} is not a workspace member");
     }
     Ok(())
@@ -205,9 +211,9 @@ fn the_upper_layers_depend_only_downwards() -> anyhow::Result<()> {
     let graph = workspace_graph()?;
     let mut wrong = Vec::new();
     for name in UPPER {
-        let Some(dependencies) = graph.get(*name) else {
-            continue; // dima-cron, before P2-CRON-01 creates it.
-        };
+        let dependencies = graph
+            .get(*name)
+            .with_context(|| format!("{name} is not a workspace member"))?;
         let own = layer(name).context("upper crate without a layer")?;
         for dependency in dependencies {
             let allowed = match layer(dependency) {
@@ -231,9 +237,10 @@ fn forbidden_crates_are_never_linked() -> anyhow::Result<()> {
     let graph = workspace_graph()?;
     let mut wrong = Vec::new();
     for (name, forbidden) in FORBIDDEN {
-        if !graph.contains_key(*name) {
-            continue; // dima-cron, before P2-CRON-01 creates it.
-        }
+        anyhow::ensure!(
+            graph.contains_key(*name),
+            "{name} is not a workspace member"
+        );
         let linked = reachable(&graph, name);
         for crate_name in *forbidden {
             if linked.contains(*crate_name) {
@@ -260,6 +267,18 @@ fn forbidden_crates_are_never_linked() -> anyhow::Result<()> {
         anyhow::ensure!(
             bot.contains(crate_name),
             "dima-bot does not link {crate_name}"
+        );
+    }
+    let cron = reachable(&graph, "dima-cron");
+    for crate_name in [
+        "dima-stream",
+        "dima-twitch",
+        "dima-engine",
+        "dima-telemetry",
+    ] {
+        anyhow::ensure!(
+            cron.contains(crate_name),
+            "dima-cron does not link {crate_name}"
         );
     }
     Ok(())
