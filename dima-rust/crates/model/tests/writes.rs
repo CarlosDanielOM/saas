@@ -27,13 +27,16 @@ use dima_model::domain_event_deliveries::NewDelivery;
 use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
 use dima_model::events::{ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
+use dima_model::index::{IndexDifference, IndexError, IndexStatus};
 use dima_model::redemption_rewards::NewRedemptionReward;
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
 };
-use dima_model::{CollectionInfo, ModelError, REGISTRY, ensure_indexes};
+use dima_model::{
+    CollectionInfo, IndexPolicy, ModelError, REGISTRY, ensure_indexes, preflight_indexes,
+};
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::insert::PreparedInsert;
 use dima_store::mongo::number::JsNumber;
@@ -43,6 +46,9 @@ use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+
+/// A generous deadline for index work on the local server.
+const DEADLINE: std::time::Duration = std::time::Duration::from_secs(60);
 
 // ------------------------------------------------------------------------------------ recording
 
@@ -862,14 +868,14 @@ async fn indexes_match_mongoose() -> Result<()> {
         for record in &recording.indexes {
             let collection = record.get("collection").and_then(Value::as_str).context("collection")?;
             let info = info(collection)?;
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                problems.push(format!("{collection}: {failures:?}"));
+            let first = ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE).await;
+            if first.outcomes.iter().any(|o| !matches!(o.status, IndexStatus::Created)) {
+                problems.push(format!("{collection}: on an empty database\n{first}"));
             }
-            // Idempotent, like `Model.init()` on every start.
-            let again = ensure_indexes(&store, info).await;
-            if !again.is_empty() {
-                problems.push(format!("{collection} (second run): {again:?}"));
+            // Idempotent, like `Model.init()` on every start: nothing left to create.
+            let again = ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE).await;
+            if again.outcomes.iter().any(|o| !matches!(o.status, IndexStatus::Exists)) {
+                problems.push(format!("{collection} (second run)\n{again}"));
             }
             let listed = list_indexes(&store, collection).await?;
             let expected = record.get("indexes").and_then(Value::as_array).context("indexes")?;
@@ -996,10 +1002,9 @@ async fn writes_match_mongoose() -> Result<()> {
         let mut covered: HashSet<&str> = HashSet::new();
         // Mongoose's `autoIndex` created every index before the recorded cases ran.
         for info in REGISTRY {
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                bail!("{}: {failures:?}", info.name);
-            }
+            ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE)
+                .await
+                .require()?;
         }
         for case in &recording.cases {
             let collection = case
@@ -1134,10 +1139,9 @@ async fn unique_indexes_report_duplicates() -> Result<()> {
             let Some(unique) = info.indexes.iter().find(|spec| spec.unique) else {
                 continue;
             };
-            let failures = ensure_indexes(&store, info).await;
-            if !failures.is_empty() {
-                bail!("{}: {failures:?}", info.name);
-            }
+            ensure_indexes(&store, info, IndexPolicy::RequireAll, DEADLINE)
+                .await
+                .require()?;
             // Two documents with the same values on the unique keys (and on a partial filter's
             // fields): the second insert must fail with E11000 naming the index.
             let mut document = doc! {};
@@ -1308,6 +1312,117 @@ async fn response_reads_hide_select_false_paths() -> Result<()> {
             .is_ok()
         {
             bail!("an invalid ObjectId must fail to cast");
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// Index creation reports every index, honours its deadline and the caller's policy; the
+/// preflight lists every difference and changes nothing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_reports_policies_and_preflight() -> Result<()> {
+    support::with_store(|store| async move {
+        let journal = &dima_model::domain_events::INFO;
+        let sessions = &dima_model::stream_sessions::INFO;
+        // No time at all: nothing is done, and the journal's unique indexes are missing.
+        let late = ensure_indexes(
+            &store,
+            journal,
+            IndexPolicy::RequireUnique,
+            std::time::Duration::ZERO,
+        )
+        .await;
+        if !late
+            .outcomes
+            .iter()
+            .all(|o| matches!(o.status, IndexStatus::Failed(IndexError::Deadline(_))))
+        {
+            bail!("a zero deadline must fail every index:\n{late}");
+        }
+        let Err(missing) = late.require() else {
+            bail!("the journal's unique indexes are required");
+        };
+        if missing.missing.len() != journal.indexes.iter().filter(|s| s.unique).count() {
+            bail!("only the unique indexes are required: {missing}");
+        }
+        // An older index of the same name with other options: reported, the others created.
+        store
+            .documents(sessions.name)
+            .create_index(
+                mongodb::IndexModel::builder()
+                    .keys(doc! { "status": 1 })
+                    .options(
+                        mongodb::options::IndexOptions::builder()
+                            .sparse(true)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await?;
+        let report = ensure_indexes(&store, sessions, IndexPolicy::BestEffort, DEADLINE).await;
+        let conflict = report
+            .outcomes
+            .iter()
+            .find(|o| o.index == "status_1")
+            .context("status_1")?;
+        if !matches!(
+            conflict.status,
+            IndexStatus::Failed(IndexError::Conflict { .. })
+        ) {
+            bail!("the conflict must be reported:\n{report}");
+        }
+        if report.failures().count() != 1 || report.require().is_err() {
+            bail!("best effort: one failure, nothing required:\n{report}");
+        }
+        if ensure_indexes(&store, sessions, IndexPolicy::RequireAll, DEADLINE)
+            .await
+            .require()
+            .is_ok()
+        {
+            bail!("RequireAll must refuse the conflicting index");
+        }
+        let journal_report =
+            ensure_indexes(&store, journal, IndexPolicy::RequireUnique, DEADLINE).await;
+        journal_report.require()?;
+        // The preflight: the conflict, a dropped index, an undeclared one, a missing collection.
+        store
+            .documents(journal.name)
+            .drop_index("channelID_1")
+            .await?;
+        store
+            .documents(journal.name)
+            .create_index(
+                mongodb::IndexModel::builder()
+                    .keys(doc! { "extra": 1 })
+                    .build(),
+            )
+            .await?;
+        let before = list_indexes(&store, journal.name).await?;
+        let infos = [journal, sessions, &dima_model::users::INFO];
+        let differences = preflight_indexes(&store, &infos, DEADLINE).await?;
+        let after = list_indexes(&store, journal.name).await?;
+        if before != after {
+            bail!("the preflight changed the indexes");
+        }
+        let found: Vec<String> = differences.iter().map(ToString::to_string).collect();
+        let expected = |d: &IndexDifference| match d {
+            IndexDifference::Missing {
+                collection,
+                declared,
+            } => {
+                *collection == journal.name && declared.get_str("name").ok() == Some("channelID_1")
+            }
+            IndexDifference::Undeclared { collection, stored } => {
+                *collection == journal.name && stored.get_str("name").ok() == Some("extra_1")
+            }
+            IndexDifference::Differs {
+                collection, stored, ..
+            } => *collection == sessions.name && stored.get_str("name").ok() == Some("status_1"),
+            IndexDifference::MissingCollection { collection } => *collection == "users",
+        };
+        if differences.len() != 4 || !differences.iter().all(expected) {
+            bail!("preflight differences:\n{}", found.join("\n"));
         }
         Ok(())
     })

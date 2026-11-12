@@ -106,8 +106,11 @@
 //!   adapters take it too and go through `writes::save_with_hooks`.
 //! - Filters: `dima_store::mongo::filter::prepare_filter(INFO.schema, …)`; responses:
 //!   [`CollectionInfo::find_json`] and friends leave out the hidden paths.
-//! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry (Mongoose's
-//!   `Model.init()`: collection, then each index with `background: true`).
+//! - At startup, binaries call [`ensure_indexes`] for every [`REGISTRY`] entry with
+//!   [`startup_policy`] and a deadline (Mongoose's `Model.init()`: collection, then each index
+//!   with `background: true`), log each [`IndexReport`], and write to a collection only once
+//!   [`IndexReport::require`] passed for it (the journal's unique indexes); best-effort
+//!   collections never wait. The cutover rehearsal runs [`preflight_indexes`] (read only) first.
 //!
 //! # Tests every collection gets
 //!
@@ -183,7 +186,9 @@ pub use collection::{CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;
-pub use index::{IndexFailure, IndexSpec, ensure_indexes};
+pub use index::{
+    IndexPolicy, IndexReport, IndexSpec, ensure_indexes, preflight_indexes, startup_policy,
+};
 pub use loaded::LoadedForSave;
 pub use private::Private;
 pub use shape::ReadNeed;
