@@ -270,7 +270,13 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
 ) where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    let mut internal_rx = socket.internal_rx.try_lock().unwrap();
+    // [dima-rust patch 3] The packet buffer is awaited, not assumed free: when the client closes
+    // right after upgrading, the session's close task may take it first.
+    let mut internal_rx = tokio::select! {
+        biased;
+        internal_rx = socket.internal_rx.lock() => internal_rx,
+        _ = socket.cancellation_token.cancelled() => return,
+    };
     let InternalRx {
         buffered_rx,
         volatile_rx,
@@ -311,47 +317,61 @@ async fn forward_to_socket<H: EngineIoHandler, S>(
         }
 
     // Forward buffered packets until the channel is closed or the session is cancelled.
-    loop {
-        tokio::select! {
-            biased;
-            items = buffered_rx.recv() => {
-                match items {
-                    Some(packets) => {
-                        for item in packets {
-                            map_fn!(item);
-                        }
-                        while let Ok(packets) = buffered_rx.try_recv() {
+    // [dima-rust patch 3] The writes are cancelled too: a peer that stopped reading must not keep
+    // the packet buffer, which the session's close task waits for.
+    let forward = async {
+        loop {
+            tokio::select! {
+                biased;
+                items = buffered_rx.recv() => {
+                    match items {
+                        Some(packets) => {
                             for item in packets {
                                 map_fn!(item);
                             }
+                            while let Ok(packets) = buffered_rx.try_recv() {
+                                for item in packets {
+                                    map_fn!(item);
+                                }
+                            }
+                        }
+                        None => break
+                    }
+                }
+                Ok(()) = volatile_rx.changed() => {
+                    let val = volatile_rx.borrow_and_update().clone();
+                    if let Some(packets) = val {
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!(sid = ?socket.id, "ws volatile flush: {} packets", packets.len());
+                        for item in packets {
+                            map_fn!(item);
                         }
                     }
-                    None => break
-                }
+                },
             }
-            _ = socket.cancellation_token.cancelled() => break,
-            Ok(()) = volatile_rx.changed() => {
-                let val = volatile_rx.borrow_and_update().clone();
-                if let Some(packets) = val {
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!(sid = ?socket.id, "ws volatile flush: {} packets", packets.len());
-                    for item in packets {
-                        map_fn!(item);
-                    }
-                }
-            },
-        }
 
-        #[cfg(feature = "tracing")]
-        tracing::trace!(sid = %socket.id, "ws flush");
-        tx.flush().await.ok();
+            #[cfg(feature = "tracing")]
+            tracing::trace!(sid = %socket.id, "ws flush");
+            tx.flush().await.ok();
+        }
+    };
+    tokio::select! {
+        biased;
+        _ = forward => {}
+        _ = socket.cancellation_token.cancelled() => {}
     }
+    drop(internal_rx);
 
     #[cfg(feature = "tracing")]
     tracing::trace!(sid = %socket.id, "ws closing flush");
 
-    tx.flush().await.ok();
-    tx.close().await.ok();
+    // [dima-rust patch 3] Without the buffer, and bounded like any WebSocket close.
+    tokio::time::timeout(WS_CLOSE_TIMEOUT, async {
+        tx.flush().await.ok();
+        tx.close().await.ok();
+    })
+    .await
+    .ok();
 }
 /// Send a Engine.IO [`OpenPacket`] to initiate a websocket connection
 async fn init_handshake<S>(
@@ -490,4 +510,102 @@ where
 fn ws_bytes_to_str(bytes: tungstenite::Utf8Bytes) -> Str {
     // SAFETY: the bytes are guaranteed to be valid UTF-8 by the tungstenite parser
     unsafe { Str::from_bytes_unchecked(bytes.into()) }
+}
+
+/// [dima-rust patch 3] The WebSocket writer against a peer it cannot write to.
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use bytes::Bytes;
+    use tokio::sync::mpsc;
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct Handler {
+        disconnect_tx: mpsc::Sender<DisconnectReason>,
+    }
+
+    impl EngineIoHandler for Handler {
+        type Data = ();
+
+        fn on_connect(self: Arc<Self>, _socket: Arc<Socket<()>>) {}
+        fn on_disconnect(&self, _socket: Arc<Socket<()>>, reason: DisconnectReason) {
+            self.disconnect_tx.try_send(reason).ok();
+        }
+        fn on_message(self: &Arc<Self>, _msg: Str, _socket: Arc<Socket<()>>) {}
+        fn on_binary(self: &Arc<Self>, _data: Bytes, _socket: Arc<Socket<()>>) {}
+    }
+
+    /// A WebSocket session whose peer reads nothing: the writer's output goes into a pipe of
+    /// `capacity` bytes that nobody drains.
+    async fn session(
+        capacity: usize,
+    ) -> (
+        Arc<EngineIo<Handler>>,
+        Arc<Socket<()>>,
+        SplitSink<WebSocketStream<tokio::io::DuplexStream>, Message>,
+        tokio::io::DuplexStream,
+        mpsc::Receiver<DisconnectReason>,
+    ) {
+        let (disconnect_tx, disconnect_rx) = mpsc::channel(4);
+        let engine = Arc::new(EngineIo::new(
+            Arc::new(Handler { disconnect_tx }),
+            EngineIoConfig::default(),
+        ));
+        let socket = engine.create_session(
+            ProtocolVersion::V4,
+            TransportType::Websocket,
+            Request::<()>::default().into_parts().0,
+            false,
+        );
+        let (server, client) = tokio::io::duplex(capacity);
+        let ws = WebSocketStream::from_raw_socket(server, Role::Server, None).await;
+        let (tx, _rx) = ws.split();
+        (engine, socket, tx, client, disconnect_rx)
+    }
+
+    /// A client closing right after the upgrade lets the session's close task take the packet
+    /// buffer before the writer starts: the writer waits for it instead of panicking.
+    #[tokio::test]
+    async fn the_writer_does_not_panic_when_the_buffer_is_taken() {
+        let (_engine, socket, tx, _client, _rx) = session(1 << 16).await;
+        let taken = socket.internal_rx.lock().await;
+        let writer = tokio::spawn(forward_to_socket::<Handler, _>(socket.clone(), tx));
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        drop(taken);
+        socket.cancellation_token.cancel();
+        let ended = tokio::time::timeout(Duration::from_secs(1), writer)
+            .await
+            .expect("the writer ended");
+        assert!(ended.is_ok(), "the writer panicked: {ended:?}");
+    }
+
+    /// A writer blocked on a peer that stopped reading releases the packet buffer as soon as the
+    /// session closes, so the close completes (`on_disconnect` runs) without waiting for the peer.
+    #[tokio::test]
+    async fn a_writer_blocked_on_a_silent_peer_does_not_hold_up_the_close() {
+        let (engine, socket, tx, client, mut disconnect_rx) = session(64).await;
+        let writer = tokio::spawn(forward_to_socket::<Handler, _>(socket.clone(), tx));
+        socket.emit("x".repeat(64 * 1024)).unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(!writer.is_finished());
+
+        engine.close_session(socket.id, DisconnectReason::ClosingServer);
+        let reason = tokio::time::timeout(Duration::from_secs(1), disconnect_rx.recv()).await;
+        assert_eq!(
+            reason.ok().flatten(),
+            Some(DisconnectReason::ClosingServer),
+            "the close waited for the blocked writer"
+        );
+        assert!(socket.is_closed());
+
+        // The peer going away ends the writer's last attempt to close the WebSocket.
+        drop(client);
+        tokio::time::timeout(Duration::from_secs(1), writer)
+            .await
+            .expect("the writer ended")
+            .expect("the writer did not panic");
+    }
 }

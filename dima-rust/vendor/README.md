@@ -111,3 +111,19 @@ git diff <that commit> -- dima-rust/vendor
    Tests: `tests/upgrade.rs` (`a_second_probe_during_an_upgrade_is_refused`,
    `a_probe_after_the_upgrade_is_refused`, `simultaneous_probes_upgrade_once`); `dima-socketio`'s
    differential case `upgrade races`.
+
+3. **The WebSocket writer neither panics nor holds the packet buffer for ever.**
+   `transport/ws.rs` (`forward_to_socket`). Upstream took the session's packet buffer with
+   `try_lock().unwrap()`, which panicked when a client closed right after upgrading (the close
+   task in `EngineIo::close_session`, engine.rs 97-107, may take the lock first). The lock is
+   now awaited, and given up if the session closes meanwhile. Upstream also wrote and flushed
+   inside the arms of its `select!`, so a peer that stopped reading kept the writer blocked
+   while it held the lock that the close task waits for: `on_disconnect` never ran (the reason
+   `dima-socketio` aborts the upgraded socket through `UpgradeGuard::abort`, which keeps
+   working and now rarely has anything to do). The whole forwarding loop is now raced against
+   the session's cancellation; the lock is released first, then the closing flush and close
+   frame are attempted within the 30 s close timeout of change 1.
+   Tests: `transport::ws::tests::the_writer_does_not_panic_when_the_buffer_is_taken` and
+   `…::a_writer_blocked_on_a_silent_peer_does_not_hold_up_the_close` (unit tests over an
+   in-memory pipe nobody reads); `dima-socketio`'s adversarial and differential suites pass
+   unchanged.
