@@ -278,6 +278,15 @@ pub fn generate_random_clip_id(
         .map(|b| char::from(b"0123456789ABCDEF"[usize::from(*b % 16)]))
         .collect())
 }
+// No loops. Admission and writes share one bounded script, so concurrent producers
+// cannot exceed the charter's queue cap. Existing ids may still be updated at capacity.
+static ENQUEUE: dima_store::dragonfly::Script = dima_store::dragonfly::Script::new(
+    "twitch_clip_enqueue",
+    r"if redis.call('ZCARD', KEYS[1]) >= 10000 and not redis.call('ZSCORE', KEYS[1], ARGV[3]) then return 0 end
+redis.call('SET', KEYS[2], ARGV[1])
+redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
+return 1",
+);
 /// `requestClip`: persists before publishing, and auto-processes when idle or empty.
 pub async fn request_clip(
     store: &ClipStore<'_>,
@@ -294,10 +303,6 @@ pub async fn request_clip(
     let result = async {
         let queue = store.key(channel, "clips:queue");
         let length = store.dragonfly.zcard(&queue).await.ok()?;
-        // Explicit bounded admission for the migration charter's queue requirement.
-        if length >= 10000 {
-            return None;
-        }
         let processing = store
             .dragonfly
             .exists(&[&store.key(channel, "clip:processing")])
@@ -310,20 +315,22 @@ pub async fn request_clip(
         data.clip_id = Some(id.clone());
         let timestamp = clock.now_ms();
         data.timestamp = Some(timestamp);
-        store
-            .dragonfly
-            .set(
-                &store.key(channel, &format!("clips:queue:data:{id}")),
-                &serde_json::to_vec(&data).ok()?,
-                SetOptions::default(),
+        let bytes = serde_json::to_vec(&data).ok()?;
+        let score = timestamp.to_string();
+        let accepted: i64 = ENQUEUE
+            .run(
+                store.dragonfly,
+                &[
+                    queue.as_str(),
+                    &store.key(channel, &format!("clips:queue:data:{id}")),
+                ],
+                &[bytes.as_slice(), score.as_bytes(), id.as_bytes()],
             )
             .await
             .ok()?;
-        store
-            .dragonfly
-            .zadd(&queue, &[(timestamp as f64, id.as_bytes())])
-            .await
-            .ok()?;
+        if accepted == 0 {
+            return None;
+        }
         if auto_process || length == 0 || processing == 0 {
             publisher.publish(channel, &data).await.ok()?;
         }
