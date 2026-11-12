@@ -473,6 +473,8 @@ pub async fn save(conn: Conn<'_>, body: &Value) -> ApiResult<Value> {
     require_name(doc_id, "id")?;
     let client = conn.get().await?;
     let value = decode_document(body.get("document"))?;
+    // `dbFor(conn, db)` runs before `replaceOne` checks the replacement.
+    let database = client.database(&db_name(db)?);
     let replacement = as_document(&value);
     if replacement
         .keys()
@@ -483,7 +485,6 @@ pub async fn save(conn: Conn<'_>, body: &Value) -> ApiResult<Value> {
             "Replacement document must not contain atomic operators",
         ));
     }
-    let database = client.database(&db_name(db)?);
     let reply = database
         .run_command(doc! {
             "update": js::string(collection),
