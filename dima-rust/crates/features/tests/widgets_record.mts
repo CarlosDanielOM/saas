@@ -92,4 +92,17 @@ for(const mode of ['challenge','perks']) {
   scenario(`mini wheel ${mode}`,state,mode);
 }
 const sources:any={};for(const file of ['widgets/model.ts','widgets/catalog.ts','widgets/dbd.json','roulette/model.ts']) sources[file]=createHash('sha256').update(await readFile(`${root}/src/${file}`)).digest('hex');
-await writeFile(process.argv[2],JSON.stringify({sources,catalog,initial:m.initial(),cases,transitions},null,2)+'\n');
+// Intern repeated compound values. Each line is one compact JSON node; references
+// only point backwards. Expanding the last root reconstructs the full recording.
+const nodes:any[] = [], seen = new Map<string, number>();
+function intern(value:any):any {
+  if(value===null || typeof value!=='object') return value;
+  const node = Array.isArray(value) ? {array:value.map(intern)}
+    : {object:Object.fromEntries(Object.entries(value).map(([k,v])=>[k,intern(v)]))};
+  const key=JSON.stringify(node);let id=seen.get(key);
+  if(id===undefined) {id=nodes.length;seen.set(key,id);nodes.push(node);}
+  return {$ref:id};
+}
+const recordedRoot=intern({sources,catalog,initial:m.initial(),cases,transitions});
+await writeFile(process.argv[2],nodes.concat([{root:recordedRoot}]).map(v=>JSON.stringify(v)).join('\n')+'\n');
+await writeFile(new URL('../src/widgets/dbd.json',import.meta.url),JSON.stringify(JSON.parse(await readFile(`${root}/src/widgets/dbd.json`,'utf8')))+'\n');
