@@ -9,4 +9,28 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+# The loopback mock server other crates' tests script responses with (`dima_http::testing`),
+# and `GuardPolicy::allow_address_for_tests`. Enable it only from `[dev-dependencies]`.
+test-util = []
+
 [dependencies]
+dima-core = { workspace = true }
+dima-text = { workspace = true }
+reqwest = { workspace = true }
+http = { workspace = true }
+bytes = { workspace = true }
+url = { workspace = true }
+percent-encoding = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+# The integration tests use the mock server and the test-only guard exemption.
+dima-http = { path = ".", features = ["test-util"] }
+dima-core = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util"] }
+socket2 = { workspace = true }
+flate2 = { workspace = true }
