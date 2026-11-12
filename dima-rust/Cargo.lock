@@ -1508,6 +1508,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-actions"
+version = "0.1.0"
+dependencies = [
+ "dima-ai",
+ "dima-billing",
+ "dima-commands",
+ "dima-core",
+ "dima-engine",
+ "dima-events",
+ "dima-features",
+ "dima-moderation",
+ "dima-store",
+ "dima-stream",
+ "dima-tts",
+ "dima-twitch",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-ai"
 version = "0.1.0"
 dependencies = [
@@ -1575,6 +1595,13 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "dima-chat"
+version = "0.1.0"
+dependencies = [
+ "dima-actions",
 ]
 
 [[package]]
@@ -1652,6 +1679,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-event-handlers"
+version = "0.1.0"
+dependencies = [
+ "dima-billing",
+ "dima-core",
+ "dima-events",
+ "dima-features",
+ "dima-store",
+ "dima-stream",
+ "dima-twitch",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "dima-events"
 version = "0.1.0"
 dependencies = [
@@ -1667,6 +1708,21 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+]
+
+[[package]]
+name = "dima-features"
+version = "0.1.0"
+dependencies = [
+ "dima-billing",
+ "dima-engine",
+ "dima-events",
+ "dima-model",
+ "dima-platform",
+ "dima-store",
+ "dima-stream",
+ "dima-tts",
+ "dima-twitch",
 ]
 
 [[package]]
@@ -1729,6 +1785,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-moderation"
+version = "0.1.0"
+dependencies = [
+ "dima-ai",
+ "dima-billing",
+ "dima-commands",
+ "dima-model",
+ "dima-store",
+ "dima-twitch",
+]
+
+[[package]]
 name = "dima-platform"
 version = "0.1.0"
 dependencies = [
@@ -1761,6 +1829,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-realtime"
+version = "0.1.0"
+dependencies = [
+ "dima-actions",
+ "dima-core",
+ "dima-features",
+ "dima-platform",
+ "dima-socketio",
+ "dima-tts",
+ "dima-web",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "dima-recap"
+version = "0.1.0"
+dependencies = [
+ "dima-ai",
+ "dima-billing",
+ "dima-email",
+ "dima-events",
+ "dima-platform",
+ "dima-stream",
+]
+
+[[package]]
 name = "dima-rig"
 version = "0.1.0"
 dependencies = [
@@ -1786,6 +1882,19 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "uuid",
+]
+
+[[package]]
+name = "dima-routes"
+version = "0.1.0"
+dependencies = [
+ "dima-chat",
+ "dima-platform",
+ "dima-realtime",
+ "dima-recap",
+ "dima-services",
+ "dima-site-agent",
+ "dima-web",
 ]
 
 [[package]]
@@ -1826,6 +1935,21 @@ dependencies = [
  "tower-http 0.7.1",
  "unicode-normalization",
  "uuid",
+]
+
+[[package]]
+name = "dima-services"
+version = "0.1.0"
+dependencies = [
+ "dima-actions",
+]
+
+[[package]]
+name = "dima-site-agent"
+version = "0.1.0"
+dependencies = [
+ "dima-actions",
+ "dima-services",
 ]
 
 [[package]]

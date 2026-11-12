@@ -40,6 +40,17 @@ dima-events = { path = "crates/events" }
 dima-billing = { path = "crates/billing" }
 dima-tts = { path = "crates/tts" }
 dima-platform = { path = "crates/platform" }
+# The upper layers (ledger/upper-layers.md section 2.3), from the bottom up.
+dima-moderation = { path = "crates/moderation" }
+dima-features = { path = "crates/features" }
+dima-actions = { path = "crates/actions" }
+dima-chat = { path = "crates/chat" }
+dima-realtime = { path = "crates/realtime" }
+dima-services = { path = "crates/services" }
+dima-event-handlers = { path = "crates/event-handlers" }
+dima-recap = { path = "crates/recap" }
+dima-site-agent = { path = "crates/site-agent" }
+dima-routes = { path = "crates/routes" }
 # Runtime.
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net", "process", "fs", "io-util"] }
 tokio-util = { version = "0.7.20", features = ["rt", "io"] }
