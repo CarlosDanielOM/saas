@@ -18,10 +18,10 @@ use serde_json::{Map, Value, json};
 
 use crate::value::{self, Moment, Text, Val};
 
-/// Version 6 adds per-step timestamp provenance; version 5 added PostgreSQL state and SQL steps.
-pub const CAPTURE_VERSION: u64 = 6;
-/// Versions 2–5 remain readable; absent provenance retains run-relative comparison.
-pub const READS_VERSIONS: &[u64] = &[2, 3, 4, 5, 6];
+/// Version 7 retains cursor scan pages; version 6 added step timing provenance.
+pub const CAPTURE_VERSION: u64 = 7;
+/// Versions 2–6 remain readable; absent provenance retains run-relative comparison.
+pub const READS_VERSIONS: &[u64] = &[2, 3, 4, 5, 6, 7];
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
@@ -30,6 +30,7 @@ const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STA
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RawCapture {
+    pub scan_pages: BTreeMap<usize, Vec<RawStep>>,
     pub step_ends: Vec<i64>,
     /// Epoch milliseconds -> (producing step, request start).
     pub time_anchors: BTreeMap<i64, (usize, i64)>,
@@ -790,6 +791,7 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
             "qdrant_prefix": r.qdrant_prefix,
         },
         "ttl_origins": f.raw.ttl_origins.iter().map(|(key, (expiry, (step, at)))| json!([enc_bytes(key), expiry, step, at])).collect::<Vec<_>>(),
+        "scan_pages": f.raw.scan_pages.iter().map(|(i,p)| (i.to_string(), Value::Array(p.iter().map(enc_step).collect()))).collect::<Map<_,_>>(),
         "step_ends": f.raw.step_ends,
         "time_anchors": f.raw.time_anchors.iter().map(|(ms, (step, at))| json!([ms, step, at])).collect::<Vec<_>>(),
         "postgres": f.raw.postgres,
@@ -1011,6 +1013,25 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
         hashes,
         run,
         raw: RawCapture {
+            scan_pages: match o.get("scan_pages") {
+                Some(v) => obj(v, "scan_pages")?
+                    .iter()
+                    .map(|(i, p)| {
+                        let i = i
+                            .parse::<usize>()
+                            .map_err(|e| format!("scan_pages index: {e}"))?;
+                        let pages = arr(p, "scan_pages")?
+                            .iter()
+                            .map(|p| dec_step(p, i))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        if pages.iter().any(|p| !matches!(p, RawStep::Http(_))) {
+                            return Err("scan_pages: expected HTTP pages".into());
+                        }
+                        Ok((i, pages))
+                    })
+                    .collect::<Result<_, String>>()?,
+                None => BTreeMap::new(),
+            },
             step_ends: match o.get("step_ends") {
                 Some(v) => {
                     serde_json::from_value(v.clone()).map_err(|e| format!("step_ends: {e}"))?
@@ -1078,6 +1099,7 @@ mod tests {
 
     fn sample() -> CaptureFile {
         let mut raw = RawCapture {
+            scan_pages: BTreeMap::new(),
             step_ends: vec![1_794_400_000_150],
             time_anchors: [(1_794_400_000_100, (0, 1_794_400_000_000))].into(),
             ttl_origins: [(vec![0xff], (1_794_400_060_100, (0, 1_794_400_000_000)))].into(),
@@ -1180,6 +1202,7 @@ mod tests {
             startup_ignored: [("embeddings".to_string(), 3)].into(),
             startup_keys: vec![(b"stream".to_vec(), 1_794_400_005_301)],
         };
+        raw.scan_pages.insert(0, vec![raw.steps[0].clone()]);
         raw.sort();
         CaptureFile {
             provenance: Provenance {
@@ -1237,6 +1260,7 @@ mod tests {
         // A document that Extended JSON cannot carry is kept as BSON bytes.
         let docs = &v["mongo"]["items"]["documents"];
         assert!(docs[0].get("$rigBson").is_some() && docs[1].get("$rigBson").is_some());
+        assert_eq!(back.raw.scan_pages, f.raw.scan_pages);
         assert_eq!(back.raw.step_ends, f.raw.step_ends);
         assert_eq!(back.raw.time_anchors, f.raw.time_anchors);
         assert_eq!(back.raw.ttl_origins, f.raw.ttl_origins);
@@ -1254,6 +1278,7 @@ mod tests {
         let mut v: Value = serde_json::from_str(&to_file_string(&f)).unwrap();
         v["rig_capture"] = json!(2);
         let o = v.as_object_mut().unwrap();
+        o.remove("scan_pages");
         o.remove("step_ends");
         o.remove("time_anchors");
         o.remove("ttl_origins");

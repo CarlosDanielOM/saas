@@ -652,6 +652,7 @@ impl<'s> SideRunner<'s> {
         // to start (which varies between runs) does not move them.
         let start = timefmt::now_ms().max(start);
         let mut runner = Runner {
+            scan_pages: BTreeMap::new(),
             step_ends: Vec::new(),
             mongo_selection: &sc.mongo,
             dragonfly_selection: &sc.dragonfly,
@@ -667,6 +668,7 @@ impl<'s> SideRunner<'s> {
             side_values: self.side_values.clone(),
         };
         let result = runner.run(&sc.steps).await;
+        let scan_pages = std::mem::take(&mut runner.scan_pages);
         let step_ends = std::mem::take(&mut runner.step_ends);
         let time_anchors = std::mem::take(&mut runner.time_anchors);
         let ttl_origins = std::mem::take(&mut runner.ttl_origins);
@@ -763,6 +765,7 @@ impl<'s> SideRunner<'s> {
             None => None,
         };
         let mut raw = RawCapture {
+            scan_pages,
             step_ends,
             time_anchors,
             ttl_origins,

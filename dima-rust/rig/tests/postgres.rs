@@ -53,7 +53,14 @@ fn postgres_seed_read_catalogue_rows_and_cleanup() {
             String::from_utf8_lossy(&out.stdout),
             String::from_utf8_lossy(&out.stderr)
         );
-        let value: Value = serde_json::from_slice(&std::fs::read(&report).unwrap()).unwrap();
+        let bytes = std::fs::read(&report).unwrap_or_else(|error| {
+            panic!(
+                "rig did not write {}: {error}; exit {:?}\n{text}",
+                report.display(),
+                out.status.code()
+            )
+        });
+        let value: Value = serde_json::from_slice(&bytes).unwrap();
         (out.status.code(), text, value)
     };
     let (code, text, _) = run("record", "good");

@@ -39,6 +39,7 @@ pub struct Hooks {
 }
 
 pub struct Runner<'a> {
+    pub scan_pages: BTreeMap<usize, Vec<RawStep>>,
     pub step_ends: Vec<i64>,
     pub mongo_selection: &'a scenario::Selection,
     pub dragonfly_selection: &'a scenario::Selection,
@@ -123,6 +124,132 @@ impl Runner<'_> {
     }
 
     async fn http(&mut self, i: usize, h: &scenario::HttpStep) -> Result<RawStep, StepError> {
+        let Some(scan) = &h.scan else {
+            return self.http_one(i, h, None).await;
+        };
+        let path = self.fill(i, &h.path, timefmt::now_ms())?;
+        let mut url =
+            reqwest::Url::parse(&format!("http://rig{path}")).map_err(|e| err(i, e.to_string()))?;
+        let mut page = h.clone();
+        page.scan = None;
+        let started = tokio::time::Instant::now();
+        let mut union = BTreeMap::new();
+        let mut cursors = std::collections::BTreeSet::new();
+        let mut first: Option<RawHttp> = None;
+        let mut envelope = None;
+        let mut bytes = 0usize;
+        for _ in 0..scan.max_pages {
+            page.path = format!(
+                "{}{}",
+                url.path(),
+                url.query().map(|q| format!("?{q}")).unwrap_or_default()
+            );
+            page.timeout_ms = h
+                .timeout_ms
+                .saturating_sub(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
+            if page.timeout_ms == 0 {
+                return Err(err(i, "scan exceeded the step timeout"));
+            }
+            let response = self.http_one(i, &page, Some(&page.path)).await?;
+            let RawStep::Http(ref raw) = response else {
+                return Err(err(i, "scan expected HTTP"));
+            };
+            if !(200..300).contains(&raw.status) {
+                return Err(err(i, format!("scan page returned HTTP {}", raw.status)));
+            }
+            bytes += raw.body.len();
+            if bytes > 32 * 1024 * 1024 {
+                return Err(err(i, "scan pages exceed 32 MiB"));
+            }
+            let mut body: Value = serde_json::from_slice(&raw.body)
+                .map_err(|e| err(i, format!("scan page JSON: {e}")))?;
+            // An aggregate has one read clock. Translate later pages' remaining-second
+            // TTLs back to that clock while preserving their exact raw page bytes.
+            if let Some(ttl) = &scan.ttl {
+                let offset = first
+                    .as_ref()
+                    .map_or(0, |first| (raw.at - first.at).max(0) / 1000);
+                let items = body
+                    .pointer_mut(&scan.items)
+                    .and_then(Value::as_array_mut)
+                    .ok_or_else(|| err(i, "scan TTL translation requires the items array"))?;
+                for item in items {
+                    let value = item
+                        .pointer_mut(ttl)
+                        .ok_or_else(|| err(i, format!("scan item missing TTL at {ttl}")))?;
+                    let remaining = value
+                        .as_i64()
+                        .ok_or_else(|| err(i, "scan TTL must be integer seconds"))?;
+                    if remaining >= 0 {
+                        *value = Value::from(remaining.saturating_add(offset));
+                    }
+                }
+            }
+            let cursor = scan.page(&body, &mut union).map_err(|e| err(i, e))?;
+            if first
+                .as_ref()
+                .is_some_and(|first| first.status != raw.status)
+            {
+                return Err(err(i, "scan page HTTP status changed"));
+            }
+            let mut rest = body.clone();
+            if let Some(v) = rest.pointer_mut(&scan.cursor) {
+                *v = Value::Null;
+            }
+            if let Some(v) = rest.pointer_mut(&scan.items) {
+                *v = Value::Null;
+            }
+            if envelope.as_ref().is_some_and(|first| first != &rest) {
+                return Err(err(i, "scan page envelope changed outside cursor/items"));
+            }
+            envelope = Some(rest);
+            if first.is_none() {
+                first = Some(raw.clone());
+            }
+            self.scan_pages.entry(i).or_default().push(response);
+            if cursor == "0" {
+                let mut raw = first.ok_or_else(|| err(i, "scan has no first page"))?;
+                let mut body: Value =
+                    serde_json::from_slice(&raw.body).map_err(|e| err(i, e.to_string()))?;
+                *body
+                    .pointer_mut(&scan.items)
+                    .ok_or_else(|| err(i, "scan items pointer disappeared"))? =
+                    Value::Array(union.into_values().collect());
+                *body
+                    .pointer_mut(&scan.cursor)
+                    .ok_or_else(|| err(i, "scan cursor pointer disappeared"))? =
+                    Value::String("0".into());
+                raw.body = serde_json::to_vec(&body).map_err(|e| err(i, e.to_string()))?;
+                return Ok(RawStep::Http(raw));
+            }
+            if !cursors.insert(cursor.clone()) {
+                return Err(err(
+                    i,
+                    format!("scan repeated cursor {cursor:?} before zero"),
+                ));
+            }
+            let params: Vec<(String, String)> = url
+                .query_pairs()
+                .filter(|(k, _)| k != &scan.query)
+                .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                .collect();
+            url.set_query(None);
+            url.query_pairs_mut()
+                .extend_pairs(params)
+                .append_pair(&scan.query, &cursor);
+        }
+        Err(err(
+            i,
+            format!("scan did not reach zero within {} pages", scan.max_pages),
+        ))
+    }
+
+    async fn http_one(
+        &mut self,
+        i: usize,
+        h: &scenario::HttpStep,
+        resolved_path: Option<&str>,
+    ) -> Result<RawStep, StepError> {
         let now = timefmt::now_ms();
         let mut headers = Vec::new();
         for (k, v) in &h.headers {
@@ -161,7 +288,10 @@ impl Runner<'_> {
         {
             headers.push(("content-type".into(), ct.into()));
         }
-        let path = self.fill(i, &h.path, now)?;
+        let path = match resolved_path {
+            Some(path) => path.to_string(),
+            None => self.fill(i, &h.path, now)?,
+        };
         self.exchange(
             i,
             Exchange {

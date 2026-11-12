@@ -20,6 +20,9 @@ use tokio::net::{TcpListener, TcpStream};
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Variant {
     Good,
+    ScanPaged,
+    ScanMissing,
+    ScanLoop,
     Delayed,
     Equivalent,
     Int64,
@@ -54,6 +57,9 @@ impl Variant {
     fn parse(s: &str) -> Result<Variant> {
         Ok(match s {
             "good" => Variant::Good,
+            "scan-paged" => Variant::ScanPaged,
+            "scan-missing" => Variant::ScanMissing,
+            "scan-loop" => Variant::ScanLoop,
             "delayed" => Variant::Delayed,
             "equivalent" => Variant::Equivalent,
             "int64" => Variant::Int64,
@@ -591,6 +597,23 @@ impl App {
     }
 
     async fn route(self: &Arc<Self>, req: Request) -> Result<Response> {
+        if req.path.starts_with("/scan") {
+            let (cursor, names) = match self.v {
+                Variant::ScanLoop => ("again", vec!["a"]),
+                Variant::ScanMissing => ("0", vec!["a"]),
+                Variant::ScanPaged if !req.path.contains("cursor=") => ("next", vec!["b"]),
+                Variant::ScanPaged => ("0", vec!["a", "b"]),
+                _ => ("0", vec!["a", "b"]),
+            };
+            let later = self.v == Variant::ScanPaged && req.path.contains("cursor=");
+            if later {
+                tokio::time::sleep(Duration::from_millis(1200)).await;
+            }
+            return Ok(json_resp(
+                200,
+                &json!({"data": {"cursor": cursor, "keys": names.into_iter().map(|name| json!({"name": name, "ttl": if name == "b" { -1 } else if later { 899 } else { 900 }})).collect::<Vec<_>>()}}),
+            ));
+        }
         let segs: Vec<&str> = req.path.trim_start_matches('/').split('/').collect();
         match (req.method.as_str(), segs.as_slice()) {
             ("GET", ["health"]) => Ok(Response {

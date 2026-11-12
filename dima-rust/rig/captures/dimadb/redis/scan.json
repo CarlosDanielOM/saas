@@ -1,36 +1,312 @@
 {
-  "rig_capture": 2,
+  "rig_capture": 7,
   "target": "dimadb",
   "scenario": "redis/scan",
   "provenance": {
     "side": "reference",
     "label": "ref-0c71108e",
-    "recorded_at": "2026-11-12T00:19:56.622Z",
+    "recorded_at": "2026-11-12T08:49:37.790Z",
     "rig_version": "0.1.0"
   },
   "hashes": {
-    "scenario": "fnv1a64:7b9834912e0acba4",
+    "scenario": "fnv1a64:c88c7dca659f4d17",
     "files": {
-      "redis/scan.json": "fnv1a64:7b9834912e0acba4"
+      "redis/scan.json": "fnv1a64:c88c7dca659f4d17"
     }
   },
   "run": {
-    "seeded_at": 1794442778648,
-    "start": 1794442779140,
-    "end": 1794442779323,
-    "process_start": 1794442778655,
+    "seeded_at": 1794473374755,
+    "start": 1794473376348,
+    "end": 1794473376713,
+    "process_start": 1794473374771,
     "ports": {
-      "http": 33049
+      "http": 44601
     },
-    "mongo_db": "rig_2524782_0_ref",
-    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "mongo_db": "rig_2308740_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2308740_0_ref?authSource=admin&directConnection=true",
     "dragonfly_db": 1,
-    "dragonfly_url": "redis://127.0.0.1:6379/1"
+    "dragonfly_url": "redis://127.0.0.1:6379/1",
+    "mock_port": 35839,
+    "qdrant_port": null,
+    "qdrant_prefix": null
   },
+  "ttl_origins": [
+    [
+      "session:a",
+      1794474276348,
+      0,
+      1794473376348
+    ]
+  ],
+  "scan_pages": {
+    "2": [
+      {
+        "http": {
+          "at": 1794473376518,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"rank\",\"type\":\"zset\",\"ttl\":-1},{\"name\":\"queue\",\"type\":\"list\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"Ünïcode\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"ключ\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":900},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        }
+      }
+    ],
+    "3": [
+      {
+        "http": {
+          "at": 1794473376541,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        }
+      }
+    ],
+    "4": [
+      {
+        "http": {
+          "at": 1794473376560,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1}]}}"
+        }
+      }
+    ],
+    "5": [
+      {
+        "http": {
+          "at": 1794473376582,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":900}]}}"
+        }
+      }
+    ],
+    "7": [
+      {
+        "http": {
+          "at": 1794473376637,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[]}}"
+        }
+      }
+    ],
+    "8": [
+      {
+        "http": {
+          "at": 1794473376664,
+          "status": 200,
+          "headers": [
+            [
+              "content-type",
+              "application/json; charset=utf-8"
+            ],
+            [
+              "cache-control",
+              "no-store"
+            ],
+            [
+              "date",
+              "Thu, 12 Nov 2026 08:49:36 GMT"
+            ],
+            [
+              "connection",
+              "keep-alive"
+            ],
+            [
+              "keep-alive",
+              "timeout=5"
+            ],
+            [
+              "transfer-encoding",
+              "chunked"
+            ]
+          ],
+          "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        }
+      }
+    ]
+  },
+  "step_ends": [
+    1794473376348,
+    1794473376455,
+    1794473376518,
+    1794473376541,
+    1794473376560,
+    1794473376582,
+    1794473376612,
+    1794473376637,
+    1794473376664,
+    1794473376689
+  ],
+  "time_anchors": [
+    [
+      -1,
+      2,
+      1794473376470
+    ],
+    [
+      1,
+      0,
+      1794473376348
+    ],
+    [
+      200,
+      1,
+      1794473376366
+    ],
+    [
+      500,
+      6,
+      1794473376608
+    ],
+    [
+      900,
+      2,
+      1794473376470
+    ]
+  ],
+  "postgres": null,
   "steps": [
     {
+      "dragonfly": {
+        "at": 1794473376348,
+        "command": [
+          "EXPIRE",
+          "session:a",
+          "900"
+        ],
+        "reply": {
+          "int": 1
+        }
+      }
+    },
+    {
       "http": {
-        "at": 1794442779248,
+        "at": 1794473376455,
         "status": 200,
         "headers": [
           [
@@ -43,11 +319,11 @@
           ],
           [
             "set-cookie",
-            "dimadb_session=27e50338-1f20-4af8-8b83-77c9e0278152; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+            "dimadb_session=9182bc60-1621-4c1b-b81e-0ce5ba472d65; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -62,12 +338,12 @@
             "chunked"
           ]
         ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"854ccc5a-057a-4f89-ab79-8b6219a4b036\",\"username\":\"root\",\"role\":\"admin\"}}}"
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"0155c5ab-cb6e-4f95-8cce-9a508da5c698\",\"username\":\"root\",\"role\":\"admin\"}}}"
       }
     },
     {
       "http": {
-        "at": 1794442779303,
+        "at": 1794473376518,
         "status": 200,
         "headers": [
           [
@@ -80,7 +356,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -95,12 +371,12 @@
             "chunked"
           ]
         ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"rank\",\"type\":\"zset\",\"ttl\":-1},{\"name\":\"queue\",\"type\":\"list\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"Ünïcode\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"ключ\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":899},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"queue\",\"type\":\"list\",\"ttl\":-1},{\"name\":\"rank\",\"type\":\"zset\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":900},{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"Ünïcode\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"ключ\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1}]}}"
       }
     },
     {
       "http": {
-        "at": 1794442779306,
+        "at": 1794473376541,
         "status": 200,
         "headers": [
           [
@@ -113,7 +389,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -128,12 +404,12 @@
             "chunked"
           ]
         ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1}]}}"
       }
     },
     {
       "http": {
-        "at": 1794442779309,
+        "at": 1794473376560,
         "status": 200,
         "headers": [
           [
@@ -146,7 +422,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -166,7 +442,7 @@
     },
     {
       "http": {
-        "at": 1794442779312,
+        "at": 1794473376582,
         "status": 200,
         "headers": [
           [
@@ -179,7 +455,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -194,12 +470,12 @@
             "chunked"
           ]
         ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":899}]}}"
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":900},{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1}]}}"
       }
     },
     {
       "http": {
-        "at": 1794442779314,
+        "at": 1794473376612,
         "status": 500,
         "headers": [
           [
@@ -212,7 +488,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -232,7 +508,7 @@
     },
     {
       "http": {
-        "at": 1794442779316,
+        "at": 1794473376637,
         "status": 200,
         "headers": [
           [
@@ -245,7 +521,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -265,7 +541,7 @@
     },
     {
       "http": {
-        "at": 1794442779319,
+        "at": 1794473376664,
         "status": 200,
         "headers": [
           [
@@ -278,7 +554,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -293,45 +569,12 @@
             "chunked"
           ]
         ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1}]}}"
       }
     },
     {
       "http": {
-        "at": 1794442779321,
-        "status": 200,
-        "headers": [
-          [
-            "content-type",
-            "application/json; charset=utf-8"
-          ],
-          [
-            "cache-control",
-            "no-store"
-          ],
-          [
-            "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
-          ],
-          [
-            "connection",
-            "keep-alive"
-          ],
-          [
-            "keep-alive",
-            "timeout=5"
-          ],
-          [
-            "transfer-encoding",
-            "chunked"
-          ]
-        ],
-        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
-      }
-    },
-    {
-      "http": {
-        "at": 1794442779323,
+        "at": 1794473376689,
         "status": 500,
         "headers": [
           [
@@ -344,7 +587,7 @@
           ],
           [
             "date",
-            "Thu, 12 Nov 2026 00:19:39 GMT"
+            "Thu, 12 Nov 2026 08:49:36 GMT"
           ],
           [
             "connection",
@@ -369,14 +612,14 @@
       "key": "menu:🍕",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779324,
+      "pttl_at": 1794473376716,
       "value": "pizza"
     },
     {
       "key": "queue",
       "type": "list",
       "pttl": -1,
-      "pttl_at": 1794442779325,
+      "pttl_at": 1794473376717,
       "value": [
         "1",
         "2"
@@ -386,7 +629,7 @@
       "key": "rank",
       "type": "zset",
       "pttl": -1,
-      "pttl_at": 1794442779325,
+      "pttl_at": 1794473376718,
       "value": [
         [
           "a",
@@ -397,22 +640,22 @@
     {
       "key": "session:a",
       "type": "string",
-      "pttl": 899326,
-      "pttl_at": 1794442779325,
+      "pttl": 899629,
+      "pttl_at": 1794473376719,
       "value": "x"
     },
     {
       "key": "session:b",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779326,
+      "pttl_at": 1794473376720,
       "value": "y"
     },
     {
       "key": "set:🍕",
       "type": "set",
       "pttl": -1,
-      "pttl_at": 1794442779326,
+      "pttl_at": 1794473376720,
       "value": [
         "a"
       ]
@@ -421,28 +664,28 @@
       "key": "user:1",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779327,
+      "pttl_at": 1794473376721,
       "value": "ana"
     },
     {
       "key": "user:10",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779327,
+      "pttl_at": 1794473376722,
       "value": "cy"
     },
     {
       "key": "user:2",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779328,
+      "pttl_at": 1794473376722,
       "value": "bo"
     },
     {
       "key": "user:3:profile",
       "type": "hash",
       "pttl": -1,
-      "pttl_at": 1794442779328,
+      "pttl_at": 1794473376723,
       "value": [
         [
           "name",
@@ -454,22 +697,25 @@
       "key": "Ünïcode",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779329,
+      "pttl_at": 1794473376724,
       "value": "u"
     },
     {
       "key": "ключ",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779329,
+      "pttl_at": 1794473376725,
       "value": "k"
     },
     {
       "key": "🍕",
       "type": "string",
       "pttl": -1,
-      "pttl_at": 1794442779330,
+      "pttl_at": 1794473376726,
       "value": "solo"
     }
-  ]
+  ],
+  "calls": [],
+  "startup_ignored": {},
+  "startup_keys": []
 }

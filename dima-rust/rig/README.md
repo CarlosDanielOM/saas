@@ -201,7 +201,7 @@ expected keys.
 }
 ```
 
-Top level: `rig_scenario` (4; versions 1–3 remain readable), `description` (required), `time_inputs`, `seed`, `steps` (required), `compare`,
+Top level: `rig_scenario` (5; versions 1–4 remain readable), `description` (required), `time_inputs`, `seed`, `steps` (required), `compare`,
 `allow`, `mock` (see the mock section), `restart` (only with shared processes),
 `share_process` (default `false`), `allow_scripts` (default `false`), `tolerance_ms` (default
 2000), `relation_tolerance_ms` (default 50).
@@ -869,3 +869,42 @@ under compilation load; comparison tolerances are unchanged. Three consecutive e
 runs alongside repeated capped `tools/cargo build -p dima-model` builds passed in
 222.30 s, 249.37 s and 106.24 s. The tested matrix includes the 15-second delayed side,
 a missing `updatedAt` bump and a lease one second too long.
+
+## Cursor scans (scenario 5, capture 7)
+
+For an HTTP endpoint that returns a cursor and key objects, declare a complete walk:
+
+```json
+{"http": {"method": "GET", "path": "/api/redis/env%3Arig/keys?count=3",
+  "scan": {"cursor": "/data/cursor", "items": "/data/keys",
+           "identity": "/name", "query": "cursor", "max_pages": 100}}}
+```
+
+The pointer strings are JSON pointers into each response (identity is relative to an item).
+Use an empty identity pointer (`""`) for an array of primitive keys. All five settings are required. The rig starts at the supplied path, replaces only the named
+query parameter on subsequent requests, and stops at string or numeric zero. It compares
+the sorted union of item identities, with the last observed metadata for duplicate identities.
+The aggregate cursor is `"0"`; page boundaries and duplicate appearances do not compare.
+The first page supplies the compared headers and remaining envelope; all pages must have
+the same successful status and envelope outside the two selected pointers. Later page
+headers remain available in the raw recording but are not independently compared.
+Use ordinary HTTP steps to test pagination-specific header behaviour.
+
+This is GET-only, without a request body or `save`. A repeated nonzero cursor, missing
+pointer/identity, invalid JSON, a page error, or an exhausted bound fails the step. The whole
+walk shares `timeout_ms` (default 30 seconds), at most 1,000 pages, 20,000 distinct items
+and 32 MiB of response bodies. `max_pages` may lower the page bound.
+
+Capture format **7** adds `scan_pages` (step index to an array of raw HTTP observations),
+retaining status, headers, bytes and read time for every page. The step's HTTP body holds
+the aggregate used for comparison. Captures 2–6 remain readable; scenarios 1–4 remain
+readable. Existing captures require no migration unless their scenario opts into `scan`;
+re-record that scenario, as done for `dimadb/redis/scan`.
+
+For remaining-second metadata, add `"ttl": "/ttl"` to `scan`. Later pages' nonnegative
+TTLs are translated to the first page's read clock before merging; negative sentinel values
+stay exact. Use a `ttl` allowance on the aggregate field to compare expiry, and set a fixture
+expiry with a Dragonfly step after startup. An inferred expiry binds to a known key's producing
+step only when all key expiries within the two-second rounding window share that origin.
+The `dimadb/redis/scan` fixture does this; its invalid count and cursor checks remain ordinary
+HTTP requests.

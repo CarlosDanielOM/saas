@@ -88,6 +88,7 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
         dragonfly,
         calls: Vec::new(),
         startup_ignored: BTreeMap::new(),
+        scan_pages: BTreeMap::new(),
         step_ends: Vec::new(),
         time_anchors: Default::default(),
         ttl_origins: Default::default(),

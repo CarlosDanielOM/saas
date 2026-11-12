@@ -22,7 +22,7 @@ use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
 use crate::timefmt;
 
-pub const SCENARIO_VERSION: u64 = 4;
+pub const SCENARIO_VERSION: u64 = 5;
 pub const SEED_VERSION: u64 = 1;
 const MAX_TIMEOUT_MS: u64 = 600_000;
 
@@ -262,6 +262,8 @@ struct WaitCallFile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct HttpFile {
+    #[serde(default)]
+    scan: Option<crate::scan::Scan>,
     method: String,
     path: String,
     #[serde(default)]
@@ -437,6 +439,7 @@ pub enum SaveFrom {
 
 #[derive(Debug, Clone)]
 pub struct HttpStep {
+    pub scan: Option<crate::scan::Scan>,
     pub method: String,
     pub path: String,
     pub port: Option<String>,
@@ -1283,7 +1286,16 @@ fn http_step(
         None => None,
     };
     let save = save_list(h.save, at, saved)?;
+    if let Some(scan) = &h.scan {
+        scan.validate().map_err(|e| config(format!("{at}: {e}")))?;
+        if method != "GET" || !matches!(body, ReqBody::None) || !save.is_empty() {
+            return Err(config(format!(
+                "{at}: scan requires GET with no body or save"
+            )));
+        }
+    }
     Ok(HttpStep {
+        scan: h.scan,
         method,
         path: h.path,
         port: h.port,
@@ -1731,7 +1743,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     let v = read_json(&file)?;
     let f: ScenarioFile = parse(&file, &v)?;
     let at = file.display().to_string();
-    if ![1, 2, 3, SCENARIO_VERSION].contains(&f.rig_scenario) {
+    if ![1, 2, 3, 4, SCENARIO_VERSION].contains(&f.rig_scenario) {
         return Err(config(format!(
             "{at}: rig_scenario {} is not supported; this rig reads version {SCENARIO_VERSION}",
             f.rig_scenario

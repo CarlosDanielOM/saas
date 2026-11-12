@@ -20,6 +20,7 @@ pub mod path;
 pub mod postgres;
 pub mod report;
 pub mod run;
+pub mod scan;
 pub mod scenario;
 pub mod side;
 pub mod socketio;

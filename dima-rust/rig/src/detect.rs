@@ -349,6 +349,23 @@ impl Detector<'_, '_> {
                 run: ms - w.start,
             };
         }
+        // TTL replies carry a remaining duration rather than the key name. Bind their
+        // inferred expiry only when every matching observed key has the same origin.
+        let mut matching = self
+            .ttl_origins
+            .values()
+            .filter(|(expiry, _)| (expiry - ms).abs() <= 2000);
+        if let Some((_, origin)) = matching.next()
+            && matching.all(|(_, other)| other == origin)
+        {
+            let (step, at) = *origin;
+            return Moment::Step {
+                step,
+                off: ms - at,
+                span: (self.step_ends.get(step).copied().unwrap_or(at) - at).max(0),
+                run: ms - w.start,
+            };
+        }
         w.moment(ms)
     }
 

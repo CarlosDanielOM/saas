@@ -989,3 +989,48 @@ fn cleanup_after_a_failure_and_an_interrupt() {
     assert_own_binaries();
     let _ = std::fs::remove_dir_all(&work);
 }
+
+#[test]
+fn cursor_scan_compares_union_and_reports_missing_keys_and_loops() {
+    let Some(uri) = std::env::var("DIMA_TEST_MONGO_URI")
+        .ok()
+        .filter(|s| !s.is_empty())
+    else {
+        return;
+    };
+    let work =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("rig-scan-{}", std::process::id()));
+    let rd = work.join("rig");
+    copy_dir(&selftest_dir(), &rd);
+    std::fs::write(rd.join("scenarios/selftest/scan.json"), json!({
+        "rig_scenario": 5, "description": "Compare a complete cursor walk.",
+        "steps": [{"http": {"method": "GET", "path": "/scan", "scan": {
+            "cursor": "/data/cursor", "items": "/data/keys", "identity": "/name", "query": "cursor", "max_pages": 10, "ttl": "/ttl"
+        }}}]
+    }).to_string()).unwrap();
+    let recorded = rig(&work, &rd, "good", &["record", "selftest", "scan"]);
+    assert_eq!(recorded.code, 0, "{}", recorded.text);
+    let paged = rig(&work, &rd, "scan-paged", &["verify", "selftest", "scan"]);
+    assert_eq!(paged.code, 0, "{}", paged.text);
+    let missing = rig(&work, &rd, "scan-missing", &["verify", "selftest", "scan"]);
+    assert_eq!(missing.code, 1, "{}", missing.text);
+    assert!(
+        missing
+            .differences("scan")
+            .iter()
+            .any(|(p, w)| p == "steps[0].body.data.keys[1]" && w.contains("missing in candidate")),
+        "{}",
+        missing.text
+    );
+    let looping = rig(&work, &rd, "scan-loop", &["verify", "selftest", "scan"]);
+    assert_eq!(looping.code, 1, "{}", looping.text);
+    assert!(
+        looping.text.contains("scan repeated cursor"),
+        "{}",
+        looping.text
+    );
+    for run in [recorded, paged, missing, looping] {
+        assert_no_databases_of(&uri, run.pid);
+    }
+    std::fs::remove_dir_all(work).unwrap();
+}
