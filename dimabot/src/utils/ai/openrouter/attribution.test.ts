@@ -29,8 +29,8 @@ globalThis.fetch = async (input, options) => {
 };
 const decision = (channelID: string) => ({ channelID, rule: { id: 'words', semantic: { enabled: true, policy: 'Reject hostile insults.', examples: [] } }, username: 'fixture', messageText: 'Hello!', context: [], matches: [], deadline: new Date(Date.now() + 4000) }) as unknown as IModerationDecision;
 
-test('Jev and both Span models carry the owner channel ID and app headers', async () => {
-  for (const [index, model] of ['typesafe/jev-1.13', 'respan/span-01', 'respan/span-01-lite'].entries()) {
+test('Luna and Span Lite carry the owner channel ID and app headers', async () => {
+  for (const [index, model] of ['openai/gpt-6-luna-decisions', 'respan/span-01-lite'].entries()) {
     expectedUser = `channel-${index}`;
     const result = await evaluateSemanticDecision(decision(expectedUser), model);
     assert.equal(result.status, 'completed');

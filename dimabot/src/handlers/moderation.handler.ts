@@ -17,7 +17,7 @@ import ChatHistory from '../classes/chat_history.js';
 import { ModerationDecision, type ModerationContextMessage } from '../schemas/moderation_decision.schema.js';
 import { findBlacklistMatches, paidModeration, SEMANTIC_DEADLINE_MS, type ModerationMatch } from '../utils/moderation/advanced.js';
 import { createModerationDecision, awaitSemanticDecision } from '../utils/moderation/decisions.js';
-import { claimFirstObservedMessage, claimSpamReviewBudget, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive, defaultSpamModerationSettings } from '../utils/moderation/spam.js';
+import { claimFirstObservedMessage, claimSpamReviewBudget, isServiceBot, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive, defaultSpamModerationSettings } from '../utils/moderation/spam.js';
 
 const SETTINGS_CACHE_TTL_SECONDS = 300;
 export const NO_SETTINGS_SENTINEL = '{"none":true}';
@@ -100,7 +100,7 @@ export interface ChatModerationResult {
 
 async function reviewPromotionalSpam(channelID: string, message: IChatMessage, identity: UserIdentity, settings: IChannelModerationSettings, receivedAt: number): Promise<boolean> {
     const protection = spamProtectionSettings(settings);
-    if (!protection.enabled || !protection.categories.length || ruleExempt(spamRuleForContext([], settings), identity) || !message.message_id) return false;
+    if (!protection.enabled || !protection.categories.length || isServiceBot(message.chatter_user_login) || ruleExempt(spamRuleForContext([], settings), identity) || !message.message_id) return false;
     const first = await claimFirstObservedMessage(channelID, message.chatter_user_id!);
     let tier: unknown;
     if ((!first && protection.reviewAllMessages) || protection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
@@ -120,7 +120,7 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     let decision = await createModerationDecision({
         channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
         messageID: message.message_id, messageText: message.message.text || '',
-        ruleID: spamRule.id, rule: spamRuleForContext(context, { spamProtection: { ...protection, thresholdPercent: paidModeration(tier) ? protection.thresholdPercent : DEFAULT_SPAM_THRESHOLD } }), settingsVersion: settings.settingsVersion,
+        ruleID: spamRule.id, rule: spamRuleForContext(context, { spamProtection: { ...protection, thresholdPercent: paidModeration(tier) ? protection.thresholdPercent : DEFAULT_SPAM_THRESHOLD } }, message.broadcaster_user_login || ''), settingsVersion: settings.settingsVersion,
         matches: [], context, mode: 'semantic', reviewSource,
         deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
     });

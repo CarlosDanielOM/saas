@@ -1,6 +1,6 @@
 # First-message protection
 
-**Source snapshot:** 2026-10-28. This guide describes the implementation in this checkout. It does not report any channel's live settings, and the asynchronous review path is best-effort rather than a delivery guarantee.
+**Source snapshot:** 2026-11-12. This guide describes the implementation in this checkout. It does not report any channel's live settings, and the asynchronous review path is best-effort rather than a delivery guarantee.
 
 First-message protection is a category-based semantic chat check available on every plan in the moderation module. It runs before the channel's configurable rule filter. On eligible messages, it asks a model whether the message shows any selected behavior, and it schedules a permanent ban only for a sufficiently confident violation. Uncertain, unavailable, and allowed outcomes do not create an offense or stop the message in this protection check; enabled ordinary rules can still act afterward.
 
@@ -21,7 +21,7 @@ Chat protection has its own settings object, `spamProtection`, alongside the mai
 | `spamProtection.enabled` | `true` | Turns category-based protection on or off. |
 | `spamProtection.reviewAllMessages` | `false` | On Premium or Pro, extends review to subsequent messages. It has no effect on Free. |
 | `spamProtection.categories` | `spam`, `ads`, `self_promotion` | Categories the classifier checks. An empty list pauses category checks. |
-| `spamProtection.thresholdPercent` | `85` | Minimum selected-category score for a violation, subject to the safe-score comparison below. Persisted/API values are limited to 80–100. |
+| `spamProtection.thresholdPercent` | `85` | Minimum selected-category score for a violation, subject to the safe-score and overall-score checks below. Persisted/API values are limited to 80–100. |
 | `spamProtection.exemptTags` | `mod`, `editor`, `admin` | Role tags that bypass protection. An empty list exempts no role tags. |
 
 The valid categories are `spam`, `ads`, `self_promotion`, `profanity`, and `insults`. Categories are independently scored; the scores are probabilities for separate behaviors and do not sum to 100%. Their behavioral definitions and caveats are in [`spam_categories.ts`](src/utils/moderation/spam_categories.ts).
@@ -32,7 +32,7 @@ The valid categories are `spam`, `ads`, `self_promotion`, `profanity`, and `insu
 | --- | --- | --- | --- |
 | `spam` | Yes | Scams, credential theft, fake-viewer/follower sales, or disruptive mass repetition supported by preceding chat. | A lone greeting, bare domain, ordinary enthusiasm, benign repetition, quotes, reports, and scam warnings. Ordinary ads or channel promotion alone do not count as this category. |
 | `ads` | Yes | Soliciting purchases of products or paid services, including fake engagement. Disguised domains and sales pitches without links are included. | Free resources, ordinary product discussion, recommendations answering a question, quotes, reports, and warnings. Channel/social promotion alone is separate. |
-| `self_promotion` | Yes | Explicit requests to visit, follow, or subscribe to the author's own channel or social account without a qualifying broadcaster invitation. | Merely mentioning that one streams, answering a streaming question, quotations, reports, and invited promotion. |
+| `self_promotion` | Yes | Explicit requests to visit, follow, or subscribe to the author's own channel or social account without a qualifying broadcaster invitation. | Encouraging support for the broadcaster of this chat, merely mentioning that one streams, answering a streaming question, quotations, reports, and invited promotion. |
 | `profanity` | No | Explicit vulgar swearing used by the speaker, even casually or positively. | Quoting/reporting the word, discussing filter vocabulary, and harmless words containing a similar substring. |
 | `insults` | No | Clearly abusive attacks or targeted humiliation of a person or group. | Disagreement, criticism of ideas or gameplay, harmless banter, self-deprecation, and quoted/reported abuse. |
 
@@ -61,25 +61,28 @@ The model route is selected for each queued decision:
 
 | Channel plan and credit state | Spam classifier model | Billing behavior |
 | --- | --- | --- |
-| Free or unrecognized plan | `respan/span-01` | No AI credits are charged. |
-| Premium/Pro, verified available credits | `typesafe/jev-1.13` | Successful complete or uncertain inference can consume credits, including a first-message review and an allowed/uncertain result. |
-| Premium/Pro, credits exhausted/unavailable or balance cannot be verified | `respan/span-01-lite` | Lite fallback; no Jev credit charge. |
+| Free or unrecognized plan | `openai/gpt-6-luna-decisions` (GPT-6 Luna Decisions) | OpenRouter uses the service’s own OpenAI key; no AI credits are charged to the channel. |
+| Premium/Pro, verified available credits | `openai/gpt-6-luna-decisions` (GPT-6 Luna Decisions) | Successful complete or uncertain inference can consume credits, including a first-message review and an allowed/uncertain result. |
+| Premium/Pro, credits exhausted/unavailable or balance cannot be verified | `respan/span-01-lite` | Lite fallback; no AI credits are charged. |
 
-A paid account does not imply every review is free of charge: first-message checks on paid channels can use Jev and be billable when credits are available. Conversely, the Free entitlement means first-message scope is available on every plan; it does not mean all paid-plan reviews avoid AI credit usage. Model selection is in [`semantic.ts`](src/utils/moderation/semantic.ts); plan, balance, fallback, and billing decisions are in [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts).
+Around 2026-10-25, the provider began returning the same scores for `respan/span-01` and `respan/span-01-lite`: all 471 replayed requests matched on 2026-11-12. Those scores stopped reaching the ban threshold on real viewer-selling spam: the last ban on a Free channel was on 2026-10-20, and no channel on any plan received one after 2026-10-27. Luna replaces Span-1 for Free and Jev for Premium/Pro: on 89 distinct real campaign requests, Luna banned 78 and Jev 63, with no more false bans than Jev on the labelled benchmark (13 of 248 versus 17 of 248) and the same two on a 40-case held-out set; paid plans should not receive a weaker classifier than Free.
 
-Only successful paid inference is queued for AI usage accounting. The worker records usage through the PolarSH attribution path with an idempotent moderation decision ID, and retries accounting during maintenance if needed. Failed or late results are not charged; a completed uncertain review can be charged when Jev ran successfully. See [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts). A visible credit count is shown in the dashboard decision entry when present.
+A paid account does not imply every review is free of charge: first-message checks on paid channels use Luna and can be billable when credits are available. Conversely, the Free entitlement means first-message scope is available on every plan; it does not mean all paid-plan reviews avoid AI credit usage. Model selection is in [`semantic.ts`](src/utils/moderation/semantic.ts); plan, balance, fallback, and billing decisions are in [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts).
+
+Only successful paid inference is queued for AI usage accounting. The worker records usage through the PolarSH attribution path with an idempotent moderation decision ID, and retries accounting during maintenance if needed. Failed or late results are not charged; an uncertain review can be charged when Luna ran successfully. See [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts). A visible credit count is shown in the dashboard decision entry when present.
 
 ## Who is skipped
 
 Protection checks do not run for:
 
 - The broadcaster or the bot account.
+- Service bots whose Twitch login is in `SERVICE_BOT_LOGINS`: `streamlootsbot`, `soundalerts`, `streamelements`, `nightbot`, `tangiabot`, `blerp`, `streamlabs`, `moobot`, `fossabot`, `wizebot`, `botrixoficial`, `kofistreambot`, `pokemoncommunitygame`, `sery_bot`, `restreambot`, and `pretzelrocks`.
 - A chatter with an active user-level or channel-wide moderation permit.
 - A role exempted by `spamProtection.exemptTags`.
 - Messages without a Twitch message ID, because the review needs an idempotent decision key.
 - Any message when protection is disabled or the selected category list is empty.
 
-The broadcaster and bot are skipped before settings and permit checks. A permit is then checked before duplicate receipt handling. Role exemptions use the resolved additive role tags, so a chatter with any selected tag is exempt; unselected tags do not exempt them. The default exemption is moderator, editor, and channel admin. `vip`, `sub`, and `founder` are available choices but not selected by default. See [`moderation.handler.ts`](src/handlers/moderation.handler.ts), [`spam.ts`](src/utils/moderation/spam.ts), [`permissions/index.ts`](src/utils/permissions/index.ts), and [`spam.test.ts`](src/utils/moderation/spam.test.ts).
+The broadcaster and bot are skipped before settings and permit checks. Service-bot matching uses the unique Twitch login, not the display name, and happens before claiming first-seen state. It skips only built-in protection; ordinary configured rules still apply. This protects service posts such as a streamer’s own Streamloots link, for which StreamlootsBot was banned in two channels in October 2026. `restreambot` also relays messages written by viewers on other platforms, so an ad relayed under that exempt account is not reviewed by this protection. It remains exempt to avoid permanently banning the streamer’s relay bot for a third person’s message. A permit is then checked before duplicate receipt handling. Role exemptions use the resolved additive role tags, so a chatter with any selected tag is exempt; unselected tags do not exempt them. The default exemption is moderator, editor, and channel admin. `vip`, `sub`, and `founder` are available choices but not selected by default. See [`moderation.handler.ts`](src/handlers/moderation.handler.ts), [`spam.ts`](src/utils/moderation/spam.ts), [`permissions/index.ts`](src/utils/permissions/index.ts), and [`spam.test.ts`](src/utils/moderation/spam.test.ts).
 
 A broadcaster invitation can permit channel/social promotion for the self-promotion category when the preceding context contains a qualifying broadcaster message. It does not permit other selected behaviors. Only a message identified as broadcaster-authored counts, and negated invitations do not grant the exception. See [`spam.ts`](src/utils/moderation/spam.ts) and the prompt construction in [`semantic.ts`](src/utils/moderation/semantic.ts).
 
@@ -91,9 +94,9 @@ For the category-based check, the gate performs these steps:
 
 1. **Check the author and load policy.** Missing chatter IDs, the broadcaster, and the bot exit before loading settings. Channel settings are read from Dragonfly when cached, otherwise MongoDB. Both real settings and the “no saved settings” sentinel expire after five minutes. Saving settings invalidates the cache; compiled blacklist patterns are also invalidated. See [`moderation.handler.ts`](src/handlers/moderation.handler.ts).
 2. **Apply early exits and duplicate receipt fencing.** Broadcaster/bot, permits, and duplicate message deliveries are skipped. A Twitch message ID gets a per-channel receipt with a 24-hour TTL. A duplicate receipt is treated as already handled and stops duplicate processing.
-3. **Claim first-seen state.** Protection must be enabled with at least one category, the author must not have a selected exempt role, and a message ID must be present. For an eligible author, the code checks Dragonfly's one-day cache, then atomically upserts a durable `moderation_chatter` row using the channel/chatter hash. MongoDB's unique `_id` plus duplicate-key handling makes concurrent first claims converge. This marker is independent of decision-history retention and stores no username or chat text. See [`spam.ts`](src/utils/moderation/spam.ts) and [`moderation_chatter.schema.ts`](src/schemas/moderation_chatter.schema.ts).
+3. **Claim first-seen state.** Protection must be enabled with at least one category, the author must not be a listed service bot or have a selected exempt role, and a message ID must be present. For an eligible author, the code checks Dragonfly's one-day cache, then atomically upserts a durable `moderation_chatter` row using the channel/chatter hash. MongoDB's unique `_id` plus duplicate-key handling makes concurrent first claims converge. This marker is independent of decision-history retention and stores no username or chat text. See [`spam.ts`](src/utils/moderation/spam.ts) and [`moderation_chatter.schema.ts`](src/schemas/moderation_chatter.schema.ts).
 4. **Choose review scope and apply admission limits.** A newly claimed chatter gets `first_message`; an already-seen chatter gets `spam_continuous` only if the channel is paid and opted in. Otherwise this check ends. Before queueing model work, an atomic Dragonfly script caps spam reviews at 30 per channel per minute and 300 across all channels per minute. These are fixed calendar-minute windows using Dragonfly's clock, not rolling 60-second limits. Both scopes share these budgets. The counters expire after 120 seconds. Because this is after the first-seen claim, a rejected first review still uses up that chatter's first opportunity. See [`spam.ts`](src/utils/moderation/spam.ts).
-5. **Build the review input.** The target message is evaluated against the selected categories. Up to seven prior messages, at most 60 seconds old, are included as separate context; the target itself is excluded. The history query reads up to 30 recent messages; the chosen seven are sent in chronological order, with each context text limited to 500 characters and each username to 100. Chat text is treated as evidence, never as instructions. The spam prompt is defined in [`spam_categories.ts`](src/utils/moderation/spam_categories.ts) and assembled in [`semantic.ts`](src/utils/moderation/semantic.ts).
+5. **Build the review input.** The target message is evaluated against the selected categories. Up to seven prior messages, at most 60 seconds old, are included as separate context; the target itself is excluded. The history query reads up to 30 recent messages; the chosen seven are sent in chronological order, with each context text limited to 500 characters and each username to 100. Chat text is treated as evidence, never as instructions. The handler stores the chat event’s `broadcaster_user_login` on the decision as `rule.semantic.broadcasterLogin`; the semantic request uses it first, falling back to the channel owner’s stored Twitch account name loaded by the worker only when the event login is absent or empty. The event login avoids stale stored names after a Twitch rename, since the stored name is refreshed at sign-in. The chosen name is lowercased and used only if it contains 1–25 characters of `a-z`, `0-9`, or underscore; an invalid name adds no note and is not stripped or truncated. When the name is valid and no verified broadcaster invitation is active, only the self-promotion question receives ` The author of the final message is not the broadcaster. The broadcaster of this chat is "<login>".` The spam, ads, and overall questions do not receive this note: adding it there made reports and complaints about ads score as ads. The self-promotion definition excludes encouraging support for this broadcaster; it covers the author’s own channel or social account, not promotion of a third channel. The classifier cannot distinguish a third channel from a nickname or a second account of the broadcaster. The spam prompt is defined in [`spam_categories.ts`](src/utils/moderation/spam_categories.ts) and assembled in [`semantic.ts`](src/utils/moderation/semantic.ts).
 6. **Create or reuse a durable decision.** The decision ID is a hash of channel, message, and built-in spam rule ID. It records the settings version and `reviewSource` (`first_message` or `spam_continuous`) and expires after 180 days. Duplicate event deliveries cannot create a second decision for the same message/rule. See [`decisions.ts`](src/utils/moderation/decisions.ts) and [`moderation_decision.schema.ts`](src/schemas/moderation_decision.schema.ts).
 7. **Wait up to four seconds for a worker decision.** The handler waits until the record is completed or its deadline passes. An independent `semantic-moderation` worker claims pending, unexpired decisions atomically, processes at most four concurrently, and polls every 250 ms. It runs maintenance about once per second, marking expired work uncertain and retrying pending usage accounting. See [`advanced.ts`](src/utils/moderation/advanced.ts), [`decisions.ts`](src/utils/moderation/decisions.ts), and [`semantic_moderation.worker.ts`](src/workers/semantic_moderation.worker.ts).
 
@@ -105,7 +108,7 @@ Messages from the same channel/chatter are serialized by the moderation gate, wh
 
 ## Scoring and enforcement
 
-The classifier returns one score for each selected category and a score for `unsafe`, meaning any selected behavior. The implementation derives `safe = 1 - unsafe` and finds the highest selected-category score. A decision is a **violation only when** the highest category score meets or exceeds the configured threshold **and is strictly greater than the safe score**. If safe is higher, the result is allow. Otherwise, a tie or a category score below threshold produces uncertain. This protection path does not use the generic semantic allow threshold. See [`parseSpamResponse`](src/utils/moderation/semantic.ts) and the tie/threshold cases in [`spam.test.ts`](src/utils/moderation/spam.test.ts).
+The classifier returns one score for each selected category and a score for `unsafe`, meaning any selected behavior. The implementation derives `safe = 1 - unsafe` and finds the highest selected-category score. A decision is a **violation only when** the highest category score meets or exceeds the configured threshold **and is strictly greater than the safe score**, and `unsafe` is at least `SPAM_MIN_OVERALL_SCORE` (0.3), equivalent to safe being at most 70%. If safe is higher, the result is allow. Otherwise, a tie, a category score below threshold, or an overall score below 30% produces uncertain (allowed and logged). This overall check prevents a contradictory result, such as a 0.99 category score with 0.04 overall, from causing a ban. This protection path does not use the generic semantic allow threshold. See [`parseSpamResponse`](src/utils/moderation/semantic.ts) and the tie/threshold cases in [`spam.test.ts`](src/utils/moderation/spam.test.ts).
 
 At the default 85% threshold:
 
@@ -116,6 +119,9 @@ At the default 85% threshold:
 | 84% | 1% | `uncertain` | Allow fallback. |
 | 95% | 96% | `allow` | Safe score wins, even though the category meets threshold. |
 | 95% | 95% | `uncertain` | A tie never schedules a ban. |
+| 99% | 96% | `uncertain` | Overall score is 4%, below the minimum. |
+| 99% | 71% | `uncertain` | Overall score is 29%, below the minimum. |
+| 99% | 70% | `violation` | Overall score is exactly 30%. |
 
 Missing, non-finite, out-of-range, or incorrectly typed required scores cause `invalid_response`. Provider usage fields are validated too. The parser does not normalize category scores into an exclusive distribution. Unselected categories cannot trigger this check.
 
@@ -172,11 +178,13 @@ The decisions page requests paginated history and displays the source (`First-me
 | MongoDB decision | Stores target text, context, policy snapshot, scores, usage, and consequence. | Expiry scheduled at 180 days; API visibility limited to 30 days. |
 | MongoDB moderation action log | Stores attempted action, a 200-character message excerpt, success, and error. | 30-day TTL and 30-day API visibility. |
 
+A decision’s stored provider `cost` includes `usage.cost` plus a valid positive `usage.cost_details.upstream_inference_cost`; models using the service’s own key can report zero in `usage.cost`. Channel credit charges are unaffected and are computed from input tokens.
+
 MongoDB TTL removal is asynchronous. An `executed` consequence means the executor recorded its result; check `success` and `errorMessage` to know whether Twitch accepted the action. It does not mean success by itself. Source: [`moderation_action_log.schema.ts`](src/schemas/moderation_action_log.schema.ts) and [`execute_action.moderation.ts`](src/functions/moderation/execute_action.moderation.ts).
 
 ## Examples
 
-- **Free channel, new chatter, selected default categories:** the first eligible message is reviewed by `respan/span-01`. An ad score at or above 85% and strictly above the safe score schedules a ban. Later messages from that chatter are not reviewed by this feature.
+- **Free channel, new chatter, selected default categories:** the first eligible message is reviewed by `openai/gpt-6-luna-decisions`. An ad score at or above 85%, strictly above the safe score, and an overall score of at least 30% schedules a ban. Later messages from that chatter are not reviewed by this feature.
 - **Free channel, a moderator's first message:** the default `mod` exemption skips protection before first-seen is claimed. If a mod role is removed and a later message arrives, that message may then become the first observed eligible one.
 - **Free channel, first eligible message arrives after the channel budget is full:** the marker is still claimed before the budget check. No model review is admitted and later messages will not receive free first-message review.
 - **Premium/Pro with continuous review on:** a chatter's first message is `first_message`; later messages are `spam_continuous`. Both use the same categories, confidence, role exemptions, admission limits, and fail-open behavior.
@@ -184,13 +192,15 @@ MongoDB TTL removal is asynchronous. An `executed` consequence means the executo
 - **Broadcaster invited channel links:** when recent context contains a qualifying broadcaster invitation, the classifier treats related channel/social promotion as permitted for self-promotion. A sale, scam, profanity, or insult still can violate another selected category.
 - **Safe and category scores tie:** a message with a selected category at threshold but exactly tied with `safe` is uncertain and allowed; enforcement requires category score strictly greater than safe.
 
+Luna has a known miss: it bans a viewer who reposts an ad word for word when asked to quote it; Jev, the paid model until 2026-11-12, did not in the two cases recorded as `KNOWN_MISSES` in [`spam-protection-provider.mjs`](../ops/checks/spam-protection-provider.mjs). The suite defaults to the production model; `SPAM_EVAL_MODEL` selects another model.
+
 ## Troubleshooting
 
 | Symptom | Source-level checks |
 | --- | --- |
 | A chatter's later messages are not checked | Confirm continuous review is on and the channel owner is Premium/Pro. On Free, only first-observed eligible messages are reviewed. Check the chatter marker in `moderation_chatter` using a safe read-only investigation; the feature has no user-facing reset. |
 | An expected first message has no decision | Check protection is enabled and categories are nonempty; inspect whether the chatter had an exempt role, a permit, a missing message ID, or a duplicate message receipt. Then consider channel/global review limits (30/channel/minute, 300/global/minute) and worker/API status. |
-| A message is reviewed but not banned | Check the selected categories, both category and safe scores, threshold, status, and whether policy version/permit/plan changed during review. `uncertain`, `allowed_fallback`, and `cancelled` are fail-open outcomes. |
+| A message is reviewed but not banned | Check the selected categories, both category and safe scores, threshold, status, and whether policy version/permit/plan changed during review. A category above threshold with a safe score above 70% cannot produce a ban. `uncertain`, `allowed_fallback`, and `cancelled` are fail-open outcomes. |
 | A decision says review unavailable, timed out, rate-limited, or invalid response | The semantic worker or OpenRouter request did not produce a valid decision within the four-second deadline. Check the `semantic-moderation` worker logs, OpenRouter/API-key availability, and model/provider response status. The message proceeds without this ban. |
 | Dashboard says channel protection active while Rule filter is off | This is expected: the protection categories and regular rules have independent switches. |
 | Decision shows a ban but action failed | Review the consequence's execution error and Recent Actions log. The model decision and scheduling step are separate from Twitch Helix execution. |
@@ -202,9 +212,9 @@ A first-seen marker is durable and does not expire with the 180-day decision rec
 
 - Message ingress and processing order: [`eventsub.handler.ts`](src/handlers/eventsub.handler.ts), [`message.handler.ts`](src/handlers/message.handler.ts).
 - Protection gates, cache, limits, policy checks, and consequence scheduling: [`moderation.handler.ts`](src/handlers/moderation.handler.ts).
-- Defaults, first-seen marker, review scope, and admission budget: [`spam.ts`](src/utils/moderation/spam.ts), [`spam_categories.ts`](src/utils/moderation/spam_categories.ts).
+- Defaults, service-bot logins, category policies, overall-score minimum, first-seen marker, review scope, and admission budget: [`spam.ts`](src/utils/moderation/spam.ts), [`spam_categories.ts`](src/utils/moderation/spam_categories.ts).
 - Classifier request, model selection, response scoring, timeout handling: [`semantic.ts`](src/utils/moderation/semantic.ts).
-- Queue worker, plan/credit check, fallback, and accounting: [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts), [`semantic_moderation.worker.ts`](src/workers/semantic_moderation.worker.ts).
+- Queue worker, broadcaster login and fallback lookup, plan/credit check, fallback, and accounting: [`moderation.handler.ts`](src/handlers/moderation.handler.ts), [`semantic_worker.ts`](src/utils/moderation/semantic_worker.ts), [`semantic_moderation.worker.ts`](src/workers/semantic_moderation.worker.ts).
 - Data shapes and retention: [`channel_moderation_settings.schema.ts`](src/schemas/channel_moderation_settings.schema.ts), [`moderation_chatter.schema.ts`](src/schemas/moderation_chatter.schema.ts), [`moderation_decision.schema.ts`](src/schemas/moderation_decision.schema.ts).
 - API configuration and history: [`moderation.route.ts`](src/server/routes/moderation.route.ts), [`moderation.route.ts`](src/server/routes/moderation.route.ts).
 - Dashboard controls and decision presentation: [`moderation-page.component.html`](../dimasite/src/app/features/moderation/moderation-page.component.html), [`moderation-page.component.ts`](../dimasite/src/app/features/moderation/moderation-page.component.ts).

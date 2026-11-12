@@ -16,7 +16,7 @@ export async function processNextSemanticDecision(): Promise<boolean> {
     const started = Date.now();
     try {
         const spamProtection = isSpamDecision(decision);
-        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id').lean();
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id accounts.type accounts.id accounts.name').lean();
         const settings = await ChannelModerationSettingsSchema.findOne({ channelID: decision.channelID }).lean();
         let result = fallbackResult('policy_changed');
         let customerID = '';
@@ -41,7 +41,9 @@ export async function processNextSemanticDecision(): Promise<boolean> {
                 }
                 model = spamProtection ? moderationModelForAccount(owner?.plan_tier, hasCredits) : SEMANTIC_MODEL;
                 customerID = hasCredits ? owner?.polar_sh_customer_id || '' : '';
-                result = !spamProtection && !hasCredits ? fallbackResult(creditStatus) : await evaluateSemanticDecision(decision, model);
+                // Fallback for decisions without the chat event's login; a stored name can be stale after a rename.
+                const broadcaster = owner?.accounts?.find(account => account.type === 'twitch' && account.id === decision.channelID)?.name || '';
+                result = !spamProtection && !hasCredits ? fallbackResult(creditStatus) : await evaluateSemanticDecision(decision, model, broadcaster);
             }
         }
         // Successful paid inference consumes credits even when the safe verdict

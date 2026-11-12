@@ -2197,7 +2197,7 @@
         "insults": "Insults",
         "safe": "Safe for selected categories"
       },
-      "modelHint": "Free uses Span-1 with no AI credits. Premium and Pro use the more accurate Jev, which uses AI credits for each review; if credits run out, it falls back to Span-1 Lite, which can be less accurate on complex or ambiguous text.",
+      "modelHint": "Chat protection uses GPT-6 Luna on every plan. Free reviews use no AI credits. On Premium and Pro each review uses AI credits; if credits run out, it falls back to Span-1 Lite, which can be less accurate on complex or ambiguous text.",
       "reviewCredits": "AI credits used: {{credits}}",
       "noReviewCredits": "No AI credits used."
     },

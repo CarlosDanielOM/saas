@@ -59,7 +59,7 @@ try {
         for (const category of ['profanity', 'insults']) assert.equal(await tile.locator(`[data-spam-category=${category}]`).isChecked(), false);
         assert.equal(await continuous.isChecked(), false);
         assert.equal(await continuous.isDisabled(), tier === 'free', 'continuous review tier gate');
-        assert.match(await tile.locator('[data-moderation-model-note]').innerText(), /Span-1.*Jev.*Span-1 Lite/s);
+        assert.match(await tile.locator('[data-moderation-model-note]').innerText(), /GPT-6 Luna.*Span-1 Lite/s);
         assert.match(await tile.innerText(), language === 'en' ? /complex or ambiguous/ : /complejos o ambiguos/);
         const save = host.locator('.lf-save-bar button');
         for (const tag of ['mod', 'editor', 'admin']) assert.equal(await tile.locator(`[data-spam-exempt=${tag}]`).isChecked(), true);

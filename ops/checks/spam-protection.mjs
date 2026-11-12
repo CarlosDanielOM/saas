@@ -51,8 +51,11 @@ try {
     assert.equal(first.charge.status, 'none');
     assert.equal(first.charge.credits, 0);
     assert.equal(first.charge.billableCostUSD, 0);
-    assert.ok(first.cost > 0, 'service absorbs normal Span cost for Free accounts');
-    assert.equal(first.model, 'respan/span-01');
+    assert.equal(first.cost, 0.000155, 'service absorbs the Luna cost for Free accounts, including what our own key is charged');
+    assert.equal(first.model, 'openai/gpt-6-luna-decisions');
+    // This fixture's stored account name ("spam-free") is not a Twitch login, so no broadcaster is named;
+    // the chat event's login is covered below and the stored-name fallback in spam-protection-cron.mjs.
+    assert.equal(reviews().find(call => call.spamReview.startsWith('Want to buy more viewers?'))?.broadcaster, null);
     assert.equal(await redis.get('twitch:spam-free:ai:credits'), exhausted);
     assert.equal(await redis.get(`moderation:spam-free:offenses:${SPAM_RULE_ID}:advertiser`), null, 'ban never touches ladder');
     const bans = calls().filter(call => call.ban === 'advertiser');
@@ -61,6 +64,11 @@ try {
     assert.equal(calls().some(call => call.warn === 'advertiser'), false);
     await review('spam-free', 'first-ad', 'Want to buy more viewers? Visit viewerbuy . com!', 'advertiser');
     assert.equal(reviews().length, 1, 'delivery retry cannot rereview');
+    // A service bot posting the streamer's own link is never reviewed and leaves no first-message marker.
+    assert.equal((await review('spam-free', 'service-bot', 'Want to buy more viewers? Visit viewerbuy . com!', 'StreamlootsBot')).actionTaken, false);
+    assert.equal(await decision('service-bot'), null);
+    assert.equal(await Chatters.countDocuments({ _id: chatterMarkerID('spam-free', 'StreamlootsBot') }), 0);
+    assert.equal(reviews().length, 1, 'service bot is not sent to the classifier');
 
     for (const [id, text] of [['hello', 'Hello everyone!'], ['quoted', 'Someone posted "buy viewers at viewerbuy.com". Is that a scam?'],
         ['warning', 'Do not buy viewers; those sites are scams.'], ['discussion', 'I stream too, how do you set up your microphone?']]) {
@@ -113,13 +121,13 @@ try {
     await Promise.all([review('spam-free', 'race-hello', 'Hello!', 'race'), review('spam-free', 'race-ad', 'Want to buy viewers?', 'race')]);
     assert.equal(await Decisions.countDocuments({ channelID: 'spam-free', userID: 'race' }), 1);
 
-    // Premium and Pro can opt into later reviews; all successful Jev reviews consume credits.
+    // Premium and Pro can opt into later reviews; every successful paid review consumes credits.
     for (const tier of ['premium', 'pro']) {
         const channel = `spam-${tier}`;
         await seed(channel, tier, { enabled: true, reviewAllMessages: true });
         await review(channel, `${tier}-hello`, 'Hello everyone!');
         assert.ok((await decision(`${tier}-hello`)).charge.credits > 0);
-        assert.equal((await decision(`${tier}-hello`)).model, 'typesafe/jev-1.13');
+        assert.equal((await decision(`${tier}-hello`)).model, 'openai/gpt-6-luna-decisions');
         assert.equal((await review(channel, `${tier}-ad`, 'Want to buy viewers? viewerbuy.com')).actionTaken, true);
         await until(async () => (await decision(`${tier}-ad`))?.consequence.status === 'executed', `${tier} ban`);
         const paid = await decision(`${tier}-ad`);
@@ -138,7 +146,7 @@ try {
     await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 999, limit: 1000, balance: 1, available: true, status: 'available' }));
     await review('tier-switch', 'last-paid', 'Hello everyone!');
     await until(async () => (await decision('last-paid'))?.charge.status === 'recorded', 'last credit charged');
-    assert.equal((await decision('last-paid')).model, 'typesafe/jev-1.13');
+    assert.equal((await decision('last-paid')).model, 'openai/gpt-6-luna-decisions');
     assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).balance,
         1 - (await decision('last-paid')).charge.credits, 'the final review deducts its recorded cost, including overdraw');
     await review('tier-switch', 'exhausted-later', 'Do not buy viewers; those sites are scams.');
@@ -155,13 +163,13 @@ try {
     assert.equal((await decision('recharged')).verdict, 'uncertain');
     assert.equal((await decision('recharged')).consequence.status, 'allowed_fallback');
     await until(async () => (await decision('recharged'))?.charge.status === 'recorded', 'uncertain review billed');
-    assert.equal((await decision('recharged')).model, 'typesafe/jev-1.13');
+    assert.equal((await decision('recharged')).model, 'openai/gpt-6-luna-decisions');
     const used = JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).used;
     await review('tier-switch', 'recharged', 'Want to buy viewers? UNCERTAIN');
     assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).used, used, 'retry never double charges');
     for (const marker of ['INVALID', 'UNAVAILABLE', 'TIMEOUT']) {
         await review('tier-switch', `paid-${marker}`, `Want to buy viewers? ${marker}`);
-        assert.equal((await decision(`paid-${marker}`)).charge.credits, 0, 'failed Jev reviews do not charge');
+        assert.equal((await decision(`paid-${marker}`)).charge.credits, 0, 'failed paid reviews do not charge');
     }
     await seed('missing-customer', 'premium');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'missing-customer' }, { $unset: { polar_sh_customer_id: '' } });
@@ -175,7 +183,7 @@ try {
     assert.equal((await decision('unverifiable-credits')).model, 'respan/span-01-lite');
     assert.equal((await decision('unverifiable-credits')).charge.credits, 0);
     await review('unverifiable-credits', 'unverifiable-cached', 'Hello everyone!', 'another-unverified');
-    assert.equal((await decision('unverifiable-cached')).model, 'respan/span-01-lite', 'cached unavailable estimates never upgrade to Jev');
+    assert.equal((await decision('unverifiable-cached')).model, 'respan/span-01-lite', 'cached unavailable estimates never become a charged review');
     assert.equal((await decision('unverifiable-cached')).charge.credits, 0);
 
     await seed('spam-errors');
@@ -345,11 +353,22 @@ try {
     }
     await seed('paid-first-downgrade', 'premium');
     const downgrade = review('paid-first-downgrade', 'paid-first-downgrade', 'Want to buy viewers? SLOW');
-    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.model === 'typesafe/jev-1.13'), 'paid first review starts');
+    // Free and paid share one model now, so the paid review is recognised by its channel, not by its model.
+    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.user === 'paid-first-downgrade'), 'paid first review starts');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'paid-first-downgrade' }, { $set: { plan_tier: 'free' } });
     assert.equal((await downgrade).actionTaken, false);
     assert.equal((await decision('paid-first-downgrade')).consequence.status, 'cancelled');
     assert.equal((await decision('paid-first-downgrade')).charge.credits, 0);
+    // A category the overall answer contradicts never bans (real Luna scores: 0.99 against 0.04).
+    await seed('spam-contradict');
+    assert.equal((await review('spam-contradict', 'contradict', 'Juega mis cartas CONTRADICT', 'cardfan')).actionTaken, false);
+    assert.equal((await decision('contradict')).verdict, 'uncertain');
+    assert.equal((await decision('contradict')).consequence.status, 'allowed_fallback');
+    assert.equal(calls().some(call => call.ban === 'cardfan'), false);
+    // The chat event's login wins over the stored account name, which goes stale after a rename.
+    await seed('spam-renamed');
+    await runChatModeration('spam-renamed', { ...msg('renamed', 'Hello after the rename'), chatter_user_id: 'renamed-viewer', chatter_user_login: 'renamed-viewer', broadcaster_user_login: 'New_Name' }, identity);
+    assert.equal(reviews().find(call => call.spamReview === 'Hello after the rename')?.broadcaster, 'new_name');
     for (let i = 0; i < 30; i++) assert.equal(await claimSpamReviewBudget('budget-channel'), true);
     assert.equal(await claimSpamReviewBudget('budget-channel'), false);
     const window = Math.floor(Number(await redis.eval("return redis.call('TIME')[1]", { keys: [], arguments: [] })) / 60);
@@ -359,9 +378,13 @@ try {
     assert.equal((await review('spam-capped', 'budget-skipped', 'Want to buy viewers?')).actionTaken, false);
     assert.equal(reviews().length, reviewCount);
     assert.equal(await decision('budget-skipped'), null, 'budget blocks queue admission');
-    assert.equal(await Decisions.countDocuments({ model: { $regex: '^respan/' }, 'charge.credits': { $gt: 0 } }), 0);
+    assert.equal(await Decisions.countDocuments({ model: { $regex: '^respan/' }, 'charge.credits': { $gt: 0 } }), 0, 'the Lite fallback is never charged');
+    // Free and paid share one model, so Free channels are told apart by ID: none of their reviews is ever charged.
+    const alwaysFree = ['spam-free', 'spam-errors', 'spam-contradict', 'spam-renamed'];
+    assert.ok(await Decisions.countDocuments({ channelID: 'spam-free', model: 'openai/gpt-6-luna-decisions' }) > 3, 'Free reviews ran on Luna');
+    assert.equal(await Decisions.countDocuments({ channelID: { $in: alwaysFree }, 'charge.credits': { $gt: 0 } }), 0, 'a Free channel is never charged');
     assert.equal(await Actions.countDocuments({ ruleID: SPAM_RULE_ID, action: { $ne: 'ban' } }), 0);
-    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, tiered Span/Jev/Lite routing, exhaustion/recharge, first-message and uncertain billing, deduped credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
+    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, Luna on every plan with the Lite fallback, exhaustion/recharge, first-message and uncertain billing, deduped credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }

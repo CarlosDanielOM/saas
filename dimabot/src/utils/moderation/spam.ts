@@ -10,6 +10,14 @@ import { paidModeration } from './advanced.js';
 export const SPAM_RULE_ID = 'builtin-spam-protection';
 export const SPAM_CHANNEL_REVIEWS_PER_MINUTE = 30;
 export const SPAM_GLOBAL_REVIEWS_PER_MINUTE = 300;
+// Service bots post the broadcaster's own links (Streamloots cards, tip pages, Discord timers) and are
+// often not moderators. A classifier reads those as a stranger's ad: StreamlootsBot was banned for it
+// in two channels in October 2026. Twitch logins are unique, so a display name cannot imitate one.
+export const SERVICE_BOT_LOGINS: ReadonlySet<string> = new Set([
+    'streamlootsbot', 'soundalerts', 'streamelements', 'nightbot', 'tangiabot', 'blerp', 'streamlabs', 'moobot', 'fossabot',
+    'wizebot', 'botrixoficial', 'kofistreambot', 'pokemoncommunitygame', 'sery_bot', 'restreambot', 'pretzelrocks'
+]);
+export const isServiceBot = (login: unknown): boolean => typeof login === 'string' && SERVICE_BOT_LOGINS.has(login.toLowerCase());
 export const spamRule = {
     ...buildDefaultModerationRules()[3],
     id: SPAM_RULE_ID,
@@ -41,7 +49,7 @@ export function broadcasterInvitedPromotion(context: ModerationContextMessage[])
         && /\b(?:share|post|drop)\s+(?:your\s+)?(?:channel|twitch|social)(?:\s+links?)?\b|\b(?:comparte|compartan|compartid|publica|publiquen|deja|dejen)\s+(?:(?:tu|tus|su|sus|vuestro|vuestros)\s+)?(?:canal|canales|redes|enlaces)\b/iu.test(message.message));
 }
 
-export function spamRuleForContext(context: ModerationContextMessage[], settings: Pick<IChannelModerationSettings, 'spamProtection'> = {}) {
+export function spamRuleForContext(context: ModerationContextMessage[], settings: Pick<IChannelModerationSettings, 'spamProtection'> = {}, broadcasterLogin = '') {
     const protection = spamProtectionSettings(settings);
     const invitation = broadcasterInvitedPromotion(context);
     const exemptExpression: PermissionExpression = protection.exemptTags.length
@@ -50,6 +58,8 @@ export function spamRuleForContext(context: ModerationContextMessage[], settings
     return { ...spamRule, exemptExpression, semantic: { ...spamRule.semantic,
         categories: protection.categories, thresholdPercent: protection.thresholdPercent,
         broadcasterInvitation: invitation,
+        // From the chat event, so a renamed channel is named as Twitch knows it now.
+        broadcasterLogin,
         policy: invitation ? 'Channel and social promotion is explicitly permitted by the verified broadcaster. Other selected unwanted behaviors remain prohibited.' : spamRule.semantic.policy
     } };
 }

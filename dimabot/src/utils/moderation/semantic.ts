@@ -1,6 +1,6 @@
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import { OPENROUTER_APP_HEADERS } from '../ai/openrouter/app_attribution.util.js';
-import { DEFAULT_SPAM_THRESHOLD, SPAM_CLASSIFIER_MODEL } from './spam_categories.js';
+import { DEFAULT_SPAM_THRESHOLD, SPAM_CLASSIFIER_MODEL, SPAM_MIN_OVERALL_SCORE } from './spam_categories.js';
 export const SEMANTIC_USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export const SEMANTIC_PRICING_VERSION = 'span-lite-jev-equivalent-v1';
 
@@ -15,7 +15,8 @@ import { ALLOW_THRESHOLD, SEMANTIC_MODEL, paidModeration } from './advanced.js';
 import { SPAM_RULE_ID } from './spam.js';
 import { categoryQuestions, type SpamCategory } from './spam_categories.js';
 
-export const FREE_MODERATION_MODEL = 'respan/span-01';
+// Free channels get the same classifier as paid ones; their reviews are never charged.
+export const FREE_MODERATION_MODEL = SPAM_CLASSIFIER_MODEL;
 
 export function moderationModelForAccount(planTier: unknown, hasCredits: boolean): string {
     return paidModeration(planTier) ? (hasCredits ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL) : FREE_MODERATION_MODEL;
@@ -43,6 +44,8 @@ export function parseSemanticResponse(raw: unknown, thresholdPercent = 85): Sema
     if (data.answers?.violation?.type !== 'noul' || typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1) return fallbackResult('invalid_response');
     const cost = data.usage?.cost;
     if (typeof cost !== 'number' || !Number.isFinite(cost) || cost < 0 || !Number.isSafeInteger(data.usage?.input_tokens) || data.usage.input_tokens < 0) return fallbackResult('invalid_response');
+    // BYOK models report 0 as the OpenRouter cost; what the provider charged our key is listed apart.
+    const upstream = data.usage?.cost_details?.upstream_inference_cost;
     return {
         verdict: score >= violationThreshold ? 'violation' : score <= ALLOW_THRESHOLD ? 'allow' : 'uncertain',
         status: score > ALLOW_THRESHOLD && score < violationThreshold ? 'uncertain' : 'completed',
@@ -51,7 +54,7 @@ export function parseSemanticResponse(raw: unknown, thresholdPercent = 85): Sema
         provider: typeof data.provider === 'string' ? data.provider.slice(0, 100) : 'openrouter',
         providerRequestID: typeof data.id === 'string' ? data.id.slice(0, 200) : '',
         inputTokens: data.usage.input_tokens,
-        cost
+        cost: cost + (typeof upstream === 'number' && Number.isFinite(upstream) && upstream > 0 ? upstream : 0)
     };
 }
 
@@ -66,26 +69,28 @@ export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thre
     }
     // P(none selected) is the complement of the model's P(any selected).
     // Asking the positive behavior avoids an unreliable negated classifier prompt.
-    scores.safe = 1 - scores.unsafe;
+    const overall = scores.unsafe;
+    scores.safe = 1 - overall;
     delete scores.unsafe;
     const highest = Math.max(...categories.map(category => scores[category]));
     const result = parseSemanticResponse({ ...data, answers: { violation: { type: 'noul', noul: highest } } }, thresholdPercent);
     if (result.status === 'invalid_response' || result.status === 'invalid_configuration') return result;
     // These are independent behavior probabilities, not an exclusive distribution.
-    // Safe winning vetoes enforcement; ties and low confidence never cause bans.
+    // Safe winning vetoes enforcement; ties, low confidence and a category the overall answer
+    // contradicts never cause bans.
     const verdict = scores.safe > highest ? 'allow'
-        : scores.safe < highest && highest >= thresholdPercent / 100 ? 'violation' : 'uncertain';
+        : scores.safe < highest && highest >= thresholdPercent / 100 && overall >= SPAM_MIN_OVERALL_SCORE ? 'violation' : 'uncertain';
     return { ...result, verdict, status: verdict === 'uncertain' ? 'uncertain' : 'completed', scores: { ...scores, violation: highest } };
 }
 
 type SemanticState = string | { input: Array<{ role: 'user'; content: string }>; output: { role: 'assistant'; content: string } };
 
-export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>, model?: string): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: SemanticState } {
+export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>, model?: string, broadcaster = ''): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: SemanticState } {
     const semantic = decision.rule.semantic!;
     return {
         model: model ?? (decision.rule.id === SPAM_RULE_ID && semantic.categories ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL),
         questions: decision.rule.id === SPAM_RULE_ID && semantic.categories
-            ? categoryQuestions(semantic.categories, semantic.broadcasterInvitation === true) : {
+            ? categoryQuestions(semantic.categories, semantic.broadcasterInvitation === true, semantic.broadcasterLogin || broadcaster) : {
             violation: {
                 type: 'noul',
                 instructions: 'Does the final message exhibit the described behavior?'
@@ -108,8 +113,8 @@ export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'me
     };
 }
 
-export async function evaluateSemanticDecision(decision: IModerationDecision, model?: string): Promise<SemanticResult> {
-    const request = semanticRequest(decision, model);
+export async function evaluateSemanticDecision(decision: IModerationDecision, model?: string, broadcaster = ''): Promise<SemanticResult> {
+    const request = semanticRequest(decision, model, broadcaster);
     const remaining = decision.deadline.getTime() - Date.now();
     if (remaining <= 0) return fallbackResult('timeout', request.model);
     if (!decision.channelID?.trim()) return fallbackResult('invalid_context', request.model);

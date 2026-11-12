@@ -40,15 +40,15 @@ Chat protection checks each chatter's first message in your channel for the beha
 |---|---|---|
 | **Spam / scams** | On | Scam offers, credential theft, buying fake viewers or followers. |
 | **Ads / sales** | On | Offers to sell products, services, viewers, or followers. |
-| **Self-promotion** | On | Asking viewers to follow or visit the sender's own channel or social account. |
+| **Self-promotion** | On | Asking viewers to follow or visit the sender's own channel or social account. Asking people to follow the streamer whose chat this is does not count. |
 | **Profanity** | Off | Explicit swear words in the sender's own message. |
 | **Insults** | Off | Direct, abusive attacks on a person or group. |
 
 - **Review subsequent messages** (Premium and Pro) checks every message, not only the first one. Each review uses AI credits.
-- **Ban confidence** is the score needed before a ban. The default is 85%. Premium and Pro can choose from 80% to 100%. Free always uses 85%.
+- **Ban confidence** is the score needed before a ban. The default is 85%. Premium and Pro can choose from 80% to 100%. Free always uses 85%. The overall check must also agree that the message contains unwanted behavior before a ban.
 - Uncertain cases are allowed and logged. They do not count toward the rules' steps.
 - **Exempt roles** are skipped. Moderators, editors, and channel admins are exempt by default. You can also exempt VIPs, subscribers, and founders.
-- The broadcaster and the bot account are always skipped.
+- The broadcaster and the bot account are always skipped. Well-known service bots such as Nightbot, StreamElements, SoundAlerts, and StreamlootsBot are skipped too.
 - If you clear every category under **What to detect**, chat protection pauses. **Rule filter** does not turn chat protection off.
 - Chat protection runs separately from your rules. AI reviews are limited to 30 messages per minute per channel and 300 per minute across all channels. Messages above either limit are not reviewed.
 

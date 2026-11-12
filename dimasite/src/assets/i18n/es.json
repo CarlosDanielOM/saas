@@ -2197,7 +2197,7 @@
         "insults": "Insultos",
         "safe": "Seguro para las categorías seleccionadas"
       },
-      "modelHint": "El plan gratis usa Span-1 sin créditos de IA. Premium y Pro usan Jev, más preciso, que consume créditos de IA en cada revisión; si se agotan, pasa a Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
+      "modelHint": "La protección del chat usa GPT-6 Luna en todos los planes. En el plan gratis las revisiones no consumen créditos de IA. En Premium y Pro cada revisión consume créditos de IA; si se agotan, pasa a Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
       "reviewCredits": "Créditos de IA consumidos: {{credits}}",
       "noReviewCredits": "Sin consumo de créditos de IA."
     },

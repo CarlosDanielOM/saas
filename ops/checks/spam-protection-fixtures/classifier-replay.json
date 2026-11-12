@@ -1,12 +1,12 @@
 {
-  "description": "Synthetic Jev responses captured from the live provider on 2026-10-02. Replay tests exercise enforcement; spam-protection-provider.mjs verifies actual classifier quality.",
+  "description": "Score vectors captured from Jev, the paid classifier until 2026-11-12, on synthetic messages on 2026-10-02. They are replayed under the current classifier's model ID so the tests exercise enforcement with realistic scores; spam-protection-provider.mjs verifies actual classifier quality.",
   "cases": [
     {
       "label": "reported-short-ad",
       "messageText": "Ai vIewers streamboo . Com",
       "expectedBan": true,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.88,
         "ads": 0.87,
@@ -22,7 +22,7 @@
       "messageText": "AI viewers audienceboost . net",
       "expectedBan": true,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.87,
         "ads": 0.89,
@@ -38,7 +38,7 @@
       "messageText": "Seguidores baratos crecestream . com",
       "expectedBan": true,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.89,
         "ads": 0.92,
@@ -54,7 +54,7 @@
       "messageText": "Someone posted \"Ai vIewers streamboo . Com\". Is that a scam?",
       "expectedBan": false,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.11,
         "ads": 0.12,
@@ -70,7 +70,7 @@
       "messageText": "Do not use streamboo . Com for AI viewers; it is a scam.",
       "expectedBan": false,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.06,
         "ads": 0.06,
@@ -94,7 +94,7 @@
           "isBroadcaster": true
         }
       ],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.82,
         "ads": 0.8,
@@ -110,7 +110,7 @@
       "messageText": "streamboo . Com",
       "expectedBan": false,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.32,
         "ads": 0.29,
@@ -126,7 +126,7 @@
       "messageText": "We reached 100 viewers today!",
       "expectedBan": false,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.06,
         "ads": 0.03,
@@ -142,7 +142,7 @@
       "messageText": "OBS is free, you can download it from obsproject . com",
       "expectedBan": false,
       "context": [],
-      "model": "typesafe/jev-1.13-20260917",
+      "model": "openai/gpt-6-luna-decisions-20261006",
       "scores": {
         "spam": 0.05,
         "ads": 0.05,

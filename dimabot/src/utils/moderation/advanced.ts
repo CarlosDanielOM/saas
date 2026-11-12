@@ -13,6 +13,7 @@ export interface ModerationPattern {
 export interface SemanticPolicy {
     categories?: SpamCategory[];
     broadcasterInvitation?: boolean;
+    broadcasterLogin?: string;
     enabled: boolean;
     thresholdPercent?: number;
     policy: string;

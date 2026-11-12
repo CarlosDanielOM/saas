@@ -19,4 +19,4 @@ for (const check of ['semantic-check.mjs', 'spam-check.mjs']) {
   const result = spawnSync(process.execPath, [`/tmp/saas-fixtures/${check}`], { env, stdio: 'inherit', timeout: 110000 });
   assert.equal(result.status, 0, `${check}: real moderation worker must send app and channel attribution`);
 }
-console.log('PASS OpenRouter app/channel attribution: Jev, Span, Muse variations, embedding helpers, and actual moderation workers');
+console.log('PASS OpenRouter app/channel attribution: Luna, Span Lite, Muse variations, embedding helpers, and actual moderation workers');

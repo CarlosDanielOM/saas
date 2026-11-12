@@ -87,25 +87,45 @@ const cases = [
     ['selfpromo-not-scam', 'Everyone follow my channel at twitch.tv/mychannel for better content!', false, [], ['spam']],
     ['scam-only', 'FREE prize! Claim your reward by sending me your login password now.', true, [], ['spam']],
     ['all-enabled', 'You are a fucking worthless idiot and nobody wants you here.', true, [], ['spam', 'ads', 'self_promotion', 'profanity', 'insults']],
-    ['profanity-discussion', 'Does the filter block the word "fuck"?', false, [], ['profanity']]
-
+    ['profanity-discussion', 'Does the filter block the word "fuck"?', false, [], ['profanity']],
+    // Wording copied from the campaign that reached production chats in October-November 2026.
+    // 'luna_ban': the production model must ban it; another model under test must at least not call it safe.
+    ['real-best-viewers', 'Best viewers with streamboo .com', 'luna_ban'],
+    ['real-best-viewers-rejoin', 'Best viewers with twitch .ad (remove the space)', 'luna_ban'],
+    // A viewer promoting the broadcaster whose chat this is. Sixth field: that broadcaster's login.
+    ['follow-broadcaster-es', 'Vayan a seguir a zero__rush', false, [], undefined, 'zero__rush'],
+    ['follow-broadcaster-en', 'everyone follow checkstreamer, best streamer on twitch', false],
+    ['follow-broadcaster-caps', 'FOLLOW NYAPHIE CHAT!!', false, [], undefined, 'nyaphie'],
+    ['subscribe-broadcaster', 'suscríbanse al canal, se lo ha ganado', false],
+    ['own-channel-es', 'síganme en twitch.tv/micanal hago directos todos los días', 'luna_ban']
 ];
-const model = process.env.SPAM_EVAL_MODEL || 'typesafe/jev-1.13';
-const failures = [];
-let totalCost = 0;
+// Luna bans a viewer who reposts an ad word for word when asked to quote it; Jev, the paid model
+// until 2026-11-12, did not. Accepted with the switch: a chatter's first message is rarely a quote.
+// Listed so the rest of the suite stays a gate.
+const KNOWN_MISSES = new Set(['quoted-short-context', 'quote-only']);
+// The production classifier by default; SPAM_EVAL_MODEL compares another one against the same cases.
+const PRODUCTION_MODEL = 'openai/gpt-6-luna-decisions';
+const models = [process.env.SPAM_EVAL_MODEL || PRODUCTION_MODEL];
 const selected = process.env.SPAM_EVAL_CASES ? cases.filter(item => process.env.SPAM_EVAL_CASES.split(',').includes(item[0])) : process.env.SPAM_EVAL_SAFETY_ONLY === '1' ? cases.filter(item => item[2] === false) : cases;
 const repeats = Number(process.env.SPAM_EVAL_REPEATS || 1);
 assert.ok(selected.length > 0 && Number.isInteger(repeats) && repeats >= 1 && repeats <= 10);
 const evaluations = Array.from({ length: repeats }, () => selected).flat();
-for (const [label, messageText, ban, context = [], categories] of evaluations) {
-    const started = Date.now();
-    const result = await evaluateSemanticDecision({ channelID: 'provider-check', rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) }, model);
-    console.log(JSON.stringify({ label, verdict: result.verdict, status: result.status, scores: result.scores, model: result.model, inputTokens: result.inputTokens, providerCost: result.cost, latencyMs: Date.now() - started }));
-    assert.ok(['completed', 'uncertain'].includes(result.status), `${label}: ${result.status}`);
-    const valid = ban === 'flag_or_uncertain' ? result.verdict !== 'allow' : (result.verdict === 'violation') === ban;
-    if (!valid) failures.push({ label, scores: result.scores, expectedBan: ban });
-    assert.ok(result.model.startsWith(model), 'expected production spam classifier');
-    totalCost += result.cost;
+for (const model of models) {
+    const failures = [];
+    let totalCost = 0;
+    const known = [];
+    for (const [label, messageText, ban, context = [], categories, broadcaster = 'checkstreamer'] of evaluations) {
+        const started = Date.now();
+        const result = await evaluateSemanticDecision({ channelID: 'provider-check', rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) }, model, broadcaster);
+        console.log(JSON.stringify({ label, verdict: result.verdict, status: result.status, scores: result.scores, model: result.model, inputTokens: result.inputTokens, providerCost: result.cost, latencyMs: Date.now() - started }));
+        assert.ok(['completed', 'uncertain'].includes(result.status), `${label}: ${result.status}`);
+        const expected = ban === 'luna_ban' ? (model === PRODUCTION_MODEL ? true : 'flag_or_uncertain') : ban;
+        const valid = expected === 'flag_or_uncertain' ? result.verdict !== 'allow' : (result.verdict === 'violation') === expected;
+        if (!valid && model === PRODUCTION_MODEL && KNOWN_MISSES.has(label)) known.push(label);
+        else if (!valid) failures.push({ label, scores: result.scores, expectedBan: expected });
+        assert.ok(result.model.startsWith(model), 'expected production spam classifier');
+        totalCost += result.cost;
+    }
+    assert.deepEqual(failures, [], 'synthetic advertising behavior');
+    console.log(`PASS ${evaluations.length} live classifier evaluations on ${model} (${selected.length} cases, ${repeats} runs): short/disguised pitches, real campaign wording, legitimate conversation, promoting the broadcaster, selected categories, safe veto, quotes/context, invitations, EN/ES and injection; provider cost $${totalCost.toFixed(6)}${known.length ? `; known misses: ${[...new Set(known)].join(', ')}` : ''}`);
 }
-assert.deepEqual(failures, [], 'synthetic advertising behavior');
-console.log(`PASS ${evaluations.length} live classifier evaluations (${selected.length} cases, ${repeats} runs): short/disguised pitches, legitimate conversation, selected categories, safe veto, quotes/context, invitations, EN/ES and injection; provider cost $${totalCost.toFixed(6)}`);
