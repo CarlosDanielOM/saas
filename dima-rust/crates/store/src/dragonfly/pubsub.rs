@@ -74,7 +74,9 @@
 //!   answering is noticed without control traffic.
 //! - **One handler per channel**: subscribing to a topic that already has a subscription replaces
 //!   it (the old subscription's stream ends), mirroring the reference's `Map.set(channel, handler)`.
-//!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one).
+//!   Dropping a [`Subscription`] unsubscribes (only if it is still the current one) at the
+//!   task's next turn, however quiet its topic is; so does a [`Subscriber::subscribe`] call
+//!   whose caller stops waiting for it.
 //! - **Shutdown**: dropping the [`Subscriber`] (or [`Subscriber::shutdown`]) stops the task and
 //!   closes the connection; every subscription's stream then ends.
 //!
@@ -263,6 +265,11 @@ impl Inbox {
         self.notify.notify_one();
     }
 
+    /// The [`Subscription`] is gone (dropped, or never handed out).
+    fn receiver_closed(&self) -> bool {
+        self.lock().receiver_closed
+    }
+
     fn close_receiver(&self) {
         let mut state = self.lock();
         state.receiver_closed = true;
@@ -296,10 +303,6 @@ enum Control {
         topic: Topic,
         entry: Entry,
         ack: Ack,
-    },
-    Unsubscribe {
-        topic: Topic,
-        id: u64,
     },
     Shutdown {
         ack: oneshot::Sender<()>,
@@ -356,6 +359,31 @@ struct State {
     connection_id: AtomicI64,
     connections: AtomicU64,
     next_id: AtomicU64,
+    /// Subscriptions dropped (or abandoned before [`Subscriber::subscribe`] returned) that the
+    /// task has not forgotten yet: one entry per dropped [`Subscription`], taken by the task at
+    /// its next turn, whatever traffic its topic has. Not the control channel, which is bounded
+    /// and could refuse it.
+    closed: Mutex<Vec<(Topic, u64)>>,
+    /// Wakes the task when `closed` gains an entry.
+    reap: Notify,
+}
+
+impl State {
+    fn closed_lock(&self) -> MutexGuard<'_, Vec<(Topic, u64)>> {
+        // Nothing panics while the lock is held; a poisoned lock still holds valid state.
+        self.closed.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// A subscription's receiver is gone.
+    fn close(&self, topic: Topic, id: u64) {
+        self.closed_lock().push((topic, id));
+        self.reap.notify_one();
+    }
+
+    /// The subscriptions closed since the last call.
+    fn take_closed(&self) -> Vec<(Topic, u64)> {
+        std::mem::take(&mut *self.closed_lock())
+    }
 }
 
 /// A subscriber: one connection in subscribe mode, owned by a background task.
@@ -388,7 +416,7 @@ pub struct Subscription {
     id: u64,
     confirmed: bool,
     inbox: Arc<Inbox>,
-    control: mpsc::Sender<Control>,
+    state: Arc<State>,
 }
 
 impl std::fmt::Debug for Subscription {
@@ -436,12 +464,8 @@ impl Subscription {
 impl Drop for Subscription {
     fn drop(&mut self) {
         self.inbox.close_receiver();
-        // If the control buffer is full the task notices the closed receiver on the next message
-        // for this topic and unsubscribes then.
-        let _ = self.control.try_send(Control::Unsubscribe {
-            topic: self.topic.clone(),
-            id: self.id,
-        });
+        // The task forgets it (and unsubscribes unless it was replaced) at its next turn.
+        self.state.close(self.topic.clone(), self.id);
     }
 }
 
@@ -480,13 +504,22 @@ impl Subscriber {
         }
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
+        // Made first, so a caller that stops waiting (a timeout around this call) drops it, and
+        // the task forgets the subscription as for any other dropped one.
+        let mut subscription = Subscription {
+            topic: topic.clone(),
+            id,
+            confirmed: false,
+            inbox: inbox.clone(),
+            state: self.state.clone(),
+        };
         let (ack, confirmed) = oneshot::channel();
         self.control
             .send(Control::Subscribe {
-                topic: topic.clone(),
+                topic,
                 entry: Entry {
                     id,
-                    inbox: inbox.clone(),
+                    inbox,
                     owe_gap: false,
                     live: false,
                     waiters: Vec::new(),
@@ -495,16 +528,10 @@ impl Subscriber {
             })
             .await
             .map_err(|_| DragonflyError::SubscriberClosed)?;
-        let confirmed = confirmed
+        subscription.confirmed = confirmed
             .await
             .map_err(|_| DragonflyError::SubscriberClosed)??;
-        Ok(Subscription {
-            topic,
-            id,
-            confirmed,
-            inbox,
-            control: self.control.clone(),
-        })
+        Ok(subscription)
     }
 
     /// Runs `handler` for every message of `topic` parsed as the envelope's JSON (see

@@ -1,7 +1,7 @@
 //! The subscriber task: one `select!` loop that owns the connection.
 //!
 //! Nothing is awaited outside the loop. Each turn waits on, at the same time: a control request
-//! (subscribe, unsubscribe, shutdown), bytes from the socket (`read_buf`, cancel safe), room in
+//! (subscribe, shutdown), dropped subscriptions to forget (see [`super::State`]), bytes from the socket (`read_buf`, cancel safe), room in
 //! the socket for queued commands (`write`, cancel safe), and the earliest deadline. A command is
 //! written and its confirmation is matched later, in order, when it arrives, so a confirmation
 //! that never comes delays neither delivery, nor other subscriptions, nor shutdown; its deadline
@@ -212,6 +212,7 @@ pub(super) async fn run(
                             return stop(entries, ack);
                         }
                     }
+                    () = state.reap.notified() => forget_closed(&mut entries, &state),
                 }
             }
         }
@@ -227,6 +228,7 @@ pub(super) async fn run(
                         return stop(entries, ack);
                     }
                 }
+                () = state.reap.notified() => forget_closed(&mut entries, &state),
             }
         };
         let mut connection = match connected {
@@ -293,6 +295,10 @@ fn offline(
             mut entry,
             ack,
         }) => {
+            // The caller stopped waiting before the request arrived: nothing to do.
+            if entry.inbox.receiver_closed() {
+                return Flow::Continue;
+            }
             let Some(ack) = admit(entries.len(), entries.contains_key(&topic), ack, limits) else {
                 return Flow::Continue;
             };
@@ -310,11 +316,14 @@ fn offline(
             entries.insert(topic, entry);
             Flow::Continue
         }
-        Some(Control::Unsubscribe { topic, id }) => {
-            if entries.get(&topic).is_some_and(|entry| entry.id == id) {
-                entries.remove(&topic);
-            }
-            Flow::Continue
+    }
+}
+
+/// Forgets the subscriptions dropped since the last turn, while there is no connection.
+fn forget_closed(entries: &mut HashMap<Topic, Entry>, state: &State) {
+    for (topic, id) in state.take_closed() {
+        if entries.get(&topic).is_some_and(|entry| entry.id == id) {
+            entries.remove(&topic);
         }
     }
 }
@@ -360,10 +369,12 @@ async fn serve(
                 Some(Control::Subscribe { topic, entry, ack }) => {
                     connection.subscribe_request(topic, entry, ack, entries, state, limits);
                 }
-                Some(Control::Unsubscribe { topic, id }) => {
+            },
+            () = state.reap.notified() => {
+                for (topic, id) in state.take_closed() {
                     connection.unsubscribe_request(&topic, id, entries, limits);
                 }
-            },
+            }
             read = connection.reader.read_buf(&mut connection.input) => match read {
                 Ok(0) => return Err(Lost::Closed),
                 Ok(_) => {
@@ -503,6 +514,10 @@ impl Connection {
         state: &State,
         limits: Limits,
     ) {
+        // The caller stopped waiting before the request arrived: nothing to do.
+        if entry.inbox.receiver_closed() {
+            return;
+        }
         let known = entries.contains_key(&topic) || self.links.contains_key(&topic);
         let Some(ack) = admit(self.links.len(), known, ack, limits) else {
             return;

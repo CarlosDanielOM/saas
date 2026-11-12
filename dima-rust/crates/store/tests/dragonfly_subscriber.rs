@@ -967,3 +967,52 @@ async fn churn_keeps_one_command_per_topic_in_flight() -> Result<()> {
     ensure!(commands.first() == Some(&vec!["SUBSCRIBE".to_owned(), "same".to_owned()]));
     Ok(())
 }
+
+#[tokio::test]
+async fn subscriptions_dropped_at_once_are_all_unsubscribed_on_quiet_topics() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let subscriber = setup(mock.config(Duration::from_secs(10))).await?;
+    let mut peer = mock.peer().await?;
+    let mut held = Vec::new();
+    for n in 0..200 {
+        held.push(subscribed(&subscriber, &mut peer, &format!("q{n}")).await?);
+    }
+    // Dropped in one go, more than the control channel holds, on topics that stay quiet.
+    drop(held);
+    let mut unsubscribed = std::collections::HashSet::new();
+    while unsubscribed.len() < 200 {
+        let command = peer.command().await?;
+        ensure!(
+            command.first().map(String::as_str) == Some("UNSUBSCRIBE"),
+            "{command:?}"
+        );
+        let name = command.get(1).cloned().unwrap_or_default();
+        peer.send(&confirmation("unsubscribe", &name, 0)).await?;
+        unsubscribed.insert(name);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_cancelled_subscribe_does_not_hold_its_topic() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.max_subscriptions = 1;
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    // The caller gives up before the confirmation; nobody holds the subscription.
+    let gave_up = tokio::time::timeout(
+        Duration::from_millis(100),
+        subscriber.subscribe(Topic::Channel("a".into()), Overflow::Gap),
+    )
+    .await;
+    ensure!(gave_up.is_err());
+    ensure!(peer.command().await? == ["SUBSCRIBE", "a"]);
+    peer.send(&confirmation("subscribe", "a", 1)).await?;
+    // So the server is told to forget it, and its place is free again.
+    ensure!(peer.command().await? == ["UNSUBSCRIBE", "a"]);
+    peer.send(&confirmation("unsubscribe", "a", 0)).await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let _b = subscribed(&subscriber, &mut peer, "b").await?;
+    Ok(())
+}
