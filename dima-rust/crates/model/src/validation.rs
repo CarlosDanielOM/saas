@@ -18,7 +18,8 @@
 //!
 //! One error per path: the first validator that fails. Messages are Mongoose's, so a route that
 //! returns `error.message` returns the same text. Lengths count Unicode scalar values, not UTF-16
-//! units (`MIGRATION.md` section 4, first row: an emoji counts 1).
+//! units (`MIGRATION.md` section 4, first row: an emoji counts 1), and so does the cut of a long
+//! value in a `maxlength` message (Mongoose shows the first 30 units and `...`).
 
 use bson::{Bson, Document};
 use dima_store::mongo::schema::{Field, Kind, Schema};
@@ -444,13 +445,22 @@ fn check(
             _ => None,
         },
         Check::MaxLength(max) => match present {
-            Some(Bson::String(text)) if text.chars().count() > max => Some((
-                ValidatorKind::MaxLength,
-                format!(
-                    "Path `{path}` (`{text}`, length {}) is longer than the maximum allowed length ({max}).",
-                    text.chars().count()
-                ),
-            )),
+            Some(Bson::String(text)) if text.chars().count() > max => {
+                // Mongoose shows at most 30 units of the value, then `...` (counted here in
+                // characters, like the length itself).
+                let length = text.chars().count();
+                let shown = if length > 30 {
+                    format!("{}...", dima_text::truncate_chars(text, 30))
+                } else {
+                    text.clone()
+                };
+                Some((
+                    ValidatorKind::MaxLength,
+                    format!(
+                        "Path `{path}` (`{shown}`, length {length}) is longer than the maximum allowed length ({max})."
+                    ),
+                ))
+            }
             _ => None,
         },
         Check::Custom { message, valid } => match value {

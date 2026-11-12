@@ -2,11 +2,13 @@
 //!
 //! On first use of a model, Mongoose creates the collection (`autoCreate`) and then each declared
 //! index, one `createIndexes` command per index, in `schema.indexes()` order (field-level
-//! `index: true` first, then the `schema.index(...)` calls). It adds `background: true`, which
-//! MongoDB 4.2 and later ignore and do not store (the stored specifications are compared in
-//! `tests/writes.rs`), so it is not sent here. It never drops an index. An index that fails (an `IndexOptionsConflict` with an older index of
-//! the same name, for example) is reported and the others are still created; [`ensure_indexes`]
-//! does the same and returns every failure for the caller to log.
+//! `index: true` first, then the `schema.index(...)` calls), each with `background: true` added.
+//! MongoDB 4.2 and later build every index the same way whatever `background` says, but they
+//! store it in the specification (every index of the production copy has it), so it is sent here
+//! too and the specifications stay identical. Mongoose never drops an index. An index that fails
+//! (an `IndexOptionsConflict` with an older index of the same name, for example) is reported and
+//! the others are still created; [`ensure_indexes`] does the same and returns every failure for
+//! the caller to log.
 
 use crate::collection::CollectionInfo;
 use bson::{Bson, Document};
@@ -84,9 +86,13 @@ impl IndexSpec {
             .join("_")
     }
 
-    /// The driver index model, with the declared options.
+    /// The driver index model, with the declared options and Mongoose's `background: true`.
     pub fn model(&self) -> IndexModel {
+        // The driver deprecates `background` (the server ignores it when building), but the
+        // server stores it, and Mongoose always sends it.
+        #[allow(deprecated)]
         let options = IndexOptions::builder()
+            .background(Some(true))
             .unique(self.unique.then_some(true))
             .sparse(self.sparse.then_some(true))
             .expire_after(self.expire_after_seconds.map(Duration::from_secs))
@@ -165,6 +171,9 @@ mod tests {
         let options = model.options.unwrap_or_default();
         assert_eq!(options.unique, Some(true));
         assert_eq!(options.sparse, None);
+        #[allow(deprecated)]
+        let background = options.background;
+        assert_eq!(background, Some(true));
         assert_eq!(
             options.partial_filter_expression,
             Some(doc! { "ended_at": Bson::Null })

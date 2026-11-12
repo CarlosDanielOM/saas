@@ -24,6 +24,16 @@ import { pathToFileURL } from 'node:url';
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
     ['src/schemas/users.schema.ts', 'users'],
+    ['src/schemas/eventsub.schema.ts', 'eventsub'],
+    ['src/schemas/ast_variables.schema.ts', 'AstVariables'],
+    ['src/schemas/command_user_variables.schema.ts', 'CommandUserVariables'],
+    ['src/schemas/command_timer.schema.ts', 'timer_command'],
+    ['src/schemas/custom_timer.schema.ts', 'custom_timer'],
+    ['src/schemas/countdown_timer.schema.ts', 'Countdowntimer'],
+    ['src/schemas/countdown_timer_config.schema.ts', 'Countdowntimerconfig'],
+    ['src/schemas/stream_session.schema.ts', 'StreamSession'],
+    ['src/schemas/domain_event_delivery.schema.ts', 'domain_event_delivery'],
+    ['src/schemas/domain_event_checkpoint.schema.ts', 'domain_event_checkpoint'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

@@ -49,11 +49,27 @@ if (mongoose.version !== '8.24.3') throw new Error(`expected mongoose 8.24.3, fo
 const { EJSON, ObjectId } = mongoose.mongo.BSON;
 const imported = async (file: string) => import(pathToFileURL(path.join(root, file)).href);
 
-const users = (await imported('src/schemas/users.schema.ts')).default;
-
-const MODELS: Record<string, any> = {
-    users,
-};
+// One entry per registered collection: the schema file and the model name.
+const FILES: Array<[string, string]> = [
+    ['src/schemas/users.schema.ts', 'users'],
+    ['src/schemas/eventsub.schema.ts', 'eventsub'],
+    ['src/schemas/ast_variables.schema.ts', 'AstVariables'],
+    ['src/schemas/command_user_variables.schema.ts', 'CommandUserVariables'],
+    ['src/schemas/command_timer.schema.ts', 'timer_command'],
+    ['src/schemas/custom_timer.schema.ts', 'custom_timer'],
+    ['src/schemas/countdown_timer.schema.ts', 'Countdowntimer'],
+    ['src/schemas/countdown_timer_config.schema.ts', 'Countdowntimerconfig'],
+    ['src/schemas/stream_session.schema.ts', 'StreamSession'],
+    ['src/schemas/domain_event_delivery.schema.ts', 'domain_event_delivery'],
+    ['src/schemas/domain_event_checkpoint.schema.ts', 'domain_event_checkpoint'],
+];
+const MODELS: Record<string, any> = {};
+for (const [file, name] of FILES) {
+    await imported(file);
+    const model = mongoose.models[name];
+    if (!model) throw new Error(`model ${name} not registered by ${file}`);
+    MODELS[model.collection.collectionName] = model;
+}
 
 // ---------------------------------------------------------------- fixtures
 
@@ -82,7 +98,94 @@ const userSeed = () => ({
 // built in the Rust test from the module's input type (named by that key), which must produce
 // exactly `doc`.
 
+const eventsubSeed = () => ({
+    _id: OID(1), id: 'sub-1', status: 'enabled', type: 'channel.follow', version: '2',
+    condition: { broadcaster_user_id: '111', moderator_user_id: '111' }, created_at: '2024-01-01T00:00:00.000Z',
+    transport: { method: 'webhook', callback: 'https://example.com/eventsub' }, cost: 0, channel: 'seed', channelID: '111',
+    enabled: true, message: 'hi', endMessage: '', endEnabled: false, minViewers: 2, temporalBanMessage: '', __v: 0,
+});
+const sessionSeed = () => ({
+    _id: OID(1), channelID: '111', channel: 'seed', stream_id: 's1', started_at: T1, ended_at: null, status: 'live',
+    peak_viewers: 3, average_viewers: 2, sample_count: 1, sample_total_viewers: 2, duration_minutes: 1.5, follows: 0,
+    subs: 0, bits: 0, donations: 0, messages: 4, commands: 1, applied_domain_event_keys: ['k0'],
+    offline_summary_enqueued_at: null, offline_clips_completed_at: null, last_seen_live_at: T1,
+    consecutive_offline_checks: 0, created_at: T1, updated_at: T1, __v: 0,
+});
+const deliverySeed = (n: number, status: string) => ({
+    _id: OID(n), consumer: 'chat', topic: 'channel', eventID: OID(0x900 + n), eventKey: `k${n}`, status, attempts: 0,
+    nextAttemptAt: null, lockedUntil: null, leaseToken: null, lastError: '', lastErrorCode: '', lastPrerequisiteKind: '',
+    lastAttemptDurationMs: null, lastDeadLetterError: '', firstAttemptAt: null, completedAt: null, skipReason: '',
+    deadLetteredAt: null, replayCount: 0, lastReplayedAt: null, expiresAt: T2, createdAt: T1, updatedAt: T1,
+});
+
 const CASES: Record<string, any[]> = {
+    eventsubs: [
+        { name: 'create_minimal', op: 'create', rust: 'minimal', doc: {
+            id: 'sub-9', status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: '9' },
+            created_at: '2024-05-05T05:05:05.555Z', transport: { method: 'webhook', callback: 'https://example.com/eventsub' },
+            cost: 1, channel: 'nine', channelID: '9', message: TEXT,
+        } },
+        { name: 'validate_missing', op: 'validate', doc: { channel: '' } },
+        { name: 'update_settings', op: 'updateOne', seed: [eventsubSeed()], filter: { channelID: '111', type: 'channel.follow' }, update: { $set: { enabled: false, message: TEXT, cheerTiers: [{ id: 't', name: 'n', message: 'm', minAmount: 1, maxAmount: 5 }] } } },
+        { name: 'upsert_subscription', op: 'updateOne', filter: { channelID: '222', type: 'channel.raid' }, update: { $set: { id: 'sub-2', status: 'enabled', version: '1', condition: { to_broadcaster_user_id: '222' }, created_at: 'x', transport: { method: 'webhook', callback: 'c' }, cost: 0, channel: 'two' } }, options: { upsert: true } },
+        { name: 'save_message', op: 'save', seed: [eventsubSeed()], id: OID(1), changes: [{ set: 'message', value: 'bye' }, { set: 'remote_missing_since', value: T2 }] },
+    ],
+    astvariables: [
+        { name: 'create_scope', op: 'create', rust: 'scope', doc: { channelID: 'c', userId: 'u1', userLogin: 'login', variables: { a: '1', [TEXT]: TEXT } } },
+        { name: 'validate_defaults', op: 'validate', doc: { channelID: 'c' } },
+        { name: 'upsert_variable', op: 'updateOne', filter: { channelID: 'c', scopeType: 'global', scopeName: 'default', userId: '' }, update: { $set: { 'variables.muertes': '3' }, $setOnInsert: { userLogin: '' } }, options: { upsert: true } },
+        { name: 'duplicate_scope', op: 'create', seed: [{ _id: OID(1), channelID: 'c', scopeType: 'command', scopeName: 'default', userId: 'u1', userLogin: 'l1', variables: {}, __v: 0 }], doc: { channelID: 'c', userId: 'u1', userLogin: 'l2' } },
+    ],
+    commanduservariables: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { commandId: OID(7), channelID: 'c', userId: 'u', variables: { n: '1' } } },
+        { name: 'validate_missing', op: 'validate', doc: {} },
+        { name: 'upsert_variable', op: 'updateOne', filter: { commandId: OID(7), userId: 'u' }, update: { $set: { 'variables.n': '2', channelID: 'c' } }, options: { upsert: true } },
+        { name: 'duplicate', op: 'create', seed: [{ _id: OID(1), commandId: OID(7), channelID: 'c', userId: 'u', variables: {}, __v: 0 }], doc: { commandId: OID(7), channelID: 'c', userId: 'u' } },
+    ],
+    timer_commands: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { command: '!hola', timer: 15, channel: 'c', channelID: '1' } },
+        { name: 'validate_missing', op: 'validate', doc: { timer: 0 } },
+    ],
+    custom_timers: [
+        { name: 'create_trimmed', op: 'create', rust: 'trimmed', doc: { name: '  pad  ', message: ` ${TEXT} `, frequency: 10, frequencyUnit: 'minutes', channel: 'c', channelID: '1' } },
+        { name: 'validate_limits', op: 'validate', doc: { name: 'x'.repeat(31), message: '   ', frequency: 1.5, frequencyUnit: 'hours', channel: 'c', channelID: '1' } },
+        { name: 'validate_range', op: 'validate', doc: { name: 'n', message: 'm', frequency: 1441, channel: 'c', channelID: '1' } },
+        { name: 'validate_zero', op: 'validate', doc: { name: 'n', message: 'm', frequency: 0, channel: 'c', channelID: '1' } },
+        // Mongoose counts UTF-16 units (30 emoji are 60); Rust counts characters (MIGRATION.md 4).
+        { name: 'validate_emoji_name', op: 'validate', differs: 'lengths count characters', doc: { name: '👋'.repeat(30), message: 'm', frequency: 5, channel: 'c', channelID: '1' } },
+        { name: 'duplicate_name', op: 'create', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, channel: 'c', channelID: '1', active: true, created_at: T1, updated_at: T1, __v: 0 }], doc: { name: ' a ', message: 'other', frequency: 6, channel: 'c', channelID: '1' } },
+        { name: 'update_trims', op: 'updateOne', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, frequencyUnit: 'minutes', channel: 'c', channelID: '1', active: true, created_at: T1, updated_at: T1, __v: 0 }], filter: { _id: OID(1) }, update: { $set: { name: '  renamed ', frequency: 20 } } },
+        { name: 'save_active', op: 'save', seed: [{ _id: OID(1), name: 'a', message: 'm', frequency: 5, channel: 'c', channelID: '1', created_at: T1, updated_at: T1, __v: 0 }], id: OID(1), changes: [{ set: 'active', value: false }] },
+    ],
+    countdowntimers: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { channel: 'c', channelID: '1', startTime: 7200 } },
+        { name: 'validate_missing', op: 'validate', doc: { paused: true } },
+        { name: 'update_tick', op: 'updateOne', seed: [{ _id: OID(1), channel: 'c', channelID: '1', startTime: 7200, time: 10, paused: false, active: true, __v: 0 }], filter: { channelID: '1' }, update: { $inc: { time: 30 }, $set: { pausedAt: T2, paused: true } } },
+    ],
+    countdowntimerconfigs: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { channel: 'c', channelID: '1', bits: 1, tier1: 300, tier2: 600, tier3: 900, follows: 0, raids: 60, viewers: 1.5, donations: 30 } },
+        { name: 'validate_missing', op: 'validate', doc: { bits: 1 } },
+    ],
+    streamsessions: [
+        { name: 'create_live', op: 'create', rust: 'live', doc: { channelID: '111', channel: 'seed', stream_id: 's9', started_at: T1, last_seen_live_at: T2 } },
+        { name: 'validate_enums', op: 'validate', doc: { status: 'paused', closure_source: 'manual' } },
+        { name: 'upsert_open', op: 'updateOne', filter: { channelID: '222', stream_id: 's2' }, update: { $setOnInsert: { channel: 'two', started_at: T1 }, $set: { last_seen_live_at: T2 }, $max: { peak_viewers: 12 } }, options: { upsert: true } },
+        { name: 'update_close', op: 'updateOne', seed: [sessionSeed()], filter: { _id: OID(1), ended_at: null }, update: { $set: { ended_at: T2, status: 'offline', closure_source: 'eventsub', duration_minutes: 90.25 }, $addToSet: { applied_domain_event_keys: 'k1' }, $inc: { messages: 1 } } },
+        { name: 'find_and_count', op: 'findOneAndUpdate', seed: [sessionSeed()], filter: { channelID: '111', ended_at: null }, update: { $inc: { follows: 1 }, $push: { applied_domain_event_keys: 'k2' } }, options: { new: true } },
+        { name: 'duplicate_open', op: 'create', seed: [sessionSeed()], doc: { channelID: '111', stream_id: 's2', started_at: T2 } },
+    ],
+    domain_event_deliveries: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { consumer: 'chat', topic: 'channel', eventID: OID(0x900), eventKey: 'e1', expiresAt: T2 } },
+        { name: 'validate_enums', op: 'validate', doc: { consumer: 'c', topic: 't', eventID: OID(1), eventKey: 'k', expiresAt: T2, status: 'lost', lastErrorCode: 'oops', lastPrerequisiteKind: 'x', lastAttemptDurationMs: -1 } },
+        { name: 'upsert_pending', op: 'updateOne', filter: { consumer: 'chat', eventKey: 'e2' }, update: { $setOnInsert: { topic: 'channel', eventID: OID(0x902), expiresAt: T2, status: 'pending' } }, options: { upsert: true } },
+        { name: 'claim', op: 'findOneAndUpdate', seed: [deliverySeed(1, 'pending'), deliverySeed(2, 'succeeded')], filter: { consumer: 'chat', status: { $in: ['pending', 'retry'] } }, update: { $set: { status: 'processing', lockedUntil: T2, leaseToken: 'lease-1', firstAttemptAt: T1 }, $inc: { attempts: 1 } }, options: { new: true } },
+        { name: 'duplicate', op: 'create', seed: [deliverySeed(1, 'pending')], doc: { consumer: 'chat', topic: 'channel', eventID: OID(0x901), eventKey: 'k1', expiresAt: T2 } },
+    ],
+    domain_event_checkpoints: [
+        { name: 'create_basic', op: 'create', rust: 'basic', doc: { consumer: 'chat', topic: 'channel', lastEventID: OID(0x900) } },
+        { name: 'upsert_advance', op: 'updateOne', filter: { consumer: 'chat', topic: 'activity' }, update: { $set: { lastEventID: OID(0x901) } }, options: { upsert: true } },
+        { name: 'duplicate', op: 'create', seed: [{ _id: OID(1), consumer: 'chat', topic: 'channel', lastEventID: OID(0x900), createdAt: T1, updatedAt: T1 }], doc: { consumer: 'chat', topic: 'channel', lastEventID: OID(0x901) } },
+    ],
     users: [
         { name: 'create_empty', op: 'create', doc: {}, rust: 'empty' },
         { name: 'create_signup', op: 'create', rust: 'signup', doc: {
@@ -154,7 +257,7 @@ async function runCase(name: string, model: any, spec: any) {
     await collection.deleteMany({});
     if (spec.seed?.length) await collection.insertMany(clone(spec.seed));
     const seedStored = await storedDocs(collection);
-    const intent = Object.fromEntries(Object.entries(spec).filter(([k]) => !['name', 'seed', 'rust'].includes(k)));
+    const intent = Object.fromEntries(Object.entries(spec).filter(([k]) => !['name', 'seed', 'rust', 'differs'].includes(k)));
     let error: any = null;
     let result: any = null;
     frozen = NOW_MS;
@@ -200,6 +303,7 @@ async function runCase(name: string, model: any, spec: any) {
         name,
         op: spec.op,
         ...(spec.rust ? { rust: spec.rust } : {}),
+        ...(spec.differs ? { differs: spec.differs } : {}),
         seed: ejson(seedStored),
         intent: ejson(intent),
         ...(error ? { error } : {}),

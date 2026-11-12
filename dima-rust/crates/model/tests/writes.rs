@@ -13,6 +13,15 @@ mod support;
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
+use dima_model::ast_variables::NewAstVariables;
+use dima_model::command_user_variables::NewCommandUserVariables;
+use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
+use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
+use dima_model::domain_event_checkpoints::NewCheckpoint;
+use dima_model::domain_event_deliveries::NewDelivery;
+use dima_model::eventsubs::NewEventsub;
+use dima_model::stream_sessions::NewStreamSession;
+use dima_model::timer_commands::NewTimerCommand;
 use dima_model::users::{
     AccountType, EncryptedToken, Language, NewAccount, NewUser, PlanTier, TtsProvider,
 };
@@ -241,8 +250,115 @@ fn typed_create(
             };
             pair(user.to_document()?, user.prepare(ctx))
         }
+        ("eventsubs", "minimal") => {
+            let mut sub = NewEventsub {
+                id: "sub-9".into(),
+                status: "enabled".into(),
+                kind: "channel.cheer".into(),
+                version: "1".into(),
+                condition: doc! { "broadcaster_user_id": "9" },
+                created_at: "2024-05-05T05:05:05.555Z".into(),
+                transport: doc! { "method": "webhook", "callback": "https://example.com/eventsub" },
+                cost: JsNumber(1.0),
+                channel: "nine".into(),
+                channel_id: "9".into(),
+                enabled: None,
+                message: None,
+            };
+            sub.message = Some(text.into());
+            pair(sub.to_document()?, sub.prepare(ctx))
+        }
+        ("astvariables", "scope") => {
+            let mut scope = NewAstVariables::new("c");
+            scope.user_id = Some("u1".into());
+            scope.user_login = Some("login".into());
+            scope.variables = Some(doc! { "a": "1", text: text });
+            pair(scope.to_document()?, scope.prepare(ctx))
+        }
+        ("commanduservariables", "basic") => {
+            let vars = NewCommandUserVariables {
+                command_id: oid(7)?,
+                channel_id: "c".into(),
+                user_id: "u".into(),
+                variables: Some(doc! { "n": "1" }),
+            };
+            pair(vars.to_document()?, vars.prepare(ctx))
+        }
+        ("timer_commands", "basic") => {
+            let timer = NewTimerCommand {
+                command: "!hola".into(),
+                timer: JsNumber(15.0),
+                channel: "c".into(),
+                channel_id: "1".into(),
+            };
+            pair(timer.to_document()?, timer.prepare(ctx))
+        }
+        ("custom_timers", "trimmed") => {
+            let timer = NewCustomTimer::new(
+                "  pad  ",
+                format!(" {text} "),
+                10,
+                Some(FrequencyUnit::Minutes),
+                "c",
+                "1",
+            )?;
+            pair(timer.to_document()?, timer.prepare(ctx))
+        }
+        ("countdowntimers", "basic") => {
+            let countdown = NewCountdown {
+                channel: "c".into(),
+                channel_id: "1".into(),
+                start_time: JsNumber(7200.0),
+            };
+            pair(countdown.to_document()?, countdown.prepare(ctx))
+        }
+        ("countdowntimerconfigs", "basic") => {
+            let config = CountdownConfig {
+                id: None,
+                channel: "c".into(),
+                channel_id: "1".into(),
+                bits: JsNumber(1.0),
+                tier1: JsNumber(300.0),
+                tier2: JsNumber(600.0),
+                tier3: JsNumber(900.0),
+                follows: JsNumber(0.0),
+                raids: JsNumber(60.0),
+                viewers: JsNumber(1.5),
+                donations: JsNumber(30.0),
+            };
+            pair(bson::serialize_to_document(&config)?, config.prepare(ctx))
+        }
+        ("streamsessions", "live") => {
+            let mut session = NewStreamSession::new("111", "s9", ms("2020-01-02T03:04:05.006Z")?);
+            session.channel = Some("seed".into());
+            session.last_seen_live_at = Some(ms("2021-06-07T08:09:10.011Z")?);
+            pair(session.to_document()?, session.prepare(ctx))
+        }
+        ("domain_event_deliveries", "basic") => {
+            let delivery = NewDelivery {
+                consumer: "chat".into(),
+                topic: "channel".into(),
+                event_id: oid(0x900)?,
+                event_key: "e1".into(),
+                status: None,
+                expires_at: ms("2021-06-07T08:09:10.011Z")?,
+            };
+            pair(delivery.to_document()?, delivery.prepare(ctx))
+        }
+        ("domain_event_checkpoints", "basic") => {
+            let checkpoint = NewCheckpoint {
+                consumer: "chat".into(),
+                topic: "channel".into(),
+                last_event_id: oid(0x900)?,
+            };
+            pair(checkpoint.to_document()?, checkpoint.prepare(ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
+}
+
+fn oid(n: u32) -> Result<ObjectId> {
+    Ok(ObjectId::parse_str(format!("{n:024x}"))?)
 }
 
 /// `Model.create(doc)` for a case without a typed input (and for validation cases).
@@ -501,6 +617,70 @@ async fn indexes_match_mongoose() -> Result<()> {
     .await
 }
 
+/// The top-level fields an upsert's filter copies into the document it inserts (its equality
+/// conditions). Empty for every other case.
+fn upsert_equality_fields(case: &Value) -> HashSet<String> {
+    let upsert = case
+        .pointer("/intent/options/upsert")
+        .and_then(Value::as_bool)
+        == Some(true);
+    let filter = case.pointer("/intent/filter").and_then(Value::as_object);
+    let (true, Some(filter)) = (upsert, filter) else {
+        return HashSet::new();
+    };
+    filter
+        .iter()
+        .filter(|(key, value)| {
+            // An operator condition (`{$gt: …}`) is not copied; Extended JSON wrappers
+            // (`{$oid: …}`) are plain values.
+            let operator = value.as_object().is_some_and(|o| {
+                o.keys().any(|k| {
+                    k.starts_with('$')
+                        && bson_of(value).is_ok_and(|b| matches!(b, Bson::Document(_)))
+                })
+            });
+            !key.starts_with('$') && !operator
+        })
+        .map(|(key, _)| key.clone())
+        .collect()
+}
+
+/// The server copies an upsert filter's equality fields right after `_id` in an order that varies
+/// from run to run (`dima-store`'s golden test found the same with the Node driver): that run of
+/// fields, and only it, is sorted on both sides.
+fn copied_fields_sorted(value: Bson, copied: &HashSet<String>) -> Bson {
+    if copied.is_empty() {
+        return value;
+    }
+    let sort = |document: Document| -> Document {
+        let mut entries: Vec<(String, Bson)> = document.into_iter().collect();
+        let start = usize::from(entries.first().is_some_and(|(k, _)| k == "_id"));
+        let run = entries
+            .iter()
+            .skip(start)
+            .take_while(|(k, _)| copied.contains(k))
+            .count();
+        if run == copied.len()
+            && let Some(slice) = entries.get_mut(start..start + run)
+        {
+            slice.sort_by(|a, b| a.0.cmp(&b.0));
+        }
+        entries.into_iter().collect()
+    };
+    match value {
+        Bson::Array(items) => Bson::Array(
+            items
+                .into_iter()
+                .map(|item| match item {
+                    Bson::Document(document) => Bson::Document(sort(document)),
+                    other => other,
+                })
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 /// The index specifications exactly as the server lists them (`listIndexes`).
 async fn list_indexes(store: &MongoStore, collection: &str) -> Result<Vec<Document>> {
     let reply = store
@@ -533,6 +713,13 @@ async fn writes_match_mongoose() -> Result<()> {
     support::with_store(|store| async move {
         let mut problems = Vec::new();
         let mut covered: HashSet<&str> = HashSet::new();
+        // Mongoose's `autoIndex` created every index before the recorded cases ran.
+        for info in REGISTRY {
+            let failures = ensure_indexes(&store, info).await;
+            if !failures.is_empty() {
+                bail!("{}: {failures:?}", info.name);
+            }
+        }
         for case in &recording.cases {
             let collection = case
                 .get("collection")
@@ -568,6 +755,8 @@ async fn writes_match_mongoose() -> Result<()> {
                         Some(11000) => Value::String("duplicate key".into()),
                         _ => e.clone(),
                     });
+            // A case marked `differs` is one Rust accepts on purpose (it names the rule).
+            let expected_error = expected_error.filter(|_| case.get("differs").is_none());
             if expected_error != error {
                 problems.push(format!(
                     "{collection}/{name}: error\n  mongoose {}\n  rust     {}",
@@ -583,8 +772,12 @@ async fn writes_match_mongoose() -> Result<()> {
                 .into_iter()
                 .map(|d| normaliser.walk(Bson::Document(d)))
                 .collect();
-            let actual = canonical(Bson::Array(actual));
-            let expected = canonical(bson_of(case.get("stored").context("stored")?)?);
+            let copied = upsert_equality_fields(case);
+            let actual = canonical(copied_fields_sorted(Bson::Array(actual), &copied));
+            let expected = canonical(copied_fields_sorted(
+                bson_of(case.get("stored").context("stored")?)?,
+                &copied,
+            ));
             if actual != expected {
                 problems.push(format!(
                     "{collection}/{name}: stored\n  mongoose {expected}\n  rust     {actual}"

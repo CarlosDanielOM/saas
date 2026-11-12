@@ -14,7 +14,17 @@ pub mod enums;
 pub mod error;
 pub mod index;
 pub mod validation;
+pub mod values;
 
+pub mod ast_variables;
+pub mod command_user_variables;
+pub mod countdown_timers;
+pub mod custom_timers;
+pub mod domain_event_checkpoints;
+pub mod domain_event_deliveries;
+pub mod eventsubs;
+pub mod stream_sessions;
+pub mod timer_commands;
 pub mod users;
 
 pub use collection::{CollectionInfo, ReadError};
@@ -24,5 +34,18 @@ pub use error::ModelError;
 pub use index::{IndexFailure, IndexSpec, ensure_indexes};
 pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
 
-/// Every collection module, in the order of this crate's module list.
-pub static REGISTRY: &[&CollectionInfo] = &[&users::INFO];
+/// Every collection, one entry per collection (a module may hold two, like the countdown and its
+/// configuration).
+pub static REGISTRY: &[&CollectionInfo] = &[
+    &users::INFO,
+    &eventsubs::INFO,
+    &ast_variables::INFO,
+    &command_user_variables::INFO,
+    &timer_commands::INFO,
+    &custom_timers::INFO,
+    &countdown_timers::INFO,
+    &countdown_timers::CONFIG_INFO,
+    &stream_sessions::INFO,
+    &domain_event_deliveries::INFO,
+    &domain_event_checkpoints::INFO,
+];
