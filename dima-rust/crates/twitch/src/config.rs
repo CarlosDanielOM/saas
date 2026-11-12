@@ -72,7 +72,7 @@ impl fmt::Debug for TwitchConfig {
 /// | `store_deadline` | 10 s | none in the reference (Mongoose without `maxTimeMS`); one MongoDB operation |
 /// | `emote_timeout` | 3 s | `AbortSignal.timeout(3000)` (`twitch_emotes.ts`) |
 /// | `exchange_drain` | 15 s | Rust only: how long an exchange already sent, and the write of its answer, go on after shutdown (one 10 s attempt plus 5 s to write); see `crate::drain` |
-/// | `park_grace` | 2 s | Rust only: after the drain, how long a rotation MongoDB has not taken may take to be parked in Dragonfly |
+/// | `park_grace` | 2 s | Rust only: the deadline of one write of a recovery record, and of the last step of shutdown, which parks in Dragonfly every answer MongoDB has not taken (`crate::recovery`) |
 /// | `persist_retry` | 200 ms doubling to 2 s | Rust only: the pause between writes of a rotation MongoDB refused (never a new exchange) |
 /// | `park_ttl` | 30 days | Rust only: how long a parked rotation waits for the next refresh of its streamer |
 /// | `directory_read` | 500 ms | Rust only: the default deadline of a directory read ([`crate::Twitch::streamer`]); the chat path uses it. A read is one Dragonfly script round trip (well under a millisecond on the host), a miss adds one MongoDB read and one write (a few milliseconds), so it fires only when a store is unhealthy; a hydration it started goes on in the background |
@@ -149,6 +149,15 @@ impl Timings {
             directory_read: Duration::from_millis(500),
             unhelpful_refresh_window: Duration::from_secs(60),
         }
+    }
+
+    /// The longest [`crate::Twitch::shutdown`] takes: the drain of exchanges and their writes
+    /// ([`Timings::exchange_drain`]) plus the last step that parks what MongoDB has not taken
+    /// ([`Timings::park_grace`]): 15 s + 2 s = 17 s with the reference values. A container's
+    /// stop timeout (Compose `stop_grace_period`) must exceed it, with room for the rest of the
+    /// binary's shutdown.
+    pub fn shutdown_budget(&self) -> Duration {
+        self.exchange_drain.saturating_add(self.park_grace)
     }
 
     /// The pause before retry `index` (0-based): the list's value, 900 ms past its end

@@ -88,6 +88,10 @@ pub enum FaultPoint {
     AfterTwitchAnswer,
     /// A rotation is about to be written to MongoDB ([`FaultAction::Fail`] makes the write fail).
     BeforePersist,
+    /// A recovery record is about to be written to Dragonfly ([`FaultAction::Fail`] makes the
+    /// write fail; a hook that waits longer than [`crate::Timings::park_grace`] makes it time
+    /// out).
+    BeforePark,
     /// A credential write to the directory hash is about to be sent (MongoDB already written).
     BeforeCacheWrite,
     /// A hydration or start-up load read the user and is about to write the hash.
@@ -129,8 +133,9 @@ pub(crate) struct Inner {
     /// [`Twitch::kill`]: an exchange still running is cancelled, a rotation not yet in MongoDB
     /// is parked.
     pub(crate) drain_expired: Shutdown,
-    /// Rotations Twitch answered that MongoDB has not taken yet (encrypted), per streamer.
-    pub(crate) pending: Mutex<HashMap<String, crate::refresh::Pending>>,
+    /// Answers Twitch gave that MongoDB has not taken yet (encrypted), per streamer (see
+    /// `crate::recovery`).
+    pub(crate) answers: crate::recovery::Registry,
     pub(crate) helix: Provider,
     pub(crate) oauth: Provider,
     pub(crate) mongo: MongoStore,
@@ -166,7 +171,7 @@ impl Twitch {
                 http: deps.http,
                 exchange_http: deps.exchange_http,
                 drain_expired: Shutdown::new(),
-                pending: Mutex::new(HashMap::new()),
+                answers: crate::recovery::Registry::default(),
                 helix: deps.helix,
                 oauth: deps.oauth,
                 mongo: deps.mongo,
@@ -199,24 +204,28 @@ impl Twitch {
 
     /// The drain: call it after the process's shutdown token fired (no new refresh is sent
     /// then). Exchanges already sent and the writes of their answers go on for up to
-    /// [`crate::Timings::exchange_drain`]; then an exchange still waiting for Twitch is cancelled
-    /// and a rotation MongoDB has not taken is parked in Dragonfly (bounded by
-    /// [`crate::Timings::park_grace`]), where the next refresh of that streamer, in any process,
-    /// applies it first. `true` when everything finished within the drain lifetime. The
-    /// binary's stop timeout (Compose `stop_grace_period`) must leave room for both.
+    /// [`crate::Timings::exchange_drain`]; then an exchange still waiting for Twitch is
+    /// cancelled, and the **last step** parks every answer MongoDB has not taken in Dragonfly
+    /// (review F1/F4: whatever the registry still holds, however far its own write got), within
+    /// [`crate::Timings::park_grace`]. The next refresh of that streamer, in any process, or the
+    /// reconciliation applies it. An answer both stores refuse then is lost and logged
+    /// (`token_refresh_lost`, once per streamer).
+    ///
+    /// The whole call takes at most [`crate::Timings::shutdown_budget`] (17 s with the
+    /// reference timings), so the binary's stop timeout (Compose `stop_grace_period`) must exceed
+    /// it. `true` when everything finished within the drain lifetime.
     pub async fn shutdown(&self) -> bool {
         let inner = &self.inner;
         inner.tracker.close();
         let timings = &inner.config.timings;
-        if tokio::time::timeout(timings.exchange_drain, inner.tracker.wait())
+        let drained = tokio::time::timeout(timings.exchange_drain, inner.tracker.wait())
             .await
-            .is_ok()
-        {
-            return true;
+            .is_ok();
+        if !drained {
+            inner.drain_expired.trigger();
         }
-        inner.drain_expired.trigger();
-        let _ = tokio::time::timeout(timings.park_grace, inner.tracker.wait()).await;
-        false
+        let parked = inner.park_remaining().await;
+        drained && parked
     }
 
     /// Parks every refresh at `point` until the returned future of `hook` resolves (tests:

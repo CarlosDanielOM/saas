@@ -69,11 +69,7 @@ async fn stored_refresh(stores: &Stores) -> Result<Option<String>> {
 }
 
 async fn parked(stores: &Stores) -> Result<bool> {
-    Ok(stores
-        .dragonfly
-        .get(&stores.keys.parked_rotation("u1"))
-        .await?
-        .is_some())
+    key_exists(stores, &stores.keys.parked_rotation("u1")).await
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

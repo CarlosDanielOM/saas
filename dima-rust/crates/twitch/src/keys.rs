@@ -11,7 +11,7 @@
 //! | `locks:refresh:twitch:{id}` (`PX 5000`, renewed by its holder) | `acquireRefreshLock` | **rebuilt** (a 5 s lease; Rust's database starts without one) |
 //! | `locks:refresh:twitch:{id}:exchange` (`PX 30000`, renewed) | Rust only: an exchange is (or may be) in flight | **rebuilt** |
 //! | `app:twitch:token` (envelope, `EX expires_in`; plain text in the reference) | `getNewTwitchAppToken` | **rebuilt**: a new app token is requested on first use |
-//! | `twitch:{id}:refresh:parked` (JSON of envelopes, `EX` 30 days) | Rust only: a rotation MongoDB had not taken when the process had to stop | **drained**: the next refresh of that streamer applies it to MongoDB; Rust's own database, so nothing crosses the cutover |
+//! | `twitch:{id}:refresh:parked` (hash: `generation`, `rotation` as JSON of envelopes; `PX` 30 days) | Rust only: the recovery record of an answer MongoDB has not taken (`crate::recovery`) | **drained**: the next refresh of that streamer applies it to MongoDB; Rust's own database, so nothing crosses the cutover |
 //! | `twitch:{id}:emote-catalog:v1` (JSON, `EX 86400`) | `twitch_emotes.ts` | **rebuilt** from Helix on first use |
 //! | `twitch:{id}:ai:credits:plan-version` (fence) | billing | read here (fence of the account hash); owned by the billing package |
 //! | `streamers:by:name` | legacy (`DEL` only, no writer) | not written or deleted by Rust |

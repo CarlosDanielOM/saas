@@ -13,4 +13,5 @@ mod drain;
 mod fence;
 mod helix;
 mod parity;
+mod recovery;
 mod tokens;

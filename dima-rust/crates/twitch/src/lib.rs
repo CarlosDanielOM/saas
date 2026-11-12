@@ -44,8 +44,8 @@
 //!     shutdown: shutdown.clone(),
 //! });
 //! twitch.load_streamers().await?; // start-up, as `getTwitchAccountsFromDB`
-//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await; (the drain: up to
-//! // `Timings::exchange_drain` + `park_grace`, so the container's stop timeout must exceed it)
+//! // ... on SIGTERM: shutdown.trigger(); twitch.shutdown().await; (at most
+//! // `Timings::shutdown_budget()`, 17 s: the container's stop timeout must exceed it)
 //! # Ok(())
 //! # }
 //! ```
@@ -68,6 +68,7 @@ pub mod helix;
 pub mod keys;
 mod lease;
 pub mod oauth;
+mod recovery;
 mod refresh;
 mod secret;
 pub mod streamers;

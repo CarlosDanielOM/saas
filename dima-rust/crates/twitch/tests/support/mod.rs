@@ -632,6 +632,23 @@ pub async fn marker_gone(stores: &Stores, id: &str) -> Result<()> {
     .await
 }
 
+/// The recovery record of `id`: its generation and the refresh token of its answer, decrypted.
+pub async fn parked_answer(stores: &Stores, id: &str) -> Result<Option<(i64, String)>> {
+    let key = stores.keys.parked_rotation(id);
+    let fields: HashMap<String, String> =
+        stores.dragonfly.hgetall(&key).await?.into_iter().collect();
+    let (Some(generation), Some(rotation)) = (fields.get("generation"), fields.get("rotation"))
+    else {
+        return Ok(None);
+    };
+    let rotation: Value = serde_json::from_str(rotation)?;
+    let refresh: StoredCredential = serde_json::from_value(rotation["refresh"].clone())?;
+    Ok(Some((
+        generation.parse()?,
+        cipher().decrypt(&refresh)?.unwrap_or_default(),
+    )))
+}
+
 /// `{"data": [...]}` helper for Helix answers.
 pub fn data(values: Value) -> String {
     json!({ "data": values }).to_string()
