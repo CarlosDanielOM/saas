@@ -9,6 +9,10 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Fault points for the ingress's kill tests.
+test-util = []
+
 [dependencies]
 dima-actions = { workspace = true }
 # P4-BOT-INGRESS: the webhook (journal, raid filter, Dragonfly claims, the HTTP edge).
@@ -30,7 +34,10 @@ tokio = { workspace = true }
 tokio-util = { workspace = true }
 
 [dev-dependencies]
+dima-chat = { path = ".", features = ["test-util"] }
+dima-core = { workspace = true, features = ["test-util"] }
 anyhow = { workspace = true }
+base64 = { workspace = true }
 bson = { workspace = true }
 dima-model = { workspace = true }
 dima-twitch = { workspace = true }

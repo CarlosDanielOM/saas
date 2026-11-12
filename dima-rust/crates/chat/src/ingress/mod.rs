@@ -168,13 +168,36 @@ struct Counters {
     handler_errors: AtomicU64,
 }
 
+async fn fault(inner: &Inner, point: FaultPoint, message_id: &str) {
+    if let Some(hook) = &inner.faults {
+        hook(point, message_id).await;
+    }
+}
+
 fn bump(counter: &AtomicU64) {
     counter.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Where a test can stop the ingress (feature `test-util`): the hook runs at that step and may
+/// never return, which is what a process killed there looks like from the stores.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FaultPoint {
+    /// The journal write succeeded; the answer is not made yet.
+    AfterJournal,
+    /// The answer was written; the claim (or, for a journaled type, the handler) comes next.
+    AfterAnswer,
+    /// The claim was made; the inline handler comes next.
+    BeforeHandler,
+}
+
+/// A fault hook: called with the step and the message id.
+pub type FaultHook =
+    Arc<dyn Fn(FaultPoint, &str) -> futures_util::future::BoxFuture<'static, ()> + Send + Sync>;
+
 struct Inner {
     config: IngressConfig,
     deps: IngressDeps,
+    faults: Option<FaultHook>,
     admission: Arc<Semaphore>,
     tasks: TaskTracker,
     counters: Counters,
@@ -199,6 +222,16 @@ impl std::fmt::Debug for Ingress {
 impl Ingress {
     /// An ingress with `config` over `deps`.
     pub fn new(config: IngressConfig, deps: IngressDeps) -> Self {
+        Self::build(config, deps, None)
+    }
+
+    /// An ingress that calls `hook` at each [`FaultPoint`] (tests only).
+    #[cfg(feature = "test-util")]
+    pub fn with_fault_hook(config: IngressConfig, deps: IngressDeps, hook: FaultHook) -> Self {
+        Self::build(config, deps, Some(hook))
+    }
+
+    fn build(config: IngressConfig, deps: IngressDeps, faults: Option<FaultHook>) -> Self {
         let dead_letters = dead_letter::DeadLetters {
             key: format!("{}eventsub:dead-letter", config.key_prefix),
             count_key: format!("{}eventsub:dead-letter:count", config.key_prefix),
@@ -215,6 +248,7 @@ impl Ingress {
                 dead_letters,
                 config,
                 deps,
+                faults,
             }),
         }
     }

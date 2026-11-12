@@ -6,7 +6,7 @@ use super::handover::{
     ChatEffectInput, HandlerOptions, Notification, Revocation, RevocationOutcome,
 };
 use super::headers::{self, DeliveryHeaders, HeaderLimits, HeaderRefusal};
-use super::{Ingress, Inner, body, bump, timestamp};
+use super::{FaultPoint, Ingress, Inner, body, bump, fault, timestamp};
 use bytes::Bytes;
 use dima_actions::metrics::eventsub_type_name;
 use dima_core::crypto::webhook::verify_eventsub_signature;
@@ -545,6 +545,7 @@ async fn notification_step(
                     deps.telemetry.count(KIND, "duplicate");
                     return status(204);
                 }
+                fault(inner, FaultPoint::AfterJournal, &delivery.message_id).await;
                 if let Some(kind) = journaled.lifecycle_metric() {
                     let name = if kind == "stream.started" {
                         "stream.started"
@@ -637,6 +638,7 @@ async fn after_answer(
     closed: CancellationToken,
 ) {
     let _ = tokio::time::timeout(inner.config.answer_wait, closed.cancelled()).await;
+    fault(&inner, FaultPoint::AfterAnswer, &notification.message_id).await;
     let deps = &inner.deps;
     if claim {
         let now = deps.clock.now_ms();
@@ -677,6 +679,7 @@ async fn after_answer(
             }
         }
     }
+    fault(&inner, FaultPoint::BeforeHandler, &notification.message_id).await;
     let tracker = deps
         .metrics
         .start_eventsub_handler(&notification.subscription_type);
