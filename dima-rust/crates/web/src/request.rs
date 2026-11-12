@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::Body;
 use crate::error::Error;
-use crate::exchange::{MatchedRoute, TraceContext};
+use crate::exchange::{MatchedRoute, RouteSlot, TraceContext};
 use crate::path::Params;
 use crate::qs;
 
@@ -155,6 +155,8 @@ pub struct Req<S = ()> {
     pub(crate) trace: Option<TraceContext>,
     /// The last route that ran (`req.route`).
     pub(crate) route: Option<MatchedRoute>,
+    /// The same, shared with the exchange's completion guard (see [`Req::set_route`]).
+    pub(crate) route_slot: RouteSlot,
     /// The mount patterns stripped so far (the pattern form of `base_url`).
     pub(crate) pattern_base: String,
 }
@@ -187,6 +189,7 @@ impl<S> Req<S> {
             closed: CancellationToken::new(),
             trace: None,
             route: None,
+            route_slot: RouteSlot::default(),
             pattern_base: String::new(),
         }
     }
@@ -212,6 +215,13 @@ impl<S> Req<S> {
     /// The last route that ran (`req.route` with `req.baseUrl`), if any.
     pub fn route(&self) -> Option<&MatchedRoute> {
         self.route.as_ref()
+    }
+
+    /// Dispatch selected `route`: visible to handlers and, at once, to the exchange's report
+    /// (even when the client leaves while the route runs).
+    pub(crate) fn set_route(&mut self, route: MatchedRoute) {
+        self.route_slot.set(route.clone());
+        self.route = Some(route);
     }
 
     /// The shared application state.
@@ -396,8 +406,17 @@ impl<S> Req<S> {
     }
 
     /// Takes hyper's upgrade handle (WebSocket and other protocol upgrades on this port).
+    /// Take the [`crate::UpgradeGuard`] with it ([`Req::take_upgrade_guard`]).
     pub fn take_upgrade(&mut self) -> Option<hyper::upgrade::OnUpgrade> {
         self.extensions.remove::<hyper::upgrade::OnUpgrade>()
+    }
+
+    /// Takes the guard [`crate::serve`] attaches to a request that asks for an upgrade: hold it
+    /// while you own the upgraded socket and watch its shutdown token (see
+    /// [`crate::UpgradeGuard`]). `None` when the request was not served by [`crate::serve`] or
+    /// asked for no upgrade.
+    pub fn take_upgrade_guard(&mut self) -> Option<crate::UpgradeGuard> {
+        self.extensions.remove::<crate::UpgradeGuard>()
     }
 
     /// `typeis.hasBody(req)`: a `Transfer-Encoding` or a numeric `Content-Length` header.

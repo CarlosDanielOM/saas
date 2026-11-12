@@ -89,6 +89,7 @@ async fn http_templates_errors_and_self_observation_exclusion() {
     let app = App::new(root, seen.clone())
         .unwrap()
         .observe(telemetry.web_observer());
+    let queue = app.observer_queue().unwrap();
     let service = telemetry.traced_service(app);
 
     assert_eq!(
@@ -104,6 +105,7 @@ async fn http_templates_errors_and_self_observation_exclusion() {
         call(service.clone(), "/duels/1234567/duel/state", &[]).await,
         200
     );
+    queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let rows: Vec<_> = snapshot
         .metrics
@@ -157,6 +159,7 @@ async fn http_templates_errors_and_self_observation_exclusion() {
     assert_eq!(signed.trace_id, remote.trace_id);
     assert!(signed.sampled);
     assert_ne!(unsigned.trace_id, remote.trace_id);
+    queue.idle().await;
     let snapshot = telemetry.take_snapshot();
     let span = &snapshot.spans[0];
     // `req.baseUrl + req.route.path`: the mount is literal, the route is the template.

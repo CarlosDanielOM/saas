@@ -1155,9 +1155,8 @@ fn parse_response(raw: &[u8], method: &str) -> Parsed {
     let chunked = headers
         .iter()
         .any(|(n, v)| n == "transfer-encoding" && v.contains("chunked"));
-    if method == "HEAD" {
-        body.clear();
-    } else if chunked {
+    // A HEAD answer keeps whatever followed its head: nothing may be on the wire.
+    if method != "HEAD" && chunked {
         let mut out = Vec::new();
         let mut at = 0;
         loop {
@@ -1292,6 +1291,13 @@ async fn matches_express() {
             continue;
         }
         let actual = parse_response(&raw, method);
+        if method == "HEAD" && !actual.body.is_empty() {
+            failures.push(format!(
+                "{name}: a HEAD answer carried {} body bytes on the wire",
+                actual.body.len()
+            ));
+            continue;
+        }
         let expected = &case["response"];
         let expected_status = expected["status"].as_u64().unwrap_or(0) as u16;
         let known = KNOWN_DIFFERENCES

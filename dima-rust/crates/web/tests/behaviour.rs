@@ -307,6 +307,81 @@ async fn echo_upgrade(req: &mut Req) -> Result<Response, Error> {
     Ok(Response::from_http(response))
 }
 
+/// The 101 answer for the test protocol.
+fn switching() -> Result<Response, Error> {
+    let response = http::Response::builder()
+        .status(101)
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "echo")
+        .body(Body::empty())?;
+    Ok(Response::from_http(response))
+}
+
+/// How long `/guarded` keeps its guard after shutdown begins.
+const GOODBYE: Duration = Duration::from_millis(200);
+
+/// GET /guarded: echoes 4-byte messages until shutdown, then says `bye!`, holds its guard a
+/// little longer and closes.
+async fn guarded_upgrade(req: &mut Req) -> Result<Response, Error> {
+    let (Some(upgrade), Some(guard)) = (req.take_upgrade(), req.take_upgrade_guard()) else {
+        return Ok(Response::send_status(426));
+    };
+    tokio::spawn(async move {
+        let Ok(upgraded) = upgrade.await else { return };
+        let mut io = hyper_util::rt::TokioIo::new(upgraded);
+        let mut buf = [0u8; 4];
+        loop {
+            tokio::select! {
+                () = guard.shutting_down() => {
+                    let _ = io.write_all(b"bye!").await;
+                    let _ = io.shutdown().await;
+                    drop(io);
+                    tokio::time::sleep(GOODBYE).await;
+                    drop(guard);
+                    return;
+                }
+                read = io.read_exact(&mut buf) => {
+                    if read.is_err() || io.write_all(&buf).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        }
+    });
+    switching()
+}
+
+/// GET /stubborn: echoes until its socket fails, ignoring shutdown (it keeps its guard).
+async fn stubborn_upgrade(req: &mut Req) -> Result<Response, Error> {
+    let (Some(upgrade), Some(guard)) = (req.take_upgrade(), req.take_upgrade_guard()) else {
+        return Ok(Response::send_status(426));
+    };
+    tokio::spawn(async move {
+        let _guard = guard;
+        let Ok(upgraded) = upgrade.await else { return };
+        let mut io = hyper_util::rt::TokioIo::new(upgraded);
+        let mut buf = [0u8; 4];
+        while io.read_exact(&mut buf).await.is_ok() {
+            if io.write_all(&buf).await.is_err() {
+                return;
+            }
+        }
+    });
+    switching()
+}
+
+/// GET /sse: an event stream that stays open until the client goes away.
+async fn sse_forever(_req: &mut Req) -> Response {
+    let (events, body) = dima_web::sse::channel(dima_web::sse::SseOptions::new());
+    tokio::spawn(async move {
+        let _ = events.comment("open").await;
+        events.closed().await;
+    });
+    Response::new()
+        .header("Content-Type", "text/event-stream")
+        .stream(body)
+}
+
 async fn slow(_req: &mut Req) -> Response {
     tokio::time::sleep(Duration::from_millis(200)).await;
     Response::new().text("done")
@@ -326,6 +401,9 @@ async fn start(
     let mut root = Router::new();
     root.get("/who", who);
     root.get("/up", echo_upgrade);
+    root.get("/guarded", guarded_upgrade);
+    root.get("/stubborn", stubborn_upgrade);
+    root.get("/sse", sse_forever);
     root.get("/slow", slow);
     root.middleware_at("/read", dima_web::body::json());
     root.post("/read", read_body);
@@ -707,4 +785,138 @@ async fn files_changing_between_requests_are_seen() {
     let (status, body, _) = call(&app, "GET", "/speech/audio/one", "", &[]).await;
     assert_eq!(status, 404);
     assert!(body.contains("<pre>Not Found</pre>"), "{body}");
+}
+
+/// Opens an upgraded connection to `path` and checks it echoes.
+async fn upgraded(addr: std::net::SocketAddr, path: &str) -> TcpStream {
+    let mut stream = TcpStream::connect(addr).await.expect("connect");
+    let request =
+        format!("GET {path} HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n");
+    stream.write_all(request.as_bytes()).await.expect("write");
+    let (head, _) = read_response(&mut stream, true).await;
+    assert!(head.starts_with("HTTP/1.1 101"), "{head}");
+    stream.write_all(b"ping").await.expect("ping");
+    let mut echoed = [0u8; 4];
+    stream.read_exact(&mut echoed).await.expect("echo");
+    assert_eq!(&echoed, b"ping");
+    stream
+}
+
+/// Review finding: after an upgrade the HTTP connection task ends and the socket lives on
+/// elsewhere, and shutdown drained only HTTP tasks, so upgraded sockets were neither told nor
+/// waited for.
+#[tokio::test]
+async fn shutdown_signals_and_waits_for_upgraded_connections() {
+    let (addr, token, server) = start(ServeOptions::default()).await;
+    let mut stream = upgraded(addr, "/guarded").await;
+    let began = std::time::Instant::now();
+    token.cancel();
+    let mut rest = Vec::new();
+    tokio::time::timeout(Duration::from_secs(3), stream.read_to_end(&mut rest))
+        .await
+        .expect("closed by its owner")
+        .expect("read");
+    assert_eq!(rest, b"bye!");
+    tokio::time::timeout(Duration::from_secs(3), server)
+        .await
+        .expect("serve returned")
+        .expect("join")
+        .expect("serve");
+    // serve waited for the owner to drop its guard.
+    assert!(began.elapsed() >= GOODBYE, "{:?}", began.elapsed());
+}
+
+/// An owner that ignores shutdown has its socket closed under it at the drain deadline.
+#[tokio::test]
+async fn shutdown_closes_upgraded_sockets_that_ignore_it() {
+    let drain = Duration::from_millis(300);
+    let options = ServeOptions {
+        drain_timeout: drain,
+        ..ServeOptions::default()
+    };
+    let (addr, token, server) = start(options).await;
+    let mut stream = upgraded(addr, "/stubborn").await;
+    let began = std::time::Instant::now();
+    token.cancel();
+    let mut rest = Vec::new();
+    let read = tokio::time::timeout(Duration::from_secs(3), stream.read_to_end(&mut rest))
+        .await
+        .expect("the socket was closed");
+    assert!(read.is_err() || rest.is_empty(), "{read:?} {rest:?}");
+    assert!(began.elapsed() >= drain, "{:?}", began.elapsed());
+    tokio::time::timeout(Duration::from_secs(3), server)
+        .await
+        .expect("serve returned")
+        .expect("join")
+        .expect("serve");
+}
+
+async fn status_of(addr: std::net::SocketAddr, request: &str) -> String {
+    let raw = tokio::time::timeout(Duration::from_secs(3), roundtrip(addr, request))
+        .await
+        .expect("answered");
+    raw.lines().next().unwrap_or_default().to_owned()
+}
+
+/// Review finding: upgraded sockets and event streams held a connection slot for as long as
+/// they lived, so enough of them shut ordinary HTTP out. They now move to a quota of their own.
+#[tokio::test]
+async fn long_lived_streams_have_their_own_quota() {
+    let options = ServeOptions {
+        max_connections: 1,
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, token, server) = start(options).await;
+    let mut events = TcpStream::connect(addr).await.expect("connect");
+    events
+        .write_all(b"GET /sse HTTP/1.1\r\nHost: x\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, _) = read_response(&mut events, true).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{head}");
+
+    // The only HTTP slot is free again: ordinary requests are served.
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    assert_eq!(
+        status_of(addr, &format!("GET /who HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 200 OK"
+    );
+    // The stream quota is full: another stream or an upgrade is refused.
+    assert_eq!(
+        status_of(addr, &format!("GET /sse HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    let mut refused = TcpStream::connect(addr).await.expect("connect");
+    refused
+        .write_all(b"GET /up HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: echo\r\n\r\n")
+        .await
+        .expect("write");
+    let (head, _) =
+        tokio::time::timeout(Duration::from_secs(3), read_response(&mut refused, false))
+            .await
+            .expect("answered");
+    assert!(
+        head.starts_with("HTTP/1.1 503 Service Unavailable"),
+        "{head}"
+    );
+    drop(refused);
+    // Once the stream closes its slot is free.
+    drop(events);
+    let mut reopened = String::new();
+    for _ in 0..100 {
+        let mut stream = TcpStream::connect(addr).await.expect("connect");
+        stream
+            .write_all(b"GET /sse HTTP/1.1\r\nHost: x\r\n\r\n")
+            .await
+            .expect("write");
+        reopened = read_response(&mut stream, true).await.0;
+        if reopened.starts_with("HTTP/1.1 200") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(reopened.starts_with("HTTP/1.1 200"), "{reopened}");
+    token.cancel();
+    server.await.expect("join").expect("serve");
 }

@@ -272,11 +272,12 @@ impl<S: Send + Sync + 'static> Router<S> {
                 LayerKind::Route(route) => {
                     if route.handles(req.method()) {
                         let path = layer.pattern.source().to_owned();
-                        req.route = Some(MatchedRoute {
+                        let matched = MatchedRoute {
                             base_url: req.base_url.clone(),
                             pattern: format!("{}{path}", req.pattern_base),
                             path,
-                        });
+                        };
+                        req.set_route(matched);
                         call(route.handler.as_ref(), req).await
                     } else {
                         Outcome::Next(None)

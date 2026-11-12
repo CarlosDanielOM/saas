@@ -23,6 +23,8 @@ pub(crate) enum ScanError {
     UnexpectedEnd,
     /// The request body failed (the client went away, or the request deadline passed).
     Aborted,
+    /// The body went past the bytes allowed on the wire; the rest is left unread.
+    TooLarge,
 }
 
 pub(crate) fn tchar(b: u8) -> bool {
@@ -493,6 +495,8 @@ pub(crate) struct Scanner {
     pub(crate) wire: u64,
     /// `wire` when the closing delimiter was seen.
     done_at: u64,
+    /// The most bytes read off the request.
+    limit: u64,
 }
 
 impl Scanner {
@@ -511,7 +515,14 @@ impl Scanner {
             peeked: None,
             wire: 0,
             done_at: 0,
+            limit: u64::MAX,
         }
+    }
+
+    /// Fails with [`ScanError::TooLarge`] before a chunk past `limit` bytes is buffered.
+    pub(crate) fn limit(mut self, limit: u64) -> Self {
+        self.limit = limit;
+        self
     }
 
     /// Reads more of the request; `false` at its end.
@@ -533,6 +544,10 @@ impl Scanner {
                     if let Ok(data) = frame.into_data()
                         && !data.is_empty()
                     {
+                        if self.wire.saturating_add(data.len() as u64) > self.limit {
+                            self.body = None;
+                            return Err(ScanError::TooLarge);
+                        }
                         self.wire += data.len() as u64;
                         self.buf.extend_from_slice(&data);
                         return Ok(true);

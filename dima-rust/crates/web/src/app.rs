@@ -12,7 +12,9 @@ use futures_util::FutureExt as _;
 
 use crate::Body;
 use crate::error::{Error, RouteError};
-use crate::exchange::{Exchange, Observer, RequestStart};
+use crate::exchange::{
+    Exchange, OBSERVER_QUEUE, Observer, ObserverHub, ObserverQueue, RequestStart,
+};
 use crate::handler::BoxFuture;
 use crate::request::Req;
 use crate::response::final_response;
@@ -29,7 +31,7 @@ pub struct ConfigError(pub Vec<RouteError>);
 /// `X-Powered-By: Express` is not sent (a deliberate difference from the reference).
 pub struct App<S = ()> {
     inner: Arc<Inner<S>>,
-    observer: Option<Arc<dyn Observer>>,
+    observer: Option<Arc<ObserverHub>>,
 }
 
 struct Inner<S> {
@@ -76,10 +78,26 @@ impl<S: Send + Sync + 'static> App<S> {
     /// matched route, status, duration, bytes sent, whether the client went away) and may attach
     /// a trace context to each request. Equivalent to the reference's first middleware
     /// (`httpTelemetry`), which watches `res` for `finish` and `close`.
+    ///
+    /// Completion records reach the observer on its own thread through a queue of
+    /// [`OBSERVER_QUEUE`] records (see [`Observer`]); [`App::observer_queue`] reports drops and
+    /// panics.
     #[must_use]
-    pub fn observe(mut self, observer: impl Observer) -> Self {
-        self.observer = Some(Arc::new(observer));
+    pub fn observe(self, observer: impl Observer) -> Self {
+        self.observe_bounded(observer, OBSERVER_QUEUE)
+    }
+
+    /// [`App::observe`] with a queue of `capacity` records (at least 1).
+    #[must_use]
+    pub fn observe_bounded(mut self, observer: impl Observer, capacity: usize) -> Self {
+        self.observer = Some(Arc::new(ObserverHub::new(Arc::new(observer), capacity)));
         self
+    }
+
+    /// The installed observer's delivery queue: records dropped, calls that panicked, and
+    /// [`ObserverQueue::idle`] to wait for delivery. `None` without an observer.
+    pub fn observer_queue(&self) -> Option<ObserverQueue> {
+        self.observer.as_ref().map(|hub| hub.queue())
     }
 
     /// The shared state.
@@ -111,6 +129,7 @@ impl<S: Send + Sync + 'static> App<S> {
             req.closed.clone(),
             req.method().clone(),
             req.original_url().to_owned(),
+            req.route_slot.clone(),
             trace,
         );
         let outcome = AssertUnwindSafe(self.inner.router.handle(&mut req))
@@ -121,7 +140,7 @@ impl<S: Send + Sync + 'static> App<S> {
             Ok(Exit::Fell(error)) => final_response(&mut req, error),
             Err(_) => final_response(&mut req, Some(Error::panicked())),
         };
-        exchange.finish(response, req.route.take(), req.trace.take())
+        exchange.finish(response, req.trace.take())
     }
 }
 

@@ -70,9 +70,10 @@
 //!
 //! Serving: `dima_web::serve(dima_web::bind(3000)?, app, shutdown_token, ServeOptions::default())`.
 //! [`bind`] listens like Node (dual-stack `::`), and [`ServeOptions`] carries Node's timeouts and
-//! this crate's bounds (connections, request head size). A Socket.IO layer can wrap the [`App`]
-//! (it is a `tower::Service`), and handlers can take a connection upgrade with
-//! [`Req::take_upgrade`].
+//! this crate's bounds (HTTP connections, long-lived streams, request head size). A Socket.IO
+//! layer can wrap the [`App`] (it is a `tower::Service`), and handlers can take a connection
+//! upgrade with [`Req::take_upgrade`] and the [`UpgradeGuard`] that ties it to shutdown with
+//! [`Req::take_upgrade_guard`].
 //!
 //! # Porting notes
 //!
@@ -148,7 +149,9 @@ pub type Body = axum::body::Body;
 pub use app::{App, ConfigError};
 pub use envelope::Envelope;
 pub use error::{Error, Result, RouteError};
-pub use exchange::{MatchedRoute, Observer, RequestEnd, RequestStart, TraceContext};
+pub use exchange::{
+    MatchedRoute, OBSERVER_QUEUE, Observer, ObserverQueue, RequestEnd, RequestStart, TraceContext,
+};
 pub use handler::{
     BoxFuture, ErrorHandler, ErrorHandlerFn, Flow, FnHandler, FromFn, Handler, HandlerFn, IntoFlow,
     IntoHandler, Seq, SetHeaders, ViaFn, ViaHandler, from_fn, set_headers,
@@ -157,5 +160,7 @@ pub use path::Params;
 pub use request::{BodyState, PeerAddr, Req, ResponseState};
 pub use response::Response;
 pub use router::Router;
-pub use server::{MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, bind, bind_to, serve};
+pub use server::{
+    MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, UpgradeGuard, bind, bind_to, serve,
+};
 pub use static_files::{ServeStatic, serve_static};

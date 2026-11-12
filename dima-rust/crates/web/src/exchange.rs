@@ -7,9 +7,11 @@
 
 use std::any::Any;
 use std::net::SocketAddr;
+use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::mpsc::SyncSender;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -17,6 +19,7 @@ use axum::body::HttpBody;
 use bytes::Bytes;
 use http::{HeaderMap, Method};
 use hyper::body::{Frame, SizeHint};
+use tokio::sync::Notify;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
@@ -95,28 +98,172 @@ pub struct RequestEnd {
 }
 
 /// The telemetry seam: sees every request start and end. Install one with
-/// [`crate::App::observe`]. Calls happen on the request's task, so keep them short (record and
-/// return; export elsewhere).
+/// [`crate::App::observe`].
+///
+/// A panic in either call is caught and counted ([`ObserverQueue::panicked`]); it never reaches
+/// the request. [`Observer::on_request`] runs on the request's task (it returns the context), so
+/// keep it short. [`Observer::on_response`] runs on a thread of its own, fed through a bounded
+/// queue the request never waits on: when the observer falls behind and the queue is full, the
+/// record is dropped and counted ([`ObserverQueue::dropped`]).
 pub trait Observer: Send + Sync + 'static {
     /// A request arrived. The returned context is stored in the request
-    /// ([`crate::Req::trace_context`]) and handed back in [`RequestEnd::trace`].
+    /// ([`crate::Req::trace_context`]) and handed back in [`RequestEnd::trace`]. A panic here
+    /// counts as `None`.
     fn on_request(&self, start: &RequestStart<'_>) -> Option<TraceContext> {
         let _ = start;
         None
     }
 
-    /// The exchange is over: called exactly once per request.
+    /// The exchange is over: called at most once per request (exactly once unless the record
+    /// was dropped because the queue was full), in the order the exchanges ended, on the
+    /// observer's own thread, some time after the request ended.
     fn on_response(&self, end: RequestEnd);
+}
+
+/// Completion records waiting for an observer by default ([`crate::App::observe`]).
+pub const OBSERVER_QUEUE: usize = 4096;
+
+/// Counters of one observer's delivery, shared with its thread.
+#[derive(Debug, Default)]
+struct DeliveryStats {
+    dropped: AtomicU64,
+    panicked: AtomicU64,
+    /// Records queued and not yet delivered.
+    pending: AtomicUsize,
+    /// Woken after every delivery.
+    delivered: Notify,
+}
+
+/// A view of an observer's delivery queue ([`crate::App::observer_queue`]): what was dropped,
+/// what panicked, and a way to wait until everything queued so far was delivered.
+#[derive(Debug, Clone)]
+pub struct ObserverQueue(Arc<DeliveryStats>);
+
+impl ObserverQueue {
+    /// Completion records dropped because the queue was full (or the observer's thread could
+    /// not be started).
+    pub fn dropped(&self) -> u64 {
+        self.0.dropped.load(Ordering::Relaxed)
+    }
+
+    /// Observer calls that panicked (both kinds).
+    pub fn panicked(&self) -> u64 {
+        self.0.panicked.load(Ordering::Relaxed)
+    }
+
+    /// Records queued and not yet delivered.
+    pub fn pending(&self) -> usize {
+        self.0.pending.load(Ordering::Acquire)
+    }
+
+    /// Resolves once no record is waiting: every exchange that ended before the call has been
+    /// delivered (or dropped). For tests and shutdown.
+    pub async fn idle(&self) {
+        loop {
+            let delivered = self.0.delivered.notified();
+            let mut delivered = std::pin::pin!(delivered);
+            delivered.as_mut().enable();
+            if self.pending() == 0 {
+                return;
+            }
+            delivered.await;
+        }
+    }
+}
+
+/// An installed observer: `on_request` guarded on the request's task, `on_response` through the
+/// bounded queue to the observer's thread. The thread ends when the last handle is dropped.
+pub(crate) struct ObserverHub {
+    observer: Arc<dyn Observer>,
+    queue: Option<SyncSender<RequestEnd>>,
+    stats: Arc<DeliveryStats>,
+}
+
+impl ObserverHub {
+    pub(crate) fn new(observer: Arc<dyn Observer>, capacity: usize) -> Self {
+        let stats = Arc::new(DeliveryStats::default());
+        let (sender, receiver) = std::sync::mpsc::sync_channel::<RequestEnd>(capacity.max(1));
+        let delivering = Arc::clone(&observer);
+        let thread_stats = Arc::clone(&stats);
+        let spawned = std::thread::Builder::new()
+            .name("dima-web-observer".to_owned())
+            .spawn(move || {
+                while let Ok(end) = receiver.recv() {
+                    let call = AssertUnwindSafe(|| delivering.on_response(end));
+                    if std::panic::catch_unwind(call).is_err() {
+                        thread_stats.panicked.fetch_add(1, Ordering::Relaxed);
+                    }
+                    thread_stats.pending.fetch_sub(1, Ordering::AcqRel);
+                    thread_stats.delivered.notify_waiters();
+                }
+            });
+        Self {
+            observer,
+            queue: spawned.ok().map(|_| sender),
+            stats,
+        }
+    }
+
+    pub(crate) fn queue(&self) -> ObserverQueue {
+        ObserverQueue(Arc::clone(&self.stats))
+    }
+
+    /// `on_request`, with a panic counted as `None`.
+    pub(crate) fn on_request(&self, start: &RequestStart<'_>) -> Option<TraceContext> {
+        let call = AssertUnwindSafe(|| self.observer.on_request(start));
+        std::panic::catch_unwind(call).unwrap_or_else(|_| {
+            self.stats.panicked.fetch_add(1, Ordering::Relaxed);
+            None
+        })
+    }
+
+    /// Queues the record without waiting; drops and counts it when the queue is full.
+    fn deliver(&self, end: RequestEnd) {
+        let Some(queue) = &self.queue else {
+            self.stats.dropped.fetch_add(1, Ordering::Relaxed);
+            return;
+        };
+        self.stats.pending.fetch_add(1, Ordering::AcqRel);
+        if queue.try_send(end).is_err() {
+            self.stats.pending.fetch_sub(1, Ordering::AcqRel);
+            self.stats.dropped.fetch_add(1, Ordering::Relaxed);
+            self.stats.delivered.notify_waiters();
+        }
+    }
+}
+
+/// The route dispatch selected last, shared by the request and the exchange's completion guard
+/// so that an exchange abandoned while its route runs still reports the route.
+#[derive(Clone, Default)]
+pub(crate) struct RouteSlot(Arc<Mutex<Option<MatchedRoute>>>);
+
+impl RouteSlot {
+    pub(crate) fn set(&self, route: MatchedRoute) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(route);
+    }
+
+    fn get(&self) -> Option<MatchedRoute> {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+}
+
+impl std::fmt::Debug for RouteSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("RouteSlot").field(&self.get()).finish()
+    }
 }
 
 /// Everything needed to report the end of one exchange, taken exactly once.
 struct Completion {
-    observer: Option<Arc<dyn Observer>>,
+    observer: Option<Arc<ObserverHub>>,
     closed: CancellationToken,
     started: Instant,
     method: Method,
     url: String,
-    route: Option<MatchedRoute>,
+    route: RouteSlot,
     status: Option<u16>,
     trace: Option<TraceContext>,
 }
@@ -125,10 +272,10 @@ impl Completion {
     fn report(self, bytes_sent: u64, aborted: bool) {
         self.closed.cancel();
         if let Some(observer) = self.observer {
-            observer.on_response(RequestEnd {
+            observer.deliver(RequestEnd {
                 method: self.method,
                 url: self.url,
-                route: self.route,
+                route: self.route.get(),
                 status: self.status,
                 duration: self.started.elapsed(),
                 bytes_sent,
@@ -146,10 +293,11 @@ pub(crate) struct Exchange {
 
 impl Exchange {
     pub(crate) fn start(
-        observer: Option<Arc<dyn Observer>>,
+        observer: Option<Arc<ObserverHub>>,
         closed: CancellationToken,
         method: Method,
         url: String,
+        route: RouteSlot,
         trace: Option<TraceContext>,
     ) -> Self {
         Self {
@@ -159,7 +307,7 @@ impl Exchange {
                 started: Instant::now(),
                 method,
                 url,
-                route: None,
+                route,
                 status: None,
                 trace,
             }),
@@ -170,7 +318,6 @@ impl Exchange {
     pub(crate) fn finish(
         mut self,
         response: http::Response<Body>,
-        route: Option<MatchedRoute>,
         trace: Option<TraceContext>,
     ) -> http::Response<Body> {
         let Some(mut completion) = self.completion.take() else {
@@ -178,7 +325,6 @@ impl Exchange {
         };
         let status = response.status().as_u16();
         completion.status = Some(status);
-        completion.route = route;
         if trace.is_some() {
             completion.trace = trace;
         }

@@ -1,8 +1,16 @@
 //! Files as `send` 0.19.2 sends them for `express.static` (serve-static 1.16.3) and
 //! `res.sendFile` (Express 4.22) with the options the reference uses (all defaults).
 //!
-//! Every request resolves and stats its path anew: generated audio and clips appear and
-//! disappear at run time, so nothing about a file is cached between requests.
+//! Every request resolves and opens its path anew: generated audio and clips appear and
+//! disappear at run time, so nothing about a file is cached between requests. The file is opened
+//! once, and its size, modification time and validators come from the opened file, so the
+//! headers and the bytes always belong to the same file even when the path is replaced in
+//! between (send stats the path, then opens it again). Symbolic links are followed as before.
+//!
+//! Knowingly different: a file that exists but cannot be opened (no read permission) fails at
+//! lookup, so `HEAD` answers 500 too, and `express.static` reports it instead of trying the
+//! next file (send answered `HEAD` with the headers from `stat` and failed `GET` while
+//! streaming).
 
 use std::io;
 use std::time::SystemTime;
@@ -81,11 +89,25 @@ impl Failure {
     }
 }
 
+/// A file opened for sending, with the metadata of that open file.
+struct Opened {
+    path: String,
+    file: tokio::fs::File,
+    metadata: std::fs::Metadata,
+}
+
 /// Where the file lookup ended.
 enum Found {
-    File(String, std::fs::Metadata),
+    File(Box<Opened>),
     Directory,
     Failed(Failure),
+}
+
+/// Opens `path` (following symbolic links) and reads the metadata of what was opened.
+async fn open(path: &str) -> io::Result<(tokio::fs::File, std::fs::Metadata)> {
+    let file = tokio::fs::File::open(path).await?;
+    let metadata = file.metadata().await?;
+    Ok((file, metadata))
 }
 
 /// `express.static(root)` for the request path (relative to the mount point).
@@ -113,7 +135,7 @@ pub(crate) async fn serve_static<S>(req: &mut Req<S>, root: &str) -> Sent {
         }
     };
     match found {
-        Found::File(file, metadata) => match deliver(req, &file, &metadata).await {
+        Found::File(opened) => match deliver(req, opened).await {
             Ok(response) => Sent::Response(response),
             Err(failure) => forward(failure, true),
         },
@@ -135,7 +157,7 @@ pub(crate) async fn send_file<S>(req: &mut Req<S>, path: &str) -> Sent {
     // Express hands `encodeURI(path)` to send, which decodes it again: the path itself.
     let mut file_seen = false;
     match find(path, path, None, &mut file_seen).await {
-        Found::File(file, metadata) => match deliver(req, &file, &metadata).await {
+        Found::File(opened) => match deliver(req, opened).await {
             Ok(response) => Sent::Response(response),
             Err(failure) => Sent::Error(failure.into_error()),
         },
@@ -190,20 +212,28 @@ async fn find(raw: &str, decoded: &str, root: Option<&str>, file_seen: &mut bool
     }
     if raw.ends_with('/') {
         let index = normalize(&format!("{full}/index.html"));
-        return match tokio::fs::metadata(&index).await {
-            Ok(metadata) if metadata.is_dir() => Found::Failed(Failure::status(404)),
-            Ok(metadata) => {
+        return match open(&index).await {
+            Ok((_, metadata)) if metadata.is_dir() => Found::Failed(Failure::status(404)),
+            Ok((file, metadata)) => {
                 *file_seen = true;
-                Found::File(index, metadata)
+                Found::File(Box::new(Opened {
+                    path: index,
+                    file,
+                    metadata,
+                }))
             }
             Err(error) => Found::Failed(Failure::stat(error)),
         };
     }
-    match tokio::fs::metadata(&full).await {
-        Ok(metadata) if metadata.is_dir() => Found::Directory,
-        Ok(metadata) => {
+    match open(&full).await {
+        Ok((_, metadata)) if metadata.is_dir() => Found::Directory,
+        Ok((file, metadata)) => {
             *file_seen = true;
-            Found::File(full, metadata)
+            Found::File(Box::new(Opened {
+                path: full,
+                file,
+                metadata,
+            }))
         }
         Err(error) => Found::Failed(Failure::stat(error)),
     }
@@ -212,9 +242,14 @@ async fn find(raw: &str, decoded: &str, root: Option<&str>, file_seen: &mut bool
 /// send's `send(path, stat)`: headers, conditional requests, ranges, then the bytes.
 async fn deliver<S>(
     req: &mut Req<S>,
-    path: &str,
-    metadata: &std::fs::Metadata,
+    opened: Box<Opened>,
 ) -> Result<http::Response<Body>, Failure> {
+    let Opened {
+        path,
+        mut file,
+        metadata,
+    } = *opened;
+    let path = path.as_str();
     let size = metadata.len();
     let mtime = metadata.modified().map(js_time).unwrap_or(0);
     set_absent(req, header::ACCEPT_RANGES, "bytes");
@@ -292,7 +327,6 @@ async fn deliver<S>(
     if req.method() == Method::HEAD {
         return Ok(take_response(req, Body::empty()));
     }
-    let mut file = tokio::fs::File::open(path).await.map_err(Failure::stat)?;
     if offset > 0 {
         file.seek(io::SeekFrom::Start(offset))
             .await
@@ -761,5 +795,86 @@ mod tests {
             "/evil.example/"
         );
         assert_eq!(collapse_leading_slashes("/dir/"), "/dir/");
+    }
+
+    fn parts_for(uri: &str) -> http::request::Parts {
+        let (parts, ()) = http::Request::builder()
+            .uri(uri)
+            .body(())
+            .expect("request")
+            .into_parts();
+        parts
+    }
+
+    /// Review finding: the headers came from a path lookup and the bytes from opening the path
+    /// again, so a file replaced in between was sent with the old file's length and validators.
+    #[tokio::test]
+    async fn headers_and_bytes_come_from_the_same_open_file() {
+        use http_body_util::BodyExt as _;
+
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let dir =
+            std::env::temp_dir().join(format!("dima-web-send-{}-{nanos}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let target = dir.join("clip.txt");
+        std::fs::write(&target, "AAAA").expect("first file");
+        let path = target.to_string_lossy().into_owned();
+        let mut seen = false;
+        let Found::File(opened) = find(&path, &path, None, &mut seen).await else {
+            panic!("found the file")
+        };
+        // The path now names another, longer file.
+        let replacement = dir.join("next.tmp");
+        std::fs::write(&replacement, "BBBBBBBB").expect("second file");
+        std::fs::rename(&replacement, &target).expect("replace");
+        let mut req = Req::new(
+            std::sync::Arc::new(()),
+            parts_for("/clip.txt"),
+            Body::empty(),
+        );
+        let Ok(response) = deliver(&mut req, opened).await else {
+            panic!("delivered")
+        };
+        assert_eq!(response.headers()[header::CONTENT_LENGTH], "4");
+        let etag = response.headers()[header::ETAG]
+            .to_str()
+            .expect("etag")
+            .to_owned();
+        assert!(etag.starts_with("W/\"4-"), "{etag}");
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body")
+            .to_bytes();
+        assert_eq!(body, "AAAA");
+
+        // Generated files are served through symbolic links: the link is followed, and the
+        // headers are the target's.
+        let link = dir.join("link.txt");
+        std::os::unix::fs::symlink(&target, &link).expect("symlink");
+        let link = link.to_string_lossy().into_owned();
+        let Found::File(opened) = find(&link, &link, None, &mut seen).await else {
+            panic!("followed the link")
+        };
+        let mut req = Req::new(
+            std::sync::Arc::new(()),
+            parts_for("/link.txt"),
+            Body::empty(),
+        );
+        let Ok(response) = deliver(&mut req, opened).await else {
+            panic!("delivered through the link")
+        };
+        assert_eq!(response.headers()[header::CONTENT_LENGTH], "8");
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body")
+            .to_bytes();
+        assert_eq!(body, "BBBBBBBB");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

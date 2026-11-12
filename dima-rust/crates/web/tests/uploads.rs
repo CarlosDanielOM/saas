@@ -73,6 +73,8 @@ struct Shared {
     dir: PathBuf,
     outcome: Mutex<Option<oneshot::Sender<String>>>,
     first_chunk: Mutex<Option<oneshot::Sender<usize>>>,
+    /// Files the `Early` storage was asked to remove.
+    removed: Mutex<Vec<String>>,
 }
 
 type State = Arc<Shared>;
@@ -162,6 +164,70 @@ async fn stream(req: &mut Req<State>) -> Response {
     Response::new().json(&json!({ "outcome": outcome_text(&outcome) }))
 }
 
+/// How long the give-up handlers wait for an upload before dropping it.
+const GIVE_UP: Duration = Duration::from_millis(300);
+
+/// POST /giveup: disk storage under the client's names; the handler stops waiting for the upload
+/// after [`GIVE_UP`] and drops its future (as when the client goes away and hyper drops the
+/// handler).
+async fn give_up(req: &mut Req<State>) -> Response {
+    let dir = req.state().dir.clone();
+    let multer = Multer::new(DiskStorage::new(&dir).filename(|file| file.originalname.clone()));
+    let single = multer.single("file");
+    match tokio::time::timeout(GIVE_UP, single.run(req)).await {
+        Ok(outcome) => {
+            report(req, outcome_text(&outcome));
+            Response::new().json(&json!({ "outcome": outcome_text(&outcome) }))
+        }
+        Err(_) => {
+            report(req, "gave up".to_owned());
+            Response::status(408).json(&json!({ "error": "gave up" }))
+        }
+    }
+}
+
+/// A storage that keeps a file's name after its first chunk and returns, leaving the rest of
+/// the part to be skipped; records what it is asked to remove.
+struct Early(State);
+
+impl Storage for Early {
+    fn handle_file<'a>(
+        &'a self,
+        file: &'a FileInfo,
+        data: &'a mut FileStream<'_>,
+    ) -> BoxFuture<'a, Result<StoredFile, Error>> {
+        Box::pin(async move {
+            let size = match data.chunk().await {
+                Some(chunk) => chunk?.len() as u64,
+                None => 0,
+            };
+            Ok(StoredFile {
+                size,
+                filename: Some(file.originalname.clone()),
+                ..StoredFile::default()
+            })
+        })
+    }
+
+    fn remove_file<'a>(&'a self, file: &'a mut UploadedFile) -> BoxFuture<'a, Result<(), Error>> {
+        let name = file.stored.filename.take().unwrap_or_default();
+        Box::pin(async move {
+            self.0.removed.lock().unwrap().push(name);
+            Ok(())
+        })
+    }
+}
+
+/// POST /early: the `Early` storage, given up on after [`GIVE_UP`].
+async fn early(req: &mut Req<State>) -> Response {
+    let multer = Multer::new(Early(Arc::clone(req.state())));
+    let single = multer.single("file");
+    match tokio::time::timeout(GIVE_UP, single.run(req)).await {
+        Ok(outcome) => Response::new().json(&json!({ "outcome": outcome_text(&outcome) })),
+        Err(_) => Response::status(408).json(&json!({ "error": "gave up" })),
+    }
+}
+
 async fn start(
     dir: &Path,
 ) -> (
@@ -178,6 +244,8 @@ async fn start(
     root.post("/disk", disk);
     root.post("/deadline", deadline);
     root.post("/stream", stream);
+    root.post("/giveup", give_up);
+    root.post("/early", early);
     let app = App::with_shared_state(root, Arc::new(Arc::clone(&shared))).expect("app");
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
@@ -335,6 +403,74 @@ async fn a_rejected_upload_is_answered_and_cleaned_up() {
     );
     assert_eq!(rx.await.expect("outcome"), "multer LIMIT_FILE_SIZE");
     assert_eq!(eventually_empty(&dir.0).await, Vec::<String>::new());
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: cleanup ran only when `read` returned an error. When the upload's future was
+/// dropped after one file was complete and the next had begun, nothing removed the finished
+/// file (disk storage had already disarmed its partial-file guard).
+#[tokio::test]
+async fn an_upload_dropped_between_two_files_leaves_no_file() {
+    let dir = TempDir::new("between");
+    let (addr, token, shared, server) = start(&dir.0).await;
+    let (tx, rx) = oneshot::channel();
+    *shared.outcome.lock().unwrap() = Some(tx);
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+    client
+        .write_all(&upload_head("/giveup", "one.mp4", 1_000_000))
+        .await
+        .expect("head");
+    client.write_all(&[4u8; 2048]).await.expect("first file");
+    // The first file ends at the next delimiter; the second has begun and then stalls.
+    client
+        .write_all(format!("\r\n{}", part_head("two.mp4")).as_bytes())
+        .await
+        .expect("second part");
+    client.write_all(&[5u8; 512]).await.expect("second file");
+    let mut complete = false;
+    for _ in 0..100 {
+        if std::fs::metadata(dir.0.join("one.mp4")).is_ok_and(|m| m.len() == 2048) {
+            complete = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    assert!(complete, "the first file was stored: {:?}", entries(&dir.0));
+    let outcome = tokio::time::timeout(Duration::from_secs(3), rx)
+        .await
+        .expect("handler answered")
+        .expect("outcome");
+    assert_eq!(outcome, "gave up");
+    assert_eq!(eventually_empty(&dir.0).await, Vec::<String>::new());
+    let response = read_all(&mut client).await;
+    assert!(response.starts_with("HTTP/1.1 408"), "{response}");
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// The same for a custom storage whose result was held while the rest of its part was skipped.
+#[tokio::test]
+async fn a_custom_storage_result_is_removed_when_the_upload_is_dropped() {
+    let dir = TempDir::new("early");
+    let (addr, token, shared, server) = start(&dir.0).await;
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+    client
+        .write_all(&upload_head("/early", "kept.mp4", 1_000_000))
+        .await
+        .expect("head");
+    client.write_all(&[6u8; 1024]).await.expect("data");
+    let response = read_all(&mut client).await;
+    assert!(response.starts_with("HTTP/1.1 408"), "{response}");
+    let mut removed = Vec::new();
+    for _ in 0..200 {
+        removed = shared.removed.lock().unwrap().clone();
+        if !removed.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(removed, ["kept.mp4"]);
     token.cancel();
     server.await.expect("join").expect("serve");
 }
