@@ -13,6 +13,26 @@
 /// `FreeCreditResetStatus`.
 pub use dima_model::users::ResetStatus;
 
+use crate::plans::credits::VerifiedBalance;
+
+/// What a new period's grant may be computed from (item 5 of P2-BILLING-01b).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ResetUsage {
+    /// Credits used in the period, as Polar's meter reported them: build it with
+    /// `ResetUsage::from(&verified_balance)`. Writing `Verified(x)` by hand is a claim that
+    /// `x` came from Polar.
+    Verified(f64),
+    /// No verified balance (Polar could not be reached, the read was fenced, or only a cached
+    /// or fallback balance exists): a new period is deferred, never granted from it.
+    Unverified,
+}
+
+impl From<&VerifiedBalance> for ResetUsage {
+    fn from(balance: &VerifiedBalance) -> Self {
+        Self::Verified(balance.used())
+    }
+}
+
 /// The previous reset record (`FreeCreditResetRecordLike`), as stored on the user.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreviousReset<'a> {
@@ -37,8 +57,11 @@ pub struct FreeCreditResetInput<'a> {
     pub period_starts_at_ms: Option<i64>,
     /// The stored record, if any.
     pub previous: Option<PreviousReset<'a>>,
-    /// `Number(usedCredits)` (`NaN` when absent).
-    pub used_credits: f64,
+    /// The usage a new period's grant is computed from. The reference took `usedCredits` from
+    /// `getAiCredits`, whose fallback invents `used = limit` with `available: true` when Polar
+    /// cannot be reached and an exhaustion flag exists; its worker then granted a full reset
+    /// from it.
+    pub usage: ResetUsage,
     /// `Number(maximumResetCredits)`.
     pub maximum_reset_credits: f64,
 }
@@ -58,6 +81,9 @@ pub enum FreeCreditResetDecision {
         /// Polar idempotency id.
         external_id: String,
     },
+    /// A new period needs a verified usage and has none ([`ResetUsage::Unverified`]): nothing
+    /// is written; the worker tries again later (its "Credit usage unavailable; reset deferred").
+    Defer,
     /// Grant credits (a whole JavaScript number above 0).
     Grant {
         /// Credits.
@@ -74,6 +100,7 @@ impl FreeCreditResetDecision {
             Self::Initialize { .. } => "initialize",
             Self::Skip => "skip",
             Self::CompleteZero { .. } => "complete_zero",
+            Self::Defer => "defer",
             Self::Grant { .. } => "grant",
         }
     }
@@ -134,8 +161,11 @@ pub fn decide_free_credit_reset(input: &FreeCreditResetInput<'_>) -> FreeCreditR
             FreeCreditResetDecision::CompleteZero { external_id }
         };
     }
+    let ResetUsage::Verified(used) = input.usage else {
+        return FreeCreditResetDecision::Defer;
+    };
     let maximum = whole_credits(input.maximum_reset_credits);
-    let used = whole_credits(input.used_credits);
+    let used = whole_credits(used);
     let credits = crate::js::min(used, maximum);
     if credits > 0.0 {
         FreeCreditResetDecision::Grant {
@@ -164,7 +194,7 @@ mod tests {
             period_source: "free_monthly",
             period_starts_at_ms: Some(ms(START)),
             previous,
-            used_credits: used,
+            usage: ResetUsage::Verified(used),
             maximum_reset_credits: 25_000.0,
         }
     }
@@ -208,6 +238,28 @@ mod tests {
         let zero =
             decide_free_credit_reset(&input(Some(previous(OLD, "completed", 0.0)), f64::NAN));
         assert_eq!(zero.action(), "complete_zero");
+    }
+
+    // Item 5 of P2-BILLING-01b: a new period is never granted from an unverified balance; a
+    // first sight and a pending retry need none.
+    #[test]
+    fn an_unverified_usage_defers_a_new_period_only() {
+        let unverified = |previous| FreeCreditResetInput {
+            usage: ResetUsage::Unverified,
+            ..input(previous, 0.0)
+        };
+        assert_eq!(
+            decide_free_credit_reset(&unverified(Some(previous(OLD, "completed", 0.0)))),
+            FreeCreditResetDecision::Defer
+        );
+        assert_eq!(
+            decide_free_credit_reset(&unverified(None)).action(),
+            "initialize"
+        );
+        assert_eq!(
+            decide_free_credit_reset(&unverified(Some(previous(START, "pending", 7.0)))).action(),
+            "grant"
+        );
     }
 
     #[test]

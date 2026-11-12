@@ -566,6 +566,7 @@ async fn get_ai_credits_matches_the_reference() {
     let cache = CreditsCache::new(dragonfly.clone(), clock, Arc::new(NoopObserver));
     let mut report = Report::new("get_ai_credits");
     let mut published = 0;
+    let mut unavailable_kept = 0;
     for case in cases("get_ai_credits") {
         let input = &case["input"];
         let id = support::channel_id();
@@ -636,17 +637,43 @@ async fn get_ai_credits_matches_the_reference() {
                 })
             });
         let lookups = Value::Array(owner.lookups.into_inner().unwrap());
-        let ok = same(&case["expected"], &Value::Object(actual.to_json()))
+        // Intended difference (item 5 of P2-BILLING-01b): a cached snapshot stored as
+        // unavailable reads back as unavailable where the reference, without requireVerified,
+        // answered it as available. Recognised from the recording alone: the cached snapshot
+        // was unavailable, the reference answered from it (the cached value is unchanged and
+        // the answer has its numbers) and read it as available.
+        let mut expected = case["expected"].clone();
+        let raw_credits = input["cache"].get("twitch:41245072:ai:credits");
+        let stored: Option<Value> = raw_credits
+            .and_then(Value::as_str)
+            .and_then(|raw| serde_json::from_str(raw).ok());
+        if let Some(stored) = stored
+            && input["requireVerified"] != true
+            && (stored["available"] == false || stored["status"] == "unavailable")
+            && case["cacheAfter"].get("twitch:41245072:ai:credits") == raw_credits
+            && expected["used"] == stored["used"]
+            && expected["limit"] == stored["limit"]
+            && expected["status"] == "available"
+        {
+            expected["available"] = json!(false);
+            expected["status"] = json!("unavailable");
+            unavailable_kept += 1;
+        }
+        let ok = same(&expected, &Value::Object(actual.data.to_json()))
             && cache_ok
             && lookups == case["lookups"];
         report.check(ok, &case, || {
-            format!("expected {}\n  got {}\n  cache {after:?}\n  wanted {expected_after:?}\n  lookups {lookups} wanted {}", case["expected"], Value::Object(actual.to_json()), case["lookups"])
+            format!("expected {}\n  got {}\n  cache {after:?}\n  wanted {expected_after:?}\n  lookups {lookups} wanted {}", case["expected"], Value::Object(actual.data.to_json()), case["lookups"])
         });
     }
     report.finish();
     // Every case whose fetch reached Polar and was accepted: the cache value itself is the
     // reference's, byte for byte or as JSON (no debit happens during these fetches).
     assert_eq!(published, 340, "cases that published under the revision");
+    assert_eq!(
+        unavailable_kept, 18,
+        "cached unavailable snapshots that stay unavailable"
+    );
 }
 
 #[allow(dead_code)]

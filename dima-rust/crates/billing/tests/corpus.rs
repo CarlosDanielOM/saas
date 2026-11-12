@@ -17,7 +17,7 @@ mod support;
 
 use dima_billing::credit_packs::{self, CreditPackError};
 use dima_billing::free_credit_reset::{
-    FreeCreditResetDecision, FreeCreditResetInput, PreviousReset,
+    FreeCreditResetDecision, FreeCreditResetInput, PreviousReset, ResetUsage,
 };
 use dima_billing::plans::checkout::{self, BillingAction};
 use dima_billing::plans::credits::{self, AiCreditsData, CreditStatus};
@@ -112,6 +112,7 @@ fn decision_json(decision: &FreeCreditResetDecision) -> Value {
         } => {
             json!({"action": "grant", "credits": js_value(*credits), "externalId": external_id})
         }
+        FreeCreditResetDecision::Defer => json!({"action": "defer"}),
     }
 }
 
@@ -138,6 +139,7 @@ fn date_of(value: Option<&Value>) -> Option<i64> {
 #[test]
 fn free_credit_reset_matches_the_reference() {
     let mut tally = Tally::new("free_reset");
+    let mut deferred = 0;
     for case in cases("free_reset") {
         let input = &case["input"];
         let starts_at = input["period"]["startsAt"].as_str().unwrap();
@@ -168,15 +170,36 @@ fn free_credit_reset_matches_the_reference() {
                     credits: js_number(field(p, "credits")),
                     external_id: &external,
                 }),
-                used_credits: js_number(field(input, "usedCredits")),
+                // The recording's `usedCredits` came from a read the worker trusted; replayed as
+                // verified. Absent, it is the worker's first call, made before any read.
+                usage: match field(input, "usedCredits") {
+                    Some(_) => ResetUsage::Verified(js_number(field(input, "usedCredits"))),
+                    None => ResetUsage::Unverified,
+                },
                 maximum_reset_credits: js_number(field(input, "maximumResetCredits")),
             });
         let actual = decision_json(&decision);
-        tally.check(same(&case["expected"], &actual), &case, || {
-            format!("expected {} got {actual}", case["expected"])
+        // Intended difference (item 5 of P2-BILLING-01b): without a verified usage a new
+        // period is deferred; the reference computed `Math.floor(NaN || 0)` = 0 and answered
+        // `complete_zero` (its worker then read the credits and decided again, trusting even
+        // the invented fallback).
+        let expected = if decision == FreeCreditResetDecision::Defer {
+            deferred += 1;
+            assert_eq!(
+                case["expected"]["action"], "complete_zero",
+                "{}",
+                case["input"]
+            );
+            json!({"action": "defer"})
+        } else {
+            case["expected"].clone()
+        };
+        tally.check(same(&expected, &actual), &case, || {
+            format!("expected {expected} got {actual}")
         });
     }
     tally.finish();
+    assert_eq!(deferred, 1, "cases deferred for want of a verified usage");
 
     let mut tally = Tally::new("reset_external_id");
     for case in cases("reset_external_id") {

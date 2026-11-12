@@ -27,8 +27,9 @@
 use super::ai_credit_limit_for_plan;
 use super::balance::{self, Publication, Revision};
 use super::credits::{
-    AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AiCreditsData, CreditStatus,
-    build_ai_credits_data_from_meter, read_cached_credits, unavailable_ai_credits,
+    AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AiCredits, AiCreditsData,
+    BalanceState, CreditStatus, VerifiedBalance, build_ai_credits_data_from_meter,
+    read_cached_credits, unavailable_ai_credits,
 };
 use crate::Observer;
 use crate::products::AI_CREDITS_METER_ID;
@@ -359,9 +360,16 @@ impl CreditsCache {
             == Acceptance::Accepted)
     }
 
-    /// `getAiCredits(user, twitchUserId, options)`. Only the first cache read can fail the call
-    /// (as the reference rejects then); every later failure is answered the reference's way
-    /// (unavailable once a fence exists, else the plan-limit fallback).
+    /// `getAiCredits(user, twitchUserId, options)`, with how far the answer can be trusted
+    /// ([`BalanceState`], item 5 of P2-BILLING-01b). Only the first cache read can fail the
+    /// call (as the reference rejects then); every later failure is answered the reference's way
+    /// (unavailable once a fence exists, else the plan-limit fallback), as [`BalanceState::Unknown`].
+    ///
+    /// `data` is what the reference answers, with one difference: a cached snapshot stored as
+    /// unavailable never reads back as available ([`super::credits::read_cached_credits`]).
+    /// What chat features check ("may this channel spend": [`Self::is_ai_credits_exhausted`],
+    /// then `status`) is otherwise unchanged; nothing that grants, resets or tops up credits may
+    /// use `data` unless [`AiCredits::verified`] gives a [`VerifiedBalance`].
     pub async fn get_ai_credits(
         &self,
         user: &PlanOwner,
@@ -369,7 +377,7 @@ impl CreditsCache {
         options: CreditOptions,
         plans: &dyn PlanLookup,
         polar: &dyn CustomerStateSource,
-    ) -> Result<AiCreditsData, DragonflyError> {
+    ) -> Result<AiCredits, DragonflyError> {
         let cache_key = credits_cache_key(twitch_id);
         let cached = self.dragonfly.get_text(&cache_key).await?;
         // A failed acceptance is ignored like a bad cache value.
@@ -386,138 +394,295 @@ impl CreditsCache {
                 )
                 .await
         {
-            return Ok(read.payload);
+            return Ok(AiCredits {
+                data: read.payload,
+                state: BalanceState::Cached,
+            });
         }
 
         let mut fence: Option<String> = None;
         let mut current_user = user.clone();
-        let attempt: Result<AiCreditsData, String> = async {
-            fence = self
-                .dragonfly
-                .get_text(&plan_cache_fence_key(twitch_id))
-                .await
-                .map_err(|e| e.to_string())?
-                .filter(|fence| !fence.is_empty());
-            let mut version = String::new();
-            if let Some(fence) = &fence {
-                let Some(current) = plans
-                    .current_plan(
-                        twitch_id,
-                        user.polar_sh_customer_id
-                            .as_ref()
-                            .map(|id| id.expose().as_str()),
-                    )
-                    .await
-                    .map_err(|e| e.to_string())?
-                else {
-                    return Ok(unavailable_ai_credits(self.now_iso()));
-                };
-                version = plan_cache_version(
-                    current.polar_plan_event_at,
-                    current.polar_plan_event_key.as_deref(),
-                )
-                .map_err(|e| e.to_string())?;
-                if dima_text::cmp_utf16(&version, fence).is_lt() {
-                    return Ok(unavailable_ai_credits(self.now_iso()));
-                }
-                current_user = current;
-            }
-            let Some(customer_id) = current_user.customer_id() else {
-                let mut data = unavailable_ai_credits(self.now_iso());
-                if fence.is_none() {
-                    let limit = ai_credit_limit_for_plan(current_user.plan_tier.as_deref());
-                    data.limit = limit;
-                    data.balance = limit;
-                }
-                return Ok(data);
-            };
-            // The usage revision before Polar is asked (item 4).
-            let start = balance::read_revision(&self.dragonfly, twitch_id)
-                .await
-                .map_err(|e| e.to_string())?;
-            let state = polar
-                .customer_state(customer_id)
-                .await
-                .map_err(|e| e.to_string())?;
-            let meter = state
-                .get("active_meters")
-                .and_then(Value::as_array)
-                .and_then(|meters| {
-                    meters.iter().find(|meter| {
-                        meter.get("meter_id").and_then(Value::as_str) == Some(AI_CREDITS_METER_ID)
-                    })
-                });
-            let mut payload = build_ai_credits_data_from_meter(
+        let fetched = self
+            .fetch(
+                user,
+                twitch_id,
+                options,
+                plans,
+                polar,
+                &mut fence,
+                &mut current_user,
+            )
+            .await;
+        let read_back = |stored: &str| {
+            read_cached_credits(stored, options.require_verified, || self.now_iso())
+                .map(|read| read.payload)
+        };
+        match fetched {
+            Ok(Fetched::NotRead(data)) => Ok(AiCredits {
+                data,
+                state: BalanceState::Unknown,
+            }),
+            Ok(Fetched::Read {
+                payload,
                 meter,
-                current_user.plan_tier.as_deref(),
-                self.now_iso(),
-            );
-            if options.require_verified && meter.is_none() {
-                payload.available = false;
-                payload.status = CreditStatus::Unavailable;
-            }
-            let raw = payload.to_cache_text(&version);
-            let published = self
-                .publish(twitch_id, &version, &raw, start)
-                .await
-                .map_err(|e| e.to_string())?;
-            let read_back = |stored: &str| {
-                read_cached_credits(stored, options.require_verified, || self.now_iso())
-                    .map(|read| read.payload)
-            };
-            Ok(match published {
-                Publication::Accepted(stored) if stored == raw => payload,
-                // Debits made during the fetch were applied to what Polar answered.
-                Publication::Accepted(stored) => read_back(&stored).unwrap_or(payload),
-                // A newer snapshot was published meanwhile: it stands.
-                Publication::Superseded(current) => read_back(&current).unwrap_or(payload),
-                Publication::Fenced => unavailable_ai_credits(self.now_iso()),
-            })
-        }
-        .await;
-
-        match attempt {
-            Ok(data) => Ok(data),
-            Err(message) => {
-                self.observer.error(
-                    "getAiCredits",
-                    &format!("Polar fetch failed, returning fallback from plan limit: {message}"),
-                );
-                // A fence that exists now (or a failure to read it) cannot revive a paid
-                // allowance or touch the exhaustion flags.
-                let fenced = match &fence {
-                    Some(_) => true,
-                    None => match self
-                        .dragonfly
-                        .get_text(&plan_cache_fence_key(twitch_id))
-                        .await
-                    {
-                        Ok(value) => value.is_some_and(|v| !v.is_empty()),
-                        Err(_) => true,
-                    },
+                published,
+                raw,
+            }) => {
+                let read = if meter {
+                    BalanceState::Verified {
+                        at_ms: self.clock.now_ms(),
+                    }
+                } else {
+                    BalanceState::Unknown
                 };
-                if fenced {
-                    return Ok(unavailable_ai_credits(self.now_iso()));
-                }
-                let limit = ai_credit_limit_for_plan(current_user.plan_tier.as_deref());
-                let exhausted =
-                    matches!(self.exhaustion_flags(twitch_id).await, Ok((a, b)) if a || b);
-                Ok(AiCreditsData {
-                    version: AI_CREDITS_CACHE_SCHEMA_VERSION,
-                    used: if exhausted { limit } else { 0.0 },
-                    limit,
-                    balance: if exhausted { 0.0 } else { limit },
-                    meter_id: AI_CREDITS_METER_ID.into(),
-                    updated_at: self.now_iso(),
-                    // Quirk kept: `available` is true exactly when the fallback says exhausted.
-                    available: exhausted,
-                    status: if exhausted {
-                        CreditStatus::Exhausted
-                    } else {
-                        CreditStatus::Unavailable
+                Ok(match published {
+                    Publication::Accepted(stored) if stored == raw => AiCredits {
+                        data: payload,
+                        state: read,
+                    },
+                    // Debits made during the fetch were applied to what Polar answered.
+                    Publication::Accepted(stored) => AiCredits {
+                        data: read_back(&stored).unwrap_or(payload),
+                        state: read,
+                    },
+                    // A newer snapshot was published meanwhile: it stands.
+                    Publication::Superseded(current) => match read_back(&current) {
+                        Some(data) => AiCredits {
+                            data,
+                            state: BalanceState::Cached,
+                        },
+                        None => AiCredits {
+                            data: payload,
+                            state: read,
+                        },
+                    },
+                    Publication::Fenced => AiCredits {
+                        data: unavailable_ai_credits(self.now_iso()),
+                        state: BalanceState::Unknown,
                     },
                 })
             }
+            Err(message) => Ok(AiCredits {
+                data: self
+                    .fallback(twitch_id, &fence, &current_user, &message)
+                    .await,
+                state: BalanceState::Unknown,
+            }),
         }
     }
+
+    /// A balance read from Polar now, for anything that grants, resets or tops up credits:
+    /// the cache is not consulted, and an answer without the AI credit meter, a plan fence that
+    /// refuses the read, or any failure is [`UnverifiedBalance`], never the reference's
+    /// invented fallback. What Polar answered is published like any fetch.
+    pub async fn verified_balance(
+        &self,
+        user: &PlanOwner,
+        twitch_id: &str,
+        plans: &dyn PlanLookup,
+        polar: &dyn CustomerStateSource,
+    ) -> Result<VerifiedBalance, UnverifiedBalance> {
+        let mut fence: Option<String> = None;
+        let mut current_user = user.clone();
+        let options = CreditOptions {
+            require_verified: true,
+        };
+        match self
+            .fetch(
+                user,
+                twitch_id,
+                options,
+                plans,
+                polar,
+                &mut fence,
+                &mut current_user,
+            )
+            .await
+        {
+            Ok(Fetched::Read {
+                published: Publication::Fenced,
+                ..
+            }) => Err(UnverifiedBalance::Fenced),
+            Ok(Fetched::Read { meter: false, .. }) => Err(UnverifiedBalance::NoMeter),
+            Ok(Fetched::Read { payload, .. }) => {
+                Ok(VerifiedBalance::new(&payload, self.clock.now_ms()))
+            }
+            Ok(Fetched::NotRead(_)) => Err(UnverifiedBalance::NotRead),
+            Err(message) => {
+                self.observer.error("verifiedAiCredits", &message);
+                Err(UnverifiedBalance::Failed(message))
+            }
+        }
+    }
+
+    /// The fetch branch of `getAiCredits`: the plan fence, the customer, Polar's state, then
+    /// the publication under the usage revision.
+    #[allow(clippy::too_many_arguments)]
+    async fn fetch(
+        &self,
+        user: &PlanOwner,
+        twitch_id: &str,
+        options: CreditOptions,
+        plans: &dyn PlanLookup,
+        polar: &dyn CustomerStateSource,
+        fence: &mut Option<String>,
+        current_user: &mut PlanOwner,
+    ) -> Result<Fetched, String> {
+        *fence = self
+            .dragonfly
+            .get_text(&plan_cache_fence_key(twitch_id))
+            .await
+            .map_err(|e| e.to_string())?
+            .filter(|fence| !fence.is_empty());
+        let mut version = String::new();
+        if let Some(fence) = fence.as_deref() {
+            let Some(current) = plans
+                .current_plan(
+                    twitch_id,
+                    user.polar_sh_customer_id
+                        .as_ref()
+                        .map(|id| id.expose().as_str()),
+                )
+                .await
+                .map_err(|e| e.to_string())?
+            else {
+                return Ok(Fetched::NotRead(unavailable_ai_credits(self.now_iso())));
+            };
+            version = plan_cache_version(
+                current.polar_plan_event_at,
+                current.polar_plan_event_key.as_deref(),
+            )
+            .map_err(|e| e.to_string())?;
+            if dima_text::cmp_utf16(&version, fence).is_lt() {
+                return Ok(Fetched::NotRead(unavailable_ai_credits(self.now_iso())));
+            }
+            *current_user = current;
+        }
+        let Some(customer_id) = current_user.customer_id() else {
+            let mut data = unavailable_ai_credits(self.now_iso());
+            if fence.is_none() {
+                let limit = ai_credit_limit_for_plan(current_user.plan_tier.as_deref());
+                data.limit = limit;
+                data.balance = limit;
+            }
+            return Ok(Fetched::NotRead(data));
+        };
+        // The usage revision before Polar is asked (item 4).
+        let start = balance::read_revision(&self.dragonfly, twitch_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let state = polar
+            .customer_state(customer_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let meter = state
+            .get("active_meters")
+            .and_then(Value::as_array)
+            .and_then(|meters| {
+                meters.iter().find(|meter| {
+                    meter.get("meter_id").and_then(Value::as_str) == Some(AI_CREDITS_METER_ID)
+                })
+            });
+        let mut payload = build_ai_credits_data_from_meter(
+            meter,
+            current_user.plan_tier.as_deref(),
+            self.now_iso(),
+        );
+        if options.require_verified && meter.is_none() {
+            payload.available = false;
+            payload.status = CreditStatus::Unavailable;
+        }
+        let raw = payload.to_cache_text(&version);
+        let published = self
+            .publish(twitch_id, &version, &raw, start)
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(Fetched::Read {
+            payload,
+            meter: meter.is_some(),
+            published,
+            raw,
+        })
+    }
+
+    /// The reference's answer when the read failed: unavailable once a fence exists (or cannot
+    /// be read), else the plan limit, "exhausted" when a flag says so.
+    async fn fallback(
+        &self,
+        twitch_id: &str,
+        fence: &Option<String>,
+        current_user: &PlanOwner,
+        message: &str,
+    ) -> AiCreditsData {
+        self.observer.error(
+            "getAiCredits",
+            &format!("Polar fetch failed, returning fallback from plan limit: {message}"),
+        );
+        // A fence that exists now (or a failure to read it) cannot revive a paid allowance or
+        // touch the exhaustion flags.
+        let fenced = match fence {
+            Some(_) => true,
+            None => match self
+                .dragonfly
+                .get_text(&plan_cache_fence_key(twitch_id))
+                .await
+            {
+                Ok(value) => value.is_some_and(|v| !v.is_empty()),
+                Err(_) => true,
+            },
+        };
+        if fenced {
+            return unavailable_ai_credits(self.now_iso());
+        }
+        let limit = ai_credit_limit_for_plan(current_user.plan_tier.as_deref());
+        let exhausted = matches!(self.exhaustion_flags(twitch_id).await, Ok((a, b)) if a || b);
+        AiCreditsData {
+            version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+            used: if exhausted { limit } else { 0.0 },
+            limit,
+            balance: if exhausted { 0.0 } else { limit },
+            meter_id: AI_CREDITS_METER_ID.into(),
+            updated_at: self.now_iso(),
+            // Quirk kept for what chat features read: `available` is true exactly when the
+            // fallback says exhausted (which refuses paid work). The state is `Unknown`, so it
+            // can never become the basis of a grant (item 5 of P2-BILLING-01b).
+            available: exhausted,
+            status: if exhausted {
+                CreditStatus::Exhausted
+            } else {
+                CreditStatus::Unavailable
+            },
+        }
+    }
+}
+
+/// What the fetch branch produced.
+enum Fetched {
+    /// Not read from Polar (the fence refused it, no owner, no customer): the reference's
+    /// answer.
+    NotRead(AiCreditsData),
+    /// Polar answered.
+    Read {
+        payload: AiCreditsData,
+        meter: bool,
+        published: Publication,
+        raw: String,
+    },
+}
+
+/// Why [`CreditsCache::verified_balance`] has no verified balance to give.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum UnverifiedBalance {
+    /// The plan fence refused the read, or the user has no owner or no customer.
+    #[error("credit usage cannot be verified for this account")]
+    NotRead,
+    /// Polar's state has no AI credit meter.
+    #[error("Polar reported no AI credit meter")]
+    NoMeter,
+    /// A newer plan fence refused the publication.
+    #[error("a newer plan change superseded the read")]
+    Fenced,
+    /// Polar or Dragonfly failed.
+    #[error("credit usage unavailable: {0}")]
+    Failed(String),
 }

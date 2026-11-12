@@ -133,7 +133,7 @@ async fn a_debit_made_during_a_fetch_is_not_given_back() {
     };
     let (credits, ()) = tokio::join!(fetch, meanwhile);
     let credits = credits.unwrap();
-    assert_eq!(credits.balance, 23_500.0, "{credits:?}");
+    assert_eq!(credits.data.balance, 23_500.0, "{credits:?}");
     let stored = cached(&dragonfly, &channel).await;
     assert_eq!(stored["balance"], json!(23_500), "{stored}");
     assert_eq!(stored["used"], json!(1_500), "{stored}");
@@ -202,7 +202,7 @@ async fn a_slow_fetch_cannot_overwrite_a_newer_snapshot() -> Result<()> {
         assert_eq!(stored["balance"], json!(0), "{stored}");
         assert_eq!(flags(&dragonfly, &channel).await, 2, "exhaustion kept");
         assert!(cache.is_ai_credits_exhausted(&channel).await?);
-        assert_eq!(credits.balance, 0.0, "the caller sees the newer snapshot: {credits:?}");
+        assert_eq!(credits.data.balance, 0.0, "the caller sees the newer snapshot: {credits:?}");
         support::cleanup(&dragonfly, &channel).await?;
         Ok(())
     })
