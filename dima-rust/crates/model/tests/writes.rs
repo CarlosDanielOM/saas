@@ -349,6 +349,64 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("asset_libraries", "typed") => {
+            use dima_model::asset_libraries::*;
+            let input = NewAssetLibrary {
+                id: "seed".into(),
+                used_bytes: Some(JsNumber(0.0)),
+                assets: Some(vec![Some(AssetLibraryEntry {
+                    id: "asset".into(),
+                    name: Private::new("héllo 👋 مرحبا é".into()),
+                    kind: "video".into(),
+                    mime: "video/mp4".into(),
+                    bytes: JsNumber(123.0),
+                    width: JsNumber(640.0),
+                    height: JsNumber(480.0),
+                    duration: Some(JsNumber(1.5)),
+                    created_at: "2026-11-11T12:00:30.456Z".into(),
+                    state: "uploading".into(),
+                    purpose: Some("pet-mood".into()),
+                })]),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("bits_rules", "typed") => {
+            use dima_model::bits_rules::*;
+            let input = NewBitsRules {
+                id: "seed".into(),
+                revision: JsNumber(1.0),
+                rules: Private::new(vec![BitsRulesRulesContent(Bson::Document(
+                    doc! {"id":"rule-a","name":"héllo 👋 مرحبا é","enabled":true,"min":1,"max":Bson::Null,"chat":{"mode":"custom","message":"thanks"},"alert":true},
+                ))]),
+                updated_at: JsDate(1794392430456),
+                updated_by: "111".into(),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+        ("pet_readiness", "typed" | "sentinel" | "nullable") => {
+            use dima_model::pet_readiness::*;
+            use dima_model::values::Nullable;
+            let sentinel = key == "sentinel";
+            let input = NewPetReadiness {
+                id: if sentinel { "api-instance" } else { "seed" }.into(),
+                generation: (!sentinel).then_some(JsNumber(1.0)),
+                settings_revision: (!sentinel).then_some(JsNumber(1.0)),
+                session_id: if sentinel {
+                    Nullable::Unset
+                } else if key == "nullable" {
+                    Nullable::Null
+                } else {
+                    Nullable::Value(Private::new("session".into()))
+                },
+                peer_id: (!sentinel).then(|| Private::new("peer".into())),
+                api_instance_id: "instance".into(),
+                validated_at: (!sentinel).then_some(JsDate(1794392430456)),
+                authorization_expires_at: (!sentinel).then_some(JsDate(1794392430456)),
+                expires_at: (!sentinel).then_some(JsDate(1794392430456)),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
         ("overlay_studios", "typed") => {
             use dima_model::overlay_studios::*;
             let input = NewOverlayStudio {

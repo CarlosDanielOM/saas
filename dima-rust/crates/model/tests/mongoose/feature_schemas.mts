@@ -8,6 +8,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const DECLARATIONS: Record<string, string[]> = {
+    'src/pets/readiness.schema.ts': ["schema", "PetReadiness"],
+    'src/bits_rules/store.ts': ["schema", "BitsRulesModel"],
+ 'src/assets/library.ts': ['assetSchema', 'schema', 'Libraries'],
     'src/custom_widgets/widget-store.ts': ["schema", "WidgetStore"],
     'src/custom_widgets/store.ts': ["schema", "CustomWidgets"],
     'src/overlays/interactions.ts': ["Interaction"],

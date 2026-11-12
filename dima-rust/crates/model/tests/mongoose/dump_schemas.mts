@@ -31,6 +31,9 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/pets/readiness.schema.ts', 'PetReadiness'],
+    ['src/bits_rules/store.ts', 'BitsRules'],
+ ['src/assets/library.ts', 'AssetLibrary'],
     ['src/custom_widgets/widget-store.ts', 'CustomWidgetStore'],
     ['src/custom_widgets/store.ts', 'CustomWidget'],
     ['src/overlays/interactions.ts', 'OverlayInteraction'],
