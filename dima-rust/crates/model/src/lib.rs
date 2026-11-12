@@ -12,22 +12,28 @@ pub mod decode;
 mod defaults;
 pub mod enums;
 pub mod error;
+mod hooks;
 pub mod index;
 pub mod validation;
 pub mod values;
+mod writes;
 
+pub mod admins;
+pub mod app_configs;
 pub mod ast_variables;
 pub mod command_user_variables;
 pub mod countdown_timers;
 pub mod custom_timers;
 pub mod domain_event_checkpoints;
 pub mod domain_event_deliveries;
+pub mod domain_events;
+pub mod events;
 pub mod eventsubs;
 pub mod stream_sessions;
 pub mod timer_commands;
 pub mod users;
 
-pub use collection::{CollectionInfo, ReadError};
+pub use collection::{CollectionInfo, Hooks, ReadError};
 pub use decode::{DecodeError, decode, decode_document};
 pub use enums::{Open, StrEnum};
 pub use error::ModelError;
@@ -38,6 +44,9 @@ pub use validation::{Rule, ValidationError, ValidatorError, ValidatorKind};
 /// configuration).
 pub static REGISTRY: &[&CollectionInfo] = &[
     &users::INFO,
+    &admins::INFO,
+    &app_configs::INFO,
+    &events::INFO,
     &eventsubs::INFO,
     &ast_variables::INFO,
     &command_user_variables::INFO,
@@ -46,6 +55,7 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &countdown_timers::INFO,
     &countdown_timers::CONFIG_INFO,
     &stream_sessions::INFO,
+    &domain_events::INFO,
     &domain_event_deliveries::INFO,
     &domain_event_checkpoints::INFO,
 ];

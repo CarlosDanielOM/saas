@@ -4,7 +4,7 @@
 //! Reference: `dimabot/src/schemas/eventsub.schema.ts`. No timestamps (`created_at` is Twitch's
 //! text), `__v`, no hooks. Indexes `{channelID, type}` and `{id}`.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{empty, yes, zero};
 use crate::error::ModelError;
@@ -84,6 +84,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<Eventsub>(raw).map(drop),
 };
 

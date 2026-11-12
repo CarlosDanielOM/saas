@@ -18,4 +18,13 @@ pub enum ModelError {
     /// The random source failed (tokens a hook generates).
     #[error(transparent)]
     Random(#[from] dima_core::RandomError),
+    /// A generic write to a collection whose Mongoose middleware would be skipped: use the
+    /// collection module's adapter.
+    #[error("{operation} on {collection} must go through its module (Mongoose hooks)")]
+    Hooked {
+        /// The collection.
+        collection: &'static str,
+        /// The operation refused.
+        operation: &'static str,
+    },
 }

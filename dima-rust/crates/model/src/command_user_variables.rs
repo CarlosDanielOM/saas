@@ -3,7 +3,7 @@
 //! Reference: `dimabot/src/schemas/command_user_variables.schema.ts`. Camel-case timestamps,
 //! `__v`, no hooks. Unique `{commandId, userId}`. Empty in the production copy.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
@@ -57,6 +57,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<CommandUserVariables>(raw).map(drop),
 };
 

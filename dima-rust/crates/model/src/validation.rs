@@ -203,6 +203,19 @@ pub fn validate(
     rules: &[Rule],
     document: &Document,
 ) -> Result<(), ValidationError> {
+    validate_given(model, schema, rules, document, None)
+}
+
+/// [`validate`] for a document about to be created from `given` (the values the caller gave,
+/// before defaults). Mongoose validates before `minimize` removes empty objects, so a required
+/// path given `{}` passes and is then stored without the field: such a path counts as present.
+pub fn validate_given(
+    model: &'static str,
+    schema: &Schema,
+    rules: &[Rule],
+    document: &Document,
+    given: Option<&Document>,
+) -> Result<(), ValidationError> {
     let split: Vec<(Vec<&'static str>, Check)> = rules
         .iter()
         .map(|rule| (rule.path.split('.').collect(), rule.check))
@@ -215,7 +228,15 @@ pub fn validate(
         })
         .collect();
     let mut errors = Vec::new();
-    validate_level(schema.fields, document, &level, "", document, &mut errors);
+    validate_level(
+        schema.fields,
+        document,
+        given,
+        &level,
+        "",
+        document,
+        &mut errors,
+    );
     if errors.is_empty() {
         Ok(())
     } else {
@@ -233,7 +254,11 @@ struct LevelRule<'r> {
 /// Where a rule path lands inside one level.
 enum Located<'r> {
     /// A path of this level (plain nested objects included), at a schema position.
-    Leaf { local: String, position: Vec<usize> },
+    Leaf {
+        local: String,
+        position: Vec<usize>,
+        field: &'static Field,
+    },
     /// A path inside a sub-document or document array element of this level.
     Child {
         local: String,
@@ -259,6 +284,7 @@ fn locate<'r>(fields: &'static [Field], segments: &'r [&'static str]) -> Option<
             return Some(Located::Leaf {
                 local: local.join("."),
                 position,
+                field,
             });
         }
         match field.kind {
@@ -303,6 +329,20 @@ fn value_at<'a>(document: &'a Document, path: &str) -> Option<&'a Bson> {
     None
 }
 
+/// The value Mongoose validates at `path`: the document's, or, when `minimize` removed it, the
+/// object the caller gave there (Mongoose validates before minimizing).
+fn effective_value<'a>(
+    document: &'a Document,
+    given: Option<&'a Document>,
+    path: &str,
+) -> Option<&'a Bson> {
+    value_at(document, path).or_else(|| {
+        given
+            .and_then(|g| value_at(g, path))
+            .filter(|v| matches!(v, Bson::Document(_)))
+    })
+}
+
 fn joined(prefix: &str, local: &str) -> String {
     if prefix.is_empty() {
         local.to_owned()
@@ -318,9 +358,11 @@ struct ChildRules<'r> {
     rules: Vec<LevelRule<'r>>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn validate_level(
     fields: &'static [Field],
     document: &Document,
+    given: Option<&Document>,
     rules: &[LevelRule<'_>],
     prefix: &str,
     root: &Document,
@@ -329,16 +371,28 @@ fn validate_level(
     let mut missing: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
     let mut present: Vec<(Vec<usize>, ValidatorError)> = Vec::new();
     let mut children: Vec<ChildRules<'_>> = Vec::new();
+    // An empty-object default (`default: () => ({})`) is present when Mongoose validates, and
+    // removed by `minimize` afterwards.
+    let empty = Bson::Document(Document::new());
     for rule in rules {
         match locate(fields, rule.segments) {
-            Some(Located::Leaf { local, position }) => {
+            Some(Located::Leaf {
+                local,
+                position,
+                field,
+            }) => {
                 let failed = |list: &[(Vec<usize>, ValidatorError)]| {
                     list.iter().any(|(p, _)| *p == position)
                 };
                 if failed(&missing) || failed(&present) {
                     continue;
                 }
-                let value = value_at(document, &local);
+                let value = effective_value(document, given, &local).or_else(|| {
+                    field
+                        .default
+                        .is_some_and(|d| d.value.build(0) == empty)
+                        .then_some(&empty)
+                });
                 if let Some((kind, message)) = check(rule.check, &local, value, root) {
                     let error = ValidatorError {
                         path: joined(prefix, &local),
@@ -377,20 +431,57 @@ fn validate_level(
     }
     missing.sort_by(|a, b| b.0.cmp(&a.0));
     present.sort_by(|a, b| a.0.cmp(&b.0));
+    // A sub-document whose own path failed (a user-defined validator on it) is not validated.
+    let failed: Vec<Vec<usize>> = missing
+        .iter()
+        .chain(present.iter())
+        .map(|(position, _)| position.clone())
+        .collect();
     errors.extend(missing.into_iter().map(|(_, e)| e));
     errors.extend(present.into_iter().map(|(_, e)| e));
     children.sort_by(|a, b| a.position.cmp(&b.position));
     for child in children {
+        if failed.contains(&child.position) {
+            continue;
+        }
         let path = joined(prefix, &child.local);
-        match (child.kind, value_at(document, &child.local)) {
+        let given_child = given.and_then(|g| value_at(g, &child.local));
+        match (child.kind, effective_value(document, given, &child.local)) {
             (Kind::Subdocument(schema), Some(Bson::Document(inner))) => {
-                validate_level(schema.fields, inner, &child.rules, &path, root, errors);
+                let given_inner = match given_child {
+                    Some(Bson::Document(g)) => Some(g),
+                    _ => None,
+                };
+                validate_level(
+                    schema.fields,
+                    inner,
+                    given_inner,
+                    &child.rules,
+                    &path,
+                    root,
+                    errors,
+                );
             }
             (Kind::DocumentArray(schema), Some(Bson::Array(items))) => {
                 for (i, item) in items.iter().enumerate() {
                     if let Bson::Document(element) = item {
+                        let given_element = match given_child {
+                            Some(Bson::Array(g)) => match g.get(i) {
+                                Some(Bson::Document(g)) => Some(g),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
                         let at = format!("{path}.{i}");
-                        validate_level(schema.fields, element, &child.rules, &at, root, errors);
+                        validate_level(
+                            schema.fields,
+                            element,
+                            given_element,
+                            &child.rules,
+                            &at,
+                            root,
+                            errors,
+                        );
                     }
                 }
             }

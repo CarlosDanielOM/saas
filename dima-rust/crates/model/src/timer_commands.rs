@@ -4,7 +4,7 @@
 //! timestamps (a hand-written `createdAt` with `Date.now`), `__v`, no hooks, no index. Empty in
 //! the production copy.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{utc_day, utc_month, utc_year};
 use crate::error::ModelError;
@@ -64,6 +64,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<TimerCommand>(raw).map(drop),
 };
 

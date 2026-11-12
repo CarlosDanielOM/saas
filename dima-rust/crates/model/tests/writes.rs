@@ -13,12 +13,16 @@ mod support;
 use anyhow::{Context, Result, anyhow, bail};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, doc};
+use dima_model::admins::{self, NewAdmin};
+use dima_model::app_configs::{self, NewAppConfig};
 use dima_model::ast_variables::NewAstVariables;
 use dima_model::command_user_variables::NewCommandUserVariables;
 use dima_model::countdown_timers::{CountdownConfig, NewCountdown};
 use dima_model::custom_timers::{FrequencyUnit, NewCustomTimer};
 use dima_model::domain_event_checkpoints::NewCheckpoint;
 use dima_model::domain_event_deliveries::NewDelivery;
+use dima_model::domain_events::{self, NewDomainEvent, NewSubject, SubjectKind, Topic};
+use dima_model::events::{self, ControlType, Localized, NewControl, NewEvent, ReleaseStage};
 use dima_model::eventsubs::NewEventsub;
 use dima_model::stream_sessions::NewStreamSession;
 use dima_model::timer_commands::NewTimerCommand;
@@ -29,10 +33,8 @@ use dima_model::{CollectionInfo, ModelError, REGISTRY, ensure_indexes};
 use dima_store::mongo::date::JsDate;
 use dima_store::mongo::insert::PreparedInsert;
 use dima_store::mongo::number::JsNumber;
-use dima_store::mongo::save::{Change, prepare_save};
-use dima_store::mongo::update::{
-    Returned, UpdateOptions, prepare_find_one_and_update, prepare_update,
-};
+use dima_store::mongo::save::Change;
+use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
 use futures_util::TryStreamExt;
 use serde_json::Value;
@@ -353,6 +355,138 @@ fn typed_create(
             };
             pair(checkpoint.to_document()?, checkpoint.prepare(ctx))
         }
+        ("admins", "admin") => {
+            let admin = NewAdmin {
+                channel_id: Some("111".into()),
+                channel_name: Some("seed".into()),
+                admin_id: Some("42".into()),
+                admin_name: Some("mod".into()),
+                permissions: Some(vec!["commands".into(), "timers".into()]),
+                actived: Some(true),
+                role: None,
+            };
+            pair(admin.to_document()?, admin.prepare(ctx))
+        }
+        ("admins", "empty") => {
+            let admin = NewAdmin::default();
+            pair(admin.to_document()?, admin.prepare(ctx))
+        }
+        ("app_configs", "config") => {
+            let config = NewAppConfig {
+                name: "domdimabot".into(),
+                access_token: EncryptedToken {
+                    iv: Some("i".into()),
+                    content: Some("c".into()),
+                },
+            };
+            pair(config.to_document()?, config.prepare(ctx))
+        }
+        ("events", "event") => {
+            let localized = |en: &str, es: &str| Localized {
+                en: en.into(),
+                es: es.into(),
+            };
+            let event = NewEvent {
+                name: "  Follow ".into(),
+                kind: " channel.follow ".into(),
+                condition: doc! { "broadcaster_user_id": "user", "moderator_user_id": "user" },
+                icon: " heart ".into(),
+                color: " #f00 ".into(),
+                text_color: "#fff".into(),
+                description: localized(&format!(" {text} "), "Seguir"),
+                config: vec![
+                    NewControl {
+                        id: " msg ".into(),
+                        db_id: Some("message".into()),
+                        label: localized("Message", "Mensaje"),
+                        kind: None,
+                        value: Bson::String("thanks".into()),
+                        can_disable: None,
+                        placeholder: Some(" type here ".into()),
+                        show_if: None,
+                    },
+                    NewControl {
+                        id: "tiers".into(),
+                        db_id: None,
+                        label: localized("Tiers", "Niveles"),
+                        kind: Some(ControlType::MessageTiers),
+                        value: Bson::Array(vec![Bson::Document(doc! { "min": 1, "message": "x" })]),
+                        can_disable: Some(true),
+                        placeholder: None,
+                        show_if: Some(doc! { "controlId": "msg", "is": true }),
+                    },
+                ],
+                version: None,
+                release_stage: Some(ReleaseStage::Beta),
+                enabled: None,
+                plan_tier: Some(PlanTier::Premium),
+            };
+            pair(event.to_document()?, event.prepare(ctx))
+        }
+        ("domain_events", "full" | "empty_objects" | "defaults") => {
+            let t1 = ms("2020-01-02T03:04:05.006Z")?;
+            let t2 = ms("2021-06-07T08:09:10.011Z")?;
+            let mut event = NewDomainEvent {
+                id: Some(oid(0x500)?),
+                event_key: "twitch-eventsub:abc:channel.follow".into(),
+                source: "twitch-eventsub".into(),
+                source_event_id: "abc".into(),
+                kind: "channel.follow".into(),
+                topic: Topic::Channel,
+                schema_version: Some(JsNumber(1.0)),
+                owner_user_id: Some("000000000000000000000001".into()),
+                subject: Some(NewSubject {
+                    provider: "twitch".into(),
+                    kind: SubjectKind::StreamingAccount,
+                    id: "111".into(),
+                }),
+                channel_id: Some("111".into()),
+                stream_id: None,
+                occurred_at: t1,
+                journaled_at: Some(t2),
+                payload: doc! { "user": { "id": "9", "login": text } },
+                metadata: Some(
+                    doc! { "originalEventType": "channel.follow", "durableChatHandled": true },
+                ),
+                dispatch_pending: Some(true),
+                expires_at: t2,
+            };
+            if key == "empty_objects" {
+                event.id = Some(oid(0x501)?);
+                event.event_key = "k2".into();
+                event.source_event_id = "k2".into();
+                event.payload = doc! {};
+                event.metadata = Some(doc! {});
+                event.subject = None;
+                event.owner_user_id = None;
+            }
+            if key == "defaults" {
+                event = NewDomainEvent {
+                    id: Some(oid(0x502)?),
+                    event_key: "k3".into(),
+                    source: "polar".into(),
+                    source_event_id: "k3".into(),
+                    kind: "order.paid".into(),
+                    topic: Topic::Domain,
+                    schema_version: None,
+                    owner_user_id: None,
+                    subject: Some(NewSubject {
+                        provider: "polar".into(),
+                        kind: SubjectKind::Customer,
+                        id: "cus_1".into(),
+                    }),
+                    channel_id: None,
+                    stream_id: None,
+                    occurred_at: t1,
+                    journaled_at: None,
+                    payload: doc! { "a": 1 },
+                    metadata: None,
+                    dispatch_pending: None,
+                    expires_at: t2,
+                };
+            }
+            pair(event.to_document()?, event.prepare_journal(ctx))
+        }
         _ => bail!("{collection}: no typed input named {key}"),
     }
 }
@@ -450,7 +584,7 @@ async fn run_case(
     let mut writes = store.writes(collection);
     let failure = |message: String| Ok((Some(Value::String(message)), None));
     match op {
-        "create" => {
+        "create" | "journal" => {
             let prepared = match case.get("rust").and_then(Value::as_str) {
                 Some(key) => {
                     let (given, prepared) = typed_create(collection, key, &mut ctx)?;
@@ -466,6 +600,9 @@ async fn run_case(
                     &mut ctx,
                 )?,
             };
+            if op == "journal" {
+                writes = writes.write_concern(domain_events::journal_write_concern());
+            }
             if let Err(error) = writes.insert_one(&prepared).await {
                 return failure(write_error(&error));
             }
@@ -493,13 +630,8 @@ async fn run_case(
         "updateOne" | "updateMany" => {
             let filter = document_of(intent.get("filter").context("filter")?)?;
             let update = document_of(intent.get("update").context("update")?)?;
-            let prepared = prepare_update(
-                info.schema,
-                &filter,
-                update,
-                update_options(intent)?,
-                &mut ctx,
-            )?;
+            let prepared =
+                info.prepare_update(&filter, update, update_options(intent)?, &mut ctx)?;
             let outcome = if op == "updateOne" {
                 writes.update_one(&prepared).await
             } else {
@@ -518,8 +650,7 @@ async fn run_case(
             } else {
                 Returned::Before
             };
-            let prepared = prepare_find_one_and_update(
-                info.schema,
+            let prepared = info.prepare_find_one_and_update(
                 &filter,
                 update,
                 update_options(intent)?,
@@ -544,7 +675,12 @@ async fn run_case(
                 .await?
                 .context("the document to save is missing")?;
             let changes = changes_of(intent.get("changes").context("changes")?)?;
-            let prepared = prepare_save(info.schema, &loaded, &changes, &mut ctx)?;
+            let prepared = match collection {
+                "admins" => admins::prepare_save(&loaded, &changes, &mut ctx)?,
+                "app_configs" => app_configs::prepare_save(&loaded, &changes, &mut ctx)?,
+                "events" => events::prepare_save(&loaded, &changes, &mut ctx)?,
+                _ => info.prepare_save(&loaded, &changes, &mut ctx)?,
+            };
             writes.save(&prepared).await?;
         }
         other => bail!("unknown op {other}"),

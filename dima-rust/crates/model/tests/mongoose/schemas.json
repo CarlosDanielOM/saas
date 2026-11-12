@@ -2410,6 +2410,1012 @@
      }
     }
    ]
+  },
+  "admins": {
+   "model": "Admin",
+   "file": "src/schemas/admin.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "adminName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "adminID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "channelName",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "role",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "channel"
+      }
+     },
+     {
+      "name": "actived",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": true
+      }
+     },
+     {
+      "name": "permissions",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "role",
+     "type": "enum",
+     "values": [
+      "creator",
+      "super",
+      "support",
+      "billing",
+      "channel"
+     ]
+    }
+   ],
+   "indexes": []
+  },
+  "app_configs": {
+   "model": "app_config",
+   "file": "src/schemas/app_config.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "access_token",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "iv",
+        "kind": "value",
+        "type": "String"
+       },
+       {
+        "name": "content",
+        "kind": "value",
+        "type": "String"
+       }
+      ]
+     },
+     {
+      "name": "refreshed_at",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": []
+  },
+  "events": {
+   "model": "Event",
+   "file": "src/schemas/event.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "name",
+      "kind": "value",
+      "type": "String",
+      "trim": true
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String",
+      "trim": true
+     },
+     {
+      "name": "version",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "1"
+      }
+     },
+     {
+      "name": "condition",
+      "kind": "mixed"
+     },
+     {
+      "name": "icon",
+      "kind": "value",
+      "type": "String",
+      "trim": true
+     },
+     {
+      "name": "color",
+      "kind": "value",
+      "type": "String",
+      "trim": true
+     },
+     {
+      "name": "textColor",
+      "kind": "value",
+      "type": "String",
+      "trim": true
+     },
+     {
+      "name": "releaseStage",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "stable"
+      }
+     },
+     {
+      "name": "enabled",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "plan_tier",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": "free"
+      }
+     },
+     {
+      "name": "description",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "EN",
+        "kind": "value",
+        "type": "String",
+        "trim": true
+       },
+       {
+        "name": "ES",
+        "kind": "value",
+        "type": "String",
+        "trim": true
+       }
+      ]
+     },
+     {
+      "name": "config",
+      "kind": "documentArray",
+      "schema": {
+       "id": "auto",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "id",
+         "kind": "value",
+         "type": "String",
+         "trim": true
+        },
+        {
+         "name": "dbId",
+         "kind": "value",
+         "type": "String",
+         "trim": true
+        },
+        {
+         "name": "label",
+         "kind": "nested",
+         "fields": [
+          {
+           "name": "EN",
+           "kind": "value",
+           "type": "String",
+           "trim": true
+          },
+          {
+           "name": "ES",
+           "kind": "value",
+           "type": "String",
+           "trim": true
+          }
+         ]
+        },
+        {
+         "name": "type",
+         "kind": "value",
+         "type": "String",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": "text"
+         }
+        },
+        {
+         "name": "value",
+         "kind": "mixed"
+        },
+        {
+         "name": "canDisable",
+         "kind": "value",
+         "type": "Boolean",
+         "default": {
+          "function": false,
+          "implicit": false,
+          "value": false
+         }
+        },
+        {
+         "name": "placeholder",
+         "kind": "value",
+         "type": "String",
+         "trim": true
+        },
+        {
+         "name": "showIf",
+         "kind": "subdocument",
+         "schema": {
+          "id": "none",
+          "timestamps": null,
+          "versionKey": null,
+          "minimize": true,
+          "fields": [
+           {
+            "name": "controlId",
+            "kind": "value",
+            "type": "String"
+           },
+           {
+            "name": "is",
+            "kind": "mixed"
+           }
+          ]
+         }
+        }
+       ]
+      },
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "tierLimits",
+      "kind": "nested",
+      "fields": [
+       {
+        "name": "free",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "0"
+         }
+        }
+       },
+       {
+        "name": "premium",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "2"
+         }
+        }
+       },
+       {
+        "name": "pro",
+        "kind": "value",
+        "type": "Number",
+        "default": {
+         "function": false,
+         "implicit": false,
+         "value": {
+          "$numberInt": "5"
+         }
+        }
+       }
+      ]
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     },
+     {
+      "name": "updatedAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "name",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "version",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "condition",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "icon",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "color",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "textColor",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "releaseStage",
+     "type": "enum",
+     "values": [
+      "stable",
+      "beta",
+      "alpha",
+      "maintenance",
+      "coming_soon",
+      "unavailable",
+      "deprecated"
+     ]
+    },
+    {
+     "path": "plan_tier",
+     "type": "enum",
+     "values": [
+      "free",
+      "premium",
+      "pro"
+     ]
+    },
+    {
+     "path": "description.EN",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "description.ES",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.label.EN",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.label.ES",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.type",
+     "type": "enum",
+     "values": [
+      "text",
+      "number",
+      "checkbox",
+      "select",
+      "message-tiers"
+     ]
+    },
+    {
+     "path": "config.$.value",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.showIf",
+     "type": "user defined",
+     "message": "If showIf is provided, both controlId and is must be defined"
+    },
+    {
+     "path": "config.$.showIf.controlId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "config.$.showIf.is",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "domain_events": {
+   "model": "domain_event",
+   "file": "src/schemas/domain_event.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "eventKey",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "source",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "sourceEventId",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "type",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "topic",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "schemaVersion",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      },
+      "immutable": true
+     },
+     {
+      "name": "ownerUserId",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "subject",
+      "kind": "subdocument",
+      "schema": {
+       "id": "none",
+       "timestamps": null,
+       "versionKey": null,
+       "minimize": true,
+       "fields": [
+        {
+         "name": "provider",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "kind",
+         "kind": "value",
+         "type": "String"
+        },
+        {
+         "name": "id",
+         "kind": "value",
+         "type": "String"
+        }
+       ]
+      },
+      "immutable": true
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "streamID",
+      "kind": "value",
+      "type": "String",
+      "immutable": true
+     },
+     {
+      "name": "occurredAt",
+      "kind": "value",
+      "type": "Date",
+      "immutable": true
+     },
+     {
+      "name": "journaledAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      },
+      "immutable": true
+     },
+     {
+      "name": "payload",
+      "kind": "mixed",
+      "immutable": true
+     },
+     {
+      "name": "metadata",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {}
+      },
+      "immutable": true
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date",
+      "immutable": true
+     },
+     {
+      "name": "dispatchPending",
+      "kind": "value",
+      "type": "Boolean"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "eventKey",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "source",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "sourceEventId",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "type",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "topic",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "topic",
+     "type": "enum",
+     "values": [
+      "channel",
+      "activity",
+      "telemetry",
+      "domain"
+     ]
+    },
+    {
+     "path": "schemaVersion",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "subject.provider",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "subject.kind",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "subject.kind",
+     "type": "enum",
+     "values": [
+      "streaming-account",
+      "integration-account",
+      "customer",
+      "resource"
+     ]
+    },
+    {
+     "path": "subject.id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": true
+    },
+    {
+     "path": "occurredAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "journaledAt",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "payload",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "metadata",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "expiresAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "topic",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "ownerUserId",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "eventKey",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "source",
+       1
+      ],
+      [
+       "sourceEventId",
+       1
+      ],
+      [
+       "type",
+       1
+      ]
+     ],
+     "options": {
+      "unique": true,
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "topic",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "topic",
+       1
+      ],
+      [
+       "source",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ],
+      [
+       "source",
+       1
+      ],
+      [
+       "type",
+       1
+      ],
+      [
+       "occurredAt",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "dispatchPending",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "partialFilterExpression": {
+       "dispatchPending": true
+      },
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "topic",
+       1
+      ],
+      [
+       "metadata.durableChatHandled",
+       1
+      ],
+      [
+       "_id",
+       1
+      ]
+     ],
+     "options": {
+      "partialFilterExpression": {
+       "metadata.durableChatHandled": true
+      },
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
   }
  }
 }

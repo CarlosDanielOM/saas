@@ -6,7 +6,7 @@
 //! the lease fields are ported exactly (`MIGRATION.md` data rule 8); the error code and
 //! prerequisite kind enumerations include the empty string.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{empty, zero};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -145,6 +145,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<Delivery>(raw).map(drop),
 };
 

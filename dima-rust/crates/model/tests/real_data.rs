@@ -56,7 +56,7 @@ async fn every_real_document_decodes() -> Result<()> {
             "{:<28} {decoded:>7} of {count:>7} decoded{}, {failed} failed",
             info.name,
             if stride > 1 {
-                format!(" (every {stride}th)")
+                format!(" (1 in {stride})")
             } else {
                 String::new()
             }

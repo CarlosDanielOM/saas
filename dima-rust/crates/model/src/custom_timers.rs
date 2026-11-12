@@ -5,7 +5,7 @@
 //! a whole frequency of 1 to 1440 minutes) are the only ones in this package with ranges, so the
 //! input type checks them in its constructor.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::enums::{Open, StrEnum, str_enum};
 use crate::error::ModelError;
@@ -91,6 +91,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<CustomTimer>(raw).map(drop),
 };
 

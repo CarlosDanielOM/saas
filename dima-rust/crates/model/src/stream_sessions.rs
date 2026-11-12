@@ -6,7 +6,7 @@
 //! `{channelID, ended_at}` where `ended_at` is `null`). `applied_domain_event_keys` is
 //! `select: false`: a save must not load the document without it (see the crate docs).
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{empty, zero};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -120,6 +120,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<StreamSession>(raw).map(drop),
 };
 

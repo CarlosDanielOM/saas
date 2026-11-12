@@ -5,7 +5,7 @@
 //! `countdown_timer_config.schema.ts` (`Countdowntimerconfig`). No timestamps, `__v`, no hooks,
 //! no index.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::zero;
 use crate::error::ModelError;
@@ -55,6 +55,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<Countdown>(raw).map(drop),
 };
 
@@ -96,6 +97,7 @@ pub static CONFIG_INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: &[] as &[IndexSpec],
     rules: CONFIG_RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<CountdownConfig>(raw).map(drop),
 };
 

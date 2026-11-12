@@ -6,7 +6,7 @@
 //! it with upserts only; note that `userId` and `userLogin` default to `''` and are required, so
 //! `create` without them fails validation, as it does in Mongoose.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
@@ -76,6 +76,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<AstVariables>(raw).map(drop),
 };
 

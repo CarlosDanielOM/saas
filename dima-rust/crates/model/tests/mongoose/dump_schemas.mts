@@ -34,6 +34,10 @@ const MODELS: Array<[string, string]> = [
     ['src/schemas/stream_session.schema.ts', 'StreamSession'],
     ['src/schemas/domain_event_delivery.schema.ts', 'domain_event_delivery'],
     ['src/schemas/domain_event_checkpoint.schema.ts', 'domain_event_checkpoint'],
+    ['src/schemas/admin.schema.ts', 'Admin'],
+    ['src/schemas/app_config.schema.ts', 'app_config'],
+    ['src/schemas/event.schema.ts', 'Event'],
+    ['src/schemas/domain_event.schema.ts', 'domain_event'],
 ];
 
 export const FIXED_MS = Date.UTC(2026, 10, 11, 10, 20, 30, 456);

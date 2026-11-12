@@ -3,7 +3,7 @@
 //! Reference: `dimabot/src/schemas/domain_event_checkpoint.schema.ts`. Camel-case timestamps, no
 //! `__v`, no hooks. Unique `{consumer, topic}`.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
@@ -49,6 +49,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: &[],
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<Checkpoint>(raw).map(drop),
 };
 

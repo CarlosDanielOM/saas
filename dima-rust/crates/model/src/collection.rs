@@ -4,7 +4,7 @@
 use crate::decode::DecodeError;
 use crate::error::ModelError;
 use crate::index::IndexSpec;
-use crate::validation::{Rule, ValidationError, validate};
+use crate::validation::{Rule, ValidationError, validate, validate_given};
 use bson::{Document, RawDocument};
 use dima_store::mongo::filter::prepare_filter;
 use dima_store::mongo::id::IdType;
@@ -35,8 +35,23 @@ pub struct CollectionInfo {
     pub indexes: &'static [IndexSpec],
     /// The validators, in schema path order.
     pub rules: &'static [Rule],
+    /// The Mongoose middleware the module's adapters reproduce.
+    pub hooks: Hooks,
     /// Decodes a stored document with the module's read type (used by the real-data check).
     pub decode: fn(&RawDocument) -> Result<(), DecodeError>,
+}
+
+/// The Mongoose middleware of a collection. With any, writes go through the module's adapter
+/// functions, never straight through the store's helpers with [`CollectionInfo::schema`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Hooks {
+    /// None: the store's helpers can be used with the schema directly.
+    None,
+    /// `pre('save')` document middleware: creates and saves go through the module.
+    Save,
+    /// Query middleware on updates and `pre('save')`: every update, create and save goes through
+    /// the module.
+    UpdatesAndSave,
 }
 
 /// A read for an HTTP response that failed.
@@ -65,7 +80,13 @@ impl CollectionInfo {
         ctx: &mut WriteContext,
     ) -> Result<PreparedInsert, ModelError> {
         let prepared = prepare_insert(self.schema, given, InsertStyle::Create, ctx)?;
-        self.validate(&prepared.document)?;
+        validate_given(
+            self.model,
+            self.schema,
+            self.rules,
+            &prepared.document,
+            Some(given),
+        )?;
         Ok(prepared)
     }
 
@@ -167,6 +188,7 @@ mod tests {
         hidden: &["secret", "deep.token"],
         indexes: &[],
         rules: &[],
+        hooks: Hooks::None,
         decode: |_| Ok(()),
     };
 

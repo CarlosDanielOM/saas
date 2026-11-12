@@ -5,7 +5,7 @@
 //! declared index (the reference queries `accounts.type` + `accounts.id` without one).
 //! `polar_credit_snapshot` and `applied_credit_transaction_ids` are `select: false`.
 
-use crate::collection::CollectionInfo;
+use crate::collection::{CollectionInfo, Hooks};
 use crate::decode::decode;
 use crate::defaults::{yes, zero};
 use crate::enums::{Open, StrEnum, str_enum};
@@ -182,6 +182,7 @@ pub static INFO: CollectionInfo = CollectionInfo {
     hidden: HIDDEN,
     indexes: INDEXES,
     rules: RULES,
+    hooks: Hooks::None,
     decode: |raw: &RawDocument| decode::<User>(raw).map(drop),
 };
 

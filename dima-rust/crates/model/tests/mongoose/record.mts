@@ -62,6 +62,10 @@ const FILES: Array<[string, string]> = [
     ['src/schemas/stream_session.schema.ts', 'StreamSession'],
     ['src/schemas/domain_event_delivery.schema.ts', 'domain_event_delivery'],
     ['src/schemas/domain_event_checkpoint.schema.ts', 'domain_event_checkpoint'],
+    ['src/schemas/admin.schema.ts', 'Admin'],
+    ['src/schemas/app_config.schema.ts', 'app_config'],
+    ['src/schemas/event.schema.ts', 'Event'],
+    ['src/schemas/domain_event.schema.ts', 'domain_event'],
 ];
 const MODELS: Record<string, any> = {};
 for (const [file, name] of FILES) {
@@ -118,7 +122,72 @@ const deliverySeed = (n: number, status: string) => ({
     deadLetteredAt: null, replayCount: 0, lastReplayedAt: null, expiresAt: T2, createdAt: T1, updatedAt: T1,
 });
 
+const adminSeed = () => ({ _id: OID(1), adminName: 'mod', adminID: '42', channelName: 'seed', channelID: '111', role: 'channel', actived: true, permissions: ['*'], createdAt: T1, updatedAt: T1, __v: 0 });
+const eventSeed = () => ({
+    _id: OID(1), name: 'Stream Online', type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'user' },
+    icon: 'live', color: '#fff', textColor: '#000', releaseStage: 'stable', enabled: true, plan_tier: 'free',
+    description: { EN: 'Live', ES: 'En vivo' },
+    config: [{ _id: OID(0x101), id: 'msg', dbId: 'message', label: { EN: 'Message', ES: 'Mensaje' }, type: 'text', value: 'hi', canDisable: false }],
+    tierLimits: { free: 0, premium: 2, pro: 5 }, createdAt: T1, updatedAt: T1, __v: 0,
+});
+const eventInput = () => ({
+    name: '  Follow ', type: ' channel.follow ', condition: { broadcaster_user_id: 'user', moderator_user_id: 'user' },
+    icon: ' heart ', color: ' #f00 ', textColor: '#fff', description: { EN: ` ${TEXT} `, ES: 'Seguir' },
+    config: [
+        { id: ' msg ', dbId: 'message', label: { EN: 'Message', ES: 'Mensaje' }, value: 'thanks', placeholder: ' type here ' },
+        { id: 'tiers', label: { EN: 'Tiers', ES: 'Niveles' }, type: 'message-tiers', value: [{ min: 1, message: 'x' }], canDisable: true, showIf: { controlId: 'msg', is: true } },
+    ],
+    plan_tier: 'premium', releaseStage: 'beta',
+});
+// Fixtures leave a key out rather than setting it to `undefined` (the Extended JSON clone would
+// turn `undefined` into `null`).
+const without = (doc: any, ...keys: string[]) => Object.fromEntries(Object.entries(doc).filter(([k]) => !keys.includes(k)));
+const domainEventInput = () => ({
+    _id: OID(0x500), eventKey: 'twitch-eventsub:abc:channel.follow', source: 'twitch-eventsub', sourceEventId: 'abc',
+    type: 'channel.follow', topic: 'channel', schemaVersion: 1, ownerUserId: '000000000000000000000001',
+    subject: { provider: 'twitch', kind: 'streaming-account', id: '111' }, channelID: '111',
+    occurredAt: T1, journaledAt: T2, payload: { user: { id: '9', login: TEXT } },
+    metadata: { originalEventType: 'channel.follow', durableChatHandled: true }, dispatchPending: true, expiresAt: T2,
+});
+
 const CASES: Record<string, any[]> = {
+    admins: [
+        { name: 'create_admin', op: 'create', rust: 'admin', doc: { channelID: '111', channelName: 'seed', adminID: '42', adminName: 'mod', permissions: ['commands', 'timers'], actived: true } },
+        { name: 'create_empty', op: 'create', rust: 'empty', doc: {} },
+        { name: 'validate_role', op: 'validate', doc: { role: 'owner' } },
+        { name: 'save_hook', op: 'save', seed: [adminSeed()], id: OID(1), changes: [{ set: 'permissions', value: ['*', 'x'] }] },
+        { name: 'save_hook_no_change', op: 'save', seed: [adminSeed()], id: OID(1), changes: [] },
+        { name: 'save_hook_legacy', op: 'save', seed: [{ _id: OID(2), adminName: 'old', channelID: '1', permissions: [], createdAt: T1, updatedAt: T1, __v: 0 }], id: OID(2), changes: [{ set: 'actived', value: false }] },
+        { name: 'update_no_hook', op: 'updateOne', seed: [adminSeed()], filter: { channelID: '111', adminID: '42' }, update: { $set: { permissions: ['a'] } } },
+    ],
+    app_configs: [
+        { name: 'create_config', op: 'create', rust: 'config', doc: { name: 'domdimabot', access_token: { iv: 'i', content: 'c' } } },
+        { name: 'save_hook', op: 'save', seed: [{ _id: OID(1), name: 'domdimabot', access_token: { iv: 'i', content: 'c' }, __v: 0 }], id: OID(1), changes: [{ set: 'access_token.content', value: 'c2' }] },
+        { name: 'save_hook_no_change', op: 'save', seed: [{ _id: OID(1), name: 'domdimabot', access_token: { iv: 'i', content: 'c' }, refreshed_at: T1, __v: 0 }], id: OID(1), changes: [] },
+    ],
+    events: [
+        { name: 'create_event', op: 'create', rust: 'event', doc: eventInput() },
+        { name: 'create_empty_condition', op: 'create', doc: { ...eventInput(), condition: {} } },
+        { name: 'validate_missing', op: 'validate', doc: { config: [{ label: {}, type: 'slider', showIf: { controlId: 'x' } }] } },
+        { name: 'validate_show_if', op: 'validate', doc: { ...eventInput(), config: [{ id: 'a', label: { EN: 'a', ES: 'a' }, value: 1, showIf: {} }] } },
+        { name: 'save_hook', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ set: 'enabled', value: false }, { set: 'config.0.value', value: TEXT }] },
+        { name: 'save_push_config', op: 'save', seed: [eventSeed()], id: OID(1), changes: [{ push: 'config', values: [{ id: ' new ', label: { EN: 'n', ES: 'n' }, value: 0 }] }] },
+        { name: 'update_no_hook', op: 'updateOne', seed: [eventSeed()], filter: { type: 'stream.online' }, update: { $set: { name: ' Online ', 'config.0.value': 'yo' } } },
+    ],
+    domain_events: [
+        { name: 'journal_full', op: 'journal', rust: 'full', doc: domainEventInput() },
+        { name: 'journal_empty_objects', op: 'journal', rust: 'empty_objects', doc: without({ ...domainEventInput(), _id: OID(0x501), eventKey: 'k2', sourceEventId: 'k2', payload: {}, metadata: {} }, 'subject', 'ownerUserId') },
+        { name: 'journal_defaults', op: 'journal', rust: 'defaults', doc: { _id: OID(0x502), eventKey: 'k3', source: 'polar', sourceEventId: 'k3', type: 'order.paid', topic: 'domain', subject: { provider: 'polar', kind: 'customer', id: 'cus_1' }, occurredAt: T1, payload: { a: 1 }, expiresAt: T2 } },
+        { name: 'validate_channel', op: 'validate', doc: { eventKey: 'k', source: 's', sourceEventId: 'e', type: 't', topic: 'channel', occurredAt: T1, payload: { a: 1 }, expiresAt: T2 } },
+        { name: 'validate_enums', op: 'validate', doc: { eventKey: 'k', source: 's', sourceEventId: 'e', type: 't', topic: 'stream', subject: { provider: 'p', kind: 'robot', id: 'i' }, occurredAt: T1, payload: { a: 1 }, expiresAt: T2 } },
+        { name: 'duplicate_key', op: 'journal', seed: [{ ...domainEventInput(), streamID: 'st' }], doc: { ...domainEventInput(), _id: OID(0x503) } },
+        { name: 'update_dispatched', op: 'updateMany', seed: [{ ...domainEventInput(), streamID: 'st' }], filter: { _id: { $in: [OID(0x500)] }, dispatchPending: true }, update: { $set: { dispatchPending: false, payload: { changed: true }, 'metadata.x': 1 } } },
+        // Paths below an immutable Mixed path are immutable too (`schema._getSchema` resolves them to it).
+        { name: 'update_immutable_mixed_children', op: 'updateOne', seed: [{ ...domainEventInput(), streamID: 'st' }], filter: { _id: OID(0x500) }, update: { $unset: { 'payload.user': 1 }, $inc: { 'metadata.n': 1 }, 'metadata.y': 2, $set: { dispatchPending: false } } },
+        { name: 'upsert_immutable_mixed_children', op: 'updateOne', filter: { eventKey: 'kz' }, update: { $set: { 'metadata.x': 1, payload: { p: 1 }, dispatchPending: true } }, options: { upsert: true } },
+        // A save that sets a path below `metadata` or `payload` overflows Mongoose's stack: not
+        // recordable (the reference never does it).
+    ],
     eventsubs: [
         { name: 'create_minimal', op: 'create', rust: 'minimal', doc: {
             id: 'sub-9', status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: '9' },
@@ -266,6 +335,13 @@ async function runCase(name: string, model: any, spec: any) {
         switch (spec.op) {
             case 'create': await model.create(a.doc); break;
             case 'validate': await new model(a.doc).validate(); break;
+            // `utils/domain_events.ts:122-129`: a validated document inserted with the raw driver.
+            case 'journal': {
+                const doc = new model(a.doc);
+                await doc.validate();
+                await model.collection.insertOne(doc.toObject(), { writeConcern: { w: 1, j: true } });
+                break;
+            }
             case 'updateOne': await model.updateOne(a.filter, a.update, a.options ?? {}); break;
             case 'updateMany': await model.updateMany(a.filter, a.update, a.options ?? {}); break;
             case 'findOneAndUpdate': result = await model.findOneAndUpdate(a.filter, a.update, a.options ?? {}).lean(); break;
