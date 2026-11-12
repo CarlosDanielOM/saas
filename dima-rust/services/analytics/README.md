@@ -270,3 +270,26 @@ They should end those transactions explicitly, gracefully finish and await their
 success/error/cancellation, retain cleanup ownership until that finishes, and verify the side's
 backends have ended before DROP DATABASE. The database-drop timeout also needs to account for
 loaded PostgreSQL teardown. No rig, recording, capture or Node source was edited.
+
+Final verification for commit 46609949: `tools/check dima-analytics` passed format, Clippy
+with warnings denied, four unit tests, one PostgreSQL/Redis route test and seven validation tests
+(12 total, no skips); candidate build passed. A loaded all-scenario exploratory run matched all
+13 scenarios with cleanup. The subsequent acceptance sequence used the committed binary and
+`verify analytics --dragonfly-dbs 4-5`, beside repeated capped `build -p dima-model` runs.
+It stopped at run 1: nine matches, four errors in the rig's PostgreSQL DROP DATABASE step
+(SQLSTATE 57014), before candidate launch for rate-window, retry-uuid, routes and validation.
+Thus **twenty consecutive loaded matches were not achieved**, and the reported grant 503's
+root cause remains unproven. This investigation is incomplete for acceptance; do not certify
+the replacement or represent the lifecycle fix as a demonstrated fix for that 503.
+
+The load build was stopped, the touched model file restored with no tracked change, and
+`dima-rig gc` finally reported `dropped 0 database(s)`. Databases left by deliberate failed
+regression experiments/early fixture timeout were removed individually; a final PostgreSQL
+query found no `dima_test_analytics_*` databases. No containers were built/started/stopped,
+nothing was deployed or pushed, and no other package was edited. Gate's final lines:
+
+```text
+   Doc-tests dima_analytics
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
