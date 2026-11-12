@@ -61,5 +61,6 @@ pub mod threads;
 // Integration notes: embedding batch sinks own the existing Qdrant upsert and use
 // language::Detector when queued language is absent. This keeps src/qdrant intact.
 // Provider errors deliberately do not echo raw embedding error messages; those can
-// contain credentials. Summary schema diagnostics preserve reference text; non-EOF
-// JSON syntax diagnostics retain serde wording (an integration parity limitation).
+// contain credentials. Summary schema diagnostics preserve reference text; JSON
+// correction prompts deliberately use Rust diagnostics with position and a bounded
+// excerpt; JavaScript runtime parser wording is not part of the migration contract.

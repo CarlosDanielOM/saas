@@ -5,8 +5,12 @@
 //! preserved verbatim; provider maxLength numbers remain 120/2000/500.
 //! Array bounds: 8 highlights, 50 parsed actions, 8 evidence strings. The sanitizer
 //! takes a typed action cap (startup default 24, minimum 5). Diagnostic snippets
-//! use 800 scalars. Schema diagnostics preserve the reference text. Non-EOF JSON
-//! syntax diagnostics use serde text: this remains an integration parity limitation.
+//! use 800 scalars for schema errors and at most 160 for JSON syntax errors.
+//! Schema diagnostics preserve reference text. JSON correction prompts deliberately
+//! use Rust's clear parser diagnostic rather than JavaScript runtime wording:
+//! every syntax error names line and column (including EOF), with no model text
+//! in the diagnostic and only the short raw_snippet excerpt. Parser wording is
+//! an accepted migration difference, not an unresolved parity gap.
 //! Quirk: runtime accepts arbitrary action type strings although provider schema
 //! restricts the type enum; nulls are rejected despite the reference's comment.
 use serde::{Deserialize, Serialize};
@@ -280,15 +284,9 @@ pub fn parse_stream_summary_response(raw: &str) -> Result<Response, ParseError> 
     let value: Value =
         serde_json::from_slice(dima_text::sanitize_lone_surrogates(cleaned.as_bytes()).as_ref())
             .map_err(|e: serde_json::Error| {
-                failure(
-                    Phase::Json,
-                    if e.is_eof() {
-                        "JSON parse error: Unexpected end of JSON input".into()
-                    } else {
-                        format!("JSON parse error: {e}")
-                    },
-                    cleaned,
-                )
+                let mut error = failure(Phase::Json, format!("JSON parse error: {e}"), "");
+                error.raw_snippet = dima_text::truncate_chars(cleaned, 160).into();
+                error
             })?;
     if !value.is_object() {
         return Err(failure(
