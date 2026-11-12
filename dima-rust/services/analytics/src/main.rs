@@ -34,7 +34,9 @@ async fn main() -> anyhow::Result<()> {
     if std::env::args().nth(1).as_deref() == Some("--migrate-only") {
         let store = dima_analytics::store::Store::connect(&value("DATABASE_URL", "")).await?;
         use dima_core::Clock;
-        store.migrate(SystemClock.now_ms()).await?;
+        let result = store.migrate(SystemClock.now_ms()).await;
+        store.close().await?;
+        result?;
         return Ok(());
     }
     let config = dima_analytics::Config {
@@ -108,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
     signals.abort();
     let _ = signals.await;
     app.state().close_mongo().await;
+    app.state().store.close().await?;
     result?;
     Ok(())
 }

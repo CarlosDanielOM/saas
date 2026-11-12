@@ -232,3 +232,41 @@ MongoDB databases/users and flushing of their claimed Dragonfly databases. Store
 removed their uniquely named fixtures. No container was started/stopped/built; nothing was
 deployed or pushed. Original author open items outside this package's requested scenarios
 (such as long-range performance and outbound fault comparisons) are not certified by these results.
+
+## Cancellation and shutdown investigation (2026-11-12)
+
+The pool previously returned a lease immediately when its future was dropped. Dropping a
+`tokio-postgres` query future does not send a PostgreSQL CancelRequest; dropping a transaction
+enqueues rollback but does not await it. The next borrower could therefore inherit unfinished
+work. Shutdown also dropped/aborted connection drivers without draining the pool.
+
+Leases now retain their concurrency permit through asynchronous cleanup. Completed operations
+await ROLLBACK before reuse; interrupted operations send CancelRequest, await rollback, and retire
+the connection (a late, unacknowledged CancelRequest must never hit another borrower). Shutdown
+rejects new leases, drains all five slots, drops clients and awaits drivers. Unique application
+names allow a final backend-exit check from the `postgres` maintenance database, using the same
+credentials; those credentials must have CONNECT there. Normal shutdown, migrate-only and failed
+startup migration all close explicitly. Existing 3/8/9/35-second limits are unchanged.
+
+Three PostgreSQL lifecycle tests cover cancellation inside an uncommitted transaction, the
+client deadline with server statement_timeout deliberately disabled, and closing five concurrent
+connections with no application database backend remaining. The route integration test additionally
+injects audit failures: grant save remains atomic, and revoke still commits deletion before its
+separate audit fails. The four marked reference defects are preserved. Fixtures use random
+`dima_test_analytics_*` databases, and the existing Redis test uses DB4 with its unique prefix.
+Fixture DDL uses a separate 60-second server timeout; service query limits are exercised unchanged.
+
+Baseline investigation: fast-forwarded rust-v2 to eb6f927f (contains 3e640bb6). Thirty loaded
+validation attempts did not reproduce the reported step-87 grant 503. They did reproduce startup
+readiness timeout, a run-relative timestamp mismatch, and database cleanup failures (55006 and
+57014). PostgreSQL samples showed WalSync waits without blockers or ungranted locks, rather than
+a demonstrated self-lock. Do not treat the lifecycle fixes as proof of the original 503's cause.
+Disabling explicit cancellation made the new cancellation regression fail and reproduced 55006
+at fixture cleanup; the experimental database was subsequently removed.
+
+Rig follow-up (outside this package): its SQL read/snapshot helpers start read-only transactions
+and abort their driver on Drop without awaiting rollback, driver exit or backend disappearance.
+They should end those transactions explicitly, gracefully finish and await their connections on
+success/error/cancellation, retain cleanup ownership until that finishes, and verify the side's
+backends have ended before DROP DATABASE. The database-drop timeout also needs to account for
+loaded PostgreSQL teardown. No rig, recording, capture or Node source was edited.
