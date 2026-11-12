@@ -176,6 +176,17 @@ impl SpamProtection {
         }
     }
 
+    /// `spamProtectionSettings(settings)` as the reference writes it (keys in its order).
+    pub fn to_json(&self) -> Value {
+        json!({
+            "enabled": self.enabled,
+            "reviewAllMessages": self.review_all_messages,
+            "categories": self.categories,
+            "thresholdPercent": json_number(self.threshold_percent),
+            "exemptTags": self.exempt_tags
+        })
+    }
+
     /// Reviews happen at all.
     pub fn active(&self) -> bool {
         self.enabled && !self.categories.is_empty()
