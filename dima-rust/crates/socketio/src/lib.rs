@@ -113,7 +113,17 @@
 //!   in the connection handler misses events that arrive first; here they wait in the socket's
 //!   inbound queue until `on_connect` returns, and `on_disconnect` is called exactly once even
 //!   when the socket left during `on_connect` (the reference then never ran a `disconnect`
-//!   listener registered late, and leaked its intervals). [`Dispatch::Sequential`] (the default)
+//!   listener registered late, and leaked its intervals).
+//! - **Handlers belong to their socket.** `on_connect` and `on_event` are cancelled (dropped at
+//!   their next await) when the socket leaves, and every handler has a deadline
+//!   ([`HandlerDeadlines`]: 60 s, 120 s, 10 s); `on_disconnect` runs afterwards under its own.
+//!   Work that must outlive the socket belongs in a task of the feature, not in a handler. A
+//!   recovered socket starts once the old socket's handlers have all ended.
+//! - **Socket data implements [`RetainedSize`]** (add up the fields), so a recovery session is
+//!   measured by what it really keeps.
+//! - **Recovery re-runs the check** ([`Namespace::recheck`], on by default; the reference skips
+//!   its middlewares): a namespace whose check cannot pass twice (a one-time ticket) sets
+//!   [`NamespaceOptions::recheck_recovery`] to `false` or overrides `recheck`. [`Dispatch::Sequential`] (the default)
 //!   handles one event at a time; use [`Dispatch::Concurrent`] where a slow handler (speech
 //!   preview) must not hold up the next event, and lock in the data where order matters.
 //! - **Disconnected sockets.** An emit on a socket that has left is never written to the
@@ -133,7 +143,9 @@
 //!   declare it as a family whose check answers `ConnectError::new("Invalid namespace")` for ids
 //!   not created yet, which the client sees exactly as the reference's refusal.
 //! - **Admission refusals** (unknown name, name over 256 bytes, more than 8 namespaces on one
-//!   connection, 4096 namespaces in the server) all answer `Invalid namespace`.
+//!   connection, a full namespace table, `max_sockets_per_namespace` sockets in the namespace)
+//!   all answer `Invalid namespace`. A handshake beyond `max_connections`, or a WebSocket when
+//!   `dima-web`'s stream quota is full, is answered `503 Service Unavailable`.
 //!
 //! # Differences from the reference
 //!
@@ -148,15 +160,18 @@
 //!   is not kept.
 //! - Family members are released with their last socket (the reference keeps them for ever);
 //!   their recovery state is kept apart and outlives them.
-//! - From `engineioxide`: the first heartbeat ping goes out when the session opens instead of
-//!   after 25 s; a polling response carries at most 1 MB (the rest follows in the next poll);
-//!   session ids are 16 characters instead of 20; a WebSocket upgrade that fails after the
-//!   WebSocket handshake (wrong probe, upgrade timeout) ends the whole session where `engine.io`
-//!   keeps the client on polling; a client closing its WebSocket right after the upgrade can make
-//!   `engineioxide`'s writer task panic on a lock it expects free (`transport/ws.rs:259`; the
-//!   panic stays in that task, the session was ending anyway).
+//! - Recovery: a session is restored only if the check still accepts the recovering handshake
+//!   (above); an event too large to store breaks recovery from earlier offsets (the client
+//!   connects fresh) where the reference, which stores everything, replays it; the stores are
+//!   bounded and evict fairly between namespaces (see the `recovery` module).
+//! - A client packet whose parsed size does not fit the inbound budgets closes the connection
+//!   (`inbound overflow`) without being parsed (see [`Options::max_inbound_bytes`]).
+//! - From the transport (`engineioxide` with the patches of `vendor/README.md`): a polling
+//!   response carries at most 1 MB (the rest follows in the next poll); session ids are 16
+//!   characters instead of 20; the small differences listed at the end of that file.
 //! - The browser client files are compressed with `flate2` for gzip and deflate (other bytes,
-//!   same content) and served from the vendored Brotli form for `br`.
+//!   same content) and served from the vendored Brotli form for `br`; they and the polling
+//!   answers carry `Vary: Accept-Encoding`, which the reference does not send.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 

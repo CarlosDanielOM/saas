@@ -5,6 +5,28 @@
 //! destroyUpgrade: false })`, everything else the defaults of `engine.io` 6.6.9 and `socket.io`
 //! 4.8.3). The bounds below them have no counterpart in the reference, which has none; their
 //! defaults are the starting values of `ledger/socketio.md`, section 3.
+//!
+//! # What the defaults bound
+//!
+//! Every limit is a reservation taken before the memory is kept or the work starts, given back
+//! on every way out. Computed for `Options::default()` on a 64-bit target (MiB = 2^20 bytes):
+//!
+//! | | Per socket | Whole server |
+//! |---|---|---|
+//! | Inbound, parsed client data (events until their handler returns, acknowledgement answers until their waiter has them) | 16 MiB (`max_inbound_bytes`) | 256 MiB (`max_inbound_total`), CONNECT data included |
+//! | Inbound, CONNECT data kept as `handshake.auth` | 16 MiB per connection | (in the 256 MiB) |
+//! | Outbound, charged until written (in the transport, or waiting in replaceable slots) | 2 MiB in the transport + 2 MiB in slots; a single larger packet (≤ 16 MiB, `max_outbound_message`) is allowed alone in each, so 32 MiB at most | 128 MiB (`max_outbound_total`) |
+//! | Recovery | a session ≤ 16 KiB | packets 64 MiB, sessions 32 MiB |
+//!
+//! So what this crate holds for clients is at most 256 + 128 + 64 + 32 = 480 MiB, plus small
+//! bookkeeping: the namespace table (33,024 members × a few hundred bytes ≈ 13 MB), 16,384
+//! acknowledgement slots and 4,096 connections × 8 sockets of fixed per-socket state (a few kB
+//! each: ≈ 100 MB if every connection joined 8 namespaces). Outside these budgets, and bounded
+//! by the transport rather than by this crate: a message being received is buffered whole
+//! before it is handed over (at most `max_http_buffer_size`, 1 MB, per connection: ≈ 3.8 GiB if
+//! all 4,096 connections sent a maximal message at the same instant), and a message being
+//! written can exist twice for a moment (Engine.IO's encoded copy, and the compressed copy of a
+//! polling answer of at most 1 MB). The reference bounds none of this.
 
 use std::time::Duration;
 
@@ -34,8 +56,10 @@ pub struct Options {
     /// same schedule, so a packet stays retrievable until the first sweep after it expired.
     pub recovery_sweep_interval: Duration,
 
-    /// Engine.IO connections open at once (4096). Beyond, a new handshake is answered
-    /// `503 Service Unavailable`.
+    /// Engine.IO connections open at once (4096), each reserved before its handshake reaches
+    /// Engine.IO. Beyond, a new handshake is answered `503 Service Unavailable`. Every WebSocket
+    /// also takes one of `dima-web`'s stream slots (reserved first, `503` when the quota is
+    /// full), so the builder refuses a value above the `ServeOptions::max_streams` it is given.
     pub max_connections: usize,
     /// Concrete namespaces in existence at once, family members included (33,024: room for
     /// `max_connections` × `max_namespaces_per_connection` members plus 256 static names). A
@@ -89,8 +113,10 @@ pub struct Options {
     pub recovery: RecoveryLimits,
     /// How long each kind of handler may run (a namespace may set its own).
     pub handler_deadlines: HandlerDeadlines,
-    /// At shutdown, how long queued output may take to reach the clients before every
-    /// connection is closed (5 s); handlers still running are dropped at the same deadline.
+    /// The whole shutdown (5 s, inside `dima-web`'s 10 s drain): queued output may reach the
+    /// clients for the first three quarters, then connections close; handlers still running are
+    /// dropped at three quarters, tasks still running aborted at seven eighths, and
+    /// [`crate::SocketIo::shutdown`] returns by the deadline with its report.
     pub shutdown_drain: Duration,
     /// How long a closing connection may take to hand its last packets and the close packet to
     /// the client, and then to end, before its socket is aborted (30 s: `engine.io`'s polling
