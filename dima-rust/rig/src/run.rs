@@ -20,6 +20,7 @@ use crate::compare;
 use crate::detect::{self, DetectCtx, Known, Patterns, Window};
 use crate::error::{Result, config};
 use crate::getlist;
+use crate::mock::{Mock, MockSpec, qdrant};
 use crate::report::{Report, ScenarioReport, SideFailure, Status};
 use crate::scenario::{self, Scenario, Selection};
 use crate::side::{self, LaunchSpec, SideProcess};
@@ -107,6 +108,16 @@ struct SideRunner<'s> {
     last_log: Option<PathBuf>,
     http: reqwest::Client,
     run_id: String,
+    /// The side's mock of the outside world (and Qdrant proxy).
+    mock: Mock,
+    qdrant: Option<qdrant::Upstream>,
+    reg: Registry,
+    /// The target's webhooks with this side's rendered secrets.
+    hooks: crate::steps::Hooks,
+    /// `${mongo_db}`, `${port.http}` ... for step strings.
+    side_values: BTreeMap<String, String>,
+    /// `{data_dir}`: emptied before each launch, filled from `seed.files`.
+    data_dir: PathBuf,
 }
 
 impl<'s> SideRunner<'s> {
@@ -123,9 +134,29 @@ impl<'s> SideRunner<'s> {
             reg,
             label,
             existing.map(|e| e.db.as_str()),
+            target.own_mongo_user,
         )
         .await?;
-        stores.side_uri = existing.and_then(|e| e.side_uri.clone());
+        if let Some(e) = existing {
+            stores.side_uri = e.side_uri.clone();
+        }
+        let data_dir = settings.out_dir.join("data").join(&stores.db_name);
+        reg.add_data_dir(&data_dir);
+        let qdrant = if target.qdrant {
+            let q = crate::config::qdrant_store(&settings.env)?;
+            let up = qdrant::Upstream {
+                url: q.url,
+                api_key: q.api_key,
+                prefix: format!("{}__", stores.db_name),
+            };
+            reg.add_qdrant(&up);
+            Some(up)
+        } else {
+            None
+        };
+        let mock = Mock::start(qdrant.clone())
+            .await
+            .map_err(|e| config(format!("the mock of the outside world did not start: {e}")))?;
         let http = reqwest::Client::builder()
             .no_proxy()
             .no_gzip()
@@ -147,6 +178,12 @@ impl<'s> SideRunner<'s> {
             last_log: None,
             http,
             run_id: run_id(),
+            mock,
+            qdrant,
+            reg: reg.clone(),
+            hooks: crate::steps::Hooks::default(),
+            side_values: BTreeMap::new(),
+            data_dir,
         })
     }
 
@@ -171,14 +208,18 @@ impl<'s> SideRunner<'s> {
         }
     }
 
-    async fn launch(&mut self) -> std::result::Result<(), SideFailure> {
+    /// Start the side's process. The mock is reset to `mock` first, so it records the
+    /// process's start-up calls.
+    async fn launch(&mut self, mock: &MockSpec) -> std::result::Result<(), SideFailure> {
         let spec = self.spec();
         let s = self.settings;
+        self.launches += 1;
         let mut ports = BTreeMap::new();
         for name in &self.target.ports {
             let p = side::free_port().map_err(|e| self.fail(format!("no free port: {e}")))?;
             ports.insert(name.clone(), p);
         }
+        self.mock.reset(mock, &ports);
         let mut vars: BTreeMap<String, String> = BTreeMap::new();
         if let Some(first) = self.target.ports.first().and_then(|n| ports.get(n)) {
             vars.insert("port".into(), first.to_string());
@@ -197,6 +238,18 @@ impl<'s> SideRunner<'s> {
         vars.insert("repo".into(), s.repo_dir.display().to_string());
         vars.insert("rig_dir".into(), s.rig_dir.display().to_string());
         vars.insert("cargo_target_dir".into(), s.cargo_target_dir.clone());
+        vars.insert("mongo_hostport".into(), mongo_hostport(&s.stores.mongo_uri));
+        vars.insert("data_dir".into(), self.data_dir.display().to_string());
+        vars.insert("mock_url".into(), self.mock.url());
+        vars.insert("mock_port".into(), self.mock.port.to_string());
+        vars.insert(
+            "qdrant_port".into(),
+            self.mock
+                .qdrant_port
+                .map_or_else(|| "0".to_string(), |p| p.to_string()),
+        );
+        // The side never sees the real key: its proxy sends that.
+        vars.insert("qdrant_api_key".into(), "rig-qdrant-placeholder".into());
         for (k, v) in &s.vars {
             vars.insert(format!("var.{k}"), v.clone());
         }
@@ -204,7 +257,26 @@ impl<'s> SideRunner<'s> {
             template::render(t, &vars)
                 .map_err(|e| self.fail(format!("{e} (pass var.<name> with --set name=value)")))
         };
-        let command = spec
+        let hook = |w: &Option<target::Webhook>| -> std::result::Result<Option<crate::steps::HookTarget>, SideFailure> {
+            match w {
+                None => Ok(None),
+                Some(w) => Ok(Some(crate::steps::HookTarget {
+                    secret: render(&w.secret)?,
+                    port: w.port.clone(),
+                    path: w.path.clone(),
+                })),
+            }
+        };
+        let hooks = crate::steps::Hooks {
+            eventsub: hook(&self.target.eventsub)?,
+            polar: hook(&self.target.polar)?,
+        };
+        let side_values: BTreeMap<String, String> = vars
+            .iter()
+            .filter(|(k, _)| template::is_side_value(k))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        let mut command = spec
             .command
             .iter()
             .map(|c| render(c))
@@ -229,7 +301,81 @@ impl<'s> SideRunner<'s> {
                 env.push((k.clone(), v.clone()));
             }
         }
-        self.launches += 1;
+        let mut container_name = None;
+        if let Some(c) = &spec.container {
+            // `docker run`: the side's environment reaches the container by name (`-e NAME`,
+            // read from the docker client's environment), so no value is on a command line.
+            let name = format!(
+                "rig-{}-{}-{}-{}",
+                std::process::id(),
+                self.stores.df_index,
+                self.label,
+                self.launches
+            );
+            self.reg.add_container(&name);
+            let mut cmd = vec![
+                "docker".to_string(),
+                "run".into(),
+                "--rm".into(),
+                "--init".into(),
+                "--name".into(),
+                name.clone(),
+                "--network".into(),
+                "host".into(),
+                "--memory".into(),
+                format!("{}m", c.memory_mb),
+                "--memory-swap".into(),
+                format!("{}m", c.memory_mb),
+                "--cpus".into(),
+                format!("{}", c.cpus),
+                "--label".into(),
+                format!("dima-rig={}", std::process::id()),
+            ];
+            if let Some(w) = &c.workdir {
+                cmd.push("--workdir".into());
+                cmd.push(render(w)?);
+            }
+            for (from, to, ro) in &c.mounts {
+                let from = PathBuf::from(render(from)?);
+                let from = if from.is_absolute() {
+                    from
+                } else {
+                    s.repo_dir.join(from)
+                };
+                let from = from.canonicalize().unwrap_or(from);
+                cmd.push("--volume".into());
+                cmd.push(format!(
+                    "{}:{}{}",
+                    from.display(),
+                    render(to)?,
+                    if *ro { ":ro" } else { "" }
+                ));
+            }
+            for (k, _) in &env {
+                cmd.push("--env".into());
+                cmd.push(k.clone());
+            }
+            cmd.push(render(&c.image)?);
+            for x in &c.command {
+                cmd.push(render(x)?);
+            }
+            command = cmd;
+            // The docker client itself needs these (they are not passed into the container).
+            for k in [
+                "PATH",
+                "HOME",
+                "DOCKER_HOST",
+                "DOCKER_CONFIG",
+                "XDG_RUNTIME_DIR",
+            ] {
+                if !env.iter().any(|(n, _)| n == k)
+                    && let Some(v) = s.env.get(k)
+                {
+                    env.push((k.into(), v.clone()));
+                }
+            }
+            container_name = Some(name);
+        }
         let log_path = s.out_dir.join("logs").join(&self.target.name).join(format!(
             "{}-{}-{}.log",
             self.run_id, self.label, self.launches
@@ -246,10 +392,59 @@ impl<'s> SideRunner<'s> {
             ready: spec.ready.clone(),
             stop_signal: spec.stop_signal,
             grace_ms: spec.grace_ms,
+            container: container_name,
         };
         let p = SideProcess::launch(ls, s.env.get("PATH").map(String::as_str)).await?;
         self.proc = Some(p);
-        Ok(())
+        self.hooks = hooks;
+        self.side_values = side_values;
+        self.wait_store_ready().await
+    }
+
+    /// Readiness that the stores show (a document, a key), after the process is up.
+    async fn wait_store_ready(&mut self) -> std::result::Result<(), SideFailure> {
+        let ready = &self.spec().ready;
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(ready.timeout_ms);
+        let filter = match &ready.probe {
+            target::Probe::Mongo { filter, .. } => Some(
+                scenario::to_doc(filter, scenario::ExtMode::Filter, 0, "ready.mongo.filter")
+                    .map_err(|e| self.fail(e))?,
+            ),
+            target::Probe::Key(_) => None,
+            _ => return Ok(()),
+        };
+        loop {
+            if let Some(p) = self.proc.as_mut()
+                && let Err(why) = p.check_alive()
+            {
+                return Err(self.fail_with_log(format!("did not become ready: {why}")));
+            }
+            let done = match (&ready.probe, &filter) {
+                (
+                    target::Probe::Mongo {
+                        collection, count, ..
+                    },
+                    Some(f),
+                ) => self
+                    .stores
+                    .count(collection, f.clone())
+                    .await
+                    .is_ok_and(|n| n >= *count),
+                (target::Probe::Key(k), _) => self.stores.key_exists(k).await.unwrap_or(false),
+                _ => true,
+            };
+            if done {
+                return Ok(());
+            }
+            if tokio::time::Instant::now() >= deadline {
+                let _ = self.stop_process().await;
+                return Err(self.fail_with_log(format!(
+                    "not ready after {} ms (the stores never showed the ready condition)",
+                    ready.timeout_ms
+                )));
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
     }
 
     async fn stop_process(&mut self) -> Option<String> {
@@ -257,24 +452,99 @@ impl<'s> SideRunner<'s> {
         p.stop().await
     }
 
-    /// Let a fresh process finish its start-up writes (bounded; never fails).
-    async fn settle(&mut self) {
+    /// Let a fresh process finish its start-up writes and start-up calls to the mock: until the
+    /// stores were quiet for 200 ms and the mock for 300 ms, at most `max_ms` (never fails).
+    /// What is not compared does not count (log and telemetry keys a scenario excludes, calls
+    /// to providers that are not compared): such traffic never stops.
+    async fn settle(&mut self, max_ms: u64, quiet: &SettleIgnore) {
         let mut last = None;
         let mut since = tokio::time::Instant::now();
-        let deadline = since + Duration::from_secs(3);
+        let deadline = since + Duration::from_millis(max_ms);
         while tokio::time::Instant::now() < deadline {
-            let Ok(fp) = self.stores.fingerprint(&[], &[]).await else {
+            let Ok(fp) = self
+                .stores
+                .fingerprint(&quiet.keys, &quiet.collections)
+                .await
+            else {
                 return;
             };
             let t = tokio::time::Instant::now();
+            let mock_quiet =
+                timefmt::now_ms() - self.mock.last_request_except(&quiet.providers) >= 300;
             if last != Some(fp) {
                 last = Some(fp);
                 since = t;
-            } else if t.duration_since(since) >= Duration::from_millis(200) {
+            } else if t.duration_since(since) >= Duration::from_millis(200) && mock_quiet {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
+    }
+
+    fn settle_ms(&self, mock: &MockSpec) -> u64 {
+        mock.settle_ms.unwrap_or(3000)
+    }
+
+    /// What the settle step ignores for this scenario (or the target alone).
+    fn settle_ignore(&self, sc: Option<&Scenario>, mock: &MockSpec) -> SettleIgnore {
+        let mut order = mock.call_order.clone();
+        if let Some(sc) = sc {
+            order.extend(sc.call_rules.order.clone());
+        }
+        let mut providers: Vec<String> = order
+            .iter()
+            .filter(|(_, o)| **o == crate::mock::providers::CallOrder::Ignore)
+            .map(|(p, _)| p.clone())
+            .collect();
+        if let Ok(table) = crate::mock::providers::Providers::builtin() {
+            for p in &table.list {
+                if p.order == crate::mock::providers::CallOrder::Ignore
+                    && !order.contains_key(&p.name)
+                {
+                    providers.push(p.name.clone());
+                }
+            }
+        }
+        SettleIgnore {
+            keys: sc.map(|s| s.dragonfly.exclude.clone()).unwrap_or_default(),
+            collections: sc.map(|s| s.mongo.exclude.clone()).unwrap_or_default(),
+            providers,
+        }
+    }
+
+    /// The side's data directory: emptied (when `wipe`), then the scenario's `seed.files`.
+    fn seed_files(&self, sc: &Scenario, wipe: bool) -> std::result::Result<(), SideFailure> {
+        let dir = &self.data_dir;
+        if wipe && dir.exists() {
+            std::fs::remove_dir_all(dir).map_err(|e| {
+                self.fail(format!(
+                    "emptying the data directory {}: {e}",
+                    dir.display()
+                ))
+            })?;
+        }
+        std::fs::create_dir_all(dir)
+            .map_err(|e| self.fail(format!("creating {}: {e}", dir.display())))?;
+        for (rel, bytes) in &sc.seed_files {
+            let path = dir.join(rel);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| self.fail(format!("creating {}: {e}", parent.display())))?;
+            }
+            std::fs::write(&path, bytes)
+                .map_err(|e| self.fail(format!("seed file {}: {e}", path.display())))?;
+        }
+        Ok(())
+    }
+
+    /// Each own-process scenario starts with an empty Qdrant, like the other stores.
+    async fn reset_qdrant(&self) -> std::result::Result<(), SideFailure> {
+        if let Some(up) = &self.qdrant {
+            qdrant::drop_prefixed(up)
+                .await
+                .map_err(|e| self.fail(format!("emptying the side's Qdrant collections: {e}")))?;
+        }
+        Ok(())
     }
 
     async fn ensure_shared(&mut self) -> std::result::Result<(), SideFailure> {
@@ -288,8 +558,15 @@ impl<'s> SideRunner<'s> {
             .reset_empty()
             .await
             .map_err(|e| self.fail(e.to_string()))?;
-        self.launch().await?;
-        self.settle().await;
+        self.reset_qdrant().await?;
+        if self.data_dir.exists() {
+            let _ = std::fs::remove_dir_all(&self.data_dir);
+        }
+        let _ = std::fs::create_dir_all(&self.data_dir);
+        let target_mock = self.target.mock.clone();
+        self.launch(&target_mock).await?;
+        let quiet = self.settle_ignore(None, &target_mock);
+        self.settle(self.settle_ms(&target_mock), &quiet).await;
         let b = self
             .stores
             .snapshot()
@@ -302,7 +579,9 @@ impl<'s> SideRunner<'s> {
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
         let seeded_at = timefmt::now_ms();
         let start = seeded_at;
-        let own_process = !self.target.share_process || sc.restart;
+        let own_process = !(self.target.share_process || sc.share_process) || sc.restart;
+        let mock_spec = MockSpec::merged(&self.target.mock, &sc.mock);
+        let mut startup_keys = Vec::new();
         if own_process {
             let _ = self.stop_process().await;
             self.baseline = None;
@@ -310,12 +589,23 @@ impl<'s> SideRunner<'s> {
                 .reset_empty()
                 .await
                 .map_err(|e| self.fail(e.to_string()))?;
+            self.reset_qdrant().await?;
             self.stores
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
-            self.launch().await?;
-            self.settle().await;
+            self.seed_files(sc, true)?;
+            // Keys the seed gave a TTL are the seed's, not the start-up's.
+            let seeded = self.stores.ttl_keys().await.unwrap_or_default();
+            self.launch(&mock_spec).await?;
+            let quiet = self.settle_ignore(Some(sc), &mock_spec);
+            self.settle(self.settle_ms(&mock_spec), &quiet).await;
+            startup_keys = self.stores.ttl_keys().await.unwrap_or_default();
+            startup_keys.retain(|(k, e)| {
+                !seeded
+                    .iter()
+                    .any(|(sk, se)| sk == k && (se - e).abs() <= 1000)
+            });
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
@@ -328,6 +618,13 @@ impl<'s> SideRunner<'s> {
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
+            self.seed_files(sc, false)?;
+            let ports = self
+                .proc
+                .as_ref()
+                .map(|p| p.ports.clone())
+                .unwrap_or_default();
+            self.mock.reset(&mock_spec, &ports);
         }
         let Some(proc) = self.proc.as_mut() else {
             return Err(self.fail("no process"));
@@ -342,9 +639,18 @@ impl<'s> SideRunner<'s> {
             http: &self.http,
             saved: BTreeMap::new(),
             allow_scripts: sc.allow_scripts,
+            mock: &self.mock,
+            hooks: &self.hooks,
+            side_values: self.side_values.clone(),
         };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
+        let problems = self.mock.problems();
+        let problem_text = problems
+            .iter()
+            .map(|p| format!("{} ({}ms into the run): {}", p.kind, p.at - start, p.detail))
+            .collect::<Vec<_>>()
+            .join("; ");
         let steps = match result {
             Ok(s) => s,
             Err(e) => {
@@ -352,13 +658,37 @@ impl<'s> SideRunner<'s> {
                 // or dead): the next scenario gets a fresh one.
                 let _ = self.stop_process().await;
                 self.baseline = None;
+                let message = if problems.is_empty() {
+                    e.message
+                } else {
+                    format!("{}; the mock also saw: {problem_text}", e.message)
+                };
                 let failure = SideFailure {
                     step: Some(e.step),
-                    ..self.fail_with_log(e.message)
+                    ..self.fail_with_log(message)
                 };
                 return Err(failure);
             }
         };
+        if !problems.is_empty() {
+            let _ = self.stop_process().await;
+            self.baseline = None;
+            return Err(self.fail_with_log(format!(
+                "the side called the outside world in a way the mock does not answer: {problem_text}"
+            )));
+        }
+        let mut calls = self.mock.calls();
+        let mut startup_ignored = BTreeMap::new();
+        if mock_spec.startup_ignore {
+            calls.retain(|c| {
+                if c.at < start {
+                    *startup_ignored.entry(c.provider.clone()).or_insert(0) += 1;
+                    false
+                } else {
+                    true
+                }
+            });
+        }
         let mongo = self
             .stores
             .capture_mongo(&sc.mongo)
@@ -383,6 +713,9 @@ impl<'s> SideRunner<'s> {
             mongo_uri: capture::redact_uri(&self.stores.mongo_uri()),
             dragonfly_db: self.stores.df_index,
             dragonfly_url: self.stores.dragonfly_url(),
+            mock_port: Some(self.mock.port),
+            qdrant_port: self.mock.qdrant_port,
+            qdrant_prefix: self.mock.qdrant_prefix.clone(),
         };
         if let Some(p) = self.proc.as_mut()
             && let Err(why) = p.check_alive()
@@ -399,15 +732,53 @@ impl<'s> SideRunner<'s> {
             steps,
             mongo,
             dragonfly,
+            calls,
+            startup_ignored,
+            startup_keys,
         };
         raw.sort();
         Ok(RawRun { raw, run })
     }
 
-    /// Stop the process; the stores stay claimed until [`Registry::cleanup`].
+    /// Stop the process and the mock; the stores stay claimed until [`Registry::cleanup`].
     async fn finish(mut self) {
         let _ = self.stop_process().await;
+        self.mock.stop().await;
     }
+}
+
+/// `host:port` of the first MongoDB host in a URI (`127.0.0.1:27017` by default).
+fn mongo_hostport(uri: &str) -> String {
+    let rest = uri.split_once("://").map_or(uri, |(_, r)| r);
+    let authority = rest.split(['/', '?']).next().unwrap_or("");
+    let hosts = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+    let first = hosts.split(',').next().unwrap_or("");
+    if first.is_empty() {
+        "127.0.0.1:27017".into()
+    } else if first.contains(':') {
+        first.to_string()
+    } else {
+        format!("{first}:27017")
+    }
+}
+
+/// The target's candidate does not exist yet: only `record` and `check` can run.
+fn require_candidate(target: &Target) -> Result<()> {
+    match &target.candidate.unavailable {
+        Some(why) => Err(config(format!(
+            "target {}: the candidate is not available ({why}); this target is record only: run `dima-rig record {}`",
+            target.name, target.name
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// What the start-up settle step does not wait for.
+#[derive(Debug, Default)]
+struct SettleIgnore {
+    keys: Vec<String>,
+    collections: Vec<String>,
+    providers: Vec<String>,
 }
 
 /// An existing database a side reads (`diff-get`), and the URI it gets for it.
@@ -447,6 +818,7 @@ pub struct Rules<'a> {
     pub byte_sensitive: &'a [String],
     /// The `$rigNow` offsets of the seed (`true`: epoch seconds).
     pub seed_offsets: &'a [(i64, bool)],
+    pub calls: &'a crate::detect::CallRules,
 }
 
 impl<'a> Rules<'a> {
@@ -458,6 +830,7 @@ impl<'a> Rules<'a> {
             as_text: &sc.as_text,
             byte_sensitive,
             seed_offsets: &sc.seed_offsets,
+            calls: &sc.call_rules,
         }
     }
 }
@@ -479,6 +852,7 @@ pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture
         as_text: rules.as_text.to_vec(),
         byte_sensitive: rules.byte_sensitive.to_vec(),
         seed_offsets: rules.seed_offsets.to_vec(),
+        calls: rules.calls.clone(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
@@ -569,10 +943,22 @@ fn load_scenarios(
             settings.rig_dir.join("scenarios").join(target).display()
         )));
     }
+    let (target_mock, target_order) = target::load(&settings.rig_dir, target)
+        .map(|t| (t.mock_json, t.mock.call_order))
+        .unwrap_or((serde_json::Value::Null, BTreeMap::new()));
     let mut out = Vec::new();
     for n in names {
         match scenario::load(&settings.rig_dir, target, &n, p) {
-            Ok(s) => out.push(s),
+            Ok(mut s) => {
+                // Values the target's mock answers with are inputs too.
+                detect::collect_known_json(p, &target_mock, &mut s.known);
+                // How calls compare: the scenario's compare.calls, then its mock.compare,
+                // then the target's mock.compare, then the provider table.
+                for (k, v) in s.mock.call_order.iter().chain(target_order.iter()) {
+                    s.call_rules.order.entry(k.clone()).or_insert(*v);
+                }
+                out.push(s)
+            }
             Err(e) => report.scenarios.push(ScenarioReport::error(
                 &n,
                 "",
@@ -601,7 +987,12 @@ fn read_capture(path: &FsPath) -> std::result::Result<CaptureFile, String> {
 pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Result<Report> {
     let mut report = Report::new("check", target_name);
     let p = patterns()?;
-    target::load(&settings.rig_dir, target_name)?;
+    let target = target::load(&settings.rig_dir, target_name)?;
+    if let Some(why) = &target.candidate.unavailable {
+        report
+            .warnings
+            .push(format!("candidate not available ({why}): record only"));
+    }
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     for sc in scenarios {
         let mut r = ScenarioReport::new(&sc.name, &sc.description);
@@ -631,6 +1022,7 @@ pub async fn compare_live(
 ) -> Result<Report> {
     let mut report = Report::new("compare", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     let refs = run_side(
@@ -687,6 +1079,7 @@ pub async fn verify(
 ) -> Result<Report> {
     let mut report = Report::new("verify", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
     let mut runnable = Vec::new();
@@ -845,7 +1238,7 @@ pub async fn record(
         }
         let path = capture_path(settings, target_name, &sc.name);
         // Unchanged: the stored capture, normalised by the current code, still matches.
-        let unchanged = match read_capture(&path) {
+        let (unchanged, had_capture) = match read_capture(&path) {
             Ok(old)
                 if old.hashes.scenario == sc.hash
                     && old.provenance.target == target_name
@@ -858,15 +1251,23 @@ pub async fn record(
                 };
                 let oc = normalise_sc(&old, sc, &fresh, &p, settings);
                 let nc = normalise_sc(&r1, sc, &fresh, &p, settings);
-                compare::compare(&oc, &nc, &fresh, sc.tolerances)
-                    .differences
-                    .is_empty()
+                (
+                    compare::compare(&oc, &nc, &fresh, sc.tolerances).differences,
+                    true,
+                )
             }
-            _ => false,
+            _ => (Vec::new(), false),
         };
-        if unchanged {
+        if unchanged.is_empty() && had_capture {
             rep.status = Status::Unchanged;
         } else {
+            // Say what changed against the stored capture (a reviewer checks it).
+            for f in unchanged.iter().take(20) {
+                rep.warnings.push(format!(
+                    "changed from the stored capture: {}: {}",
+                    f.path, f.what
+                ));
+            }
             let text = capture::to_file_string(&capture_file(target_name, sc, &r1, label));
             if let Some(dir) = path.parent() {
                 std::fs::create_dir_all(dir)
@@ -903,6 +1304,7 @@ pub async fn diff_get(
 ) -> Result<Report> {
     let mut report = Report::new("diff-get", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
+    require_candidate(&target)?;
     let p = patterns()?;
     let list = getlist::load(list_file)?;
     if db.is_empty() || db.contains(['/', '\\', '.', ' ', '"', '$']) {
@@ -945,6 +1347,10 @@ pub async fn diff_get(
         files: Vec::new(),
         seed_offsets: Vec::new(),
         known,
+        mock: MockSpec::default(),
+        call_rules: crate::detect::CallRules::default(),
+        share_process: false,
+        seed_files: Vec::new(),
     };
     if allow_writes {
         report.warnings.push(format!(

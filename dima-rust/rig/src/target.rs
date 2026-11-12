@@ -6,6 +6,7 @@ use std::path::{Path as FsPath, PathBuf};
 use serde::Deserialize;
 
 use crate::error::{Result, config};
+use crate::mock::{MockFile, MockSpec};
 use crate::template;
 
 pub const TARGET_VERSION: u64 = 1;
@@ -20,23 +21,91 @@ struct TargetFile {
     ports: Option<Vec<String>>,
     #[serde(default)]
     share_process: bool,
+    /// The mock's routes and seeds for every scenario of the target.
+    #[serde(default)]
+    mock: Option<serde_json::Value>,
+    /// Give each side a prefixing proxy to the local Qdrant (`{qdrant_port}`).
+    #[serde(default)]
+    qdrant: bool,
+    /// Where the signed-webhook steps deliver, and with which test secret.
+    #[serde(default)]
+    webhooks: Option<WebhooksFile>,
+    /// `side` (default): each side gets a MongoDB user that may only use its own database.
+    /// `rig`: the side gets the rig's own credentials (needs `mongo_user_reason`).
+    #[serde(default)]
+    mongo_user: Option<String>,
+    #[serde(default)]
+    mongo_user_reason: Option<String>,
     reference: SideFile,
     candidate: SideFile,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct WebhooksFile {
+    #[serde(default)]
+    eventsub: Option<WebhookFile>,
+    #[serde(default)]
+    polar: Option<WebhookFile>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WebhookFile {
+    /// The side's test secret (a template, like the side's environment).
+    secret: String,
+    /// The target port the webhook is sent to (default the primary port).
+    #[serde(default)]
+    port: Option<String>,
+    path: String,
+}
+
+/// Where a kind of signed webhook goes (`eventsub` and `polar` steps).
+#[derive(Debug, Clone)]
+pub struct Webhook {
+    pub secret: String,
+    pub port: Option<String>,
+    pub path: String,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SideFile {
+    #[serde(default)]
     command: Vec<String>,
+    /// Run the side as a container instead of a local program.
+    #[serde(default)]
+    container: Option<ContainerFile>,
+    /// This side does not exist yet (`"The Rust API does not exist yet"`): the target is
+    /// record only.
+    #[serde(default)]
+    unavailable: Option<String>,
     #[serde(default)]
     cwd: Option<String>,
     #[serde(default)]
     env: BTreeMap<String, String>,
     #[serde(default)]
     pass_env: Vec<String>,
-    ready: ReadyFile,
+    #[serde(default)]
+    ready: Option<ReadyFile>,
     #[serde(default)]
     stop: Option<StopFile>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ContainerFile {
+    image: String,
+    command: Vec<String>,
+    /// `[host path, container path]` or `[host path, container path, "ro"]`.
+    #[serde(default)]
+    mounts: Vec<Vec<String>>,
+    #[serde(default)]
+    memory_mb: Option<u64>,
+    #[serde(default)]
+    cpus: Option<f64>,
+    #[serde(default)]
+    workdir: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -46,11 +115,29 @@ struct ReadyFile {
     http: Option<String>,
     #[serde(default)]
     tcp: Option<bool>,
+    /// A regular expression the side's output must match.
+    #[serde(default)]
+    log: Option<String>,
+    #[serde(default)]
+    mongo: Option<ReadyMongoFile>,
+    /// A Dragonfly key (glob) that must exist.
+    #[serde(default)]
+    key: Option<String>,
     #[serde(default)]
     port: Option<String>,
     #[serde(default)]
     status: Option<u16>,
     timeout_ms: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReadyMongoFile {
+    collection: String,
+    #[serde(default)]
+    filter: Option<serde_json::Value>,
+    #[serde(default)]
+    count: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -68,6 +155,28 @@ pub enum Probe {
     Http { path: String, status: Option<u16> },
     /// Until the port accepts a TCP connection.
     Tcp,
+    /// Until the side's output (its log) matches.
+    Log(regex::Regex),
+    /// Until at least `count` documents match in the side's database.
+    Mongo {
+        collection: String,
+        filter: serde_json::Value,
+        count: u64,
+    },
+    /// Until a Dragonfly key matching the glob exists in the side's logical database.
+    Key(String),
+}
+
+/// A side that runs in a container (`docker run --rm --network host`).
+#[derive(Debug, Clone)]
+pub struct Container {
+    pub image: String,
+    pub command: Vec<String>,
+    /// (host path, container path, read-only); templates.
+    pub mounts: Vec<(String, String, bool)>,
+    pub memory_mb: u64,
+    pub cpus: f64,
+    pub workdir: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +196,10 @@ pub enum StopSignal {
 
 #[derive(Debug, Clone)]
 pub struct SideSpec {
+    /// `Some(reason)`: the side does not exist yet; the target is record only.
+    pub unavailable: Option<String>,
+    /// Exactly one of `command` (non-empty) and `container`.
+    pub container: Option<Container>,
     pub command: Vec<String>,
     pub cwd: Option<String>,
     pub env: BTreeMap<String, String>,
@@ -107,6 +220,14 @@ pub struct Target {
     /// subscriptions) carries from one scenario into the next, so a scenario's result can
     /// depend on which scenarios ran before it. Default: one process per scenario.
     pub share_process: bool,
+    pub mock: MockSpec,
+    /// The target's `mock` section as written (its values are known inputs).
+    pub mock_json: serde_json::Value,
+    pub qdrant: bool,
+    /// Each side connects with a user limited to its own database.
+    pub own_mongo_user: bool,
+    pub eventsub: Option<Webhook>,
+    pub polar: Option<Webhook>,
     pub reference: SideSpec,
     pub candidate: SideSpec,
 }
@@ -125,6 +246,12 @@ pub const PLACEHOLDERS: &[&str] = &[
     "repo",
     "rig_dir",
     "cargo_target_dir",
+    "mongo_hostport",
+    "data_dir",
+    "mock_url",
+    "mock_port",
+    "qdrant_port",
+    "qdrant_api_key",
 ];
 
 fn valid_name(s: &str) -> bool {
@@ -152,14 +279,89 @@ fn check_template(tpl: &str, ports: &[String], where_: &str) -> Result<()> {
 }
 
 fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
-    if f.command.is_empty() {
-        return Err(config(format!(
-            "{where_}.command: needs at least the program"
-        )));
+    if let Some(reason) = f.unavailable {
+        if !f.command.is_empty() || f.container.is_some() || f.ready.is_some() {
+            return Err(config(format!(
+                "{where_}: an unavailable side has only \"unavailable\": \"<why>\""
+            )));
+        }
+        if reason.trim().chars().count() < 8 {
+            return Err(config(format!(
+                "{where_}.unavailable: say why the side does not exist yet"
+            )));
+        }
+        return Ok(SideSpec {
+            unavailable: Some(reason),
+            container: None,
+            command: Vec::new(),
+            cwd: None,
+            env: BTreeMap::new(),
+            pass_env: Vec::new(),
+            ready: Ready {
+                probe: Probe::Tcp,
+                port: ports.first().cloned().unwrap_or_default(),
+                timeout_ms: 1,
+            },
+            stop_signal: StopSignal::Term,
+            grace_ms: 0,
+        });
     }
+    let container = match f.container {
+        Some(c) if f.command.is_empty() => {
+            if c.image.is_empty() || c.command.is_empty() {
+                return Err(config(format!(
+                    "{where_}.container: needs an image and a command"
+                )));
+            }
+            check_template(&c.image, ports, &format!("{where_}.container.image"))?;
+            for (i, x) in c.command.iter().enumerate() {
+                check_template(x, ports, &format!("{where_}.container.command[{i}]"))?;
+            }
+            let mut mounts = Vec::new();
+            for (i, m) in c.mounts.iter().enumerate() {
+                let here = format!("{where_}.container.mounts[{i}]");
+                let (from, to, ro) = match m.as_slice() {
+                    [a, b] => (a.clone(), b.clone(), false),
+                    [a, b, mode] if mode == "ro" => (a.clone(), b.clone(), true),
+                    _ => {
+                        return Err(config(format!(
+                            "{here}: [host path, container path] or [host path, container path, \"ro\"]"
+                        )));
+                    }
+                };
+                check_template(&from, ports, &here)?;
+                check_template(&to, ports, &here)?;
+                mounts.push((from, to, ro));
+            }
+            Some(Container {
+                image: c.image,
+                command: c.command,
+                mounts,
+                memory_mb: c.memory_mb.unwrap_or(1024).clamp(64, 8192),
+                cpus: c.cpus.unwrap_or(2.0).clamp(0.1, 8.0),
+                workdir: c.workdir,
+            })
+        }
+        Some(_) => {
+            return Err(config(format!(
+                "{where_}: exactly one of command and container"
+            )));
+        }
+        None => {
+            if f.command.is_empty() {
+                return Err(config(format!(
+                    "{where_}.command: needs at least the program (or a container)"
+                )));
+            }
+            None
+        }
+    };
     for (i, c) in f.command.iter().enumerate() {
         check_template(c, ports, &format!("{where_}.command[{i}]"))?;
     }
+    let Some(ready) = f.ready else {
+        return Err(config(format!("{where_}.ready: required")));
+    };
     if let Some(cwd) = &f.cwd {
         check_template(cwd, ports, &format!("{where_}.cwd"))?;
     }
@@ -181,34 +383,52 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
             )));
         }
     }
-    let probe = match (f.ready.http, f.ready.tcp) {
-        (Some(path), None | Some(false)) => {
-            if !path.starts_with('/') {
-                return Err(config(format!(
-                    "{where_}.ready.http: a path starting with /, such as /health"
-                )));
-            }
-            Probe::Http {
-                path,
-                status: f.ready.status,
-            }
-        }
-        (None, Some(true)) => {
-            if f.ready.status.is_some() {
-                return Err(config(format!(
-                    "{where_}.ready.status: only with an http probe"
-                )));
-            }
-            Probe::Tcp
-        }
-        _ => {
+    let given = [
+        ready.http.is_some(),
+        ready.tcp == Some(true),
+        ready.log.is_some(),
+        ready.mongo.is_some(),
+        ready.key.is_some(),
+    ]
+    .iter()
+    .filter(|x| **x)
+    .count();
+    if given != 1 {
+        return Err(config(format!(
+            "{where_}.ready: needs exactly one of \"http\": \"/path\", \"tcp\": true, \"log\": \"<regex>\", \"mongo\": {{...}} or \"key\": \"<glob>\""
+        )));
+    }
+    if ready.status.is_some() && ready.http.is_none() {
+        return Err(config(format!(
+            "{where_}.ready.status: only with an http probe"
+        )));
+    }
+    let probe = if let Some(path) = ready.http {
+        if !path.starts_with('/') {
             return Err(config(format!(
-                "{where_}.ready: needs exactly one of \"http\": \"/path\" or \"tcp\": true"
+                "{where_}.ready.http: a path starting with /, such as /health"
             )));
         }
+        Probe::Http {
+            path,
+            status: ready.status,
+        }
+    } else if let Some(re) = ready.log {
+        Probe::Log(regex::Regex::new(&re).map_err(|e| config(format!("{where_}.ready.log: {e}")))?)
+    } else if let Some(m) = ready.mongo {
+        Probe::Mongo {
+            collection: m.collection,
+            filter: m
+                .filter
+                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
+            count: m.count.unwrap_or(1),
+        }
+    } else if let Some(k) = ready.key {
+        Probe::Key(k)
+    } else {
+        Probe::Tcp
     };
-    let port = f
-        .ready
+    let port = ready
         .port
         .unwrap_or_else(|| ports.first().cloned().unwrap_or_default());
     if !ports.contains(&port) {
@@ -217,7 +437,7 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
             ports.join(", ")
         )));
     }
-    if f.ready.timeout_ms == 0 || f.ready.timeout_ms > 600_000 {
+    if ready.timeout_ms == 0 || ready.timeout_ms > 600_000 {
         return Err(config(format!(
             "{where_}.ready.timeout_ms: between 1 and 600000"
         )));
@@ -242,6 +462,8 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
         return Err(config(format!("{where_}.stop.grace_ms: at most 120000")));
     }
     Ok(SideSpec {
+        unavailable: None,
+        container,
         command: f.command,
         cwd: f.cwd,
         env: f.env,
@@ -249,7 +471,7 @@ fn side(f: SideFile, ports: &[String], where_: &str) -> Result<SideSpec> {
         ready: Ready {
             probe,
             port,
-            timeout_ms: f.ready.timeout_ms,
+            timeout_ms: ready.timeout_ms,
         },
         stop_signal,
         grace_ms,
@@ -285,13 +507,71 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
         }
     }
     let reference = side(f.reference, &ports, &format!("{at}: reference"))?;
+    if reference.unavailable.is_some() {
+        return Err(config(format!(
+            "{at}: reference: the reference always exists (only the candidate can be unavailable)"
+        )));
+    }
     let candidate = side(f.candidate, &ports, &format!("{at}: candidate"))?;
+    let webhook = |w: Option<WebhookFile>, kind: &str| -> Result<Option<Webhook>> {
+        let Some(w) = w else { return Ok(None) };
+        check_template(&w.secret, &ports, &format!("{at}: webhooks.{kind}.secret"))?;
+        if !w.path.starts_with('/') {
+            return Err(config(format!("{at}: webhooks.{kind}.path: starts with /")));
+        }
+        if let Some(p) = &w.port
+            && !ports.contains(p)
+        {
+            return Err(config(format!(
+                "{at}: webhooks.{kind}.port: `{p}` is not one of the target's ports"
+            )));
+        }
+        Ok(Some(Webhook {
+            secret: w.secret,
+            port: w.port,
+            path: w.path,
+        }))
+    };
+    let own_mongo_user = match f.mongo_user.as_deref() {
+        None | Some("side") => true,
+        Some("rig") => {
+            if f.mongo_user_reason
+                .as_deref()
+                .is_none_or(|r| r.trim().chars().count() < 8)
+            {
+                return Err(config(format!(
+                    "{at}: mongo_user_reason: say why the sides need the rig's own MongoDB credentials"
+                )));
+            }
+            false
+        }
+        Some(other) => {
+            return Err(config(format!("{at}: mongo_user: `{other}` (side or rig)")));
+        }
+    };
+    let hooks = f.webhooks.unwrap_or_default();
+    let eventsub = webhook(hooks.eventsub, "eventsub")?;
+    let polar = webhook(hooks.polar, "polar")?;
+    let mock_json = f.mock.unwrap_or(serde_json::Value::Null);
+    let mock = if mock_json.is_null() {
+        MockSpec::default()
+    } else {
+        let mf: MockFile = serde_json::from_value(mock_json.clone())
+            .map_err(|e| config(format!("{at}: mock: {e}")))?;
+        MockSpec::from_file(mf, &format!("{at}: target")).map_err(config)?
+    };
     Ok(Target {
         name: name.to_string(),
         file,
         description: f.description,
         ports,
         share_process: f.share_process,
+        mock,
+        mock_json,
+        qdrant: f.qdrant,
+        own_mongo_user,
+        eventsub,
+        polar,
         reference,
         candidate,
     })

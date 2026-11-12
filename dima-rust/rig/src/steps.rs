@@ -6,6 +6,7 @@ use std::time::Duration;
 use serde_json::Value;
 
 use crate::capture::{RawHttp, RawReplyStep, RawStep};
+use crate::mock::Mock;
 use crate::path::Seg as PSeg;
 use crate::scenario::{self, ReqBody, SaveFrom, Step, StepKind, WaitCond};
 use crate::side::SideProcess;
@@ -23,6 +24,20 @@ pub struct StepError {
     pub message: String,
 }
 
+/// Where a kind of signed webhook goes for this side (rendered from the target).
+#[derive(Debug, Clone)]
+pub struct HookTarget {
+    pub secret: String,
+    pub port: Option<String>,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Hooks {
+    pub eventsub: Option<HookTarget>,
+    pub polar: Option<HookTarget>,
+}
+
 pub struct Runner<'a> {
     pub stores: &'a mut SideStores,
     pub proc: &'a mut SideProcess,
@@ -30,6 +45,31 @@ pub struct Runner<'a> {
     pub saved: BTreeMap<String, String>,
     /// The scenario's `allow_scripts`.
     pub allow_scripts: bool,
+    pub mock: &'a Mock,
+    pub hooks: &'a Hooks,
+    /// Side values usable in step strings: `${port.http}`, `${mongo_db}`, ...
+    pub side_values: BTreeMap<String, String>,
+}
+
+/// A request the rig sends to the side, and what it does with the answer.
+struct Exchange<'e> {
+    method: &'e str,
+    port: Option<&'e str>,
+    path: String,
+    headers: Vec<(String, String)>,
+    body: Option<Vec<u8>>,
+    timeout_ms: u64,
+    expect_status: Option<&'e [u16]>,
+    save: &'e [(String, SaveFrom)],
+}
+
+/// A Twitch timestamp: RFC 3339 with nanoseconds.
+fn twitch_time(ms: i64) -> String {
+    let iso = timefmt::format_iso_ms(ms).unwrap_or_default();
+    match iso.strip_suffix('Z') {
+        Some(base) => format!("{base}000000Z"),
+        None => iso,
+    }
 }
 
 fn err(step: usize, message: impl Into<String>) -> StepError {
@@ -65,34 +105,30 @@ impl Runner<'_> {
         Ok(())
     }
 
+    fn fill(&self, i: usize, s: &str, now: i64) -> Result<String, StepError> {
+        let mut all = self.side_values.clone();
+        all.extend(self.saved.iter().map(|(k, v)| (k.clone(), v.clone())));
+        template::interpolate(s, &all, now).map_err(|e| err(i, e))
+    }
+
+    fn values(&self) -> BTreeMap<String, String> {
+        let mut all = self.side_values.clone();
+        all.extend(self.saved.iter().map(|(k, v)| (k.clone(), v.clone())));
+        all
+    }
+
     async fn http(&mut self, i: usize, h: &scenario::HttpStep) -> Result<RawStep, StepError> {
         let now = timefmt::now_ms();
-        let fill = |s: &str| template::interpolate(s, &self.saved, now).map_err(|e| err(i, e));
-        let port_name = h
-            .port
-            .clone()
-            .unwrap_or_else(|| self.proc.primary_port.clone());
-        let port = self
-            .proc
-            .port(&port_name)
-            .ok_or_else(|| err(i, format!("no port named `{port_name}` in the target")))?;
-        let url = format!("http://127.0.0.1:{port}{}", fill(&h.path)?);
-        let method =
-            reqwest::Method::from_bytes(h.method.as_bytes()).map_err(|e| err(i, e.to_string()))?;
-        let mut req = self
-            .http
-            .request(method, &url)
-            .timeout(Duration::from_millis(h.timeout_ms));
-        let mut has_ct = false;
+        let mut headers = Vec::new();
         for (k, v) in &h.headers {
-            has_ct |= k == "content-type";
-            req = req.header(k.as_str(), fill(v)?);
+            headers.push((k.clone(), self.fill(i, v, now)?));
         }
+        let values = self.values();
         let (body, ct): (Option<Vec<u8>>, Option<&str>) = match &h.body {
             ReqBody::None => (None, None),
             ReqBody::Json(v) => {
                 let resolved =
-                    scenario::resolve_json(v, &self.saved, now, "json").map_err(|e| err(i, e))?;
+                    scenario::resolve_json(v, &values, now, "json").map_err(|e| err(i, e))?;
                 (
                     Some(serde_json::to_vec(&resolved).map_err(|e| err(i, e.to_string()))?),
                     Some("application/json"),
@@ -101,7 +137,7 @@ impl Runner<'_> {
             ReqBody::Form(pairs) => {
                 let mut ser = Vec::new();
                 for (k, v) in pairs {
-                    ser.push((fill(k)?, fill(v)?));
+                    ser.push((self.fill(i, k, now)?, self.fill(i, v, now)?));
                 }
                 let encoded: Vec<String> = ser
                     .iter()
@@ -112,13 +148,50 @@ impl Runner<'_> {
                     Some("application/x-www-form-urlencoded"),
                 )
             }
-            ReqBody::Text(t) => (Some(fill(t)?.into_bytes()), None),
+            ReqBody::Text(t) => (Some(self.fill(i, t, now)?.into_bytes()), None),
             ReqBody::Bytes(b) => (Some(b.clone()), None),
         };
-        if let (Some(ct), false) = (ct, has_ct) {
-            req = req.header("content-type", ct);
+        if let Some(ct) = ct
+            && !headers.iter().any(|(k, _)| k == "content-type")
+        {
+            headers.push(("content-type".into(), ct.into()));
         }
-        if let Some(b) = body {
+        let path = self.fill(i, &h.path, now)?;
+        self.exchange(
+            i,
+            Exchange {
+                method: &h.method,
+                port: h.port.as_deref(),
+                path,
+                headers,
+                body,
+                timeout_ms: h.timeout_ms,
+                expect_status: h.expect_status.as_deref(),
+                save: &h.save,
+            },
+        )
+        .await
+    }
+
+    async fn exchange(&mut self, i: usize, x: Exchange<'_>) -> Result<RawStep, StepError> {
+        let port_name = x
+            .port
+            .map_or_else(|| self.proc.primary_port.clone(), str::to_string);
+        let port = self
+            .proc
+            .port(&port_name)
+            .ok_or_else(|| err(i, format!("no port named `{port_name}` in the target")))?;
+        let url = format!("http://127.0.0.1:{port}{}", x.path);
+        let method =
+            reqwest::Method::from_bytes(x.method.as_bytes()).map_err(|e| err(i, e.to_string()))?;
+        let mut req = self
+            .http
+            .request(method, &url)
+            .timeout(Duration::from_millis(x.timeout_ms));
+        for (k, v) in &x.headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        if let Some(b) = x.body {
             req = req.body(b);
         }
         let resp = match req.send().await {
@@ -131,7 +204,7 @@ impl Runner<'_> {
                 }
                 return Err(err(
                     i,
-                    format!("{} {}: request failed: {e}", h.method, h.path),
+                    format!("{} {}: request failed: {e}", x.method, x.path),
                 ));
             }
         };
@@ -161,7 +234,7 @@ impl Runner<'_> {
                 }
             }
         }
-        if let Some(want) = &h.expect_status
+        if let Some(want) = x.expect_status
             && !want.contains(&status)
         {
             let preview = crate::value::cut(&String::from_utf8_lossy(&body), 300);
@@ -169,11 +242,11 @@ impl Runner<'_> {
                 i,
                 format!(
                     "expected status {want:?} for {} {}, got {status}: {preview}",
-                    h.method, h.path
+                    x.method, x.path
                 ),
             ));
         }
-        for (name, from) in &h.save {
+        for (name, from) in x.save {
             let v = match from {
                 SaveFrom::Status => Some(status.to_string()),
                 SaveFrom::Header(n) => headers
@@ -215,6 +288,299 @@ impl Runner<'_> {
         }))
     }
 
+    /// The body, headers and target of a signed delivery, after `raw` and the overrides.
+    fn delivery_headers(
+        &self,
+        i: usize,
+        d: &scenario::Delivery,
+        mut headers: Vec<(String, String)>,
+        now: i64,
+    ) -> Result<Vec<(String, String)>, StepError> {
+        for (k, v) in &d.headers {
+            headers.retain(|(n, _)| n != k);
+            if let Some(v) = v {
+                headers.push((k.clone(), self.fill(i, v, now)?));
+            }
+        }
+        Ok(headers)
+    }
+
+    fn delivery_body(
+        &self,
+        i: usize,
+        d: &scenario::Delivery,
+        built: Value,
+        now: i64,
+    ) -> Result<Vec<u8>, StepError> {
+        match &d.raw {
+            Some(Value::String(t)) => Ok(self.fill(i, t, now)?.into_bytes()),
+            Some(v) => {
+                let r =
+                    scenario::resolve_json(v, &self.values(), now, "raw").map_err(|e| err(i, e))?;
+                serde_json::to_vec(&r).map_err(|e| err(i, e.to_string()))
+            }
+            None => serde_json::to_vec(&built).map_err(|e| err(i, e.to_string())),
+        }
+    }
+
+    async fn eventsub(
+        &mut self,
+        i: usize,
+        e: &scenario::EventsubStep,
+    ) -> Result<RawStep, StepError> {
+        let Some(hook) = self.hooks.eventsub.clone() else {
+            return Err(err(
+                i,
+                "the target has no webhooks.eventsub (secret, port, path)",
+            ));
+        };
+        let now = timefmt::now_ms();
+        let values = self.values();
+        let resolve = |v: &Value, what: &str| {
+            scenario::resolve_json(v, &values, now, what).map_err(|e| err(i, e))
+        };
+        let condition = resolve(&e.condition, "condition")?;
+        let event = resolve(&e.event, "event")?;
+        let timestamp = match &e.timestamp {
+            None => twitch_time(now),
+            Some(v) => match resolve(v, "timestamp")? {
+                Value::String(s) => s,
+                other => other.to_string(),
+            },
+        };
+        let message_id = self.fill(i, &e.message_id, now)?;
+        let mut sub = serde_json::Map::new();
+        sub.insert(
+            "id".into(),
+            Value::String(crate::mock::handlers::uuid_from(
+                format!("{}|{}|{condition}", e.sub_type, e.version).as_bytes(),
+            )),
+        );
+        let status = match e.message_type.as_str() {
+            "webhook_callback_verification" => "webhook_callback_verification_pending",
+            "revocation" => "authorization_revoked",
+            _ => "enabled",
+        };
+        sub.insert("status".into(), Value::String(status.into()));
+        sub.insert("type".into(), Value::String(e.sub_type.clone()));
+        sub.insert("version".into(), Value::String(e.version.clone()));
+        sub.insert("cost".into(), Value::from(0));
+        sub.insert("condition".into(), condition);
+        sub.insert(
+            "transport".into(),
+            serde_json::json!({"method": "webhook", "callback": "https://subscriptions.domdimabot.com/eventsub"}),
+        );
+        sub.insert(
+            "created_at".into(),
+            Value::String("2026-01-01T00:00:00.000000000Z".into()),
+        );
+        if let Some(over) = &e.subscription
+            && let Value::Object(m) = resolve(over, "subscription")?
+        {
+            for (k, v) in m {
+                sub.insert(k, v);
+            }
+        }
+        let mut built = serde_json::Map::new();
+        match e.message_type.as_str() {
+            "webhook_callback_verification" => {
+                built.insert("challenge".into(), Value::String(e.challenge.clone()));
+                built.insert("subscription".into(), Value::Object(sub));
+            }
+            "revocation" => {
+                built.insert("subscription".into(), Value::Object(sub));
+            }
+            _ => {
+                built.insert("subscription".into(), Value::Object(sub));
+                built.insert("event".into(), event);
+            }
+        }
+        let body = self.delivery_body(i, &e.delivery, Value::Object(built), now)?;
+        let secret = match &e.delivery.secret {
+            Some(s) => self.fill(i, s, now)?,
+            None => hook.secret.clone(),
+        };
+        let signature = match &e.delivery.signature {
+            Some(s) => self.fill(i, s, now)?,
+            None => dima_core::crypto::webhook::eventsub_signature(
+                &dima_core::SecretBytes::from_text(&secret),
+                &message_id,
+                &timestamp,
+                &body,
+            ),
+        };
+        let headers = vec![
+            ("content-type".to_string(), "application/json".to_string()),
+            ("twitch-eventsub-message-id".into(), message_id),
+            ("twitch-eventsub-message-retry".into(), e.retry.to_string()),
+            (
+                "twitch-eventsub-message-type".into(),
+                e.message_type.clone(),
+            ),
+            ("twitch-eventsub-message-signature".into(), signature),
+            ("twitch-eventsub-message-timestamp".into(), timestamp),
+            (
+                "twitch-eventsub-subscription-type".into(),
+                e.sub_type.clone(),
+            ),
+            (
+                "twitch-eventsub-subscription-version".into(),
+                e.version.clone(),
+            ),
+            ("user-agent".into(), "Twitch-Eventsub-Webhooks/1.0".into()),
+        ];
+        let headers = self.delivery_headers(i, &e.delivery, headers, now)?;
+        let path = match &e.delivery.path {
+            Some(p) => self.fill(i, p, now)?,
+            None => hook.path.clone(),
+        };
+        let port = e.delivery.port.clone().or(hook.port.clone());
+        self.exchange(
+            i,
+            Exchange {
+                method: "POST",
+                port: port.as_deref(),
+                path,
+                headers,
+                body: Some(body),
+                timeout_ms: e.delivery.timeout_ms,
+                expect_status: e.delivery.expect_status.as_deref(),
+                save: &e.delivery.save,
+            },
+        )
+        .await
+    }
+
+    async fn polar(&mut self, i: usize, p: &scenario::PolarStep) -> Result<RawStep, StepError> {
+        let Some(hook) = self.hooks.polar.clone() else {
+            return Err(err(
+                i,
+                "the target has no webhooks.polar (secret, port, path)",
+            ));
+        };
+        let now = timefmt::now_ms();
+        let values = self.values();
+        let data = scenario::resolve_json(&p.data, &values, now, "data").map_err(|e| err(i, e))?;
+        let ts_secs = match &p.timestamp_s {
+            None => now.div_euclid(1000),
+            Some(v) => {
+                let r = scenario::resolve_json(v, &values, now, "timestamp_s")
+                    .map_err(|e| err(i, e))?;
+                r.as_i64()
+                    .or_else(|| r.as_str().and_then(|s| s.parse().ok()))
+                    .ok_or_else(|| err(i, "timestamp_s: epoch seconds"))?
+            }
+        };
+        let mut built = serde_json::Map::new();
+        built.insert("type".into(), Value::String(p.event_type.clone()));
+        built.insert(
+            "timestamp".into(),
+            Value::String(timefmt::format_iso_ms(now).unwrap_or_default()),
+        );
+        built.insert("data".into(), data);
+        let body = self.delivery_body(i, &p.delivery, Value::Object(built), now)?;
+        let id = self.fill(i, &p.id, now)?;
+        let secret = match &p.delivery.secret {
+            Some(s) => self.fill(i, s, now)?,
+            None => hook.secret.clone(),
+        };
+        let signature = match &p.delivery.signature {
+            Some(s) => self.fill(i, s, now)?,
+            None => match dima_core::crypto::webhook::PolarWebhook::new(&secret) {
+                Some(w) => w.sign(&id, ts_secs, &body),
+                None => String::new(),
+            },
+        };
+        let headers = vec![
+            ("content-type".to_string(), "application/json".to_string()),
+            ("webhook-id".into(), id),
+            ("webhook-timestamp".into(), ts_secs.to_string()),
+            ("webhook-signature".into(), signature),
+            ("user-agent".into(), "Svix-Webhooks/1.0".into()),
+        ];
+        let headers = self.delivery_headers(i, &p.delivery, headers, now)?;
+        let path = match &p.delivery.path {
+            Some(x) => self.fill(i, x, now)?,
+            None => hook.path.clone(),
+        };
+        let port = p.delivery.port.clone().or(hook.port.clone());
+        self.exchange(
+            i,
+            Exchange {
+                method: "POST",
+                port: port.as_deref(),
+                path,
+                headers,
+                body: Some(body),
+                timeout_ms: p.delivery.timeout_ms,
+                expect_status: p.delivery.expect_status.as_deref(),
+                save: &p.delivery.save,
+            },
+        )
+        .await
+    }
+
+    /// Wait until the mock has recorded `count` calls that match.
+    async fn wait_call(
+        &mut self,
+        i: usize,
+        c: &scenario::CallCond,
+        timeout_ms: u64,
+    ) -> Result<(), StepError> {
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(timeout_ms);
+        loop {
+            self.alive(i, "while waiting for a call")?;
+            let n = self.mock.count(|call| {
+                if c.provider.as_ref().is_some_and(|p| p != &call.provider) {
+                    return false;
+                }
+                let query = crate::mock::parse_query(&call.query);
+                let (plain, json) = crate::mock::decode_body(&call.headers, &call.body);
+                let text = std::str::from_utf8(&plain).ok();
+                let mut caps = BTreeMap::new();
+                c.route.matches(
+                    &call.host,
+                    &crate::mock::route::Incoming {
+                        method: &call.method,
+                        path: &call.path,
+                        query: &query,
+                        headers: &call.headers,
+                        json: json.as_ref(),
+                        text,
+                    },
+                    &mut caps,
+                )
+            });
+            if u64::try_from(n).unwrap_or(u64::MAX) >= c.count {
+                return Ok(());
+            }
+            if tokio::time::Instant::now() >= deadline {
+                let seen: Vec<String> = self
+                    .mock
+                    .calls()
+                    .iter()
+                    .rev()
+                    .take(8)
+                    .map(|x| format!("{} {}{}", x.method, x.host, x.path))
+                    .collect();
+                return Err(err(
+                    i,
+                    format!(
+                        "wait_call timed out after {timeout_ms} ms waiting for {} call(s) {}; saw {n}; latest calls: {}",
+                        c.count,
+                        c.text,
+                        if seen.is_empty() {
+                            "none".to_string()
+                        } else {
+                            seen.join(", ")
+                        }
+                    ),
+                ));
+            }
+            tokio::time::sleep(POLL).await;
+        }
+    }
+
     async fn wait_for(
         &mut self,
         i: usize,
@@ -225,14 +591,14 @@ impl Runner<'_> {
         let now = timefmt::now_ms();
         let filter = match cond {
             WaitCond::Mongo { filter, .. } => Some(
-                scenario::resolve_filter(filter, &self.saved, now, "wait_for.mongo.filter")
+                scenario::resolve_filter(filter, &self.values(), now, "wait_for.mongo.filter")
                     .map_err(|e| err(i, e))?,
             ),
             WaitCond::Key(_) => None,
         };
         let key = match cond {
             WaitCond::Key(k) => {
-                Some(template::interpolate(k, &self.saved, now).map_err(|e| err(i, e))?)
+                Some(template::interpolate(k, &self.values(), now).map_err(|e| err(i, e))?)
             }
             WaitCond::Mongo { .. } => None,
         };
@@ -331,14 +697,16 @@ impl Runner<'_> {
                 StepKind::Http(h) => self.http(i, h).await?,
                 StepKind::Dragonfly(args) => {
                     let now = timefmt::now_ms();
+                    let values = self.values();
                     let rendered = args
                         .iter()
-                        .map(|a| a.render(&self.saved, now))
+                        .map(|a| a.render(&values, now))
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|e| err(i, e))?;
                     // The rendered command: a saved value can become a command name or option.
-                    crate::dfcmd::check(&rendered, self.allow_scripts)
-                        .map_err(|e| err(i, format!("dragonfly {rendered:?}: {e}")))?;
+                    let words = crate::dfcmd::words(&rendered);
+                    crate::dfcmd::check(&words, self.allow_scripts)
+                        .map_err(|e| err(i, format!("dragonfly {words:?}: {e}")))?;
                     let reply = self
                         .stores
                         .command(&rendered)
@@ -361,6 +729,12 @@ impl Runner<'_> {
                 StepKind::WaitQuiet(q) => {
                     self.wait_quiet(i, q).await?;
                     RawStep::Done("wait_quiet".into())
+                }
+                StepKind::Eventsub(e) => self.eventsub(i, e).await?,
+                StepKind::Polar(p) => self.polar(i, p).await?,
+                StepKind::WaitCall { cond, timeout_ms } => {
+                    self.wait_call(i, cond, *timeout_ms).await?;
+                    RawStep::Done("wait_call".into())
                 }
             };
             self.alive(i, "during the step")?;

@@ -1,0 +1,7 @@
+{
+  "rig_scenario": 1,
+  "description": "The probe tries to leave the machine every way it can: every attempt must end at the mock or at the preload's guard, and the scenario must fail with each attempt shown.",
+  "steps": [
+    { "name": "probe", "http": { "method": "GET", "path": "/probe", "timeout_ms": 30000 } }
+  ]
+}

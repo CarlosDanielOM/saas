@@ -23,6 +23,41 @@ pub struct Overrides {
     pub byte_sensitive: Option<PathBuf>,
 }
 
+/// The local Qdrant the sides reach through their prefixing proxies.
+#[derive(Debug, Clone)]
+pub struct QdrantStore {
+    pub url: String,
+    pub api_key: Option<String>,
+}
+
+/// The local Qdrant: `DIMA_RIG_QDRANT_URL` or `DIMA_TEST_QDRANT_URL` (default
+/// `http://127.0.0.1:6333`), its API key from `DIMA_RIG_QDRANT_API_KEY` or
+/// `DIMA_TEST_QDRANT_API_KEY`, else read from the running `qdrant` container (as `tools/test-env`
+/// reads the MongoDB credentials; never written anywhere).
+pub fn qdrant_store(env: &BTreeMap<String, String>) -> Result<QdrantStore> {
+    let get = |k: &str| env.get(k).filter(|v| !v.is_empty()).cloned();
+    let url = get("DIMA_RIG_QDRANT_URL")
+        .or_else(|| get("DIMA_TEST_QDRANT_URL"))
+        .unwrap_or_else(|| "http://127.0.0.1:6333".into());
+    if !(url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:")) {
+        return Err(config(format!(
+            "Qdrant URL `{url}`: the rig only uses a Qdrant on loopback"
+        )));
+    }
+    let api_key = get("DIMA_RIG_QDRANT_API_KEY")
+        .or_else(|| get("DIMA_TEST_QDRANT_API_KEY"))
+        .or_else(|| {
+            std::process::Command::new("docker")
+                .args(["exec", "qdrant", "printenv", "QDRANT__SERVICE__API_KEY"])
+                .output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .filter(|k| !k.is_empty())
+        });
+    Ok(QdrantStore { url, api_key })
+}
+
 /// The rig crate's directory, fixed at build time.
 pub fn default_rig_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -69,6 +104,8 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         .clone()
         .or_else(|| get("DIMA_RIG_DIR").map(PathBuf::from))
         .unwrap_or_else(default_rig_dir);
+    // Templates join paths onto it, and a container mount needs an absolute path.
+    let rig_dir = rig_dir.canonicalize().unwrap_or(rig_dir);
     let repo_dir = default_rig_dir()
         .join("../..")
         .canonicalize()
@@ -107,11 +144,9 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         }
         vars.insert(k.to_string(), v.to_string());
     }
-    let cargo_target_dir = get("CARGO_TARGET_DIR").unwrap_or_else(|| {
-        let cache = get("XDG_CACHE_HOME")
-            .unwrap_or_else(|| format!("{}/.cache", get("HOME").unwrap_or_default()));
-        format!("{cache}/dima-rust/target")
-    });
+    // tools/cargo builds every checkout into its own dima-rust/target.
+    let cargo_target_dir = get("CARGO_TARGET_DIR")
+        .unwrap_or_else(|| repo_dir.join("dima-rust/target").display().to_string());
     let byte_sensitive = crate::bytesens::load(
         &o.byte_sensitive
             .clone()

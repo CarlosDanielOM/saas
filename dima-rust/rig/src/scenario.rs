@@ -40,6 +40,10 @@ struct ScenarioFile {
     description: String,
     #[serde(default)]
     restart: bool,
+    /// The scenario does not depend on the process's in-memory state: it may run in one process
+    /// with the other scenarios of the run that say so (stores reset between them).
+    #[serde(default)]
+    share_process: bool,
     #[serde(default)]
     allow_scripts: bool,
     #[serde(default)]
@@ -53,6 +57,9 @@ struct ScenarioFile {
     tolerance_ms: Option<u64>,
     #[serde(default)]
     relation_tolerance_ms: Option<u64>,
+    /// The mock's routes and seeds for this scenario (over the target's).
+    #[serde(default)]
+    mock: Option<Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -64,6 +71,21 @@ struct SeedBody {
     mongo: Map<String, Value>,
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
+    /// Files written into the side's data directory (`{data_dir}`) before it starts.
+    #[serde(default)]
+    files: BTreeMap<String, FileSeed>,
+}
+
+/// One seeded file: exactly one of `text`, `base64`, `json`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileSeed {
+    #[serde(default)]
+    text: Option<String>,
+    #[serde(default)]
+    base64: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    json: Option<Value>,
 }
 
 #[derive(Deserialize)]
@@ -78,6 +100,8 @@ struct SeedFile {
     mongo: Map<String, Value>,
     #[serde(default)]
     dragonfly: Vec<Vec<Value>>,
+    #[serde(default)]
+    files: BTreeMap<String, FileSeed>,
 }
 
 #[derive(Deserialize)]
@@ -95,6 +119,134 @@ struct StepFile {
     wait_for: Option<WaitForFile>,
     #[serde(default)]
     wait_quiet: Option<WaitQuietFile>,
+    #[serde(default)]
+    eventsub: Option<EventsubFile>,
+    #[serde(default)]
+    polar: Option<PolarFile>,
+    #[serde(default)]
+    wait_call: Option<WaitCallFile>,
+}
+
+/// How a signed webhook is delivered (shared by `eventsub` and `polar`; their files carry
+/// these fields themselves, since serde's `flatten` and `deny_unknown_fields` do not mix).
+#[derive(Default)]
+struct DeliveryFile {
+    /// Sign with this secret instead of the target's (a bad-signature case).
+    secret: Option<String>,
+    /// Send this signature header as is.
+    signature: Option<String>,
+    /// Extra or replaced headers; `null` removes one.
+    headers: Map<String, Value>,
+    /// The exact body instead of the built envelope (a string is sent as is).
+    raw: Option<Value>,
+    port: Option<String>,
+    path: Option<String>,
+    timeout_ms: Option<u64>,
+    expect: Option<ExpectFile>,
+    save: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EventsubFile {
+    #[serde(default)]
+    r#type: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
+    condition: Option<Value>,
+    #[serde(default)]
+    event: Option<Value>,
+    /// `notification` (default), `webhook_callback_verification` or `revocation`.
+    #[serde(default)]
+    message_type: Option<String>,
+    #[serde(default)]
+    message_id: Option<String>,
+    /// ISO text or `{"$rigNow": "-15m", "as": "iso"}`; default the time the step runs.
+    #[serde(default)]
+    timestamp: Option<Value>,
+    /// `Twitch-Eventsub-Message-Retry` (default 0).
+    #[serde(default)]
+    retry: Option<u32>,
+    /// Fields over the generated subscription object.
+    #[serde(default)]
+    subscription: Option<Value>,
+    #[serde(default)]
+    challenge: Option<String>,
+    #[serde(default)]
+    secret: Option<String>,
+    #[serde(default)]
+    signature: Option<String>,
+    #[serde(default)]
+    headers: Map<String, Value>,
+    #[serde(default, deserialize_with = "present")]
+    raw: Option<Value>,
+    #[serde(default)]
+    port: Option<String>,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    timeout_ms: Option<u64>,
+    #[serde(default)]
+    expect: Option<ExpectFile>,
+    #[serde(default)]
+    save: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PolarFile {
+    #[serde(default)]
+    r#type: Option<String>,
+    #[serde(default)]
+    data: Option<Value>,
+    /// `webhook-id` (default derived from the scenario and the step).
+    #[serde(default)]
+    id: Option<String>,
+    /// `webhook-timestamp` in seconds (default the time the step runs).
+    #[serde(default)]
+    timestamp_s: Option<Value>,
+    #[serde(default)]
+    secret: Option<String>,
+    #[serde(default)]
+    signature: Option<String>,
+    #[serde(default)]
+    headers: Map<String, Value>,
+    #[serde(default, deserialize_with = "present")]
+    raw: Option<Value>,
+    #[serde(default)]
+    port: Option<String>,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    timeout_ms: Option<u64>,
+    #[serde(default)]
+    expect: Option<ExpectFile>,
+    #[serde(default)]
+    save: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WaitCallFile {
+    /// A provider host (`api.twitch.tv`) or a provider name (`twitch`); one is required.
+    #[serde(default)]
+    host: Option<String>,
+    #[serde(default)]
+    provider: Option<String>,
+    #[serde(default)]
+    method: Option<String>,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    query: Map<String, Value>,
+    #[serde(default)]
+    body: Option<Value>,
+    #[serde(default)]
+    body_contains: Option<String>,
+    #[serde(default)]
+    count: Option<u64>,
+    timeout_ms: u64,
 }
 
 #[derive(Deserialize)]
@@ -171,6 +323,12 @@ pub(crate) struct CompareFile {
     pub(crate) headers: Option<HeaderSelFile>,
     #[serde(default)]
     as_text: Vec<String>,
+    /// Provider name → `ordered`, `multiset` or `ignore` (overrides the provider table).
+    #[serde(default)]
+    calls: BTreeMap<String, String>,
+    /// More request headers of outbound calls to compare.
+    #[serde(default)]
+    call_headers: Option<HeaderSelFile>,
 }
 
 #[derive(Deserialize)]
@@ -227,6 +385,8 @@ impl Selection {
 pub enum Arg {
     /// Text with `${...}` expressions.
     Text(String),
+    /// Bytes given as `{"$rigBytes": "<base64>"}` (values that are not UTF-8, without `EVAL`).
+    Bytes(Vec<u8>),
     Now {
         offset_ms: i64,
         fmt: NowFmt,
@@ -238,10 +398,13 @@ impl Arg {
         &self,
         saved: &BTreeMap<String, String>,
         now: i64,
-    ) -> std::result::Result<String, String> {
+    ) -> std::result::Result<Vec<u8>, String> {
         match self {
-            Arg::Text(t) => template::interpolate(t, saved, now),
-            Arg::Now { offset_ms, fmt } => Ok(template::format_now(now, *offset_ms, *fmt)),
+            Arg::Text(t) => template::interpolate(t, saved, now).map(String::into_bytes),
+            Arg::Bytes(b) => Ok(b.clone()),
+            Arg::Now { offset_ms, fmt } => {
+                Ok(template::format_now(now, *offset_ms, *fmt).into_bytes())
+            }
         }
     }
 }
@@ -292,13 +455,73 @@ pub struct WaitQuiet {
     pub ignore_collections: Vec<String>,
 }
 
+/// How a signed webhook is sent and its answer read.
+#[derive(Debug, Clone)]
+pub struct Delivery {
+    pub secret: Option<String>,
+    pub signature: Option<String>,
+    pub headers: Vec<(String, Option<String>)>,
+    pub raw: Option<Value>,
+    pub port: Option<String>,
+    pub path: Option<String>,
+    pub timeout_ms: u64,
+    pub expect_status: Option<Vec<u16>>,
+    pub save: Vec<(String, SaveFrom)>,
+}
+
+/// A Twitch EventSub delivery to the bot's ingress.
+#[derive(Debug, Clone)]
+pub struct EventsubStep {
+    pub sub_type: String,
+    pub version: String,
+    pub condition: Value,
+    pub event: Value,
+    pub message_type: String,
+    /// Default: derived from the scenario and the step (the same on every run and side).
+    pub message_id: String,
+    pub timestamp: Option<Value>,
+    pub retry: u32,
+    pub subscription: Option<Value>,
+    pub challenge: String,
+    pub delivery: Delivery,
+}
+
+/// A Polar webhook (standardwebhooks) to the API.
+#[derive(Debug, Clone)]
+pub struct PolarStep {
+    pub event_type: String,
+    pub data: Value,
+    pub id: String,
+    pub timestamp_s: Option<Value>,
+    pub delivery: Delivery,
+}
+
+/// Which recorded calls a `wait_call` step waits for.
+#[derive(Debug, Clone)]
+pub struct CallCond {
+    /// Matches on host (compiled like a mock route).
+    pub route: crate::mock::route::Route,
+    pub provider: Option<String>,
+    pub count: u64,
+    pub text: String,
+}
+
 #[derive(Debug, Clone)]
 pub enum StepKind {
     Http(HttpStep),
     Dragonfly(Vec<Arg>),
     Pause(u64),
-    WaitFor { cond: WaitCond, timeout_ms: u64 },
+    WaitFor {
+        cond: WaitCond,
+        timeout_ms: u64,
+    },
     WaitQuiet(WaitQuiet),
+    Eventsub(Box<EventsubStep>),
+    Polar(Box<PolarStep>),
+    WaitCall {
+        cond: Box<CallCond>,
+        timeout_ms: u64,
+    },
 }
 
 impl StepKind {
@@ -309,6 +532,9 @@ impl StepKind {
             StepKind::Pause(_) => "pause_ms",
             StepKind::WaitFor { .. } => "wait_for",
             StepKind::WaitQuiet(_) => "wait_quiet",
+            StepKind::Eventsub(_) => "eventsub",
+            StepKind::Polar(_) => "polar",
+            StepKind::WaitCall { .. } => "wait_call",
         }
     }
 }
@@ -325,6 +551,8 @@ pub struct Scenario {
     pub file: PathBuf,
     pub description: String,
     pub restart: bool,
+    /// Independent of process state: may share a process (see [`ScenarioFile`]).
+    pub share_process: bool,
     /// `EVAL`, `EVALSHA` and `SCRIPT LOAD|EXISTS` may run in steps and seeds.
     pub allow_scripts: bool,
     /// Collection → documents (Extended JSON, `$rigNow` resolved at seed time).
@@ -344,6 +572,11 @@ pub struct Scenario {
     /// Every `$rigNow` offset of the seed (`true`: written as epoch seconds).
     pub seed_offsets: Vec<(i64, bool)>,
     pub known: Known,
+    /// The scenario's `mock` section (merged over the target's when it runs).
+    pub mock: crate::mock::MockSpec,
+    pub call_rules: crate::detect::CallRules,
+    /// Files for the side's data directory: (relative path, bytes).
+    pub seed_files: Vec<(String, Vec<u8>)>,
 }
 
 impl Scenario {
@@ -592,6 +825,7 @@ struct Loader<'a> {
     seed_offsets: Vec<(i64, bool)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
+    data_files: Vec<(String, Vec<u8>)>,
 }
 
 fn read_json(file: &FsPath) -> Result<Value> {
@@ -647,13 +881,25 @@ fn command(
         out.push(match a {
             Value::String(s) => {
                 for n in template::saved_names(s).map_err(|e| config(format!("{here}: {e}")))? {
-                    if !saved.contains(&n) {
+                    if !saved.contains(&n) && !template::is_side_value(&n) {
                         return Err(config(format!("{here}: `${{{n}}}` is not saved by an earlier step")));
                     }
                 }
                 Arg::Text(s.clone())
             }
             Value::Number(n) => Arg::Text(n.to_string()),
+            Value::Object(m) if m.contains_key("$rigBytes") => {
+                let b = m
+                    .get("$rigBytes")
+                    .and_then(Value::as_str)
+                    .filter(|_| m.len() == 1)
+                    .ok_or_else(|| config(format!("{here}: {{\"$rigBytes\": \"<base64>\"}} and nothing else")))?;
+                Arg::Bytes(
+                    base64::engine::general_purpose::STANDARD
+                        .decode(b)
+                        .map_err(|e| config(format!("{here}: $rigBytes: {e}")))?,
+                )
+            }
             Value::Object(m) if m.contains_key("$rigNow") => {
                 let (offset_ms, fmt) = rig_now(m, &here).map_err(config)?;
                 let fmt = match fmt.as_str() {
@@ -664,7 +910,7 @@ fn command(
                 };
                 Arg::Now { offset_ms, fmt }
             }
-            _ => return Err(config(format!("{here}: command arguments are strings, numbers or {{\"$rigNow\": ...}}"))),
+            _ => return Err(config(format!("{here}: command arguments are strings, numbers, {{\"$rigNow\": ...}} or {{\"$rigBytes\": \"<base64>\"}}"))),
         });
     }
     if !matches!(out.first(), Some(Arg::Text(_))) {
@@ -678,6 +924,7 @@ fn command(
         .map(|a| match a {
             Arg::Text(t) if !t.contains("${") => Some(t.clone()),
             Arg::Now { .. } => Some("0".into()),
+            Arg::Bytes(b) => Some(String::from_utf8_lossy(b).to_string()),
             Arg::Text(_) => None,
         })
         .collect();
@@ -690,6 +937,7 @@ fn command(
                 .iter()
                 .map(|a| match a {
                     Arg::Text(t) => t.clone(),
+                    Arg::Bytes(b) => String::from_utf8_lossy(b).to_string(),
                     Arg::Now { .. } => "0".into(),
                 })
                 .collect();
@@ -741,6 +989,7 @@ impl Loader<'_> {
                     include: sf.include,
                     mongo: sf.mongo,
                     dragonfly: sf.dragonfly,
+                    files: sf.files,
                 },
                 depth + 1,
             )?;
@@ -779,6 +1028,35 @@ impl Loader<'_> {
                 Some((_, list)) => list.extend(docs),
                 None => self.mongo.push((coll, docs)),
             }
+        }
+        for (rel, f) in body.files {
+            let here = format!("{at}: seed.files[{rel:?}]");
+            let path = FsPath::new(&rel);
+            if rel.is_empty()
+                || path.is_absolute()
+                || path
+                    .components()
+                    .any(|c| !matches!(c, std::path::Component::Normal(_)))
+            {
+                return Err(config(format!(
+                    "{here}: a relative path inside the data directory (no .., no leading /)"
+                )));
+            }
+            let bytes = match (f.text, f.base64, f.json) {
+                (Some(t), None, None) => t.into_bytes(),
+                (None, Some(b), None) => base64::engine::general_purpose::STANDARD
+                    .decode(b)
+                    .map_err(|e| config(format!("{here}.base64: {e}")))?,
+                (None, None, Some(j)) => serde_json::to_vec_pretty(&j)
+                    .map_err(|e| config(format!("{here}.json: {e}")))?,
+                _ => {
+                    return Err(config(format!("{here}: exactly one of text, base64, json")));
+                }
+            };
+            self.patterns
+                .collect_known(&String::from_utf8_lossy(&bytes), &mut self.known);
+            self.data_files.retain(|(p, _)| *p != rel);
+            self.data_files.push((rel, bytes));
         }
         for (i, c) in body.dragonfly.iter().enumerate() {
             let cmd = command(
@@ -821,7 +1099,7 @@ fn status_list(v: &Value, at: &str) -> Result<Vec<u16>> {
 
 fn check_interp(s: &str, saved: &BTreeSet<String>, at: &str) -> Result<()> {
     for n in template::saved_names(s).map_err(|e| config(format!("{at}: {e}")))? {
-        if !saved.contains(&n) {
+        if !saved.contains(&n) && !template::is_side_value(&n) {
             return Err(config(format!(
                 "{at}: `${{{n}}}` is not saved by an earlier step"
             )));
@@ -983,17 +1261,37 @@ fn http_step(
         Some(v) => Some(status_list(&v, &format!("{at}.expect.status"))?),
         None => None,
     };
+    let save = save_list(h.save, at, saved)?;
+    Ok(HttpStep {
+        method,
+        path: h.path,
+        port: h.port,
+        headers,
+        body,
+        timeout_ms: timeout(h.timeout_ms.unwrap_or(30_000), &format!("{at}.timeout_ms"))?,
+        expect_status,
+        save,
+    })
+}
+
+fn save_list(
+    list: BTreeMap<String, String>,
+    at: &str,
+    saved: &mut BTreeSet<String>,
+) -> Result<Vec<(String, SaveFrom)>> {
     let mut save = Vec::new();
-    for (name, from) in h.save {
+    for (name, from) in list {
         let mut chars = name.chars();
         if !chars
             .next()
             .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
             || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
             || name.starts_with("now")
+            || template::is_side_value(&name)
         {
             return Err(config(format!(
-                "{at}.save: bad name `{name}` (letters, digits, _; not starting with now)"
+                "{at}.save: bad name `{name}` (letters, digits, _; not starting with now; not a side value: {})",
+                template::SIDE_VALUES.join(", ")
             )));
         }
         let src = if from == "status" {
@@ -1015,16 +1313,267 @@ fn http_step(
         saved.insert(name.clone());
         save.push((name, src));
     }
-    Ok(HttpStep {
-        method,
-        path: h.path,
-        port: h.port,
+    Ok(save)
+}
+
+fn delivery(
+    d: DeliveryFile,
+    at: &str,
+    saved: &mut BTreeSet<String>,
+    p: &Patterns,
+    known: &mut Known,
+) -> Result<Delivery> {
+    let mut headers = Vec::new();
+    for (k, v) in d.headers {
+        let v = match v {
+            Value::String(s) => {
+                check_interp(&s, saved, &format!("{at}.headers.{k}"))?;
+                p.collect_known(&s, known);
+                Some(s)
+            }
+            Value::Null => None,
+            _ => {
+                return Err(config(format!(
+                    "{at}.headers.{k}: a string, or null to leave the header out"
+                )));
+            }
+        };
+        headers.push((k.to_ascii_lowercase(), v));
+    }
+    if let Some(r) = &d.raw {
+        check_json_body(r, saved, &format!("{at}.raw"))?;
+        collect_inputs(p, r, known);
+    }
+    for (what, v) in [("secret", &d.secret), ("signature", &d.signature)] {
+        if let Some(v) = v {
+            check_interp(v, saved, &format!("{at}.{what}"))?;
+        }
+    }
+    let expect_status = match d.expect.and_then(|e| e.status) {
+        Some(v) => Some(status_list(&v, &format!("{at}.expect.status"))?),
+        None => None,
+    };
+    let save = save_list(d.save, at, saved)?;
+    if let Some(path) = &d.path
+        && !path.starts_with('/')
+    {
+        return Err(config(format!("{at}.path: starts with /")));
+    }
+    Ok(Delivery {
+        secret: d.secret,
+        signature: d.signature,
         headers,
-        body,
-        timeout_ms: timeout(h.timeout_ms.unwrap_or(30_000), &format!("{at}.timeout_ms"))?,
+        raw: d.raw,
+        port: d.port,
+        path: d.path,
+        timeout_ms: timeout(d.timeout_ms.unwrap_or(30_000), &format!("{at}.timeout_ms"))?,
         expect_status,
         save,
     })
+}
+
+const EVENTSUB_MESSAGE_TYPES: &[&str] = &[
+    "notification",
+    "webhook_callback_verification",
+    "revocation",
+];
+
+fn eventsub_step(
+    f: EventsubFile,
+    at: &str,
+    seed: &str,
+    saved: &mut BTreeSet<String>,
+    p: &Patterns,
+    known: &mut Known,
+) -> Result<EventsubStep> {
+    let d = DeliveryFile {
+        secret: f.secret,
+        signature: f.signature,
+        headers: f.headers,
+        raw: f.raw,
+        port: f.port,
+        path: f.path,
+        timeout_ms: f.timeout_ms,
+        expect: f.expect,
+        save: f.save,
+    };
+    let message_type = f.message_type.unwrap_or_else(|| "notification".into());
+    if !EVENTSUB_MESSAGE_TYPES.contains(&message_type.as_str()) && d.raw.is_none() {
+        return Err(config(format!(
+            "{at}.message_type: `{message_type}` (use {}; any other only with \"raw\")",
+            EVENTSUB_MESSAGE_TYPES.join(", ")
+        )));
+    }
+    let sub_type = f.r#type.unwrap_or_default();
+    if sub_type.is_empty() && d.raw.is_none() {
+        return Err(config(format!(
+            "{at}.type: the subscription type, such as channel.chat.message"
+        )));
+    }
+    for (what, v) in [
+        ("condition", &f.condition),
+        ("event", &f.event),
+        ("subscription", &f.subscription),
+        ("timestamp", &f.timestamp),
+    ] {
+        if let Some(v) = v {
+            check_json_body(v, saved, &format!("{at}.{what}"))?;
+            collect_inputs(p, v, known);
+        }
+    }
+    if message_type == "notification" && f.event.is_none() && d.raw.is_none() {
+        return Err(config(format!(
+            "{at}.event: a notification carries the event"
+        )));
+    }
+    let message_id = f
+        .message_id
+        .unwrap_or_else(|| crate::mock::handlers::uuid_from(format!("{seed}|message").as_bytes()));
+    check_interp(&message_id, saved, &format!("{at}.message_id"))?;
+    p.collect_known(&message_id, known);
+    let challenge = f.challenge.unwrap_or_else(|| {
+        format!(
+            "rigchallenge-{}",
+            crate::mock::handlers::uuid_from(format!("{seed}|challenge").as_bytes())
+        )
+    });
+    p.collect_known(&challenge, known);
+    let delivery = delivery(d, at, saved, p, known)?;
+    Ok(EventsubStep {
+        sub_type,
+        version: f.version.unwrap_or_else(|| "1".into()),
+        condition: f.condition.unwrap_or_else(|| Value::Object(Map::new())),
+        event: f.event.unwrap_or(Value::Null),
+        message_type,
+        message_id,
+        timestamp: f.timestamp,
+        retry: f.retry.unwrap_or(0),
+        subscription: f.subscription,
+        challenge,
+        delivery,
+    })
+}
+
+fn polar_step(
+    f: PolarFile,
+    at: &str,
+    seed: &str,
+    saved: &mut BTreeSet<String>,
+    p: &Patterns,
+    known: &mut Known,
+) -> Result<PolarStep> {
+    let d = DeliveryFile {
+        secret: f.secret,
+        signature: f.signature,
+        headers: f.headers,
+        raw: f.raw,
+        port: f.port,
+        path: f.path,
+        timeout_ms: f.timeout_ms,
+        expect: f.expect,
+        save: f.save,
+    };
+    let event_type = f.r#type.unwrap_or_default();
+    if event_type.is_empty() && d.raw.is_none() {
+        return Err(config(format!(
+            "{at}.type: the Polar event type, such as order.paid"
+        )));
+    }
+    for (what, v) in [("data", &f.data), ("timestamp_s", &f.timestamp_s)] {
+        if let Some(v) = v {
+            check_json_body(v, saved, &format!("{at}.{what}"))?;
+            collect_inputs(p, v, known);
+        }
+    }
+    let id = f.id.unwrap_or_else(|| {
+        let u = crate::mock::handlers::uuid_from(format!("{seed}|polar").as_bytes());
+        format!("msg_{}", u.replace('-', ""))
+    });
+    check_interp(&id, saved, &format!("{at}.id"))?;
+    p.collect_known(&id, known);
+    let delivery = delivery(d, at, saved, p, known)?;
+    Ok(PolarStep {
+        event_type,
+        data: f.data.unwrap_or_else(|| Value::Object(Map::new())),
+        id,
+        timestamp_s: f.timestamp_s,
+        delivery,
+    })
+}
+
+fn wait_call(
+    f: WaitCallFile,
+    at: &str,
+    saved: &BTreeSet<String>,
+    p: &Patterns,
+    known: &mut Known,
+) -> Result<(CallCond, u64)> {
+    let timeout_ms = timeout(f.timeout_ms, &format!("{at}.timeout_ms"))?;
+    let providers = crate::mock::providers::Providers::builtin().map_err(config)?;
+    match (&f.host, &f.provider) {
+        (Some(h), None) => {
+            if !h.contains('*') && providers.for_host(h).is_none() {
+                return Err(config(format!("{at}.host: `{h}` is not a provider host")));
+            }
+        }
+        (None, Some(name)) => {
+            if providers.by_name(name).is_none() {
+                return Err(config(format!("{at}.provider: `{name}` is not a provider")));
+            }
+        }
+        _ => {
+            return Err(config(format!(
+                "{at}: exactly one of host (api.twitch.tv) or provider (twitch)"
+            )));
+        }
+    }
+    if let Some(b) = &f.body {
+        check_json_body(b, saved, &format!("{at}.body"))?;
+        collect_inputs(p, b, known);
+    }
+    let text = format!(
+        "{} {}{}{}",
+        f.method.as_deref().unwrap_or("any method"),
+        f.host
+            .as_deref()
+            .or(f.provider.as_deref())
+            .unwrap_or_default(),
+        f.path.as_deref().unwrap_or(""),
+        f.body
+            .as_ref()
+            .map(|b| format!(" with body {b}"))
+            .unwrap_or_default()
+    );
+    let route = crate::mock::route::Route::compile(
+        crate::mock::route::RouteFile {
+            host: Some(f.host.clone().unwrap_or_else(|| "*".into())),
+            method: f.method,
+            path: f.path,
+            query: f.query,
+            headers: Map::new(),
+            body: f.body,
+            body_contains: f.body_contains,
+            call: None,
+            respond: Some(crate::mock::route::RespondFile::default()),
+            handler: None,
+            args: None,
+            proxy: None,
+            provider: None,
+            reason: None,
+        },
+        true,
+        at.to_string(),
+    )
+    .map_err(config)?;
+    Ok((
+        CallCond {
+            route,
+            provider: f.provider,
+            count: f.count.unwrap_or(1).max(1),
+            text,
+        },
+        timeout_ms,
+    ))
 }
 
 fn selection(s: Option<SelFile>) -> Selection {
@@ -1084,21 +1633,36 @@ pub(crate) fn allowances(
                 None => AllowKind::Generated(None),
             },
             "exact" => AllowKind::Exact,
+            "ttl" => match a.unit.as_deref() {
+                None | Some("s") => AllowKind::Ttl { seconds: true },
+                Some("ms") => AllowKind::Ttl { seconds: false },
+                Some(other) => {
+                    return Err(config(format!("{here}.unit: `{other}` (use s or ms)")));
+                }
+            },
             "time" => match a.unit.as_deref() {
                 None | Some("ms") => AllowKind::Time { seconds: false },
                 Some("s") => AllowKind::Time { seconds: true },
+                Some("min") => AllowKind::Minutes,
                 Some(other) => {
-                    return Err(config(format!("{here}.unit: `{other}` (use ms or s)")));
+                    return Err(config(format!("{here}.unit: `{other}` (use ms, s or min)")));
                 }
             },
             other => {
                 return Err(config(format!(
-                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact or time)"
+                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact, time or ttl)"
                 )));
             }
         };
-        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. }) {
-            return Err(config(format!("{here}: \"unit\" only goes with kind time")));
+        if a.unit.is_some()
+            && !matches!(
+                kind,
+                AllowKind::Time { .. } | AllowKind::Ttl { .. } | AllowKind::Minutes
+            )
+        {
+            return Err(config(format!(
+                "{here}: \"unit\" only goes with kind time or ttl"
+            )));
         }
         if a.ms.is_some() && !matches!(kind, AllowKind::Tolerance(_)) {
             return Err(config(format!(
@@ -1171,6 +1735,7 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         )],
         mongo: Vec::new(),
         dragonfly: Vec::new(),
+        data_files: Vec::new(),
     };
     if let Ok(c) = file.canonicalize() {
         loader.seen_files.insert(c);
@@ -1186,13 +1751,16 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
             s.pause_ms.map(|_| "pause_ms"),
             s.wait_for.as_ref().map(|_| "wait_for"),
             s.wait_quiet.as_ref().map(|_| "wait_quiet"),
+            s.eventsub.as_ref().map(|_| "eventsub"),
+            s.polar.as_ref().map(|_| "polar"),
+            s.wait_call.as_ref().map(|_| "wait_call"),
         ]
         .into_iter()
         .flatten()
         .collect();
         if given.len() != 1 {
             return Err(config(format!(
-                "{here}: a step has exactly one of http, dragonfly, pause_ms, wait_for, wait_quiet (found: {})",
+                "{here}: a step has exactly one of http, dragonfly, pause_ms, wait_for, wait_quiet, eventsub, polar, wait_call (found: {})",
                 if given.is_empty() {
                     "none".to_string()
                 } else {
@@ -1255,6 +1823,36 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
                 }
             };
             StepKind::WaitFor { cond, timeout_ms }
+        } else if let Some(e) = s.eventsub {
+            StepKind::Eventsub(Box::new(eventsub_step(
+                e,
+                &format!("{here}.eventsub"),
+                &format!("{target}/{name}|{i}"),
+                &mut saved,
+                patterns,
+                &mut loader.known,
+            )?))
+        } else if let Some(pf) = s.polar {
+            StepKind::Polar(Box::new(polar_step(
+                pf,
+                &format!("{here}.polar"),
+                &format!("{target}/{name}|{i}"),
+                &mut saved,
+                patterns,
+                &mut loader.known,
+            )?))
+        } else if let Some(w) = s.wait_call {
+            let (cond, timeout_ms) = wait_call(
+                w,
+                &format!("{here}.wait_call"),
+                &saved,
+                patterns,
+                &mut loader.known,
+            )?;
+            StepKind::WaitCall {
+                cond: Box::new(cond),
+                timeout_ms,
+            }
         } else if let Some(q) = s.wait_quiet {
             let timeout_ms = timeout(q.timeout_ms, &format!("{here}.wait_quiet.timeout_ms"))?;
             if q.quiet_ms == 0 || q.quiet_ms >= timeout_ms {
@@ -1280,11 +1878,45 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .map(|p| Pattern::parse(p).map_err(|e| config(format!("{at}: compare.as_text: {e}"))))
         .collect::<Result<Vec<_>>>()?;
     let tolerances = tolerances(f.tolerance_ms, f.relation_tolerance_ms, &at)?;
+    let mock = match &f.mock {
+        None => crate::mock::MockSpec::default(),
+        Some(v) => {
+            collect_inputs(patterns, v, &mut loader.known);
+            let mf: crate::mock::MockFile = serde_json::from_value(v.clone())
+                .map_err(|e| config(format!("{at}: mock: {e}")))?;
+            crate::mock::MockSpec::from_file(mf, &at).map_err(config)?
+        }
+    };
+    let providers = crate::mock::providers::Providers::builtin().map_err(config)?;
+    let mut call_rules = crate::detect::CallRules::default();
+    for (p, mode) in &compare.calls {
+        if providers.by_name(p).is_none() {
+            return Err(config(format!(
+                "{at}: compare.calls: `{p}` is not a provider name ({})",
+                providers
+                    .list
+                    .iter()
+                    .map(|x| x.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+        let order = crate::mock::providers::CallOrder::parse(mode).ok_or_else(|| {
+            config(format!(
+                "{at}: compare.calls.{p}: `{mode}` (ordered, multiset or ignore)"
+            ))
+        })?;
+        call_rules.order.insert(p.clone(), order);
+    }
+    if let Some(h) = &compare.call_headers {
+        call_rules.include_headers = h.include.iter().map(|n| n.to_ascii_lowercase()).collect();
+    }
     Ok(Scenario {
         name: name.to_string(),
         file,
         description: f.description,
         restart: f.restart,
+        share_process: f.share_process,
         allow_scripts: f.allow_scripts,
         seed_mongo: loader.mongo,
         seed_dragonfly: loader.dragonfly,
@@ -1304,6 +1936,9 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
             o
         },
         known: loader.known,
+        mock,
+        call_rules,
+        seed_files: loader.data_files,
     })
 }
 
@@ -1359,6 +1994,20 @@ pub fn select(all: &[String], filters: &[String]) -> Vec<String> {
         })
         .cloned()
         .collect()
+}
+
+/// `command` for the crate's tests.
+#[cfg(test)]
+pub(crate) fn tests_command(args: &[Value]) -> Vec<Arg> {
+    command(args, "c", &BTreeSet::new(), false).unwrap_or_default()
+}
+
+#[cfg(test)]
+pub(crate) fn tests_command_err(args: &[Value]) -> String {
+    command(args, "c", &BTreeSet::new(), false)
+        .err()
+        .map(|e| e.to_string())
+        .unwrap_or_default()
 }
 
 #[cfg(test)]

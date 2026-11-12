@@ -60,14 +60,27 @@ pub enum Moment {
         seed: i64,
         off: i64,
     },
+    /// Written while the side's process started, before the first step: compared as "during
+    /// start-up" (how long a start-up takes is not behaviour); `off` relative to the run start.
+    Startup {
+        off: i64,
+    },
+    /// The expiry of a Dragonfly key written during start-up: the TTL it was given lies between
+    /// `lo` (expiry minus the run start) and `hi` (expiry minus the process start).
+    StartupTtl {
+        lo: i64,
+        hi: i64,
+    },
 }
 
 impl Moment {
     /// Milliseconds relative to the run start, for relations between times of one side.
     pub fn run_offset(&self) -> Option<i64> {
         match self {
-            Moment::Abs(_) => None,
-            Moment::Rel { off, .. } | Moment::Seed { off, .. } => Some(*off),
+            Moment::Abs(_) | Moment::StartupTtl { .. } => None,
+            Moment::Rel { off, .. } | Moment::Seed { off, .. } | Moment::Startup { off } => {
+                Some(*off)
+            }
         }
     }
 }
@@ -213,6 +226,12 @@ pub fn encode_moment(m: &Moment) -> String {
             format!("t{}@{}", timefmt::format_offset(*off), iso(*a))
         }
         Moment::Seed { seed, .. } => format!("seed{}", timefmt::format_offset(*seed)),
+        Moment::Startup { off } => format!("startup{}", timefmt::format_offset(*off)),
+        Moment::StartupTtl { lo, hi } => format!(
+            "startup-ttl {}..{}",
+            timefmt::format_offset(*lo),
+            timefmt::format_offset(*hi)
+        ),
     }
 }
 
@@ -232,6 +251,11 @@ pub enum NumRepr {
     Int64Secs,
     DoubleSecs,
     JsonSecs,
+    /// A JSON number holding a remaining duration (`ttl` allowance), in seconds or ms.
+    JsonTtlSecs,
+    JsonTtlMs,
+    /// A JSON number holding whole minutes since the epoch (`time` allowance, unit min).
+    JsonMinutes,
 }
 
 impl NumRepr {
@@ -245,6 +269,9 @@ impl NumRepr {
             NumRepr::Int64Secs => "int64 epoch-s",
             NumRepr::DoubleSecs => "double epoch-s",
             NumRepr::JsonSecs => "JSON number epoch-s",
+            NumRepr::JsonTtlSecs => "JSON number TTL-s",
+            NumRepr::JsonTtlMs => "JSON number TTL-ms",
+            NumRepr::JsonMinutes => "JSON number epoch-min",
         }
     }
 
@@ -252,7 +279,7 @@ impl NumRepr {
     pub fn fine(self) -> bool {
         matches!(
             self,
-            NumRepr::Date | NumRepr::Int64 | NumRepr::Double | NumRepr::Json
+            NumRepr::Date | NumRepr::Int64 | NumRepr::Double | NumRepr::Json | NumRepr::JsonTtlMs
         )
     }
 }
@@ -404,9 +431,14 @@ pub fn encode(v: &Val) -> Value {
         Val::Time(NumRepr::Double | NumRepr::DoubleSecs, m) => {
             single("$numberDouble", Value::String(marker(m)))
         }
-        Val::Time(NumRepr::Json | NumRepr::JsonSecs, m) => {
-            single("$rigNumber", Value::String(marker(m)))
-        }
+        Val::Time(
+            NumRepr::Json
+            | NumRepr::JsonSecs
+            | NumRepr::JsonTtlSecs
+            | NumRepr::JsonTtlMs
+            | NumRepr::JsonMinutes,
+            m,
+        ) => single("$rigNumber", Value::String(marker(m))),
         Val::Oid(id) => single("$oid", encode_id_value(id)),
         Val::Uuid(id) => single("$uuid", encode_id_value(id)),
         Val::Str(t) => encode_text_value(t),

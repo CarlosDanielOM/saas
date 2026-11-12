@@ -11,6 +11,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use crate::allow::Allowances;
 use crate::capture::{Body, Capture, EntryCap, StepCap};
+use crate::mock::providers::CallOrder;
 use crate::path::Path;
 use crate::value::{Id, IdKind, Moment, Seg, Text, Val};
 
@@ -68,6 +69,10 @@ fn render_text(t: &Text, ctx: &Ctx<'_>) -> String {
                 at: Moment::Seed { seed, .. },
                 shape,
             } => s.push_str(&format!("<Tseed{seed}|{shape}>")),
+            Seg::Time {
+                at: Moment::Startup { .. },
+                shape,
+            } => s.push_str(&format!("<Tstartup|{shape}>")),
             Seg::Time { shape, .. } => s.push_str(&format!("<T|{shape}>")),
             Seg::Day { .. } => s.push_str("<D>"),
             Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
@@ -101,6 +106,8 @@ fn render(v: &Val, path: &mut Path, ctx: &Ctx<'_>, top_is_set: bool) -> String {
         Val::Dec(s) => format!("m{s}"),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}@{ms}"),
         Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
+        Val::Time(r, Moment::Startup { .. }) => format!("T{r:?}startup"),
+        Val::Time(r, Moment::StartupTtl { .. }) => format!("T{r:?}startupttl"),
         Val::Time(r, _) => format!("T{r:?}~"),
         Val::Oid(id) => format!("O{}", id_label(id, ctx)),
         Val::Uuid(id) => format!("U{}", id_label(id, ctx)),
@@ -175,6 +182,7 @@ enum Item<'a> {
     Indexes(&'a str, &'a [(String, Val)]),
     Doc(&'a str, usize, &'a Val),
     Entry(&'a EntryCap),
+    Call(&'a str, usize, &'a Val),
 }
 
 impl Item<'_> {
@@ -185,6 +193,7 @@ impl Item<'_> {
             Item::Indexes(c, _) => format!("mongo:{c}:indexes"),
             Item::Doc(c, _, _) => format!("mongo:{c}"),
             Item::Entry(_) => "dragonfly".into(),
+            Item::Call(p, _, _) => format!("calls:{p}"),
         }
     }
 
@@ -203,7 +212,9 @@ impl Item<'_> {
             }
             Item::Step(_, StepCap::Reply(v)) => collect_ids(v, &mut out),
             Item::Step(_, StepCap::Done(_)) => {}
-            Item::Options(_, v) | Item::Doc(_, _, v) => collect_ids(v, &mut out),
+            Item::Options(_, v) | Item::Doc(_, _, v) | Item::Call(_, _, v) => {
+                collect_ids(v, &mut out)
+            }
             Item::Indexes(_, specs) => specs.iter().for_each(|(_, v)| collect_ids(v, &mut out)),
             Item::Entry(e) => {
                 collect_text_ids(&e.key, &mut out);
@@ -279,6 +290,12 @@ impl Item<'_> {
                 false,
             ),
             Item::Entry(e) => entry_render(e, ctx),
+            Item::Call(p, i, v) => render(
+                v,
+                &mut Path::root("calls").with_key(*p).with_index(*i),
+                ctx,
+                false,
+            ),
         }
     }
 }
@@ -318,6 +335,14 @@ fn items(cap: &Capture) -> Vec<Item<'_>> {
         );
     }
     out.extend(cap.dragonfly.iter().map(Item::Entry));
+    for c in &cap.calls {
+        out.extend(
+            c.calls
+                .iter()
+                .enumerate()
+                .map(|(i, v)| Item::Call(&c.provider, i, v)),
+        );
+    }
     out
 }
 
@@ -541,6 +566,21 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
             .with_key("value");
         sort_sets(&mut e.value, &mut p, &ctx, set);
     }
+    for c in cap.calls.iter_mut() {
+        let base = Path::root("calls").with_key(c.provider.clone());
+        for (i, v) in c.calls.iter_mut().enumerate() {
+            sort_sets(v, &mut base.with_index(i), &ctx, false);
+        }
+        // Calls compared as a multiset are stored in content order, like documents.
+        if c.order == CallOrder::Multiset || allow.is_set(&base, false) {
+            let mut keyed: Vec<(String, Val)> = std::mem::take(&mut c.calls)
+                .into_iter()
+                .map(|v| (render(&v, &mut base.with_index(0), &ctx, false), v))
+                .collect();
+            keyed.sort_by(|a, b| a.0.cmp(&b.0));
+            c.calls = keyed.into_iter().map(|(_, v)| v).collect();
+        }
+    }
 
     for (name, c) in cap.mongo.iter_mut() {
         let base = Path::root("mongo").with_key(name.clone());
@@ -587,6 +627,9 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
         num.text(&e.key);
         num.val(&e.value, &ctx);
     }
+    for c in &cap.calls {
+        c.calls.iter().for_each(|v| num.val(v, &ctx));
+    }
     let map = num.map;
 
     for s in cap.steps.iter_mut() {
@@ -613,5 +656,8 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     for e in cap.dragonfly.iter_mut() {
         apply_text(&mut e.key, &map);
         apply(&mut e.value, &map);
+    }
+    for c in cap.calls.iter_mut() {
+        c.calls.iter_mut().for_each(|v| apply(v, &map));
     }
 }

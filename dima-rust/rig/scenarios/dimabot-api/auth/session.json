@@ -1,0 +1,108 @@
+{
+  "rig_scenario": 1,
+  "description": "An authenticated endpoint: GET /auth/session validates the bearer token with Twitch (the mock's id.twitch.tv/oauth2/validate, then helix/users), caches it in token:<token> and touches last_app_activity_at; the second request is served from the cache with no outside call; an unknown token and a missing one are refused.",
+  "seed": {
+    "include": [
+      "../_seeds/streamer.json"
+    ]
+  },
+  "mock": {
+    "twitch": {
+      "users": [
+        {
+          "id": "1001",
+          "login": "rigstreamer",
+          "display_name": "RigStreamer",
+          "email": "rigstreamer@example.test"
+        }
+      ],
+      "tokens": [
+        {
+          "token": "rigusertoken1001",
+          "user_id": "1001",
+          "scopes": [
+            "user:read:email"
+          ]
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "name": "first request: validated with Twitch",
+      "http": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "authorization": "Bearer rigusertoken1001"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "pause_ms": 50
+    },
+    {
+      "name": "second request: from the cache",
+      "http": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "authorization": "Bearer rigusertoken1001"
+        },
+        "expect": {
+          "status": 200
+        }
+      }
+    },
+    {
+      "name": "unknown token",
+      "http": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "authorization": "Bearer nottoken"
+        },
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "name": "no token",
+      "http": {
+        "method": "GET",
+        "path": "/auth/session",
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "name": "the cached identity",
+      "dragonfly": [
+        "HGETALL",
+        "token:rigusertoken1001"
+      ]
+    }
+  ],
+  "compare": {
+    "dragonfly": {
+      "exclude": [
+        "logger:*",
+        "observability:*",
+        "ast_catalog:*"
+      ]
+    }
+  },
+  "allow": [
+    {
+      "path": "mongo.users[*].last_app_activity_at",
+      "kind": "tolerance",
+      "ms": 20,
+      "reason": "Two clock readings in one updateOne: the auth middleware's new Date() and Mongoose's updated_at; usually the same millisecond, sometimes one apart."
+    }
+  ]
+}

@@ -7,8 +7,8 @@ use serde_json::{Value, json};
 
 use crate::allow::{AllowKind, Allowances};
 use crate::capture::{
-    self, Capture, CaptureFile, Hashes, Provenance, RawCapture, RawColl, RawEntry, RawHttp,
-    RawStep, RawValue, RunMeta,
+    self, Capture, CaptureFile, Hashes, Provenance, RawCall, RawCapture, RawColl, RawEntry,
+    RawHttp, RawStep, RawValue, RunMeta,
 };
 use crate::compare::{self, Outcome};
 use crate::detect::tests::{START, oid_at, window};
@@ -85,6 +85,9 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
             .map(|(n, c)| (n.to_string(), c))
             .collect::<BTreeMap<_, _>>(),
         dragonfly,
+        calls: Vec::new(),
+        startup_ignored: BTreeMap::new(),
+        startup_keys: Vec::new(),
     }
 }
 
@@ -113,6 +116,9 @@ fn meta(w: Window, port: u16) -> RunMeta {
         mongo_uri: "mongodb://127.0.0.1:27017/rig_1_0_ref".into(),
         dragonfly_db: 3,
         dragonfly_url: "redis://127.0.0.1:6379/3".into(),
+        mock_port: Some(41300),
+        qdrant_port: None,
+        qdrant_prefix: None,
     }
 }
 
@@ -129,6 +135,15 @@ fn run_of(r: &RawCapture, w: Window, port: u16) -> RawRun {
 const BYTE_SENSITIVE: &[&str] = &["q:*", "cas:*"];
 
 fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
+    norm_run_with(run, known, a, &crate::detect::CallRules::default())
+}
+
+fn norm_run_with(
+    run: &RawRun,
+    known: &Known,
+    a: &Allowances,
+    calls: &crate::detect::CallRules,
+) -> Capture {
     let p = Patterns::new().unwrap();
     let skip: Vec<String> = NOISE_HEADERS.iter().map(|s| s.to_string()).collect();
     let bs: Vec<String> = BYTE_SENSITIVE.iter().map(|s| s.to_string()).collect();
@@ -139,6 +154,7 @@ fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
         as_text: &[],
         byte_sensitive: &bs,
         seed_offsets: &[(60_000, false)],
+        calls,
     };
     normalise(run, &rules, a)
 }
@@ -1421,7 +1437,7 @@ fn byte_sensitive_values_compare_as_exact_text() {
         raw(
             vec![RawStep::Reply(crate::capture::RawReplyStep {
                 at: START + 10,
-                command: vec!["GET".into(), key.into()],
+                command: vec![b"GET".to_vec(), key.as_bytes().to_vec()],
                 reply: crate::capture::RawReply::Bulk(v.as_bytes().to_vec()),
             })],
             vec![],
@@ -1756,4 +1772,486 @@ fn generated_object_keys_bind_by_key_and_value() {
     );
     assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
     assert!(o.differences[0].path.ends_with(".name"), "{:#?}", paths(&o));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Outbound calls.
+
+fn call(provider: &str, method: &str, path: &str, headers: &[(&str, &str)], body: &str) -> RawCall {
+    RawCall {
+        at: START + 500,
+        provider: provider.into(),
+        host: "h".into(),
+        method: method.into(),
+        path: path.into(),
+        query: String::new(),
+        headers: headers
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+            .collect(),
+        body: body.as_bytes().to_vec(),
+        answered: "test".into(),
+    }
+}
+
+fn with_calls(calls: Vec<RawCall>) -> RawCapture {
+    RawCapture {
+        calls,
+        ..raw(vec![], vec![], vec![])
+    }
+}
+
+fn diff_calls(a: Vec<RawCall>, b: Vec<RawCall>, rules: &crate::detect::CallRules) -> Outcome {
+    let known = Known::default();
+    let al = Allowances::default();
+    let ca = norm_run_with(
+        &through_file(&run_of(&with_calls(a), window(), 41234)),
+        &known,
+        &al,
+        rules,
+    );
+    let cb = norm_run_with(
+        &run_of(&with_calls(b), shifted(MIN), 41234),
+        &known,
+        &al,
+        rules,
+    );
+    compare::compare(&ca, &cb, &al, compare::Tolerances::default())
+}
+
+const JSON: (&str, &str) = ("content-type", "application/json");
+
+#[test]
+fn calls_match_when_only_generated_values_differ() {
+    let chat = |id: &str, at: i64| {
+        let iso = crate::timefmt::format_iso_ms(at).unwrap();
+        call(
+            "twitch",
+            "POST",
+            "/helix/chat/messages",
+            &[
+                JSON,
+                ("authorization", "Bearer <redacted>"),
+                ("client-id", "c"),
+                ("user-agent", "node"),
+            ],
+            &format!(r#"{{"broadcaster_id":"1001","message":"hola 👋 {id}","sent":"{iso}"}}"#),
+        )
+    };
+    let a = vec![chat(&oid_at(START + 100, 1), START + 100)];
+    let mut b = vec![chat(&oid_at(START + MIN + 100, 9), START + MIN + 120)];
+    b[0].headers[3].1 = b"undici".to_vec();
+    assert_match(&diff_calls(a, b, &Default::default()));
+}
+
+#[test]
+fn call_differences_are_found_at_their_paths() {
+    let prompt = |text: &str| {
+        call(
+            "openrouter",
+            "POST",
+            "/api/v1/chat/completions",
+            &[JSON, ("authorization", "Bearer <redacted>")],
+            &format!(r#"{{"model":"m","messages":[{{"role":"system","content":"{text}"}}]}}"#),
+        )
+    };
+    // The prompt text compares exactly.
+    let o = diff_calls(
+        vec![prompt("Eres un bot.")],
+        vec![prompt("Eres un bot. ")],
+        &Default::default(),
+    );
+    assert_one(
+        &o,
+        "calls.openrouter[0].body.messages[0].content",
+        "text differs",
+    );
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    // Key order counts for a provider that caches prompts ...
+    let reordered = call(
+        "openrouter",
+        "POST",
+        "/api/v1/chat/completions",
+        &[JSON, ("authorization", "Bearer <redacted>")],
+        r#"{"messages":[{"role":"system","content":"Eres un bot."}],"model":"m"}"#,
+    );
+    let o = diff_calls(
+        vec![prompt("Eres un bot.")],
+        vec![reordered],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.openrouter[0].body", "key order");
+    // ... and is only a note elsewhere.
+    let tw = |body: &str| call("twitch", "POST", "/helix/chat/messages", &[JSON], body);
+    let o = diff_calls(
+        vec![tw(r#"{"a":"1","b":"2"}"#)],
+        vec![tw(r#"{"b":"2","a":"1"}"#)],
+        &Default::default(),
+    );
+    assert_match(&o);
+    assert!(!o.notes.is_empty());
+    // The authorization scheme counts, never the value; an extra call is one difference.
+    let o = diff_calls(
+        vec![call(
+            "twitch-id",
+            "GET",
+            "/oauth2/validate",
+            &[("authorization", "OAuth <redacted>")],
+            "",
+        )],
+        vec![
+            call(
+                "twitch-id",
+                "GET",
+                "/oauth2/validate",
+                &[("authorization", "Bearer <redacted>")],
+                "",
+            ),
+            call(
+                "twitch-id",
+                "GET",
+                "/oauth2/validate",
+                &[("authorization", "Bearer <redacted>")],
+                "",
+            ),
+        ],
+        &Default::default(),
+    );
+    assert!(
+        o.differences
+            .iter()
+            .any(|d| d.what.contains("call only in candidate")),
+        "{:#?}",
+        paths(&o)
+    );
+    // A call to a provider the reference never called.
+    let o = diff_calls(
+        vec![],
+        vec![call("resend", "POST", "/emails", &[JSON], "{}")],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.resend[0]", "call only in candidate");
+}
+
+#[test]
+fn call_order_per_provider() {
+    let ev = |name: &str| {
+        call(
+            "posthog",
+            "POST",
+            "/batch",
+            &[JSON],
+            &format!(r#"{{"event":"{name}"}}"#),
+        )
+    };
+    let tw = |m: &str| {
+        call(
+            "twitch",
+            "POST",
+            "/helix/chat/messages",
+            &[JSON],
+            &format!(r#"{{"message":"{m}"}}"#),
+        )
+    };
+    // PostHog flushes on its own timer: a multiset by default.
+    assert_match(&diff_calls(
+        vec![ev("a"), ev("b")],
+        vec![ev("b"), ev("a")],
+        &Default::default(),
+    ));
+    // Twitch chat is ordered: the same two messages swapped are two differences.
+    let o = diff_calls(
+        vec![tw("1"), tw("2")],
+        vec![tw("2"), tw("1")],
+        &Default::default(),
+    );
+    assert_eq!(o.differences.len(), 2, "{:#?}", paths(&o));
+    // A scenario may compare one provider as a multiset, or not at all.
+    let mut rules = crate::detect::CallRules::default();
+    rules
+        .order
+        .insert("twitch".into(), crate::mock::providers::CallOrder::Multiset);
+    assert_match(&diff_calls(
+        vec![tw("1"), tw("2")],
+        vec![tw("2"), tw("1")],
+        &rules,
+    ));
+    rules
+        .order
+        .insert("twitch".into(), crate::mock::providers::CallOrder::Ignore);
+    assert_match(&diff_calls(vec![tw("1")], vec![], &rules));
+    // OTLP log records are recorded, not compared.
+    assert_match(&diff_calls(
+        vec![call(
+            "otlp-logs",
+            "POST",
+            "/i/v1/logs",
+            &[JSON],
+            r#"{"x":1}"#,
+        )],
+        vec![],
+        &Default::default(),
+    ));
+}
+
+#[test]
+fn call_bodies_by_content_type() {
+    let gz = |s: &str| {
+        let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        std::io::Write::write_all(&mut e, s.as_bytes()).unwrap();
+        e.finish().unwrap()
+    };
+    let mut a = call(
+        "posthog",
+        "POST",
+        "/batch",
+        &[JSON, ("content-encoding", "gzip")],
+        "",
+    );
+    a.body = gz(r#"{"batch":[{"event":"x","properties":{"n":1}}]}"#);
+    let mut b = a.clone();
+    b.body = gz(r#"{"batch":[{"event":"x","properties":{"n":2}}]}"#);
+    let o = diff_calls(vec![a], vec![b], &Default::default());
+    assert_one(
+        &o,
+        "calls.posthog[0].body.batch[0].properties.n",
+        "number differs",
+    );
+    let form = ("content-type", "application/x-www-form-urlencoded");
+    let o = diff_calls(
+        vec![call(
+            "twitch-id",
+            "POST",
+            "/oauth2/token",
+            &[form],
+            "grant_type=client_credentials&client_id=a",
+        )],
+        vec![call(
+            "twitch-id",
+            "POST",
+            "/oauth2/token",
+            &[form],
+            "client_id=a&grant_type=refresh_token",
+        )],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.twitch-id[0].body.grant_type", "text differs");
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    let o = diff_calls(
+        vec![call(
+            "piper",
+            "POST",
+            "/synthesize",
+            &[("content-type", "text/plain")],
+            "hola",
+        )],
+        vec![call(
+            "piper",
+            "POST",
+            "/synthesize",
+            &[("content-type", "text/plain")],
+            "adiós",
+        )],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.piper[0].text", "text differs");
+}
+
+// ---------------------------------------------------------------------------------------------
+// From the first service port.
+
+#[test]
+fn ttl_fields_compare_as_the_moment_they_end() {
+    let body = |ttl: i64, at: i64| {
+        RawStep::Http(RawHttp {
+            at,
+            status: 200,
+            headers: vec![("content-type".into(), b"application/json".to_vec())],
+            body: format!(r#"{{"ttl":{ttl},"none":-1}}"#).into_bytes(),
+        })
+    };
+    let al = allow(&[("steps[*].body.ttl", AllowKind::Ttl { seconds: true })]);
+    // The reference read 59 s left at +1.0 s, the candidate 58 s left at +1.6 s: the same end.
+    let a = raw(vec![body(59, START + 1000)], vec![], vec![]);
+    let b = raw(vec![body(58, START + MIN + 1600)], vec![], vec![]);
+    let o = diff_w(&a, window(), &b, shifted(MIN), &al);
+    assert_match(&o);
+    // An expiry an hour off is a difference; -1 (no TTL) stays a number.
+    let c = raw(vec![body(3659, START + MIN + 1600)], vec![], vec![]);
+    let o = diff_w(&a, window(), &c, shifted(MIN), &al);
+    assert_one(&o, "steps[0].body.ttl", "run-relative times differ");
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+}
+
+#[test]
+fn date_only_and_epoch_second_inputs_are_known() {
+    let p = Patterns::new().unwrap();
+    let mut known = Known::default();
+    let day = crate::timefmt::format_day(START.div_euclid(DAY));
+    p.collect_known(&format!("{{\"day\":\"{day}\"}}"), &mut known);
+    crate::detect::collect_known_json(&p, &json!({"at": START / 1000}), &mut known);
+    let midnight = START.div_euclid(DAY) * DAY;
+    assert!(known.times.contains(&midnight), "the date's midnight");
+    assert!(
+        known.times.contains(&(START / 1000 * 1000)),
+        "epoch seconds as ms"
+    );
+    // The application stores that date: a run a day later still matches, because the value
+    // is known from the request (without it, it would read as a run time a day off).
+    let d = raw(
+        vec![],
+        vec![("days", coll(vec![doc! {"_id": 1, "day": date(midnight)}]))],
+        vec![],
+    );
+    let ca = norm_w(&d, window(), &known, &Allowances::default());
+    let cb = norm_w(&d, shifted(DAY), &known, &Allowances::default());
+    assert_match(&compare::compare(
+        &ca,
+        &cb,
+        &Allowances::default(),
+        compare::Tolerances::default(),
+    ));
+    let none = Known::default();
+    let ca = norm_w(&d, window(), &none, &Allowances::default());
+    let cb = norm_w(&d, shifted(DAY), &none, &Allowances::default());
+    let o = compare::compare(
+        &ca,
+        &cb,
+        &Allowances::default(),
+        compare::Tolerances::default(),
+    );
+    assert_one(&o, "mongo.days[0].day", "run-relative times differ");
+}
+
+#[test]
+fn binary_command_arguments() {
+    let cmd =
+        crate::scenario::tests_command(&[json!("SET"), json!("k"), json!({"$rigBytes": "/wA="})]);
+    assert!(matches!(cmd.get(2), Some(crate::scenario::Arg::Bytes(b)) if b == &vec![0xff, 0x00]));
+    assert!(
+        crate::scenario::tests_command_err(&[
+            json!("SET"),
+            json!("k"),
+            json!({"$rigBytes": "/wA=", "x": 1})
+        ])
+        .contains("$rigBytes")
+    );
+}
+
+#[test]
+fn minute_windows_compare_relative_to_the_run() {
+    let minute = |at: i64| {
+        RawStep::Http(RawHttp {
+            at,
+            status: 200,
+            headers: vec![("content-type".into(), b"application/json".to_vec())],
+            body: format!(r#"{{"window":{},"text":"{}"}}"#, at / 60_000, at / 60_000).into_bytes(),
+        })
+    };
+    let al = allow(&[
+        ("steps[*].body.window", AllowKind::Minutes),
+        ("steps[*].body.text", AllowKind::Minutes),
+    ]);
+    // A day apart, and the candidate's minute rolled over during its run: still the same.
+    let a = raw(vec![minute(START + 1000)], vec![], vec![]);
+    let b = raw(vec![minute(START + DAY + 59_000)], vec![], vec![]);
+    assert_match(&diff_w(&a, window(), &b, shifted(DAY), &al));
+    // Ten minutes off is a difference.
+    let c = raw(vec![minute(START + DAY + 600_000)], vec![], vec![]);
+    let o = diff_w(&a, window(), &c, shifted(DAY), &al);
+    assert_one(&o, "steps[0].body.window", "minute precision");
+    assert_one(&o, "steps[0].body.text", "minute precision");
+}
+
+#[test]
+fn times_written_during_start_up_compare_as_such() {
+    // Own process: seeded, then the process starts, then the first step.
+    let w = |boot: i64| Window {
+        start: START,
+        end: START + 3000,
+        proc_start: START - boot,
+        seeded_at: START - boot - 500,
+    };
+    let doc_at = |t: i64| {
+        raw(
+            vec![],
+            vec![(
+                "clients",
+                coll(vec![
+                    doc! {"_id": 1, "createdAt": date(t), "updatedAt": date(t)},
+                ]),
+            )],
+            vec![RawEntry {
+                key: b"app:token".to_vec(),
+                kind: "string".into(),
+                value: RawValue::Str(b"t".to_vec()),
+                pttl: 5_000_000_000 - (START + 3000 - t),
+                pttl_at: START + 3000,
+            }],
+        )
+    };
+    let with_startup = |mut r: RawCapture, t: i64| {
+        r.startup_keys = vec![(b"app:token".to_vec(), t + 5_000_000_000)];
+        r
+    };
+    // The reference took 7 s to start and wrote 6 s before the first step; the candidate
+    // started in 100 ms and wrote 50 ms before it: both wrote during start-up, same TTL length.
+    let a = with_startup(doc_at(START - 6000), START - 6000);
+    let b = with_startup(doc_at(START - 50), START - 50);
+    let known = Known::default();
+    let al = Allowances::default();
+    let ca = norm_run(
+        &RawRun {
+            raw: a.clone(),
+            run: meta(w(7000), 41234),
+        },
+        &known,
+        &al,
+    );
+    let cb = norm_run(
+        &RawRun {
+            raw: b,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    assert_match(&compare::compare(
+        &ca,
+        &cb,
+        &al,
+        compare::Tolerances::default(),
+    ));
+    // A candidate that writes during the run instead, with a TTL a day shorter.
+    let mut late = doc_at(START + 500);
+    late.dragonfly[0].pttl -= 86_400_000;
+    let cl = norm_run(
+        &RawRun {
+            raw: late,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    let o = compare::compare(&ca, &cl, &al, compare::Tolerances::default());
+    assert_one(&o, "mongo.clients[0].createdAt", "during start-up");
+    assert_one(&o, r#"dragonfly["app:token"].ttl"#, "during start-up");
+    // A start-up TTL of another length.
+    let mut short = with_startup(doc_at(START - 50), START - 50);
+    short.dragonfly[0].pttl -= 86_400_000;
+    short.startup_keys[0].1 -= 86_400_000;
+    let cs = norm_run(
+        &RawRun {
+            raw: short,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    let o = compare::compare(&ca, &cs, &al, compare::Tolerances::default());
+    assert_one(
+        &o,
+        r#"dragonfly["app:token"].ttl"#,
+        "TTLs set during start-up differ",
+    );
 }

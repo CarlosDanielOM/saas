@@ -3,7 +3,8 @@
 //! only in generated ids, timing, insertion order and JSON key order; every other variant
 //! introduces exactly one defect the rig must catch.
 //!
-//! Environment: PORT, MONGO_URI, MONGO_DB, REDIS_URL.
+//! Environment: PORT, MONGO_URI, MONGO_DB, REDIS_URL; for the webhook routes FIXTURE_EVENTSUB_SECRET,
+//! FIXTURE_POLAR_SECRET and FIXTURE_MOCK_URL (the side's mock, where it answers in chat).
 #![forbid(unsafe_code)]
 
 use std::sync::Arc;
@@ -42,6 +43,10 @@ enum Variant {
     IndexOption,
     StreamField,
     HashBytes,
+    /// Answers an EventSub chat message with other text.
+    ChatText,
+    /// Does not answer an EventSub chat message at all.
+    NoChat,
 }
 
 impl Variant {
@@ -71,6 +76,8 @@ impl Variant {
             "index-option" => Variant::IndexOption,
             "stream-field" => Variant::StreamField,
             "hash-bytes" => Variant::HashBytes,
+            "chat-text" => Variant::ChatText,
+            "no-chat" => Variant::NoChat,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -78,6 +85,7 @@ impl Variant {
 
 struct App {
     v: Variant,
+    client: mongodb::Client,
     db: mongodb::Database,
     redis: redis::aio::MultiplexedConnection,
     posts: AtomicU32,
@@ -86,7 +94,18 @@ struct App {
 struct Request {
     method: String,
     path: String,
+    /// Lower-case names.
+    headers: Vec<(String, String)>,
     body: Vec<u8>,
+}
+
+impl Request {
+    fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.as_str())
+    }
 }
 
 struct Response {
@@ -154,11 +173,13 @@ async fn read_request(s: &mut TcpStream) -> Result<Request> {
     let method = parts.next().unwrap_or("").to_string();
     let path = parts.next().unwrap_or("").to_string();
     let mut len = 0usize;
+    let mut headers = Vec::new();
     for l in lines {
-        if let Some((k, v)) = l.split_once(':')
-            && k.trim().eq_ignore_ascii_case("content-length")
-        {
-            len = v.trim().parse().unwrap_or(0);
+        if let Some((k, v)) = l.split_once(':') {
+            if k.trim().eq_ignore_ascii_case("content-length") {
+                len = v.trim().parse().unwrap_or(0);
+            }
+            headers.push((k.trim().to_ascii_lowercase(), v.trim().to_string()));
         }
     }
     let mut body = buf.get(head_end + 4..).unwrap_or(&[]).to_vec();
@@ -169,7 +190,12 @@ async fn read_request(s: &mut TcpStream) -> Result<Request> {
         }
         body.extend_from_slice(chunk.get(..n).unwrap_or(&[]));
     }
-    Ok(Request { method, path, body })
+    Ok(Request {
+        method,
+        path,
+        headers,
+        body,
+    })
 }
 
 async fn write_response(s: &mut TcpStream, v: Variant, r: Response) -> Result<()> {
@@ -177,6 +203,8 @@ async fn write_response(s: &mut TcpStream, v: Variant, r: Response) -> Result<()
         200 => "OK",
         201 => "Created",
         202 => "Accepted",
+        204 => "No Content",
+        403 => "Forbidden",
         404 => "Not Found",
         _ => "Status",
     };
@@ -476,6 +504,87 @@ impl App {
         Ok(())
     }
 
+    /// The bot's EventSub ingress in miniature: the signature is checked like the reference
+    /// checks it, a verification is answered with its challenge, and a chat message is answered
+    /// in chat through the mock (after the 204, as the bot does).
+    async fn eventsub(&self, req: &Request) -> Result<Response> {
+        let secret = env("FIXTURE_EVENTSUB_SECRET")?;
+        let h = |n: &str| req.header(n).unwrap_or("").to_string();
+        let ok = dima_core::crypto::webhook::verify_eventsub_signature(
+            &dima_core::SecretBytes::from_text(&secret),
+            &h("twitch-eventsub-message-id"),
+            &h("twitch-eventsub-message-timestamp"),
+            &req.body,
+            &h("twitch-eventsub-message-signature"),
+        );
+        let empty = |status| Response {
+            status,
+            content_type: "text/plain; charset=utf-8",
+            body: Vec::new(),
+            headers: Vec::new(),
+        };
+        if !ok {
+            return Ok(empty(403));
+        }
+        let n: Value = serde_json::from_slice(&req.body)?;
+        match h("twitch-eventsub-message-type").as_str() {
+            "webhook_callback_verification" => Ok(Response {
+                status: 200,
+                content_type: "text/plain; charset=utf-8",
+                body: n["challenge"].as_str().unwrap_or("").as_bytes().to_vec(),
+                headers: Vec::new(),
+            }),
+            "notification" if n["subscription"]["type"] == "channel.chat.message" => {
+                let text = n["event"]["message"]["text"].as_str().unwrap_or("");
+                let answer = if self.v == Variant::ChatText {
+                    format!("Echo: {text}")
+                } else {
+                    format!("echo: {text}")
+                };
+                let body = json!({"broadcaster_id": n["event"]["broadcaster_user_id"], "sender_id": "698614112", "message": answer});
+                if self.v != Variant::NoChat {
+                    let url = format!(
+                        "{}/api.twitch.tv/helix/chat/messages",
+                        env("FIXTURE_MOCK_URL")?
+                    );
+                    tokio::spawn(async move {
+                        let c = reqwest::Client::new();
+                        let r = c
+                            .post(url)
+                            .header("authorization", "Bearer fixture-bot-token")
+                            .header("client-id", "fixture-client")
+                            .json(&body)
+                            .send()
+                            .await;
+                        println!("fixture: chat answer -> {:?}", r.map(|r| r.status()));
+                    });
+                }
+                Ok(empty(204))
+            }
+            _ => Ok(empty(204)),
+        }
+    }
+
+    /// A Polar webhook route in miniature: standardwebhooks verified like @polar-sh/sdk.
+    fn polar(&self, req: &Request) -> Result<Response> {
+        let Some(w) = dima_core::crypto::webhook::PolarWebhook::new(&env("FIXTURE_POLAR_SECRET")?)
+        else {
+            return Ok(json_resp(500, &json!({"error": "no secret"})));
+        };
+        let headers = dima_core::crypto::webhook::WebhookHeaders {
+            id: req.header("webhook-id"),
+            timestamp: req.header("webhook-timestamp"),
+            signature: req.header("webhook-signature"),
+        };
+        match w.verify(&req.body, headers, dima_rig::timefmt::now_ms()) {
+            Ok(()) => {
+                let v: Value = serde_json::from_slice(&req.body)?;
+                Ok(json_resp(202, &json!({"received": v["type"]})))
+            }
+            Err(e) => Ok(json_resp(403, &json!({"error": e.to_string()}))),
+        }
+    }
+
     async fn route(self: &Arc<Self>, req: Request) -> Result<Response> {
         let segs: Vec<&str> = req.path.trim_start_matches('/').split('/').collect();
         match (req.method.as_str(), segs.as_slice()) {
@@ -489,6 +598,36 @@ impl App {
             ("GET", ["items", id]) => self.get_item(id).await,
             ("POST", ["items", id, "touch"]) => self.touch_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
+            ("POST", ["eventsub"]) => self.eventsub(&req).await,
+            // A file the scenario seeded into the side's data directory.
+            ("GET", ["file", name]) => {
+                let dir = env("FIXTURE_DATA_DIR")?;
+                match std::fs::read(std::path::Path::new(&dir).join(name)) {
+                    Ok(b) => Ok(Response {
+                        status: 200,
+                        content_type: "text/plain; charset=utf-8",
+                        body: b,
+                        headers: Vec::new(),
+                    }),
+                    Err(_) => Ok(json_resp(404, &json!({"error": "no such file"}))),
+                }
+            }
+            // Try to write to a database that is not the side's own.
+            ("POST", ["other-db"]) => {
+                let other = self.client.database("rig_other_db_probe");
+                match other
+                    .collection::<Document>("probe")
+                    .insert_one(doc! {"x": 1})
+                    .await
+                {
+                    Ok(_) => {
+                        let _ = other.drop().await;
+                        Ok(json_resp(200, &json!({"refused": false})))
+                    }
+                    Err(_) => Ok(json_resp(200, &json!({"refused": true}))),
+                }
+            }
+            ("POST", ["polar", "webhook"]) => self.polar(&req),
             // Echo one word (a scenario saves it and uses it in a later step).
             ("GET", ["word", w]) => Ok(json_resp(200, &json!({"word": w}))),
             // In-memory state of this process: how many items it created.
@@ -597,6 +736,7 @@ async fn main() -> Result<()> {
     );
     let app = Arc::new(App {
         v: variant,
+        client,
         db,
         redis,
         posts: AtomicU32::new(0),

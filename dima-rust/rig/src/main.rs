@@ -102,6 +102,18 @@ enum Cmd {
     },
     /// Drop rig_ databases left behind by rig processes that are gone
     Gc,
+    /// Run the mock of the outside world in the foreground and print every request
+    Mock {
+        /// Loopback port [default: a free one]
+        #[arg(long, default_value_t = 0)]
+        port: u16,
+        /// A JSON file with a `mock` section (routes, twitch, s3), as in a scenario
+        #[arg(long)]
+        routes: Option<PathBuf>,
+        /// Also run the prefixing proxy to the local Qdrant (DIMA_RIG_QDRANT_URL, DIMA_RIG_QDRANT_API_KEY)
+        #[arg(long)]
+        qdrant: bool,
+    },
 }
 
 async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Report>, RigError> {
@@ -122,8 +134,16 @@ async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Repo
             allow_writes,
         } => run::diff_get(s, reg, target, db, paths, !no_write_check, *allow_writes).await?,
         Cmd::Check { target, scenarios } => run::check(s, target, scenarios)?,
+        Cmd::Mock { .. } => return Ok(None),
         Cmd::Gc => {
-            let dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
+            let mut dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
+            match config::qdrant_store(&s.env) {
+                Ok(q) => match dima_rig::stores::gc_qdrant(&q).await {
+                    Ok(names) => dropped.extend(names),
+                    Err(e) => eprintln!("dima-rig: Qdrant not cleaned: {e}"),
+                },
+                Err(e) => eprintln!("dima-rig: Qdrant not cleaned: {e}"),
+            }
             println!(
                 "dropped {} database(s){}{}",
                 dropped.len(),
@@ -142,12 +162,73 @@ fn target_of(cmd: &Cmd) -> &str {
         | Cmd::Compare { target, .. }
         | Cmd::DiffGet { target, .. }
         | Cmd::Check { target, .. } => target,
-        Cmd::Gc => "",
+        Cmd::Gc | Cmd::Mock { .. } => "",
+    }
+}
+
+/// `dima-rig mock`: needs no stores.
+fn standalone_mock(port: u16, routes: Option<&std::path::Path>, qdrant: bool) -> ExitCode {
+    let spec = match routes {
+        None => Ok(dima_rig::mock::MockSpec::default()),
+        Some(p) => std::fs::read_to_string(p)
+            .map_err(|e| format!("{}: {e}", p.display()))
+            .and_then(|t| {
+                serde_json::from_str::<dima_rig::mock::MockFile>(&t)
+                    .map_err(|e| format!("{}: {e}", p.display()))
+            })
+            .and_then(|f| dima_rig::mock::MockSpec::from_file(f, &p.display().to_string())),
+    };
+    let spec = match spec {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("dima-rig: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let upstream = if qdrant {
+        match config::qdrant_store(&std::env::vars().collect()) {
+            Ok(q) => Some(dima_rig::mock::qdrant::Upstream {
+                url: q.url,
+                api_key: q.api_key,
+                prefix: format!("rig_{}_mock__", std::process::id()),
+            }),
+            Err(e) => {
+                eprintln!("dima-rig: {e}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
+    let rt = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("dima-rig: cannot start the runtime: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    match rt.block_on(dima_rig::mock::run_standalone(port, spec, upstream)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("dima-rig: mock: {e}");
+            ExitCode::from(2)
+        }
     }
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    if let Cmd::Mock {
+        port,
+        routes,
+        qdrant,
+    } = &cli.cmd
+    {
+        return standalone_mock(*port, routes.as_deref(), *qdrant);
+    }
     let o = Overrides {
         rig_dir: cli.rig_dir.clone(),
         captures_dir: cli.captures_dir.clone(),

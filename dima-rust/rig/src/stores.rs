@@ -49,17 +49,37 @@ fn without_credentials(uri: &str) -> String {
     crate::capture::redact_uri(uri)
 }
 
-/// The URI with these credentials (defined in `admin`) and `db` as its path.
+/// The URI with these credentials (defined in `admin`) and `db` as its path. The options keep
+/// their order (`authSource` set to `admin` where it was, or appended).
 pub fn uri_with_user(uri: &str, user: &str, password: &str, db: &str) -> String {
     let base = uri_with_db(&without_credentials(uri), db);
     let (scheme, rest) = base.split_once("://").unwrap_or(("mongodb", base.as_str()));
     let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
-    let mut params: Vec<&str> = query
-        .split('&')
-        .filter(|p| !p.is_empty() && !p.starts_with("authSource="))
-        .collect();
-    params.push("authSource=admin");
+    let mut params: Vec<&str> = query.split('&').filter(|p| !p.is_empty()).collect();
+    match params.iter_mut().find(|p| p.starts_with("authSource=")) {
+        Some(p) => *p = "authSource=admin",
+        None => params.push("authSource=admin"),
+    }
     format!("{scheme}://{user}:{password}@{path}?{}", params.join("&"))
+}
+
+/// A temporary user, defined in `admin`, that may read, write and index the side's own
+/// database and nothing else. Registered for [`Registry::cleanup`] before it exists.
+pub async fn create_side_user(cfg: &StoreConfig, reg: &Registry, db: &str) -> Result<String> {
+    let name = format!("{db}_rw");
+    let password = uuid::Uuid::new_v4().simple().to_string();
+    let client = mongo_client(&cfg.mongo_uri).await?;
+    reg.add_user(&name);
+    timed(
+        "MongoDB createUser",
+        client.database("admin").run_command(doc! {
+            "createUser": &name,
+            "pwd": &password,
+            "roles": [{"role": "readWrite", "db": db}, {"role": "dbAdmin", "db": db}],
+        }),
+    )
+    .await?;
+    Ok(uri_with_user(&cfg.mongo_uri, &name, &password, db))
 }
 
 /// A temporary user, defined in `admin`, with the `read` role on `db` only. Registered for
@@ -187,6 +207,12 @@ struct Held {
     /// Users defined in the `admin` database.
     users: Vec<String>,
     dragonfly: Vec<(u8, File)>,
+    /// Qdrant collection prefixes of the sides' proxies.
+    qdrant: Vec<crate::mock::qdrant::Upstream>,
+    /// Containers started for sides (`docker rm -f` on cleanup).
+    containers: Vec<String>,
+    /// The sides' data directories (removed on cleanup).
+    data_dirs: Vec<PathBuf>,
 }
 
 /// What [`Registry::cleanup`] did.
@@ -197,6 +223,8 @@ pub struct Cleanup {
     pub dropped_users: Vec<String>,
     pub flushed: Vec<u8>,
     pub kept_dragonfly: Vec<u8>,
+    pub dropped_collections: Vec<String>,
+    pub removed_containers: Vec<String>,
     pub errors: Vec<String>,
 }
 
@@ -214,6 +242,18 @@ impl Cleanup {
             parts.push(format!(
                 "dropped MongoDB users {}",
                 self.dropped_users.join(", ")
+            ));
+        }
+        if !self.dropped_collections.is_empty() {
+            parts.push(format!(
+                "dropped Qdrant collections {}",
+                self.dropped_collections.join(", ")
+            ));
+        }
+        if !self.removed_containers.is_empty() {
+            parts.push(format!(
+                "removed containers {}",
+                self.removed_containers.join(", ")
             ));
         }
         if !self.flushed.is_empty() {
@@ -252,19 +292,66 @@ impl Registry {
         self.held().dragonfly.push((idx, lock));
     }
 
+    pub fn add_qdrant(&self, up: &crate::mock::qdrant::Upstream) {
+        self.held().qdrant.push(up.clone());
+    }
+
+    /// A side's container, removed by the cleanup path if it is still there.
+    pub fn add_container(&self, name: &str) {
+        self.held().containers.push(name.to_string());
+    }
+
+    pub fn add_data_dir(&self, dir: &std::path::Path) {
+        self.held().data_dirs.push(dir.to_path_buf());
+    }
+
     /// Release everything: drop the MongoDB databases (unless `keep`) and the temporary users
     /// (always), flush each claimed logical database (unless `keep`), then release its lock.
     /// Idempotent: what was released is forgotten.
     pub async fn cleanup(&self, cfg: &StoreConfig, keep: bool) -> Cleanup {
-        let (dbs, users, dragonfly) = {
+        let (dbs, users, dragonfly, qdrant, containers, data_dirs) = {
             let mut h = self.held();
             (
                 std::mem::take(&mut h.mongo_dbs),
                 std::mem::take(&mut h.users),
                 std::mem::take(&mut h.dragonfly),
+                std::mem::take(&mut h.qdrant),
+                std::mem::take(&mut h.containers),
+                std::mem::take(&mut h.data_dirs),
             )
         };
         let mut out = Cleanup::default();
+        // Containers first: nothing may write to the stores while they are released.
+        for name in containers {
+            match crate::side::remove_container(&name).await {
+                Ok(true) => out.removed_containers.push(name),
+                Ok(false) => {}
+                Err(e) => out.errors.push(format!("removing container {name}: {e}")),
+            }
+        }
+        for dir in data_dirs {
+            if keep || !dir.exists() {
+                continue;
+            }
+            if let Err(e) = std::fs::remove_dir_all(&dir) {
+                out.errors.push(format!(
+                    "removing the data directory {}: {e} (files a container wrote as root?)",
+                    dir.display()
+                ));
+            }
+        }
+        for up in qdrant {
+            if keep {
+                continue;
+            }
+            match crate::mock::qdrant::drop_prefixed(&up).await {
+                Ok(names) => out.dropped_collections.extend(names),
+                Err(e) => out.errors.push(format!(
+                    "dropping Qdrant collections {}*: {e}; run `dima-rig gc`",
+                    up.prefix
+                )),
+            }
+        }
         if !dbs.is_empty() || !users.is_empty() {
             match mongo_client(&cfg.mongo_uri).await {
                 Ok(client) => {
@@ -459,6 +546,7 @@ impl SideStores {
         reg: &Registry,
         label: &str,
         existing_db: Option<&str>,
+        own_user: bool,
     ) -> Result<SideStores> {
         let (df_index, lock) = lock_index(cfg).await?;
         reg.add_dragonfly(df_index, lock);
@@ -483,6 +571,12 @@ impl SideStores {
         );
         let rc = redis::Client::open(url).map_err(redis_err)?;
         let redis = timed("Dragonfly connect", rc.get_multiplexed_async_connection()).await?;
+        // The side reaches only its own database (record, verify, compare).
+        let side_uri = if owned && own_user {
+            Some(create_side_user(cfg, reg, &db_name).await?)
+        } else {
+            None
+        };
         let mut s = SideStores {
             cfg: cfg.clone(),
             client,
@@ -490,7 +584,7 @@ impl SideStores {
             owned,
             df_index,
             redis,
-            side_uri: None,
+            side_uri,
         };
         s.reset_empty().await?;
         Ok(s)
@@ -849,11 +943,12 @@ impl SideStores {
                 .map(|a| a.render(&empty, now))
                 .collect::<std::result::Result<Vec<_>, _>>()
                 .map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
-            crate::dfcmd::check(&args, s.allow_scripts)
-                .map_err(|e| config(format!("seed.dragonfly[{i}] {args:?}: {e}")))?;
+            let words = crate::dfcmd::words(&args);
+            crate::dfcmd::check(&words, s.allow_scripts)
+                .map_err(|e| config(format!("seed.dragonfly[{i}] {words:?}: {e}")))?;
             match self.command(&args).await? {
                 RawReply::Error(e) => {
-                    return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}")));
+                    return Err(config(format!("seed.dragonfly[{i}] {words:?} failed: {e}")));
                 }
                 _ => continue,
             }
@@ -862,13 +957,13 @@ impl SideStores {
     }
 
     /// Run one command on the side's logical database. Error replies are values, not failures.
-    pub async fn command(&mut self, args: &[String]) -> Result<RawReply> {
+    pub async fn command(&mut self, args: &[Vec<u8>]) -> Result<RawReply> {
         let Some((name, rest)) = args.split_first() else {
             return Err(config("empty command"));
         };
-        let mut cmd = redis::cmd(name);
+        let mut cmd = redis::cmd(&String::from_utf8_lossy(name));
         for a in rest {
-            cmd.arg(a);
+            cmd.arg(a.as_slice());
         }
         match tokio::time::timeout(
             STORE_TIMEOUT,
@@ -892,6 +987,20 @@ impl SideStores {
                     .to_string(),
             )),
         }
+    }
+
+    /// Every key that has a TTL now, with its expiry (rig clock, epoch ms).
+    pub async fn ttl_keys(&mut self) -> Result<Vec<(Vec<u8>, i64)>> {
+        let mut out = Vec::new();
+        for key in self.keys().await? {
+            let before = crate::timefmt::now_ms();
+            if let redis::Value::Int(p) = self.q(redis::cmd("PTTL").arg(&key)).await?
+                && p >= 0
+            {
+                out.push((key, before + p));
+            }
+        }
+        Ok(out)
     }
 
     pub async fn count(&self, collection: &str, filter: Document) -> Result<u64> {
@@ -1009,6 +1118,56 @@ pub async fn db_hash(client: &Client, db: &str) -> Result<BTreeMap<String, Strin
     Ok(out)
 }
 
+/// Delete Qdrant collections `rig_<pid>_...` whose rig process is gone.
+pub async fn gc_qdrant(store: &crate::config::QdrantStore) -> Result<Vec<String>> {
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| store_err("Qdrant", e))?;
+    let base = store.url.trim_end_matches('/');
+    let with_key = |rb: reqwest::RequestBuilder| match &store.api_key {
+        Some(k) => rb.header("api-key", k.as_str()),
+        None => rb,
+    };
+    let list: serde_json::Value = with_key(client.get(format!("{base}/collections")))
+        .send()
+        .await
+        .map_err(|e| store_err("Qdrant", e))?
+        .json()
+        .await
+        .map_err(|e| store_err("Qdrant", e))?;
+    let mut dropped = Vec::new();
+    for name in list
+        .pointer("/result/collections")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c.get("name").and_then(serde_json::Value::as_str))
+    {
+        let Some(pid) = name
+            .strip_prefix("rig_")
+            .and_then(|rest| rest.split('_').next())
+            .and_then(|p| p.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        if std::path::Path::new(&format!("/proc/{pid}")).exists() {
+            continue;
+        }
+        with_key(client.delete(format!("{base}/collections/{name}")))
+            .send()
+            .await
+            .map_err(|e| store_err("Qdrant", e))?;
+        dropped.push(format!("Qdrant collection {name}"));
+    }
+    Ok(dropped)
+}
+
+fn store_err(what: &str, e: impl std::fmt::Display) -> RigError {
+    store(what, e)
+}
+
 /// Drop `rig_<pid>_...` databases and users whose rig process is gone. Returns the dropped names.
 pub async fn gc(mongo_uri: &str) -> Result<Vec<String>> {
     let client = mongo_client(mongo_uri).await?;
@@ -1087,7 +1246,7 @@ mod tests {
                 "abc",
                 "domdimabot"
             ),
-            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?directConnection=true&authSource=admin"
+            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?authSource=admin&directConnection=true"
         );
         assert_eq!(
             uri_with_user("mongodb://h:1", "u", "p", "d"),

@@ -2,6 +2,8 @@
   "rig_target": 1,
   "description": "dimadb/server: the Node reference (node server/index.mjs, dependencies in dimadb/server/node_modules) against the Rust dimadb-server debug binary, which is {cargo_target_dir}/debug/dimadb-server: the shared target directory of dima-rust/tools/cargo (CARGO_TARGET_DIR, default ~/.cache/dima-rust/target), built with `tools/cargo build -p dimadb-server`. Each launch gets a fresh data directory /tmp/dimadb-rig/<side database>, wiped first, so every scenario that needs isolated data files sets restart: true. DIMADB_REDIS_DBNAME is not a usable connection: its URL is the side's MongoDB database name, which scenarios read back from GET /api/connections (data[0].url) to address that database.",
   "ports": ["http"],
+  "mongo_user": "rig",
+  "mongo_user_reason": "The console shows each connection's user name in its responses (mongodb://root:***@...), and these captures were recorded when every side used the rig's own credentials; re-record with a side user before switching to the default.",
   "reference": {
     "command": ["sh", "-c", "rm -rf \"$DATA_DIR\" && exec node server/index.mjs"],
     "cwd": "dimadb",

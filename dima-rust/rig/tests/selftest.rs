@@ -405,7 +405,12 @@ fn self_test_end_to_end() {
         std::fs::read_to_string(work.join("captures/selftest/items/create.json")).unwrap();
     // Raw: what was observed, with the run's metadata and provenance.
     let parsed: Value = serde_json::from_str(&capture).unwrap();
-    assert_eq!(parsed["rig_capture"], 2, "{capture}");
+    assert_eq!(parsed["rig_capture"], 3, "{capture}");
+    assert!(
+        parsed["calls"].as_array().is_some_and(Vec::is_empty),
+        "{capture}"
+    );
+    assert!(parsed["run"]["mock_port"].is_u64(), "{capture}");
     assert_eq!(parsed["provenance"]["side"], "reference", "{capture}");
     assert_eq!(parsed["provenance"]["label"], "selftest-label", "{capture}");
     assert!(parsed["run"]["ports"]["http"].is_u64(), "{capture}");

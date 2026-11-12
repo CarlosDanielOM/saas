@@ -7,7 +7,7 @@
 //! values the seed wrote with `$rigNow` are recognised by their offset. Values in the scenario's
 //! inputs (seed, request bodies, paths, commands) are known and stay exact.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use bson::{Bson, Document, spec::BinarySubtype};
 use regex::Regex;
@@ -15,8 +15,10 @@ use serde_json::{Number, Value};
 
 use crate::allow::Allowances;
 use crate::capture::{
-    Body, Capture, CollCap, EntryCap, RawCapture, RawEntry, RawReply, RawStep, RawValue, StepCap,
+    Body, CallsCap, Capture, CollCap, EntryCap, RawCall, RawCapture, RawEntry, RawReply, RawStep,
+    RawValue, StepCap,
 };
+use crate::mock::providers::{CallOrder, Providers};
 use crate::path::{Path, name_glob};
 use crate::timefmt::{self, MS_PER_DAY};
 use crate::value::{Id, IdKind, Moment, NumRepr, Seg, Text, Val};
@@ -57,6 +59,12 @@ impl Window {
     }
 
     fn moment(&self, ms: i64) -> Moment {
+        // After the process started, before the first step: written during start-up.
+        if ms >= self.proc_start && ms < self.start && self.proc_start > self.seeded_at {
+            return Moment::Startup {
+                off: ms - self.start,
+            };
+        }
         Moment::Rel {
             off: ms - self.start,
             abs: if self.in_window(ms) { None } else { Some(ms) },
@@ -121,8 +129,10 @@ impl Patterns {
             }
             if let Some(ms) = timefmt::parse_iso(m.as_str()) {
                 known.times.insert(ms);
-            } else if timefmt::parse_day(m.as_str()).is_some() {
+            } else if let Some(day) = timefmt::parse_day(m.as_str()) {
                 known.days.insert(m.as_str().to_string());
+                // A date-only constant the application turns into a date (UTC midnight).
+                known.times.insert(day.saturating_mul(MS_PER_DAY));
             }
         }
         for m in self.ms13.find_iter(s) {
@@ -147,8 +157,12 @@ pub fn collect_known_json(p: &Patterns, v: &Value, known: &mut Known) {
     match v {
         Value::String(s) => p.collect_known(s, known),
         Value::Number(n) => {
-            if let Some(ms) = integral(n) {
-                known.times.insert(ms);
+            if let Some(v) = integral(n) {
+                known.times.insert(v);
+                // Epoch seconds the application may turn into milliseconds.
+                if (1_000_000_000..10_000_000_000).contains(&v) {
+                    known.times.insert(v.saturating_mul(1000));
+                }
             }
         }
         Value::Array(a) => a.iter().for_each(|x| collect_known_json(p, x, known)),
@@ -247,6 +261,15 @@ fn etag_form(v: &[u8]) -> &'static str {
     }
 }
 
+/// How outbound calls are read and compared, besides the provider table.
+#[derive(Debug, Clone, Default)]
+pub struct CallRules {
+    /// `compare.calls`: provider name → how its calls compare (overrides the provider table).
+    pub order: BTreeMap<String, CallOrder>,
+    /// `compare.call_headers.include`: more request headers to compare.
+    pub include_headers: Vec<String>,
+}
+
 /// Everything detection needs to know about one side's run of one scenario.
 pub struct DetectCtx<'a> {
     pub patterns: &'a Patterns,
@@ -264,6 +287,7 @@ pub struct DetectCtx<'a> {
     /// The `$rigNow` offsets of the seed (with `true` for epoch seconds): a value equal to the
     /// seed time plus one of them is that seeded time, compared by its offset.
     pub seed_offsets: Vec<(i64, bool)>,
+    pub calls: CallRules,
 }
 
 struct Detector<'a, 'b> {
@@ -272,6 +296,10 @@ struct Detector<'a, 'b> {
     found: Vec<String>,
     /// Inside the value of a byte-sensitive key (or the reply to a command on one).
     exact_text: bool,
+    /// When the answer being read arrived (a `ttl` value ends this long after it).
+    read_at: Option<i64>,
+    /// Keys that had a TTL when the start-up settled, with their expiry then.
+    startup_keys: std::collections::HashMap<Vec<u8>, i64>,
 }
 
 #[derive(Clone)]
@@ -343,6 +371,17 @@ impl Detector<'_, '_> {
     fn text(&mut self, path: &Path, s: &str) -> Text {
         if s.is_empty() {
             return Text::default();
+        }
+        // A string of digits declared a time in minutes.
+        if self.ctx.allow.minutes(path)
+            && s.bytes().all(|b| b.is_ascii_digit())
+            && let Ok(v) = s.parse::<i64>()
+        {
+            let ms = v.saturating_mul(60_000);
+            return Text(vec![Seg::Time {
+                at: self.declared_moment(v, ms),
+                shape: "min".into(),
+            }]);
         }
         // A string of digits declared a time.
         if let Some(secs) = self.ctx.allow.time_unit(path)
@@ -552,6 +591,12 @@ impl Detector<'_, '_> {
         if self.ctx.allow.exact(path) {
             return None;
         }
+        if self.ctx.allow.minutes(path) {
+            return Some(Val::Time(
+                NumRepr::JsonMinutes,
+                self.declared_moment(v, v.saturating_mul(60_000)),
+            ));
+        }
         match self.ctx.allow.time_unit(path) {
             Some(true) => Some(Val::Time(
                 s_repr,
@@ -565,6 +610,17 @@ impl Detector<'_, '_> {
     }
 
     fn json_number(&self, path: &Path, n: &Number) -> Val {
+        if let (Some(at), Some(v)) = (self.read_at, integral(n))
+            && v >= 0
+            && let Some(secs) = self.ctx.allow.ttl_unit(path)
+        {
+            let (ms, repr) = if secs {
+                (v.saturating_mul(1000), NumRepr::JsonTtlSecs)
+            } else {
+                (v, NumRepr::JsonTtlMs)
+            };
+            return Val::Time(repr, self.moment(at.saturating_add(ms)));
+        }
         integral(n)
             .and_then(|v| self.num_time(path, v, NumRepr::Json, NumRepr::JsonSecs))
             .unwrap_or_else(|| Val::Num(n.clone()))
@@ -760,18 +816,17 @@ impl Detector<'_, '_> {
         match s {
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
+                self.read_at = Some(r.at);
                 path.push_key("reply");
                 // A reply about a byte-sensitive key is exact text too.
-                self.exact_text = r
-                    .command
-                    .iter()
-                    .skip(1)
-                    .any(|a| self.byte_sensitive_key(a.as_bytes()));
+                self.exact_text = r.command.iter().skip(1).any(|a| self.byte_sensitive_key(a));
                 let v = self.reply(&mut path, &r.reply);
                 self.exact_text = false;
+                self.read_at = None;
                 StepCap::Reply(v)
             }
             RawStep::Http(h) => {
+                self.read_at = Some(h.at);
                 let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
                 for (name, value) in &h.headers {
                     if self.ctx.skip_headers.iter().any(|n| n == name) {
@@ -820,6 +875,7 @@ impl Detector<'_, '_> {
                     (_, _, Ok(text)) => Body::Text(self.text(&bp, text)),
                     _ => Body::Bytes(h.body.clone()),
                 };
+                self.read_at = None;
                 StepCap::Http {
                     status: h.status,
                     headers,
@@ -1036,8 +1092,21 @@ impl Detector<'_, '_> {
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
         self.exact_text = false;
-        // Each TTL relative to the time it was read.
-        let ttl = (e.pttl >= 0).then(|| self.moment(e.pttl_at + e.pttl));
+        // Each TTL relative to the time it was read; a key that still expires as it did when
+        // the start-up settled was written during start-up: its TTL length is what compares.
+        let ttl = (e.pttl >= 0).then(|| {
+            let expiry = e.pttl_at + e.pttl;
+            let w = &self.ctx.window;
+            match self.startup_keys.get(&e.key) {
+                Some(then) if (expiry - then).abs() <= 1000 && w.proc_start > w.seeded_at => {
+                    Moment::StartupTtl {
+                        lo: expiry - w.start,
+                        hi: expiry - w.proc_start,
+                    }
+                }
+                _ => self.moment(expiry),
+            }
+        });
         EntryCap {
             key,
             kind: e.kind.clone(),
@@ -1046,7 +1115,124 @@ impl Detector<'_, '_> {
         }
     }
 
+    /// One outbound call as an object (see [`CallsCap::calls`]).
+    fn call(&mut self, provider: &str, i: usize, c: &RawCall, compared: &[String]) -> Val {
+        let base = Path::root("calls").with_key(provider).with_index(i);
+        let mut kv: Vec<(Text, Val)> = vec![
+            (Text::lit("method"), Val::str(&c.method)),
+            (
+                Text::lit("path"),
+                Val::Str(self.text(&base.with_key("path"), &c.path)),
+            ),
+        ];
+        if !c.query.is_empty() {
+            let qp = base.with_key("query");
+            let mut grouped: Vec<(String, Vec<String>)> = Vec::new();
+            for (k, v) in crate::mock::parse_query(&c.query) {
+                match grouped.iter_mut().find(|(n, _)| *n == k) {
+                    Some((_, vals)) => vals.push(v),
+                    None => grouped.push((k, vec![v])),
+                }
+            }
+            let fields = grouped
+                .into_iter()
+                .map(|(k, vals)| {
+                    let kp = qp.with_key(k.clone());
+                    let v = if let [one] = vals.as_slice() {
+                        match self.generated_whole(&kp, one) {
+                            Some(g) => g,
+                            None => Val::Str(self.text(&kp, one)),
+                        }
+                    } else {
+                        Val::Arr(vals.iter().map(|v| Val::Str(self.text(&kp, v))).collect())
+                    };
+                    (self.text(&qp, &k), v)
+                })
+                .collect();
+            kv.push((Text::lit("query"), Val::Obj(fields)));
+        }
+        let hp = base.with_key("headers");
+        let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
+        for (name, value) in &c.headers {
+            if !compared.iter().any(|n| n == name) {
+                continue;
+            }
+            match grouped.iter_mut().find(|(n, _)| n == name) {
+                Some((_, vals)) => vals.push(value),
+                None => grouped.push((name.clone(), vec![value])),
+            }
+        }
+        grouped.sort_by(|a, b| a.0.cmp(&b.0));
+        let headers = grouped
+            .into_iter()
+            .map(|(name, vals)| {
+                let p = hp.with_key(name.clone());
+                let v = if let [one] = vals.as_slice() {
+                    self.header(&p, &name, one)
+                } else {
+                    Val::Arr(vals.iter().map(|v| self.header(&p, &name, v)).collect())
+                };
+                (Text::lit(&name), v)
+            })
+            .collect();
+        kv.push((Text::lit("headers"), Val::Obj(headers)));
+        let (plain, json) = crate::mock::decode_body(&c.headers, &c.body);
+        if !plain.is_empty() {
+            match (json, std::str::from_utf8(&plain)) {
+                (Some(v), _) => {
+                    let mut bp = base.with_key("body");
+                    kv.push((Text::lit("body"), self.json(&mut bp, &v)));
+                }
+                (None, Ok(t)) => {
+                    kv.push((
+                        Text::lit("text"),
+                        Val::Str(self.text(&base.with_key("text"), t)),
+                    ));
+                }
+                (None, Err(_)) => kv.push((Text::lit("bytes"), Val::Bytes(plain))),
+            }
+        }
+        Val::Obj(kv)
+    }
+
+    fn calls(&mut self, raw: &[RawCall]) -> Vec<CallsCap> {
+        let providers = Providers::builtin().ok();
+        let mut by: BTreeMap<&str, Vec<&RawCall>> = BTreeMap::new();
+        for c in raw {
+            by.entry(c.provider.as_str()).or_default().push(c);
+        }
+        by.into_iter()
+            .map(|(name, list)| {
+                let p = providers.and_then(|ps| ps.by_name(name));
+                let mut compared: Vec<String> = providers
+                    .map(|ps| ps.common_headers.clone())
+                    .unwrap_or_default();
+                compared.extend(p.map(|p| p.headers.clone()).unwrap_or_default());
+                compared.extend(self.ctx.calls.include_headers.iter().cloned());
+                let order = self
+                    .ctx
+                    .calls
+                    .order
+                    .get(name)
+                    .copied()
+                    .or(p.map(|p| p.order))
+                    .unwrap_or(CallOrder::Ordered);
+                CallsCap {
+                    provider: name.to_string(),
+                    order,
+                    key_order: p.is_some_and(|p| p.json_key_order),
+                    calls: list
+                        .iter()
+                        .enumerate()
+                        .map(|(i, c)| self.call(name, i, c, &compared))
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
     fn run(&mut self, raw: &RawCapture) -> Capture {
+        self.startup_keys = raw.startup_keys.iter().cloned().collect();
         let steps = raw
             .steps
             .iter()
@@ -1059,10 +1245,12 @@ impl Detector<'_, '_> {
             .map(|(n, c)| (n.clone(), self.coll(n, c)))
             .collect();
         let dragonfly = raw.dragonfly.iter().map(|e| self.entry(e)).collect();
+        let calls = self.calls(&raw.calls);
         Capture {
             steps,
             mongo,
             dragonfly,
+            calls,
         }
     }
 }
@@ -1080,6 +1268,8 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         extra: None,
         found: Vec::new(),
         exact_text: false,
+        read_at: None,
+        startup_keys: std::collections::HashMap::new(),
     };
     let cap = first.run(raw);
     let mut found: Vec<String> = first
@@ -1109,6 +1299,8 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         extra: Some(extra),
         found: Vec::new(),
         exact_text: false,
+        read_at: None,
+        startup_keys: std::collections::HashMap::new(),
     };
     second.run(raw)
 }
@@ -1144,6 +1336,7 @@ pub(crate) mod tests {
             as_text: Vec::new(),
             byte_sensitive: Vec::new(),
             seed_offsets: Vec::new(),
+            calls: CallRules::default(),
         }
     }
 
@@ -1156,6 +1349,8 @@ pub(crate) mod tests {
             extra: None,
             found: Vec::new(),
             exact_text: false,
+            read_at: None,
+            startup_keys: std::collections::HashMap::new(),
         };
         d.text(&Path::root("x"), raw)
     }

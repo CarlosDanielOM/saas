@@ -1,0 +1,765 @@
+{
+  "rig_providers": 1,
+  "description": "Every outside service of the dimabot backend (ledger/outbound.md), by the host it really has. The first path segment of a request to the mock names that host (http://127.0.0.1:<mock>/api.twitch.tv/helix/users), so a rewritten Node call and a Rust base-URL override land on the same route. Routes here are the defaults; a target's and a scenario's mock.routes come first. A request no route answers gets 501 and fails the scenario. See rig/README.md, 'The mock of the outside world'.",
+  "common_headers": [
+    "authorization",
+    "x-api-key",
+    "api-key",
+    "content-type",
+    "content-encoding",
+    "accept",
+    "client-id",
+    "idempotency-key",
+    "x-idempotency-key"
+  ],
+  "providers": [
+    {
+      "name": "twitch",
+      "hosts": [
+        "api.twitch.tv"
+      ],
+      "about": "Helix. Users, tokens and EventSub subscriptions come from mock.twitch and are stateful; every answer carries rate-limit headers.",
+      "response_headers": {
+        "ratelimit-limit": "800",
+        "ratelimit-remaining": "799",
+        "ratelimit-reset": "${now_s+60s}"
+      },
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/helix/users",
+          "handler": "twitch.users"
+        },
+        {
+          "method": "POST",
+          "path": "/helix/eventsub/subscriptions",
+          "handler": "twitch.eventsub.create"
+        },
+        {
+          "method": "GET",
+          "path": "/helix/eventsub/subscriptions",
+          "handler": "twitch.eventsub.list"
+        },
+        {
+          "method": "DELETE",
+          "path": "/helix/eventsub/subscriptions",
+          "handler": "twitch.eventsub.delete"
+        },
+        {
+          "method": "POST",
+          "path": "/helix/chat/messages",
+          "handler": "twitch.chat.send"
+        },
+        {
+          "method": "POST",
+          "path": "/helix/chat/announcements",
+          "respond": {
+            "status": 204
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/streams",
+          "respond": {
+            "json": {
+              "data": [],
+              "pagination": {}
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/channels",
+          "handler": "twitch.channels"
+        },
+        {
+          "method": "GET",
+          "path": "/helix/channels/followers",
+          "respond": {
+            "json": {
+              "total": 0,
+              "data": [],
+              "pagination": {}
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/subscriptions",
+          "respond": {
+            "json": {
+              "data": [],
+              "pagination": {},
+              "total": 0,
+              "points": 0
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/moderation/moderators",
+          "respond": {
+            "json": {
+              "data": [],
+              "pagination": {}
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/channels/vips",
+          "respond": {
+            "json": {
+              "data": [],
+              "pagination": {}
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/chat/chatters",
+          "respond": {
+            "json": {
+              "data": [],
+              "pagination": {},
+              "total": 0
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/chat/badges",
+          "respond": {
+            "json": {
+              "data": []
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/chat/badges/global",
+          "respond": {
+            "json": {
+              "data": []
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/helix/channels/editors",
+          "respond": {
+            "json": {
+              "data": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "twitch-id",
+      "hosts": [
+        "id.twitch.tv"
+      ],
+      "about": "Twitch OAuth: token (client credentials, refresh, authorization code) and validate, from mock.twitch.tokens.",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/oauth2/token",
+          "handler": "twitch.oauth.token"
+        },
+        {
+          "method": "GET",
+          "path": "/oauth2/validate",
+          "handler": "twitch.oauth.validate"
+        }
+      ]
+    },
+    {
+      "name": "openrouter",
+      "hosts": [
+        "openrouter.ai"
+      ],
+      "about": "Chat completions (streamed when the request says stream: true), embeddings (deterministic vectors), the model list. Prompt text compares exactly and JSON key order counts: the reference keeps its prompts byte-stable for prompt caching.",
+      "headers": [
+        "http-referer",
+        "x-title",
+        "x-openrouter-title",
+        "x-openrouter-description",
+        "x-openrouter-categories"
+      ],
+      "json_key_order": true,
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/api/v1/chat/completions",
+          "handler": "openai.chat"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/embeddings",
+          "handler": "openai.embeddings",
+          "args": {
+            "dimensions": 4096
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/models",
+          "respond": {
+            "json": {
+              "data": [
+                {
+                  "id": "openai/gpt-4o-mini",
+                  "name": "OpenAI: GPT-4o-mini",
+                  "context_length": 128000,
+                  "pricing": {
+                    "prompt": "0.00000015",
+                    "completion": "0.0000006"
+                  }
+                },
+                {
+                  "id": "qwen/qwen3-embedding-8b",
+                  "name": "Qwen: Qwen3 Embedding 8B",
+                  "context_length": 32000,
+                  "pricing": {
+                    "prompt": "0.00000001",
+                    "completion": "0"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/generation",
+          "respond": {
+            "json": {
+              "data": {
+                "id": "${query.id}",
+                "total_cost": 0.0001,
+                "tokens_prompt": 10,
+                "tokens_completion": 5,
+                "native_tokens_prompt": 10,
+                "native_tokens_completion": 5,
+                "model": "openai/gpt-4o-mini"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "minimax",
+      "hosts": [
+        "api.minimax.io"
+      ],
+      "about": "Anthropic-compatible messages API (the docs assistant), streamed as Anthropic server-sent events.",
+      "headers": [
+        "anthropic-version",
+        "anthropic-beta"
+      ],
+      "json_key_order": true,
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/anthropic/v1/messages",
+          "handler": "anthropic.messages"
+        }
+      ]
+    },
+    {
+      "name": "fish-audio",
+      "hosts": [
+        "api.fish.audio"
+      ],
+      "about": "TTS (MessagePack request, audio bytes back) and the voice model catalogue.",
+      "headers": [
+        "model"
+      ],
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/v1/tts",
+          "handler": "mp3"
+        },
+        {
+          "method": "GET",
+          "path": "/model",
+          "respond": {
+            "json": {
+              "total": 0,
+              "items": []
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/model/*",
+          "respond": {
+            "status": 404,
+            "json": {
+              "status": 404,
+              "message": "Model not found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "polar",
+      "hosts": [
+        "api.polar.sh",
+        "sandbox-api.polar.sh"
+      ],
+      "about": "Billing REST (customers, checkouts, customer sessions, subscriptions, orders, benefit grants, events ingest). Money: scenarios that rely on Polar answers declare them in mock.routes.",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/v1/events/ingest",
+          "respond": {
+            "json": {
+              "inserted": 1,
+              "duplicates": 0
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/benefit-grants",
+          "respond": {
+            "json": {
+              "items": [],
+              "pagination": {
+                "total_count": 0,
+                "max_page": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/subscriptions",
+          "respond": {
+            "json": {
+              "items": [],
+              "pagination": {
+                "total_count": 0,
+                "max_page": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/orders",
+          "respond": {
+            "json": {
+              "items": [],
+              "pagination": {
+                "total_count": 0,
+                "max_page": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/checkouts",
+          "respond": {
+            "json": {
+              "items": [],
+              "pagination": {
+                "total_count": 0,
+                "max_page": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/events",
+          "respond": {
+            "json": {
+              "items": [],
+              "pagination": {
+                "total_count": 0,
+                "max_page": 1
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/customers",
+          "respond": {
+            "status": 201,
+            "json": {
+              "id": "${id}",
+              "created_at": "${now_iso}",
+              "modified_at": null,
+              "metadata": {},
+              "external_id": "${body.external_id}",
+              "email": "${body.email}",
+              "email_verified": false,
+              "name": "${body.name}",
+              "billing_address": null,
+              "tax_id": null,
+              "organization_id": "00000000-0000-4000-8000-000000000001",
+              "deleted_at": null,
+              "avatar_url": null
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/checkouts",
+          "respond": {
+            "status": 201,
+            "json": {
+              "id": "${id}",
+              "created_at": "${now_iso}",
+              "status": "open",
+              "client_secret": "polar_c_${id}",
+              "url": "https://polar.sh/checkout/polar_c_${id}",
+              "expires_at": "${now_iso+1h}",
+              "success_url": "${body.success_url}",
+              "metadata": {}
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/customer-sessions",
+          "respond": {
+            "status": 201,
+            "json": {
+              "id": "${id}",
+              "created_at": "${now_iso}",
+              "token": "polar_cst_${id}",
+              "expires_at": "${now_iso+1h}",
+              "customer_portal_url": "https://polar.sh/rig/portal?customer_session_token=polar_cst_${id}",
+              "customer_id": "${body.customer_id}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "resend",
+      "hosts": [
+        "api.resend.com"
+      ],
+      "about": "Email sending.",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/emails",
+          "respond": {
+            "json": {
+              "id": "${id}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "posthog",
+      "hosts": [
+        "us.i.posthog.com",
+        "app.posthog.com",
+        "eu.i.posthog.com"
+      ],
+      "about": "Product analytics events. Batches are gzip JSON; posthog-node flushes on its own timer, so the order of calls is not deterministic: compared as a multiset.",
+      "compare": "multiset",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/batch",
+          "respond": {
+            "json": {
+              "status": 1
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/i/v0/e",
+          "respond": {
+            "json": {
+              "status": 1
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/capture",
+          "respond": {
+            "json": {
+              "status": 1
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/flags",
+          "respond": {
+            "json": {
+              "featureFlags": {},
+              "featureFlagPayloads": {},
+              "errorsWhileComputingFlags": false
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/decide",
+          "respond": {
+            "json": {
+              "featureFlags": {},
+              "featureFlagPayloads": {},
+              "errorsWhileComputingFlags": false
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/i/v1/logs",
+          "provider": "otlp-logs",
+          "respond": {
+            "json": {
+              "partialSuccess": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "otlp-logs",
+      "hosts": [],
+      "about": "OTLP log records sent to PostHog (JSON from Node, protobuf from Rust). Diagnostics, not a contract: recorded, not compared (MIGRATION.md section 3; logs are not compared).",
+      "compare": "ignore",
+      "routes": []
+    },
+    {
+      "name": "otel-local",
+      "hosts": [
+        "localhost:4318",
+        "127.0.0.1:4318"
+      ],
+      "about": "The Node OpenTelemetry SDK's implicit trace and metric exporter (no span is ever created). Recorded, not compared.",
+      "compare": "ignore",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/v1/traces",
+          "respond": {
+            "json": {
+              "partialSuccess": {}
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/v1/metrics",
+          "respond": {
+            "json": {
+              "partialSuccess": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "s3",
+      "hosts": [
+        "nyc3.digitaloceanspaces.com",
+        "*.nyc3.digitaloceanspaces.com"
+      ],
+      "about": "S3-compatible storage: PutObject, GetObject, HeadObject, DeleteObject, DeleteObjects, stateful per scenario (mock.s3.objects seeds it). Path style (S3_ENDPOINT_URL) and virtual-hosted public object URLs share one store.",
+      "headers": [
+        "x-amz-acl",
+        "cache-control",
+        "content-md5",
+        "x-amz-checksum-crc32",
+        "x-amz-sdk-checksum-algorithm"
+      ],
+      "routes": [
+        {
+          "path": "/**",
+          "handler": "s3",
+          "args": {
+            "endpoint": "nyc3.digitaloceanspaces.com"
+          }
+        }
+      ]
+    },
+    {
+      "name": "piper",
+      "hosts": [
+        "piper-tts:5000"
+      ],
+      "about": "The Piper TTS sidecar (PIPER_HTTP_URL): a short WAV for any text.",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/synthesize",
+          "handler": "wav"
+        }
+      ]
+    },
+    {
+      "name": "embeddings",
+      "hosts": [
+        "lfm2.5-embeddings:8080"
+      ],
+      "about": "The LFM2 embeddings sidecar (LFM2_EMBEDDINGS_URL), OpenAI-shaped answers with deterministic 1024-dimension vectors.",
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/v1/embeddings",
+          "handler": "openai.embeddings",
+          "args": {
+            "dimensions": 1024
+          }
+        }
+      ]
+    },
+    {
+      "name": "docs",
+      "hosts": [
+        "dimadocs"
+      ],
+      "about": "The docs site files the docs assistant reads (DOCS_ASSISTANT_SOURCE_URL).",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/llms.txt",
+          "respond": {
+            "headers": {
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "text": "# DomDimaBot\n\n> Rig docs index.\n\n- [Commands](https://docs.domdimabot.com/commands/): chat commands.\n"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/es/llms.txt",
+          "respond": {
+            "headers": {
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "text": "# DomDimaBot\n\n> Índice de documentación del rig.\n\n- [Comandos](https://docs.domdimabot.com/es/commands/): comandos de chat.\n"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/llms-full.txt",
+          "respond": {
+            "headers": {
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "text": "# DomDimaBot\n\n## Commands\n\nUse !help in chat to list commands.\n"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/es/llms-full.txt",
+          "respond": {
+            "headers": {
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "text": "# DomDimaBot\n\n## Comandos\n\nUsa !help en el chat para ver los comandos.\n"
+          }
+        }
+      ]
+    },
+    {
+      "name": "searxng",
+      "hosts": [
+        "search.myhomelab.wtf"
+      ],
+      "about": "Web search (SearXNG JSON).",
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/search",
+          "respond": {
+            "json": {
+              "query": "${query.q}",
+              "number_of_results": 0,
+              "results": [],
+              "answers": [],
+              "corrections": [],
+              "infoboxes": [],
+              "suggestions": [],
+              "unresponsive_engines": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "streamelements",
+      "hosts": [
+        "cdn.streamelements.com",
+        "static.streamelements.com"
+      ],
+      "about": "Custom widget media copied from StreamElements (HEAD then GET). No default: a scenario declares its files.",
+      "routes": []
+    },
+    {
+      "name": "dimabot-api",
+      "hosts": [
+        "dima-server:3000",
+        "api.domdimabot.com"
+      ],
+      "about": "The API seen from outside: internal calls (INTERNAL_API_URL) and self-calls through the public URL. No default: a target routes them to its own port with \"proxy\", or a scenario answers them.",
+      "headers": [
+        "traceparent",
+        "x-observability-signature",
+        "x-dimafx-service-token"
+      ],
+      "routes": []
+    },
+    {
+      "name": "dima-analytics",
+      "hosts": [
+        "dima-analytics:3210"
+      ],
+      "about": "The observability proxy target. No default.",
+      "routes": []
+    },
+    {
+      "name": "hoststats",
+      "hosts": [
+        "dima-hoststats:3211"
+      ],
+      "about": "Host snapshot sidecar. No default.",
+      "routes": []
+    },
+    {
+      "name": "legacy-local",
+      "hosts": [
+        "localhost:3355",
+        "127.0.0.1:3355"
+      ],
+      "about": "PUT /user/active, a legacy call to a port where nothing listens in production: answered the way a closed port is (connection dropped).",
+      "routes": [
+        {
+          "path": "/**",
+          "respond": {
+            "fail": "drop"
+          }
+        }
+      ]
+    },
+    {
+      "name": "qdrant",
+      "hosts": [],
+      "about": "Not mocked: requests reach the local Qdrant through the side's prefixing proxy and are recorded here. Qdrant is a store; its calls are recorded, not compared.",
+      "compare": "ignore",
+      "routes": []
+    }
+  ]
+}

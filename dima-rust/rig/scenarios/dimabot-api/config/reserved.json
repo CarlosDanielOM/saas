@@ -1,0 +1,22 @@
+{
+  "rig_scenario": 1,
+  "description": "Public read endpoint without authentication: the reserved chat command names.",
+  "steps": [
+    {
+      "name": "reserved commands",
+      "http": {
+        "method": "GET",
+        "path": "/config/commands/reserved"
+      }
+    }
+  ],
+  "compare": {
+    "dragonfly": {
+      "exclude": [
+        "logger:*",
+        "observability:*",
+        "ast_catalog:*"
+      ]
+    }
+  }
+}

@@ -20,7 +20,9 @@ use crate::value::{self, Moment, Text, Val};
 
 /// Version of the capture file format. Bump it only when old files cannot be read any more;
 /// normalisation changes do not need a bump (captures are raw).
-pub const CAPTURE_VERSION: u64 = 2;
+pub const CAPTURE_VERSION: u64 = 3;
+/// Older versions this rig still reads (version 2 has no outbound calls).
+pub const READS_VERSIONS: &[u64] = &[2, 3];
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
@@ -32,6 +34,16 @@ pub struct RawCapture {
     pub steps: Vec<RawStep>,
     pub mongo: BTreeMap<String, RawColl>,
     pub dragonfly: Vec<RawEntry>,
+    /// Every request the side made to the mock (and through the Qdrant proxy), in the order the
+    /// mock received them. Calls of the process start-up are left out when the target or the
+    /// scenario says `mock.startup: "ignore"`; they are then only counted.
+    pub calls: Vec<RawCall>,
+    /// Start-up calls left out, per provider.
+    pub startup_ignored: BTreeMap<String, u32>,
+    /// Dragonfly keys that already had a TTL when the start-up settled, with the expiry they
+    /// had then (rig clock, epoch ms): a key still expiring then at the end was written during
+    /// start-up, and its TTL length is compared as such.
+    pub startup_keys: Vec<(Vec<u8>, i64)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,12 +64,35 @@ pub struct RawHttp {
     pub body: Vec<u8>,
 }
 
+/// One request a side made to the mock of the outside world (or through the Qdrant proxy).
+/// Credential header values are already reduced to their scheme (`Bearer <redacted>`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawCall {
+    /// When the mock received it (rig clock, epoch ms).
+    pub at: i64,
+    /// The provider it was recorded under (`twitch`, `openrouter`, `qdrant`).
+    pub provider: String,
+    /// The host the side addressed (`api.twitch.tv`, `dima-server:3000`).
+    pub host: String,
+    pub method: String,
+    /// The path at that host (`/helix/users`).
+    pub path: String,
+    /// The raw query string, without `?`.
+    pub query: String,
+    /// Every request header: lower-case names, in the order received.
+    pub headers: Vec<(String, Vec<u8>)>,
+    /// The body as received (still compressed when it was sent compressed).
+    pub body: Vec<u8>,
+    /// What answered it: a route's origin, or `unmatched`.
+    pub answered: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RawReplyStep {
     /// When the reply arrived (rig clock, epoch ms).
     pub at: i64,
-    /// The command as sent (rendered).
-    pub command: Vec<String>,
+    /// The command as sent (rendered; arguments may be bytes that are not UTF-8).
+    pub command: Vec<Vec<u8>>,
     pub reply: RawReply,
 }
 
@@ -169,6 +204,11 @@ pub struct RunMeta {
     pub mongo_uri: String,
     pub dragonfly_db: u8,
     pub dragonfly_url: String,
+    /// The side's mock and Qdrant proxy (format 3).
+    pub mock_port: Option<u16>,
+    pub qdrant_port: Option<u16>,
+    /// The collection-name prefix the Qdrant proxy added.
+    pub qdrant_prefix: Option<String>,
 }
 
 impl RunMeta {
@@ -181,6 +221,19 @@ impl RunMeta {
             }
         }
         out.push((self.dragonfly_url.clone(), "dragonfly_url".into()));
+        for (port, name) in [
+            (self.mock_port, "port.mock"),
+            (self.qdrant_port, "port.qdrant"),
+        ] {
+            if let Some(p) = port {
+                for host in ["127.0.0.1", "localhost"] {
+                    out.push((format!("{host}:{p}"), name.into()));
+                }
+            }
+        }
+        if let Some(prefix) = &self.qdrant_prefix {
+            out.push((prefix.clone(), "qdrant_prefix".into()));
+        }
         if self.mongo_db.starts_with("rig_") {
             out.push((self.mongo_db.clone(), "mongo_db".into()));
         }
@@ -243,6 +296,22 @@ pub struct Capture {
     pub steps: Vec<StepCap>,
     pub mongo: BTreeMap<String, CollCap>,
     pub dragonfly: Vec<EntryCap>,
+    /// Outbound calls per provider (sorted by provider name).
+    pub calls: Vec<CallsCap>,
+}
+
+/// The calls to one provider.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallsCap {
+    pub provider: String,
+    pub order: crate::mock::providers::CallOrder,
+    /// JSON object key order in request bodies is a difference (LLM prompts).
+    pub key_order: bool,
+    /// Each call as an object: `method`, `path`, `query` (when there is one; a repeated name is
+    /// an array), `headers` (the compared ones), and the body as `body` (JSON, a form or
+    /// MessagePack, parsed), `text` or `bytes`. The mock's answer is not the side's behaviour
+    /// and is not part of it.
+    pub calls: Vec<Val>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -345,7 +414,14 @@ pub fn normalised_json(cap: &Capture) -> Value {
             })
         })
         .collect();
-    json!({ "steps": steps, "mongo": mongo, "dragonfly": dragonfly })
+    let mut calls = Map::new();
+    for c in &cap.calls {
+        calls.insert(
+            c.provider.clone(),
+            Value::Array(c.calls.iter().map(value::encode).collect()),
+        );
+    }
+    json!({ "steps": steps, "mongo": mongo, "dragonfly": dragonfly, "calls": calls })
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -578,7 +654,7 @@ fn enc_step(s: &RawStep) -> Value {
         }}),
         RawStep::Reply(r) => json!({ "dragonfly": {
             "at": r.at,
-            "command": r.command,
+            "command": r.command.iter().map(|a| enc_bytes(a)).collect::<Vec<_>>(),
             "reply": enc_reply(&r.reply),
         }}),
         RawStep::Done(kind) => json!({ kind.clone(): {} }),
@@ -614,7 +690,7 @@ fn dec_step(v: &Value, i: usize) -> Result<RawStep, String> {
                 at: int(field(d, "at", &ctx)?, &ctx)?,
                 command: arr(field(d, "command", &ctx)?, &ctx)?
                     .iter()
-                    .map(|a| string(a, &ctx))
+                    .map(|a| dec_bytes(a, &ctx))
                     .collect::<Result<_, _>>()?,
                 reply: dec_reply(field(d, "reply", &ctx)?, &format!("{ctx}.reply"))?,
             }))
@@ -658,6 +734,7 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
     for (name, h) in &f.hashes.files {
         files.insert(name.clone(), Value::String(h.clone()));
     }
+    let calls: Vec<Value> = f.raw.calls.iter().map(enc_call).collect();
     json!({
         "rig_capture": CAPTURE_VERSION,
         "target": p.target,
@@ -679,10 +756,53 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
             "mongo_uri": r.mongo_uri,
             "dragonfly_db": r.dragonfly_db,
             "dragonfly_url": r.dragonfly_url,
+            "mock_port": r.mock_port,
+            "qdrant_port": r.qdrant_port,
+            "qdrant_prefix": r.qdrant_prefix,
         },
         "steps": f.raw.steps.iter().map(enc_step).collect::<Vec<_>>(),
         "mongo": mongo,
         "dragonfly": dragonfly,
+        "calls": calls,
+        "startup_ignored": f.raw.startup_ignored,
+        "startup_keys": f.raw.startup_keys.iter().map(|(k, e)| json!([enc_bytes(k), e])).collect::<Vec<_>>(),
+    })
+}
+
+fn enc_call(c: &RawCall) -> Value {
+    json!({
+        "at": c.at,
+        "provider": c.provider,
+        "host": c.host,
+        "method": c.method,
+        "path": c.path,
+        "query": c.query,
+        "headers": c.headers.iter().map(|(n, v)| json!([n, enc_bytes(v)])).collect::<Vec<_>>(),
+        "body": enc_bytes(&c.body),
+        "answered": c.answered,
+    })
+}
+
+fn dec_call(v: &Value, i: usize) -> Result<RawCall, String> {
+    let ctx = format!("calls[{i}]");
+    let o = obj(v, &ctx)?;
+    let headers = arr(field(o, "headers", &ctx)?, &ctx)?
+        .iter()
+        .map(|p| match p.as_array().map(Vec::as_slice) {
+            Some([Value::String(n), v]) => Ok((n.clone(), dec_bytes(v, &ctx)?)),
+            _ => Err(format!("{ctx}.headers: expected [name, value] pairs")),
+        })
+        .collect::<Result<_, String>>()?;
+    Ok(RawCall {
+        at: int(field(o, "at", &ctx)?, &ctx)?,
+        provider: string(field(o, "provider", &ctx)?, &ctx)?,
+        host: string(field(o, "host", &ctx)?, &ctx)?,
+        method: string(field(o, "method", &ctx)?, &ctx)?,
+        path: string(field(o, "path", &ctx)?, &ctx)?,
+        query: string(field(o, "query", &ctx)?, &ctx)?,
+        headers,
+        body: dec_bytes(field(o, "body", &ctx)?, &ctx)?,
+        answered: string(field(o, "answered", &ctx)?, &ctx)?,
     })
 }
 
@@ -715,11 +835,21 @@ fn int(v: &Value, ctx: &str) -> Result<i64, String> {
 pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
     let o = obj(v, "capture")?;
     let version = field(o, "rig_capture", "capture")?.as_u64().unwrap_or(0);
-    if version != CAPTURE_VERSION {
+    if !READS_VERSIONS.contains(&version) {
         return Err(format!(
-            "capture format version {version}, this rig reads version {CAPTURE_VERSION}: re-record it with `dima-rig record`"
+            "capture format version {version}, this rig reads versions {READS_VERSIONS:?}: re-record it with `dima-rig record`"
         ));
     }
+    let port_opt = |r: &Map<String, Value>, k: &str| -> Result<Option<u16>, String> {
+        match r.get(k) {
+            None | Some(Value::Null) => Ok(None),
+            Some(v) => v
+                .as_u64()
+                .and_then(|p| u16::try_from(p).ok())
+                .map(Some)
+                .ok_or_else(|| format!("run.{k}: bad port")),
+        }
+    };
     let prov = obj(field(o, "provenance", "capture")?, "provenance")?;
     let recorded = string(field(prov, "recorded_at", "provenance")?, "recorded_at")?;
     let provenance = Provenance {
@@ -763,6 +893,12 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
             .and_then(|d| u8::try_from(d).ok())
             .ok_or("run.dragonfly_db: bad index")?,
         dragonfly_url: string(field(r, "dragonfly_url", "run")?, "run.dragonfly_url")?,
+        mock_port: port_opt(r, "mock_port")?,
+        qdrant_port: port_opt(r, "qdrant_port")?,
+        qdrant_prefix: r
+            .get("qdrant_prefix")
+            .and_then(Value::as_str)
+            .map(str::to_string),
     };
     let steps = arr(field(o, "steps", "capture")?, "steps")?
         .iter()
@@ -806,6 +942,37 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
             pttl_at: int(field(eo, "pttl_at", &ctx)?, &ctx)?,
         });
     }
+    let calls = match o.get("calls") {
+        None => Vec::new(),
+        Some(v) => arr(v, "calls")?
+            .iter()
+            .enumerate()
+            .map(|(i, c)| dec_call(c, i))
+            .collect::<Result<_, _>>()?,
+    };
+    let mut startup_ignored = BTreeMap::new();
+    if let Some(Value::Object(m)) = o.get("startup_ignored") {
+        for (k, v) in m {
+            let n = v
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .ok_or_else(|| format!("startup_ignored.{k}: a count"))?;
+            startup_ignored.insert(k.clone(), n);
+        }
+    }
+    let mut startup_keys = Vec::new();
+    if let Some(Value::Array(items)) = o.get("startup_keys") {
+        for (i, it) in items.iter().enumerate() {
+            match it.as_array().map(Vec::as_slice) {
+                Some([k, Value::Number(n)]) => startup_keys.push((
+                    dec_bytes(k, &format!("startup_keys[{i}]"))?,
+                    n.as_i64()
+                        .ok_or_else(|| format!("startup_keys[{i}]: an expiry in ms"))?,
+                )),
+                _ => return Err(format!("startup_keys[{i}]: [key, expiry]")),
+            }
+        }
+    }
     Ok(CaptureFile {
         provenance,
         hashes,
@@ -814,6 +981,9 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
             steps,
             mongo,
             dragonfly,
+            calls,
+            startup_ignored,
+            startup_keys,
         },
     })
 }
@@ -848,7 +1018,7 @@ mod tests {
                 }),
                 RawStep::Reply(RawReplyStep {
                     at: 1_794_400_000_200,
-                    command: vec!["HGETALL".into(), "h".into()],
+                    command: vec![b"HGETALL".to_vec(), vec![b'h', 0xff]],
                     reply: RawReply::Array(vec![
                         RawReply::Bulk(vec![0x80]),
                         RawReply::Nil,
@@ -915,6 +1085,22 @@ mod tests {
                     pttl_at: 1_794_400_000_303,
                 },
             ],
+            calls: vec![RawCall {
+                at: 1_794_400_000_400,
+                provider: "twitch".into(),
+                host: "api.twitch.tv".into(),
+                method: "POST".into(),
+                path: "/helix/chat/messages".into(),
+                query: "a=1".into(),
+                headers: vec![
+                    ("authorization".into(), b"Bearer <redacted>".to_vec()),
+                    ("x-bin".into(), vec![0xff]),
+                ],
+                body: "{\"message\":\"hola 👋\"}".as_bytes().to_vec(),
+                answered: "default twitch route 4 (twitch.chat.send)".into(),
+            }],
+            startup_ignored: [("embeddings".to_string(), 3)].into(),
+            startup_keys: vec![(b"stream".to_vec(), 1_794_400_005_301)],
         };
         raw.sort();
         CaptureFile {
@@ -940,6 +1126,9 @@ mod tests {
                 mongo_uri: "mongodb://127.0.0.1:27017/rig_1_0_ref".into(),
                 dragonfly_db: 3,
                 dragonfly_url: "redis://127.0.0.1:6379/3".into(),
+                mock_port: Some(41300),
+                qdrant_port: None,
+                qdrant_prefix: Some("rig_1_0_ref__".into()),
             },
             raw,
         }
@@ -970,9 +1159,30 @@ mod tests {
         // A document that Extended JSON cannot carry is kept as BSON bytes.
         let docs = &v["mongo"]["items"]["documents"];
         assert!(docs[0].get("$rigBson").is_some() && docs[1].get("$rigBson").is_some());
+        assert_eq!(back.raw.calls, f.raw.calls);
+        assert_eq!(back.raw.startup_ignored, f.raw.startup_ignored);
+        assert_eq!(back.raw.startup_keys, f.raw.startup_keys);
         let mut wrong = v.clone();
         wrong["rig_capture"] = json!(1);
         assert!(from_file_json(&wrong).unwrap_err().contains("re-record"));
+    }
+
+    #[test]
+    fn version_2_captures_still_read() {
+        let f = sample();
+        let mut v: Value = serde_json::from_str(&to_file_string(&f)).unwrap();
+        v["rig_capture"] = json!(2);
+        let o = v.as_object_mut().unwrap();
+        o.remove("calls");
+        o.remove("startup_ignored");
+        let run = o.get_mut("run").unwrap().as_object_mut().unwrap();
+        for k in ["mock_port", "qdrant_port", "qdrant_prefix"] {
+            run.remove(k);
+        }
+        let back = from_file_json(&v).unwrap();
+        assert!(back.raw.calls.is_empty());
+        assert_eq!(back.run.mock_port, None);
+        assert_eq!(back.raw.steps, f.raw.steps);
     }
 
     #[test]

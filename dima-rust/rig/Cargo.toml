@@ -24,8 +24,17 @@ test = false
 anyhow = { workspace = true }
 base64 = { workspace = true }
 bson = { workspace = true }
+bytes = { workspace = true }
 clap = { workspace = true }
+# Signing test webhooks (Twitch EventSub, Polar) exactly as the reference verifies them.
+dima-core = { workspace = true }
+flate2 = { workspace = true }
 futures-util = { workspace = true }
+http-body-util = { workspace = true }
+# The mock of the outside world is a plain HTTP/1.1 server (it must be able to drop a
+# connection, stall, and stream chunks with delays).
+hyper = { workspace = true }
+hyper-util = { workspace = true }
 mongodb = { workspace = true }
 nix = { workspace = true }
 redis = { workspace = true }

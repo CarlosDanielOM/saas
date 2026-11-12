@@ -189,6 +189,14 @@ fn has_word(args: &[String], word: &str) -> bool {
 }
 
 /// `Err` with the reason when the rendered command may not run in a scenario.
+/// A rendered command as text for [`check`] and messages (bytes that are not UTF-8 become U+FFFD;
+/// a command name and its keywords are always text).
+pub fn words(args: &[Vec<u8>]) -> Vec<String> {
+    args.iter()
+        .map(|a| String::from_utf8_lossy(a).to_string())
+        .collect()
+}
+
 pub fn check(args: &[String], allow_scripts: bool) -> Result<(), String> {
     let Some((name, rest)) = args.split_first() else {
         return Err("empty command".into());
