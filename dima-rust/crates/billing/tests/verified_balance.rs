@@ -6,6 +6,7 @@
 mod support;
 
 use dima_billing::NoopObserver;
+use dima_billing::free_credit_reset::ResetUsage;
 use dima_billing::plans::credits_cache::{
     CreditOptions, CreditsCache, CustomerStateSource, LookupError, PlanLookup, PlanOwner, TopUp,
     UnverifiedBalance,
@@ -267,4 +268,117 @@ async fn a_top_up_applies_once_on_top_of_the_read_that_verified_it() {
     );
     support::cleanup(&dragonfly, &channel).await.unwrap();
     support::cleanup(&dragonfly, &other).await.unwrap();
+}
+
+/// Item 7 of P2-BILLING-01c (re-check finding N3, set aside by the lead): **do not "fix" this.**
+/// A customer whose state from Polar has no AI credit meter keeps the reference's estimate
+/// (available, with the plan's allowance), because a new paying customer may have no meter until
+/// the first usage is recorded: refusing it would keep a new paying channel from ever spending.
+/// What changes is its standing: it is marked unknown, and nothing that resets or tops up
+/// credits can run on it. (Open: what Polar's sandbox returns for a customer with credits
+/// granted and nothing used, to settle at the system test.)
+#[tokio::test]
+async fn a_customer_without_a_meter_keeps_the_estimate_and_nothing_runs_on_it() {
+    let Some((dragonfly, cache)) = process().await else {
+        return;
+    };
+    let channel = support::channel_id();
+    struct NoMeter;
+    impl CustomerStateSource for NoMeter {
+        fn customer_state<'a>(
+            &'a self,
+            _customer_id: &'a str,
+        ) -> BoxFuture<'a, Result<Value, PolarError>> {
+            Box::pin(async { Ok(json!({"active_meters": [], "granted_benefits": []})) })
+        }
+    }
+    // A verified read published first, so a later top-up has something to apply to.
+    let earlier = cache
+        .verified_balance(&owner(), &channel, &NoLookup, &now(0.0))
+        .await
+        .unwrap();
+    dragonfly
+        .del(&[&credits_cache_key(&channel)])
+        .await
+        .unwrap();
+
+    // The reference's estimate, kept: chat features may spend it.
+    let estimate = cache
+        .get_ai_credits(
+            &owner(),
+            &channel,
+            CreditOptions::default(),
+            &NoLookup,
+            &NoMeter,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        (
+            estimate.data.available,
+            estimate.data.balance,
+            estimate.data.limit
+        ),
+        (true, 25_000.0, 25_000.0)
+    );
+    assert_eq!(
+        estimate.data.status,
+        dima_billing::plans::credits::CreditStatus::Available
+    );
+    assert_eq!(
+        estimate.state,
+        dima_billing::plans::credits::BalanceState::Unknown,
+        "marked unknown"
+    );
+    assert_eq!(cached(&dragonfly, &channel).await["available"], json!(true));
+    assert!(!cache.is_ai_credits_exhausted(&channel).await.unwrap());
+    // Paid moderation (requireVerified) does not take it as credit, as in the reference.
+    dragonfly
+        .del(&[&credits_cache_key(&channel)])
+        .await
+        .unwrap();
+    let strict = cache
+        .get_ai_credits(
+            &owner(),
+            &channel,
+            CreditOptions {
+                require_verified: true,
+            },
+            &NoLookup,
+            &NoMeter,
+        )
+        .await
+        .unwrap();
+    assert!(!strict.data.available);
+
+    // Nothing that resets or tops up can run on it.
+    assert_eq!(estimate.verified(), None);
+    assert_eq!(
+        cache
+            .verified_balance(&owner(), &channel, &NoLookup, &NoMeter)
+            .await,
+        Err(UnverifiedBalance::NoMeter)
+    );
+    let usage = estimate
+        .verified()
+        .as_ref()
+        .map_or(ResetUsage::Unverified, ResetUsage::from);
+    assert_eq!(usage, ResetUsage::Unverified, "a new period is deferred");
+    let cached_read = cache
+        .get_ai_credits(
+            &owner(),
+            &channel,
+            CreditOptions::default(),
+            &NoLookup,
+            &NoMeter,
+        )
+        .await
+        .unwrap();
+    assert_eq!(cached_read.verified(), None);
+    // A balance verified before the estimate was published tops up nothing on top of it.
+    assert_eq!(
+        cache.top_up(&channel, 1000.0, &earlier).await.unwrap(),
+        TopUp::Refused
+    );
+    support::cleanup(&dragonfly, &channel).await.unwrap();
 }

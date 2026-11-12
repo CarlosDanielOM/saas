@@ -731,6 +731,12 @@ impl CreditsCache {
             current_user.plan_tier.as_deref(),
             self.now_iso(),
         );
+        // No AI credit meter: the reference's estimate (available, the plan's allowance) is
+        // kept on purpose (re-check finding N3, set aside by the lead): a new paying customer
+        // may have no meter until its first usage is recorded, and refusing it would keep that
+        // channel from ever spending. It is answered as `BalanceState::Unknown` and never as a
+        // `VerifiedBalance`, so no reset or top-up runs on it. Pinned by
+        // `tests/verified_balance.rs::a_customer_without_a_meter_keeps_the_estimate_and_nothing_runs_on_it`.
         if options.require_verified && meter.is_none() {
             payload.available = false;
             payload.status = CreditStatus::Unavailable;
