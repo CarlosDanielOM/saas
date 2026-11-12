@@ -12,7 +12,8 @@
 //! - `buildBitsEventsubConfig` is in [`bits`], `getEventsubAccess` in [`access`], the built-in
 //!   chat events in [`catalog`], the circuit breaker in [`policy`].
 //! - The configuration (callback, secret, deadlines) is [`EventsubSettings`].
-//! - Create, list, delete and the bits migration are [`EventsubManager`]'s ([`manage`]).
+//! - Create, list, delete and the bits migration are [`EventsubManager`]'s ([`manage`]); so is
+//!   the reconciliation ([`reconcile`]).
 #![allow(clippy::module_name_repetitions)]
 
 pub mod access;
@@ -22,6 +23,7 @@ pub mod condition;
 mod js;
 pub mod manage;
 pub mod policy;
+pub mod reconcile;
 mod settings;
 mod store;
 pub mod types;
@@ -38,6 +40,10 @@ pub use manage::{
     RemoteEventsub, SubscribeError, SubscribeRequest, UnsubscribeError, Unsubscribed,
 };
 pub use policy::should_trip_circuit_breaker;
+pub use reconcile::{
+    Action, AlwaysContinue, RaidPreferences, ReconcileError, ReconcileReport, ReconcileSettings,
+    RunControl,
+};
 pub use settings::{EventsubSettings, REFERENCE_CALLBACK, SettingsError};
 pub use types::{
     CANONICAL_BITS_EVENT_TYPE, LEGACY_BITS_EVENT_TYPES, SUBSCRIPTION_TYPES, Setting, Settings,

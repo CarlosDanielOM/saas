@@ -98,7 +98,6 @@ impl<'a> Eventsubs<'a> {
     }
 
     /// `Eventsub.updateOne` / `updateMany(filter, {$set})`; the number of documents matched.
-    #[allow(dead_code)] // The reconciliation's (part 3).
     pub(crate) async fn set(
         &self,
         op: &'static str,
@@ -139,7 +138,6 @@ impl<'a> Eventsubs<'a> {
     }
 
     /// `Eventsub.deleteMany({_id: {$in: ids}})`; the number deleted.
-    #[allow(dead_code)] // The reconciliation's (part 3).
     pub(crate) async fn delete_ids(
         &self,
         op: &'static str,

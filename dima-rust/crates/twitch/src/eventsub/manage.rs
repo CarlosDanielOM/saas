@@ -347,7 +347,6 @@ impl RemoteEventsub {
 
     /// The fields the `eventsubs` schema knows, in Twitch's order, as the driver writes them
     /// (`$set: {...remote}`: Mongoose's strict mode drops the others).
-    #[allow(dead_code)] // The reconciliation's (part 3).
     pub(crate) fn schema_fields(&self) -> Document {
         const FIELDS: [&str; 8] = [
             "id",

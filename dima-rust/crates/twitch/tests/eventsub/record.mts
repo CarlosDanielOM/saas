@@ -235,7 +235,8 @@ async function main() {
     } catch (error) {
       threw = error instanceof Error ? error.message : String(error);
     }
-    return { exchanges, result: threw === null ? result : null, threw, documents: await documents() };
+    const sent = [...exchanges];
+    return { exchanges: sent, result: threw === null ? result : null, threw, documents: await documents() };
   }
 
   // ================================================================== part 1
@@ -445,6 +446,126 @@ async function main() {
   }
   writeFileSync(`${outDir}/part2.json`, `${JSON.stringify({ reference, sources, scenarios: part2 }, null, 1)}\n`);
   console.log(`part 2: ${part2.length} scenarios`);
+
+  // ================================================================ part 3
+  // Whole reconciliation runs. A channel is set up the way sign-up does it
+  // (`subscribeAllEventSubs`: every table entry, the raid preference rule), Twitch then marks
+  // the subscriptions enabled; each scenario changes something and runs `reconcileEventsubs`.
+  const raidSubscriptions = await imported('src/utils/raid_subscriptions.ts');
+  const CALLBACK = 'https://subscriptions.domdimabot.com/eventsub';
+  async function signUp(twitch: FakeTwitch, channel: string) {
+    handler = (request) => twitch.handle(request);
+    for (const entry of eventsub.SUBSCRIPTION_TYPES) {
+      const expected = condition.buildExpectedEventsubCondition(entry, channel);
+      if (entry.type === 'channel.raid' && !await raidSubscriptions.shouldRepairRaid(channel, raidDirection.raidDirection(expected))) continue;
+      await eventsub.subscribeTwitchEvent(channel, entry.type, entry.version, expected, entry.config);
+    }
+  }
+  const enableAll = (twitch: FakeTwitch) => { for (const sub of twitch.subs) sub.status = 'enabled'; };
+  const pref = (channel: string, direction: string, deleted: boolean) => ({ _id: `${channel}:${direction}`, channelID: channel, direction, deleted, operation: `op-${channel}-${direction}`, updatedAt: { $date: { $numberLong: String(NOW_MS - 86_400_000) } } });
+  const remoteOf = (twitch: FakeTwitch, type: string, channel: string) => twitch.subs.find((sub) => sub.type === type && Object.values(sub.condition).includes(channel));
+  type Reconcile = { name: string; channels: Channel[]; prefs?: any[]; signUp?: string[]; prepare?: (twitch: FakeTwitch) => Promise<void> | void; options?: any; takeOver?: boolean };
+  const R1: Channel = { id: 'r1', name: 'chan_r1' };
+  const R2: Channel = { id: 'r2', name: 'chan_r2' };
+  const reconciles: Reconcile[] = [
+    { name: 'everything-in-place', channels: [R1], signUp: ['r1'] },
+    { name: 'missing-subscriptions', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      for (const type of ['stream.online', 'channel.follow', 'channel.poll.end']) { const sub = remoteOf(t, type, 'r1'); t.subs.splice(t.subs.indexOf(sub), 1); await Eventsub.collection.deleteOne({ id: sub.id }); }
+    } },
+    { name: 'missing-at-twitch-only', channels: [R1], signUp: ['r1'], prepare: (t) => { const sub = remoteOf(t, 'stream.offline', 'r1'); t.subs.splice(t.subs.indexOf(sub), 1); } },
+    { name: 'missing-after-grace', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      const sub = remoteOf(t, 'stream.offline', 'r1'); t.subs.splice(t.subs.indexOf(sub), 1);
+      await Eventsub.collection.updateOne({ id: sub.id }, { $set: { remote_missing_since: new RealDate(NOW_MS - 13 * 3_600_000) } });
+      const other = remoteOf(t, 'channel.update', 'r1');
+      await Eventsub.collection.updateOne({ id: other.id }, { $set: { remote_missing_since: new RealDate(NOW_MS - 3_600_000) } });
+    } },
+    { name: 'duplicates', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      const first = remoteOf(t, 'stream.online', 'r1');
+      const twin = t.create({ type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled', NOW_MS - 60_000);
+      const pending = t.create({ type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'webhook_callback_verification_pending', NOW_MS - 120_000);
+      await Eventsub.collection.insertOne({ ...(await Eventsub.collection.findOne({ id: first.id })), _id: new ObjectId('00000000000000000000d001'), id: twin.id, message: 'custom twin message', enabled: false });
+      await Eventsub.collection.insertOne({ ...(await Eventsub.collection.findOne({ id: first.id })), _id: new ObjectId('00000000000000000000d002'), id: 'stale-local-twin' });
+      void pending;
+    } },
+    { name: 'unhealthy-and-old-pending', channels: [R1], signUp: ['r1'], prepare: (t) => {
+      remoteOf(t, 'channel.update', 'r1').status = 'webhook_callback_verification_failed';
+      const old = remoteOf(t, 'user.update', 'r1'); old.status = 'webhook_callback_verification_pending'; old.created_at = iso(NOW_MS - 31 * 60_000, 1);
+      const fresh = remoteOf(t, 'channel.subscribe', 'r1'); fresh.status = 'webhook_callback_verification_pending'; fresh.created_at = iso(NOW_MS - 29 * 60_000, 1);
+    } },
+    { name: 'legacy-bits-beside-canonical', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      const legacy = t.create({ type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+      await Eventsub.collection.insertOne({ _id: new ObjectId('00000000000000000000c001'), id: legacy.id, status: 'enabled', type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: 'r1' }, created_at: legacy.created_at, transport: legacy.transport, cost: 1, channel: 'chan_r1', channelID: 'r1', enabled: true, message: 'Legacy cheer $(user)', delay: 3, __v: 0 });
+    } },
+    { name: 'legacy-bits-only', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      const canonical = remoteOf(t, 'channel.bits.use', 'r1'); t.subs.splice(t.subs.indexOf(canonical), 1); await Eventsub.collection.deleteOne({ id: canonical.id });
+      const legacy = t.create({ type: 'channel.bit.use', version: 'beta', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+      await Eventsub.collection.insertOne({ _id: new ObjectId('00000000000000000000c002'), id: legacy.id, status: 'enabled', type: 'channel.bit.use', version: 'beta', condition: { broadcaster_user_id: 'r1' }, created_at: legacy.created_at, transport: legacy.transport, cost: 1, channel: 'chan_r1', channelID: 'r1', enabled: false, cheerTiers: [{ id: 'x', name: 'X', message: 'tier', minAmount: 1, maxAmount: 5 }], __v: 0 });
+    } },
+    { name: 'stale-version', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      const v2 = remoteOf(t, 'channel.follow', 'r1'); t.subs.splice(t.subs.indexOf(v2), 1); await Eventsub.collection.deleteOne({ id: v2.id });
+      t.create({ type: 'channel.follow', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+      t.create({ type: 'channel.chat.message', version: '1', condition: { broadcaster_user_id: 'r1', user_id: 'someone-else' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+    } },
+    { name: 'feature-disabled-and-settings-kept', channels: [R1], signUp: ['r1'], prepare: async () => {
+      await Eventsub.collection.updateOne({ type: 'stream.online', channelID: 'r1' }, { $set: { enabled: false, message: 'Custom live 🎉' }, $unset: { delay: '' } });
+      await Eventsub.collection.updateOne({ type: 'channel.ad_break.begin', channelID: 'r1' }, { $set: { endEnabled: false, message: null } });
+    } },
+    { name: 'raid-preferences', channels: [R1, R2, { id: 'r3', name: 'chan_r3' }, { id: 'r4', name: 'chan_r4' }],
+      prefs: [pref('r2', 'incoming', true), pref('r2', 'outgoing', false), pref('r3', 'outgoing', true), pref('r4', 'incoming', false)], signUp: ['r1', 'r2', 'r3', 'r4'], prepare: async (t) => {
+        // Every raid subscription disappears from Twitch and MongoDB, then a legacy outgoing one for r1.
+        for (const sub of t.subs.filter((sub) => sub.type === 'channel.raid')) await Eventsub.collection.deleteOne({ id: sub.id });
+        t.subs = t.subs.filter((sub) => sub.type !== 'channel.raid');
+        const out = t.create({ type: 'channel.raid', version: '1', condition: { from_broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+        await Eventsub.collection.insertOne({ _id: new ObjectId('00000000000000000000b001'), id: out.id, status: 'enabled', type: 'channel.raid', version: '1', condition: out.condition, created_at: out.created_at, transport: out.transport, cost: 1, channel: 'chan_r1', channelID: 'r1', enabled: true, message: 'out', minViewers: 0, __v: 0 });
+        const inR3 = t.create({ type: 'channel.raid', version: '1', condition: { from_broadcaster_user_id: 'r3' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled');
+        void inR3;
+      } },
+    { name: 'many-pages', channels: [R1, R2], signUp: ['r1', 'r2'], prepare: (t) => { t.pageSize = 7; const sub = remoteOf(t, 'channel.goal.end', 'r2'); t.subs.splice(t.subs.indexOf(sub), 1); } },
+    { name: 'listing-fails-on-page-two', channels: [R1], signUp: ['r1'], prepare: (t) => { t.pageSize = 10; t.override = (request, n) => n === 1 ? { status: 503, body: '{"error":"Service Unavailable","status":503,"message":"try again"}' } : undefined; } },
+    { name: 'create-fails-after-some-succeeded', channels: [R1], signUp: ['r1'], prepare: async (t) => {
+      for (const type of ['stream.online', 'stream.offline', 'channel.update', 'user.update']) { const sub = remoteOf(t, type, 'r1'); t.subs.splice(t.subs.indexOf(sub), 1); await Eventsub.collection.deleteOne({ id: sub.id }); }
+      let creates = 0;
+      t.override = (request) => request.method === 'POST' && ++creates === 3 ? { status: 403, body: '{"error":"Forbidden","status":403,"message":"subscription missing proper authorization"}' } : undefined;
+    } },
+    { name: 'delete-fails', channels: [R1], signUp: ['r1'], prepare: (t) => {
+      const twin = t.create({ type: 'channel.update', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: CALLBACK } }, 'enabled', NOW_MS - 60_000);
+      void twin;
+      t.override = (request) => request.method === 'DELETE' ? { status: 500, body: '{"error":"Internal Server Error","status":500,"message":"later"}' } : undefined;
+    } },
+    { name: 'circuit-breaker', channels: [R1], signUp: ['r1'], prepare: (t) => { for (const sub of t.subs.slice(0, 10)) sub.status = 'notification_failures_exceeded'; } },
+    { name: 'departed-channel', channels: [R1, { ...R2, has_permissions: false }], signUp: ['r1', 'r2'] },
+    { name: 'foreign-callback', channels: [R1], signUp: ['r1'], prepare: (t) => {
+      t.create({ type: 'stream.online', version: '1', condition: { broadcaster_user_id: 'r1' }, transport: { method: 'webhook', callback: 'https://dev.example.invalid/eventsub' } }, 'enabled', NOW_MS - 600_000);
+    } },
+    { name: 'take-over', channels: [R1, R2, { id: 'r3', name: 'chan_r3' }], prefs: [pref('r2', 'outgoing', false), pref('r3', 'incoming', true)], signUp: ['r1', 'r2', 'r3'], takeOver: true, prepare: async (t) => {
+      // What else the reference creates outside the table: a reward redemption and the chat
+      // moderation types (on demand), all adopted as their callers do.
+      handler = (request) => t.handle(request);
+      await eventsub.subscribeTwitchEvent('r1', 'channel.channel_points_custom_reward_redemption.add', '1', { broadcaster_user_id: 'r1', reward_id: 'reward-1' });
+      for (const type of ['channel.chat.message_delete', 'channel.chat.clear_user_messages', 'channel.chat.clear']) await eventsub.subscribeTwitchEvent('r2', type, '1', { broadcaster_user_id: 'r2', user_id: '698614112' }, undefined, { ignoreExisting: true });
+      enableAll(t);
+      // The reference's own first run settles everything (stored statuses become `enabled`).
+      exchanges = [];
+      await reconciliation.reconcileEventsubs({ requestDelayMs: 0 });
+    } },
+  ];
+  const part3: any[] = [];
+  for (const scenario of reconciles) {
+    now = NOW_MS - 3_600_000;
+    await seed(scenario.channels, [], scenario.prefs ?? []);
+    const twitch = new FakeTwitch();
+    for (const channel of scenario.signUp ?? []) await signUp(twitch, channel);
+    enableAll(twitch);
+    now = NOW_MS;
+    await scenario.prepare?.(twitch);
+    twitch.served = 0;
+    const before = await documents();
+    const remoteBefore = JSON.parse(JSON.stringify(twitch.subs));
+    const recorded = await capture(twitch, () => reconciliation.reconcileEventsubs({ requestDelayMs: 0, ...(scenario.options ?? {}) }));
+    part3.push({ name: scenario.name, now, channels: scenario.channels, prefs: scenario.prefs ?? [], takeOver: scenario.takeOver ?? false, before, remoteBefore, remoteAfter: twitch.subs, preferences: await preferences(), ...recorded });
+  }
+  writeFileSync(`${outDir}/part3.json`, `${JSON.stringify({ reference, sources, scenarios: part3 }, null, 1)}\n`);
+  console.log(`part 3: ${part3.length} scenarios`);
 }
 
 // ------------------------------------------------------------------ cleanup
