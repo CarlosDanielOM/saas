@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 mod activity_projection;
 pub mod clip_recommendations_queue;
+pub mod dashboard_analytics;
 pub mod defense_baseline;
 pub mod follow_ledger;
 pub mod follow_ledger_queue;
@@ -10,6 +11,10 @@ mod seen;
 pub mod site_analytics;
 pub mod stream_activity;
 pub mod stream_memory_queue;
+pub mod stream_session_event_projection;
+pub mod stream_timeline;
+pub mod subscription_ledger;
+mod timeline_store;
 
 use std::{future::IntoFuture, time::Duration};
 
@@ -48,7 +53,3 @@ where
         .map_err(|_| Error::Deadline)?
         .map_err(Error::from)
 }
-
-pub mod stream_session_event_projection;
-pub mod stream_timeline;
-mod timeline_store;
