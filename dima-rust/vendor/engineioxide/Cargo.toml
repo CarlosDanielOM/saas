@@ -79,6 +79,10 @@ path = "tests/volatile.rs"
 name = "upgrade"
 path = "tests/upgrade.rs"
 
+[[test]]
+name = "input"
+path = "tests/input.rs"
+
 [dependencies.bytes]
 version = "1.11"
 features = ["serde"]

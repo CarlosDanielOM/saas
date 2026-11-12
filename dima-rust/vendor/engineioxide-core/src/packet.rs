@@ -221,19 +221,27 @@ impl Packet {
             .as_bytes()
             .first()
             .ok_or(PacketParseError::InvalidPacketType(None))?;
-        let is_upgrade = value.len() == 6 && &value[1..6] == "probe";
+        // [dima-rust patch 4] Checked only once the type byte is known to be `2` or `3`, and as
+        // bytes: slicing the text at byte 1 panicked inside a multi-byte first character.
+        let is_upgrade = || value.as_bytes().get(1..) == Some(b"probe".as_slice());
         let res = match packet_type {
             b'1' => Packet::Close,
-            b'2' if is_upgrade => Packet::PingUpgrade,
+            b'2' if is_upgrade() => Packet::PingUpgrade,
             b'2' => Packet::Ping,
-            b'3' if is_upgrade => Packet::PongUpgrade,
+            b'3' if is_upgrade() => Packet::PongUpgrade,
             b'3' => Packet::Pong,
             b'4' => Packet::Message(value.slice(1..)),
             b'5' => Packet::Upgrade,
             b'6' => Packet::Noop,
+            // [dima-rust patch 4] `get`: a lone `b` has no byte 2 (`slice(2..)` panicked).
             b'b' if protocol == ProtocolVersion::V3 => Packet::BinaryV3(
                 general_purpose::STANDARD
-                    .decode(value.slice(2..).as_bytes())?
+                    .decode(
+                        value
+                            .as_bytes()
+                            .get(2..)
+                            .ok_or(PacketParseError::InvalidPacketPayload)?,
+                    )?
                     .into(),
             ),
             b'b' => Packet::Binary(
@@ -369,6 +377,68 @@ mod tests {
         let packet = Packet::BinaryV3(vec![1, 2, 3].into());
         let packet_str: String = packet.into();
         assert_eq!(packet_str, "b4AQID");
+    }
+
+    /// [dima-rust patch 4] Network text that is not a packet is an error, never a panic: the
+    /// type is checked before anything else, and the probe text is compared as bytes.
+    #[test]
+    fn parse_rejects_what_is_not_a_packet_without_panicking() {
+        for text in ["é1234", "€123", "𝕊12", "éprobe", "€prob", "\u{80}1234"] {
+            assert!(
+                matches!(
+                    Packet::parse(ProtocolVersion::V4, text.to_owned()),
+                    Err(PacketParseError::InvalidPacketType(Some(_)))
+                ),
+                "{text:?}"
+            );
+        }
+        assert!(matches!(
+            Packet::parse(ProtocolVersion::V4, String::new()),
+            Err(PacketParseError::InvalidPacketType(None))
+        ));
+        assert!(Packet::parse(ProtocolVersion::V3, "b".to_owned()).is_err());
+        assert!(Packet::parse(ProtocolVersion::V3, "bé".to_owned()).is_err());
+    }
+
+    /// [dima-rust patch 4] The probe packets are exactly `2probe` and `3probe`.
+    #[test]
+    fn parse_recognises_the_probe_only_exactly() {
+        let parse = |text: &str| Packet::parse(ProtocolVersion::V4, text.to_owned()).unwrap();
+        assert_eq!(parse("2probe"), Packet::PingUpgrade);
+        assert_eq!(parse("3probe"), Packet::PongUpgrade);
+        assert_eq!(parse("2"), Packet::Ping);
+        assert_eq!(parse("2probé"), Packet::Ping);
+        assert_eq!(parse("2prob"), Packet::Ping);
+        assert_eq!(parse("3probes"), Packet::Pong);
+        assert_eq!(parse("4é1234"), Packet::Message("é1234".into()));
+        assert_eq!(parse("4probe"), Packet::Message("probe".into()));
+    }
+
+    /// [dima-rust patch 4] Every short text over an alphabet of packet types, probe letters and
+    /// multi-byte characters parses or fails, for both protocol versions.
+    #[test]
+    fn parse_never_panics_on_short_texts() {
+        const ALPHABET: [&str; 12] = ["2", "3", "4", "b", "p", "r", "o", "e", "é", "€", "𝕊", "\0"];
+        let mut texts = vec![String::new()];
+        for _ in 0..4 {
+            let longer: Vec<String> = texts
+                .iter()
+                .flat_map(|t| ALPHABET.iter().map(move |c| format!("{t}{c}")))
+                .collect();
+            texts.extend(longer.iter().cloned());
+            texts.dedup();
+            if texts.len() > 30_000 {
+                break;
+            }
+        }
+        for text in texts {
+            for protocol in [ProtocolVersion::V4, ProtocolVersion::V3] {
+                let attempt = std::panic::catch_unwind(|| {
+                    let _ = Packet::parse(protocol, text.clone());
+                });
+                assert!(attempt.is_ok(), "{protocol:?} {text:?}");
+            }
+        }
     }
 
     #[test]

@@ -767,6 +767,21 @@ const httpCases = {
     for (const probe of probes) probe.close();
     return out;
   },
+  // `é1234`: six bytes, a first character two bytes long. engine.io reads an unknown packet type
+  // as a parse error and closes the session (engine.io-parser decodePacket, socket.js 113-115).
+  async 'a six-byte text that is not a packet'(base) {
+    const out = {};
+    const ws = new RawWs(`${base.replace('http', 'ws')}/socket.io/?EIO=4&transport=websocket`);
+    out.opened = await ws.opened;
+    out.open = (await ws.next()).startsWith('0{');
+    ws.send('é1234');
+    out.websocket = await ws.next();
+    ws.close();
+    const session = await rawPolling(base);
+    await session.post('é1234');
+    out['poll after the post'] = (await session.poll()).status ?? 'answered';
+    return out;
+  },
   async 'the app and other upgrades'(base) {
     const out = {};
     // The app is a stand-in on each side: only what reached it is compared.

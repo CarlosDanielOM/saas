@@ -127,3 +127,41 @@ git diff <that commit> -- dima-rust/vendor
    `…::a_writer_blocked_on_a_silent_peer_does_not_hold_up_the_close` (unit tests over an
    in-memory pipe nobody reads); `dima-socketio`'s adversarial and differential suites pass
    unchanged.
+
+4. **Text that is not a packet never panics.** `engineioxide-core/src/packet.rs`
+   (`Packet::parse`). The six bytes `é1234` reached `&value[1..6]` before the packet type was
+   checked, cutting inside `é`: the WebSocket reader task died (the session stayed open with
+   nobody reading it until the heartbeat ended it) and a polling POST panicked. The probe text
+   is now compared as bytes, and only for types `2` and `3`; an unknown type is a parse error
+   that closes the session, as in `engine.io` (engine.io-parser decodePacket returns its error
+   packet, socket.js 113-115). Protocol 3 (feature `v3`, unused here): a lone `b` reached
+   `slice(2..)` and panicked; it is now an invalid payload.
+   Tests: `packet::tests::parse_rejects_what_is_not_a_packet_without_panicking`,
+   `…::parse_recognises_the_probe_only_exactly`, `…::parse_never_panics_on_short_texts` (every
+   text up to four characters over packet types, probe letters and multi-byte characters, both
+   protocols); `tests/input.rs` (`a_six_byte_text_that_is_not_a_packet_closes_a_websocket_session`,
+   `…_polling_session`); `dima-socketio`'s differential case `a six-byte text that is not a
+   packet`.
+
+   **The audit**: every slice, index, `unwrap`, `expect`, `panic!` and length arithmetic in both
+   crates that client input can reach, and what was done with it.
+
+   | Where | What | Verdict |
+   |---|---|---|
+   | core `packet.rs` `Packet::parse` | `&value[1..6]` before the type check | **failed**: fixed above |
+   | core `packet.rs` `Packet::parse` | `value.slice(2..)` for a protocol 3 `b` | **failed** (v3 only): fixed above |
+   | core `packet.rs` `Packet::parse` | `value.slice(1..)` for `4` and `b` | after one ASCII byte: cannot fail |
+   | core `payload/decoder.rs` `poll_body` | `current_payload_size + data.remaining()` (u64) | cannot overflow below a configured maximum of 2^63; POSTs are read by change 5's own bounded reader first |
+   | core `payload/decoder.rs` v4 | `read_until` on the in-memory `BufList`, `unreachable!` after `is_data()` | infallible |
+   | core `payload/decoder.rs` v3 (feature `v3`) | `&packet_buf[1..]` after `first()` matched; `packet_type.unwrap()` once the header set it; `read_to_end`/`fill_buf().unwrap()` on memory; `i + 1 - old_len` (the separator is never in the old part); `remaining - available.len()`; `&packet_buf[..i]` from `memchr`; unchecked UTF-8 of a `valid_up_to` prefix | cannot fail |
+   | core `payload/buf.rs` | `dst[vecs..]`, `bufs[0]` in `advance`, the `copy_to_bytes` assert | only on over-consumption, which the decoders never ask for |
+   | core `sid.rs` `Sid::from_str` | `as_bytes()[0..16]` | after the length check: cannot fail |
+   | core `payload/encoder.rs` | sizes and digit arithmetic | server output bounded by `max_payload`: cannot fail |
+   | `transport/ws.rs` `forward_to_socket` | `try_lock().unwrap()` | **failed**: fixed in change 3 |
+   | `transport/ws.rs` | `split_off(1)` (v3 binary, after `!is_empty()`), the accept-key header parse, `String::try_from(packet).unwrap()` (infallible conversion) | cannot fail |
+   | `socket.rs` | heartbeat `try_lock().expect` (one heartbeat job per session), `pop().unwrap()` of the one packet just sent, `into_message`/`into_binary` of the packet just built | cannot fail |
+   | `socket.rs` / transports | a second pong while one is pending: `try_send` failure mapped to `HeartbeatTimeout` | not a panic, but **ended the session**: fixed in change 6 |
+   | `transport/polling.rs` | packet-buffer `try_lock` | handled (overlap closes the session) |
+   | `engine.rs` | `RwLock` `unwrap` | poisoning needs a panic under the lock; none can happen |
+   | `service/parser.rs` | query parsing (`split`, `find`, `nth`), `Sid` parse | returns errors |
+   | `errors.rs`, `service/futures.rs`, `service/mod.rs`, `transport/polling.rs` | response builders | constant status and headers: cannot fail |

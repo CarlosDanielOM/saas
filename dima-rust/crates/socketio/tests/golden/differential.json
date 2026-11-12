@@ -11891,6 +11891,12 @@
     "body": "{\"code\":3,\"message\":\"Bad request\"}"
    }
   },
+  "a six-byte text that is not a packet": {
+   "opened": "open",
+   "open": true,
+   "websocket": "close 1005",
+   "poll after the post": 400
+  },
   "the app and other upgrades": {
    "hello": {
     "status": 200,
