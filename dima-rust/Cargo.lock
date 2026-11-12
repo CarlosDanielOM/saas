@@ -1642,6 +1642,7 @@ dependencies = [
  "dima-core",
  "dima-engine",
  "dima-events",
+ "dima-http",
  "dima-model",
  "dima-store",
  "dima-stream",
