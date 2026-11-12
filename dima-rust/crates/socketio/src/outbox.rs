@@ -6,9 +6,10 @@
 //!
 //! - **In the transport.** A packet handed to Engine.IO stays charged until the transport says
 //!   it is done (`engineioxide`'s `messages_done`, patch 7 of `vendor/README.md`): over WebSocket
-//!   flushed to the connection, over polling in a response body the HTTP layer has dropped (the
-//!   service keeps Engine.IO's body alive inside its own, compressed or not, until the response
-//!   is written), or dropped because the session ended. Engine.IO numbers the messages it is
+//!   flushed to the connection, over polling once the HTTP server has written the answer's
+//!   bytes to the socket or dropped them with the connection (the service makes Engine.IO's
+//!   body the owner of those bytes, compressed or not, so it goes with their last reference),
+//!   or dropped because the session ended. Engine.IO numbers the messages it is
 //!   handed and finishes them in that order, so the outbox numbers its hand-overs the same way
 //!   and releases, oldest first, every packet whose number is at most the transport's count.
 //! - **Waiting in a slot.** A replaceable packet that does not fit waits in its key's slot,

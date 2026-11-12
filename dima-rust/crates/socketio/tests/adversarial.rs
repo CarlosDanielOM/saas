@@ -1307,6 +1307,83 @@ async fn polling_answers_vary_on_the_accepted_encoding() {
     s.server.stop().await;
 }
 
+/// A polling client joined to `nsp` that has read its hello.
+async fn join_polling(addr: std::net::SocketAddr, nsp: &str) -> Polling {
+    let client = Polling::open(addr).await;
+    assert_eq!(client.post(&[&format!("40{nsp},{{}}")]).await, Some(200));
+    let mut seen = Vec::new();
+    while !seen.iter().any(|p: &String| event(p, nsp).is_some()) {
+        seen.extend(client.poll(5 * SECOND).await.unwrap());
+    }
+    client
+}
+
+/// H1 (re-check of 2026-11-12): a polling answer stays charged until it is written. The review's
+/// sequence: a large event queued, its poll requested, the client stops reading; before, the
+/// charge was released as soon as hyper had taken the body, 8 MiB unwritten counted as zero.
+/// Then several such clients against the server-wide budget: the third large event finds the
+/// budget taken by the two unwritten answers and is refused as a slow consumer.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_polling_answer_stays_charged_until_it_is_written() {
+    use tokio::io::AsyncReadExt as _;
+    const BIG: usize = 8 << 20;
+    let s = setup(
+        Options {
+            max_outbound_total: 20 << 20,
+            ..Options::default()
+        },
+        NamespaceOptions {
+            recovery: Recovery::Off,
+            ..NamespaceOptions::default()
+        },
+    )
+    .await;
+    let io = s.server.io.clone();
+    let big = [json!("x".repeat(BIG))];
+    let a = join_polling(s.server.addr, "/f/a").await;
+    eventually("hello written", || io.stats().outbound_bytes == 0).await;
+    assert_eq!(s.family.emit("/f/a", "big", &big), Ok(1));
+    let mut stalled_a = a.stalled_poll().await;
+    // The answer is in hyper's hands, mostly unwritten: still charged.
+    for _ in 0..30 {
+        assert!(io.stats().outbound_bytes >= BIG, "released while unwritten");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    // Read to its end: released.
+    let mut rest = vec![0_u8; 64 << 10];
+    let mut read = 0;
+    while read < BIG {
+        let n = stalled_a.read(&mut rest).await.unwrap();
+        assert!(n > 0, "closed early");
+        read += n;
+    }
+    eventually("written answer released", || io.stats().outbound_bytes == 0).await;
+    drop(stalled_a);
+
+    // Two clients stall their 8 MiB answers: 16 MiB of the 20 stay charged.
+    let b = join_polling(s.server.addr, "/f/b").await;
+    let c = join_polling(s.server.addr, "/f/c").await;
+    let d = join_polling(s.server.addr, "/f/d").await;
+    eventually("hellos written", || io.stats().outbound_bytes == 0).await;
+    assert_eq!(s.family.emit("/f/b", "big", &big), Ok(1));
+    assert_eq!(s.family.emit("/f/c", "big", &big), Ok(1));
+    let stalled_b = b.stalled_poll().await;
+    let stalled_c = c.stalled_poll().await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(io.stats().outbound_bytes >= 2 * BIG);
+    // A third does not fit: its connection is closed as a slow consumer.
+    assert_eq!(s.family.emit("/f/d", "big", &big), Ok(0));
+    assert_eq!(s.telemetry.get("send:SlowConsumer"), 1);
+    assert!(io.stats().outbound_bytes <= 20 << 20);
+    // The stalled connections ending gives everything back.
+    drop((stalled_b, stalled_c, d));
+    eventually("stalled answers released", || {
+        io.stats().outbound_bytes == 0
+    })
+    .await;
+    s.server.stop().await;
+}
+
 /// A WebSocket handshake to `/socket.io/`: `Ok` with the client once the open packet arrived,
 /// `Err(status)` when the server answered the handshake with an error status.
 async fn try_open(addr: std::net::SocketAddr) -> Result<impl Sized, Option<u16>> {
