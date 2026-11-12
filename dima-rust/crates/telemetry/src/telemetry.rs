@@ -256,6 +256,9 @@ pub(crate) struct Shared {
     pub(crate) secret: Option<SecretString>,
     pub(crate) min_level: Level,
     pub(crate) clock: Arc<dyn Clock>,
+    /// The wall clock as the probe task last read it (every 20 ms), 0 when it is not running.
+    /// It picks the 10-second bucket of an observation without a clock read per call.
+    pub(crate) coarse_ms: AtomicU64,
     pub(crate) metrics: Metrics,
     pub(crate) spans: Rows<SpanRow>,
     pub(crate) logs: Rows<LogRow>,
@@ -357,6 +360,7 @@ impl Telemetry {
             secret: config.secret_key,
             min_level: config.min_level,
             clock: config.clock,
+            coarse_ms: AtomicU64::new(0),
             metrics: Metrics::new(),
             spans: Rows::new(MAX_SPANS),
             logs: Rows::new(MAX_LOGS),
@@ -423,6 +427,16 @@ impl Telemetry {
         u64::try_from(self.0.clock.now_ms()).unwrap_or_default()
     }
 
+    /// The time that picks an observation's bucket: the probe's last reading when it runs (at
+    /// most 20 ms old: an observation that close after a boundary lands in the previous bucket),
+    /// otherwise the clock.
+    pub(crate) fn bucket_ms(&self) -> u64 {
+        match self.0.coarse_ms.load(Ordering::Relaxed) {
+            0 => self.now_ms(),
+            coarse => coarse,
+        }
+    }
+
     pub(crate) fn lose(&self, count: u64) {
         if count > 0 {
             self.0.dropped.fetch_add(count, Ordering::Relaxed);
@@ -467,7 +481,7 @@ impl Telemetry {
         channel: Channel,
     ) {
         let key = MetricKey::new(kind, name, &channel, outcome);
-        if self.0.metrics.record(self.now_ms(), &key, value) == Err(Rejected::Dropped) {
+        if self.0.metrics.record(self.bucket_ms(), &key, value) == Err(Rejected::Dropped) {
             self.lose(1);
         }
     }
@@ -537,7 +551,13 @@ impl Telemetry {
             span.channel,
         );
         if span.sampled || span.duration_ms >= 1000.0 || span.outcome == "error" {
-            if !self.0.spans.push(SpanRow::from_finished(span)) {
+            // Only a kept span reads the precise wall clock for its start.
+            let at = span.at.unwrap_or_else(|| {
+                let duration = std::time::Duration::from_secs_f64(span.duration_ms / 1000.0);
+                self.now_ms()
+                    .saturating_sub(duration.as_millis().try_into().unwrap_or(u64::MAX))
+            });
+            if !self.0.spans.push(SpanRow::from_finished(span, at)) {
                 self.lose(1);
             }
         }
@@ -558,8 +578,6 @@ impl Telemetry {
         let parent = trace::current();
         let ids = self.new_ids(parent.as_ref().map(TraceContext::ids));
         let duration_ms = duration.as_secs_f64() * 1000.0;
-        let now = self.now_ms();
-        let at = now.saturating_sub(duration.as_millis().try_into().unwrap_or(u64::MAX));
         self.finish_span(&FinishedSpan {
             trace_id: ids.trace_id,
             span_id: ids.span_id,
@@ -570,7 +588,7 @@ impl Telemetry {
                     .as_ref()
                     .map_or(Channel::EMPTY, TraceContext::channel)
             }),
-            at,
+            at: None,
             duration_ms,
             kind,
             name,
@@ -637,6 +655,9 @@ impl Telemetry {
                 }
                 if options.destination != crate::logger::Destination::Console {
                     drops.cache.fetch_add(1, Ordering::Relaxed);
+                }
+                if self.0.sinks.posthog.is_some() {
+                    drops.posthog.fetch_add(1, Ordering::Relaxed);
                 }
             }
         }

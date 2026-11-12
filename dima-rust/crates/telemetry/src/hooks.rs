@@ -183,7 +183,7 @@ impl dima_web::Observer for WebObserver {
             parent: link.parent,
             sampled: ids.sampled,
             channel,
-            at: link.at,
+            at: Some(link.at),
             duration_ms: end.duration.as_secs_f64() * 1000.0,
             kind: "http",
             name: &name,

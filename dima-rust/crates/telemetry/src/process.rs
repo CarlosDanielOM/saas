@@ -20,6 +20,7 @@
 
 use crate::telemetry::Telemetry;
 use std::io::Read;
+use std::sync::atomic::Ordering;
 use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 use tokio::time::Instant;
@@ -95,17 +96,22 @@ impl Probe {
 }
 
 /// The probe task.
+/// Also keeps the coarse clock that picks metric buckets.
 pub(crate) async fn run_probe(telemetry: Telemetry, stop: dima_core::Shutdown) {
+    let coarse = &telemetry.0.coarse_ms;
+    coarse.store(telemetry.now_ms().max(1), Ordering::Relaxed);
     loop {
         let started = Instant::now();
         tokio::select! {
-            () = stop.wait() => return,
+            () = stop.wait() => break,
             () = tokio::time::sleep(PROBE_PERIOD) => {
                 let late = started.elapsed().saturating_sub(PROBE_PERIOD);
                 telemetry.0.probe.record(late);
+                coarse.store(telemetry.now_ms().max(1), Ordering::Relaxed);
             }
         }
     }
+    coarse.store(0, Ordering::Relaxed);
 }
 
 /// CPU time of the whole process (user + system, all threads).

@@ -9,10 +9,13 @@
 //! bounded queue, and what does not fit is dropped and counted (the admin page shows the count as
 //! `telemetry_dropped`).
 //!
-//! **Cost on hot paths** (measured by `tests/overhead.rs`, release-like numbers are lower): a
-//! filtered log call is one comparison; a counter increment hashes a stack key and updates an
-//! existing series under an uncontended shard lock; a span that is not kept reads the clock twice
-//! and updates its series. None of them allocates.
+//! **Cost on hot paths** (`tests/overhead.rs`, this crate optimised, on a laptop whose HPET clock
+//! source makes one clock read cost 1.2 µs): a filtered log call 1.6 ns (one comparison); a
+//! counter increment or an observation about 125 ns (a stack key, an uncontended shard lock, an
+//! existing series; the bucket comes from a coarse clock the probe task refreshes every 20 ms);
+//! a span that is not kept about 230 ns plus two monotonic clock reads. None of them allocates:
+//! eight million such calls leave the resident size unchanged. At the reference's bounds (2000
+//! series, 300 spans, 100 logs) about 1.2 MB stays live, and refilling after a flush adds nothing.
 //!
 //! **Wiring** a binary (API shown; the bot is the same without the web parts, the cron binary
 //! adds a [`Worker`] per supervised task):

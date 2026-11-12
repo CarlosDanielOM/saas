@@ -180,10 +180,7 @@ impl Metrics {
                 if reserved.is_err() {
                     return Err(Rejected::Dropped);
                 }
-                shard
-                    .map
-                    .entry(Box::from(key.bytes()))
-                    .or_insert_with(Series::default)
+                shard.map.entry(Box::from(key.bytes())).or_default()
             }
         };
         let slot = if series.slots[0].count > 0 && series.slots[0].at == bucket {
@@ -295,7 +292,8 @@ pub(crate) struct FinishedSpan<'a> {
     pub(crate) parent: Option<SpanId>,
     pub(crate) sampled: bool,
     pub(crate) channel: Channel,
-    pub(crate) at: u64,
+    /// The start, when known; otherwise computed from the end only if the span is kept.
+    pub(crate) at: Option<u64>,
     pub(crate) duration_ms: f64,
     pub(crate) kind: &'a str,
     pub(crate) name: &'a str,
@@ -303,14 +301,14 @@ pub(crate) struct FinishedSpan<'a> {
 }
 
 impl SpanRow {
-    pub(crate) fn from_finished(span: &FinishedSpan<'_>) -> Self {
+    pub(crate) fn from_finished(span: &FinishedSpan<'_>, at: u64) -> Self {
         Self {
             trace_id: span.trace_id.hex().as_str().to_owned(),
             span_id: span.span_id.hex().as_str().to_owned(),
             sampled: span.sampled,
             channel: span.channel.as_str().to_owned(),
             parent_id: span.parent.map(|id| id.hex().as_str().to_owned()),
-            at: span.at,
+            at,
             duration: span.duration_ms.clamp(0.0, MAX_NUMBER),
             kind: Label::<KIND_MAX>::clean(span.kind).as_str().to_owned(),
             name: Label::<NAME_MAX>::clean(span.name).as_str().to_owned(),

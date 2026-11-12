@@ -24,7 +24,6 @@ pub struct Span<'a> {
     context: TraceContext,
     parent: Option<SpanId>,
     started: Instant,
-    at: u64,
     ended: bool,
 }
 
@@ -60,7 +59,6 @@ impl<'a> Span<'a> {
             context: TraceContext::new(ids, channel),
             parent: parent_ids.map(|ids| ids.span_id),
             started: Instant::now(),
-            at: telemetry.now_ms(),
             ended: false,
         }
     }
@@ -110,7 +108,7 @@ impl<'a> Span<'a> {
             parent: self.parent,
             sampled: ids.sampled,
             channel: self.context.channel(),
-            at: self.at,
+            at: None,
             duration_ms: self.started.elapsed().as_secs_f64() * 1000.0,
             kind: self.kind,
             name: name.unwrap_or(self.name),
