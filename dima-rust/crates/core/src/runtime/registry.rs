@@ -9,8 +9,13 @@
 //! [`Shutdown`](super::Shutdown) it was given, until it has finished. The owner (the
 //! [`Supervisor`](super::Supervisor) for each run of a worker) waits on the registry, which does
 //! not live inside any future that can be cancelled.
+//!
+//! The registry also records when `run_with_deadline` gave up on work it could not stop
+//! ([`DeadlineError::Unstoppable`](super::DeadlineError::Unstoppable)), whatever the caller then
+//! does with that error, so the owner can treat it as fatal.
 
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tokio_util::task::task_tracker::TaskTrackerToken;
 
@@ -24,6 +29,7 @@ pub struct WorkRegistry(Arc<Inner>);
 #[derive(Debug, Default)]
 struct Inner {
     tracker: TaskTracker,
+    unstoppable: CancellationToken,
 }
 
 /// An entry in a [`WorkRegistry`]: the work counts as running while this is alive.
@@ -48,6 +54,22 @@ impl WorkRegistry {
     /// How many registered pieces of work have not finished yet.
     pub fn running(&self) -> usize {
         self.0.tracker.len()
+    }
+
+    /// Records that registered work did not stop within its grace period.
+    pub(crate) fn report_unstoppable(&self) {
+        self.0.unstoppable.cancel();
+    }
+
+    /// Whether registered work was reported unstoppable: it may still be running, and nothing
+    /// may take it over until the process has exited.
+    pub fn is_unstoppable(&self) -> bool {
+        self.0.unstoppable.is_cancelled()
+    }
+
+    /// Resolves once registered work is reported unstoppable (never, if none is).
+    pub async fn unstoppable(&self) {
+        self.0.unstoppable.cancelled().await;
     }
 
     /// Resolves once every registered piece of work has finished (at once if none is running).

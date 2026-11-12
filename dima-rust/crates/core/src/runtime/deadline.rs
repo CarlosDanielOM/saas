@@ -79,7 +79,9 @@ pub enum DeadlineError {
     /// Shutdown began; the work was aborted and has stopped.
     #[error("work was stopped for shutdown")]
     ShutDown,
-    /// The work was aborted but did not stop within the grace period. Exit the process.
+    /// The work was aborted but did not stop within the grace period. Exit the process. It is
+    /// also recorded in the caller's [`WorkRegistry`], so a [`Supervisor`](super::Supervisor)
+    /// treats the task as fatal even if the error is swallowed or turned into text.
     #[error("work did not stop within its grace period")]
     Unstoppable,
     /// The work panicked (the panic is contained; the message is kept).
@@ -179,6 +181,9 @@ where
         .await
         .is_err()
     {
+        if let Some(registry) = shutdown.registry() {
+            registry.report_unstoppable();
+        }
         return Err(DeadlineError::Unstoppable);
     }
     match stopped? {
