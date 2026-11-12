@@ -51,6 +51,7 @@ pub mod backend;
 pub mod delivery;
 pub mod host;
 pub mod metrics;
+pub mod pubsub;
 pub mod runner;
 pub mod simulate;
 pub mod timers;
