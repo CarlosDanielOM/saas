@@ -323,18 +323,25 @@ impl Normaliser {
 
 /// The server copies an upsert filter's equality fields into the new document right after `_id`
 /// in an order of its own choosing, which varies from run to run (seen with the Node driver
-/// too: 48 against 32 in 80 identical upserts with other writes in between). That run of
-/// fields is put in a fixed order on both sides; everything else keeps its stored order.
-fn canonical_upsert_fields(value: Bson, filter_keys: &[String]) -> Bson {
+/// too: 48 against 32 in 80 identical upserts with other writes in between). Only that run is
+/// put in a fixed order, on both sides: the leading fields of a document that are exactly the
+/// equality fields of the one upsert that inserted it. Values, types and every other position
+/// stay strict.
+fn canonical_upsert_fields(value: Bson, upserts: &[Upsert]) -> Bson {
     let canonical = |doc: Document| -> Document {
+        let Some(copied) = upserts.iter().find(|u| u.inserted(&doc)).map(|u| &u.copied) else {
+            return doc;
+        };
         let mut entries: Vec<(String, Bson)> = doc.into_iter().collect();
         let start = usize::from(entries.first().is_some_and(|(k, _)| k == "_id"));
         let run = entries
             .iter()
             .skip(start)
-            .take_while(|(k, _)| filter_keys.contains(k))
+            .take_while(|(k, _)| copied.contains(k))
             .count();
-        if let Some(slice) = entries.get_mut(start..start + run) {
+        if run == copied.len()
+            && let Some(slice) = entries.get_mut(start..start + run)
+        {
             slice.sort_by(|a, b| a.0.cmp(&b.0));
         }
         entries.into_iter().collect()
@@ -354,8 +361,54 @@ fn canonical_upsert_fields(value: Bson, filter_keys: &[String]) -> Bson {
     }
 }
 
-/// Top-level keys an upsert in this case could copy from its filter.
-fn upsert_filter_keys(intent: &Document) -> Vec<String> {
+/// One upsert of the case: the top-level fields the server copies from its filter (equality
+/// conditions only; `{$gt: …}` and other operator conditions are not copied), and the scalar
+/// equality values that identify the document it inserted.
+struct Upsert {
+    copied: Vec<String>,
+    equalities: Vec<(String, Bson)>,
+}
+
+impl Upsert {
+    fn new(filter: &Document) -> Self {
+        let mut copied = Vec::new();
+        let mut equalities = Vec::new();
+        for (path, condition) in filter {
+            if path.starts_with('$') {
+                continue;
+            }
+            let is_operator = matches!(condition, Bson::Document(inner) if inner.keys().any(|k| k.starts_with('$')));
+            if is_operator {
+                continue;
+            }
+            let top = path.split('.').next().unwrap_or_default().to_owned();
+            if top != "_id" && !copied.contains(&top) {
+                copied.push(top);
+            }
+            if !matches!(condition, Bson::Document(_) | Bson::Array(_)) {
+                equalities.push((path.clone(), condition.clone()));
+            }
+        }
+        Self { copied, equalities }
+    }
+
+    /// Whether `doc` holds this upsert's equality values (and so may have been inserted by it).
+    fn inserted(&self, doc: &Document) -> bool {
+        !self.copied.is_empty()
+            && self.equalities.iter().all(|(path, value)| {
+                let mut current = doc.get(path.split('.').next().unwrap_or_default());
+                for piece in path.split('.').skip(1) {
+                    current = current
+                        .and_then(Bson::as_document)
+                        .and_then(|d| d.get(piece));
+                }
+                current.is_some_and(|found| same(found, value))
+            })
+    }
+}
+
+/// Every upsert of the case (one statement, or each upserting `bulkWrite` operation).
+fn upserts_of(intent: &Document) -> Vec<Upsert> {
     let mut filters: Vec<&Document> = Vec::new();
     let upsert = intent
         .get_document("options")
@@ -379,17 +432,7 @@ fn upsert_filter_keys(intent: &Document) -> Vec<String> {
             filters.extend(body.get_document("filter").ok());
         }
     }
-    let mut keys: Vec<String> = filters
-        .into_iter()
-        .flat_map(|f| {
-            f.keys()
-                .map(|k| k.split('.').next().unwrap_or_default().to_owned())
-                .collect::<Vec<_>>()
-        })
-        .filter(|k| k != "_id")
-        .collect();
-    keys.dedup();
-    keys
+    filters.into_iter().map(Upsert::new).collect()
 }
 
 fn sort_by_id(stored: Bson) -> Bson {
@@ -873,9 +916,9 @@ async fn check_case(
         stored.into_iter().map(Bson::Document).collect(),
     ))?);
 
-    let filter_keys = upsert_filter_keys(&to_doc(&case["intent"])?);
-    let result = canonical_upsert_fields(result, &filter_keys);
-    let stored = canonical_upsert_fields(stored, &filter_keys);
+    let upserts = upserts_of(&to_doc(&case["intent"])?);
+    let result = canonical_upsert_fields(result, &upserts);
+    let stored = canonical_upsert_fields(stored, &upserts);
     let mut problems = Vec::new();
     let expected_commands = to_bson(&case["commands"])?;
     if !same(&commands, &expected_commands) {
@@ -890,7 +933,7 @@ async fn check_case(
     } else {
         to_bson(&case["result"])?
     };
-    let expected_result = canonical_upsert_fields(expected_result, &filter_keys);
+    let expected_result = canonical_upsert_fields(expected_result, &upserts);
     if !same(&result, &expected_result) {
         problems.push(format!(
             "{name}: result\n  rust:     {}\n  mongoose: {}",
@@ -900,8 +943,7 @@ async fn check_case(
     }
     // Sorted by normalised `_id`: a client-generated id and a server-generated upsert id compare
     // arbitrarily (their process bytes differ), so the raw `_id` order is not comparable.
-    let expected_stored =
-        canonical_upsert_fields(sort_by_id(to_bson(&case["stored"])?), &filter_keys);
+    let expected_stored = canonical_upsert_fields(sort_by_id(to_bson(&case["stored"])?), &upserts);
     if !same(&stored, &expected_stored) {
         problems.push(format!(
             "{name}: stored\n  rust:     {}\n  mongoose: {}",
@@ -982,4 +1024,47 @@ async fn mongoose_write_cases_match() -> Result<()> {
         cases.len()
     );
     Ok(())
+}
+
+#[test]
+fn order_exemption_covers_only_the_copied_equality_fields() {
+    let keys = |value: &Bson| -> Vec<String> {
+        value
+            .as_document()
+            .map(|d| d.keys().cloned().collect())
+            .unwrap_or_default()
+    };
+    let upserts = [Upsert::new(
+        &doc! { "b": 1, "a": "x", "count": { "$gt": 1 }, "nested.c": true },
+    )];
+    // The copied run (a, b, nested) is put in a fixed order.
+    let inserted = Bson::Document(
+        doc! { "_id": 1, "nested": { "c": true }, "b": 1, "a": "x", "count": 2, "z": 0 },
+    );
+    assert_eq!(
+        keys(&canonical_upsert_fields(inserted, &upserts)),
+        ["_id", "a", "b", "nested", "count", "z"]
+    );
+    // An operator condition is not copied by the server, so it is not exempt.
+    let operator_first =
+        Bson::Document(doc! { "_id": 1, "count": 2, "b": 1, "a": "x", "nested": { "c": true } });
+    assert_eq!(
+        keys(&canonical_upsert_fields(operator_first, &upserts)),
+        ["_id", "count", "b", "a", "nested"]
+    );
+    // A document the upsert did not insert (other values) keeps its order.
+    let other = Bson::Document(doc! { "_id": 2, "b": 2, "a": "x", "nested": { "c": true } });
+    assert_eq!(
+        keys(&canonical_upsert_fields(other, &upserts)),
+        ["_id", "b", "a", "nested"]
+    );
+    // A run that is not exactly the copied fields is left alone.
+    let partial = Bson::Document(doc! { "_id": 1, "b": 1, "a": "x", "count": 2 });
+    assert_eq!(
+        keys(&canonical_upsert_fields(
+            partial,
+            &[Upsert::new(&doc! { "a": "x", "b": 1, "q": 3 })]
+        )),
+        ["_id", "b", "a", "count"]
+    );
 }
