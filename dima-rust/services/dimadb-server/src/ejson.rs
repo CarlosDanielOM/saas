@@ -498,30 +498,7 @@ fn string_of_bson(value: RawBsonRef<'_>) -> String {
 
 /// `Date.prototype.toString()` in UTC.
 fn date_to_string(ms: i64) -> String {
-    let Some(fields) = dima_text::utc_fields(ms) else {
-        return "Invalid Date".to_owned();
-    };
-    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let day = DAYS
-        .get(usize::try_from(fields.weekday).unwrap_or(0))
-        .copied()
-        .unwrap_or("Sun");
-    let month = MONTHS
-        .get(usize::try_from(fields.month).unwrap_or(0))
-        .copied()
-        .unwrap_or("Jan");
-    let year = if fields.year < 0 {
-        format!("-{:06}", -fields.year)
-    } else {
-        format!("{:04}", fields.year)
-    };
-    format!(
-        "{day} {month} {:02} {year} {:02}:{:02}:{:02} GMT+0000 (Coordinated Universal Time)",
-        fields.day, fields.hour, fields.minute, fields.second
-    )
+    dima_text::to_string_utc(ms).unwrap_or_else(|| "Invalid Date".to_owned())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1219,6 +1196,41 @@ pub fn number_bson(n: f64) -> Bson {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bson_value_text_contract() {
+        let value = Js::Array(vec![
+            Js::Null,
+            Js::Number(-0.0),
+            Js::Array(vec![Js::String("😀".into()), Js::Null]),
+            Js::Symbol("symbol".into()),
+        ]);
+        assert_eq!(value.text(), ",0,😀,,symbol");
+        assert!(Js::Symbol(String::new()).truthy());
+        assert_eq!(Js::Symbol(String::new()).text(), "");
+        assert!(!Js::Number(f64::NAN).truthy());
+    }
+
+    #[test]
+    fn shared_date_contract() {
+        for ms in [
+            -8_640_000_000_000_000,
+            -1,
+            0,
+            8_640_000_000_000_000,
+            i64::MAX,
+        ] {
+            let expected =
+                dima_text::to_string_utc(ms).unwrap_or_else(|| "Invalid Date".to_owned());
+            assert_eq!(date_to_string(ms), expected);
+        }
+        let ms = dima_text::date_utc(-1, 0, 1, 0, 0, 0, 0).unwrap();
+        // Node vectors: non-ISO negative years have four digits; the old copy used six.
+        assert_eq!(
+            date_to_string(ms),
+            "Fri Jan 01 -0001 00:00:00 GMT+0000 (Coordinated Universal Time)"
+        );
+    }
 
     #[test]
     fn regexp_source_escapes_like_v8() {

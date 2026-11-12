@@ -667,29 +667,30 @@ fn js_hex(value: i64) -> String {
 
 /// `Date.prototype.toUTCString()`: `Wed, 11 Nov 2026 22:31:10 GMT`.
 pub(crate) fn utc_string(ms: i64) -> String {
-    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let Some(fields) = dima_text::utc_fields(ms) else {
-        return "Invalid Date".to_owned();
-    };
-    let day = DAYS.get(fields.weekday as usize).copied().unwrap_or("Sun");
-    let month = MONTHS.get(fields.month as usize).copied().unwrap_or("Jan");
-    let year = if fields.year < 0 {
-        format!("-{:06}", fields.year.unsigned_abs())
-    } else {
-        format!("{:04}", fields.year)
-    };
-    format!(
-        "{day}, {:02} {month} {year} {:02}:{:02}:{:02} GMT",
-        fields.day, fields.hour, fields.minute, fields.second
-    )
+    dima_text::to_utc_string(ms).unwrap_or_else(|| "Invalid Date".to_owned())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_date_contract() {
+        for ms in [
+            -8_640_000_000_000_000,
+            -1,
+            0,
+            8_640_000_000_000_000,
+            i64::MAX,
+        ] {
+            let expected =
+                dima_text::to_utc_string(ms).unwrap_or_else(|| "Invalid Date".to_owned());
+            assert_eq!(utc_string(ms), expected);
+        }
+        let ms = dima_text::date_utc(-1, 0, 1, 0, 0, 0, 0).unwrap();
+        // Node vectors: non-ISO negative years have four digits; the old copy used six.
+        assert_eq!(utc_string(ms), "Fri, 01 Jan -0001 00:00:00 GMT");
+    }
 
     #[test]
     fn normalizes_like_node_path() {
