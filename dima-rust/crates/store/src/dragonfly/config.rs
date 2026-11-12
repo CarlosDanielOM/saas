@@ -68,6 +68,15 @@ pub const DEFAULT_MAX_SUBSCRIPTIONS: usize = 10_000;
 /// request); a message over the limit discards the connection (see [`super::pubsub`]).
 pub const DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 
+/// Default limit on one subscribed channel or pattern name: 1 KiB.
+///
+/// The reference's channel names are short (`widget-feed`, `twitch:{id}:clip:request`,
+/// `tts:session-ended:v1`). The limit keeps what the subscriber has queued for the server
+/// bounded (at most one command per topic, see [`super::pubsub`]) and every confirmation within
+/// the receive limit; the effective limit is never above
+/// [`DragonflyConfig::subscription_max_message_bytes`].
+pub const DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES: usize = 1024;
+
 /// Default interval of silence after which a subscriber connection is sent `PING`: 30 seconds.
 ///
 /// The reference sets no `pingInterval` (node-redis 5 then never pings), so a subscriber whose
@@ -106,6 +115,9 @@ pub struct DragonflyConfig {
     /// Largest received message, channel or pattern; see
     /// [`DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES`].
     pub subscription_max_message_bytes: usize,
+    /// Longest channel or pattern name one may subscribe to; see
+    /// [`DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES`].
+    pub subscription_max_topic_bytes: usize,
 }
 
 impl DragonflyConfig {
@@ -123,6 +135,7 @@ impl DragonflyConfig {
             subscriber_ping_interval: DEFAULT_SUBSCRIBER_PING_INTERVAL,
             max_subscriptions: DEFAULT_MAX_SUBSCRIPTIONS,
             subscription_max_message_bytes: DEFAULT_SUBSCRIPTION_MAX_MESSAGE_BYTES,
+            subscription_max_topic_bytes: DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES,
         }
     }
 
@@ -165,6 +178,14 @@ impl DragonflyConfig {
         Ok(client)
     }
 
+    /// The longest topic name a subscription accepts: [`Self::subscription_max_topic_bytes`],
+    /// but never above the receive limit (its confirmation must be receivable), and at least 1.
+    pub fn effective_max_topic_bytes(&self) -> usize {
+        self.subscription_max_topic_bytes
+            .min(self.subscription_max_message_bytes)
+            .max(1)
+    }
+
     /// `true` when the address carries a password (with or without a user name).
     pub fn has_credentials(&self) -> bool {
         self.client().is_ok_and(|client| {
@@ -196,6 +217,10 @@ impl std::fmt::Debug for DragonflyConfig {
             .field(
                 "subscription_max_message_bytes",
                 &self.subscription_max_message_bytes,
+            )
+            .field(
+                "subscription_max_topic_bytes",
+                &self.subscription_max_topic_bytes,
             )
             .finish()
     }

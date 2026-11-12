@@ -62,20 +62,35 @@ struct Limits {
     ping_interval: Duration,
     max_message_bytes: usize,
     max_subscriptions: usize,
+    max_topic_bytes: usize,
 }
 
-/// Room in a frame's budget for everything but the payload: the kind, the channel and the
-/// pattern of a `pmessage`, and the headers.
-const FRAME_OVERHEAD: usize = 8 * 1024;
+/// Room in a frame for its headers and the kind (`pmessage`, `punsubscribe`...).
+const FRAME_HEADERS: usize = 128;
+
+/// The most bytes one command takes besides its topic (`*2`, `$12`, `PUNSUBSCRIBE`, CRLFs).
+const COMMAND_OVERHEAD: usize = 64;
 
 impl Limits {
-    /// The limits of one received frame: every bulk string within the message limit, the whole
-    /// frame within the message limit plus [`FRAME_OVERHEAD`].
+    /// The limits of one received frame: every bulk string within the message limit; the whole
+    /// frame within one message, two names (the pattern and channel of a `pmessage`) and the
+    /// headers.
     fn frame(self) -> resp::Limits {
         resp::Limits {
             max_bulk: self.max_message_bytes,
-            max_frame: self.max_message_bytes.saturating_add(FRAME_OVERHEAD),
+            max_frame: self
+                .max_message_bytes
+                .saturating_add(self.max_topic_bytes.saturating_mul(2))
+                .saturating_add(FRAME_HEADERS),
         }
+    }
+
+    /// The most bytes the commands waiting to be written can take: one per topic (see the
+    /// module docs) plus a `PING`.
+    fn max_output(self) -> usize {
+        self.max_subscriptions
+            .saturating_add(1)
+            .saturating_mul(self.max_topic_bytes.saturating_add(COMMAND_OVERHEAD))
     }
 
     fn of(shared: &Shared) -> Self {
@@ -87,6 +102,7 @@ impl Limits {
                 .max(Duration::from_millis(1)),
             max_message_bytes: shared.config.subscription_max_message_bytes.max(1),
             max_subscriptions: shared.config.max_subscriptions,
+            max_topic_bytes: shared.config.effective_max_topic_bytes(),
         }
     }
 }
@@ -328,6 +344,12 @@ async fn serve(
     loop {
         if connection.input.capacity() - connection.input.len() < READ_CHUNK {
             connection.input.reserve(READ_CHUNK);
+        }
+        if connection.output.len() > limits.max_output()
+            || connection.pending.len() > limits.max_subscriptions.saturating_add(1)
+        {
+            // Not reachable while one command per topic is in flight; replace rather than grow.
+            return Err(Lost::Protocol("subscriber commands exceed their bound"));
         }
         let deadline = connection.next_deadline(limits);
         let writing = !connection.output.is_empty();

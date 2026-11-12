@@ -41,8 +41,15 @@
 //!   [`super::DragonflyConfig::subscription_max_message_bytes`] is refused from its length
 //!   header, before its bytes arrive: the connection is discarded and replaced (`Gap`
 //!   subscriptions report a gap) instead of the buffer growing.
-//! - Control requests queue in a channel of 64; queued commands and unconfirmed confirmations
-//!   are bounded by the subscriptions and the deadline.
+//! - A channel or pattern name is at most
+//!   [`super::DragonflyConfig::effective_max_topic_bytes`] (default
+//!   [`super::config::DEFAULT_SUBSCRIPTION_MAX_TOPIC_BYTES`], never above the receive limit);
+//!   a longer one is refused with [`DragonflyError::TopicTooLong`] before anything is sent.
+//! - Control requests queue in a channel of 64. At most one command per topic is in flight
+//!   (requests made meanwhile only change what is wanted), so the commands waiting for a
+//!   confirmation are at most `max_subscriptions + 1` (the `+ 1` is a keep-alive `PING`) and the
+//!   bytes queued for the socket at most that many commands of the longest topic, whatever the
+//!   subscribe and unsubscribe churn; a buffer above that bound replaces the connection.
 //!
 //! # Connection
 //!
@@ -110,6 +117,15 @@ pub enum Topic {
     Channel(String),
     /// `PSUBSCRIBE pattern`.
     Pattern(String),
+}
+
+impl Topic {
+    /// The channel or pattern name.
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Channel(name) | Self::Pattern(name) => name,
+        }
+    }
 }
 
 /// One received message.
@@ -449,12 +465,19 @@ impl Subscriber {
     /// while the subscriber waits between attempts (the subscription is then made on reconnect;
     /// see [`Subscription::confirmed`]).
     ///
+    /// A name longer than [`super::DragonflyConfig::effective_max_topic_bytes`] is refused with
+    /// [`DragonflyError::TopicTooLong`] before anything is sent.
+    ///
     /// A new topic beyond [`super::DragonflyConfig::max_subscriptions`] is refused with
     /// [`DragonflyError::TooManySubscriptions`]; replacing a topic that is already subscribed is
     /// always allowed. A dropped subscription keeps its place until the server confirms the
     /// unsubscribe (normally well under a millisecond; at most the response timeout, after which
     /// the connection is replaced), since the server still holds it until then.
     pub async fn subscribe(&self, topic: Topic, overflow: Overflow) -> Result<Subscription> {
+        let limit = self.shared.config.effective_max_topic_bytes();
+        if topic.name().len() > limit {
+            return Err(DragonflyError::TopicTooLong { limit });
+        }
         let inbox = Arc::new(Inbox::new(self.buffer, overflow));
         let id = self.state.next_id.fetch_add(1, Ordering::Relaxed);
         let (ack, confirmed) = oneshot::channel();

@@ -883,3 +883,87 @@ async fn churn_on_one_channel_never_reports_live_early() -> Result<()> {
     ensure!(new.confirmed() && settled_when_live);
     Ok(())
 }
+
+#[tokio::test]
+async fn a_topic_longer_than_the_limit_is_refused_locally() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.subscription_max_message_bytes = 4096;
+    config.subscription_max_topic_bytes = 64;
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    for topic in [
+        Topic::Channel("c".repeat(65)),
+        Topic::Pattern("p".repeat(65)),
+    ] {
+        let refused = subscriber.subscribe(topic, Overflow::Gap).await;
+        ensure!(
+            matches!(refused, Err(DragonflyError::TopicTooLong { limit: 64 })),
+            "{refused:?}"
+        );
+    }
+    // Nothing was sent; a topic at the limit works.
+    let longest = "c".repeat(64);
+    let _ok = subscribed(&subscriber, &mut peer, &longest).await?;
+    // The receive limit caps the topic limit: a topic the confirmation of which would be
+    // refused is refused here instead.
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.subscription_max_message_bytes = 32;
+    let subscriber = setup(config).await?;
+    let _peer = mock.peer().await?;
+    let refused = subscriber
+        .subscribe(Topic::Channel("c".repeat(33)), Overflow::Gap)
+        .await;
+    ensure!(
+        matches!(refused, Err(DragonflyError::TopicTooLong { limit: 32 })),
+        "{refused:?}"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn churn_keeps_one_command_per_topic_in_flight() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let mut config = mock.config(Duration::from_secs(10));
+    config.max_subscriptions = 4;
+    let subscriber = setup(config).await?;
+    let mut peer = mock.peer().await?;
+    // The server answers nothing. Subscribing and dropping one channel many times sends one
+    // command; distinct channels stop at the cap.
+    for _ in 0..1000 {
+        let pending = tokio::time::timeout(
+            Duration::from_millis(1),
+            subscriber.subscribe(Topic::Channel("same".into()), Overflow::Gap),
+        )
+        .await;
+        drop(pending);
+    }
+    let mut refused = 0;
+    for n in 0..1000 {
+        match tokio::time::timeout(
+            Duration::from_millis(1),
+            subscriber.subscribe(Topic::Channel(format!("t{n}")), Overflow::Gap),
+        )
+        .await
+        {
+            Ok(Err(DragonflyError::TooManySubscriptions { .. })) => refused += 1,
+            Ok(other) => bail!("{other:?}"),
+            Err(_) => {}
+        }
+    }
+    ensure!(refused >= 996, "{refused} refused");
+    let mut commands = Vec::new();
+    while let Ok(Some(command)) =
+        tokio::time::timeout(Duration::from_millis(200), peer.commands.recv()).await
+    {
+        commands.push(command);
+    }
+    ensure!(
+        commands.len() <= 4,
+        "{} commands in flight: {commands:?}",
+        commands.len()
+    );
+    ensure!(commands.first() == Some(&vec!["SUBSCRIBE".to_owned(), "same".to_owned()]));
+    Ok(())
+}
