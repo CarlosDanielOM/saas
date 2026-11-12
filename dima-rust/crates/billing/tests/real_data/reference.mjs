@@ -1,6 +1,9 @@
 // The reference's answers for every user of the dump (tests/real_data/users.json), recorded once
 // with the real billing.ts and polar_billing_events.ts under Node 24, offline (see real_data.rs).
-// Stores and Polar are stand-ins; the clock is fixed.
+// Stores and Polar are stand-ins; the clock is fixed. Polar's answers are scripted from each
+// user's stored plan_tier (no subscription, or one active subscription of that tier): the
+// comparison checks the logic against the TypeScript for those inputs, not against Polar's real
+// state for these customers.
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';

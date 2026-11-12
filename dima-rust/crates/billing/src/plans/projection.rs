@@ -9,11 +9,14 @@
 //!
 //! **Ordering.** A plan write is versioned by when the lookup started (`observed_at`), then the
 //! event key: the `$or` filter accepts a write only over an older or equal version, so an old
-//! webhook that reads fresh state still wins over nothing newer. A write that changes the plan
-//! sets `polar_plan_effects_pending: true`; the flag is removed (filtered on the event key) only
-//! after retention and every cache invalidation succeeded, so a retry after a crash redoes the
-//! effects. The fence (`twitch:{id}:ai:credits:plan-version`) is raised with the same version
-//! atomically with the cache deletion.
+//! webhook that reads fresh state still wins over nothing newer. Every accepted write sets
+//! `polar_plan_effects_pending: true` and returns the document it replaced; the fence
+//! (`twitch:{id}:ai:credits:plan-version`) is raised with the write's version atomically with the
+//! cache deletion, the retention follows when the plan differs from the replaced one, and the
+//! flag is removed (filtered on the event key and time) only after both succeeded, so a retry
+//! after a crash redoes the effects. Intended difference (item 3 of P2-BILLING-01b): the
+//! reference decided whether to run the effects against the owner it had read before the
+//! write, and ran retention before invalidating.
 //!
 //! Writes go through `dima_model::users::INFO` (timestamps as Mongoose adds them) and the store's
 //! `PlanCacheFence` (`INVALIDATE_PLAN_SCRIPT`, `SYNC_CREDITS_SCRIPT`, verbatim).
@@ -26,11 +29,12 @@ use crate::js;
 use crate::products::{AI_CREDITS_METER_ID, LEGACY_USAGE_METER_ID};
 use bson::oid::ObjectId;
 use bson::{Bson, doc};
-use dima_model::StrEnum;
 use dima_model::users::{AccountType, User};
+use dima_model::{Private, StrEnum};
 use dima_store::dragonfly::Dragonfly;
 use dima_store::dragonfly::plan_cache_fence::{
-    Acceptance, Exhaustion, FenceError, PlanCacheFence, TtlSeconds, plan_cache_version,
+    Acceptance, Exhaustion, FenceError, PlanCacheFence, credits_cache_key, exhaustion_cache_keys,
+    plan_cache_fence_key, plan_cache_version, snapshot_version_key,
 };
 use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
@@ -96,8 +100,8 @@ pub struct ProjectionStores<'a> {
 pub struct PlanOwnerState {
     /// `_id`.
     pub id: ObjectId,
-    /// `polar_sh_customer_id || null`.
-    pub customer_id: Option<String>,
+    /// `polar_sh_customer_id || null` ([`Private`]: never in `Debug`).
+    pub customer_id: Option<Private<String>>,
     /// `plan_tier` as stored.
     pub plan_tier: String,
     /// `plan_tier_until` (epoch ms).
@@ -128,9 +132,8 @@ impl PlanOwnerState {
             id: user.id,
             customer_id: user
                 .polar_sh_customer_id
-                .as_ref()
-                .map(|id| id.expose().clone())
-                .filter(|id| !id.is_empty()),
+                .clone()
+                .filter(|id| !id.expose().is_empty()),
             plan_tier: user.plan_tier.as_str().to_owned(),
             plan_tier_until: user.plan_tier_until.map(|at| at.0),
             effects_pending: user.polar_plan_effects_pending == Some(true),
@@ -175,6 +178,17 @@ fn until_bson(until: Option<i64>) -> Bson {
 /// `projectPolarPlan(owner, plan, observedAt, eventKey, customerId, deps, fingerprint)`: `true`
 /// when this write was applied (and its effects ran), `false` when a newer equal plan was
 /// already stored.
+///
+/// Item 3 of P2-BILLING-01b (review finding 3). Whether the plan changed is decided against
+/// the document this write **replaced**, which the conditional update returns atomically with
+/// the write (`returnDocument: 'before'`), not against `owner` as the caller read it earlier:
+/// two processes that both read Free could otherwise let the newer one write Free over the
+/// older one's Premium and skip the invalidation. Every accepted write sets
+/// `polar_plan_effects_pending` and then, in this order: raises the fence to its version and
+/// drops the plan caches (always, so no stale cache stays readable while retention runs),
+/// adjusts the usage retention when the plan differs from the replaced one (or the replaced
+/// one had effects pending), and clears the flag (filtered on this write's event key and
+/// time). `owner` still names the customer link the write requires.
 #[allow(clippy::too_many_arguments)]
 pub async fn project_polar_plan(
     stores: ProjectionStores<'_>,
@@ -187,10 +201,10 @@ pub async fn project_polar_plan(
     fingerprint: &str,
     now_ms: i64,
 ) -> Result<bool, ProjectionError> {
-    let needs_effects = owner.effects_pending
-        || owner.plan_tier != plan.plan_tier.as_str()
-        || owner.plan_tier_until != plan.until_ms;
-    let customer = owner.customer_id.as_deref().map_or(Bson::Null, Bson::from);
+    let customer = owner
+        .customer_id
+        .as_ref()
+        .map_or(Bson::Null, |id| Bson::from(id.expose().as_str()));
     let filter = doc! {
         "_id": owner.id,
         "polar_sh_customer_id": customer,
@@ -200,30 +214,28 @@ pub async fn project_polar_plan(
             { "polar_plan_event_at": date(observed_at_ms), "polar_plan_event_key": { "$lte": event_key } },
         ],
     };
-    let mut set = doc! {
+    let set = doc! {
         "plan_tier": plan.plan_tier.as_str(),
         "plan_tier_until": until_bson(plan.until_ms),
         "polar_plan_event_at": date(observed_at_ms),
         "polar_plan_event_key": event_key,
         "polar_plan_entitlement_fingerprint": fingerprint,
+        "polar_plan_effects_pending": true,
     };
-    if needs_effects {
-        set.insert("polar_plan_effects_pending", true);
-    }
     let mut ctx = WriteContext::new(now_ms);
     let prepared = dima_model::users::INFO.prepare_find_one_and_update(
         &filter,
         doc! { "$set": set },
         UpdateOptions::default(),
-        Returned::After,
+        Returned::Before,
         &mut ctx,
     )?;
-    let updated = stores
+    let replaced = stores
         .mongo
         .writes(dima_model::users::COLLECTION)
         .find_one_and_update(&prepared)
         .await?;
-    let Some(updated) = updated else {
+    let Some(replaced) = replaced else {
         let current = stores
             .mongo
             .documents(dima_model::users::COLLECTION)
@@ -249,20 +261,14 @@ pub async fn project_polar_plan(
         }
         return Ok(false);
     };
-    let updated_pending = updated
-        .get_bool("polar_plan_effects_pending")
-        .unwrap_or(false);
-    if !needs_effects && !updated_pending {
-        return Ok(true);
-    }
-    if !owner.twitch_ids.is_empty() {
-        effects
-            .adjust_usage_retention(&owner.twitch_ids, plan.plan_tier)
-            .await
-            .map_err(ProjectionError::Retention)?;
-    }
+    let replaced = PlanOwnerState::of(&dima_model::decode_document::<User>(&replaced)?);
+    let plan_changed = replaced.effects_pending
+        || replaced.plan_tier != plan.plan_tier.as_str()
+        || replaced.plan_tier_until != plan.until_ms;
+    let twitch_ids = &replaced.twitch_ids;
+
     let context_key = context_cache_key(customer_id);
-    if owner.twitch_ids.is_empty() {
+    if twitch_ids.is_empty() {
         stores
             .dragonfly
             .del(&[&context_key])
@@ -274,13 +280,23 @@ pub async fn project_polar_plan(
     }
     let fence = PlanCacheFence::new(stores.dragonfly.clone());
     let version = plan_cache_version(Some(observed_at_ms), Some(event_key))?;
-    for id in &owner.twitch_ids {
+    for id in twitch_ids {
         // A newer fence (0) means a later plan write already invalidated: nothing to redo.
         let _: Acceptance = fence.invalidate_plan(id, &version, &context_key).await?;
     }
+    if plan_changed && !twitch_ids.is_empty() {
+        effects
+            .adjust_usage_retention(twitch_ids, plan.plan_tier)
+            .await
+            .map_err(ProjectionError::Retention)?;
+    }
     let mut ctx = WriteContext::new(now_ms);
     let clear = dima_model::users::INFO.prepare_update(
-        &doc! { "_id": owner.id, "polar_plan_event_key": event_key },
+        &doc! {
+            "_id": owner.id,
+            "polar_plan_event_key": event_key,
+            "polar_plan_event_at": date(observed_at_ms),
+        },
         doc! { "$unset": { "polar_plan_effects_pending": "" } },
         UpdateOptions::default(),
         &mut ctx,
@@ -336,6 +352,10 @@ fn le_zero(value: &Value) -> bool {
 /// The write of `applyPolarCreditsDomainEvent`: keep the newest snapshot on the user, then
 /// publish the credits it implies to every Twitch account, fenced by the plan and snapshot
 /// versions. `None` when the owner has no Twitch account.
+///
+/// Local debits made after the projection began are applied to the published snapshot (item 4
+/// of P2-BILLING-01b: [`super::balance`]), and the publication advances the usage revision, so
+/// a slower fetch that started before it cannot overwrite it.
 pub async fn project_credit_snapshot(
     stores: ProjectionStores<'_>,
     owner_id: ObjectId,
@@ -344,6 +364,26 @@ pub async fn project_credit_snapshot(
     meters: &[Value],
     now_ms: i64,
 ) -> Result<Option<CreditSync>, ProjectionError> {
+    // The debits of every account of the owner before anything is read (the accounts are
+    // read again from the stored document below; one missing here starts at 0).
+    let mut started: Vec<(String, super::balance::Revision)> = Vec::new();
+    if let Some(stored) = stores
+        .mongo
+        .documents(dima_model::users::COLLECTION)
+        .find_one(doc! { "_id": owner_id })
+        .await
+        .map_err(dima_store::mongo::write::WriteError::from)?
+    {
+        for id in twitch_ids(&dima_model::decode_document::<User>(&stored)?) {
+            let revision = super::balance::read_revision(stores.dragonfly, &id)
+                .await
+                .map_err(|source| FenceError::Redis {
+                    write_outcome_unknown: false,
+                    source,
+                })?;
+            started.push((id, revision));
+        }
+    }
     let filter = doc! {
         "_id": owner_id,
         "$or": [
@@ -460,21 +500,51 @@ pub async fn project_credit_snapshot(
         "{}:{current_key}",
         dima_text::pad_start(&current_at.to_string(), 13, "0")
     );
-    let fence = PlanCacheFence::new(stores.dragonfly.clone());
-    let ttl = TtlSeconds::new(AI_CREDITS_CACHE_TTL_SECONDS)?;
+    let updated_at = dima_text::to_iso_string(now_ms).unwrap_or_default();
     let mut accepted = Vec::with_capacity(twitch.len());
     for id in &twitch {
+        let debits = started
+            .iter()
+            .find(|(known, _)| known == id)
+            .map_or(0, |(_, revision)| revision.debits);
+        let [canonical, legacy] = exhaustion_cache_keys(id);
+        let keys = [
+            credits_cache_key(id),
+            canonical,
+            legacy,
+            snapshot_version_key(id),
+            plan_cache_fence_key(id),
+            super::balance::revision_key(id),
+        ];
+        let args = [
+            snapshot_version.clone(),
+            payload.clone(),
+            match exhaustion {
+                Exhaustion::Keep => String::new(),
+                Exhaustion::Exhausted => "1".to_owned(),
+                Exhaustion::Available => "0".to_owned(),
+            },
+            AI_CREDITS_CACHE_TTL_SECONDS.to_string(),
+            plan_version.clone(),
+            debits.to_string(),
+            updated_at.clone(),
+            super::balance::REVISION_TTL_SECONDS.to_string(),
+        ];
+        let reply = super::balance::SYNC
+            .run_value(stores.dragonfly, &keys, &args)
+            .await
+            .map_err(|source| FenceError::Redis {
+                write_outcome_unknown: true,
+                source,
+            })?;
         accepted.push(
-            fence
-                .sync_credits(
-                    id,
-                    &snapshot_version,
-                    (!payload.is_empty()).then_some(payload.as_str()),
-                    exhaustion,
-                    ttl,
-                    &plan_version,
-                )
-                .await?,
+            match dima_store::dragonfly::commands::reply::int(reply)
+                .map_err(|_| FenceError::Protocol)?
+            {
+                1 => Acceptance::Accepted,
+                0 => Acceptance::Rejected,
+                _ => return Err(FenceError::Protocol.into()),
+            },
         );
     }
     Ok(Some(CreditSync {

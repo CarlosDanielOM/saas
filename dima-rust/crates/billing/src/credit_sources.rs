@@ -15,6 +15,7 @@
 use crate::credit_packs::credit_pack_definition;
 use crate::polar::{PolarClient, PolarError};
 use crate::products::{AI_CREDITS_METER_ID, GIFT_PACK_PAIRS};
+use dima_model::Private;
 use futures_util::future::BoxFuture;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -126,12 +127,13 @@ pub trait CreditSourceReads: Send + Sync {
 }
 
 /// `polarCreditSourceReads(customerId)`: the customer's whole grant list read once (Polar has
-/// no get-by-id for grants), orders one by one.
+/// no get-by-id for grants), orders one by one. The customer id and the cached grants are
+/// [`Private`]: `Debug` prints a placeholder.
 #[derive(Debug)]
 pub struct PolarCreditSourceReads<'a> {
     polar: &'a PolarClient,
-    customer_id: String,
-    grants: Option<Result<HashMap<String, Value>, String>>,
+    customer_id: Private<String>,
+    grants: Option<Result<Private<HashMap<String, Value>>, String>>,
 }
 
 impl<'a> PolarCreditSourceReads<'a> {
@@ -139,7 +141,7 @@ impl<'a> PolarCreditSourceReads<'a> {
     pub fn new(polar: &'a PolarClient, customer_id: &str) -> Self {
         Self {
             polar,
-            customer_id: customer_id.to_owned(),
+            customer_id: Private::new(customer_id.to_owned()),
             grants: None,
         }
     }
@@ -149,7 +151,7 @@ impl<'a> PolarCreditSourceReads<'a> {
         for page in 1..=MAX_GRANT_PAGES {
             let response = self
                 .polar
-                .list_benefit_grants_page(&self.customer_id, page)
+                .list_benefit_grants_page(self.customer_id.expose(), page)
                 .await?;
             let items = match response.get("items") {
                 Some(Value::Array(items)) => items,
@@ -190,10 +192,15 @@ impl CreditSourceReads for PolarCreditSourceReads<'_> {
         Box::pin(async move {
             if self.grants.is_none() {
                 // The reference caches the promise: a failed listing fails every later lookup.
-                self.grants = Some(self.list_grants().await.map_err(|e| e.to_string()));
+                self.grants = Some(
+                    self.list_grants()
+                        .await
+                        .map(Private::new)
+                        .map_err(|e| e.to_string()),
+                );
             }
             match &self.grants {
-                Some(Ok(grants)) => Ok(grants.get(id).cloned()),
+                Some(Ok(grants)) => Ok(grants.expose().get(id).cloned()),
                 _ => Err(CreditSourceError::Malformed),
             }
         })

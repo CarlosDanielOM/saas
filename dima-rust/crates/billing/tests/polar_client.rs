@@ -257,7 +257,10 @@ async fn timeouts_truncated_bodies_and_odd_shapes_fail_safely() {
     );
     let error = polar.create_customer_session(&json!({})).await.unwrap_err();
     assert!(
-        matches!(error, PolarError::Transport { .. } | PolarError::Decode),
+        matches!(
+            error,
+            PolarError::Transport { .. } | PolarError::Decode { .. }
+        ),
         "{error:?}"
     );
 
@@ -290,12 +293,15 @@ async fn timeouts_truncated_bodies_and_odd_shapes_fail_safely() {
     ] {
         server.push(MockResponse::json(200, body));
         let error = polar.list_subscriptions("c", None).await.unwrap_err();
-        assert!(matches!(error, PolarError::Decode), "{body}: {error:?}");
+        assert!(
+            matches!(error, PolarError::Decode { mutation: false }),
+            "{body}: {error:?}"
+        );
     }
     server.push(MockResponse::json(200, r#"{"id":"c"}"#));
     assert!(matches!(
         polar.create_checkout(&json!({}), "k").await,
-        Err(PolarError::Decode)
+        Err(PolarError::Decode { mutation: true })
     ));
     server.push(MockResponse::json(200, r#"{"inserted":"1"}"#));
     let result = polar.ingest_events(&[]).await.unwrap();
@@ -344,4 +350,30 @@ async fn nothing_is_sent_without_a_token_or_with_a_refused_input() {
     let requests = server.wait_for(1).await;
     assert_eq!(requests.len(), 1);
     assert_eq!(requests[0].target, "/v1/customers/a%2Fb%3Fc/state");
+}
+
+// Item 7 of P2-BILLING-01b (review finding 9): Polar may have committed a checkout, a session
+// or an ingest and answered 200 with a body this client cannot read; that is an unknown
+// outcome, not a plain decode failure. A read that cannot be decoded changed nothing.
+#[tokio::test]
+async fn an_undecodable_answer_to_a_write_is_an_unknown_outcome() {
+    let server = MockServer::start().await.unwrap();
+    let polar = client(&server).await;
+    for body in ["not json", r#"{"id":"c"}"#, "", r#"{"url":7}"#] {
+        server.push(MockResponse::json(200, body));
+        let error = polar.create_checkout(&json!({}), "k").await.unwrap_err();
+        assert!(error.outcome_unknown(), "checkout {body:?}: {error:?}");
+        server.push(MockResponse::json(200, body));
+        let error = polar.create_customer_session(&json!({})).await.unwrap_err();
+        assert!(error.outcome_unknown(), "session {body:?}: {error:?}");
+    }
+    server.push(MockResponse::json(200, r#"{"inserted":"#));
+    let error = polar.ingest_events(&[]).await.unwrap_err();
+    assert!(error.outcome_unknown(), "{error:?}");
+    server.push(MockResponse::json(200, "not json"));
+    let error = polar.get_customer_state_raw("c").await.unwrap_err();
+    assert!(
+        !error.outcome_unknown(),
+        "a read changes nothing: {error:?}"
+    );
 }

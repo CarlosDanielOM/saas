@@ -1,5 +1,7 @@
-//! Polar answers. Unknown fields are ignored everywhere.
+//! Polar answers. Unknown fields are ignored everywhere. Customer ids and session or checkout
+//! URLs are [`Private`]: `Debug` prints a placeholder (item 9 of P2-BILLING-01b).
 
+use dima_model::Private;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
@@ -11,7 +13,8 @@ where
     Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
-/// `{items: [...]}`; a missing or `null` `items` is empty (`response.items || []`).
+/// `{items: [...]}` of one page; a missing or `null` `items` is empty (`response.items || []`).
+/// The client's own lists are read to their end instead (see [`super::MAX_LIST_PAGES`]).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(bound(deserialize = "T: Deserialize<'de>"))]
 pub struct ListResponse<T> {
@@ -20,11 +23,24 @@ pub struct ListResponse<T> {
     pub items: Vec<T>,
 }
 
-/// `{items}` kept as sent (the product list is read loosely).
-#[derive(Clone, Debug, Deserialize)]
-pub(crate) struct LooseList {
+/// One page of a list as sent: `{items, pagination}`, both read loosely (a missing or `null`
+/// `items` is `items || []`; a body that is not an object has neither).
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(crate) struct LoosePage {
     #[serde(default)]
     pub items: Option<Value>,
+    #[serde(default)]
+    pub pagination: Option<Value>,
+}
+
+impl LoosePage {
+    /// `pagination.max_page`, when it is a number.
+    pub fn max_page(&self) -> Option<f64> {
+        self.pagination
+            .as_ref()
+            .and_then(|p| p.get("max_page"))
+            .and_then(Value::as_f64)
+    }
 }
 
 /// A subscription in a `/v1/subscriptions/` list (`PolarSubscription` in `billing.ts`).
@@ -84,8 +100,8 @@ pub struct Discount {
 pub struct Checkout {
     /// Id.
     pub id: String,
-    /// Where the customer pays.
-    pub url: String,
+    /// Where the customer pays (it carries the checkout's secret).
+    pub url: Private<String>,
 }
 
 /// A created customer portal session.
@@ -93,8 +109,8 @@ pub struct Checkout {
 pub struct CustomerSession {
     /// Id.
     pub id: String,
-    /// The portal URL.
-    pub customer_portal_url: String,
+    /// The portal URL (it carries the session token).
+    pub customer_portal_url: Private<String>,
     /// Expiry.
     #[serde(default)]
     pub expires_at: Option<String>,
@@ -104,7 +120,7 @@ pub struct CustomerSession {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct EntitlementState {
     /// The customer id.
-    pub id: String,
+    pub id: Private<String>,
     /// Active subscriptions.
     pub active_subscriptions: Vec<EntitlementSubscription>,
     /// Granted benefits.
@@ -173,7 +189,7 @@ pub struct BenefitGrant {
     /// Benefit id.
     pub benefit_id: String,
     /// Customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Granted.
     #[serde(default)]
     pub is_granted: bool,
@@ -191,7 +207,7 @@ pub struct SdkSubscription {
     /// Id.
     pub id: String,
     /// Customer id.
-    pub customer_id: String,
+    pub customer_id: Private<String>,
     /// Product id.
     pub product_id: String,
     /// Status.

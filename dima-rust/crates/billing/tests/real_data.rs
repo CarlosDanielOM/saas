@@ -2,6 +2,17 @@
 //! computed by Rust and compared with the reference's answers recorded once by
 //! `tests/real_data/reference.mjs` from the real `billing.ts` over a dump of the plan fields.
 //!
+//! **What this shows, and what it does not.** Polar is not asked about these customers: every
+//! user is replayed against two **scripted** Polar answers derived from the user's own stored
+//! `plan_tier` (no subscription at all, and one active subscription of the stored paid tier:
+//! [`active_answer`]), and the same scripts were given to the reference. So the comparison shows
+//! that the Rust logic and the TypeScript reach the same decisions for these 168 real stored
+//! states under those answers (limits, plan versions, billing contexts, checkout scenarios,
+//! skip rules). It does **not** show that either agrees with Polar's real answers for these
+//! customers (their actual subscriptions, trials, past-due grace or meters), which only the
+//! rig's stateful Polar mock and the scenario tests (`flush.rs`, `grant_identity.rs`,
+//! `pagination.rs`, `balance_revision.rs`, `balance_states.rs`, `write_faults.rs`) exercise.
+//!
 //! The dump (`tests/real_data/users.json`) holds user ids and plan fields only: no e-mail, name,
 //! token or Twitch id. The Polar customer id is replaced by a pseudonym that keeps what the
 //! decisions read (missing, `null`, empty, a UUID v4 or another id); the referral code by its
@@ -230,6 +241,8 @@ fn context_json(c: &checkout::BillingContext) -> Value {
 }
 
 /// Polar's answer for the "active" variant: one active subscription of the stored paid tier.
+/// A script derived from the stored tier, not the customer's real Polar state (see the module
+/// docs).
 fn active_answer(user: &Value) -> Value {
     let product = match text(user, "plan_tier") {
         Some("pro") => Some(PRO_PRODUCT_ID),

@@ -193,6 +193,87 @@ pub fn unavailable_ai_credits(now_iso: String) -> AiCreditsData {
     }
 }
 
+/// How far a balance can be trusted (item 5 of P2-BILLING-01b, review finding 6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BalanceState {
+    /// Polar's AI credit meter, read by this call at `at_ms` and published (with any local
+    /// debits made during the read).
+    Verified {
+        /// When Polar answered (epoch ms).
+        at_ms: i64,
+    },
+    /// The cached snapshot: Polar's numbers as last published (by a fetch or a webhook) with
+    /// the local debits made since, or a newer snapshot that replaced this call's read.
+    Cached,
+    /// Not verified by Polar: it could not be reached, its answer has no AI credit meter, the
+    /// plan fence refused the read, or the user has no customer. The numbers are the
+    /// reference's fallback (which may say `used = limit`, `available: true` when an
+    /// exhaustion flag exists).
+    Unknown,
+}
+
+/// A balance as `getAiCredits` answers it, and how far it can be trusted.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AiCredits {
+    /// The reference's answer (what clients and chat features read).
+    pub data: AiCreditsData,
+    /// Its provenance.
+    pub state: BalanceState,
+}
+
+impl AiCredits {
+    /// The balance as a basis for a grant, a reset or a top-up: only when Polar verified it.
+    pub fn verified(&self) -> Option<VerifiedBalance> {
+        match self.state {
+            BalanceState::Verified { at_ms } => Some(VerifiedBalance::new(&self.data, at_ms)),
+            BalanceState::Cached | BalanceState::Unknown => None,
+        }
+    }
+}
+
+/// A balance Polar's AI credit meter verified at a known time. Only this crate makes one (from
+/// a read of Polar: [`AiCredits::verified`],
+/// [`super::credits_cache::CreditsCache::verified_balance`]); anything that grants, resets or
+/// tops up credits takes it, so an unverified or invented balance cannot reach it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VerifiedBalance {
+    used: f64,
+    limit: f64,
+    balance: f64,
+    verified_at_ms: i64,
+}
+
+impl VerifiedBalance {
+    pub(crate) fn new(data: &AiCreditsData, verified_at_ms: i64) -> Self {
+        Self {
+            used: data.used,
+            limit: data.limit,
+            balance: data.balance,
+            verified_at_ms,
+        }
+    }
+
+    /// Credits used.
+    pub fn used(&self) -> f64 {
+        self.used
+    }
+
+    /// The allowance.
+    pub fn limit(&self) -> f64 {
+        self.limit
+    }
+
+    /// Credits left.
+    pub fn balance(&self) -> f64 {
+        self.balance
+    }
+
+    /// When Polar answered (epoch ms).
+    pub fn verified_at_ms(&self) -> i64 {
+        self.verified_at_ms
+    }
+}
+
 /// A cached snapshot as `getAiCredits` reads it, with the plan version stored beside it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CachedCredits {
@@ -205,8 +286,12 @@ pub struct CachedCredits {
 /// The cached branch of `getAiCredits`: `None` when the value is not a version-3 snapshot with
 /// numeric `used` and `limit` (or not JSON).
 ///
-/// Quirk kept: without `requireVerified` the payload is `available: true` whatever the cache
-/// said, so a cached `unavailable` snapshot reads back as available (with its numbers).
+/// Intended difference (item 5 of P2-BILLING-01b, review finding 6): the reference, without
+/// `requireVerified`, read every snapshot as `available: true`, so a cached `unavailable` one
+/// (stored `available: false` or `status: 'unavailable'`) read back as available and a paid
+/// feature could spend an allowance nobody verified. It now reads back as unavailable. Where
+/// the reference read it as exhausted (its balance at or below 0), it still does: that refuses
+/// paid work, and the exhaustion flags the read sets stay the reference's.
 pub fn read_cached_credits(
     raw: &str,
     require_verified: bool,
@@ -245,6 +330,13 @@ pub fn read_cached_credits(
         CreditStatus::Exhausted
     } else {
         CreditStatus::Available
+    };
+    let stored_unavailable = object.get("available") == Some(&Value::Bool(false))
+        || object.get("status").and_then(Value::as_str) == Some("unavailable");
+    let (available, status) = if stored_unavailable && status == CreditStatus::Available {
+        (false, CreditStatus::Unavailable)
+    } else {
+        (available, status)
     };
     let plan_version = match object.get(PLAN_CACHE_VERSION_FIELD) {
         None | Some(Value::Null) => String::new(),
@@ -388,7 +480,8 @@ mod tests {
     fn cached_reads_follow_the_reference() {
         let raw = r#"{"version":3,"used":10,"limit":25000,"available":false,"status":"unavailable","__polar_plan_version":"x"}"#;
         let loose = read_cached_credits(raw, false, now).unwrap();
-        assert!(loose.payload.available);
+        assert!(!loose.payload.available, "item 5: provenance kept");
+        assert_eq!(loose.payload.status, CreditStatus::Unavailable);
         assert_eq!(loose.payload.balance, 24_990.0);
         assert_eq!(loose.plan_version, "x");
         let strict = read_cached_credits(raw, true, now).unwrap();

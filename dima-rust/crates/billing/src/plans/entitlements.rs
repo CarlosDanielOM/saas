@@ -174,7 +174,7 @@ pub async fn resolve_entitled_plan(
     now_ms: i64,
     grace: &dyn GraceLookup,
 ) -> Result<EntitledPlan, EntitlementError> {
-    if state.id != customer_id {
+    if state.id.expose() != customer_id {
         return Err(EntitlementError::WrongState);
     }
     let mut plan = EntitledPlan::FREE;
@@ -195,7 +195,7 @@ pub async fn resolve_entitled_plan(
             .grace_subscriptions(customer_id, &state.granted_benefits)
             .await?
         {
-            if subscription.customer_id != customer_id {
+            if subscription.customer_id.expose() != customer_id {
                 return Err(EntitlementError::GraceCustomerMismatch);
             }
             if subscription.status == "past_due" {
@@ -239,7 +239,7 @@ impl GraceLookup for PolarClient {
                         continue;
                     };
                     if requested(&grant.id) != Some(grant.benefit_id.as_str())
-                        || grant.customer_id != customer_id
+                        || grant.customer_id.expose() != customer_id
                         || !grant.is_granted
                         || grant.is_revoked
                     {

@@ -220,8 +220,9 @@ async fn plan_projection_fault_cases() -> Result<()> {
         assert!(applied);
         assert_eq!(
             effects.calls.lock().unwrap().len(),
-            2,
-            "the stale owner differs, so the effects run again (idempotent)"
+            1,
+            "decided against the replaced document (already Premium, no effect pending), so the \
+             retention is not redone; the caches are invalidated again"
         );
         let (document, _) = load(&store, id).await;
         assert!(!document.contains_key("polar_plan_effects_pending"));
@@ -255,8 +256,8 @@ async fn plan_projection_fault_cases() -> Result<()> {
         assert!(!older_same);
         assert_eq!(load(&store, id).await.1.plan_tier, "premium");
 
-        // Interrupted between the two writes: the plan is stored with the pending flag, the caches
-        // are untouched; the retry with a later lookup redoes the effects and clears the flag.
+        // Interrupted between the two writes: the plan is stored with the pending flag and the
+        // caches already dropped; the retry with a later lookup redoes the effects and clears it.
         seed_caches(&dragonfly, &channel).await;
         effects.fail.store(1, Ordering::SeqCst);
         let (_, current) = load(&store, id).await;
@@ -282,9 +283,14 @@ async fn plan_projection_fault_cases() -> Result<()> {
         assert_eq!(document.get("plan_tier_until"), Some(&Bson::Null));
         assert!(document.get_bool("polar_plan_effects_pending")?);
         assert!(
-            exists(&dragonfly, &credits_cache_key(&channel)).await,
-            "no invalidation before the effects succeed"
+            !exists(&dragonfly, &credits_cache_key(&channel)).await,
+            "the caches are invalidated before the retention runs (item 3)"
         );
+        assert_eq!(
+            dragonfly.get_text(&plan_cache_fence_key(&channel)).await?,
+            Some(plan_cache_version(Some(T0 + 1000), Some("evt-2"))?)
+        );
+        seed_caches(&dragonfly, &channel).await;
         let retried = project_polar_plan(
             stores.clone(),
             &effects,
@@ -545,4 +551,79 @@ async fn usage_projection_and_pack_context_fault_cases() -> Result<()> {
     packs.forget(&customer).await?;
     support::cleanup(&dragonfly, &channel).await?;
     Ok(())
+}
+
+/// Item 3 of P2-BILLING-01b (review finding 3), the review's interleaving: two processes both
+/// read the owner on Free. The older one (A) installs Premium and finishes its effects; Premium
+/// caches are filled. The newer one (B) resolves Free and, deciding against the Free owner it
+/// read, used to write Free over Premium and return without raising the fence or dropping the
+/// Premium caches. The change is decided against the document replaced, so B invalidates.
+#[tokio::test]
+async fn a_stale_owner_cannot_suppress_the_invalidation_of_a_plan_change() -> Result<()> {
+    let Some(dragonfly) = support::dragonfly(9).await? else {
+        return Ok(());
+    };
+    support::with_mongo(|store| async move {
+        let stores = ProjectionStores {
+            mongo: &store,
+            dragonfly: &dragonfly,
+        };
+        let channel = support::channel_id();
+        let id = insert_user(&store, &channel, "free").await;
+        let effects = Effects::default();
+        let (_, both_read) = load(&store, id).await;
+        assert_eq!(both_read.plan_tier, "free");
+
+        let until = T0 + 30 * 86_400_000;
+        let a = project_polar_plan(
+            stores.clone(),
+            &effects,
+            &both_read,
+            premium(until),
+            T0 + 1000,
+            "evt-a",
+            CUSTOMER,
+            "fp-a",
+            T0 + 1,
+        )
+        .await?;
+        assert!(a);
+        // Premium caches, filled after A's effects.
+        seed_caches(&dragonfly, &channel).await;
+
+        let b = project_polar_plan(
+            stores.clone(),
+            &effects,
+            &both_read,
+            EntitledPlan::FREE,
+            T0 + 2000,
+            "evt-b",
+            CUSTOMER,
+            "fp-b",
+            T0 + 2,
+        )
+        .await?;
+        assert!(b);
+        let (document, after) = load(&store, id).await;
+        assert_eq!(document.get_str("plan_tier")?, "free");
+        assert!(!after.effects_pending);
+        assert_eq!(
+            dragonfly.get_text(&plan_cache_fence_key(&channel)).await?,
+            Some(plan_cache_version(Some(T0 + 2000), Some("evt-b"))?),
+            "the fence is raised to B's version"
+        );
+        assert!(
+            !exists(&dragonfly, &credits_cache_key(&channel)).await,
+            "Premium credits dropped"
+        );
+        assert!(!exists(&dragonfly, &format!("accounts:twitch:{channel}:data")).await);
+        assert_eq!(
+            effects.calls.lock().unwrap().last().cloned(),
+            Some((vec![channel.clone()], PlanTier::Free)),
+            "retention follows the plan actually replaced"
+        );
+        support::cleanup(&dragonfly, &channel).await?;
+        Ok(())
+    })
+    .await
 }

@@ -17,7 +17,7 @@ mod support;
 
 use dima_billing::credit_packs::{self, CreditPackError};
 use dima_billing::free_credit_reset::{
-    FreeCreditResetDecision, FreeCreditResetInput, PreviousReset,
+    FreeCreditResetDecision, FreeCreditResetInput, PreviousReset, ResetUsage,
 };
 use dima_billing::plans::checkout::{self, BillingAction};
 use dima_billing::plans::credits::{self, AiCreditsData, CreditStatus};
@@ -112,6 +112,7 @@ fn decision_json(decision: &FreeCreditResetDecision) -> Value {
         } => {
             json!({"action": "grant", "credits": js_value(*credits), "externalId": external_id})
         }
+        FreeCreditResetDecision::Defer => json!({"action": "defer"}),
     }
 }
 
@@ -138,6 +139,7 @@ fn date_of(value: Option<&Value>) -> Option<i64> {
 #[test]
 fn free_credit_reset_matches_the_reference() {
     let mut tally = Tally::new("free_reset");
+    let mut deferred = 0;
     for case in cases("free_reset") {
         let input = &case["input"];
         let starts_at = input["period"]["startsAt"].as_str().unwrap();
@@ -168,15 +170,36 @@ fn free_credit_reset_matches_the_reference() {
                     credits: js_number(field(p, "credits")),
                     external_id: &external,
                 }),
-                used_credits: js_number(field(input, "usedCredits")),
+                // The recording's `usedCredits` came from a read the worker trusted; replayed as
+                // verified. Absent, it is the worker's first call, made before any read.
+                usage: match field(input, "usedCredits") {
+                    Some(_) => ResetUsage::Verified(js_number(field(input, "usedCredits"))),
+                    None => ResetUsage::Unverified,
+                },
                 maximum_reset_credits: js_number(field(input, "maximumResetCredits")),
             });
         let actual = decision_json(&decision);
-        tally.check(same(&case["expected"], &actual), &case, || {
-            format!("expected {} got {actual}", case["expected"])
+        // Intended difference (item 5 of P2-BILLING-01b): without a verified usage a new
+        // period is deferred; the reference computed `Math.floor(NaN || 0)` = 0 and answered
+        // `complete_zero` (its worker then read the credits and decided again, trusting even
+        // the invented fallback).
+        let expected = if decision == FreeCreditResetDecision::Defer {
+            deferred += 1;
+            assert_eq!(
+                case["expected"]["action"], "complete_zero",
+                "{}",
+                case["input"]
+            );
+            json!({"action": "defer"})
+        } else {
+            case["expected"].clone()
+        };
+        tally.check(same(&expected, &actual), &case, || {
+            format!("expected {expected} got {actual}")
         });
     }
     tally.finish();
+    assert_eq!(deferred, 1, "cases deferred for want of a verified usage");
 
     let mut tally = Tally::new("reset_external_id");
     for case in cases("reset_external_id") {
@@ -491,20 +514,53 @@ fn billing_helpers_match_the_reference() {
     tally.finish();
 
     let mut tally = Tally::new("sanitize_redirect");
-    for case in cases("sanitize_redirect") {
+    let redirects = cases("sanitize_redirect");
+    // Intended difference (item 8 of P2-BILLING-01b, a security fix): a raw URL that parses but
+    // is not https (or http to a loopback host), or carries a user name or password, is treated
+    // as if it were absent, whatever the allowlist says. The expectation for such a case is the
+    // recorded answer of the case with no raw URL and the same fallback and allowlist.
+    let unsafe_raw = |raw: Option<&str>| {
+        raw.and_then(|raw| url::Url::parse(raw).ok())
+            .is_some_and(|url| !checkout::is_safe_redirect(&url))
+    };
+    let without_raw = |case: &Value| -> Option<Value> {
+        let i = &case["input"];
+        redirects
+            .iter()
+            .find(|other| {
+                let o = &other["input"];
+                field(o, "raw").is_none()
+                    && o["fallback"] == i["fallback"]
+                    && o["allowed"] == i["allowed"]
+            })
+            .map(|other| other["expected"].clone())
+    };
+    let mut changed = 0;
+    for case in &redirects {
         let i = &case["input"];
         let actual = checkout::sanitize_redirect_url(
             text(i, "raw"),
             text(i, "fallback"),
             text(i, "allowed"),
         );
-        tally.check(
-            case["expected"].as_str() == actual.as_deref(),
-            &case,
-            || format!("{actual:?}"),
-        );
+        let expected = if unsafe_raw(text(i, "raw")) {
+            let expected = without_raw(case).expect("a recorded case without a raw URL");
+            if expected != case["expected"] {
+                changed += 1;
+            }
+            expected
+        } else {
+            case["expected"].clone()
+        };
+        tally.check(expected.as_str() == actual.as_deref(), case, || {
+            format!("{actual:?}")
+        });
     }
     tally.finish();
+    // Where the reference accepted the raw URL (the allowlist unset or empty, or the host on
+    // it) and the fallback differs from it: `javascript:alert(1)` 12, `https://user:pass@…` 16,
+    // `HTTP://WWW.DomDimaBot.com:80/` 16.
+    assert_eq!(changed, 44, "cases whose redirect changed on purpose");
 
     let mut tally = Tally::new("is_uuid_v4");
     for case in cases("is_uuid_v4") {
@@ -644,7 +700,7 @@ impl plans::entitlements::GraceLookup for FixedGrace {
             self.0
                 .clone()
                 .ok_or(plans::entitlements::EntitlementError::Polar(
-                    polar::PolarError::Decode,
+                    polar::PolarError::Decode { mutation: false },
                 ))
         })
     }
@@ -897,18 +953,30 @@ fn polar_ingest_events_match_the_sdk_wire() {
     tally.finish();
 
     let mut tally = Tally::new("grant_credits");
+    let mut drawn = 0;
     for case in cases("grant_credits") {
         let i = &case["input"];
+        // Intended difference (item 2 of P2-BILLING-01b): a grant's identity is the caller's
+        // operation id; the reference drew `aiu_<randomUUID()>` when no `externalId` was given.
+        // Those cases are replayed with the id the recording drew (its `randomUUID` is zeros),
+        // as the caller that persisted it would pass it, and counted.
+        let operation = match text(i, "externalId") {
+            Some(id) => id.to_owned(),
+            None => {
+                drawn += 1;
+                "aiu_00000000-0000-4000-8000-000000000000".to_owned()
+            }
+        };
         let input = GrantInput {
             customer_id: text(i, "customerId").unwrap_or("").into(),
             channel_id: text(i, "channelID").map(Into::into),
             credits: js_number(field(i, "credits")),
             reason: text(i, "reason").unwrap_or("").into(),
             admin_login: text(i, "adminLogin").map(Into::into),
-            external_id: text(i, "externalId").map(Into::into),
+            operation_id: polar::OperationId::new(&operation).unwrap(),
             source: text(i, "source").map(Into::into),
         };
-        let built = polar::build_grant_event(&input, &support::ZeroRandom).unwrap();
+        let built = polar::build_grant_event(&input);
         let ok = match built {
             Ok((event, _, credits)) => {
                 let body = dima_text::to_js_json(&json!({"events": [event.wire().unwrap()]}));
@@ -925,6 +993,7 @@ fn polar_ingest_events_match_the_sdk_wire() {
         tally.check(ok, &case, || format!("{}", case["expected"]));
     }
     tally.finish();
+    assert_eq!(drawn, 4, "grant cases whose id the reference drew");
 
     let mut tally = Tally::new("ingest_answer");
     for case in cases("ingest_answer") {

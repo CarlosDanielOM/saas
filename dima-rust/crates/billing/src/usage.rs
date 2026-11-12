@@ -283,7 +283,8 @@ pub fn create_ai_usage_context(
     ))
 }
 
-fn create_ai_usage_context_with_entry_id(
+/// `createAiUsageContext` with the entry id given (nothing is drawn).
+pub(crate) fn create_ai_usage_context_with_entry_id(
     reason: &str,
     input: &AiUsageContextInput,
     entry_id: String,

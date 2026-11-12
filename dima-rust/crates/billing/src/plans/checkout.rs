@@ -15,10 +15,15 @@
 //! - The checkout body is `JSON.stringify` of the reference's object: keys in its order, an
 //!   `undefined` member left out; `customer_email` and `customer_name` are left out when the user
 //!   has none (the copy stores a text or nothing, never `null`).
-//! - Idempotency keys end with the injected clock's epoch milliseconds, as `Date.now()`.
+//! - Idempotency keys end with the injected clock's epoch milliseconds, as `Date.now()`, so
+//!   every request makes a new checkout, as in the reference (kept on purpose, unlike grants,
+//!   which carry the caller's [`crate::polar::OperationId`]): a checkout costs nothing until it
+//!   is paid, and Polar only charges the one the customer completes. A retry after
+//!   [`CheckoutError::outcome_unknown`] may leave an unused checkout behind, nothing more.
 //!
-//! Security note (reported, not changed): with `BILLING_ALLOWED_REDIRECT_HOSTS` unset, as in
-//! production, any parsed URL is accepted as a success or return URL.
+//! Redirect targets (success, return and portal URLs) must be `https`, or `http` to a loopback
+//! host, without credentials ([`is_safe_redirect`]), whatever the allowlist says; the reference
+//! accepted any parsed URL with `BILLING_ALLOWED_REDIRECT_HOSTS` unset, as in production.
 
 use super::{PaidTier, PlanTier, plan_rank};
 use crate::config::{PolarConfig, RedirectConfig};
@@ -31,25 +36,26 @@ use crate::plans::pack_context::PackContextCache;
 use crate::polar::{Discount, PolarClient, PolarError, Subscription};
 use crate::products::{AI_CREDITS_METER_ID, FREE_PRODUCT_ID, PREMIUM_PRODUCT_ID, PRO_PRODUCT_ID};
 use dima_core::Clock;
-use dima_model::StrEnum;
+use dima_model::{Private, StrEnum};
 use serde_json::{Map, Value};
 
 /// `WINBACK_MONTHS`.
 pub const WINBACK_MONTHS: i64 = 6;
 
-/// The user fields the billing flows read (`IUsers`).
+/// The user fields the billing flows read (`IUsers`). The e-mail, the name and the customer id
+/// are [`Private`]: `Debug` prints a placeholder.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BillingUser {
     /// `_id.toString()`.
     pub id: String,
     /// `email` (absent when not stored).
-    pub email: Option<String>,
+    pub email: Option<Private<String>>,
     /// `name`.
-    pub name: Option<String>,
+    pub name: Option<Private<String>>,
     /// `plan_tier` as stored.
     pub plan_tier: String,
     /// `polar_sh_customer_id`.
-    pub polar_sh_customer_id: Option<String>,
+    pub polar_sh_customer_id: Option<Private<String>>,
     /// `last_app_activity_at` (epoch ms).
     pub last_app_activity_at: Option<i64>,
     /// `updated_at` (epoch ms).
@@ -63,13 +69,10 @@ impl BillingUser {
     pub fn of(user: &dima_model::users::User) -> Self {
         Self {
             id: user.id.to_hex(),
-            email: user.email.as_ref().map(|email| email.expose().clone()),
-            name: user.name.clone(),
+            email: user.email.clone(),
+            name: user.name.clone().map(Private::new),
             plan_tier: user.plan_tier.as_str().to_owned(),
-            polar_sh_customer_id: user
-                .polar_sh_customer_id
-                .as_ref()
-                .map(|id| id.expose().clone()),
+            polar_sh_customer_id: user.polar_sh_customer_id.clone(),
             last_app_activity_at: user.last_app_activity_at.map(|at| at.0),
             updated_at: user.updated_at.map(|at| at.0),
             referral_code_used: user.referral_code_used.clone(),
@@ -78,8 +81,17 @@ impl BillingUser {
 
     fn customer_id(&self) -> Option<&str> {
         self.polar_sh_customer_id
-            .as_deref()
+            .as_ref()
+            .map(|id| id.expose().as_str())
             .filter(|id| !id.is_empty())
+    }
+
+    /// The customer id when it is a UUID v4 (`isUuidV4`), as the checkout body sends it.
+    fn uuid_customer_id(&self) -> Option<&str> {
+        self.polar_sh_customer_id
+            .as_ref()
+            .map(|id| id.expose().as_str())
+            .filter(|c| is_uuid_v4(Some(c)))
     }
 }
 
@@ -388,6 +400,15 @@ pub enum CheckoutError {
     Malformed,
 }
 
+impl CheckoutError {
+    /// Polar may have created the checkout or session although this call failed
+    /// ([`PolarError::outcome_unknown`]). A new request makes a new checkout, which is harmless:
+    /// an unpaid checkout costs nothing.
+    pub fn outcome_unknown(&self) -> bool {
+        matches!(self, Self::Polar(error) if error.outcome_unknown())
+    }
+}
+
 /// `isDiscountApplicableToProduct(discount, productId)`.
 pub fn discount_applies(discount: &Discount, product_id: &str) -> Result<bool, CheckoutError> {
     let Some(Value::Array(products)) = &discount.products else {
@@ -569,14 +590,37 @@ fn is_allowed_host(url: &url::Url, allowed: Option<&str>) -> bool {
     hosts.is_empty() || hosts.contains(&dima_text::to_lower(&url_host(url)))
 }
 
-/// `getDefaultUrl(envVar)`: the configured URL, normalised, when it parses.
+/// Whether `url` may be a redirect target at all: `https`, or `http` to `localhost` or a
+/// loopback address, with no user name or password. Intended difference (item 8 of
+/// P2-BILLING-01b, a security fix): the reference accepted any URL that parsed, `javascript:`
+/// among them, when `BILLING_ALLOWED_REDIRECT_HOSTS` was unset (as in production).
+pub fn is_safe_redirect(url: &url::Url) -> bool {
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+    match url.scheme() {
+        "https" => url.host().is_some(),
+        "http" => match url.host() {
+            Some(url::Host::Domain(name)) => name == "localhost",
+            Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+            Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+            None => false,
+        },
+        _ => false,
+    }
+}
+
+/// `getDefaultUrl(envVar)`: the configured URL, normalised, when it parses and is a safe
+/// redirect target (start-up already refuses an unsafe one: [`RedirectConfig::validate`]).
 fn default_url(value: Option<&str>) -> Option<String> {
     url::Url::parse(value.filter(|v| !v.is_empty())?)
         .ok()
+        .filter(is_safe_redirect)
         .map(String::from)
 }
 
-/// `sanitizeRedirectUrl(rawUrl, fallbackEnv)`.
+/// `sanitizeRedirectUrl(rawUrl, fallbackEnv)`, with [`is_safe_redirect`] required of the raw
+/// URL before the host allowlist (which stays optional, as in the reference).
 pub fn sanitize_redirect_url(
     raw: Option<&str>,
     fallback: Option<&str>,
@@ -584,11 +628,20 @@ pub fn sanitize_redirect_url(
 ) -> Option<String> {
     if let Some(raw) = raw.filter(|r| !r.is_empty()) {
         match url::Url::parse(raw) {
-            Ok(parsed) if is_allowed_host(&parsed, allowed_hosts) => return Some(parsed.into()),
+            Ok(parsed) if is_safe_redirect(&parsed) && is_allowed_host(&parsed, allowed_hosts) => {
+                return Some(parsed.into());
+            }
             _ => return default_url(fallback),
         }
     }
     default_url(fallback)
+}
+
+/// Whether a configured fallback is acceptable at start-up: it parses, is a safe redirect
+/// target and, when the allowlist is set, names an allowed host.
+pub fn is_valid_configured_redirect(value: &str, allowed_hosts: Option<&str>) -> bool {
+    url::Url::parse(value)
+        .is_ok_and(|url| is_safe_redirect(&url) && is_allowed_host(&url, allowed_hosts))
 }
 
 /// `PortalSessionResponse`.
@@ -596,8 +649,8 @@ pub fn sanitize_redirect_url(
 pub struct PortalSession {
     /// Id.
     pub session_id: String,
-    /// URL.
-    pub url: String,
+    /// URL (it carries the session token).
+    pub url: Private<String>,
     /// Expiry.
     pub expires_at: Option<String>,
 }
@@ -640,8 +693,8 @@ pub struct CheckoutDecision {
     pub checkout_id: Option<String>,
     /// The portal session.
     pub portal_session_id: Option<String>,
-    /// Where to send the user.
-    pub checkout_url: String,
+    /// Where to send the user (a checkout or portal session URL).
+    pub checkout_url: Private<String>,
     /// Whether Polar's form takes codes.
     pub allow_discount_codes: bool,
 }
@@ -849,10 +902,7 @@ impl Billing<'_> {
             context.scenario.as_str(),
             self.clock.now_ms()
         );
-        let customer_id = user
-            .polar_sh_customer_id
-            .as_deref()
-            .filter(|c| is_uuid_v4(Some(c)));
+        let customer_id = user.uuid_customer_id();
         #[allow(clippy::cast_precision_loss)]
         let metadata = compact_metadata(vec![
             ("source", MetaValue::Text("dimabot_billing".into())),
@@ -895,10 +945,10 @@ impl Billing<'_> {
         }
         payload.insert("external_customer_id".into(), Value::from(user.id.as_str()));
         if let Some(email) = &user.email {
-            payload.insert("customer_email".into(), optional_text(Some(email)));
+            payload.insert("customer_email".into(), optional_text(Some(email.expose())));
         }
         if let Some(name) = &user.name {
-            payload.insert("customer_name".into(), optional_text(Some(name)));
+            payload.insert("customer_name".into(), optional_text(Some(name.expose())));
         }
         payload.insert(
             "allow_discount_codes".into(),
@@ -1031,10 +1081,7 @@ impl Billing<'_> {
             sanitize_redirect_url(success_url, self.redirects.success_url.as_deref(), allowed);
         let return_url =
             sanitize_redirect_url(return_url, self.redirects.return_url.as_deref(), allowed);
-        let customer_id = user
-            .polar_sh_customer_id
-            .as_deref()
-            .filter(|c| is_uuid_v4(Some(c)));
+        let customer_id = user.uuid_customer_id();
         let idempotency_key = format!(
             "credit-pack:{}:{product_id}:{}",
             user.id,
@@ -1064,10 +1111,10 @@ impl Billing<'_> {
         }
         payload.insert("external_customer_id".into(), Value::from(user.id.as_str()));
         if let Some(email) = &user.email {
-            payload.insert("customer_email".into(), optional_text(Some(email)));
+            payload.insert("customer_email".into(), optional_text(Some(email.expose())));
         }
         if let Some(name) = &user.name {
-            payload.insert("customer_name".into(), optional_text(Some(name)));
+            payload.insert("customer_name".into(), optional_text(Some(name.expose())));
         }
         payload.insert("allow_discount_codes".into(), Value::Bool(false));
         payload.insert("metadata".into(), Value::Object(metadata));
@@ -1106,8 +1153,8 @@ pub struct CreditPackCatalog {
 pub struct CreditPackCheckout {
     /// Id.
     pub checkout_id: String,
-    /// URL.
-    pub checkout_url: String,
+    /// URL (it carries the checkout's secret).
+    pub checkout_url: Private<String>,
     /// The offer bought.
     pub offer: CreditPackOffer,
 }
@@ -1193,6 +1240,63 @@ mod tests {
             Some("https://x.test/ok".into())
         );
         assert!(is_uuid_v4(Some(" 55C8D1D0-5cb8-405c-bcf2-d8dbb9ba0134\n")));
+    }
+
+    // Item 8 of P2-BILLING-01b: a redirect target is https (or http to a loopback host), with no
+    // user name or password, whatever the allowlist says; an unsafe one falls back.
+    #[test]
+    fn unsafe_redirect_targets_fall_back() {
+        let fallback = Some("https://domdimabot.com/billing");
+        for raw in [
+            "javascript:alert(1)",
+            "JavaScript:alert(document.cookie)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+            "file:///etc/passwd",
+            "ftp://domdimabot.com/",
+            "http://domdimabot.com/billing",
+            "HTTP://WWW.DomDimaBot.com:80/",
+            "http://localhost.evil.test/",
+            "https://user:pass@domdimabot.com/",
+            "https://user@domdimabot.com/",
+            "https://:pass@domdimabot.com/",
+        ] {
+            for allowed in [None, Some("domdimabot.com,www.domdimabot.com")] {
+                assert_eq!(
+                    sanitize_redirect_url(Some(raw), fallback, allowed),
+                    Some("https://domdimabot.com/billing".to_owned()),
+                    "{raw} {allowed:?}"
+                );
+                assert_eq!(
+                    sanitize_redirect_url(Some(raw), None, allowed),
+                    None,
+                    "{raw}"
+                );
+            }
+        }
+        for (raw, expected) in [
+            (
+                "http://localhost:4200/billing",
+                "http://localhost:4200/billing",
+            ),
+            ("http://127.0.0.1:4200/x", "http://127.0.0.1:4200/x"),
+            ("http://[::1]:4200/x", "http://[::1]:4200/x"),
+            ("https://domdimabot.com/ok", "https://domdimabot.com/ok"),
+        ] {
+            assert_eq!(
+                sanitize_redirect_url(Some(raw), None, None).as_deref(),
+                Some(expected)
+            );
+        }
+        // An unsafe configured fallback is never used either (start-up refuses it).
+        assert_eq!(
+            sanitize_redirect_url(None, Some("javascript:alert(1)"), None),
+            None
+        );
+        assert_eq!(
+            sanitize_redirect_url(Some("javascript:x"), Some("http://evil.test/"), None),
+            None
+        );
         assert!(!is_uuid_v4(Some("55c8d1d0-5cb8-305c-bcf2-d8dbb9ba0134")));
         let meta = compact_metadata(vec![
             ("a", MetaValue::Text("  ".into())),
