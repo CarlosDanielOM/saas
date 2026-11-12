@@ -1,0 +1,605 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "redis/set-zset",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.628Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:2159af5bba3e72b5",
+    "files": {
+      "redis/set-zset.json": "fnv1a64:2159af5bba3e72b5"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442779339,
+    "start": 1794442779824,
+    "end": 1794442779984,
+    "process_start": 1794442779341,
+    "ports": {
+      "http": 33519
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442779902,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=bbfacab3-aab8-44ea-905a-ac03211f4bd7; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"534469c2-805d-44ab-a42e-57382fca360f\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779951,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"tags\",\"type\":\"set\",\"ttl\":-1,\"value\":[\"rust 🦀\"]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779955,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"tags\",\"type\":\"set\",\"ttl\":-1,\"value\":[\"node\",\"rust 🦀\"]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779958,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"tags\",\"type\":\"set\",\"ttl\":-1,\"value\":[\"node\",\"rust 🦀\",\"שלום\"]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779960,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"tags\",\"type\":\"set\",\"ttl\":-1,\"value\":[\"rust 🦀\",\"שלום\"]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779962,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"member is required\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779964,
+        "status": 409,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":409,\"message\":\"Expected zset, got set\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779967,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"ana\",\"score\":1.5}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779970,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"ana\",\"score\":1.5}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779972,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"ana\",\"score\":1.5},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779974,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"zero\",\"score\":0},{\"value\":\"ana\",\"score\":1.5},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779977,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"zero\",\"score\":0},{\"value\":\"ana\",\"score\":1.5},{\"value\":\"big\",\"score\":1e+21},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779979,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"zero\",\"score\":0},{\"value\":\"third\",\"score\":0.1},{\"value\":\"ana\",\"score\":1.5},{\"value\":\"big\",\"score\":1e+21},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779981,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"zero\",\"score\":0},{\"value\":\"third\",\"score\":0.1},{\"value\":\"ana\",\"score\":1.5},{\"value\":\"big\",\"score\":1e+21},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779983,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"board\",\"type\":\"zset\",\"ttl\":-1,\"value\":[{\"value\":\"bo 🎯\",\"score\":-2},{\"value\":\"zero\",\"score\":0},{\"value\":\"third\",\"score\":0.1},{\"value\":\"big\",\"score\":1e+21},{\"value\":\"top\",\"score\":null}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779984,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"tags\",\"type\":\"set\",\"ttl\":-1,\"value\":[\"rust 🦀\",\"שלום\"]}}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "board",
+      "type": "zset",
+      "pttl": -1,
+      "pttl_at": 1794442779986,
+      "value": [
+        [
+          "bo 🎯",
+          "-2"
+        ],
+        [
+          "zero",
+          "0"
+        ],
+        [
+          "third",
+          "0.1"
+        ],
+        [
+          "big",
+          "1e+21"
+        ],
+        [
+          "top",
+          "inf"
+        ]
+      ]
+    },
+    {
+      "key": "tags",
+      "type": "set",
+      "pttl": -1,
+      "pttl_at": 1794442779986,
+      "value": [
+        "rust 🦀",
+        "שלום"
+      ]
+    }
+  ]
+}

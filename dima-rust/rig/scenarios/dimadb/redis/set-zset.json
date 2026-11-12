@@ -1,0 +1,262 @@
+{
+  "rig_scenario": 1,
+  "description": "Sets and sorted sets: create, add and remove members (member or value), member required, scores from numbers, text, infinity (shown as null) and junk (0), type checks.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "create set",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "type": "set",
+          "value": "rust 🦀"
+        }
+      }
+    },
+    {
+      "name": "sadd",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "op": "sadd",
+          "member": "node"
+        }
+      }
+    },
+    {
+      "name": "sadd value",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "op": "sadd",
+          "value": "שלום"
+        }
+      }
+    },
+    {
+      "name": "srem",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "op": "srem",
+          "member": "node"
+        }
+      }
+    },
+    {
+      "name": "sadd without member",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "op": "sadd"
+        }
+      }
+    },
+    {
+      "name": "zadd on a set",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "tags",
+          "op": "zadd",
+          "member": "x"
+        }
+      }
+    },
+    {
+      "name": "create zset",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "type": "zset",
+          "value": "ana",
+          "score": "1.5"
+        }
+      }
+    },
+    {
+      "name": "zadd number",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zadd",
+          "member": "bo 🎯",
+          "score": -2
+        }
+      }
+    },
+    {
+      "name": "zadd infinity",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zadd",
+          "member": "top",
+          "score": "Infinity"
+        }
+      }
+    },
+    {
+      "name": "zadd junk score",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zadd",
+          "member": "zero",
+          "score": "abc"
+        }
+      }
+    },
+    {
+      "name": "zadd big score",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zadd",
+          "member": "big",
+          "score": 1e+21
+        }
+      }
+    },
+    {
+      "name": "zadd fraction",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zadd",
+          "member": "third",
+          "score": 0.1
+        }
+      }
+    },
+    {
+      "name": "read zset",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=board",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "zrem",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "board",
+          "op": "zrem",
+          "value": "ana"
+        }
+      }
+    },
+    {
+      "name": "read set",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=tags",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

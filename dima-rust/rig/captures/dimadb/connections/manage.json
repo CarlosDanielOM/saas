@@ -1,0 +1,698 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "connections/manage",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.481Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:0dda0351ba796e7d",
+    "files": {
+      "connections/manage.json": "fnv1a64:0dda0351ba796e7d"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442771209,
+    "start": 1794442771658,
+    "end": 1794442771790,
+    "process_start": 1794442771211,
+    "ports": {
+      "http": 39563
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442771764,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=db78b14f-1b6a-4537-8a68-dc0d455fe65f; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"4613cba7-8106-49b8-bad4-a5a0a0f5e460\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771766,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"id\":\"env:dbname\",\"name\":\"dbname\",\"url\":\"rig_2524782_0_ref\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:rig\",\"name\":\"rig\",\"url\":\"redis://127.0.0.1:6379/1\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:mongo:rig\",\"name\":\"rig\",\"url\":\"mongodb://root:***@127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true\",\"source\":\"env\",\"engine\":\"mongo\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771769,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"id\":\"43c7f415-89a3-4ce9-8e22-97e502f0e318\",\"name\":\"Cache 🧊\",\"url\":\"redis://:***@127.0.0.1:6399/2\",\"source\":\"local\",\"engine\":\"redis\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771771,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"id\":\"37d6bed2-c70a-4b8b-a977-a2d7dfaf9480\",\"name\":\"mongo.internal\",\"url\":\"mongodb://user:***@mongo.internal:27017/app?authSource=admin\",\"source\":\"local\",\"engine\":\"mongo\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771773,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"id\":\"12c360da-3888-4bec-921b-58ff56acb05b\",\"name\":\"redis\",\"url\":\"rediss://\",\"source\":\"local\",\"engine\":\"redis\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771774,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Invalid URL\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771775,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Invalid URL\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771776,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"URL must start with redis://, rediss://, mongodb://, or mongodb+srv://\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771777,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"URL does not match mongo\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771778,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"URL does not match 1\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771779,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Invalid URL\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771780,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"id\":\"45dec647-f52f-416c-85fa-06de3640be09\",\"name\":\"array-host\",\"url\":\"redis://array-host:6379\",\"source\":\"local\",\"engine\":\"redis\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771781,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"id\":\"env:dbname\",\"name\":\"dbname\",\"url\":\"rig_2524782_0_ref\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:rig\",\"name\":\"rig\",\"url\":\"redis://127.0.0.1:6379/1\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:mongo:rig\",\"name\":\"rig\",\"url\":\"mongodb://root:***@127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true\",\"source\":\"env\",\"engine\":\"mongo\"},{\"id\":\"43c7f415-89a3-4ce9-8e22-97e502f0e318\",\"name\":\"Cache 🧊\",\"url\":\"redis://:***@127.0.0.1:6399/2\",\"source\":\"local\",\"engine\":\"redis\"},{\"id\":\"37d6bed2-c70a-4b8b-a977-a2d7dfaf9480\",\"name\":\"mongo.internal\",\"url\":\"mongodb://user:***@mongo.internal:27017/app?authSource=admin\",\"source\":\"local\",\"engine\":\"mongo\"},{\"id\":\"12c360da-3888-4bec-921b-58ff56acb05b\",\"name\":\"redis\",\"url\":\"rediss://\",\"source\":\"local\",\"engine\":\"redis\"},{\"id\":\"45dec647-f52f-416c-85fa-06de3640be09\",\"name\":\"array-host\",\"url\":\"redis://array-host:6379\",\"source\":\"local\",\"engine\":\"redis\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771783,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Local connection not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771784,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Local connection not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771785,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771786,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Local connection not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771787,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771788,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"id\":\"env:dbname\",\"name\":\"dbname\",\"url\":\"rig_2524782_0_ref\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:rig\",\"name\":\"rig\",\"url\":\"redis://127.0.0.1:6379/1\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:mongo:rig\",\"name\":\"rig\",\"url\":\"mongodb://root:***@127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true\",\"source\":\"env\",\"engine\":\"mongo\"},{\"id\":\"12c360da-3888-4bec-921b-58ff56acb05b\",\"name\":\"redis\",\"url\":\"rediss://\",\"source\":\"local\",\"engine\":\"redis\"},{\"id\":\"45dec647-f52f-416c-85fa-06de3640be09\",\"name\":\"array-host\",\"url\":\"redis://array-host:6379\",\"source\":\"local\",\"engine\":\"redis\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442771790,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:31 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Connection not found\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

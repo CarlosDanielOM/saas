@@ -1,0 +1,114 @@
+{
+  "rig_scenario": 1,
+  "description": "Pinging: the environment Redis and MongoDB connections, a local Redis connection to the same server, an unknown id, and a Redis route used with a MongoDB id and the reverse.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "ping redis",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/env%3Arig/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "ping mongo",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/env%3Amongo%3Arig/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "ping unknown",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/nope/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "ping without a session",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/env%3Arig/ping",
+        "headers": {
+          "x-dimadb": "1"
+        }
+      }
+    },
+    {
+      "name": "redis route with a mongo id",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Amongo%3Arig/keys",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "mongo route with a redis id",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Arig/dbs",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "mongo route with an unknown id",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/nope/dbs",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "redis route with an unknown id",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/nope/key?key=x",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

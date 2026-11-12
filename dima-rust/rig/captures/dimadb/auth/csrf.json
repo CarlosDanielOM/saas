@@ -1,0 +1,364 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "auth/csrf",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.459Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:798d68f96700b759",
+    "files": {
+      "auth/csrf.json": "fnv1a64:798d68f96700b759"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442768563,
+    "start": 1794442769050,
+    "end": 1794442769069,
+    "process_start": 1794442768566,
+    "ports": {
+      "http": 43837
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442769052,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true,\"service\":\"dimadb\",\"dataDir\":\"/tmp/dimadb-rig/rig_2524782_0_ref\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769055,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769057,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769059,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769061,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"needsSetup\":true}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769062,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769064,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769065,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769068,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442769069,
+        "status": 403,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:29 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":403,\"message\":\"Missing X-Dimadb header\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

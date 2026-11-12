@@ -1,0 +1,727 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "http/routing",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.488Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:4dfaa0d35944bede",
+    "files": {
+      "http/routing.json": "fnv1a64:4dfaa0d35944bede"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442772458,
+    "start": 1794442772943,
+    "end": 1794442773045,
+    "process_start": 1794442772460,
+    "ports": {
+      "http": 46817
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442773020,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=42caa0a1-c9f7-44e2-8750-296ec47592c2; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:32 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"f4e73b44-1154-4c08-951d-00c297f493fc\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773022,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773023,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773024,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true,\"service\":\"dimadb\",\"dataDir\":\"/tmp/dimadb-rig/rig_2524782_0_ref\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773025,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"ok\":true,\"service\":\"dimadb\",\"dataDir\":\"/tmp/dimadb-rig/rig_2524782_0_ref\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773026,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773028,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773029,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773031,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Not authenticated\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773032,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773032,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773034,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"URI malformed\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773035,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773036,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773037,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773038,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773039,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773040,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773042,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Connection not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773044,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"URI malformed\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773045,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Not found\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

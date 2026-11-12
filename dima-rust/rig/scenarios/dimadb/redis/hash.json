@@ -1,0 +1,258 @@
+{
+  "rig_scenario": 1,
+  "description": "Hashes: create (field required), add fields with array-index names (they come first in the reply), rename a field (hset with renameFrom), delete fields until the key is gone (type none, ttl -2), type checks.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "create without field",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "type": "hash",
+          "value": "x"
+        }
+      }
+    },
+    {
+      "name": "create",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "type": "hash",
+          "field": "name",
+          "value": "Zoë 🦊"
+        }
+      }
+    },
+    {
+      "name": "hset",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "field": "10",
+          "value": "ten"
+        }
+      }
+    },
+    {
+      "name": "hset 2",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "field": "2",
+          "value": "two"
+        }
+      }
+    },
+    {
+      "name": "hset __proto__",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "field": "__proto__",
+          "value": "plain"
+        }
+      }
+    },
+    {
+      "name": "hset without field",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "value": "x"
+        }
+      }
+    },
+    {
+      "name": "rename",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "field": "имя",
+          "value": "Zoë 🦊",
+          "renameFrom": "name"
+        }
+      }
+    },
+    {
+      "name": "rename to itself",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hset",
+          "field": "имя",
+          "value": "same",
+          "renameFrom": "имя"
+        }
+      }
+    },
+    {
+      "name": "hdel",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hdel",
+          "field": "10"
+        }
+      }
+    },
+    {
+      "name": "hdel without field",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hdel"
+        }
+      }
+    },
+    {
+      "name": "lpush on a hash",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "lpush",
+          "value": "x"
+        }
+      }
+    },
+    {
+      "name": "hdel the rest",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hdel",
+          "field": "2"
+        }
+      }
+    },
+    {
+      "name": "hdel proto",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hdel",
+          "field": "__proto__"
+        }
+      }
+    },
+    {
+      "name": "hdel the last field",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "user:1",
+          "op": "hdel",
+          "field": "имя"
+        }
+      }
+    }
+  ]
+}

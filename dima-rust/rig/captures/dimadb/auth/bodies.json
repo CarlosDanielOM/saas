@@ -1,0 +1,731 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "auth/bodies",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:21:55.627Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:5e61521cc2a7d6c0",
+    "files": {
+      "auth/bodies.json": "fnv1a64:5e61521cc2a7d6c0"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442886538,
+    "start": 1794442887026,
+    "end": 1794442887153,
+    "process_start": 1794442886541,
+    "ports": {
+      "http": 45355
+    },
+    "mongo_db": "rig_2535876_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2535876_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442887029,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Invalid username or password\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887034,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Invalid JSON\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887037,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot read properties of null (reading 'username')\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887040,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Invalid username or password\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887043,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Invalid username or password\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887045,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Invalid JSON\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887047,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot read properties of null (reading 'username')\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887049,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Username must be 2-32 letters, numbers, or ._-\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887053,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"The \\\"password\\\" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received type number (123456789)\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887055,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"The \\\"password\\\" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received an instance of Array\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887057,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Username must be 2-32 letters, numbers, or ._-\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887136,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=9e21fb04-a742-4f30-9e84-bab4dcddb67b; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"78346888-2e1e-4eab-b790-7122545069bf\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887138,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"The \\\"password\\\" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received type number (12345678)\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887140,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"The \\\"password\\\" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received undefined\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887141,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Invalid username or password\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887143,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot destructure property 'name' of 'object null' as it is null.\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887144,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot read properties of null (reading 'key')\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887145,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot read properties of null (reading 'args')\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887147,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot destructure property 'db' of 'object null' as it is null.\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887148,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Cannot destructure property 'db' of 'object null' as it is null.\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442887153,
+        "status": 401,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:21:27 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":401,\"message\":\"Invalid username or password\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

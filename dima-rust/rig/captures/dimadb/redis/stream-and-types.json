@@ -1,0 +1,256 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "redis/stream-and-types",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.632Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:e3467487ee90e90e",
+    "files": {
+      "redis/stream-and-types.json": "fnv1a64:e3467487ee90e90e"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442780005,
+    "start": 1794442780520,
+    "end": 1794442780680,
+    "process_start": 1794442780008,
+    "ports": {
+      "http": 38579
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442780619,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=0caef6e2-1857-4b25-96b5-3499202bdb8c; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:40 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"93540a01-341b-4807-9d67-89ca72f73e9b\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442780668,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:40 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"events:📦\",\"type\":\"stream\",\"ttl\":-1,\"value\":[{\"id\":\"1-1\",\"message\":{\"10\":\"x\",\"type\":\"follow\",\"user\":\"zoë\"}},{\"id\":\"2-0\",\"message\":{\"type\":\"raid 🎉\",\"viewers\":\"42\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442780674,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:40 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"temp\",\"type\":\"string\",\"ttl\":3599,\"value\":\"soon gone\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442780677,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:40 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"key\":\"counter\",\"type\":\"string\",\"ttl\":-1,\"value\":\"9007199254740993\"}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442780680,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:40 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"counter\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"events:📦\",\"type\":\"stream\",\"ttl\":-1},{\"name\":\"temp\",\"type\":\"string\",\"ttl\":3599}]}}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "counter",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442780682,
+      "value": "9007199254740993"
+    },
+    {
+      "key": "events:📦",
+      "type": "stream",
+      "pttl": -1,
+      "pttl_at": 1794442780683,
+      "value": [
+        {
+          "id": "1-1",
+          "fields": [
+            [
+              "type",
+              "follow"
+            ],
+            [
+              "user",
+              "zoë"
+            ],
+            [
+              "10",
+              "x"
+            ]
+          ]
+        },
+        {
+          "id": "2-0",
+          "fields": [
+            [
+              "type",
+              "raid 🎉"
+            ],
+            [
+              "viewers",
+              "42"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "key": "temp",
+      "type": "string",
+      "pttl": 3599325,
+      "pttl_at": 1794442780683,
+      "value": "soon gone"
+    }
+  ]
+}

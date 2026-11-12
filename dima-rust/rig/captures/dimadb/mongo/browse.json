@@ -1,0 +1,1077 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "mongo/browse",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.508Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:708e4f42229f3aea",
+    "files": {
+      "mongo/browse.json": "fnv1a64:708e4f42229f3aea"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442773059,
+    "start": 1794442773605,
+    "end": 1794442773803,
+    "process_start": 1794442773092,
+    "ports": {
+      "http": 43859
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442773680,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=7bd4823e-acb0-44bb-aa02-036fd7ce79fc; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"3c5ae50e-c6cd-4715-80d8-735f6574fab9\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773682,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"id\":\"env:dbname\",\"name\":\"dbname\",\"url\":\"rig_2524782_0_ref\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:rig\",\"name\":\"rig\",\"url\":\"redis://127.0.0.1:6379/1\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:mongo:rig\",\"name\":\"rig\",\"url\":\"mongodb://root:***@127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true\",\"source\":\"env\",\"engine\":\"mongo\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773718,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"name\":\"admin\",\"sizeOnDisk\":188416,\"empty\":false},{\"name\":\"config\",\"sizeOnDisk\":757760,\"empty\":false},{\"name\":\"domdimabot\",\"sizeOnDisk\":618627072,\"empty\":false},{\"name\":\"local\",\"sizeOnDisk\":73728,\"empty\":false},{\"name\":\"openclaw\",\"sizeOnDisk\":143360,\"empty\":false},{\"name\":\"rig_2524782_0_ref\",\"sizeOnDisk\":16384,\"empty\":false},{\"name\":\"sam\",\"sizeOnDisk\":258048,\"empty\":false},{\"name\":\"sam_trading\",\"sizeOnDisk\":475136,\"empty\":false}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773724,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"name\":\"badregex\",\"type\":\"collection\"},{\"name\":\"types\",\"type\":\"collection\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773726,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"db is required\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773737,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":3,\"total\":8,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}},{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}},{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773740,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":3,\"limit\":3,\"total\":8,\"docs\":[{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}},{\"id\":\"Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)\",\"document\":{\"_id\":{\"$date\":\"2026-01-01T00:00:00Z\"},\"n\":4,\"tag\":\"date id\"}},{\"id\":\"9007199254740993\",\"document\":{\"_id\":9007199254740992,\"n\":5,\"tag\":\"long id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773744,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":8,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}},{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}},{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}},{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}},{\"id\":\"Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)\",\"document\":{\"_id\":{\"$date\":\"2026-01-01T00:00:00Z\"},\"n\":4,\"tag\":\"date id\"}},{\"id\":\"9007199254740993\",\"document\":{\"_id\":9007199254740992,\"n\":5,\"tag\":\"long id\"}},{\"id\":\"01234567-89ab-cdef-0123-456789abcdef\",\"document\":{\"_id\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"n\":6,\"tag\":\"uuid id\"}},{\"id\":\"6650A1B2C3D4E5F601234567\",\"document\":{\"_id\":\"6650A1B2C3D4E5F601234567\",\"n\":7,\"tag\":\"upper-case hex is a string id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773747,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":6,\"limit\":100,\"total\":8,\"docs\":[{\"id\":\"01234567-89ab-cdef-0123-456789abcdef\",\"document\":{\"_id\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"n\":6,\"tag\":\"uuid id\"}},{\"id\":\"6650A1B2C3D4E5F601234567\",\"document\":{\"_id\":\"6650A1B2C3D4E5F601234567\",\"n\":7,\"tag\":\"upper-case hex is a string id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773751,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":1,\"total\":8,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773754,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":2,\"total\":8,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}},{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773757,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":2,\"limit\":2,\"total\":8,\"docs\":[{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}},{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773760,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":1.5,\"limit\":2,\"total\":8,\"docs\":[{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}},{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773763,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":1,\"docs\":[{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773767,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":1,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773770,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":1,\"docs\":[{\"id\":\"Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)\",\"document\":{\"_id\":{\"$date\":\"2026-01-01T00:00:00Z\"},\"n\":4,\"tag\":\"date id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773773,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":1,\"docs\":[{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773776,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":3,\"docs\":[{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}},{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}},{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773778,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":0,\"docs\":[]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773785,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"$where is not allowed in this context\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773792,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":8,\"docs\":[{\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"int\":42,\"intMin\":-2147483648,\"long\":7,\"longBig\":9007199254740992,\"longMax\":9223372036854776000,\"double\":1.5,\"doubleWhole\":2,\"negZero\":0,\"nan\":{\"$numberDouble\":\"NaN\"},\"inf\":{\"$numberDouble\":\"Infinity\"},\"ninf\":{\"$numberDouble\":\"-Infinity\"},\"tiny\":5e-324,\"big\":1e+21,\"dec\":{\"$numberDecimal\":\"1.10\"},\"decSci\":{\"$numberDecimal\":\"1.23E-40\"},\"date\":{\"$date\":\"2026-11-11T10:00:00Z\"},\"dateMs\":{\"$date\":\"2026-11-11T10:00:00.123Z\"},\"dateOld\":{\"$date\":{\"$numberLong\":\"-2208988800000\"}},\"dateFar\":{\"$date\":{\"$numberLong\":\"253402318800000\"}},\"bin\":{\"$binary\":{\"base64\":\"AAEC+v8=\",\"subType\":\"00\"}},\"uuid\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"userBin\":{\"$binary\":{\"base64\":\"aGk=\",\"subType\":\"80\"}},\"re\":{\"$regularExpression\":{\"pattern\":\"^a\\\\/b$\",\"options\":\"im\"}},\"reX\":{\"$regularExpression\":{\"pattern\":\"(?:)\",\"options\":\"\"}},\"ts\":{\"$timestamp\":{\"t\":1700000000,\"i\":7}},\"min\":{\"$minKey\":1},\"max\":{\"$maxKey\":1},\"code\":{\"$code\":\"function () { return '🍕'; }\"},\"scoped\":{\"$code\":\"x + y\",\"$scope\":{\"x\":1}},\"sym\":\"sym ✓\",\"undef\":null,\"nul\":null,\"bool\":true,\"text\":\"مرحبا é 🍕 שלום\",\"nested\":{\"2\":\"two\",\"10\":\"ten\",\"z\":1,\"ключ\":\"🍕\"},\"arr\":[1,\"two\",null,[true],{\"x\":3}]}},{\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":1,\"tag\":\"food\"}},{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}},{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}},{\"id\":\"Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)\",\"document\":{\"_id\":{\"$date\":\"2026-01-01T00:00:00Z\"},\"n\":4,\"tag\":\"date id\"}},{\"id\":\"9007199254740993\",\"document\":{\"_id\":9007199254740992,\"n\":5,\"tag\":\"long id\"}},{\"id\":\"01234567-89ab-cdef-0123-456789abcdef\",\"document\":{\"_id\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"n\":6,\"tag\":\"uuid id\"}},{\"id\":\"6650A1B2C3D4E5F601234567\",\"document\":{\"_id\":\"6650A1B2C3D4E5F601234567\",\"n\":7,\"tag\":\"upper-case hex is a string id\"}}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773793,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Invalid filter JSON\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773794,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"Invalid filter JSON\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773796,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"unknown operator: $nope\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773798,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Query filter must be a plain object or ObjectId\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773800,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Query filter must be a plain object or ObjectId\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773801,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"collection is required\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442773802,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:33 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Database names cannot contain the character '.'\"}"
+      }
+    }
+  ],
+  "mongo": {
+    "badregex": {
+      "type": "collection",
+      "options": {},
+      "indexes": [
+        {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ]
+    },
+    "types": {
+      "type": "collection",
+      "options": {},
+      "indexes": [
+        {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        },
+        {
+          "_id": "🍕 pizza",
+          "n": {
+            "$numberInt": "1"
+          },
+          "tag": "food"
+        },
+        {
+          "_id": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": {
+            "$date": {
+              "$numberLong": "1767225600000"
+            }
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        },
+        {
+          "$rigBson": "uAIAAAdfaWQAZlChssPU5fYBI0VnEGludAAqAAAAEGludE1pbgAAAACAEmxvbmcABwAAAAAAAAASbG9uZ0JpZwABAAAAAAAgABJsb25nTWF4AP////////9/AWRvdWJsZQAAAAAAAAD4PwFkb3VibGVXaG9sZQAAAAAAAAAAQAFuZWdaZXJvAAAAAAAAAACAAW5hbgAAAAAAAAD4fwFpbmYAAAAAAAAA8H8BbmluZgAAAAAAAADw/wF0aW55AAEAAAAAAAAAAWJpZwBQ7+LW5BpLRBNkZWMAbgAAAAAAAAAAAAAAAAA8MBNkZWNTY2kAewAAAAAAAAAAAAAAAADsLwlkYXRlAADRDMqhAQAACWRhdGVNcwB70QzKoQEAAAlkYXRlT2xkAADcAa79/f//CWRhdGVGYXIAgIQy03fmAAAFYmluAAUAAAAAAAEC+v8FdXVpZAAQAAAABAEjRWeJq83vASNFZ4mrze8FdXNlckJpbgACAAAAgGhpC3JlAF5hL2IkAGltAAtyZVgAAHgAEXRzAAcAAAAA8VNl/21pbgB/bWF4AA1jb2RlAB8AAABmdW5jdGlvbiAoKSB7IHJldHVybiAn8J+NlSc7IH0AD3Njb3BlZAAaAAAABgAAAHggKyB5AAwAAAAQeAABAAAAAA5zeW0ACAAAAHN5bSDinJMABnVuZGVmAApudWwACGJvb2wAAQJ0ZXh0AB0AAADZhdix2K3YqNinIGXMgSDwn42VINep15zXldedAANuZXN0ZWQANgAAABB6AAEAAAACMTAABAAAAHRlbgACMgAEAAAAdHdvAALQutC70Y7RhwAFAAAA8J+NlQAABGFycgA5AAAAEDAAAQAAAAIxAAQAAAB0d28ACjIABDMACQAAAAgwAAEAAzQAEAAAABJ4AAMAAAAAAAAAAAAA"
+        }
+      ]
+    }
+  },
+  "dragonfly": []
+}

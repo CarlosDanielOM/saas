@@ -1,0 +1,455 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "redis/tree",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.645Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:dca652142ea28cba",
+    "files": {
+      "redis/tree.json": "fnv1a64:dca652142ea28cba"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442781383,
+    "start": 1794442781891,
+    "end": 1794442782075,
+    "process_start": 1794442781389,
+    "ports": {
+      "http": 33247
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442781996,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=e8052c49-bda2-400d-b4db-7bed52cda6ac; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:41 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"7a37bc3d-1dfa-4c89-9435-44f22cd24279\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782057,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"\",\"match\":\"*\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"a:\",\"label\":\"a\",\"seen\":1},{\"prefix\":\"eclair:\",\"label\":\"eclair\",\"seen\":1},{\"prefix\":\"éclair:\",\"label\":\"éclair\",\"seen\":1},{\"prefix\":\"menu:\",\"label\":\"menu\",\"seen\":3},{\"prefix\":\"user:\",\"label\":\"user\",\"seen\":4},{\"prefix\":\"User:\",\"label\":\"User\",\"seen\":1},{\"prefix\":\"x:\",\"label\":\"x\",\"seen\":1},{\"prefix\":\"zebra:\",\"label\":\"zebra\",\"seen\":1}],\"keys\":[{\"name\":\"Plain\"},{\"name\":\"plain\"},{\"name\":\"🍕\"},{\"name\":\"～\"}],\"scanned\":17}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782061,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"user:\",\"match\":\"user:*\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"user:1:\",\"label\":\"1\",\"seen\":2},{\"prefix\":\"user:2:\",\"label\":\"2\",\"seen\":1}],\"keys\":[{\"name\":\"user:10\"}],\"scanned\":4}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782064,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"user:1:\",\"match\":\"user:1:*\",\"cursor\":\"0\",\"folders\":[],\"keys\":[{\"name\":\"user:1:mail\"},{\"name\":\"user:1:name\"}],\"scanned\":2}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782066,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"\",\"match\":\"*🍕*\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"menu:\",\"label\":\"menu\",\"seen\":1}],\"keys\":[{\"name\":\"🍕\"}],\"scanned\":2}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782069,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"\",\"match\":\"*:b\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"a:\",\"label\":\"a\",\"seen\":1},{\"prefix\":\"menu:\",\"label\":\"menu\",\"seen\":1},{\"prefix\":\"x:\",\"label\":\"x\",\"seen\":1}],\"keys\":[],\"scanned\":3}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782071,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"\",\"match\":\"*\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"a:\",\"label\":\"a\",\"seen\":1},{\"prefix\":\"eclair:\",\"label\":\"eclair\",\"seen\":1},{\"prefix\":\"éclair:\",\"label\":\"éclair\",\"seen\":1},{\"prefix\":\"menu:\",\"label\":\"menu\",\"seen\":3},{\"prefix\":\"user:\",\"label\":\"user\",\"seen\":4},{\"prefix\":\"User:\",\"label\":\"User\",\"seen\":1},{\"prefix\":\"x:\",\"label\":\"x\",\"seen\":1},{\"prefix\":\"zebra:\",\"label\":\"zebra\",\"seen\":1}],\"keys\":[{\"name\":\"Plain\"},{\"name\":\"plain\"},{\"name\":\"🍕\"},{\"name\":\"～\"}],\"scanned\":17}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782073,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"menu:\",\"match\":\"menu:*\",\"cursor\":\"0\",\"folders\":[{\"prefix\":\"menu:a:\",\"label\":\"a\",\"seen\":1}],\"keys\":[{\"name\":\"menu:🍕\"},{\"name\":\"menu:～\"}],\"scanned\":3}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782075,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"prefix\":\"\",\"match\":\"*zzz*\",\"cursor\":\"0\",\"folders\":[],\"keys\":[],\"scanned\":0}}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "Plain",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782077,
+      "value": "o"
+    },
+    {
+      "key": "User:upper",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782077,
+      "value": "e"
+    },
+    {
+      "key": "a:b",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782078,
+      "value": "p"
+    },
+    {
+      "key": "eclair:2",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782078,
+      "value": "g"
+    },
+    {
+      "key": "menu:a:b",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782079,
+      "value": "k"
+    },
+    {
+      "key": "menu:～",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782079,
+      "value": "j"
+    },
+    {
+      "key": "menu:🍕",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782079,
+      "value": "i"
+    },
+    {
+      "key": "plain",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782080,
+      "value": "n"
+    },
+    {
+      "key": "user:10",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782080,
+      "value": "d"
+    },
+    {
+      "key": "user:1:mail",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782081,
+      "value": "b"
+    },
+    {
+      "key": "user:1:name",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782081,
+      "value": "a"
+    },
+    {
+      "key": "user:2:name",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782082,
+      "value": "c"
+    },
+    {
+      "key": "x:b",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782082,
+      "value": "q"
+    },
+    {
+      "key": "zebra:1",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782083,
+      "value": "h"
+    },
+    {
+      "key": "éclair:1",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782083,
+      "value": "f"
+    },
+    {
+      "key": "～",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782084,
+      "value": "m"
+    },
+    {
+      "key": "🍕",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442782085,
+      "value": "l"
+    }
+  ]
+}

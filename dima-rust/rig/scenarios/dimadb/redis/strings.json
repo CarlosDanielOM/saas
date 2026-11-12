@@ -1,0 +1,390 @@
+{
+  "rig_scenario": 1,
+  "description": "String keys: create (emoji key and value, JSON text), read with TTL, update keeping the TTL (KEEPTTL), TTL set, cleared and refused, PUT on a missing key creates it, PUT on another type is a conflict, a non-string key reaches node-redis (TypeError, 500), null and numeric values, delete and read a deleted key.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "create",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "value": "{\"a\": 1, \"emoji\": \"👋🏽\"}"
+        }
+      }
+    },
+    {
+      "name": "create again",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "value": "other"
+        }
+      }
+    },
+    {
+      "name": "expire",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "ttl",
+          "ttl": 600
+        }
+      }
+    },
+    {
+      "name": "read",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=%D0%BA%D0%BB%D1%8E%D1%87%3A%F0%9F%8D%95",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "update keeps the TTL",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "value": "مرحبا é"
+        }
+      }
+    },
+    {
+      "name": "ttl -1 persists",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "ttl",
+          "ttl": -1
+        }
+      }
+    },
+    {
+      "name": "ttl text 30",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "ttl",
+          "ttl": "30"
+        }
+      }
+    },
+    {
+      "name": "ttl null persists",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "ttl",
+          "ttl": null
+        }
+      }
+    },
+    {
+      "name": "ttl 0 refused",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "ttl",
+          "ttl": 0
+        }
+      }
+    },
+    {
+      "name": "ttl 1.5 refused",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ključ",
+          "op": "ttl",
+          "ttl": 1.5
+        }
+      }
+    },
+    {
+      "name": "ttl on a missing key",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "missing",
+          "op": "ttl",
+          "ttl": 5
+        }
+      }
+    },
+    {
+      "name": "unknown op",
+      "http": {
+        "method": "PATCH",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "ключ:🍕",
+          "op": "rename"
+        }
+      }
+    },
+    {
+      "name": "PUT creates",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "new:key",
+          "value": null
+        }
+      }
+    },
+    {
+      "name": "PUT a number value",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "num",
+          "value": 1.5e+21
+        }
+      }
+    },
+    {
+      "name": "PUT a non-string key",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": 42,
+          "value": "x"
+        }
+      }
+    },
+    {
+      "name": "PUT without a key",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "value": "x"
+        }
+      }
+    },
+    {
+      "name": "create with a numeric key",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": 7,
+          "value": true
+        }
+      }
+    },
+    {
+      "name": "create unsupported type",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "weird",
+          "type": "json"
+        }
+      }
+    },
+    {
+      "name": "create on an existing key before the type check",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "num",
+          "type": "json"
+        }
+      }
+    },
+    {
+      "name": "GET without key",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/redis/env%3Arig/key?key=new%3Akey",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete again",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/redis/env%3Arig/key?key=new%3Akey",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "read deleted",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=new%3Akey",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "make a hash",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "h",
+          "type": "hash",
+          "field": "f",
+          "value": "v"
+        }
+      }
+    },
+    {
+      "name": "PUT on a hash",
+      "http": {
+        "method": "PUT",
+        "path": "/api/redis/env%3Arig/key",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "key": "h",
+          "value": "v"
+        }
+      }
+    }
+  ]
+}

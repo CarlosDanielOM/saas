@@ -1,0 +1,423 @@
+{
+  "rig_scenario": 1,
+  "description": "The console: commands as text (split on JavaScript whitespace, including U+FEFF and tabs) or as an args array (non-strings converted with String()), raw replies (status, integer beyond 2^53, nil, nested arrays, an error inside an array), Redis errors (500 with the server's text), the confirmation gate (409) for each dangerous command and its case, and empty commands.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "text",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "command": "  SET\tgreeting ﻿ héllo👋  "
+        }
+      }
+    },
+    {
+      "name": "get",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "GET",
+            "greeting"
+          ]
+        }
+      }
+    },
+    {
+      "name": "args with non-strings",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "SET",
+            "n",
+            10
+          ]
+        }
+      }
+    },
+    {
+      "name": "incrby beyond 2^53",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "INCRBY",
+            "big",
+            "9007199254740993"
+          ]
+        }
+      }
+    },
+    {
+      "name": "missing key",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "GET",
+            "nope"
+          ]
+        }
+      }
+    },
+    {
+      "name": "array reply",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "MGET",
+            "greeting",
+            "nope",
+            "n"
+          ]
+        }
+      }
+    },
+    {
+      "name": "nested reply",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "EVAL",
+            "return {1, 'two', {3, 'four'}, redis.status_reply('OK')}",
+            "0"
+          ],
+          "confirm": true
+        }
+      }
+    },
+    {
+      "name": "error inside an array",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "EVAL",
+            "return {1, redis.error_reply('BAD inner')}",
+            "0"
+          ],
+          "confirm": true
+        }
+      }
+    },
+    {
+      "name": "wrong type",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "LPUSH",
+            "greeting",
+            "x"
+          ]
+        }
+      }
+    },
+    {
+      "name": "unknown command",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "NOSUCHCMD",
+            "a"
+          ]
+        }
+      }
+    },
+    {
+      "name": "wrong arity",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "GET"
+          ]
+        }
+      }
+    },
+    {
+      "name": "config without confirm",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "config",
+            "get",
+            "maxmemory"
+          ]
+        }
+      }
+    },
+    {
+      "name": "flushdb without confirm",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "FlushDB"
+          ]
+        }
+      }
+    },
+    {
+      "name": "flushall with confirm false",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "FLUSHALL"
+          ],
+          "confirm": false
+        }
+      }
+    },
+    {
+      "name": "evalsha without confirm",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "EVALSHA",
+            "abc",
+            "0"
+          ]
+        }
+      }
+    },
+    {
+      "name": "text with a dangerous command",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "command": "debug sleep 0"
+        }
+      }
+    },
+    {
+      "name": "empty args",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": []
+        }
+      }
+    },
+    {
+      "name": "first arg empty",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "",
+            "x"
+          ]
+        }
+      }
+    },
+    {
+      "name": "first arg zero",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "name": "empty text",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "command": "   "
+        }
+      }
+    },
+    {
+      "name": "no command",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {}
+      }
+    },
+    {
+      "name": "args not an array",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": "GET greeting",
+          "command": "GET n"
+        }
+      }
+    },
+    {
+      "name": "flushdb with confirm",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "FLUSHDB"
+          ],
+          "confirm": 1
+        }
+      }
+    },
+    {
+      "name": "dbsize",
+      "http": {
+        "method": "POST",
+        "path": "/api/redis/env%3Arig/command",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "args": [
+            "DBSIZE"
+          ]
+        }
+      }
+    }
+  ]
+}

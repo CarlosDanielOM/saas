@@ -1,0 +1,495 @@
+{
+  "rig_scenario": 1,
+  "description": "Replacing documents (types converted the reference's way: the int64 field becomes int32, a new field is added, _id kept), a replacement starting with an operator (driver error, 500), changing _id (server error), a missing document (404), the id given as a number, deletes by ObjectId, by string and of a missing document.",
+  "restart": true,
+  "seed": {
+    "mongo": {
+      "types": [
+        {
+          "_id": {
+            "$oid": "6650a1b2c3d4e5f601234567"
+          },
+          "int": {
+            "$numberInt": "42"
+          },
+          "intMin": {
+            "$numberInt": "-2147483648"
+          },
+          "long": {
+            "$numberLong": "7"
+          },
+          "longBig": {
+            "$numberLong": "9007199254740993"
+          },
+          "longMax": {
+            "$numberLong": "9223372036854775807"
+          },
+          "double": {
+            "$numberDouble": "1.5"
+          },
+          "doubleWhole": {
+            "$numberDouble": "2.0"
+          },
+          "negZero": {
+            "$numberDouble": "-0.0"
+          },
+          "nan": {
+            "$numberDouble": "NaN"
+          },
+          "inf": {
+            "$numberDouble": "Infinity"
+          },
+          "ninf": {
+            "$numberDouble": "-Infinity"
+          },
+          "tiny": {
+            "$numberDouble": "5e-324"
+          },
+          "big": {
+            "$numberDouble": "1e+21"
+          },
+          "dec": {
+            "$numberDecimal": "1.10"
+          },
+          "decSci": {
+            "$numberDecimal": "1.23E-40"
+          },
+          "date": {
+            "$date": "2026-11-11T10:00:00Z"
+          },
+          "dateMs": {
+            "$date": "2026-11-11T10:00:00.123Z"
+          },
+          "dateOld": {
+            "$date": {
+              "$numberLong": "-2208988800000"
+            }
+          },
+          "dateFar": {
+            "$date": {
+              "$numberLong": "253402318800000"
+            }
+          },
+          "bin": {
+            "$binary": {
+              "base64": "AAEC+v8=",
+              "subType": "00"
+            }
+          },
+          "uuid": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "userBin": {
+            "$binary": {
+              "base64": "aGk=",
+              "subType": "80"
+            }
+          },
+          "re": {
+            "$regularExpression": {
+              "pattern": "^a/b$",
+              "options": "im"
+            }
+          },
+          "reX": {
+            "$regularExpression": {
+              "pattern": "",
+              "options": "x"
+            }
+          },
+          "ts": {
+            "$timestamp": {
+              "t": 1700000000,
+              "i": 7
+            }
+          },
+          "min": {
+            "$minKey": 1
+          },
+          "max": {
+            "$maxKey": 1
+          },
+          "code": {
+            "$code": "function () { return '🍕'; }"
+          },
+          "scoped": {
+            "$code": "x + y",
+            "$scope": {
+              "x": {
+                "$numberInt": "1"
+              }
+            }
+          },
+          "sym": {
+            "$symbol": "sym ✓"
+          },
+          "undef": {
+            "$undefined": true
+          },
+          "nul": null,
+          "bool": true,
+          "text": "مرحبا é 🍕 שלום",
+          "nested": {
+            "z": {
+              "$numberInt": "1"
+            },
+            "10": "ten",
+            "2": "two",
+            "ключ": "🍕"
+          },
+          "arr": [
+            {
+              "$numberInt": "1"
+            },
+            "two",
+            null,
+            [
+              true
+            ],
+            {
+              "x": {
+                "$numberLong": "3"
+              }
+            }
+          ]
+        },
+        {
+          "_id": "🍕 pizza",
+          "n": {
+            "$numberInt": "1"
+          },
+          "tag": "food"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        },
+        {
+          "_id": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        }
+      ],
+      "badregex": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ],
+      "empty": []
+    }
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "connections (the first row's URL is the side's database name)",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "db": "body.data[0].url"
+        }
+      }
+    },
+    {
+      "name": "replace",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "6650a1b2c3d4e5f601234567",
+          "document": {
+            "_id": {
+              "$oid": "6650a1b2c3d4e5f601234567"
+            },
+            "long": {
+              "$numberLong": "7"
+            },
+            "added": "nuevo ✓",
+            "when": {
+              "$date": "2026-11-11T10:00:00Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "replace without _id",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "🍕 pizza",
+          "document": {
+            "n": 10.0,
+            "tag": "replaced"
+          }
+        }
+      }
+    },
+    {
+      "name": "replace starting with an operator",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "🍕 pizza",
+          "document": {
+            "$set": {
+              "n": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "replace changing _id",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "🍕 pizza",
+          "document": {
+            "_id": "other"
+          }
+        }
+      }
+    },
+    {
+      "name": "replace a missing document",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "nope",
+          "document": {
+            "x": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "replace with a number docId",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": 5,
+          "document": {
+            "x": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "replace without docId",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "document": {
+            "x": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "replace with a bad document",
+      "http": {
+        "method": "PUT",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "db": "${db}",
+          "collection": "types",
+          "docId": "x",
+          "document": {
+            "o": {
+              "$oid": "1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "delete by ObjectId",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=6650a1b2c3d4e5f601234567",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete by string id",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=%F0%9F%8D%95%20pizza",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete again",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=%F0%9F%8D%95%20pizza",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete without id",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "what is left",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

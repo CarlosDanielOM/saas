@@ -1,0 +1,200 @@
+{
+  "rig_scenario": 1,
+  "description": "Static files and the single-page-app fallback: MIME types by extension (case-sensitive), cache headers (index.html never cached, assets immutable, the fallback without a cache header), any method, dot segments resolved by the URL parser, encoded traversal refused with an empty 400, and a sibling directory whose name starts with the public directory's.",
+  "restart": false,
+  "steps": [
+    {
+      "name": "root",
+      "http": {
+        "method": "GET",
+        "path": "/"
+      }
+    },
+    {
+      "name": "index.html",
+      "http": {
+        "method": "GET",
+        "path": "/index.html"
+      }
+    },
+    {
+      "name": "script",
+      "http": {
+        "method": "GET",
+        "path": "/main.js?v=3"
+      }
+    },
+    {
+      "name": "stylesheet",
+      "http": {
+        "method": "GET",
+        "path": "/styles.css"
+      }
+    },
+    {
+      "name": "svg",
+      "http": {
+        "method": "GET",
+        "path": "/logo.svg"
+      }
+    },
+    {
+      "name": "icon",
+      "http": {
+        "method": "GET",
+        "path": "/favicon.ico"
+      }
+    },
+    {
+      "name": "unknown extension",
+      "http": {
+        "method": "GET",
+        "path": "/data.bin"
+      }
+    },
+    {
+      "name": "upper-case extension is not in the table",
+      "http": {
+        "method": "GET",
+        "path": "/UPPER.HTML"
+      }
+    },
+    {
+      "name": "a name ending in index.html is not cached",
+      "http": {
+        "method": "GET",
+        "path": "/myindex.html"
+      }
+    },
+    {
+      "name": "dotfiles are served",
+      "http": {
+        "method": "GET",
+        "path": "/.hidden"
+      }
+    },
+    {
+      "name": "manifest",
+      "http": {
+        "method": "GET",
+        "path": "/manifest.webmanifest"
+      }
+    },
+    {
+      "name": "nested file",
+      "http": {
+        "method": "GET",
+        "path": "/sub/page.txt"
+      }
+    },
+    {
+      "name": "directory falls back to the app",
+      "http": {
+        "method": "GET",
+        "path": "/sub/"
+      }
+    },
+    {
+      "name": "directory without slash",
+      "http": {
+        "method": "GET",
+        "path": "/sub"
+      }
+    },
+    {
+      "name": "deep link falls back to the app",
+      "http": {
+        "method": "GET",
+        "path": "/browse/env:rig/user%3A42"
+      }
+    },
+    {
+      "name": "emoji path falls back",
+      "http": {
+        "method": "GET",
+        "path": "/%F0%9F%8D%95/ключ"
+      }
+    },
+    {
+      "name": "POST is served too",
+      "http": {
+        "method": "POST",
+        "path": "/main.js",
+        "text": "ignored"
+      }
+    },
+    {
+      "name": "HEAD",
+      "http": {
+        "method": "HEAD",
+        "path": "/styles.css"
+      }
+    },
+    {
+      "name": "encoded traversal is refused",
+      "http": {
+        "method": "GET",
+        "path": "/..%2F..%2F..%2Fetc%2Fpasswd"
+      }
+    },
+    {
+      "name": "dot segments are resolved by the URL parser",
+      "http": {
+        "method": "GET",
+        "path": "/sub/../main.js"
+      }
+    },
+    {
+      "name": "encoded dot segments too",
+      "http": {
+        "method": "GET",
+        "path": "/%2e%2e/%2e%2e/main.js"
+      }
+    },
+    {
+      "name": "backslashes are slashes",
+      "http": {
+        "method": "GET",
+        "path": "/sub\\..\\main.js"
+      }
+    },
+    {
+      "name": "encoded slash inside the public directory",
+      "http": {
+        "method": "GET",
+        "path": "/sub%2Fpage.txt"
+      }
+    },
+    {
+      "name": "NUL byte",
+      "http": {
+        "method": "GET",
+        "path": "/main.js%00.png"
+      }
+    },
+    {
+      "name": "sibling directory with the same prefix",
+      "http": {
+        "method": "GET",
+        "path": "/..%2Fapp-x%2Fsecret.txt"
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[24].status",
+      "kind": "ignore",
+      "reason": "Deliberate fix: the reference checked containment with a string startsWith, so /..%2Fapp-x/secret.txt served a file from the sibling directory app-x (200); the Rust server compares path components and answers 400."
+    },
+    {
+      "path": "steps[24].headers.*",
+      "kind": "ignore",
+      "reason": "Same containment fix: the reference sent the sibling file's content-type and cache-control headers; the 400 has neither."
+    },
+    {
+      "path": "steps[24].body",
+      "kind": "ignore",
+      "reason": "Same containment fix: the reference sent the sibling file's content."
+    }
+  ]
+}

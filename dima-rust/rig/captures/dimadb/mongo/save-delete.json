@@ -1,0 +1,638 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "mongo/save-delete",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.536Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:ebc057b979e18977",
+    "files": {
+      "mongo/save-delete.json": "fnv1a64:ebc057b979e18977"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442775253,
+    "start": 1794442775812,
+    "end": 1794442775963,
+    "process_start": 1794442775282,
+    "ports": {
+      "http": 43171
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442775888,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=cb34e354-80c8-4530-bba6-25501fcb4754; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"19a82a92-0c29-47fd-8156-87fabbb6cf7e\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775890,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":[{\"id\":\"env:dbname\",\"name\":\"dbname\",\"url\":\"rig_2524782_0_ref\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:rig\",\"name\":\"rig\",\"url\":\"redis://127.0.0.1:6379/1\",\"source\":\"env\",\"engine\":\"redis\"},{\"id\":\"env:mongo:rig\",\"name\":\"rig\",\"url\":\"mongodb://root:***@127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true\",\"source\":\"env\",\"engine\":\"mongo\"}]}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775930,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"id\":\"6650a1b2c3d4e5f601234567\",\"document\":{\"_id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"long\":7,\"added\":\"nuevo ✓\",\"when\":{\"$date\":\"2026-11-11T10:00:00Z\"}}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775935,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"id\":\"🍕 pizza\",\"document\":{\"_id\":\"🍕 pizza\",\"n\":10,\"tag\":\"replaced\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775937,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Replacement document must not contain atomic operators\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775941,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"Plan executor error during update :: caused by :: After applying the update, the (immutable) field '_id' was found to have been altered to _id: \\\"other\\\"\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775944,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Document not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775946,
+        "status": 404,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":404,\"message\":\"Document not found\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775948,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"id is required\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775949,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"input must be a 24 character hex string, 12 byte Uint8Array, or an integer\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775952,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"deleted\":1}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775954,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"deleted\":1}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775956,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"deleted\":0}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775957,
+        "status": 400,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":400,\"message\":\"id is required\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442775963,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:35 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"db\":\"rig_2524782_0_ref\",\"collection\":\"types\",\"skip\":0,\"limit\":50,\"total\":6,\"docs\":[{\"id\":\"5\",\"document\":{\"_id\":5,\"n\":2,\"tag\":\"number id\"}},{\"id\":\"2.5\",\"document\":{\"_id\":2.5,\"n\":3,\"tag\":\"double id\"}},{\"id\":\"Thu Jan 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)\",\"document\":{\"_id\":{\"$date\":\"2026-01-01T00:00:00Z\"},\"n\":4,\"tag\":\"date id\"}},{\"id\":\"9007199254740993\",\"document\":{\"_id\":9007199254740992,\"n\":5,\"tag\":\"long id\"}},{\"id\":\"01234567-89ab-cdef-0123-456789abcdef\",\"document\":{\"_id\":{\"$binary\":{\"base64\":\"ASNFZ4mrze8BI0VniavN7w==\",\"subType\":\"04\"}},\"n\":6,\"tag\":\"uuid id\"}},{\"id\":\"6650A1B2C3D4E5F601234567\",\"document\":{\"_id\":\"6650A1B2C3D4E5F601234567\",\"n\":7,\"tag\":\"upper-case hex is a string id\"}}]}}"
+      }
+    }
+  ],
+  "mongo": {
+    "badregex": {
+      "type": "collection",
+      "options": {},
+      "indexes": [
+        {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ]
+    },
+    "types": {
+      "type": "collection",
+      "options": {},
+      "indexes": [
+        {
+          "v": {
+            "$numberInt": "2"
+          },
+          "key": {
+            "_id": {
+              "$numberInt": "1"
+            }
+          },
+          "name": "_id_"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        },
+        {
+          "_id": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": {
+            "$date": {
+              "$numberLong": "1767225600000"
+            }
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        }
+      ]
+    }
+  },
+  "dragonfly": []
+}

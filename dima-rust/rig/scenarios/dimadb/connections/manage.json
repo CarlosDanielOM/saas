@@ -1,0 +1,278 @@
+{
+  "rig_scenario": 1,
+  "description": "The connection registry: environment rows first (redis, then mongo, in environment order), adding local Redis and MongoDB connections (password split out, encrypted and shown as ***, the name defaulting to the host, an emoji name), URL validation (invalid, wrong protocol, engine mismatch), deleting local rows, refusing environment rows, and the dropped client after a delete.",
+  "restart": true,
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "list",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "add redis with a password",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "name": "  Cache 🧊 ",
+          "url": "redis://:s3cr%40t-pw@127.0.0.1:6399/2",
+          "engine": "redis"
+        },
+        "save": {
+          "local": "body.data.id"
+        }
+      }
+    },
+    {
+      "name": "add mongo, name from the host",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "mongodb://user:p%C3%A4ss@mongo.internal:27017/app?authSource=admin"
+        },
+        "save": {
+          "mongo": "body.data.id"
+        }
+      }
+    },
+    {
+      "name": "add without a host",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "rediss://"
+        }
+      }
+    },
+    {
+      "name": "add with an unparseable URL",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "not a url"
+        }
+      }
+    },
+    {
+      "name": "add without a URL",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "name": "x"
+        }
+      }
+    },
+    {
+      "name": "add with another protocol",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "postgres://localhost/x"
+        }
+      }
+    },
+    {
+      "name": "engine mismatch",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "redis://localhost:6379",
+          "engine": "mongo"
+        }
+      }
+    },
+    {
+      "name": "engine that is not a string",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "redis://localhost:6379",
+          "engine": 1
+        }
+      }
+    },
+    {
+      "name": "multi-host mongo URL is not a WHATWG URL",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": "mongodb://a:1,b:2/db"
+        }
+      }
+    },
+    {
+      "name": "URL given as an array",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "json": {
+          "url": [
+            "redis://array-host:6379"
+          ]
+        }
+      }
+    },
+    {
+      "name": "list with local rows",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete an environment row",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/env%3Arig",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete an unknown row",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/nope",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete the local redis row",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/${local}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete it again",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/${local}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "delete the mongo row",
+      "http": {
+        "method": "DELETE",
+        "path": "/api/connections/${mongo}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "list after deletes",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "ping a deleted row",
+      "http": {
+        "method": "POST",
+        "path": "/api/connections/${local}/ping",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "rig_scenario": 1,
+  "description": "Key scanning: MATCH patterns (glob, emoji), COUNT (default 50, capped at 200, a non-number falls back to 50, a negative count is a Redis error), each key's type and TTL, and paging with the cursor until it comes back as 0.",
+  "restart": true,
+  "seed": {
+    "dragonfly": [
+      [
+        "SET",
+        "user:1",
+        "ana"
+      ],
+      [
+        "SET",
+        "user:2",
+        "bo"
+      ],
+      [
+        "SET",
+        "user:10",
+        "cy"
+      ],
+      [
+        "HSET",
+        "user:3:profile",
+        "name",
+        "Zoë"
+      ],
+      [
+        "SET",
+        "session:a",
+        "x"
+      ],
+      [
+        "EXPIRE",
+        "session:a",
+        "900"
+      ],
+      [
+        "SET",
+        "session:b",
+        "y"
+      ],
+      [
+        "SET",
+        "menu:🍕",
+        "pizza"
+      ],
+      [
+        "SET",
+        "🍕",
+        "solo"
+      ],
+      [
+        "RPUSH",
+        "queue",
+        "1",
+        "2"
+      ],
+      [
+        "SADD",
+        "set:🍕",
+        "a"
+      ],
+      [
+        "ZADD",
+        "rank",
+        "1",
+        "a"
+      ],
+      [
+        "SET",
+        "Ünïcode",
+        "u"
+      ],
+      [
+        "SET",
+        "ключ",
+        "k"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "all",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?count=500",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "user prefix",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=user%3A*&count=200",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "emoji",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=*%F0%9F%8D%95*&count=200",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "count junk",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=session%3A*&count=abc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "negative count",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?count=-5",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "no matches",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=nothing*",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "page 1",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=user%3A*&count=3",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "save": {
+          "next": "body.data.cursor"
+        }
+      }
+    },
+    {
+      "name": "page 2",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=user%3A*&count=3&cursor=${next}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "bad cursor",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?cursor=abc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[*].body.data.keys[*].ttl",
+      "kind": "tolerance",
+      "ms": 3,
+      "reason": "A TTL in seconds counts down from the seed while the scenario runs; each side reaches this step after its own start-up and scrypt time (slow in a debug build), so the value may be a second or two lower."
+    }
+  ]
+}

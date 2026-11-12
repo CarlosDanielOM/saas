@@ -5,7 +5,7 @@
 # is removed. New code never depends on it and never goes into it.
 [workspace]
 resolver = "3"
-members = [".", "crates/*", "rig"]
+members = [".", "crates/*", "rig", "services/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -69,6 +69,13 @@ subtle = "2.6.1"
 base64 = "0.22.1"
 hex = "0.4.3"
 getrandom = "0.4.3"
+# dimadb-server: the console's stored formats (`scrypt:<salt>:<hash>` passwords with Node's
+# scryptSync defaults, AES-256-GCM connection passwords), byte-compatible with node:crypto.
+scrypt = { version = "0.11.0", default-features = false }
+aes-gcm = { version = "0.10.3", default-features = false, features = ["aes", "alloc"] }
+# dimadb-server: `rediss://` connections (node-redis accepts them) need a TLS provider installed
+# explicitly; ring, as everywhere else in the workspace.
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 uuid = { version = "1.28.0", features = ["v4"] }
 # Text.
 regex = "1.13.1"

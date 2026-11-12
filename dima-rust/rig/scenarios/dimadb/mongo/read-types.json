@@ -1,0 +1,408 @@
+{
+  "rig_scenario": 1,
+  "description": "Reading documents of every BSON type as relaxed Extended JSON: numbers (int32, int64 within and beyond 2^53, doubles, -0, NaN, infinities), Decimal128, dates in and out of the ISO range, binaries, regular expressions (options dropped and the 's' option that fails the whole read), timestamps, MinKey/MaxKey, code, symbols, DBRefs, undefined, array-index field names, and the id text of each _id type.",
+  "restart": true,
+  "seed": {
+    "mongo": {
+      "types": [
+        {
+          "_id": {
+            "$oid": "6650a1b2c3d4e5f601234567"
+          },
+          "int": {
+            "$numberInt": "42"
+          },
+          "intMin": {
+            "$numberInt": "-2147483648"
+          },
+          "long": {
+            "$numberLong": "7"
+          },
+          "longBig": {
+            "$numberLong": "9007199254740993"
+          },
+          "longMax": {
+            "$numberLong": "9223372036854775807"
+          },
+          "double": {
+            "$numberDouble": "1.5"
+          },
+          "doubleWhole": {
+            "$numberDouble": "2.0"
+          },
+          "negZero": {
+            "$numberDouble": "-0.0"
+          },
+          "nan": {
+            "$numberDouble": "NaN"
+          },
+          "inf": {
+            "$numberDouble": "Infinity"
+          },
+          "ninf": {
+            "$numberDouble": "-Infinity"
+          },
+          "tiny": {
+            "$numberDouble": "5e-324"
+          },
+          "big": {
+            "$numberDouble": "1e+21"
+          },
+          "dec": {
+            "$numberDecimal": "1.10"
+          },
+          "decSci": {
+            "$numberDecimal": "1.23E-40"
+          },
+          "date": {
+            "$date": "2026-11-11T10:00:00Z"
+          },
+          "dateMs": {
+            "$date": "2026-11-11T10:00:00.123Z"
+          },
+          "dateOld": {
+            "$date": {
+              "$numberLong": "-2208988800000"
+            }
+          },
+          "dateFar": {
+            "$date": {
+              "$numberLong": "253402318800000"
+            }
+          },
+          "bin": {
+            "$binary": {
+              "base64": "AAEC+v8=",
+              "subType": "00"
+            }
+          },
+          "uuid": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "userBin": {
+            "$binary": {
+              "base64": "aGk=",
+              "subType": "80"
+            }
+          },
+          "re": {
+            "$regularExpression": {
+              "pattern": "^a/b$",
+              "options": "im"
+            }
+          },
+          "reX": {
+            "$regularExpression": {
+              "pattern": "",
+              "options": "x"
+            }
+          },
+          "ts": {
+            "$timestamp": {
+              "t": 1700000000,
+              "i": 7
+            }
+          },
+          "min": {
+            "$minKey": 1
+          },
+          "max": {
+            "$maxKey": 1
+          },
+          "code": {
+            "$code": "function () { return '🍕'; }"
+          },
+          "scoped": {
+            "$code": "x + y",
+            "$scope": {
+              "x": {
+                "$numberInt": "1"
+              }
+            }
+          },
+          "sym": {
+            "$symbol": "sym ✓"
+          },
+          "undef": {
+            "$undefined": true
+          },
+          "nul": null,
+          "bool": true,
+          "text": "مرحبا é 🍕 שלום",
+          "nested": {
+            "z": {
+              "$numberInt": "1"
+            },
+            "10": "ten",
+            "2": "two",
+            "ключ": "🍕"
+          },
+          "arr": [
+            {
+              "$numberInt": "1"
+            },
+            "two",
+            null,
+            [
+              true
+            ],
+            {
+              "x": {
+                "$numberLong": "3"
+              }
+            }
+          ]
+        },
+        {
+          "_id": "🍕 pizza",
+          "n": {
+            "$numberInt": "1"
+          },
+          "tag": "food"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        },
+        {
+          "_id": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        }
+      ],
+      "badregex": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ],
+      "empty": []
+    }
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "connections (the first row's URL is the side's database name)",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "db": "body.data[0].url"
+        }
+      }
+    },
+    {
+      "name": "all",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "insert DBRef shapes through the console",
+      "http": {
+        "method": "POST",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "text": "{\"db\":\"${db}\",\"collection\":\"refs\",\"document\":{\"_id\":\"refs\",\"ref\":{\"$ref\":\"people\",\"$id\":{\"$oid\":\"6650a1b2c3d4e5f601234567\"},\"$db\":\"other\"},\"refNs\":{\"$ref\":\"ns.coll\",\"$id\":\"text-id\"},\"flipped\":{\"$id\":1,\"$ref\":\"c\"},\"withFields\":{\"$ref\":\"c\",\"$id\":2,\"10\":\"ten\",\"z\":1},\"nullId\":{\"$ref\":\"c\",\"$id\":null},\"other\":{\"$ref\":\"c\",\"$id\":1,\"$x\":1}}}"
+      }
+    },
+    {
+      "name": "read the DBRefs back",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=refs",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "by ObjectId",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=6650a1b2c3d4e5f601234567",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "by emoji string id",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=%F0%9F%8D%95%20pizza",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "upper-case hex is a string",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=6650A1B2C3D4E5F601234567",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "number id cannot be addressed",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=5",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "missing",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=types&id=000000000000000000000000",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "s option fails the listing",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=badregex",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "s option fails the document",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/doc?db=${db}&collection=badregex&id=s-option",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "empty collection",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=empty",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "missing collection",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=nothing",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ]
+}

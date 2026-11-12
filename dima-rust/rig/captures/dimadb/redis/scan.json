@@ -1,0 +1,475 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "redis/scan",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.622Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:7b9834912e0acba4",
+    "files": {
+      "redis/scan.json": "fnv1a64:7b9834912e0acba4"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442778648,
+    "start": 1794442779140,
+    "end": 1794442779323,
+    "process_start": 1794442778655,
+    "ports": {
+      "http": 33049
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442779248,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "set-cookie",
+            "dimadb_session=27e50338-1f20-4af8-8b83-77c9e0278152; Path=/; HttpOnly; SameSite=Strict; Max-Age=1209600"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"user\":{\"id\":\"854ccc5a-057a-4f89-ab79-8b6219a4b036\",\"username\":\"root\",\"role\":\"admin\"}}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779303,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"rank\",\"type\":\"zset\",\"ttl\":-1},{\"name\":\"queue\",\"type\":\"list\",\"ttl\":-1},{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"Ünïcode\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"ключ\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":899},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779306,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779309,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"menu:🍕\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"set:🍕\",\"type\":\"set\",\"ttl\":-1},{\"name\":\"🍕\",\"type\":\"string\",\"ttl\":-1}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779312,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"session:b\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"session:a\",\"type\":\"string\",\"ttl\":899}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779314,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"ERR value is not an integer or out of range\"}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779316,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779319,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779321,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":false,\"status\":200,\"data\":{\"cursor\":\"0\",\"keys\":[{\"name\":\"user:2\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:1\",\"type\":\"string\",\"ttl\":-1},{\"name\":\"user:3:profile\",\"type\":\"hash\",\"ttl\":-1},{\"name\":\"user:10\",\"type\":\"string\",\"ttl\":-1}]}}"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442779323,
+        "status": 500,
+        "headers": [
+          [
+            "content-type",
+            "application/json; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-store"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:39 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"error\":true,\"status\":500,\"message\":\"ERR invalid cursor\"}"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": [
+    {
+      "key": "menu:🍕",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779324,
+      "value": "pizza"
+    },
+    {
+      "key": "queue",
+      "type": "list",
+      "pttl": -1,
+      "pttl_at": 1794442779325,
+      "value": [
+        "1",
+        "2"
+      ]
+    },
+    {
+      "key": "rank",
+      "type": "zset",
+      "pttl": -1,
+      "pttl_at": 1794442779325,
+      "value": [
+        [
+          "a",
+          "1"
+        ]
+      ]
+    },
+    {
+      "key": "session:a",
+      "type": "string",
+      "pttl": 899326,
+      "pttl_at": 1794442779325,
+      "value": "x"
+    },
+    {
+      "key": "session:b",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779326,
+      "value": "y"
+    },
+    {
+      "key": "set:🍕",
+      "type": "set",
+      "pttl": -1,
+      "pttl_at": 1794442779326,
+      "value": [
+        "a"
+      ]
+    },
+    {
+      "key": "user:1",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779327,
+      "value": "ana"
+    },
+    {
+      "key": "user:10",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779327,
+      "value": "cy"
+    },
+    {
+      "key": "user:2",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779328,
+      "value": "bo"
+    },
+    {
+      "key": "user:3:profile",
+      "type": "hash",
+      "pttl": -1,
+      "pttl_at": 1794442779328,
+      "value": [
+        [
+          "name",
+          "Zoë"
+        ]
+      ]
+    },
+    {
+      "key": "Ünïcode",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779329,
+      "value": "u"
+    },
+    {
+      "key": "ключ",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779329,
+      "value": "k"
+    },
+    {
+      "key": "🍕",
+      "type": "string",
+      "pttl": -1,
+      "pttl_at": 1794442779330,
+      "value": "solo"
+    }
+  ]
+}

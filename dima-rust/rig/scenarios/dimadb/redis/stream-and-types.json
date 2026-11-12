@@ -1,0 +1,124 @@
+{
+  "rig_scenario": 1,
+  "description": "Values of every Redis type read through GET key: a stream (XADD with fixed ids, fields in order, at most 50 entries), and the TTL of keys seeded with and without expiry.",
+  "restart": true,
+  "seed": {
+    "dragonfly": [
+      [
+        "XADD",
+        "events:📦",
+        "1-1",
+        "type",
+        "follow",
+        "user",
+        "zoë",
+        "10",
+        "x"
+      ],
+      [
+        "XADD",
+        "events:📦",
+        "2-0",
+        "type",
+        "raid 🎉",
+        "viewers",
+        "42"
+      ],
+      [
+        "SET",
+        "temp",
+        "soon gone"
+      ],
+      [
+        "EXPIRE",
+        "temp",
+        "3600"
+      ],
+      [
+        "SET",
+        "counter",
+        "9007199254740993"
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "stream",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=events%3A%F0%9F%93%A6",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "string with ttl",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=temp",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "number-like string",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/key?key=counter",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "tree of keys",
+      "http": {
+        "method": "GET",
+        "path": "/api/redis/env%3Arig/keys?match=*&count=200",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[2].body.data.ttl",
+      "kind": "tolerance",
+      "ms": 3,
+      "reason": "A TTL in seconds counts down from the seed while the scenario runs; each side reaches this step after its own start-up and scrypt time (slow in a debug build), so the value may be a second or two lower."
+    },
+    {
+      "path": "steps[4].body.data.keys[*].ttl",
+      "kind": "tolerance",
+      "ms": 3,
+      "reason": "A TTL in seconds counts down from the seed while the scenario runs; each side reaches this step after its own start-up and scrypt time (slow in a debug build), so the value may be a second or two lower."
+    }
+  ]
+}

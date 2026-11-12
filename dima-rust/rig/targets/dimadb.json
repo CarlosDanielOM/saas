@@ -1,0 +1,36 @@
+{
+  "rig_target": 1,
+  "description": "dimadb/server: the Node reference (node server/index.mjs, dependencies in dimadb/server/node_modules) against the Rust dimadb-server debug binary, which is {cargo_target_dir}/debug/dimadb-server: the shared target directory of dima-rust/tools/cargo (CARGO_TARGET_DIR, default ~/.cache/dima-rust/target), built with `tools/cargo build -p dimadb-server`. Each launch gets a fresh data directory /tmp/dimadb-rig/<side database>, wiped first, so every scenario that needs isolated data files sets restart: true. DIMADB_REDIS_DBNAME is not a usable connection: its URL is the side's MongoDB database name, which scenarios read back from GET /api/connections (data[0].url) to address that database.",
+  "ports": ["http"],
+  "reference": {
+    "command": ["sh", "-c", "rm -rf \"$DATA_DIR\" && exec node server/index.mjs"],
+    "cwd": "dimadb",
+    "env": {
+      "PORT": "{port}",
+      "DATA_DIR": "/tmp/dimadb-rig/{mongo_db}",
+      "PUBLIC_DIR": "{rig_dir}/scenarios/dimadb/_public/app",
+      "DIMADB_REDIS_RIG": "{dragonfly_url}",
+      "DIMADB_REDIS_DBNAME": "{mongo_db}",
+      "DIMADB_MONGO_RIG": "{mongo_uri}",
+      "TZ": "UTC"
+    },
+    "pass_env": ["PATH", "HOME"],
+    "ready": { "http": "/api/health", "timeout_ms": 20000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 5000 }
+  },
+  "candidate": {
+    "command": ["sh", "-c", "rm -rf \"$DATA_DIR\" && exec \"$0\"", "{cargo_target_dir}/debug/dimadb-server"],
+    "env": {
+      "PORT": "{port}",
+      "DATA_DIR": "/tmp/dimadb-rig/{mongo_db}",
+      "PUBLIC_DIR": "{rig_dir}/scenarios/dimadb/_public/app",
+      "DIMADB_REDIS_RIG": "{dragonfly_url}",
+      "DIMADB_REDIS_DBNAME": "{mongo_db}",
+      "DIMADB_MONGO_RIG": "{mongo_uri}",
+      "TZ": "UTC"
+    },
+    "pass_env": ["PATH", "HOME"],
+    "ready": { "http": "/api/health", "timeout_ms": 20000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 5000 }
+  }
+}

@@ -1,0 +1,849 @@
+{
+  "rig_capture": 2,
+  "target": "dimadb",
+  "scenario": "static/files",
+  "provenance": {
+    "side": "reference",
+    "label": "ref-0c71108e",
+    "recorded_at": "2026-11-12T00:19:56.648Z",
+    "rig_version": "0.1.0"
+  },
+  "hashes": {
+    "scenario": "fnv1a64:4c4b04c08b644c6e",
+    "files": {
+      "static/files.json": "fnv1a64:4c4b04c08b644c6e"
+    }
+  },
+  "run": {
+    "seeded_at": 1794442782104,
+    "start": 1794442782558,
+    "end": 1794442782596,
+    "process_start": 1794442782106,
+    "ports": {
+      "http": 37141
+    },
+    "mongo_db": "rig_2524782_0_ref",
+    "mongo_uri": "mongodb://127.0.0.1:27017/rig_2524782_0_ref?authSource=admin&directConnection=true",
+    "dragonfly_db": 1,
+    "dragonfly_url": "redis://127.0.0.1:6379/1"
+  },
+  "steps": [
+    {
+      "http": {
+        "at": 1794442782562,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782564,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782566,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/javascript; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "console.log(\"dimadb rig ✓\");\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782568,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/css; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "body { color: #fff; } /* é */\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782570,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "image/svg+xml"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>🍕</text></svg>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782572,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "image/x-icon"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "\u0000\u0000\u0001\u0000"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782574,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": {
+          "$rigBytes": "AAEC//4gYmluYXJ5"
+        }
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782575,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "upper case extension\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782578,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<p>my index</p>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782579,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "hidden dotfile\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782580,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "{\"name\":\"dimadb\",\"ok\":true}\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782581,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "nested file\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782582,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782583,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782584,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782585,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782587,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/javascript; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "console.log(\"dimadb rig ✓\");\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782588,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/css; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782588,
+        "status": 400,
+        "headers": [
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782589,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/javascript; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "console.log(\"dimadb rig ✓\");\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782591,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/javascript; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "console.log(\"dimadb rig ✓\");\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782592,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/javascript; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "console.log(\"dimadb rig ✓\");\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782593,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "nested file\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782595,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "cache-control",
+            "no-cache, no-store, must-revalidate"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>dimadb rig</title><link rel=\"stylesheet\" href=\"styles.css\"></head>\n<body><app-root>Consola 🍕 — שלום</app-root><script src=\"main.js\" type=\"module\"></script></body></html>\n"
+      }
+    },
+    {
+      "http": {
+        "at": 1794442782596,
+        "status": 200,
+        "headers": [
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "cache-control",
+            "public, max-age=2592000, immutable"
+          ],
+          [
+            "date",
+            "Thu, 12 Nov 2026 00:19:42 GMT"
+          ],
+          [
+            "connection",
+            "keep-alive"
+          ],
+          [
+            "keep-alive",
+            "timeout=5"
+          ],
+          [
+            "transfer-encoding",
+            "chunked"
+          ]
+        ],
+        "body": "sibling directory: must not be served\n"
+      }
+    }
+  ],
+  "mongo": {},
+  "dragonfly": []
+}

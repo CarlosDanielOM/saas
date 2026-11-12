@@ -1,0 +1,573 @@
+{
+  "rig_scenario": 1,
+  "description": "Browsing: databases (shape only), collections, paging (skip and limit defaults, clamps and junk), filters in relaxed Extended JSON (equality, ObjectId, $gt on dates, $regex with options, $in over number types, $exists, $where), the estimated count without a filter, an invalid filter (400) and filters the server refuses (500 with the server's message).",
+  "restart": true,
+  "seed": {
+    "mongo": {
+      "types": [
+        {
+          "_id": {
+            "$oid": "6650a1b2c3d4e5f601234567"
+          },
+          "int": {
+            "$numberInt": "42"
+          },
+          "intMin": {
+            "$numberInt": "-2147483648"
+          },
+          "long": {
+            "$numberLong": "7"
+          },
+          "longBig": {
+            "$numberLong": "9007199254740993"
+          },
+          "longMax": {
+            "$numberLong": "9223372036854775807"
+          },
+          "double": {
+            "$numberDouble": "1.5"
+          },
+          "doubleWhole": {
+            "$numberDouble": "2.0"
+          },
+          "negZero": {
+            "$numberDouble": "-0.0"
+          },
+          "nan": {
+            "$numberDouble": "NaN"
+          },
+          "inf": {
+            "$numberDouble": "Infinity"
+          },
+          "ninf": {
+            "$numberDouble": "-Infinity"
+          },
+          "tiny": {
+            "$numberDouble": "5e-324"
+          },
+          "big": {
+            "$numberDouble": "1e+21"
+          },
+          "dec": {
+            "$numberDecimal": "1.10"
+          },
+          "decSci": {
+            "$numberDecimal": "1.23E-40"
+          },
+          "date": {
+            "$date": "2026-11-11T10:00:00Z"
+          },
+          "dateMs": {
+            "$date": "2026-11-11T10:00:00.123Z"
+          },
+          "dateOld": {
+            "$date": {
+              "$numberLong": "-2208988800000"
+            }
+          },
+          "dateFar": {
+            "$date": {
+              "$numberLong": "253402318800000"
+            }
+          },
+          "bin": {
+            "$binary": {
+              "base64": "AAEC+v8=",
+              "subType": "00"
+            }
+          },
+          "uuid": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "userBin": {
+            "$binary": {
+              "base64": "aGk=",
+              "subType": "80"
+            }
+          },
+          "re": {
+            "$regularExpression": {
+              "pattern": "^a/b$",
+              "options": "im"
+            }
+          },
+          "reX": {
+            "$regularExpression": {
+              "pattern": "",
+              "options": "x"
+            }
+          },
+          "ts": {
+            "$timestamp": {
+              "t": 1700000000,
+              "i": 7
+            }
+          },
+          "min": {
+            "$minKey": 1
+          },
+          "max": {
+            "$maxKey": 1
+          },
+          "code": {
+            "$code": "function () { return '🍕'; }"
+          },
+          "scoped": {
+            "$code": "x + y",
+            "$scope": {
+              "x": {
+                "$numberInt": "1"
+              }
+            }
+          },
+          "sym": {
+            "$symbol": "sym ✓"
+          },
+          "undef": {
+            "$undefined": true
+          },
+          "nul": null,
+          "bool": true,
+          "text": "مرحبا é 🍕 שלום",
+          "nested": {
+            "z": {
+              "$numberInt": "1"
+            },
+            "10": "ten",
+            "2": "two",
+            "ключ": "🍕"
+          },
+          "arr": [
+            {
+              "$numberInt": "1"
+            },
+            "two",
+            null,
+            [
+              true
+            ],
+            {
+              "x": {
+                "$numberLong": "3"
+              }
+            }
+          ]
+        },
+        {
+          "_id": "🍕 pizza",
+          "n": {
+            "$numberInt": "1"
+          },
+          "tag": "food"
+        },
+        {
+          "_id": {
+            "$numberInt": "5"
+          },
+          "n": {
+            "$numberInt": "2"
+          },
+          "tag": "number id"
+        },
+        {
+          "_id": {
+            "$numberDouble": "2.5"
+          },
+          "n": {
+            "$numberInt": "3"
+          },
+          "tag": "double id"
+        },
+        {
+          "_id": {
+            "$date": "2026-01-01T00:00:00Z"
+          },
+          "n": {
+            "$numberInt": "4"
+          },
+          "tag": "date id"
+        },
+        {
+          "_id": {
+            "$numberLong": "9007199254740993"
+          },
+          "n": {
+            "$numberInt": "5"
+          },
+          "tag": "long id"
+        },
+        {
+          "_id": {
+            "$binary": {
+              "base64": "ASNFZ4mrze8BI0VniavN7w==",
+              "subType": "04"
+            }
+          },
+          "n": {
+            "$numberInt": "6"
+          },
+          "tag": "uuid id"
+        },
+        {
+          "_id": "6650A1B2C3D4E5F601234567",
+          "n": {
+            "$numberInt": "7"
+          },
+          "tag": "upper-case hex is a string id"
+        }
+      ],
+      "badregex": [
+        {
+          "_id": "s-option",
+          "re": {
+            "$regularExpression": {
+              "pattern": "a.b",
+              "options": "s"
+            }
+          }
+        }
+      ],
+      "empty": []
+    }
+  },
+  "steps": [
+    {
+      "name": "setup",
+      "http": {
+        "method": "POST",
+        "path": "/api/setup",
+        "headers": {
+          "x-dimadb": "1"
+        },
+        "json": {
+          "username": "root",
+          "password": "pässwörd 🔑"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "cookie": "headers.set-cookie"
+        }
+      }
+    },
+    {
+      "name": "connections (the first row's URL is the side's database name)",
+      "http": {
+        "method": "GET",
+        "path": "/api/connections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        },
+        "expect": {
+          "status": 200
+        },
+        "save": {
+          "db": "body.data[0].url"
+        }
+      }
+    },
+    {
+      "name": "databases",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/dbs",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "collections",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/collections?db=${db}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "collections without db",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/collections",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "page 1 of 3",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&limit=3",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "page 2 of 3",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&limit=3&skip=3",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "limit 0 means 50",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&limit=0",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "limit over 100",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&limit=1000&skip=6",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "negative limit is 1",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&limit=-4",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "junk skip",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&skip=abc&limit=2",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "hex skip",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&skip=0x2&limit=2",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "fraction skip",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&skip=1.5&limit=2",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter by tag",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22tag%22%3A%22food%22%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter by ObjectId",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22_id%22%3A%7B%22%24oid%22%3A%226650a1b2c3d4e5f601234567%22%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter $gt date",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22_id%22%3A%7B%22%24gt%22%3A%7B%22%24date%22%3A%222025-01-01T00%3A00%3A00Z%22%7D%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter regex",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22tag%22%3A%7B%22%24regex%22%3A%22%5EN%22%2C%22%24options%22%3A%22i%22%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter $in numbers",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22n%22%3A%7B%22%24in%22%3A%5B1%2C%7B%22%24numberLong%22%3A%222%22%7D%2C3.0%5D%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter $exists",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22ref%22%3A%7B%22%24exists%22%3Atrue%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter $where",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22%24where%22%3A%22this.n%20%3E%205%22%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter with spaces",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%20%20",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "invalid filter",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7Bbad",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter with a bad ObjectId",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22_id%22%3A%7B%22%24oid%22%3A%22zz%22%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "unknown operator",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%7B%22n%22%3A%7B%22%24nope%22%3A1%7D%7D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter that is an array",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=%5B%5D",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "filter that is a number",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}&collection=types&filter=5",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "docs without collection",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=${db}",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    },
+    {
+      "name": "database name with a dot",
+      "http": {
+        "method": "GET",
+        "path": "/api/mongo/env%3Amongo%3Arig/docs?db=a.b&collection=types",
+        "headers": {
+          "x-dimadb": "1",
+          "cookie": "${cookie}"
+        }
+      }
+    }
+  ],
+  "allow": [
+    {
+      "path": "steps[2].body.data",
+      "kind": "ignore",
+      "reason": "listDatabases returns every database on the shared local server, which other rig runs and tests create and drop while a run is in progress."
+    },
+    {
+      "path": "steps[3].body.data",
+      "kind": "set",
+      "reason": "listCollections returns collections in the server's order, which is not specified and was seen to change between two runs of the reference; the reference does not sort them."
+    }
+  ]
+}
