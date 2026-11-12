@@ -1,6 +1,7 @@
 //! Channel stream and audience records. No environment reads or runtime owner: callers supply
 //! stores, clock, credentials and request pacing. The cron worker is a separate package.
 #![forbid(unsafe_code)]
+pub mod defense_baseline;
 pub mod follow_ledger;
 pub mod follow_ledger_queue;
 mod seen;
