@@ -17,9 +17,11 @@
 //! - [`core`], by P4-SA-CORE-A (wave 1).
 //! - [`docs`], by P4-SA-DOCS (wave 1).
 //! - [`store`], [`usage`], [`llm`]: P4-SA-CORE-B (wave 2).
-//! - [`tools`], by P4-SA-TOOLS-A and P4-SA-TOOLS-B (wave 2); [`docs_assistant`]: P4-SA-TOOLS-B.
-//! - [`tools::write`], by P4-SA-WRITE-A; [`tools::write::settings`]: P4-SA-WRITE-B and
-//!   P4-SA-WRITE-C (wave 3).
+//! - [`tools`], by P4-SA-TOOLS-A and P4-SA-TOOLS-B (wave 2), one submodule per TypeScript file;
+//!   [`docs_assistant`]: P4-SA-TOOLS-B.
+//! - [`tools::write`], by P4-SA-WRITE-A (`commands`, `repeat`) and P4-SA-WRITE-B (`timers`);
+//!   [`tools::write::settings`]: P4-SA-WRITE-B and P4-SA-WRITE-C, one submodule per settings
+//!   area (wave 3).
 //! - [`runner`], by P4-SA-RUNNER (wave 3).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
