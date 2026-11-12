@@ -632,7 +632,7 @@ async fn forget_wins_over_an_authentication_in_flight() -> Result<()> {
         let user = in_flight
             .await?
             .map_err(|f| anyhow::anyhow!("{}", f.message()))?;
-        assert_eq!(user.id, id_of("valid", &stores.run));
+        assert_eq!(user.id(), id_of("valid", &stores.run));
         assert_eq!(
             stores.cache.exists(&[&token_cache_key(&token)]).await?,
             0,

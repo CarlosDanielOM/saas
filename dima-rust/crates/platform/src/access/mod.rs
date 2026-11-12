@@ -370,7 +370,18 @@ pub enum ScopeRole {
 }
 
 /// Proof that the authenticated person may act on one channel, as the route asked. Built only
-/// by [`ChannelAccess::scope`] (and so by [`ChannelGuard`]).
+/// by [`ChannelAccess::scope`] (and so by [`ChannelGuard`]; `for_tests` with feature
+/// `test-util`).
+///
+/// ```compile_fail,E0451
+/// fn forge(requester: dima_platform::auth::AuthenticatedUser) -> dima_platform::access::ChannelScope {
+///     dima_platform::access::ChannelScope {
+///         requester,
+///         channel_id: "1".into(),
+///         role: dima_platform::access::ScopeRole::Admin,
+///     }
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChannelScope {
     requester: AuthenticatedUser,
@@ -387,6 +398,20 @@ pub struct ScopeViolation {
 }
 
 impl ChannelScope {
+    /// A scope for tests in other crates (feature `test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn for_tests(
+        requester: AuthenticatedUser,
+        channel_id: impl Into<String>,
+        role: ScopeRole,
+    ) -> Self {
+        Self {
+            requester,
+            channel_id: channel_id.into(),
+            role,
+        }
+    }
+
     /// The checked channel.
     pub fn channel_id(&self) -> &str {
         &self.channel_id
@@ -447,18 +472,47 @@ impl ChannelScope {
     }
 }
 
-/// A person with a staff role, attached by [`require_admin`].
+/// A person with a staff role, attached by [`require_admin`]. Only the guard makes one
+/// (`for_tests` with feature `test-util`).
+///
+/// ```compile_fail,E0616
+/// fn role(staff: &dima_platform::access::StaffAdmin) -> dima_model::admins::AdminRole {
+///     staff.role
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StaffAdmin {
-    /// The person.
-    pub user: AuthenticatedUser,
-    /// Their highest staff role.
-    pub role: AdminRole,
-    /// `req.globalAdminRole` (`isSuperAdmin` when set).
-    pub global: Option<GlobalAdminRole>,
+    user: AuthenticatedUser,
+    role: AdminRole,
+    global: Option<GlobalAdminRole>,
 }
 
 impl StaffAdmin {
+    /// A staff identity for tests in other crates (feature `test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn for_tests(
+        user: AuthenticatedUser,
+        role: AdminRole,
+        global: Option<GlobalAdminRole>,
+    ) -> Self {
+        Self { user, role, global }
+    }
+
+    /// The person.
+    pub fn user(&self) -> &AuthenticatedUser {
+        &self.user
+    }
+
+    /// Their highest staff role.
+    pub fn role(&self) -> AdminRole {
+        self.role
+    }
+
+    /// `req.globalAdminRole` (`isSuperAdmin` when set).
+    pub fn global(&self) -> Option<GlobalAdminRole> {
+        self.global
+    }
+
     /// The value [`require_admin`] attached.
     pub fn of<S>(req: &Req<S>) -> Result<&StaffAdmin, WebError> {
         req.extensions()
@@ -467,16 +521,40 @@ impl StaffAdmin {
     }
 }
 
-/// The creator or a super admin, attached by [`require_global_admin`].
+/// The creator or a super admin, attached by [`require_global_admin`]. Only the guard makes
+/// one (`for_tests` with feature `test-util`).
+///
+/// ```compile_fail,E0451
+/// fn forge(user: dima_platform::auth::AuthenticatedUser) -> dima_platform::access::GlobalAdmin {
+///     dima_platform::access::GlobalAdmin {
+///         user,
+///         role: dima_platform::access::GlobalAdminRole::Creator,
+///     }
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GlobalAdmin {
-    /// The person.
-    pub user: AuthenticatedUser,
-    /// Their global role.
-    pub role: GlobalAdminRole,
+    user: AuthenticatedUser,
+    role: GlobalAdminRole,
 }
 
 impl GlobalAdmin {
+    /// A global admin for tests in other crates (feature `test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn for_tests(user: AuthenticatedUser, role: GlobalAdminRole) -> Self {
+        Self { user, role }
+    }
+
+    /// The person.
+    pub fn user(&self) -> &AuthenticatedUser {
+        &self.user
+    }
+
+    /// Their global role.
+    pub fn role(&self) -> GlobalAdminRole {
+        self.role
+    }
+
     /// The value [`require_global_admin`] attached.
     pub fn of<S>(req: &Req<S>) -> Result<&GlobalAdmin, WebError> {
         req.extensions()
@@ -731,11 +809,11 @@ impl ChannelAccess {
         &self,
         user: Option<&AuthenticatedUser>,
     ) -> Result<AdminCheck, AccessError> {
-        let Some(user) = user.filter(|user| !user.id.is_empty()) else {
+        let Some(user) = user.filter(|user| !user.id().is_empty()) else {
             return Ok(AdminCheck::Unauthenticated);
         };
-        let mut roles = self.active_roles(&user.id, None).await?;
-        if is_creator(Some(&user.id)) {
+        let mut roles = self.active_roles(user.id(), None).await?;
+        if is_creator(Some(user.id())) {
             roles.push(AdminRole::Creator);
         }
         let Some(best) = roles
@@ -760,21 +838,21 @@ impl ChannelAccess {
         channel: &str,
         need: Need<'_>,
     ) -> Result<Result<ChannelScope, Denied>, AccessError> {
-        if channel.is_empty() || user.id.is_empty() {
+        if channel.is_empty() || user.id().is_empty() {
             return Ok(Err(Denied::NoChannel));
         }
         let role = match need {
             Need::Owner => {
-                if user.id == channel {
+                if user.id() == channel {
                     Some(ScopeRole::OwnChannel)
                 } else {
-                    self.global_owner(&user.id, channel)
+                    self.global_owner(user.id(), channel)
                         .await?
                         .map(ScopeRole::GlobalOwner)
                 }
             }
-            Need::Permission(permission) => self.decide(&user.id, channel, &[permission]).await?,
-            Need::AnyOf(permissions) => self.decide(&user.id, channel, permissions).await?,
+            Need::Permission(permission) => self.decide(user.id(), channel, &[permission]).await?,
+            Need::AnyOf(permissions) => self.decide(user.id(), channel, permissions).await?,
         };
         Ok(match role {
             Some(role) => Ok(ChannelScope {
@@ -865,7 +943,7 @@ pub async fn require_global_admin<S: HasChannelAccess>(req: &mut Req<S>) -> Resu
     Ok(
         match state
             .channel_access()
-            .global_admin_role(Some(&user.id))
+            .global_admin_role(Some(user.id()))
             .await
         {
             Ok(Some(role)) => {

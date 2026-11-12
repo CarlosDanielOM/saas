@@ -322,12 +322,8 @@ impl HasChannelAccess for State {
 /// Stands in for `require_user`: the user comes from a test header, not from Twitch.
 async fn test_user(req: &mut Req<State>) -> Flow {
     if let Some(id) = req.header("x-test-user").map(|v| v.into_owned()) {
-        req.extensions_mut().insert(AuthenticatedUser {
-            id,
-            login: "login".to_owned(),
-            display_name: "Display".to_owned(),
-            profile_image_url: None,
-        });
+        req.extensions_mut()
+            .insert(AuthenticatedUser::for_tests(id, "login", "Display", None));
     }
     Flow::Next
 }
@@ -336,14 +332,14 @@ async fn staff(req: &mut Req<State>) -> Result<Response, dima_web::Error> {
     let staff = StaffAdmin::of(req)?;
     Ok(Response::new().json(&json!({
         "next": true,
-        "globalAdminRole": staff.global.map(|role| role.as_str()),
-        "isSuperAdmin": staff.global.is_some(),
+        "globalAdminRole": staff.global().map(|role| role.as_str()),
+        "isSuperAdmin": staff.global().is_some(),
     })))
 }
 
 async fn global(req: &mut Req<State>) -> Result<Response, dima_web::Error> {
     let admin = GlobalAdmin::of(req)?;
-    Ok(Response::new().json(&json!({ "role": admin.role.as_str() })))
+    Ok(Response::new().json(&json!({ "role": admin.role().as_str() })))
 }
 
 async fn scoped(req: &mut Req<State>) -> Result<Response, dima_web::Error> {
@@ -517,12 +513,7 @@ async fn direct_scope_and_media_library_seam() -> Result<()> {
         seed(&stores, &cases).await?;
         let run = stores.run.clone();
         let access = ChannelAccess::new(stores.mongo.clone(), Duration::from_secs(10));
-        let user = |kind: &str| AuthenticatedUser {
-            id: id_of(kind, &run),
-            login: kind.to_owned(),
-            display_name: kind.to_owned(),
-            profile_image_url: None,
-        };
+        let user = |kind: &str| AuthenticatedUser::for_tests(id_of(kind, &run), kind, kind, None);
         let managed = id_of("managed", &run);
         let scope = access
             .scope(&user("super"), &managed, Need::Owner)

@@ -79,7 +79,7 @@ use dima_store::dragonfly::Dragonfly;
 use dima_store::mongo::update::UpdateOptions;
 use dima_store::mongo::{MongoStore, WriteContext};
 use dima_web::{Error as WebError, Flow, Req, Response};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Value, json};
 use std::fmt;
 use std::sync::Arc;
@@ -184,20 +184,82 @@ impl AuthConfig {
 }
 
 /// `req.user`: the Twitch identity the token was proven to belong to.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Only the guards make one (the fields are private and it cannot be decoded); a test in
+/// another crate uses `for_tests` (feature `test-util`, enabled from `[dev-dependencies]` only).
+///
+/// ```compile_fail,E0451
+/// let user = dima_platform::auth::AuthenticatedUser {
+///     id: "1".into(),
+///     login: "a".into(),
+///     display_name: "A".into(),
+///     profile_image_url: None,
+/// };
+/// ```
+///
+/// ```compile_fail,E0277
+/// let user: Result<dima_platform::auth::AuthenticatedUser, _> = serde_json::from_str("{}");
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct AuthenticatedUser {
-    /// Twitch user id.
-    pub id: String,
-    /// Twitch login.
-    pub login: String,
-    /// Twitch display name.
-    pub display_name: String,
-    /// Profile image (`''` when read from the cache and Twitch had none).
+    id: String,
+    login: String,
+    display_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile_image_url: Option<String>,
+    profile_image_url: Option<String>,
 }
 
 impl AuthenticatedUser {
+    pub(crate) fn new(
+        id: String,
+        login: String,
+        display_name: String,
+        profile_image_url: Option<String>,
+    ) -> Self {
+        Self {
+            id,
+            login,
+            display_name,
+            profile_image_url,
+        }
+    }
+
+    /// An identity for tests in other crates (feature `test-util`).
+    #[cfg(feature = "test-util")]
+    pub fn for_tests(
+        id: impl Into<String>,
+        login: impl Into<String>,
+        display_name: impl Into<String>,
+        profile_image_url: Option<String>,
+    ) -> Self {
+        Self::new(
+            id.into(),
+            login.into(),
+            display_name.into(),
+            profile_image_url,
+        )
+    }
+
+    /// Twitch user id.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Twitch login.
+    pub fn login(&self) -> &str {
+        &self.login
+    }
+
+    /// Twitch display name.
+    pub fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    /// Profile image (`""` when read from the cache and Twitch had none).
+    pub fn profile_image_url(&self) -> Option<&str> {
+        self.profile_image_url.as_deref()
+    }
+
     /// The user [`require_user`] attached. A handler mounted without the guard gets a 500 (the
     /// default error page), never an anonymous pass.
     pub fn of<S>(req: &Req<S>) -> Result<&AuthenticatedUser, WebError> {
@@ -503,12 +565,12 @@ impl Authenticator {
         let Some(id) = text("id").filter(|id| !id.is_empty()) else {
             return Err(unreachable);
         };
-        Ok(AuthenticatedUser {
+        Ok(AuthenticatedUser::new(
             id,
-            login: text("login").unwrap_or_default(),
-            display_name: text("display_name").unwrap_or_default(),
-            profile_image_url: text("profile_image_url"),
-        })
+            text("login").unwrap_or_default(),
+            text("display_name").unwrap_or_default(),
+            text("profile_image_url"),
+        ))
     }
 
     /// `touchLastAppActivity`: once a day per user, `users.last_app_activity_at = now` for the

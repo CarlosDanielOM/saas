@@ -173,13 +173,13 @@ pub(crate) async fn get(
         }
     }
     Ok(Lookup {
-        user: Some(AuthenticatedUser {
-            id: cached.id,
-            login: cached.login,
-            display_name: cached.display_name,
-            // The reference caches `profile_image_url || ''` and reads that back.
-            profile_image_url: Some(cached.profile_image_url),
-        }),
+        // The reference caches `profile_image_url || ''` and reads that back.
+        user: Some(AuthenticatedUser::new(
+            cached.id,
+            cached.login,
+            cached.display_name,
+            Some(cached.profile_image_url),
+        )),
         began,
     })
 }
