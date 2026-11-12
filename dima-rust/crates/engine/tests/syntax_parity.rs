@@ -196,7 +196,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     let cases = corpus["cases"].as_array().expect("cases");
     assert_eq!(
         cases.len(),
-        1283,
+        1298,
         "regenerate the test's counts with the corpus"
     );
     let engine = SyntaxEngine::default();
@@ -208,15 +208,18 @@ fn every_corpus_case_gives_the_typescript_result() {
         let source = case["input"]["source"].as_str().unwrap_or_default();
         match case["parity"].as_str() {
             Some("source-throw-hardened") => {
-                // The reference throws a TypeError; the recorded legacy result is the port's
-                // `MISSING_VARIABLE_NAME` diagnostic (see `DiagnosticCode::MissingVariableName`).
+                // The reference throws a TypeError that nothing catches; the recorded legacy
+                // result is the port's diagnostic (`DiagnosticCode::MissingVariableName` or
+                // `DiagnosticCode::MissingUserSelector`). A throw inside an interpolation is
+                // caught there and is an ordinary recorded case.
                 assert_eq!(
                     case["source"]["thrown"]["name"], "TypeError",
                     "{name}: only TypeErrors are hardened"
                 );
-                assert_eq!(
-                    case["expected"]["legacy"]["diagnostic"]["code"],
-                    "MISSING_VARIABLE_NAME"
+                let code = &case["expected"]["legacy"]["diagnostic"]["code"];
+                assert!(
+                    code == "MISSING_VARIABLE_NAME" || code == "MISSING_USER_SELECTOR",
+                    "{name}: {code}"
                 );
             }
             _ => {

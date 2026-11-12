@@ -188,8 +188,9 @@ impl Parser<'_, '_> {
         self.budget.depth(depth, self.span(i))?;
         if i >= end {
             // The reference throws a TypeError here (`unescapeLiteral(undefined)`); only a user
-            // selector left open at the end of an array item gets here.
-            return Ok((self.literal("", i)?, self.next(i)));
+            // selector left open at the end of an array item gets here, and [`Self::variable`]
+            // reports that first. An enclosing interpolation turns the error into its text.
+            return Err(missing_user_selector(self.span(i)));
         }
         let token = self.text(i, end);
         if matches!(token, ";" | "}" | ")") {
@@ -524,6 +525,10 @@ impl Parser<'_, '_> {
         let mut user_selector = None;
         let mut max_depth = 0;
         if storage.is_user_scoped() && self.text(i, end) == "(" {
+            if self.next(i) >= end {
+                // `parseExpression(tokens, i + 1)` past the last token throws a TypeError.
+                return Err(missing_user_selector(self.span(i)));
+            }
             let (selector, next) = self.expression(self.next(i), end, depth)?;
             max_depth = max_depth.max(selector.depth);
             user_selector = Some(Box::new(selector.node));
@@ -833,6 +838,14 @@ impl Parser<'_, '_> {
         }
         self.make(AstNode::Template { segments }, max_depth, at)
     }
+}
+
+fn missing_user_selector(span: Span) -> Diagnostic {
+    Diagnostic::new(
+        DiagnosticCode::MissingUserSelector,
+        "Missing user selector",
+        span,
+    )
 }
 
 /// `/^[a-zA-Z_][a-zA-Z0-9_]*$/`.

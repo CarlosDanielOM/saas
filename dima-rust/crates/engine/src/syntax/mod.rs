@@ -8,9 +8,11 @@
 //! - resource limits ([`Limits`]): the reference has none. A source over the character limit, too
 //!   many tokens or nodes, or too deep nesting gives a resource-limit [`Diagnostic`] for the whole
 //!   compilation; the persisted JSON shape stays below [`HARD_JSON_NESTING_CEILING`];
-//! - where the reference throws a `TypeError` (a variable introducer at the very end of an array
-//!   item) this port reports [`DiagnosticCode::MissingVariableName`]; a per-viewer selector left
-//!   open at the end of an array item parses as an empty literal instead of throwing;
+//! - where the reference throws a `TypeError` that nothing catches (a variable introducer, or a
+//!   per-viewer selector, left open at the very end of an array item) this port reports
+//!   [`DiagnosticCode::MissingVariableName`] or [`DiagnosticCode::MissingUserSelector`]. Inside an
+//!   interpolation the reference catches the throw and shows `[Parse error: {its text}]`; so does
+//!   this port;
 //! - diagnostics carry a code and a byte [`Span`]; the reference only has the message.
 //!
 //! Plans are immutable syntax only: no evaluation context and no output are cached here, and

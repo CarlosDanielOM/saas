@@ -31,6 +31,7 @@
       "UNCLOSED_EXPRESSION": "A compiled-template expression segment has no closing parenthesis; the plan retains its source and diagnostic.",
       "UNEXPECTED_TOKEN": "A nested expression leaves tokens unconsumed; message is Unexpected token \"<tok>\" in nested expression.",
       "MISSING_VARIABLE_NAME": "Legacy safe diagnosis for an empty variable name (used only by source-throw hardening fixtures).",
+      "MISSING_USER_SELECTOR": "Legacy safe diagnosis for a per-viewer selector left open at the end of an array item (used only by source-throw hardening fixtures).",
       "SOURCE_LIMIT": "Resource limit (not present in this corpus).",
       "TOKEN_LIMIT": "Resource limit (not present in this corpus).",
       "NODE_LIMIT": "Resource limit (not present in this corpus).",
@@ -91,15 +92,15 @@
     "render.ts": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
   },
   "counts": {
-    "cases": 1283,
-    "compiled-template": 48,
-    "parse": 1006,
+    "cases": 1298,
+    "compiled-template": 50,
+    "parse": 1019,
     "scan": 152,
     "unescape": 77,
     "parity": {
       "approved-correction": 59,
-      "source-parity": 1220,
-      "source-throw-hardened": 4
+      "source-parity": 1232,
+      "source-throw-hardened": 7
     }
   },
   "approvedCorrections": [
@@ -117,7 +118,7 @@
       "userApprovedItemLabel": "nested parse diagnostics",
       "category": "nested-tokenizer-errors",
       "summary": "Nested-parse subcase: a tokenizer error inside an array item or template interpolation is propagated instead of being swallowed into a truncated node/text segment.",
-      "cases": 18
+      "cases": 21
     },
     {
       "code": "AC-3",
@@ -237,10 +238,10 @@
       "range"
     ],
     "errorChannels": {
-      "parseErrorCases": 128,
+      "parseErrorCases": 129,
       "loopErrorLiteralNodes": 8,
-      "templateParseErrorTextSegments": 9,
-      "sourceOracleThrowsRecorded": 4,
+      "templateParseErrorTextSegments": 16,
+      "sourceOracleThrowsRecorded": 7,
       "unclosedScanSegments": 23
     },
     "maxCaseAstDepth": 7,
@@ -268,7 +269,7 @@
     "Deep benchmarks (nested arrays 8..128, compute 32..128) are source-only definitions: the corpus stores no deep AST, keeping the fixture well under serde_json default recursion limits. Source-parity cases stay at AST depth <= 16.",
     "Spans are UTF-16 half-open offsets. Legacy TypeScript exposed no spans: source-parity spans, and the legacy code/span of an approved case, are derived from the real token/segment stream for verification, not from source facts. Approved default code/message/span are additive spec and are asserted exactly."
   ],
-  "corpusHash": "64f80bb22ecd1379f6fcf04d2ab2efefca84ae117707721f468819fb9532c8f8",
+  "corpusHash": "0b0c293c9ab4069812ebacc902fbd7802b327ff591c00f850cbe51bff40e91d1",
   "cases": [
     {
       "name": "0001-plain-empty",
@@ -92511,6 +92512,1096 @@
         }
       },
       "parity": "source-parity"
+    },
+    {
+      "name": "1431-caught-throw-x",
+      "operation": "parse",
+      "input": {
+        "source": "*(\"${%[%(##x(]}\")"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[%(##x(]]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1432-caught-throw-x",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[%(##x(]}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[%(##x(]]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1433-caught-throw-a_x_b",
+      "operation": "parse",
+      "input": {
+        "source": "\"a ${%[%(**x(]} b\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "a "
+                },
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[%(**x(]]"
+                },
+                {
+                  "type": "text",
+                  "value": " b"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "a "
+                  },
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(**x(]]"
+                  },
+                  {
+                    "type": "text",
+                    "value": " b"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "a "
+                  },
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%(**x(]]"
+                  },
+                  {
+                    "type": "text",
+                    "value": " b"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1434-caught-throw-x",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[^(##x(]}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[^(##x(]]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[^(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[^(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1435-caught-throw-del_x",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[%del(##x(]}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[%del(##x(]]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%del(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[%del(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1436-caught-throw-1_x",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[1, %(##x(]}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "text",
+                  "value": "[Parse error: %[1, %(##x(]]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[1, %(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "text",
+                    "value": "[Parse error: %[1, %(##x(]]"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1437-caught-throw-x_y_z",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[%(##x(], %(y)}\" ${%(z)}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": []
+        },
+        "error": "Unclosed quoted string"
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_QUOTE",
+            "message": "Unclosed quoted string",
+            "span": {
+              "start": 28,
+              "end": 29
+            }
+          }
+        },
+        "default": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_QUOTE",
+            "message": "Unclosed quoted string",
+            "span": {
+              "start": 28,
+              "end": 29
+            }
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1438-caught-throw-x",
+      "operation": "parse",
+      "input": {
+        "source": "%[%(##x()]"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "arrayLiteral",
+              "items": [
+                {
+                  "type": "getVar",
+                  "name": "##x",
+                  "storage": "cacheUser",
+                  "userSelector": {
+                    "type": "literal",
+                    "value": ""
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "arrayLiteral",
+                "items": [
+                  {
+                    "type": "getVar",
+                    "name": "##x",
+                    "storage": "cacheUser",
+                    "userSelector": {
+                      "type": "literal",
+                      "value": ""
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "arrayLiteral",
+                "items": [
+                  {
+                    "type": "getVar",
+                    "name": "##x",
+                    "storage": "cacheUser",
+                    "userSelector": {
+                      "type": "literal",
+                      "value": ""
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1439-caught-throw-x",
+      "operation": "parse",
+      "input": {
+        "source": "\"${%[%(##x()]}\""
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "template",
+              "segments": [
+                {
+                  "type": "expr",
+                  "node": {
+                    "type": "arrayLiteral",
+                    "items": [
+                      {
+                        "type": "getVar",
+                        "name": "##x",
+                        "storage": "cacheUser",
+                        "userSelector": {
+                          "type": "literal",
+                          "value": ""
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "expr",
+                    "node": {
+                      "type": "arrayLiteral",
+                      "items": [
+                        {
+                          "type": "getVar",
+                          "name": "##x",
+                          "storage": "cacheUser",
+                          "userSelector": {
+                            "type": "literal",
+                            "value": ""
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "template",
+                "segments": [
+                  {
+                    "type": "expr",
+                    "node": {
+                      "type": "arrayLiteral",
+                      "items": [
+                        {
+                          "type": "getVar",
+                          "name": "##x",
+                          "storage": "cacheUser",
+                          "userSelector": {
+                            "type": "literal",
+                            "value": ""
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1440-caught-throw-say",
+      "operation": "parse",
+      "input": {
+        "source": "$(say \"${%[%(]}\")"
+      },
+      "source": {
+        "ast": {
+          "type": "root",
+          "children": [
+            {
+              "type": "function",
+              "name": "say",
+              "args": [
+                {
+                  "type": "template",
+                  "segments": [
+                    {
+                      "type": "text",
+                      "value": "[Parse error: %[%(]]"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "template",
+                    "segments": [
+                      {
+                        "type": "text",
+                        "value": "[Parse error: %[%(]]"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "default": {
+          "outcome": "program",
+          "ast": {
+            "type": "root",
+            "children": [
+              {
+                "type": "function",
+                "name": "say",
+                "args": [
+                  {
+                    "type": "template",
+                    "segments": [
+                      {
+                        "type": "text",
+                        "value": "[Parse error: %[%(]]"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1441-caught-throw-say_x_ok",
+      "operation": "compiled-template",
+      "input": {
+        "source": "$(say \"${%[%(##x(]}\") ok"
+      },
+      "source": {
+        "segments": [
+          {
+            "kind": "expr",
+            "source": "$(say \"${%[%(##x(]}\")",
+            "parse": {
+              "ast": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "function",
+                    "name": "say",
+                    "args": [
+                      {
+                        "type": "template",
+                        "segments": [
+                          {
+                            "type": "text",
+                            "value": "[Parse error: %[%(##x(]]"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "kind": "text",
+            "text": " ok"
+          }
+        ]
+      },
+      "expected": {
+        "legacy": {
+          "segments": [
+            {
+              "kind": "expr",
+              "source": "$(say \"${%[%(##x(]}\")",
+              "span": {
+                "start": 0,
+                "end": 21
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "template",
+                          "segments": [
+                            {
+                              "type": "text",
+                              "value": "[Parse error: %[%(##x(]]"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " ok",
+              "span": {
+                "start": 21,
+                "end": 24
+              }
+            }
+          ]
+        },
+        "default": {
+          "segments": [
+            {
+              "kind": "expr",
+              "source": "$(say \"${%[%(##x(]}\")",
+              "span": {
+                "start": 0,
+                "end": 21
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "function",
+                      "name": "say",
+                      "args": [
+                        {
+                          "type": "template",
+                          "segments": [
+                            {
+                              "type": "text",
+                              "value": "[Parse error: %[%(##x(]]"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " ok",
+              "span": {
+                "start": 21,
+                "end": 24
+              }
+            }
+          ]
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1442-caught-throw-a_x_b",
+      "operation": "compiled-template",
+      "input": {
+        "source": "a *(\"${%[%(##x(]}\") b"
+      },
+      "source": {
+        "segments": [
+          {
+            "kind": "text",
+            "text": "a "
+          },
+          {
+            "kind": "expr",
+            "source": "*(\"${%[%(##x(]}\")",
+            "parse": {
+              "ast": {
+                "type": "root",
+                "children": [
+                  {
+                    "type": "template",
+                    "segments": [
+                      {
+                        "type": "text",
+                        "value": "[Parse error: %[%(##x(]]"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "kind": "text",
+            "text": " b"
+          }
+        ]
+      },
+      "expected": {
+        "legacy": {
+          "segments": [
+            {
+              "kind": "text",
+              "text": "a ",
+              "span": {
+                "start": 0,
+                "end": 2
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "*(\"${%[%(##x(]}\")",
+              "span": {
+                "start": 2,
+                "end": 19
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "template",
+                      "segments": [
+                        {
+                          "type": "text",
+                          "value": "[Parse error: %[%(##x(]]"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " b",
+              "span": {
+                "start": 19,
+                "end": 21
+              }
+            }
+          ]
+        },
+        "default": {
+          "segments": [
+            {
+              "kind": "text",
+              "text": "a ",
+              "span": {
+                "start": 0,
+                "end": 2
+              }
+            },
+            {
+              "kind": "expr",
+              "source": "*(\"${%[%(##x(]}\")",
+              "span": {
+                "start": 2,
+                "end": 19
+              },
+              "program": {
+                "outcome": "program",
+                "ast": {
+                  "type": "root",
+                  "children": [
+                    {
+                      "type": "template",
+                      "segments": [
+                        {
+                          "type": "text",
+                          "value": "[Parse error: %[%(##x(]]"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "kind": "text",
+              "text": " b",
+              "span": {
+                "start": 19,
+                "end": 21
+              }
+            }
+          ]
+        }
+      },
+      "parity": "source-parity"
+    },
+    {
+      "name": "1443-approval-ac2-hardened-x",
+      "operation": "parse",
+      "input": {
+        "source": "%[%(##x(]"
+      },
+      "source": {
+        "thrown": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "MISSING_USER_SELECTOR",
+            "message": "Missing user selector",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        },
+        "default": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_DELIMITER",
+            "message": "Unclosed \"(\"",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        }
+      },
+      "parity": "source-throw-hardened",
+      "approved": {
+        "code": "AC-2",
+        "userApprovedItem": 5,
+        "userApprovedItemLabel": "nested parse diagnostics",
+        "category": "nested-tokenizer-errors",
+        "summary": "Nested-parse subcase: a tokenizer error inside an array item or template interpolation is propagated instead of being swallowed into a truncated node/text segment.",
+        "rationale": "The source oracle throws TypeError because a per-viewer selector is left open at the end of an array item and nothing catches it. Rust reports a diagnostic at the selector opener instead.",
+        "hardenedFromOracleThrow": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        },
+        "legacyRelaxation": "Source oracle throws; legacy mode only has to return a safe diagnostic, and the recorded MISSING_VARIABLE_NAME outcome is the current expected legacy diagnosis, not a source fact."
+      }
+    },
+    {
+      "name": "1444-approval-ac2-hardened-x",
+      "operation": "parse",
+      "input": {
+        "source": "%[^(**x(]"
+      },
+      "source": {
+        "thrown": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "MISSING_USER_SELECTOR",
+            "message": "Missing user selector",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        },
+        "default": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_DELIMITER",
+            "message": "Unclosed \"(\"",
+            "span": {
+              "start": 7,
+              "end": 8
+            }
+          }
+        }
+      },
+      "parity": "source-throw-hardened",
+      "approved": {
+        "code": "AC-2",
+        "userApprovedItem": 5,
+        "userApprovedItemLabel": "nested parse diagnostics",
+        "category": "nested-tokenizer-errors",
+        "summary": "Nested-parse subcase: a tokenizer error inside an array item or template interpolation is propagated instead of being swallowed into a truncated node/text segment.",
+        "rationale": "The source oracle throws TypeError because a per-viewer selector is left open at the end of an array item and nothing catches it. Rust reports a diagnostic at the selector opener instead.",
+        "hardenedFromOracleThrow": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        },
+        "legacyRelaxation": "Source oracle throws; legacy mode only has to return a safe diagnostic, and the recorded MISSING_VARIABLE_NAME outcome is the current expected legacy diagnosis, not a source fact."
+      }
+    },
+    {
+      "name": "1445-approval-ac2-hardened-del_x",
+      "operation": "parse",
+      "input": {
+        "source": "*(%[%del(##x(])"
+      },
+      "source": {
+        "thrown": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        }
+      },
+      "expected": {
+        "legacy": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "MISSING_USER_SELECTOR",
+            "message": "Missing user selector",
+            "span": {
+              "start": 12,
+              "end": 13
+            }
+          }
+        },
+        "default": {
+          "outcome": "diagnostic",
+          "diagnostic": {
+            "code": "UNCLOSED_DELIMITER",
+            "message": "Unclosed \"(\"",
+            "span": {
+              "start": 12,
+              "end": 13
+            }
+          }
+        }
+      },
+      "parity": "source-throw-hardened",
+      "approved": {
+        "code": "AC-2",
+        "userApprovedItem": 5,
+        "userApprovedItemLabel": "nested parse diagnostics",
+        "category": "nested-tokenizer-errors",
+        "summary": "Nested-parse subcase: a tokenizer error inside an array item or template interpolation is propagated instead of being swallowed into a truncated node/text segment.",
+        "rationale": "The source oracle throws TypeError because a per-viewer selector is left open at the end of an array item and nothing catches it. Rust reports a diagnostic at the selector opener instead.",
+        "hardenedFromOracleThrow": {
+          "name": "TypeError",
+          "message": "Cannot read properties of undefined (reading 'includes')"
+        },
+        "legacyRelaxation": "Source oracle throws; legacy mode only has to return a safe diagnostic, and the recorded MISSING_VARIABLE_NAME outcome is the current expected legacy diagnosis, not a source fact."
+      }
     }
   ],
   "benchmarks": [

@@ -152,6 +152,7 @@ function diagnosticCode(message) {
   if (message.startsWith('Unexpected token ')) return 'UNEXPECTED_TOKEN';
   if (message === 'Unclosed expression') return 'UNCLOSED_EXPRESSION';
   if (message === 'Missing variable name') return 'MISSING_VARIABLE_NAME';
+  if (message === 'Missing user selector') return 'MISSING_USER_SELECTOR';
   throw new Error(`unmapped diagnostic message: ${message}`);
 }
 
@@ -1396,6 +1397,29 @@ for (const item of cases) {
     'Hi *(for #i in a $(upper b) c { #i }) bye',
     '*(for #i = 0; #i < 3 $(say a) b; #i++ { #i }) $(user)'
   ]) addCompiled('loop-header', source);
+
+  // A per-viewer selector left open at the end of an array item makes the
+  // reference throw (`unescapeLiteral(undefined)`). Inside an interpolation the
+  // template parser catches it and shows the interpolation's text; at the top
+  // level nothing catches it, and the port reports a diagnostic instead.
+  const caughtSelector = [
+    '*("${%[%(##x(]}")', '"${%[%(##x(]}"', '"a ${%[%(**x(]} b"', '"${%[^(##x(]}"',
+    '"${%[%del(##x(]}"', '"${%[1, %(##x(]}"', '"${%[%(##x(], %(y)}" ${%(z)}"',
+    '%[%(##x()]', '"${%[%(##x()]}"', '$(say "${%[%(]}")'
+  ];
+  for (const source of caughtSelector) addParse('caught-throw', source);
+  for (const source of ['$(say "${%[%(##x(]}") ok', 'a *("${%[%(##x(]}") b']) {
+    addCompiled('caught-throw', source);
+  }
+  for (const [source, opener] of [['%[%(##x(]', '('], ['%[^(**x(]', '('], ['*(%[%del(##x(])', '(']]) {
+    const span = lastTokenSpan(source, opener);
+    addApprovedParse('approval-ac2-hardened', source,
+      diagnosticOutcome('UNCLOSED_DELIMITER', 'Unclosed "("', span), 'AC-2',
+      'The source oracle throws TypeError because a per-viewer selector is left open at the end of an array item and nothing catches it. Rust reports a diagnostic at the selector opener instead.', {
+      harden: true,
+      legacyOutcome: diagnosticOutcome('MISSING_USER_SELECTOR', 'Missing user selector', span)
+    });
+  }
 }
 
 // ===========================================================================
@@ -1756,6 +1780,7 @@ const output = {
       UNCLOSED_EXPRESSION: 'A compiled-template expression segment has no closing parenthesis; the plan retains its source and diagnostic.',
       UNEXPECTED_TOKEN: 'A nested expression leaves tokens unconsumed; message is Unexpected token "<tok>" in nested expression.',
       MISSING_VARIABLE_NAME: 'Legacy safe diagnosis for an empty variable name (used only by source-throw hardening fixtures).',
+      MISSING_USER_SELECTOR: 'Legacy safe diagnosis for a per-viewer selector left open at the end of an array item (used only by source-throw hardening fixtures).',
       SOURCE_LIMIT: 'Resource limit (not present in this corpus).',
       TOKEN_LIMIT: 'Resource limit (not present in this corpus).',
       NODE_LIMIT: 'Resource limit (not present in this corpus).',

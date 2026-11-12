@@ -58,6 +58,11 @@ pub enum DiagnosticCode {
     /// `Missing variable name`: `%(`, `^(` or `%del(` at the very end of an array item. The
     /// reference throws a `TypeError` there; this port reports it instead.
     MissingVariableName,
+    /// `Missing user selector`: `%(##x(`, `^(##x(` or `%del(##x(` at the very end of an array
+    /// item. The reference throws a `TypeError` there (`unescapeLiteral(undefined)`); this port
+    /// reports it instead. Inside an interpolation both show `[Parse error: …]` with the
+    /// interpolation's text, because the reference catches the throw there.
+    MissingUserSelector,
     /// The source has more characters than [`Limits::source_chars`].
     SourceLimit,
     /// More tokens than [`Limits::tokens`].
@@ -80,6 +85,7 @@ impl DiagnosticCode {
             Self::UnclosedQuote => "UNCLOSED_QUOTE",
             Self::UnclosedExpression => "UNCLOSED_EXPRESSION",
             Self::MissingVariableName => "MISSING_VARIABLE_NAME",
+            Self::MissingUserSelector => "MISSING_USER_SELECTOR",
             Self::SourceLimit => "SOURCE_LIMIT",
             Self::TokenLimit => "TOKEN_LIMIT",
             Self::NodeLimit => "NODE_LIMIT",

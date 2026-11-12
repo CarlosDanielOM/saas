@@ -584,20 +584,24 @@ fn where_the_reference_throws_the_port_reports_or_parses() {
         assert_eq!(error.code, DiagnosticCode::MissingVariableName, "{source}");
     }
     // `unescapeLiteral(undefined)`: a per-viewer selector left open at the end of an item.
-    let program = engine.parse("%[%(##x(]").expect("parses");
-    let text = program.to_value().to_string();
-    assert!(
-        text.contains("\"userSelector\":{\"type\":\"literal\",\"value\":\"\"}"),
-        "{text}"
-    );
+    for source in ["%[%(##x(]", "%[^(**x(]", "*(%[%del(##x(])"] {
+        let error = engine.parse(source).unwrap_err();
+        assert_eq!(error.code, DiagnosticCode::MissingUserSelector, "{source}");
+        assert_eq!(source.get(error.span.start..error.span.end), Some("("));
+    }
     // Inside an interpolation the reference catches the throw and shows the expression.
-    let program = engine.parse("\"${%[%(]}\"").expect("parses");
-    assert!(
-        program
-            .to_value()
-            .to_string()
-            .contains("[Parse error: %[%(]]")
-    );
+    for (source, shown) in [
+        ("\"${%[%(]}\"", "[Parse error: %[%(]]"),
+        ("*(\"${%[%(##x(]}\")", "[Parse error: %[%(##x(]]"),
+    ] {
+        let program = engine.parse(source).expect("parses");
+        let segments = serde_json::json!([{"type": "text", "value": shown}]);
+        assert_eq!(
+            program.to_value()["children"][0]["segments"],
+            segments,
+            "{source}"
+        );
+    }
 }
 
 #[test]
