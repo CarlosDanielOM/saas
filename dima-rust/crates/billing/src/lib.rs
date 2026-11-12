@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod credit_packs;
+pub mod credit_sources;
 pub mod free_credit_reset;
 pub mod js;
 pub mod plans;
