@@ -1,21 +1,30 @@
-//! Dragonfly (Redis protocol) access that interoperates byte for byte with the TypeScript
-//! processes (node-redis 5) sharing the same keys, queues, channels and Lua scripts.
+//! Dragonfly (Redis protocol) access for the Rust backend: commands, pub/sub, Lua scripts,
+//! queues. The bot, the API and every cron worker share it.
 //!
-//! The specification is `dima-rust/ledger/dragonfly.md` (cross-process flows, byte-sensitive
-//! items, the node-redis / redis-rs reply differences and the rules a Rust implementation must
-//! follow) and charter data rules 6 to 8. `tests/dragonfly_golden/record.mjs` records what
-//! node-redis and the reference's Lua actually store; the `dragonfly_*` tests replay it and run a
-//! Node process beside Rust on the same keys.
+//! After the one cutover only Rust reads and writes Dragonfly (`MIGRATION.md` section 3,
+//! "Dragonfly is internal"), so queue items and pub/sub payloads are Rust's own encoding; nothing
+//! here has to produce the bytes Node would have produced. What still matches the reference: the
+//! Lua scripts (verbatim, data rule 7), the reply shapes the ported logic depends on, and the
+//! *carried* key families the porting package names. Within Rust, a value matched by its bytes
+//! (`LREM`, `LPOS`, Lua text comparison) is carried as the bytes that were read (data rule 6).
+//!
+//! The specification is `dima-rust/ledger/dragonfly.md` (flows, key families, reply
+//! differences) and charter data rules 6 to 8. `tests/dragonfly_golden/record.mjs` records what
+//! node-redis and the reference's Lua store; the golden tests pin the scripts and reply shapes.
 //!
 //! - [`config`]: [`DragonflyConfig`], the address built exactly as the reference builds it, and
 //!   the timeout policy.
 //! - [`client`]: [`Dragonfly`], the cloneable command handle on one multiplexed connection with
 //!   reconnection and a response timeout.
-//! - [`commands`]: typed helpers for the replies where node-redis and redis-rs differ.
+//! - [`commands`]: typed helpers for the replies where node-redis and redis-rs differ, scored
+//!   ranges, streams, counted pops and transactions with per-command results.
 //! - [`blocking`]: [`BlockingConnection`], a cancel-safe dedicated connection for blocking commands.
-//! - [`pubsub`]: [`Subscriber`] (raw, bounded, resubscribing) and the pub/sub manager's envelope.
-//! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script.
-//! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes.
+//! - [`pubsub`]: [`Subscriber`] (bounded, deadline-driven, resubscribing; each subscription
+//!   states its [`Overflow`] policy and may receive [`Event::Gap`]) and the JSON envelope.
+//! - [`script`]: [`Script`], `EVALSHA` with the `EVAL` fallback; one `.lua` file per script;
+//!   scripts with unbounded loops are refused before they are sent.
+//! - [`queue`]: [`QueueItem`] and list / sorted-set queues that carry items as exact bytes; the
+//!   unfenced processing-list helpers and [`FencedTransition`] for lease-checked transitions.
 //! - [`hooks`]: command spans and connection-error reporting, so telemetry attaches from outside.
 //! - [`plan_cache_fence`], [`cron_queue`]: the two protocols ported from the pre-existing crate.
 //!
@@ -38,8 +47,10 @@ pub use blocking::BlockingConnection;
 pub use client::Dragonfly;
 pub use commands::{End, SetCondition, SetExpiry, SetOptions, SetOutcome, Ttl};
 pub use config::DragonflyConfig;
-pub use error::DragonflyError;
+pub use error::{DecodeCategory, DecodeError, DragonflyError};
 pub use hooks::{CommandHook, ErrorHook, Hooks};
-pub use pubsub::{Message, Subscriber, Subscription, Topic};
-pub use queue::{DelayQueue, ListQueue, ProcessingList, QueueItem};
+pub use pubsub::{Event, Gap, Message, Overflow, Subscriber, Subscription, Topic};
+pub use queue::{
+    DelayQueue, Fence, FencedTransition, ListQueue, ProcessingList, QueueItem, Transition,
+};
 pub use script::Script;

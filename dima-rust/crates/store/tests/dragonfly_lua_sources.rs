@@ -69,3 +69,20 @@ fn the_rust_only_read_script_matches_the_old_port() -> Result<()> {
     ensure!(READ_PLAN_ACCOUNT.source() == rest.get(..end).context("slice")?);
     Ok(())
 }
+
+#[test]
+fn every_embedded_script_has_bounded_loops() -> Result<()> {
+    for script in [
+        &WRITE_PLAN_ACCOUNT,
+        &CHECK_PLAN_ACCOUNTS,
+        &ACCEPT_PLAN_CREDITS,
+        &INVALIDATE_PLAN,
+        &SYNC_CREDITS,
+        &READ_PLAN_ACCOUNT,
+        &ENQUEUE_DEDUPLICATED_JOB,
+        &PUBLISH_DURABLE_CRON_JOB,
+    ] {
+        script.check()?;
+    }
+    Ok(())
+}

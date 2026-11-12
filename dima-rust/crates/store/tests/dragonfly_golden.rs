@@ -1,10 +1,15 @@
 //! Replays `tests/dragonfly_golden/golden.json` (written by `record.mjs` with node-redis 5.12.1 and
 //! the reference's Lua) through `dima_store::dragonfly` and compares bytes.
 //!
+//! What these recordings pin as contract is the Lua scripts' effects and the reply shapes. Queue
+//! items and pub/sub envelopes are Rust's own encoding after the one cutover (`MIGRATION.md`
+//! section 3): their cases record that the encoding currently equals Node's, which is incidental.
+//! If Rust's encoding changes on purpose, update those cases; do not bend the encoder back.
+//!
 //! - Offline (always): Rust's encoders give the recorded bytes for the same inputs: cron jobs
 //!   (including the awkward text and JavaScript number formatting), plan versions, the pub/sub
 //!   envelopes.
-//! - Live (when `DIMA_TEST_DRAGONFLY` is set, logical database 15): Rust performs the same
+//! - Live (when `DIMA_TEST_DRAGONFLY` is set, logical database 9): Rust performs the same
 //!   operations through the Rust API and the stored values equal the recorded ones, after the
 //!   run's key prefix is swapped for the recorded one.
 
@@ -18,14 +23,14 @@ use dima_store::dragonfly::plan_cache_fence::{
     PlanCacheFence, TtlSeconds,
 };
 use dima_store::dragonfly::pubsub::envelope;
-use dima_store::dragonfly::{End, ListQueue, QueueItem, SetOptions, Topic, Ttl};
-use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, prefix};
+use dima_store::dragonfly::{End, ListQueue, Overflow, QueueItem, SetOptions, Topic, Ttl};
+use dragonfly_support::{AWKWARD_TEXT, cleanup, connect, expect_message, prefix};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::time::Duration;
 
-const DB: u8 = 15;
+const DB: u8 = 9;
 
 fn golden() -> Result<Value> {
     let path = concat!(
@@ -494,16 +499,16 @@ async fn published_envelopes_arrive_as_the_recorded_bytes() -> Result<()> {
     let channel = prefix("golden-pubsub");
     let subscriber = df.subscriber();
     let mut subscription = subscriber
-        .subscribe(Topic::Channel(channel.clone()))
+        .subscribe(Topic::Channel(channel.clone()), Overflow::Gap)
         .await?;
     df.publish_envelope(&channel, &clip_data(run.now_ms), run.now_ms)
         .await?;
     df.publish(&channel, br#"{"channelID":"42"}"#).await?;
     let pubsub = run.case("pubsub");
     for name in ["clip_request", "keywords_changed"] {
-        let message = tokio::time::timeout(Duration::from_secs(2), subscription.recv())
-            .await?
-            .context("message")?;
+        let message = expect_message(
+            tokio::time::timeout(Duration::from_secs(2), subscription.recv()).await?,
+        )?;
         ensure!(
             message.payload == recorded(&pubsub[name])?,
             "{name} differs"
