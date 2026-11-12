@@ -171,7 +171,9 @@
 //! - Recovery: a session is restored only if the check still accepts the recovering handshake
 //!   (above); an event too large to store breaks recovery from earlier offsets (the client
 //!   connects fresh) where the reference, which stores everything, replays it; the stores are
-//!   bounded and evict fairly between namespaces (see the `recovery` module).
+//!   bounded: packets evict fairly between namespaces, sessions between their verified owners
+//!   ([`Owner`]), with a smaller pool for sessions without one (see [`RecoveryLimits`]). A
+//!   recovery whose old socket's handlers have not ended after `recovery_wait` connects fresh.
 //! - A client packet whose parsed size does not fit the inbound budgets closes the connection
 //!   (`inbound overflow`) without being parsed (see [`Options::max_inbound_bytes`]).
 //! - From the transport (`engineioxide` with the patches of `vendor/README.md`): a polling

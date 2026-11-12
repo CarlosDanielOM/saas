@@ -9,24 +9,39 @@
 //! # What the defaults bound
 //!
 //! Every limit is a reservation taken before the memory is kept or the work starts, given back
-//! on every way out. Computed for `Options::default()` on a 64-bit target (MiB = 2^20 bytes):
+//! on every way out, and held for as long as the memory really lives (F-SOCKETIO-c, after the
+//! re-check of 2026-11-12). Computed for `Options::default()` on a 64-bit target (MiB = 2^20
+//! bytes):
 //!
 //! | | Per socket | Whole server |
 //! |---|---|---|
 //! | Inbound, parsed client data (events until their handler returns, acknowledgement answers until their waiter has them) | 16 MiB (`max_inbound_bytes`) | 256 MiB (`max_inbound_total`), CONNECT data included |
 //! | Inbound, CONNECT data kept as `handshake.auth` | 16 MiB per connection | (in the 256 MiB) |
-//! | Outbound, charged until written (in the transport, or waiting in replaceable slots) | 2 MiB in the transport + 2 MiB in slots; a single larger packet (≤ 16 MiB, `max_outbound_message`) is allowed alone in each, so 32 MiB at most | 128 MiB (`max_outbound_total`) |
-//! | Recovery | a session ≤ 16 KiB | packets 64 MiB, sessions 32 MiB |
+//! | Outbound, charged until written: in the transport until it is flushed to the WebSocket, or until hyper has written the polling answer to the socket or dropped it with the connection (the answer's bytes own Engine.IO's body); or waiting in replaceable slots | 2 MiB in the transport + 2 MiB in slots; a single larger packet (≤ 16 MiB, `max_outbound_message`) is allowed alone in each, so 32 MiB at most | 128 MiB (`max_outbound_total`) |
+//! | Recovery packets, charged until their last owner lets go: the store, or a restore sending them after the store evicted them | a restore holds at most one batch (64 packets of one namespace, so ≤ 8 MiB), and ends as a slow consumer when its client takes nothing for `close_timeout` | 64 MiB (`bytes_total`) |
+//! | Recovery sessions (measured after compaction, owner key included) | a session ≤ 16 KiB; an owner ≤ 256 sessions (4 MiB) | 32 MiB: owned pool 28 MiB (3584 sessions), anonymous pool 4 MiB (512 sessions), which never takes from the owned one |
 //!
 //! So what this crate holds for clients is at most 256 + 128 + 64 + 32 = 480 MiB, plus small
 //! bookkeeping: the namespace table (33,024 members × a few hundred bytes ≈ 13 MB), 16,384
-//! acknowledgement slots and 4,096 connections × 8 sockets of fixed per-socket state (a few kB
-//! each: ≈ 100 MB if every connection joined 8 namespaces). Outside these budgets, and bounded
-//! by the transport rather than by this crate: a message being received is buffered whole
-//! before it is handed over (at most `max_http_buffer_size`, 1 MB, per connection: ≈ 3.8 GiB if
-//! all 4,096 connections sent a maximal message at the same instant), and a message being
-//! written can exist twice for a moment (Engine.IO's encoded copy, and the compressed copy of a
-//! polling answer of at most 1 MB). The reference bounds none of this.
+//! acknowledgement slots, 4,096 connections × 8 sockets of fixed per-socket state (a few kB
+//! each: ≈ 100 MB if every connection joined 8 namespaces), the per-owner order of the kept
+//! sessions (about 100 bytes each, ≈ 0.4 MB), and the compressed client files made when the
+//! server is built (gzip and deflate of 1.2 MB of JavaScript: about 0.6 MB, for the server's
+//! life). Outside these budgets, and bounded by the transport rather than by this crate: a
+//! message being received is buffered whole before it is handed over (at most
+//! `max_http_buffer_size`, 1 MB, per connection: ≈ 3.8 GiB if all 4,096 connections sent a
+//! maximal message at the same instant), and a message being written can exist twice for a
+//! moment (Engine.IO's encoded copy, and the compressed copy of a polling answer of at most
+//! 1 MB, made while the uncompressed one is still charged). Bytes the kernel has accepted into
+//! a socket's send buffer are released as written. The reference bounds none of this.
+//!
+//! The polling row relies on hyper's queued write strategy, which keeps an answer's `Bytes`
+//! until they are written: hyper uses it because `dima-web`'s connection socket is vectored
+//! (`is_write_vectored`, a TCP stream). Over a socket that is not (a TLS wrapper without
+//! vectored writes), hyper would copy the answer into its own buffer and drop the bytes
+//! early: the charge would end at the copy, and the copy would be outside the budget.
+//! `tests/adversarial.rs` (`a_polling_answer_stays_charged_until_it_is_written`) fails if that
+//! happens.
 
 use std::time::Duration;
 
