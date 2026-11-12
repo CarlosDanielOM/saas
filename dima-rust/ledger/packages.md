@@ -38,9 +38,12 @@ Decisions behind the map:
 - **Own router.** `dima-web` implements Express's ordered dispatch (registration order, case-insensitive
   paths, optional trailing slash, mounts, pathless middleware, error handlers), so route tables are
   ported one to one. axum/hyper are used underneath.
-- **Own Socket.IO layer.** `socketioxide` 0.18 has no connection state recovery (checked in its source),
-  and overlays rely on missed events being replayed after a reconnect. `dima-socketio` implements the
-  Socket.IO protocol (namespaces including dynamic ones, acks, recovery) on top of `engineioxide`.
+- **Own Socket.IO layer, limited to what the clients use.** `socketioxide` 0.18 has no connection state
+  recovery (checked in its source), and three overlays loaded in OBS (triggers, clips, furry) show
+  events replayed after a short disconnect and fetch nothing themselves. `dima-socketio` implements
+  Socket.IO protocol revision 5 on top of `engineioxide`: text events and acknowledgements, static
+  and pattern namespaces, recovery for the namespaces that have it today; no rooms beyond a socket's
+  own, binary packets refused. Evidence, the options weighed and the design are in `socketio.md`.
 - **The engine cycle is split in two.** The 61-file TypeScript import cycle becomes a pure engine crate
   with a host trait, and an actions crate that implements the host.
 - **Reference captures.** The rig records the frozen reference once and stores the captures; candidates
@@ -79,7 +82,7 @@ Decisions behind the map:
 | PILOT | `services/dimadb-server` ported and verified in the rig against the Node server: 27 routes, 22 scenarios, 371 steps, 22 of 22 match with the hardened rig (re-recorded and verified by the lead). Release Rust against Node 26 on the same 370 requests: 7.5 MB against 102 MB resident after start, 46-62 MB against 142-153 MB after the run, 1.05 s against 2.0 s of CPU | high | F-WEB-02, F-STORE-MONGO, F-STORE-DF, RIG-01 | merged |
 | RIG-02a | Rig: mock of the outside world (every provider in the ledger, behaviour as data, stateful where needed, unknown calls fail the scenario); outbound calls recorded and compared (capture format 3); the frozen TypeScript backend as the reference from the image `dimabot-ref:0c71108e` (built by the lead), confined to the mock by a Node preload; signed EventSub and Polar webhook steps; the pilot's rig feedback (side values in steps, binary arguments, data-file hook, declared times in bodies, literal step values as known inputs, database-limited users) | xhigh | RIG-01b | running |
 | RIG-02b | Rig: Socket.IO, raw WebSocket and SSE-stream steps with a real JavaScript client as helper; socket emissions recorded and compared | high | RIG-02a | planned |
-| F-SOCKETIO | `dima-socketio` | xhigh | F-WEB-01 | planned |
+| F-SOCKETIO | `dima-socketio` as designed in `socketio.md`: Engine.IO from `engineioxide` with every limit set explicitly; packet codec (text only); static and pattern namespaces with ASCII matching and admission before allocation; typed handshake checks with the structured connect error; events and acknowledgements in both directions with deadlines; bounded per-socket queues and a slow-consumer policy; recovery (sessions and replay buffers with hard bounds, only the events the reference would have stored); the vendored `/socket.io/socket.io.js`; shutdown through the upgrade contract of `dima-web`; verified with `socket.io-client` 4.8.3 and 4.7.5 over polling, WebSocket and the upgrade | xhigh | F-WEB-03 | planned |
 | F-TEXT-b | From the pilot: `JSON.stringify(value, null, 2)`, `encodeURIComponent` / `decodeURIComponent`, a `JSON.parse` wrapper (key order, numbers as JavaScript holds them) shared with `dima-web`, `Date.prototype.toString` | high | F-TEXT | planned |
 
 ## Later phases
