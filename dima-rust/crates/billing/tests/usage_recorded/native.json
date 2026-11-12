@@ -1,0 +1,3031 @@
+{
+  "recorded": "dima-rust/src/workers/ai_usage_receipts at 0c71108e, unchanged",
+  "now": 1794490659279,
+  "steps": [
+    {
+      "name": "tts",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_tts\",\"requestId\":\"req-aiu_tts\",\"occurredAt\":\"2026-11-12T12:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":150,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_tts\",\"itemized\":true,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "150"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "150"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "repeat",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_tts\",\"requestId\":\"req-aiu_tts\",\"occurredAt\":\"2026-11-12T12:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":150,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_tts\",\"itemized\":true,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "150"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "150"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "fraction",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_chat\",\"requestId\":\"req-aiu_chat\",\"occurredAt\":\"2026-11-12T11:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":0.25,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_chat\",\"itemized\":true,\"category\":\"ai_chat\",\"quantity\":3.5,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "150.25"
+            },
+            "transactionCount": {
+              "$numberInt": "2"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "grant",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_grant\",\"requestId\":\"req-aiu_grant\",\"occurredAt\":\"2026-11-12T10:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":-5000,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_grant\",\"itemized\":true,\"entryKind\":\"adjustment\",\"category\":\"credit_adjustment\",\"operation\":\"grant\",\"source\":\"admin_credit_grant\",\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "-4849.75"
+            },
+            "transactionCount": {
+              "$numberInt": "2"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "legacy-category",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_legacy\",\"requestId\":\"req-aiu_legacy\",\"occurredAt\":\"2026-11-10T13:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":7,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_legacy\",\"itemized\":true,\"category\":\"weird\",\"quantity\":null,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "-4849.75"
+            },
+            "transactionCount": {
+              "$numberInt": "2"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "debit",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_debit\",\"requestId\":\"req-aiu_debit\",\"occurredAt\":\"2026-11-12T12:37:39.274Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":30,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_debit\",\"itemized\":true,\"entryKind\":\"adjustment\",\"category\":\"credit_adjustment\",\"operation\":\"correction\",\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "-4819.75"
+            },
+            "transactionCount": {
+              "$numberInt": "2"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "expired",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_expired\",\"requestId\":\"req-aiu_expired\",\"occurredAt\":\"2026-08-04T13:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":4,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_expired\",\"itemized\":true,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "-4819.75"
+            },
+            "transactionCount": {
+              "$numberInt": "2"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "tts": {
+                "credits": {
+                  "$numberInt": "150"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "large",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_large\",\"requestId\":\"req-aiu_large\",\"occurredAt\":\"2026-11-12T09:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":3000000000,\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_large\",\"itemized\":true,\"quantity\":2147483648,\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_large",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "3000000000.0"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802252259279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794476259279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "2147483648.0"
+            },
+            "requestId": "req-aiu_large",
+            "resourceId": "speech-aiu_large",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "3000000150.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "2999995180.25"
+            },
+            "transactionCount": {
+              "$numberInt": "3"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "tts": {
+                "credits": {
+                  "$numberDouble": "3000000150.0"
+                },
+                "transactionCount": {
+                  "$numberInt": "2"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "coerced",
+      "queued": "{\"channelID\":\"rec-native-channel\",\"customerId\":\"rec-native-customer\",\"id\":\"aiu_coerced\",\"requestId\":\"req-aiu_coerced\",\"occurredAt\":\"2026-11-12T08:37:39.279Z\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"adjustmentType\":null,\"provider\":\"fish\",\"model\":null,\"quantity\":100,\"unit\":\"characters\",\"credits\":\" 0x10 \",\"resourceType\":\"speech\",\"resourceId\":\"speech-aiu_coerced\",\"itemized\":true,\"requestId\":\"  r  \",\"model\":\"😀👋 émoji שלום\",\"operation\":\"   \",\"enqueuedAt\":\"2026-11-12T13:37:39.279Z\"}",
+      "processed": 1,
+      "success": true,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_coerced",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "16"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802248659279"
+              }
+            },
+            "itemized": true,
+            "model": "😀👋 émoji שלום",
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794472659279"
+              }
+            },
+            "operation": "usage",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "r",
+            "resourceId": "speech-aiu_coerced",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_large",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "3000000000.0"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802252259279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794476259279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "2147483648.0"
+            },
+            "requestId": "req-aiu_large",
+            "resourceId": "speech-aiu_large",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "3000000166.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "2999995196.25"
+            },
+            "transactionCount": {
+              "$numberInt": "4"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "tts": {
+                "credits": {
+                  "$numberDouble": "3000000166.0"
+                },
+                "transactionCount": {
+                  "$numberInt": "3"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "invalid",
+      "queued": "not a receipt",
+      "processed": 1,
+      "success": false,
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_coerced",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "16"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802248659279"
+              }
+            },
+            "itemized": true,
+            "model": "😀👋 émoji שלום",
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794472659279"
+              }
+            },
+            "operation": "usage",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "r",
+            "resourceId": "speech-aiu_coerced",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_large",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "3000000000.0"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802252259279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794476259279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "2147483648.0"
+            },
+            "requestId": "req-aiu_large",
+            "resourceId": "speech-aiu_large",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "3000000166.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "2999995196.25"
+            },
+            "transactionCount": {
+              "$numberInt": "4"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "tts": {
+                "credits": {
+                  "$numberDouble": "3000000166.0"
+                },
+                "transactionCount": {
+                  "$numberInt": "3"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": []
+      }
+    },
+    {
+      "name": "dashboard-refresh",
+      "documents": {
+        "ai_usage_receipts": [
+          {
+            "entryId": "aiu_chat",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "ai_chat",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "0.25"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802259459279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794483459279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "3.5"
+            },
+            "requestId": "req-aiu_chat",
+            "resourceId": "speech-aiu_chat",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_coerced",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "16"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802248659279"
+              }
+            },
+            "itemized": true,
+            "model": "😀👋 émoji שלום",
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794472659279"
+              }
+            },
+            "operation": "usage",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "r",
+            "resourceId": "speech-aiu_coerced",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_debit",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "correction",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "30"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059274"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059274"
+              }
+            },
+            "operation": "correction",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_debit",
+            "resourceId": "speech-aiu_debit",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "customerId": "rec-native-customer",
+            "channelID": "rec-native-channel",
+            "entryId": "aiu_grant",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": "manual_grant",
+            "category": "credit_adjustment",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "-5000"
+            },
+            "entryKind": "adjustment",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802255859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794479859279"
+              }
+            },
+            "operation": "grant",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_grant",
+            "resourceId": "speech-aiu_grant",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "admin_credit_grant",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_large",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberDouble": "3000000000.0"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802252259279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794476259279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberDouble": "2147483648.0"
+            },
+            "requestId": "req-aiu_large",
+            "resourceId": "speech-aiu_large",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_legacy",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "uncategorized",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "7"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794317859279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "0"
+            },
+            "requestId": "req-aiu_legacy",
+            "resourceId": "speech-aiu_legacy",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          },
+          {
+            "entryId": "aiu_tts",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "adjustmentType": null,
+            "category": "tts",
+            "created_at": "<write time>",
+            "credits": {
+              "$numberInt": "150"
+            },
+            "entryKind": "usage",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "itemized": true,
+            "model": null,
+            "occurredAt": {
+              "$date": {
+                "$numberLong": "1794487059279"
+              }
+            },
+            "operation": "synthesize",
+            "provider": "fish",
+            "quantity": {
+              "$numberInt": "100"
+            },
+            "requestId": "req-aiu_tts",
+            "resourceId": "speech-aiu_tts",
+            "resourceType": "speech",
+            "retentionTier": "pro",
+            "source": "tts_queue",
+            "unit": "characters",
+            "updated_at": "<write time>"
+          }
+        ],
+        "ai_usage_dailies": [
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-10",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794268800000"
+              }
+            },
+            "spentCredits": {
+              "$numberInt": "7"
+            },
+            "grantedCredits": {
+              "$numberInt": "0"
+            },
+            "netConsumedCredits": {
+              "$numberInt": "7"
+            },
+            "transactionCount": {
+              "$numberInt": "1"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802093859279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "uncategorized": {
+                "credits": {
+                  "$numberInt": "7"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          },
+          {
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "date": "2026-11-12",
+            "dayStart": {
+              "$date": {
+                "$numberLong": "1794441600000"
+              }
+            },
+            "spentCredits": {
+              "$numberDouble": "3000000166.25"
+            },
+            "grantedCredits": {
+              "$numberInt": "5000"
+            },
+            "netConsumedCredits": {
+              "$numberDouble": "2999995196.25"
+            },
+            "transactionCount": {
+              "$numberInt": "4"
+            },
+            "retentionTier": "pro",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1802263059279"
+              }
+            },
+            "created_at": "<write time>",
+            "updated_at": "<write time>",
+            "__v": {
+              "$numberInt": "0"
+            },
+            "categories": {
+              "ai_chat": {
+                "credits": {
+                  "$numberDouble": "0.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "1"
+                }
+              },
+              "tts": {
+                "credits": {
+                  "$numberDouble": "3000000166.0"
+                },
+                "transactionCount": {
+                  "$numberInt": "3"
+                }
+              }
+            }
+          }
+        ],
+        "ai_usage_ledger_states": [],
+        "ai_usage_dashboards": [
+          {
+            "key": "native-dashboard",
+            "channelID": "rec-native-channel",
+            "customerId": "rec-native-customer",
+            "planTier": "pro",
+            "request": {
+              "channelID": "rec-native-channel",
+              "customerId": "rec-native-customer",
+              "planTier": "pro",
+              "accountCreatedAt": "2025-10-08T13:37:39.279Z",
+              "window": {
+                "from": "x",
+                "to": "y",
+                "timeZone": "UTC",
+                "startTimestamp": "2026-11-09T13:37:39.279Z",
+                "endTimestampExclusive": "2026-11-13T13:37:39.279Z",
+                "days": [
+                  "a",
+                  "b"
+                ]
+              }
+            },
+            "data": {
+              "summary": {
+                "schemaVersion": {
+                  "$numberInt": "1"
+                },
+                "itemizationStartedAt": "2026-09-18T19:30:00.000Z",
+                "period": {
+                  "from": "x",
+                  "to": "y",
+                  "timeZone": "UTC",
+                  "dayCount": {
+                    "$numberInt": "2"
+                  }
+                },
+                "totalSpentCredits": {
+                  "$numberDouble": "3000000173.25"
+                },
+                "averageDailySpentCredits": {
+                  "$numberDouble": "1500000086.63"
+                },
+                "grantedCredits": {
+                  "$numberInt": "5000"
+                },
+                "adjustmentDebitedCredits": {
+                  "$numberInt": "30"
+                },
+                "netConsumedCredits": {
+                  "$numberDouble": "2999995203.25"
+                },
+                "transactionCount": {
+                  "$numberInt": "5"
+                },
+                "daily": [
+                  {
+                    "date": "a",
+                    "credits": {
+                      "$numberInt": "0"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "0"
+                    }
+                  },
+                  {
+                    "date": "b",
+                    "credits": {
+                      "$numberInt": "0"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "0"
+                    }
+                  }
+                ],
+                "categories": [
+                  {
+                    "category": "tts",
+                    "credits": {
+                      "$numberDouble": "3000000166.0"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "3"
+                    },
+                    "percentage": {
+                      "$numberInt": "100"
+                    }
+                  },
+                  {
+                    "category": "uncategorized",
+                    "credits": {
+                      "$numberInt": "7"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "1"
+                    },
+                    "percentage": {
+                      "$numberInt": "0"
+                    }
+                  },
+                  {
+                    "category": "ai_chat",
+                    "credits": {
+                      "$numberDouble": "0.25"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "1"
+                    },
+                    "percentage": {
+                      "$numberInt": "0"
+                    }
+                  }
+                ],
+                "adjustments": [
+                  {
+                    "type": "correction",
+                    "grantedCredits": {
+                      "$numberInt": "0"
+                    },
+                    "debitedCredits": {
+                      "$numberInt": "30"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "1"
+                    }
+                  },
+                  {
+                    "type": "manual_grant",
+                    "grantedCredits": {
+                      "$numberInt": "5000"
+                    },
+                    "debitedCredits": {
+                      "$numberInt": "0"
+                    },
+                    "transactionCount": {
+                      "$numberInt": "1"
+                    }
+                  }
+                ]
+              },
+              "history": null
+            },
+            "dirty": false,
+            "refreshedAt": "<write time>",
+            "expiresAt": {
+              "$date": {
+                "$numberLong": "1794577059279"
+              }
+            },
+            "__v": {
+              "$numberInt": "0"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "dead": [
+    "not a receipt"
+  ]
+}
