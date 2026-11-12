@@ -23,6 +23,7 @@ dima-core = { path = "crates/core" }
 dima-store = { path = "crates/store" }
 dima-telemetry = { path = "crates/telemetry" }
 dima-http = { path = "crates/http" }
+dima-email = { path = "crates/email" }
 dima-web = { path = "crates/web" }
 dima-socketio = { path = "crates/socketio" }
 dima-model = { path = "crates/model" }
