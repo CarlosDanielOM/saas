@@ -61,7 +61,7 @@ impl fmt::Debug for TwitchConfig {
 /// |---|---|---|
 /// | `refresh_lock_ttl` | 5 s | `REFRESH_LOCK_TTL_MS` (`twitch_streamers.class.ts`); renewed every third of it while the holder works (Rust only) |
 /// | `exchange_marker_ttl` | 30 s | Rust only: how long a refresh whose outcome is unknown (lost answer, dead holder) blocks the next exchange of that streamer; renewed while the holder lives |
-/// | `refresh_wait` | 4.5 s | `REFRESH_WAIT_TIMEOUT_MS` |
+/// | `refresh_wait` | 4.5 s | `REFRESH_WAIT_TIMEOUT_MS`; a hard bound here (the reference's wait can overrun by its cache commands) |
 /// | `refresh_wait_poll` | 150 ms | `REFRESH_WAIT_POLL_MS` |
 /// | `token_expiry_skew_secs` | 300 | `TOKEN_EXPIRY_SKEW_SECONDS` |
 /// | `waiter_expiry_skew_secs` | 60 | the literal `60` of `waitForRefreshedToken` and `refreshTwitchToken` |
@@ -75,6 +75,7 @@ impl fmt::Debug for TwitchConfig {
 /// | `park_grace` | 2 s | Rust only: after the drain, how long a rotation MongoDB has not taken may take to be parked in Dragonfly |
 /// | `persist_retry` | 200 ms doubling to 2 s | Rust only: the pause between writes of a rotation MongoDB refused (never a new exchange) |
 /// | `park_ttl` | 30 days | Rust only: how long a parked rotation waits for the next refresh of its streamer |
+/// | `directory_read` | 500 ms | Rust only: the default deadline of a directory read ([`crate::Twitch::streamer`]); the chat path uses it. A read is one Dragonfly script round trip (well under a millisecond on the host), a miss adds one MongoDB read and one write (a few milliseconds), so it fires only when a store is unhealthy; a hydration it started goes on in the background |
 /// | `permission_recheck` | 30 s | Rust only: how long a "no permissions" confirmed by MongoDB is not checked again (per streamer and cached generation) |
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Timings {
@@ -115,6 +116,8 @@ pub struct Timings {
     /// How long a cached "no permissions" that MongoDB confirmed is trusted without asking
     /// MongoDB again.
     pub permission_recheck: Duration,
+    /// The default deadline of a directory read.
+    pub directory_read: Duration,
 }
 
 impl Timings {
@@ -139,6 +142,7 @@ impl Timings {
             persist_retry_max: Duration::from_secs(2),
             park_ttl: Duration::from_secs(30 * 24 * 3600),
             permission_recheck: Duration::from_secs(30),
+            directory_read: Duration::from_millis(500),
         }
     }
 

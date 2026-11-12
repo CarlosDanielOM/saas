@@ -1249,17 +1249,36 @@ impl Inner {
         }
     }
 
-    /// `waitForRefreshedToken`.
+    /// `waitForRefreshedToken`, never longer than [`crate::Timings::refresh_wait`] (a slow
+    /// cache command cannot stretch it).
     async fn wait_for_refreshed(
         &self,
         id: &str,
         rejected: Option<&AccessToken>,
         want_token: bool,
     ) -> Result<Option<AccessToken>, TwitchError> {
+        let deadline = Instant::now() + self.config.timings.refresh_wait;
+        tokio::time::timeout_at(
+            deadline,
+            self.poll_for_refreshed(id, rejected, want_token, deadline),
+        )
+        .await
+        .unwrap_or(Ok(None))
+    }
+
+    async fn poll_for_refreshed(
+        &self,
+        id: &str,
+        rejected: Option<&AccessToken>,
+        want_token: bool,
+        deadline: Instant,
+    ) -> Result<Option<AccessToken>, TwitchError> {
         let timings = &self.config.timings;
-        let deadline = Instant::now() + timings.refresh_wait;
         while Instant::now() < deadline {
             tokio::time::sleep(timings.refresh_wait_poll).await;
+            #[cfg(any(test, feature = "test-util"))]
+            self.fault(crate::base::FaultPoint::RefreshWaitPoll, id)
+                .await;
             if !want_token {
                 if !self.lease_held(id).await? {
                     break;

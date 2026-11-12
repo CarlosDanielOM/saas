@@ -53,6 +53,13 @@ pub enum TwitchError {
     /// The work stopped before it produced a result (aborted at shutdown).
     #[error("the operation was interrupted")]
     Interrupted,
+    /// The caller's deadline passed first (the store is slow or unreachable; work already
+    /// started, such as a hydration, goes on in the background).
+    #[error("{op} did not finish within the caller's deadline")]
+    Deadline {
+        /// The operation.
+        op: &'static str,
+    },
 }
 
 impl TwitchError {

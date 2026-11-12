@@ -572,6 +572,8 @@ impl Inner {
         self: &Arc<Self>,
         id: &str,
     ) -> Result<Option<StreamerAccount>, TwitchError> {
+        #[cfg(any(test, feature = "test-util"))]
+        self.fault(crate::base::FaultPoint::DirectoryRead, id).await;
         let account = match self.read_hash(id).await? {
             HashRead::Accepted(fields) => StreamerAccount::from_cache(fields, &self.cipher),
             HashRead::Missing | HashRead::Stale => return self.hydrate(id).await,
@@ -808,9 +810,11 @@ impl Twitch {
 
     /// `getTwitchAccountById`: the streamer's directory entry, hydrated from MongoDB when the
     /// hash is missing, incomplete or older than the plan fence; `None` when there is no such
-    /// Twitch account (errors are logged and also give `None`, as in the reference).
+    /// Twitch account (errors, the deadline included, are logged and also give `None`, as in
+    /// the reference). Bounded by [`crate::Timings::directory_read`]; use
+    /// [`Twitch::streamer_within`] to tell "no such streamer" from "directory unavailable".
     pub async fn streamer(&self, id: &str) -> Option<StreamerAccount> {
-        match self.inner.account(id).await {
+        match self.try_streamer(id).await {
             Ok(account) => account,
             Err(error) => {
                 self.inner.log(
@@ -830,7 +834,24 @@ impl Twitch {
 
     /// [`Twitch::streamer`] with the error returned instead of logged.
     pub async fn try_streamer(&self, id: &str) -> Result<Option<StreamerAccount>, TwitchError> {
-        self.inner.account(id).await
+        self.streamer_within(id, self.inner.config.timings.directory_read)
+            .await
+    }
+
+    /// The directory entry within the caller's `deadline`: `Ok(None)` when there is no such
+    /// streamer, `Err` when the directory could not answer in time
+    /// ([`TwitchError::Deadline`]) or failed. A hydration it started goes on in the
+    /// background, so the next read finds the entry.
+    pub async fn streamer_within(
+        &self,
+        id: &str,
+        deadline: std::time::Duration,
+    ) -> Result<Option<StreamerAccount>, TwitchError> {
+        tokio::time::timeout(deadline, self.inner.account(id))
+            .await
+            .unwrap_or(Err(TwitchError::Deadline {
+                op: "directory read",
+            }))
     }
 
     /// `getTwitchAccountsFromCache`: every streamer in the directory (the aggregate when its

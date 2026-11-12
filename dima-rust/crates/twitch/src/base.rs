@@ -92,6 +92,10 @@ pub enum FaultPoint {
     BeforeCacheWrite,
     /// A hydration or start-up load read the user and is about to write the hash.
     BeforeDirectoryWrite,
+    /// A directory read is about to ask Dragonfly.
+    DirectoryRead,
+    /// A process waiting for another's refresh is about to look at the cache.
+    RefreshWaitPoll,
 }
 
 /// What the fault hook makes of a point (feature `test-util`).
