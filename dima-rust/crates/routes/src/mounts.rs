@@ -381,7 +381,8 @@ pub static MOUNTS: [Mount; 54] = [
         "oauthApiRoute",
         F::OAuthApi,
         "P4-API-APP",
-        &[G::OAuthToken],
+        // `Public`: the JSON 404 of every other path.
+        &[G::OAuthToken, G::Public],
     ),
     get(
         72,
@@ -591,7 +592,6 @@ pub static MOUNTS: [Mount; 54] = [
         &[
             G::User,
             G::ChannelPermission(&["triggers:view", "triggers:edit", "triggers:delete"]),
-            G::Public,
         ],
     ),
     use_router(

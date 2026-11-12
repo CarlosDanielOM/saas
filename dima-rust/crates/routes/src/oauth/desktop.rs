@@ -207,6 +207,7 @@ async fn turn<S: RouteState>(req: &mut Req<S>) -> Result<Response, Error> {
 /// `POST /v1/me/ai/turns/:turnId/cancel`, first step: an empty object body, checked before
 /// the token as the reference does.
 async fn empty_body<S: RouteState>(req: &mut Req<S>) -> Result<Flow, Error> {
+    // raw body: only its emptiness is read.
     match req.body() {
         Value::Object(object) if object.is_empty() => Ok(Flow::Next),
         _ => Err(OAuthError::INVALID_REQUEST.into()),
@@ -293,6 +294,7 @@ async fn pet_cancel<S: RouteState>(req: &mut Req<S>) -> Result<Response, Error> 
     let pets: Arc<dyn PetControl> = service(req)?;
     let who = OAuthAccess::of(req)?.identity().clone();
     pets.configuration(&who.user_id, &who.channel_id).await?;
+    // raw body: only the `commandId` key is allowed, and passed to the pet service's check.
     let command_id = match req.body() {
         Value::Object(object) if object.keys().all(|key| key == "commandId") => {
             object.get("commandId").cloned()
