@@ -32,6 +32,7 @@ tokio = { workspace = true }
 unicode-normalization = { workspace = true }
 
 [dev-dependencies]
+dima-core = { workspace = true, features = ["test-util"] }
 anyhow = { workspace = true }
 flate2 = { workspace = true }
 futures-util = { workspace = true }

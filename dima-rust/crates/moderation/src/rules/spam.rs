@@ -27,7 +27,9 @@ use dima_model::moderation_chatters;
 use dima_store::dragonfly::commands::reply;
 use dima_store::dragonfly::{Script, SetOptions};
 use dima_store::mongo::WriteContext;
+use dima_store::mongo::error::is_duplicate_key;
 use dima_store::mongo::update::UpdateOptions;
+use dima_store::mongo::write::WriteError;
 use regex::{Regex, RegexBuilder};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -403,17 +405,21 @@ impl RulesStore {
                 message: error.to_string(),
             })?;
         let mut writes = self.mongo.writes(moderation_chatters::COLLECTION);
-        let first = match self
-            .mongo_call(
-                "moderation_chatters.updateOne",
-                writes.update_one(&prepared),
-            )
-            .await
-        {
-            Ok(outcome) => outcome.upserted_id.is_some(),
-            Err(StoreError::Mongo { message, .. }) if message.contains("E11000") => false,
-            Err(error) => return Err(error),
-        };
+        let first =
+            match tokio::time::timeout(self.config.mongo_deadline, writes.update_one(&prepared))
+                .await
+            {
+                Err(_) => return Err(StoreError::Deadline("moderation_chatters.updateOne")),
+                Ok(Ok(outcome)) => outcome.upserted_id.is_some(),
+                // Two first messages racing: the loser's upsert hits the `_id`.
+                Ok(Err(WriteError::Driver(error))) if is_duplicate_key(&error) => false,
+                Ok(Err(error)) => {
+                    return Err(StoreError::Mongo {
+                        operation: "moderation_chatters.updateOne",
+                        message: error.to_string(),
+                    });
+                }
+            };
         self.dragonfly
             .set(&key, b"1", SetOptions::ex(SEEN_MARKER_SECONDS))
             .await?;

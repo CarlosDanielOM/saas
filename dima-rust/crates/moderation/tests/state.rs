@@ -434,7 +434,7 @@ async fn decisions_are_created_once_and_semantic_waits_are_fenced() {
         assert_eq!(expires, now + 180 * 86_400_000);
         // The rule is stored with its variations compiled for spaces.
         let entry = a.get_document("rule").unwrap().get_document("variations").unwrap().get_array("entries").unwrap()[0].as_document().unwrap().clone();
-        assert_eq!(entry.get_bool("allowSpaces").unwrap(), true);
+        assert!(entry.get_bool("allowSpaces").unwrap());
         assert!(entry.get("symbolVersion").is_none());
         assert_eq!(a.get_array("matches").unwrap()[0].as_document().unwrap().get("end"), Some(&bson::Bson::Int32(4)));
 
@@ -465,6 +465,82 @@ async fn decisions_are_created_once_and_semantic_waits_are_fenced() {
         // A completed one is never overwritten by the fence.
         let completed = store.await_semantic_decision(&id, now - 1).await.unwrap().unwrap();
         assert_eq!(completed.get_str("status").unwrap(), "scored");
+    })
+    .await;
+}
+
+#[derive(Default)]
+struct FakeCache {
+    calls: std::sync::Mutex<Vec<(String, Option<i32>)>>,
+}
+
+impl dima_moderation::rules::defaults::SettingsCacheHook for FakeCache {
+    fn prime<'a>(
+        &'a self,
+        channel_id: &'a str,
+        settings: &'a bson::Document,
+    ) -> std::pin::Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+        let rules = settings.get_array("rules").map(|r| r.len() as i32).ok();
+        self.calls
+            .lock()
+            .unwrap()
+            .push((channel_id.to_owned(), rules));
+        Box::pin(async {})
+    }
+    fn invalidate<'a>(
+        &'a self,
+        channel_id: &'a str,
+    ) -> std::pin::Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((channel_id.to_owned(), None));
+        Box::pin(async {})
+    }
+}
+
+#[tokio::test]
+async fn first_activation_seeds_once_and_replaces_only_the_untouched_stub() {
+    with_store(|store, _| async move {
+        let random = dima_core::SeededRandom::new(7);
+        let cache = FakeCache::default();
+        let collection = store.mongo.documents("channel_moderation_settings");
+        // The unique index Mongoose builds at startup (the schema's `unique: true`), which the
+        // production collection has: it is what makes a racing create fail.
+        collection
+            .create_index(mongodb::IndexModel::builder().keys(bson::doc! { "channelID": 1 }).options(mongodb::options::IndexOptions::builder().unique(true).build()).build())
+            .await
+            .unwrap();
+        // Two registrations at once: one document.
+        let (a, b) = tokio::join!(
+            store.seed_default_moderation_settings("c1", "One", &random, &cache),
+            store.seed_default_moderation_settings("c1", "One", &random, &cache)
+        );
+        a.unwrap();
+        b.unwrap();
+        assert_eq!(collection.count_documents(bson::doc! { "channelID": "c1" }).await.unwrap(), 1);
+        let seeded = collection.find_one(bson::doc! { "channelID": "c1" }).await.unwrap().unwrap();
+        assert!(seeded.get_bool("enabled").unwrap());
+        let rules = seeded.get_array("rules").unwrap();
+        assert_eq!(rules.len(), 4);
+        let kinds: Vec<&str> = rules.iter().map(|r| r.as_document().unwrap().get_str("type").unwrap()).collect();
+        assert_eq!(kinds, ["caps", "links", "emote_spam", "blacklist"]);
+        assert!(!rules[3].as_document().unwrap().get_bool("enabled").unwrap());
+        // It decodes through the model and compiles.
+        let typed: dima_model::channel_moderation_settings::ChannelModerationSettings = bson::deserialize_from_document(seeded.clone()).unwrap();
+        assert_eq!(dima_moderation::rules::CompiledSettings::compile(Arc::new(typed)).rules().len(), 4);
+        assert_eq!(cache.calls.lock().unwrap().as_slice(), [("c1".to_owned(), Some(4)), ("c1".to_owned(), Some(4))]);
+        // A saved document is kept.
+        collection.update_one(bson::doc! { "channelID": "c1" }, bson::doc! { "$set": { "enabled": false, "rules": [], "settingsVersion": 2 } }).await.unwrap();
+        store.seed_default_moderation_settings("c1", "One", &random, &cache).await.unwrap();
+        let kept = collection.find_one(bson::doc! { "channelID": "c1" }).await.unwrap().unwrap();
+        assert_eq!(kept.get_array("rules").unwrap().len(), 0);
+        // The untouched stub is replaced.
+        collection.insert_one(bson::doc! { "channelID": "c2", "enabled": false, "rules": [], "settingsVersion": 1 }).await.unwrap();
+        store.seed_default_moderation_settings("c2", "Two", &random, &cache).await.unwrap();
+        let replaced = collection.find_one(bson::doc! { "channelID": "c2" }).await.unwrap().unwrap();
+        assert_eq!(replaced.get_array("rules").unwrap().len(), 4);
+        assert_eq!(replaced.get_str("channel").unwrap(), "Two");
     })
     .await;
 }
