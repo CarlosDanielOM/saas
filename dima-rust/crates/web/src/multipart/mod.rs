@@ -47,7 +47,9 @@
 //!   `Multipart: Boundary not found`, `Malformed part header`, `Unexpected end of form`.
 //! - On any error every stored file is removed through the storage before the error is
 //!   returned. Unlike multer, a partly written file (client gone, storage failure, deadline) is
-//!   removed too.
+//!   removed too, and so is every stored file when the upload's future is dropped before a file
+//!   was handed over (the client went away and hyper dropped the handler, or the handler gave
+//!   up): the removal then runs on a spawned task.
 //! - Field names and file names are header text, read as latin1 like multer does (no
 //!   `defParamCharset`): a UTF-8 file name arrives as mojibake (`😀` becomes `ð\u{9f}\u{98}\u{80}`).
 //!   `filename*=utf-8''…` is decoded. Field values are UTF-8.
@@ -665,7 +667,8 @@ impl Single {
         )?;
         let mut scanner =
             Scanner::new(req.take_body_stream(), &boundary).limit(self.multer.limits.wire_budget());
-        let mut progress = Progress::default();
+        // Every stored file is removed if this future is dropped before the file is handed over.
+        let mut progress = Progress::new(StoredFiles::new(Arc::clone(&self.multer.storage)));
         let outcome = {
             let read = self.read(&mut scanner, &mut progress);
             match self.multer.deadline {
@@ -677,10 +680,11 @@ impl Single {
         };
         req.body = BodyState::Value(std::mem::take(&mut progress.fields).into_value());
         if let Err(error) = outcome {
-            for file in &mut progress.stored {
-                let _ = self.multer.storage.remove_file(file).await;
-            }
-            if let Some(file) = progress.accepted.and_then(|at| progress.stored.get(at)) {
+            progress.stored.remove_all().await;
+            if let Some(file) = progress
+                .accepted
+                .and_then(|at| progress.stored.files.get(at))
+            {
                 req.extensions_mut().insert(file.clone());
             }
             if !matches!(
@@ -693,8 +697,7 @@ impl Single {
         }
         let file = progress
             .accepted
-            .and_then(|at| progress.stored.get(at))
-            .cloned();
+            .and_then(|at| progress.stored.hand_over(at));
         if let Some(file) = &file {
             req.extensions_mut().insert(file.clone());
         }
@@ -859,31 +862,97 @@ impl Single {
             failure: None,
         };
         let outcome = self.multer.storage.handle_file(&info, &mut stream).await;
+        let fieldname = info.fieldname.clone();
+        // Guarded before anything else is awaited: the client may go away while the rest of the
+        // part is skipped.
+        let failed = match outcome {
+            Ok(stored) => {
+                progress.stored.files.push(UploadedFile { info, stored });
+                None
+            }
+            Err(error) => Some(error),
+        };
         // Whatever the storage left unread is skipped up to the next delimiter.
         stream.finish().await;
         if let Some(failure) = stream.failure.take() {
-            if let Ok(file) = outcome {
-                progress.stored.push(UploadedFile { info, stored: file });
-            }
             return Err(progress.settle(scan_error(failure)));
         }
-        let stored = outcome.map_err(|error| progress.settle(UploadError::Handler(error)))?;
-        let fieldname = info.fieldname.clone();
-        progress.stored.push(UploadedFile { info, stored });
+        if let Some(error) = failed {
+            return Err(progress.settle(UploadError::Handler(error)));
+        }
         if stream.limited {
             // The truncated file is removed later but never becomes `req.file`.
             return progress.fail(limit(MulterCode::LimitFileSize, Some(fieldname)));
         }
-        progress.accepted = Some(progress.stored.len() - 1);
+        progress.accepted = progress.stored.files.len().checked_sub(1);
         Ok(())
     }
 }
 
+/// The files a storage holds for one upload until one is handed to the handler: when the upload
+/// fails, or its future is dropped (the client went away, the handler gave up), they are removed
+/// through the storage, from a spawned task if need be.
+struct StoredFiles {
+    storage: Arc<dyn Storage>,
+    files: Vec<UploadedFile>,
+    /// Files at the front already removed.
+    removed: usize,
+    /// One was handed over (or all were removed): nothing left to do on drop.
+    settled: bool,
+}
+
+impl StoredFiles {
+    fn new(storage: Arc<dyn Storage>) -> Self {
+        Self {
+            storage,
+            files: Vec::new(),
+            removed: 0,
+            settled: false,
+        }
+    }
+
+    /// Removes every file through the storage (multer's error path).
+    async fn remove_all(&mut self) {
+        let storage = Arc::clone(&self.storage);
+        while let Some(file) = self.files.get_mut(self.removed) {
+            let _ = storage.remove_file(file).await;
+            self.removed += 1;
+        }
+        self.settled = true;
+    }
+
+    /// The upload succeeded: file `at` goes to the handler and the guard stands down.
+    fn hand_over(&mut self, at: usize) -> Option<UploadedFile> {
+        self.settled = true;
+        self.files.get(at).cloned()
+    }
+}
+
+impl Drop for StoredFiles {
+    fn drop(&mut self) {
+        if self.settled {
+            return;
+        }
+        // A removal that was in progress when the future was dropped is attempted again.
+        let mut pending = self.files.split_off(self.removed.min(self.files.len()));
+        if pending.is_empty() {
+            return;
+        }
+        let storage = Arc::clone(&self.storage);
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                for file in &mut pending {
+                    let _ = storage.remove_file(file).await;
+                }
+            });
+        }
+    }
+}
+
 /// What one upload has produced so far.
-#[derive(Default)]
 struct Progress {
     fields: fields::Fields,
-    stored: Vec<UploadedFile>,
+    stored: StoredFiles,
     /// `req.file`, as an index into `stored`.
     accepted: Option<usize>,
     /// A file went to the storage. multer then gives up only once that write has finished, and
@@ -896,6 +965,17 @@ struct Progress {
 }
 
 impl Progress {
+    fn new(stored: StoredFiles) -> Self {
+        Self {
+            fields: fields::Fields::default(),
+            stored,
+            accepted: None,
+            storage_used: false,
+            first_error: None,
+            fields_bytes: 0,
+        }
+    }
+
     /// A limit error: fatal at once, or (once a file went to the storage) remembered while the
     /// rest of the form is read, as multer only reports its first error.
     fn fail(&mut self, error: UploadError) -> Result<(), UploadError> {
