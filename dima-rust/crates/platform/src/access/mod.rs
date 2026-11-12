@@ -448,6 +448,36 @@ impl ChannelScope {
     /// Refuses a body that names the channel field, `_id`, an operator (`$set`…) or a dotted
     /// path. Routes call this before turning a body into an update, so a manager of one channel
     /// can never move a document to another one by sending `channelID`.
+    ///
+    /// **It checks the top level only.** `{"settings": {"$set": …}}` or
+    /// `{"meta": {"channelID": "other"}}` passes. A route whose body has nested objects must
+    /// not flatten them into an update (or a filter) as they come: it decodes the body into a
+    /// typed allow-list first (a struct with `deny_unknown_fields`, one field per value the route
+    /// may write) and builds the update from that struct's fields, never from the client's keys.
+    /// There is no recursive variant: nested maps keyed by user text (names, URLs) can hold dots
+    /// legitimately, and the allow-list is what makes nested values safe.
+    ///
+    /// ```
+    /// # use serde::Deserialize;
+    /// # fn update(body: serde_json::Value) -> Result<bson::Document, serde_json::Error> {
+    /// #[derive(Deserialize)]
+    /// #[serde(deny_unknown_fields)]
+    /// struct Style {
+    ///     color: String,
+    /// }
+    /// #[derive(Deserialize)]
+    /// #[serde(deny_unknown_fields)]
+    /// struct RewardUpdate {
+    ///     title: String,
+    ///     style: Style,
+    /// }
+    /// // after `scope.check_body(&body, "channelID")?`:
+    /// let reward: RewardUpdate = serde_json::from_value(body)?;
+    /// Ok(bson::doc! { "$set": { "title": reward.title, "style.color": reward.style.color } })
+    /// # }
+    /// # assert!(update(serde_json::json!({"title": "t", "style": {"$set": {"x": 1}}})).is_err());
+    /// # assert!(update(serde_json::json!({"title": "t", "style": {"color": "red"}})).is_ok());
+    /// ```
     pub fn check_body(
         &self,
         body: &Map<String, Value>,
