@@ -686,3 +686,19 @@ async fn a_refused_subscriber_auth_is_reported_once_and_retried_with_backoff() -
     ensure!(peer.command().await? == ["SUBSCRIBE", "a"]);
     Ok(())
 }
+
+#[tokio::test]
+async fn a_nested_array_replaces_the_connection() -> Result<()> {
+    let mut mock = Mock::start().await?;
+    let subscriber = setup(mock.config(Duration::from_secs(10))).await?;
+    let mut peer = mock.peer().await?;
+    let mut subscription = subscribed(&subscriber, &mut peer, "a").await?;
+    // Four levels of sixteen children each used to be accepted; a subscriber never gets one.
+    peer.send(b"*3\r\n$7\r\nmessage\r\n*16\r\n").await?;
+    peer.closed(Duration::from_secs(1)).await?;
+    let mut fresh = mock.peer().await?;
+    ensure!(fresh.command().await? == ["SUBSCRIBE", "a"]);
+    fresh.send(&confirmation("subscribe", "a", 1)).await?;
+    ensure!(next(&mut subscription).await? == RESUBSCRIBED);
+    Ok(())
+}

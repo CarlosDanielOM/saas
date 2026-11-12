@@ -44,7 +44,20 @@ struct Limits {
     max_subscriptions: usize,
 }
 
+/// Room in a frame's budget for everything but the payload: the kind, the channel and the
+/// pattern of a `pmessage`, and the headers.
+const FRAME_OVERHEAD: usize = 8 * 1024;
+
 impl Limits {
+    /// The limits of one received frame: every bulk string within the message limit, the whole
+    /// frame within the message limit plus [`FRAME_OVERHEAD`].
+    fn frame(self) -> resp::Limits {
+        resp::Limits {
+            max_bulk: self.max_message_bytes,
+            max_frame: self.max_message_bytes.saturating_add(FRAME_OVERHEAD),
+        }
+    }
+
     fn of(shared: &Shared) -> Self {
         Self {
             control_timeout: shared.config.response_timeout.max(Duration::from_millis(1)),
@@ -435,7 +448,7 @@ impl Connection {
         let mut consumed = 0;
         loop {
             let rest = self.input.get(consumed..).unwrap_or_default();
-            match resp::parse(rest, limits.max_message_bytes) {
+            match resp::parse_with(rest, limits.frame()) {
                 Ok(Some((frame, used))) => {
                     consumed += used;
                     self.handle(frame, entries, state, limits)?;

@@ -1,13 +1,25 @@
 //! The part of RESP2 a subscriber connection speaks: commands out (arrays of bulk strings), and
 //! frames in, parsed from a byte buffer without copying the whole stream and with hard limits,
 //! so a misbehaving peer cannot make the reader allocate without bound.
+//!
+//! A subscriber only ever receives scalars and flat arrays of scalars (`message`, `pmessage`,
+//! the confirmations, `pong`), so a nested array is refused, and a whole frame has a byte budget
+//! ([`Limits::max_frame`]) besides the bound on each bulk string: a frame is refused as soon as a
+//! header says it would exceed either, before its bytes arrive.
 
 /// The longest line accepted for a simple string, an error or a length header.
 pub(super) const MAX_LINE: usize = 64 * 1024;
 /// The most elements in one array (pub/sub frames have at most 4).
 const MAX_ARRAY: i64 = 16;
-/// The deepest nesting accepted (pub/sub frames are flat arrays).
-const MAX_DEPTH: usize = 4;
+
+/// The size limits of one received frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Limits {
+    /// The longest bulk string.
+    pub(super) max_bulk: usize,
+    /// The most bytes one whole frame may take, headers included.
+    pub(super) max_frame: usize,
+}
 
 /// One reply or push frame.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,19 +50,30 @@ impl ProtocolError {
 }
 
 /// Parses one frame from the start of `input`: `Ok(None)` while it is incomplete, else the frame
-/// and how many bytes it used. `max_bulk` bounds every bulk string.
-pub(super) fn parse(
+/// and how many bytes it used.
+pub(super) fn parse_with(
     input: &[u8],
-    max_bulk: usize,
+    limits: Limits,
 ) -> Result<Option<(Frame, usize)>, ProtocolError> {
-    parse_at(input, 0, max_bulk, 0)
+    parse_at(input, 0, limits, false)
+}
+
+#[cfg(test)]
+fn parse(input: &[u8], max_bulk: usize) -> Result<Option<(Frame, usize)>, ProtocolError> {
+    parse_with(
+        input,
+        Limits {
+            max_bulk,
+            max_frame: usize::MAX,
+        },
+    )
 }
 
 fn parse_at(
     input: &[u8],
     at: usize,
-    max_bulk: usize,
-    depth: usize,
+    limits: Limits,
+    nested: bool,
 ) -> Result<Option<(Frame, usize)>, ProtocolError> {
     let Some(&kind) = input.get(at) else {
         return Ok(None);
@@ -58,6 +81,9 @@ fn parse_at(
     let Some((line, next)) = line(input, at + 1)? else {
         return Ok(None);
     };
+    if next > limits.max_frame {
+        return Err(ProtocolError::TooLarge);
+    }
     match kind {
         b'+' => Ok(Some((Frame::Simple(line.to_vec()), next))),
         b'-' => Ok(Some((Frame::Error(line.to_vec()), next))),
@@ -69,7 +95,7 @@ fn parse_at(
             }
             let length = usize::try_from(length)
                 .map_err(|_| ProtocolError::Malformed("negative bulk string length"))?;
-            if length > max_bulk {
+            if length > limits.max_bulk || next + length + 2 > limits.max_frame {
                 return Err(ProtocolError::TooLarge);
             }
             let end = next + length;
@@ -83,6 +109,11 @@ fn parse_at(
             }
         }
         b'*' => {
+            if nested {
+                return Err(ProtocolError::Malformed(
+                    "nested RESP arrays are not accepted",
+                ));
+            }
             let count = integer(line)?;
             if count == -1 {
                 return Ok(Some((Frame::Array(None), next)));
@@ -90,13 +121,10 @@ fn parse_at(
             if !(0..=MAX_ARRAY).contains(&count) {
                 return Err(ProtocolError::Malformed("array length out of range"));
             }
-            if depth >= MAX_DEPTH {
-                return Err(ProtocolError::Malformed("arrays nested too deeply"));
-            }
             let mut items = Vec::with_capacity(count.unsigned_abs() as usize);
             let mut cursor = next;
             for _ in 0..count {
-                match parse_at(input, cursor, max_bulk, depth + 1)? {
+                match parse_at(input, cursor, limits, true)? {
                     None => return Ok(None),
                     Some((item, after)) => {
                         items.push(item);
@@ -185,11 +213,42 @@ mod tests {
             Err(ProtocolError::TooLarge)
         );
         assert!(parse(b"*17\r\n", 1024).is_err());
-        assert!(parse(b"*1\r\n*1\r\n*1\r\n*1\r\n*1\r\n", 1024).is_err());
+        assert!(parse(b"*1\r\n*1\r\n", 1024).is_err());
         assert!(parse(b"$-2\r\n", 1024).is_err());
         assert!(parse(b"$2\r\nabXY", 1024).is_err());
         assert!(parse(b"?\r\n", 1024).is_err());
         assert!(parse(&vec![b'+'; MAX_LINE + 2], 1024).is_err());
+    }
+
+    #[test]
+    fn a_frame_has_a_total_budget_and_no_nested_arrays() {
+        let limits = Limits {
+            max_bulk: 1024,
+            max_frame: 1500,
+        };
+        // A subscriber never receives a nested array: refused from its header.
+        assert!(parse_with(b"*2\r\n$7\r\nmessage\r\n*1\r\n", limits).is_err());
+        assert!(parse_with(b"*1\r\n*0\r\n", limits).is_err());
+        // Children each within the bulk limit but together over the frame budget: refused from
+        // the second header, before its data arrives.
+        let mut frame = b"*16\r\n$1024\r\n".to_vec();
+        frame.extend(std::iter::repeat_n(b'x', 1024));
+        frame.extend_from_slice(b"\r\n$1024\r\n");
+        assert_eq!(parse_with(&frame, limits), Err(ProtocolError::TooLarge));
+        // Exactly at the budget is fine.
+        let mut exact = b"*1\r\n$1024\r\n".to_vec();
+        exact.extend(std::iter::repeat_n(b'x', 1024));
+        exact.extend_from_slice(b"\r\n");
+        let at_budget = Limits {
+            max_bulk: 1024,
+            max_frame: exact.len(),
+        };
+        assert!(matches!(parse_with(&exact, at_budget), Ok(Some(_))));
+        let under = Limits {
+            max_bulk: 1024,
+            max_frame: exact.len() - 1,
+        };
+        assert_eq!(parse_with(&exact, under), Err(ProtocolError::TooLarge));
     }
 
     #[test]
