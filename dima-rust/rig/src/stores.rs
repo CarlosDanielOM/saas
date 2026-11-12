@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions, TryLockError};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use bson::{Bson, Document, doc};
@@ -43,6 +44,64 @@ pub struct StoreConfig {
     pub lock_wait: Duration,
 }
 
+/// The URI without credentials (options kept).
+fn without_credentials(uri: &str) -> String {
+    crate::capture::redact_uri(uri)
+}
+
+/// The URI with these credentials (defined in `admin`) and `db` as its path.
+pub fn uri_with_user(uri: &str, user: &str, password: &str, db: &str) -> String {
+    let base = uri_with_db(&without_credentials(uri), db);
+    let (scheme, rest) = base.split_once("://").unwrap_or(("mongodb", base.as_str()));
+    let (path, query) = rest.split_once('?').unwrap_or((rest, ""));
+    let mut params: Vec<&str> = query
+        .split('&')
+        .filter(|p| !p.is_empty() && !p.starts_with("authSource="))
+        .collect();
+    params.push("authSource=admin");
+    format!("{scheme}://{user}:{password}@{path}?{}", params.join("&"))
+}
+
+/// A temporary user, defined in `admin`, with the `read` role on `db` only. Registered for
+/// [`Registry::cleanup`] before it exists. Returns the URI a side connects with.
+pub async fn create_read_only_user(
+    cfg: &StoreConfig,
+    reg: &Registry,
+    label: &str,
+    db: &str,
+) -> Result<String> {
+    let name = format!(
+        "rig_{}_{}_{label}_ro",
+        std::process::id(),
+        SEQ.fetch_add(1, Ordering::Relaxed)
+    );
+    let password = uuid::Uuid::new_v4().simple().to_string();
+    let client = mongo_client(&cfg.mongo_uri).await?;
+    reg.add_user(&name);
+    timed(
+        "MongoDB createUser",
+        client.database("admin").run_command(doc! {
+            "createUser": &name,
+            "pwd": &password,
+            "roles": [{"role": "read", "db": db}],
+        }),
+    )
+    .await?;
+    Ok(uri_with_user(&cfg.mongo_uri, &name, &password, db))
+}
+
+/// Whether the server refuses a client without credentials, so a user's role is enforced.
+pub async fn auth_enforced(cfg: &StoreConfig) -> Result<bool> {
+    let client = mongo_client(&without_credentials(&cfg.mongo_uri)).await?;
+    match tokio::time::timeout(STORE_TIMEOUT, client.list_database_names()).await {
+        Ok(Ok(_)) => Ok(false),
+        // Unauthorized.
+        Ok(Err(e)) if command_code(&e) == Some(13) => Ok(true),
+        Ok(Err(e)) => Err(store("MongoDB authentication check", e)),
+        Err(_) => Err(store("MongoDB authentication check", "timed out")),
+    }
+}
+
 /// The URI with `db` as its path (credentials and options kept).
 pub fn uri_with_db(uri: &str, db: &str) -> String {
     let (scheme, rest) = uri.split_once("://").unwrap_or(("mongodb", uri));
@@ -72,17 +131,22 @@ pub async fn mongo_client(uri: &str) -> Result<Client> {
     Client::with_options(opts).map_err(|e| store("MongoDB client", e))
 }
 
+/// The lock file that claims logical database `idx` of the configured Dragonfly server.
+pub fn lock_path(cfg: &StoreConfig, idx: u8) -> PathBuf {
+    cfg.lock_dir.join(format!(
+        "dragonfly-{}-{}-db{idx}.lock",
+        cfg.dragonfly_host.replace(['/', ':'], "_"),
+        cfg.dragonfly_port
+    ))
+}
+
 async fn lock_index(cfg: &StoreConfig) -> Result<(u8, File)> {
     std::fs::create_dir_all(&cfg.lock_dir)
         .map_err(|e| crate::error::io(&cfg.lock_dir.display().to_string(), e))?;
     let deadline = tokio::time::Instant::now() + cfg.lock_wait;
     loop {
         for idx in &cfg.dragonfly_dbs {
-            let path = cfg.lock_dir.join(format!(
-                "dragonfly-{}-{}-db{idx}.lock",
-                cfg.dragonfly_host.replace(['/', ':'], "_"),
-                cfg.dragonfly_port
-            ));
+            let path = lock_path(cfg, *idx);
             let f = OpenOptions::new()
                 .create(true)
                 .truncate(false)
@@ -110,6 +174,205 @@ async fn lock_index(cfg: &StoreConfig) -> Result<(u8, File)> {
     }
 }
 
+/// Everything one rig command has claimed: MongoDB databases it created, temporary MongoDB users,
+/// and Dragonfly logical databases (with the lock files that claim them). Released by one path,
+/// [`Registry::cleanup`], after success, an error, or an interruption alike. The lock files live
+/// here, not in the side, so a logical database is flushed before its lock is released.
+#[derive(Clone, Default)]
+pub struct Registry(Arc<Mutex<Held>>);
+
+#[derive(Default)]
+struct Held {
+    mongo_dbs: Vec<String>,
+    /// Users defined in the `admin` database.
+    users: Vec<String>,
+    dragonfly: Vec<(u8, File)>,
+}
+
+/// What [`Registry::cleanup`] did.
+#[derive(Debug, Default)]
+pub struct Cleanup {
+    pub dropped_dbs: Vec<String>,
+    pub kept_dbs: Vec<String>,
+    pub dropped_users: Vec<String>,
+    pub flushed: Vec<u8>,
+    pub kept_dragonfly: Vec<u8>,
+    pub errors: Vec<String>,
+}
+
+impl Cleanup {
+    /// One line for stderr, or `None` when there was nothing to release.
+    pub fn summary(&self) -> Option<String> {
+        let mut parts = Vec::new();
+        if !self.dropped_dbs.is_empty() {
+            parts.push(format!(
+                "dropped MongoDB databases {}",
+                self.dropped_dbs.join(", ")
+            ));
+        }
+        if !self.dropped_users.is_empty() {
+            parts.push(format!(
+                "dropped MongoDB users {}",
+                self.dropped_users.join(", ")
+            ));
+        }
+        if !self.flushed.is_empty() {
+            let list: Vec<String> = self.flushed.iter().map(u8::to_string).collect();
+            parts.push(format!(
+                "flushed Dragonfly logical databases {}",
+                list.join(", ")
+            ));
+        }
+        if !self.kept_dbs.is_empty() || !self.kept_dragonfly.is_empty() {
+            let list: Vec<String> = self.kept_dragonfly.iter().map(u8::to_string).collect();
+            parts.push(format!(
+                "kept (--keep) MongoDB databases {} and Dragonfly logical databases {} (flushed by the next run that claims them)",
+                self.kept_dbs.join(", "),
+                list.join(", ")
+            ));
+        }
+        (!parts.is_empty()).then(|| format!("cleanup: {}", parts.join("; ")))
+    }
+}
+
+impl Registry {
+    fn held(&self) -> std::sync::MutexGuard<'_, Held> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub fn add_db(&self, name: &str) {
+        self.held().mongo_dbs.push(name.to_string());
+    }
+
+    pub fn add_user(&self, name: &str) {
+        self.held().users.push(name.to_string());
+    }
+
+    fn add_dragonfly(&self, idx: u8, lock: File) {
+        self.held().dragonfly.push((idx, lock));
+    }
+
+    /// Release everything: drop the MongoDB databases (unless `keep`) and the temporary users
+    /// (always), flush each claimed logical database (unless `keep`), then release its lock.
+    /// Idempotent: what was released is forgotten.
+    pub async fn cleanup(&self, cfg: &StoreConfig, keep: bool) -> Cleanup {
+        let (dbs, users, dragonfly) = {
+            let mut h = self.held();
+            (
+                std::mem::take(&mut h.mongo_dbs),
+                std::mem::take(&mut h.users),
+                std::mem::take(&mut h.dragonfly),
+            )
+        };
+        let mut out = Cleanup::default();
+        if !dbs.is_empty() || !users.is_empty() {
+            match mongo_client(&cfg.mongo_uri).await {
+                Ok(client) => {
+                    for db in dbs {
+                        if keep {
+                            out.kept_dbs.push(db);
+                            continue;
+                        }
+                        match timed("MongoDB drop", client.database(&db).drop()).await {
+                            Ok(()) => out.dropped_dbs.push(db),
+                            Err(e) => out.errors.push(format!("dropping database {db}: {e}")),
+                        }
+                    }
+                    for user in users {
+                        match drop_user(&client, &user).await {
+                            Ok(()) => out.dropped_users.push(user),
+                            Err(e) => out.errors.push(format!("dropping user {user}: {e}")),
+                        }
+                    }
+                }
+                Err(e) => out.errors.push(format!(
+                    "MongoDB cleanup: {e} (databases {dbs:?}, users {users:?}); run `dima-rig gc`"
+                )),
+            }
+        }
+        for (idx, lock) in dragonfly {
+            if keep {
+                out.kept_dragonfly.push(idx);
+            } else {
+                match flush_index(cfg, idx).await {
+                    Ok(()) => out.flushed.push(idx),
+                    Err(e) => out.errors.push(format!(
+                        "flushing Dragonfly logical database {idx}: {e} (the next run that claims it flushes it)"
+                    )),
+                }
+            }
+            // Released only now, after the flush.
+            drop(lock);
+        }
+        out
+    }
+}
+
+async fn flush_index(cfg: &StoreConfig, idx: u8) -> Result<()> {
+    let url = format!(
+        "redis://{}:{}/{idx}",
+        cfg.dragonfly_host, cfg.dragonfly_port
+    );
+    let rc = redis::Client::open(url).map_err(redis_err)?;
+    let mut conn = timed("Dragonfly connect", rc.get_multiplexed_async_connection()).await?;
+    timed(
+        "Dragonfly FLUSHDB",
+        redis::cmd("FLUSHDB").query_async::<()>(&mut conn),
+    )
+    .await
+}
+
+/// Drop a user defined in `admin`; a user that is already gone is fine.
+pub async fn drop_user(client: &Client, user: &str) -> Result<()> {
+    match tokio::time::timeout(
+        STORE_TIMEOUT,
+        client
+            .database("admin")
+            .run_command(doc! {"dropUser": user}),
+    )
+    .await
+    {
+        Ok(Ok(_)) => Ok(()),
+        // UserNotFound.
+        Ok(Err(e)) if command_code(&e) == Some(11) => Ok(()),
+        Ok(Err(e)) => Err(store("MongoDB dropUser", e)),
+        Err(_) => Err(store("MongoDB dropUser", "timed out")),
+    }
+}
+
+/// The server's error code of a failed command.
+pub fn command_code(e: &mongodb::error::Error) -> Option<i32> {
+    match e.kind.as_ref() {
+        mongodb::error::ErrorKind::Command(c) => Some(c.code),
+        _ => None,
+    }
+}
+
+/// `NamespaceNotFound`: the collection does not exist (any more).
+const NAMESPACE_NOT_FOUND: i32 = 26;
+
+/// The index definitions of a collection. A view has none; a collection that does not exist
+/// (dropped while the capture ran) has none; any other failure fails the capture.
+pub async fn list_indexes(db: &mongodb::Database, coll: &str, kind: &str) -> Result<Vec<Document>> {
+    if kind == "view" {
+        return Ok(Vec::new());
+    }
+    match tokio::time::timeout(
+        STORE_TIMEOUT,
+        db.run_command(doc! {"listIndexes": coll, "cursor": {"batchSize": 100_000}}),
+    )
+    .await
+    {
+        Ok(Ok(r)) => Ok(first_batch(&r)),
+        Ok(Err(e)) if command_code(&e) == Some(NAMESPACE_NOT_FOUND) => Ok(Vec::new()),
+        Ok(Err(e)) => Err(store(&format!("MongoDB listIndexes on {coll}"), e)),
+        Err(_) => Err(store(
+            &format!("MongoDB listIndexes on {coll}"),
+            "timed out",
+        )),
+    }
+}
+
 /// A snapshot of the stores right after a process started, restored between scenarios.
 #[derive(Debug, Clone, Default)]
 pub struct Baseline {
@@ -125,7 +388,8 @@ pub struct SideStores {
     owned: bool,
     pub df_index: u8,
     pub redis: MultiplexedConnection,
-    _lock: File,
+    /// The URI the side process gets instead of the rig's own (a read-only user).
+    pub side_uri: Option<String>,
 }
 
 fn redis_err(e: redis::RedisError) -> RigError {
@@ -188,13 +452,16 @@ fn first_batch(reply: &Document) -> Vec<Document> {
 
 impl SideStores {
     /// Claim a logical database and name a fresh MongoDB database (or use `existing_db`, which
-    /// the rig never drops or writes).
+    /// the rig never drops or writes). Both are registered for [`Registry::cleanup`] before
+    /// anything is written to them.
     pub async fn allocate(
         cfg: &StoreConfig,
+        reg: &Registry,
         label: &str,
         existing_db: Option<&str>,
     ) -> Result<SideStores> {
         let (df_index, lock) = lock_index(cfg).await?;
+        reg.add_dragonfly(df_index, lock);
         let client = mongo_client(&cfg.mongo_uri).await?;
         let (db_name, owned) = match existing_db {
             Some(db) => (db.to_string(), false),
@@ -207,6 +474,9 @@ impl SideStores {
                 true,
             ),
         };
+        if owned {
+            reg.add_db(&db_name);
+        }
         let url = format!(
             "redis://{}:{}/{df_index}",
             cfg.dragonfly_host, cfg.dragonfly_port
@@ -220,14 +490,17 @@ impl SideStores {
             owned,
             df_index,
             redis,
-            _lock: lock,
+            side_uri: None,
         };
         s.reset_empty().await?;
         Ok(s)
     }
 
+    /// The MongoDB URI the side process gets.
     pub fn mongo_uri(&self) -> String {
-        uri_with_db(&self.cfg.mongo_uri, &self.db_name)
+        self.side_uri
+            .clone()
+            .unwrap_or_else(|| uri_with_db(&self.cfg.mongo_uri, &self.db_name))
     }
 
     pub fn dragonfly_url(&self) -> String {
@@ -257,20 +530,6 @@ impl SideStores {
         self.flushdb().await
     }
 
-    /// Drop what the rig created and empty the logical database.
-    pub async fn cleanup(&mut self, keep: bool) -> Result<()> {
-        if keep {
-            return Ok(());
-        }
-        let r = if self.owned {
-            timed("MongoDB drop", self.db().drop()).await
-        } else {
-            Ok(())
-        };
-        let f = self.flushdb().await;
-        r.and(f)
-    }
-
     async fn collections(&self) -> Result<Vec<Document>> {
         let reply = timed(
             "MongoDB listCollections",
@@ -294,23 +553,11 @@ impl SideStores {
         Ok(out)
     }
 
-    async fn indexes(&self, coll: &str) -> Result<Vec<Document>> {
-        let reply = self
-            .db()
-            .run_command(doc! {"listIndexes": coll, "cursor": {"batchSize": 100_000}})
-            .await;
-        match reply {
-            Ok(r) => Ok(first_batch(&r)),
-            // Views have no indexes.
-            Err(_) => Ok(Vec::new()),
-        }
-    }
-
     async fn read_coll(&self, spec: &Document) -> Result<(String, RawColl)> {
         let name = spec.get_str("name").unwrap_or("").to_string();
         let kind = spec.get_str("type").unwrap_or("collection").to_string();
         let options = spec.get_document("options").cloned().unwrap_or_default();
-        let indexes = self.indexes(&name).await?;
+        let indexes = list_indexes(&self.db(), &name, &kind).await?;
         let coll = self.db().collection::<Document>(&name);
         let cursor = timed("MongoDB find", coll.find(doc! {}).limit(MAX_DOCS + 1)).await?;
         let docs: Vec<Document> = timed("MongoDB read", cursor.try_collect()).await?;
@@ -438,13 +685,14 @@ impl SideStores {
                                     redis::Value::BulkString(b) => b.clone(),
                                     other => format!("{other:?}").into_bytes(),
                                 };
+                                // The score as the server wrote it.
                                 let score = match s {
                                     redis::Value::BulkString(b) => {
-                                        String::from_utf8_lossy(b).parse().unwrap_or(f64::NAN)
+                                        String::from_utf8_lossy(b).to_string()
                                     }
-                                    redis::Value::Double(f) => *f,
-                                    redis::Value::Int(i) => *i as f64,
-                                    _ => f64::NAN,
+                                    redis::Value::Double(f) => f.to_string(),
+                                    redis::Value::Int(i) => i.to_string(),
+                                    other => format!("{other:?}"),
                                 };
                                 pairs.push((member, score));
                             }
@@ -484,10 +732,13 @@ impl SideStores {
                 }
                 _ => RawValue::Other,
             };
+            // Each TTL with the time of its own reading (the middle of the round trip).
+            let before = crate::timefmt::now_ms();
             let pttl = match self.q(redis::cmd("PTTL").arg(&key)).await? {
                 redis::Value::Int(i) => i,
                 _ => -1,
             };
+            let pttl_at = before + (crate::timefmt::now_ms() - before) / 2;
             if pttl == -2 {
                 continue;
             }
@@ -496,6 +747,7 @@ impl SideStores {
                 kind,
                 value,
                 pttl,
+                pttl_at,
             });
         }
         Ok(out)
@@ -597,6 +849,8 @@ impl SideStores {
                 .map(|a| a.render(&empty, now))
                 .collect::<std::result::Result<Vec<_>, _>>()
                 .map_err(|e| config(format!("seed.dragonfly[{i}]: {e}")))?;
+            crate::dfcmd::check(&args, s.allow_scripts)
+                .map_err(|e| config(format!("seed.dragonfly[{i}] {args:?}: {e}")))?;
             match self.command(&args).await? {
                 RawReply::Error(e) => {
                     return Err(config(format!("seed.dragonfly[{i}] {args:?} failed: {e}")));
@@ -676,19 +930,24 @@ impl SideStores {
     ) -> Result<u64> {
         let mut acc = String::new();
         if self.owned || !ignore_collections.iter().any(|c| c == "*") {
-            let names: Vec<String> = self
+            let specs: Vec<(String, String)> = self
                 .collections()
                 .await?
                 .iter()
-                .filter_map(|c| c.get_str("name").ok().map(str::to_string))
-                .filter(|n| !ignore_collections.iter().any(|g| name_glob(g, n)))
+                .filter_map(|c| {
+                    let name = c.get_str("name").ok()?.to_string();
+                    let kind = c.get_str("type").unwrap_or("collection").to_string();
+                    Some((name, kind))
+                })
+                .filter(|(n, _)| !ignore_collections.iter().any(|g| name_glob(g, n)))
                 .collect();
-            for n in &names {
+            for (n, kind) in &specs {
                 acc.push_str(n);
-                for i in self.indexes(n).await? {
+                for i in list_indexes(&self.db(), n, kind).await? {
                     acc.push_str(&i.to_string());
                 }
             }
+            let names: Vec<String> = specs.into_iter().map(|(n, _)| n).collect();
             if !names.is_empty() {
                 let list: Vec<Bson> = names.iter().map(|n| Bson::String(n.clone())).collect();
                 let h = timed(
@@ -736,27 +995,21 @@ pub async fn db_hash(client: &Client, db: &str) -> Result<BTreeMap<String, Strin
         }
     }
     // dbHash covers documents only: index changes (an application's start-up createIndexes)
-    // are writes too.
+    // are writes too. dbHash lists collections, not views.
     let names: Vec<String> = out.keys().cloned().collect();
     for name in names {
-        let reply = timed(
-            "MongoDB listIndexes",
-            client
-                .database(db)
-                .run_command(doc! {"listIndexes": name.clone(), "cursor": {"batchSize": 100_000}}),
-        )
-        .await;
-        let mut specs: Vec<String> = match reply {
-            Ok(r) => first_batch(&r).iter().map(|d| d.to_string()).collect(),
-            Err(_) => Vec::new(),
-        };
+        let mut specs: Vec<String> = list_indexes(&client.database(db), &name, "collection")
+            .await?
+            .iter()
+            .map(|d| d.to_string())
+            .collect();
         specs.sort();
         out.insert(format!("{name} (indexes)"), specs.join(";"));
     }
     Ok(out)
 }
 
-/// Drop `rig_<pid>_...` databases whose rig process is gone. Returns the dropped names.
+/// Drop `rig_<pid>_...` databases and users whose rig process is gone. Returns the dropped names.
 pub async fn gc(mongo_uri: &str) -> Result<Vec<String>> {
     let client = mongo_client(mongo_uri).await?;
     let names = timed("MongoDB listDatabases", client.list_database_names()).await?;
@@ -773,6 +1026,34 @@ pub async fn gc(mongo_uri: &str) -> Result<Vec<String>> {
         }
         timed("MongoDB drop", client.database(&n).drop()).await?;
         dropped.push(n);
+    }
+    // Temporary users (diff-get) of rig processes that are gone.
+    let reply = timed(
+        "MongoDB usersInfo",
+        client.database("admin").run_command(doc! {"usersInfo": 1}),
+    )
+    .await?;
+    let users: Vec<String> = reply
+        .get_array("users")
+        .map(|a| {
+            a.iter()
+                .filter_map(|u| u.as_document()?.get_str("user").ok().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    for u in users {
+        let Some(pid) = u
+            .strip_prefix("rig_")
+            .and_then(|rest| rest.split('_').next())
+            .and_then(|p| p.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        if std::path::Path::new(&format!("/proc/{pid}")).exists() {
+            continue;
+        }
+        drop_user(&client, &u).await?;
+        dropped.push(format!("user {u}"));
     }
     Ok(dropped)
 }
@@ -795,5 +1076,22 @@ mod tests {
             "mongodb://127.0.0.1:27017/x"
         );
         assert_eq!(uri_with_db("mongodb://h/old?w=1", "x"), "mongodb://h/x?w=1");
+    }
+
+    #[test]
+    fn uri_for_a_temporary_user() {
+        assert_eq!(
+            uri_with_user(
+                "mongodb://root:p@127.0.0.1:27017/?authSource=admin&directConnection=true",
+                "rig_1_ro",
+                "abc",
+                "domdimabot"
+            ),
+            "mongodb://rig_1_ro:abc@127.0.0.1:27017/domdimabot?directConnection=true&authSource=admin"
+        );
+        assert_eq!(
+            uri_with_user("mongodb://h:1", "u", "p", "d"),
+            "mongodb://u:p@h:1/d?authSource=admin"
+        );
     }
 }

@@ -1,10 +1,11 @@
 //! The commands: `record`, `verify`, `compare`, `diff-get`, `check`.
 //!
 //! Sides never run at the same time: every scenario runs on the reference first, then every
-//! scenario on the candidate (pub/sub channels are global in Dragonfly). Scenarios of a target
-//! share one process per side; between scenarios the stores go back to the snapshot taken right
-//! after the process started, then the next seed is written. `restart: true` gives a scenario its
-//! own process, started after its seed.
+//! scenario on the candidate (pub/sub channels are global in Dragonfly). Each scenario gets its
+//! own process, started after the stores were emptied and seeded, so nothing an earlier scenario
+//! left in memory can change a later one. A target may opt in to `share_process`: then the
+//! scenarios share one process per side, the stores go back to the snapshot taken right after it
+//! started, the next seed is written, and `restart: true` gives one scenario its own process.
 
 use std::collections::BTreeMap;
 use std::path::{Path as FsPath, PathBuf};
@@ -12,16 +13,18 @@ use std::time::Duration;
 
 use crate::allow::Allowances;
 use crate::canon;
-use crate::capture::{self, Capture, CaptureMeta, RawCapture, StepCap};
+use crate::capture::{
+    self, Capture, CaptureFile, Hashes, Provenance, RawCapture, RunMeta, StepCap,
+};
 use crate::compare;
 use crate::detect::{self, DetectCtx, Known, Patterns, Window};
-use crate::error::{Result, RigError, config};
+use crate::error::{Result, config};
 use crate::getlist;
 use crate::report::{Report, ScenarioReport, SideFailure, Status};
 use crate::scenario::{self, Scenario, Selection};
 use crate::side::{self, LaunchSpec, SideProcess};
 use crate::steps::Runner;
-use crate::stores::{self, Baseline, SideStores, StoreConfig};
+use crate::stores::{self, Baseline, Registry, SideStores, StoreConfig};
 use crate::target::{self, SideSpec, Target};
 use crate::template;
 use crate::timefmt;
@@ -43,6 +46,8 @@ pub struct Settings {
     /// The rig's own environment (only `pass_env` names and PATH lookup read it).
     pub env: BTreeMap<String, String>,
     pub cargo_target_dir: String,
+    /// Dragonfly key globs whose values compare as exact text (`byte_sensitive.json`).
+    pub byte_sensitive: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,11 +65,11 @@ impl Which {
     }
 }
 
-/// What one side did in one scenario, before normalisation.
+/// What one side did in one scenario, before normalisation: what a capture file stores.
+#[derive(Debug, Clone)]
 pub struct RawRun {
     pub raw: RawCapture,
-    pub window: Window,
-    pub names: Vec<(String, String)>,
+    pub run: RunMeta,
 }
 
 type SideOutcome = std::result::Result<RawRun, SideFailure>;
@@ -107,12 +112,20 @@ struct SideRunner<'s> {
 impl<'s> SideRunner<'s> {
     async fn new(
         settings: &'s Settings,
+        reg: &Registry,
         target: &'s Target,
         which: Which,
         label: &str,
-        existing_db: Option<&str>,
+        existing: Option<&Existing>,
     ) -> Result<SideRunner<'s>> {
-        let stores = SideStores::allocate(&settings.stores, label, existing_db).await?;
+        let mut stores = SideStores::allocate(
+            &settings.stores,
+            reg,
+            label,
+            existing.map(|e| e.db.as_str()),
+        )
+        .await?;
+        stores.side_uri = existing.and_then(|e| e.side_uri.clone());
         let http = reqwest::Client::builder()
             .no_proxy()
             .no_gzip()
@@ -229,6 +242,7 @@ impl<'s> SideRunner<'s> {
             env,
             log_path,
             ports,
+            primary_port: self.target.ports.first().cloned().unwrap_or_default(),
             ready: spec.ready.clone(),
             stop_signal: spec.stop_signal,
             grace_ms: spec.grace_ms,
@@ -285,26 +299,11 @@ impl<'s> SideRunner<'s> {
         Ok(())
     }
 
-    fn names(&self) -> Vec<(String, String)> {
-        let mut out = Vec::new();
-        if let Some(p) = &self.proc {
-            for (n, port) in &p.ports {
-                for host in ["127.0.0.1", "localhost", "[::1]"] {
-                    out.push((format!("{host}:{port}"), format!("port.{n}")));
-                }
-            }
-        }
-        out.push((self.stores.dragonfly_url(), "dragonfly_url".into()));
-        if self.stores.db_name.starts_with("rig_") {
-            out.push((self.stores.db_name.clone(), "mongo_db".into()));
-        }
-        out.sort_by_key(|(l, _)| std::cmp::Reverse(l.len()));
-        out
-    }
-
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
-        let start = timefmt::now_ms();
-        if sc.restart {
+        let seeded_at = timefmt::now_ms();
+        let start = seeded_at;
+        let own_process = !self.target.share_process || sc.restart;
+        if own_process {
             let _ = self.stop_process().await;
             self.baseline = None;
             self.stores
@@ -316,6 +315,7 @@ impl<'s> SideRunner<'s> {
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
             self.launch().await?;
+            self.settle().await;
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
@@ -333,11 +333,15 @@ impl<'s> SideRunner<'s> {
             return Err(self.fail("no process"));
         };
         let proc_start = proc.started_at;
+        // Run times are relative to the first step, not to the seed: the time the process takes
+        // to start (which varies between runs) does not move them.
+        let start = timefmt::now_ms().max(start);
         let mut runner = Runner {
             stores: &mut self.stores,
             proc,
             http: &self.http,
             saved: BTreeMap::new(),
+            allow_scripts: sc.allow_scripts,
         };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
@@ -360,13 +364,26 @@ impl<'s> SideRunner<'s> {
             .capture_mongo(&sc.mongo)
             .await
             .map_err(|e| self.fail(format!("reading MongoDB: {e}")))?;
-        let captured_at = timefmt::now_ms();
         let dragonfly = self
             .stores
             .capture_dragonfly(&sc.dragonfly)
             .await
             .map_err(|e| self.fail(format!("reading Dragonfly: {e}")))?;
-        let names = self.names();
+        let run = RunMeta {
+            seeded_at,
+            start,
+            end,
+            process_start: proc_start,
+            ports: self
+                .proc
+                .as_ref()
+                .map(|p| p.ports.clone())
+                .unwrap_or_default(),
+            mongo_db: self.stores.db_name.clone(),
+            mongo_uri: capture::redact_uri(&self.stores.mongo_uri()),
+            dragonfly_db: self.stores.df_index,
+            dragonfly_url: self.stores.dragonfly_url(),
+        };
         if let Some(p) = self.proc.as_mut()
             && let Err(why) = p.check_alive()
         {
@@ -375,90 +392,140 @@ impl<'s> SideRunner<'s> {
             self.baseline = None;
             return Err(f);
         }
-        if sc.restart
-            && let Some(why) = self.stop_process().await
-        {
+        if own_process && let Some(why) = self.stop_process().await {
             return Err(self.fail(format!("{why} before the rig stopped it")));
         }
-        Ok(RawRun {
-            raw: RawCapture {
-                steps,
-                mongo,
-                dragonfly,
-                captured_at,
-            },
-            window: Window {
-                start,
-                end,
-                proc_start,
-            },
-            names,
-        })
+        let mut raw = RawCapture {
+            steps,
+            mongo,
+            dragonfly,
+        };
+        raw.sort();
+        Ok(RawRun { raw, run })
     }
 
-    /// Stop the process; the stores stay claimed until [`SideStores::cleanup`].
-    async fn finish(mut self) -> SideStores {
+    /// Stop the process; the stores stay claimed until [`Registry::cleanup`].
+    async fn finish(mut self) {
         let _ = self.stop_process().await;
-        self.stores
     }
 }
 
+/// An existing database a side reads (`diff-get`), and the URI it gets for it.
+pub struct Existing {
+    pub db: String,
+    /// A read-only user's URI; `None`: the rig's own credentials (`--allow-writes`).
+    pub side_uri: Option<String>,
+}
+
+/// Run every scenario on one side. The side's stores are registered in `reg` and released by
+/// the command's one cleanup path ([`Registry::cleanup`]), whatever happens here.
 async fn run_side(
     settings: &Settings,
+    reg: &Registry,
     target: &Target,
     which: Which,
     label: &str,
     scenarios: &[Scenario],
-    existing_db: Option<&str>,
-) -> Result<(Vec<SideOutcome>, SideStores)> {
-    let mut r = SideRunner::new(settings, target, which, label, existing_db).await?;
+    existing: Option<&Existing>,
+) -> Result<Vec<SideOutcome>> {
+    let mut r = SideRunner::new(settings, reg, target, which, label, existing).await?;
     let mut out = Vec::with_capacity(scenarios.len());
     for sc in scenarios {
         out.push(r.run_scenario(sc).await);
     }
-    Ok((out, r.finish().await))
+    r.finish().await;
+    Ok(out)
 }
 
-async fn cleanup(settings: &Settings, mut stores: Vec<SideStores>, report: &mut Report) {
-    for s in stores.iter_mut() {
-        if let Err(e) = s.cleanup(settings.keep).await {
-            report.errors.push(format!("cleanup of {}: {e}", s.db_name));
-        }
-        if settings.keep {
-            eprintln!(
-                "kept: MongoDB database {} and Dragonfly logical database {} (flushed by the next run that claims it)",
-                s.db_name, s.df_index
-            );
+/// What normalisation needs besides the raw run: the scenario's known inputs and rules.
+pub struct Rules<'a> {
+    pub patterns: &'a Patterns,
+    pub known: &'a Known,
+    /// Response headers not compared.
+    pub skip_headers: &'a [String],
+    pub as_text: &'a [crate::path::Pattern],
+    pub byte_sensitive: &'a [String],
+    /// The `$rigNow` offsets of the seed (`true`: epoch seconds).
+    pub seed_offsets: &'a [(i64, bool)],
+}
+
+impl<'a> Rules<'a> {
+    pub fn of(sc: &'a Scenario, patterns: &'a Patterns, byte_sensitive: &'a [String]) -> Rules<'a> {
+        Rules {
+            patterns,
+            known: &sc.known,
+            skip_headers: &sc.skip_headers,
+            as_text: &sc.as_text,
+            byte_sensitive,
+            seed_offsets: &sc.seed_offsets,
         }
     }
 }
 
-/// Detect, order and number one side's capture.
-pub fn normalise(
-    run: &RawRun,
-    known: &Known,
-    headers: &[String],
-    as_text: &[crate::path::Pattern],
-    allow: &Allowances,
-    patterns: &Patterns,
-) -> Capture {
+/// Detect, order and number one side's raw run with the current normaliser.
+pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture {
     let ctx = DetectCtx {
-        patterns,
-        window: run.window,
-        known,
+        patterns: rules.patterns,
+        window: Window {
+            start: run.run.start,
+            end: run.run.end,
+            proc_start: run.run.process_start,
+            seeded_at: run.run.seeded_at,
+        },
+        known: rules.known,
         allow,
-        names: run.names.clone(),
-        headers: headers.to_vec(),
-        captured_at: run.raw.captured_at,
-        as_text: as_text.to_vec(),
+        names: run.run.names(),
+        skip_headers: rules.skip_headers.to_vec(),
+        as_text: rules.as_text.to_vec(),
+        byte_sensitive: rules.byte_sensitive.to_vec(),
+        seed_offsets: rules.seed_offsets.to_vec(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
     cap
 }
 
-fn normalise_sc(run: &RawRun, sc: &Scenario, allow: &Allowances, patterns: &Patterns) -> Capture {
-    normalise(run, &sc.known, &sc.headers, &sc.as_text, allow, patterns)
+fn normalise_sc(
+    run: &RawRun,
+    sc: &Scenario,
+    allow: &Allowances,
+    patterns: &Patterns,
+    settings: &Settings,
+) -> Capture {
+    normalise(
+        run,
+        &Rules::of(sc, patterns, &settings.byte_sensitive),
+        allow,
+    )
+}
+
+/// A raw run through the capture file format and back, as `verify` reads a reference.
+fn through_file(target: &str, sc: &Scenario, r: &RawRun) -> Result<RawRun> {
+    let f = capture_file(target, sc, r, None);
+    let back = capture::from_file_json(&capture::to_file_json(&f)).map_err(config)?;
+    Ok(RawRun {
+        raw: back.raw,
+        run: back.run,
+    })
+}
+
+fn capture_file(target: &str, sc: &Scenario, r: &RawRun, label: Option<&str>) -> CaptureFile {
+    CaptureFile {
+        provenance: Provenance {
+            target: target.into(),
+            scenario: sc.name.clone(),
+            side: Which::Reference.name().into(),
+            label: label.map(str::to_string),
+            recorded_at: timefmt::now_ms(),
+            rig_version: env!("CARGO_PKG_VERSION").into(),
+        },
+        hashes: Hashes {
+            scenario: sc.hash.clone(),
+            files: sc.files.clone(),
+        },
+        run: r.run.clone(),
+        raw: r.raw.clone(),
+    }
 }
 
 fn finish_scenario(
@@ -523,7 +590,7 @@ pub fn capture_path(settings: &Settings, target: &str, scenario: &str) -> PathBu
         .join(format!("{scenario}.json"))
 }
 
-fn read_capture(path: &FsPath) -> std::result::Result<(CaptureMeta, Capture), String> {
+fn read_capture(path: &FsPath) -> std::result::Result<CaptureFile, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let v: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -541,11 +608,12 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
         r.status = Status::Checked;
         let path = capture_path(settings, target_name, &sc.name);
         match read_capture(&path) {
-            Ok((meta, _)) if meta.scenario_hash != sc.hash => {
+            Ok(f) if f.hashes.scenario != sc.hash => {
                 r.warnings.push("capture is stale: re-record it".into())
             }
             Ok(_) => {}
-            Err(_) => r.warnings.push("no capture recorded yet".into()),
+            Err(_) if !path.exists() => r.warnings.push("no capture recorded yet".into()),
+            Err(e) => r.warnings.push(format!("capture cannot be read: {e}")),
         }
         report.scenarios.push(r);
     }
@@ -557,6 +625,7 @@ pub fn check(settings: &Settings, target_name: &str, filters: &[String]) -> Resu
 /// `dima-rig compare`: run the reference and the candidate live and compare.
 pub async fn compare_live(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     filters: &[String],
 ) -> Result<Report> {
@@ -564,41 +633,36 @@ pub async fn compare_live(
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (refs, ref_stores) =
-        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
+    let refs = run_side(
+        settings,
+        reg,
+        &target,
+        Which::Reference,
+        "ref",
+        &scenarios,
+        None,
+    )
+    .await?;
     let cands = run_side(
         settings,
+        reg,
         &target,
         Which::Candidate,
         "cand",
         &scenarios,
         None,
     )
-    .await;
-    let (cands, cand_stores) = match cands {
-        Ok(v) => v,
-        Err(e) => {
-            cleanup(settings, vec![ref_stores], &mut report).await;
-            return Err(e);
-        }
-    };
+    .await?;
     for ((sc, r), c) in scenarios.iter().zip(refs).zip(cands) {
         let mut rep = ScenarioReport::new(&sc.name, &sc.description);
         match (r, c) {
             (Ok(r), Ok(c)) => {
                 let allow = sc.allowances();
-                let rc = normalise_sc(&r, sc, &allow, &p);
-                let cc = normalise_sc(&c, sc, &allow, &p);
-                // Go through the file format, exactly as `verify` does.
-                let meta = CaptureMeta {
-                    target: target_name.into(),
-                    scenario: sc.name.clone(),
-                    scenario_hash: sc.hash.clone(),
-                };
-                let rc = capture::from_file_json(&capture::to_file_json(&meta, &rc))
-                    .map(|(_, c)| c)
-                    .map_err(config)?;
-                let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
+                // The reference goes through the file format, exactly as `verify` reads it.
+                let r = through_file(target_name, sc, &r)?;
+                let rc = normalise_sc(&r, sc, &allow, &p, settings);
+                let cc = normalise_sc(&c, sc, &allow, &p, settings);
+                let outcome = compare::compare(&rc, &cc, &allow, sc.tolerances);
                 finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
             }
             (r, c) => {
@@ -609,14 +673,18 @@ pub async fn compare_live(
         }
         report.scenarios.push(rep);
     }
-    cleanup(settings, vec![ref_stores, cand_stores], &mut report).await;
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
     Ok(report)
 }
 
 /// `dima-rig verify`: run the candidate and compare with the recorded reference captures.
-pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) -> Result<Report> {
+pub async fn verify(
+    settings: &Settings,
+    reg: &Registry,
+    target_name: &str,
+    filters: &[String],
+) -> Result<Report> {
     let mut report = Report::new("verify", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
@@ -631,19 +699,22 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
                 sc.name
             )),
             Err(e) => Err(e),
-            Ok((meta, _)) if meta.scenario_hash != sc.hash => Err(format!(
+            Ok(f) if f.hashes.scenario != sc.hash => Err(format!(
                 "capture is stale: the scenario or a seed it includes changed after recording; run `dima-rig record {target_name} {}`",
                 sc.name
             )),
-            Ok((meta, _)) if meta.target != target_name || meta.scenario != sc.name => {
+            Ok(f) if f.provenance.target != target_name || f.provenance.scenario != sc.name => {
                 Err(format!(
                     "capture {} belongs to {}/{}",
                     path.display(),
-                    meta.target,
-                    meta.scenario
+                    f.provenance.target,
+                    f.provenance.scenario
                 ))
             }
-            Ok((_, cap)) => Ok(cap),
+            Ok(f) => Ok(RawRun {
+                raw: f.raw,
+                run: f.run,
+            }),
         };
         match problem {
             Ok(cap) => {
@@ -658,15 +729,25 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
         }
     }
     if !runnable.is_empty() {
-        let (cands, cand_stores) =
-            run_side(settings, &target, Which::Candidate, "cand", &runnable, None).await?;
-        for ((sc, rc), c) in runnable.iter().zip(recorded).zip(cands) {
+        let cands = run_side(
+            settings,
+            reg,
+            &target,
+            Which::Candidate,
+            "cand",
+            &runnable,
+            None,
+        )
+        .await?;
+        for ((sc, r), c) in runnable.iter().zip(recorded).zip(cands) {
             let mut rep = ScenarioReport::new(&sc.name, &sc.description);
             match c {
                 Ok(c) => {
                     let allow = sc.allowances();
-                    let cc = normalise_sc(&c, sc, &allow, &p);
-                    let outcome = compare::compare(&rc, &cc, &allow, sc.tolerance_ms);
+                    // The stored raw reference, normalised by the current code.
+                    let rc = normalise_sc(&r, sc, &allow, &p, settings);
+                    let cc = normalise_sc(&c, sc, &allow, &p, settings);
+                    let outcome = compare::compare(&rc, &cc, &allow, sc.tolerances);
                     finish_scenario(&mut rep, outcome, &allow, Status::Match, Status::Differ);
                 }
                 Err(f) => {
@@ -676,7 +757,6 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
             }
             report.scenarios.push(rep);
         }
-        cleanup(settings, vec![cand_stores], &mut report).await;
     }
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
@@ -686,39 +766,41 @@ pub async fn verify(settings: &Settings, target_name: &str, filters: &[String]) 
 /// `dima-rig record`: run the reference (twice unless `once`), check it is stable, write captures.
 pub async fn record(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     filters: &[String],
     once: bool,
+    label: Option<&str>,
 ) -> Result<Report> {
     let mut report = Report::new("record", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
     let p = patterns()?;
     let scenarios = load_scenarios(settings, target_name, filters, &p, &mut report)?;
-    let (first, s1) =
-        run_side(settings, &target, Which::Reference, "ref", &scenarios, None).await?;
-    let mut all_stores = vec![s1];
+    let first = run_side(
+        settings,
+        reg,
+        &target,
+        Which::Reference,
+        "ref",
+        &scenarios,
+        None,
+    )
+    .await?;
     let second = if once {
         None
     } else {
-        match run_side(
-            settings,
-            &target,
-            Which::Reference,
-            "ref2",
-            &scenarios,
-            None,
+        Some(
+            run_side(
+                settings,
+                reg,
+                &target,
+                Which::Reference,
+                "ref2",
+                &scenarios,
+                None,
+            )
+            .await?,
         )
-        .await
-        {
-            Ok((v, s2)) => {
-                all_stores.push(s2);
-                Some(v)
-            }
-            Err(e) => {
-                cleanup(settings, all_stores, &mut report).await;
-                return Err(e);
-            }
-        }
     };
     let mut second = second.map(Vec::into_iter);
     for (sc, r1) in scenarios.iter().zip(first) {
@@ -734,7 +816,7 @@ pub async fn record(
             }
         };
         let allow = sc.allowances();
-        let c1 = normalise_sc(&r1, sc, &allow, &p);
+        let c1 = normalise_sc(&r1, sc, &allow, &p, settings);
         match r2 {
             Some(Err(f)) => {
                 rep.status = Status::Error;
@@ -743,8 +825,8 @@ pub async fn record(
                 continue;
             }
             Some(Ok(r2)) => {
-                let c2 = normalise_sc(&r2, sc, &allow, &p);
-                let outcome = compare::compare(&c1, &c2, &allow, sc.tolerance_ms);
+                let c2 = normalise_sc(&r2, sc, &allow, &p, settings);
+                let outcome = compare::compare(&c1, &c2, &allow, sc.tolerances);
                 if !outcome.differences.is_empty() {
                     finish_scenario(
                         &mut rep,
@@ -761,15 +843,22 @@ pub async fn record(
             }
             None => {}
         }
-        let meta = CaptureMeta {
-            target: target_name.into(),
-            scenario: sc.name.clone(),
-            scenario_hash: sc.hash.clone(),
-        };
         let path = capture_path(settings, target_name, &sc.name);
+        // Unchanged: the stored capture, normalised by the current code, still matches.
         let unchanged = match read_capture(&path) {
-            Ok((m, old)) if m == meta => {
-                compare::compare(&old, &c1, &Allowances::default(), sc.tolerance_ms)
+            Ok(old)
+                if old.hashes.scenario == sc.hash
+                    && old.provenance.target == target_name
+                    && old.provenance.scenario == sc.name =>
+            {
+                let fresh = sc.allowances();
+                let old = RawRun {
+                    raw: old.raw,
+                    run: old.run,
+                };
+                let oc = normalise_sc(&old, sc, &fresh, &p, settings);
+                let nc = normalise_sc(&r1, sc, &fresh, &p, settings);
+                compare::compare(&oc, &nc, &fresh, sc.tolerances)
                     .differences
                     .is_empty()
             }
@@ -778,7 +867,7 @@ pub async fn record(
         if unchanged {
             rep.status = Status::Unchanged;
         } else {
-            let text = capture::to_file_string(&meta, &c1);
+            let text = capture::to_file_string(&capture_file(target_name, sc, &r1, label));
             if let Some(dir) = path.parent() {
                 std::fs::create_dir_all(dir)
                     .map_err(|e| crate::error::io(&dir.display().to_string(), e))?;
@@ -797,7 +886,6 @@ pub async fn record(
         rep.capture = Some(path.display().to_string());
         report.scenarios.push(rep);
     }
-    cleanup(settings, all_stores, &mut report).await;
     report.scenarios.sort_by(|a, b| a.scenario.cmp(&b.scenario));
     report.finish();
     Ok(report)
@@ -806,10 +894,12 @@ pub async fn record(
 /// `dima-rig diff-get`: GET requests against an existing database on both sides.
 pub async fn diff_get(
     settings: &Settings,
+    reg: &Registry,
     target_name: &str,
     db: &str,
     list_file: &FsPath,
     write_check: bool,
+    allow_writes: bool,
 ) -> Result<Report> {
     let mut report = Report::new("diff-get", target_name);
     let target = target::load(&settings.rig_dir, target_name)?;
@@ -835,6 +925,7 @@ pub async fn diff_get(
         file: list_file.to_path_buf(),
         description: list.description.clone(),
         restart: false,
+        allow_scripts: false,
         seed_mongo: Vec::new(),
         seed_dragonfly: Vec::new(),
         steps: list.steps.clone(),
@@ -846,13 +937,25 @@ pub async fn diff_get(
             only: Some(Vec::new()),
             exclude: Vec::new(),
         },
-        headers: list.headers.clone(),
+        skip_headers: list.skip_headers.clone(),
         as_text: Vec::new(),
         allow: list.allow.clone(),
-        tolerance_ms: list.tolerance_ms,
+        tolerances: list.tolerances,
         hash: String::new(),
+        files: Vec::new(),
+        seed_offsets: Vec::new(),
         known,
     };
+    if allow_writes {
+        report.warnings.push(format!(
+            "--allow-writes: both sides had write access to database {db}; only the before/after dbHash check{} stood between them and the data",
+            if write_check { "" } else { " (skipped with --no-write-check)" }
+        ));
+    } else if !stores::auth_enforced(&settings.stores).await? {
+        report.warnings.push(format!(
+            "the MongoDB server does not enforce authentication, so the read-only users could still write to {db}; only the before/after dbHash check protects it"
+        ));
+    }
     let mut runs = Vec::new();
     for (which, label) in [(Which::Reference, "ref"), (Which::Candidate, "cand")] {
         let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
@@ -861,17 +964,35 @@ pub async fn diff_get(
         } else {
             None
         };
-        let (mut out, mut st) = run_side(
+        // Each side reads with a user that may only read this database, so it cannot change
+        // what the other side then reads.
+        let side_uri = if allow_writes {
+            None
+        } else {
+            Some(stores::create_read_only_user(&settings.stores, reg, label, db).await?)
+        };
+        let existing = Existing {
+            db: db.to_string(),
+            side_uri,
+        };
+        let mut out = run_side(
             settings,
+            reg,
             &target,
             which,
             label,
             std::slice::from_ref(&sc),
-            Some(db),
+            Some(&existing),
         )
         .await?;
-        if let Err(e) = st.cleanup(false).await {
-            report.errors.push(format!("cleanup: {e}"));
+        if !allow_writes
+            && let Some(Err(f)) = out.last_mut()
+            && f.step.is_none()
+        {
+            f.message = format!(
+                "{} (it ran with a MongoDB user that may only read {db}; if it must write at start-up, for example to create indexes, rerun with --allow-writes, and the report will say that writes were possible)",
+                f.message
+            );
         }
         let mut outcome = out
             .pop()
@@ -907,8 +1028,8 @@ pub async fn diff_get(
     match (refr, cand) {
         (Ok(r), Ok(c)) => {
             let allow = sc.allowances();
-            let rc = normalise_sc(&r, &sc, &allow, &p);
-            let cc = normalise_sc(&c, &sc, &allow, &p);
+            let rc = normalise_sc(&r, &sc, &allow, &p, settings);
+            let cc = normalise_sc(&c, &sc, &allow, &p, settings);
             for (i, step) in sc.steps.iter().enumerate() {
                 let label = match &step.kind {
                     crate::scenario::StepKind::Http(h) => format!("{:03} GET {}", i, h.path),
@@ -930,7 +1051,7 @@ pub async fn diff_get(
                     ..Capture::default()
                 };
                 let mut rep = ScenarioReport::new(&label, step.name.as_deref().unwrap_or(""));
-                let outcome = compare::compare(&only(&rc), &only(&cc), &allow, sc.tolerance_ms);
+                let outcome = compare::compare(&only(&rc), &only(&cc), &allow, sc.tolerances);
                 rep.differences = outcome.differences;
                 rep.notes = outcome.notes;
                 rep.status = if rep.differences.is_empty() {
@@ -964,26 +1085,4 @@ pub async fn diff_get(
     }
     report.finish();
     Ok(report)
-}
-
-/// Drop this process's own `rig_` databases (after an interruption).
-pub async fn drop_own(settings: &Settings) -> Result<Vec<String>> {
-    let client = stores::mongo_client(&settings.stores.mongo_uri).await?;
-    let prefix = format!("rig_{}_", std::process::id());
-    let mut dropped = Vec::new();
-    for n in client
-        .list_database_names()
-        .await
-        .map_err(|e| RigError::Store(e.to_string()))?
-    {
-        if n.starts_with(&prefix) {
-            client
-                .database(&n)
-                .drop()
-                .await
-                .map_err(|e| RigError::Store(e.to_string()))?;
-            dropped.push(n);
-        }
-    }
-    Ok(dropped)
 }

@@ -16,7 +16,7 @@ use serde_json::{Map, Value};
 
 use crate::allow::{AllowKind, Allowances};
 use crate::canon::fnv1a64;
-use crate::detect::{DEFAULT_HEADERS, Known, Patterns};
+use crate::detect::{Known, NOISE_HEADERS, Patterns};
 use crate::error::{Result, config};
 use crate::path::{Pattern, Seg as PSeg, name_glob};
 use crate::template::{self, NowFmt};
@@ -41,6 +41,8 @@ struct ScenarioFile {
     #[serde(default)]
     restart: bool,
     #[serde(default)]
+    allow_scripts: bool,
+    #[serde(default)]
     seed: Option<SeedBody>,
     steps: Vec<StepFile>,
     #[serde(default)]
@@ -49,6 +51,8 @@ struct ScenarioFile {
     allow: Vec<AllowFile>,
     #[serde(default)]
     tolerance_ms: Option<u64>,
+    #[serde(default)]
+    relation_tolerance_ms: Option<u64>,
 }
 
 #[derive(Deserialize, Default)]
@@ -181,12 +185,9 @@ struct SelFile {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct HeaderSelFile {
+    /// Names from the noise list to compare after all.
     #[serde(default)]
-    only: Option<Vec<String>>,
-    #[serde(default)]
-    add: Vec<String>,
-    #[serde(default)]
-    remove: Vec<String>,
+    include: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -199,6 +200,8 @@ pub(crate) struct AllowFile {
     ms: Option<u64>,
     #[serde(default)]
     pattern: Option<String>,
+    #[serde(default)]
+    unit: Option<String>,
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -322,17 +325,24 @@ pub struct Scenario {
     pub file: PathBuf,
     pub description: String,
     pub restart: bool,
+    /// `EVAL`, `EVALSHA` and `SCRIPT LOAD|EXISTS` may run in steps and seeds.
+    pub allow_scripts: bool,
     /// Collection → documents (Extended JSON, `$rigNow` resolved at seed time).
     pub seed_mongo: Vec<(String, Vec<Value>)>,
     pub seed_dragonfly: Vec<Vec<Arg>>,
     pub steps: Vec<Step>,
     pub mongo: Selection,
     pub dragonfly: Selection,
-    pub headers: Vec<String>,
+    /// Response headers not compared (the noise list minus `compare.headers.include`).
+    pub skip_headers: Vec<String>,
     pub as_text: Vec<Pattern>,
     pub allow: Vec<(Pattern, AllowKind, String)>,
-    pub tolerance_ms: i64,
+    pub tolerances: crate::compare::Tolerances,
     pub hash: String,
+    /// Each input file (the scenario, then every seed it includes) with its own hash.
+    pub files: Vec<(String, String)>,
+    /// Every `$rigNow` offset of the seed (`true`: written as epoch seconds).
+    pub seed_offsets: Vec<(i64, bool)>,
     pub known: Known,
 }
 
@@ -560,11 +570,26 @@ pub fn resolve_filter(
 // ---------------------------------------------------------------------------------------------
 // Loading.
 
+/// A file's name relative to the target's scenario directory (`items/create.json`,
+/// `_seeds/users.json`), or its full path when it lies elsewhere.
+fn relative_name(root: &FsPath, file: &FsPath) -> String {
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    file.strip_prefix(&root)
+        .unwrap_or(file)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 struct Loader<'a> {
     patterns: &'a Patterns,
+    allow_scripts: bool,
     known: Known,
     hash_input: String,
     seen_files: HashSet<PathBuf>,
+    /// The scenario directory of the target: file hashes are named relative to it.
+    root: PathBuf,
+    files: Vec<(String, String)>,
+    seed_offsets: Vec<(i64, bool)>,
     mongo: Vec<(String, Vec<Value>)>,
     dragonfly: Vec<Vec<Arg>>,
 }
@@ -577,6 +602,20 @@ fn read_json(file: &FsPath) -> Result<Value> {
 
 fn parse<T: for<'de> Deserialize<'de>>(file: &FsPath, v: &Value) -> Result<T> {
     T::deserialize(v).map_err(|e| config(format!("{}: {e}", file.display())))
+}
+
+/// The `$rigNow` offsets inside a seed document.
+fn seed_offsets(v: &Value, out: &mut Vec<(i64, bool)>) {
+    match v {
+        Value::Object(m) if m.contains_key("$rigNow") => {
+            if let Ok((off, fmt)) = rig_now(m, "") {
+                out.push((off, fmt == "s"));
+            }
+        }
+        Value::Object(m) => m.values().for_each(|x| seed_offsets(x, out)),
+        Value::Array(items) => items.iter().for_each(|x| seed_offsets(x, out)),
+        _ => {}
+    }
 }
 
 /// Known values of an input, skipping `$rigNow` (those are run-time values).
@@ -594,52 +633,14 @@ fn collect_inputs(p: &Patterns, v: &Value, known: &mut Known) {
     }
 }
 
-const DENIED_COMMANDS: &[&str] = &[
-    "SELECT",
-    "SWAPDB",
-    "MOVE",
-    "FLUSHALL",
-    "CONFIG",
-    "SHUTDOWN",
-    "DEBUG",
-    "REPLICAOF",
-    "SLAVEOF",
-    "MIGRATE",
-    "MONITOR",
-    "SUBSCRIBE",
-    "PSUBSCRIBE",
-    "SSUBSCRIBE",
-    "UNSUBSCRIBE",
-    "PUNSUBSCRIBE",
-    "CLIENT",
-    "SAVE",
-    "BGSAVE",
-    "BGREWRITEAOF",
-    "FAILOVER",
-    "FUNCTION",
-    "ACL",
-    "CLUSTER",
-    "MODULE",
-    "RESET",
-    "QUIT",
-    "HELLO",
-    "WAIT",
-    "BLPOP",
-    "BRPOP",
-    "BLMOVE",
-    "BRPOPLPUSH",
-    "BZPOPMIN",
-    "BZPOPMAX",
-    "BLMPOP",
-    "BZMPOP",
-    "XREAD",
-    "XREADGROUP",
-    "DFLY",
-    "DFLYCLUSTER",
-    "SCRIPT",
-];
-
-fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg>> {
+/// A command of a step or seed. Checked against [`crate::dfcmd`] here when its words are
+/// written literally, and always again once rendered, when it runs.
+fn command(
+    args: &[Value],
+    at: &str,
+    saved: &BTreeSet<String>,
+    allow_scripts: bool,
+) -> Result<Vec<Arg>> {
     let mut out = Vec::with_capacity(args.len());
     for (i, a) in args.iter().enumerate() {
         let here = format!("{at}[{i}]");
@@ -666,28 +667,37 @@ fn command(args: &[Value], at: &str, saved: &BTreeSet<String>) -> Result<Vec<Arg
             _ => return Err(config(format!("{here}: command arguments are strings, numbers or {{\"$rigNow\": ...}}"))),
         });
     }
-    let name = match out.first() {
-        Some(Arg::Text(t)) => t.to_ascii_uppercase(),
-        _ => {
-            return Err(config(format!(
-                "{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"
-            )));
+    if !matches!(out.first(), Some(Arg::Text(_))) {
+        return Err(config(format!(
+            "{at}: a command starts with its name, such as [\"SET\", \"key\", \"value\"]"
+        )));
+    }
+    // Literal words (no `${...}`) can be checked now; the rest is checked once rendered.
+    let literal: Option<Vec<String>> = out
+        .iter()
+        .map(|a| match a {
+            Arg::Text(t) if !t.contains("${") => Some(t.clone()),
+            Arg::Now { .. } => Some("0".into()),
+            Arg::Text(_) => None,
+        })
+        .collect();
+    let name_literal = matches!(out.first(), Some(Arg::Text(t)) if !t.contains("${"));
+    let checked = match literal {
+        Some(words) => crate::dfcmd::check(&words, allow_scripts),
+        None if name_literal => {
+            // Check the name with its literal words; templated words are checked when rendered.
+            let words: Vec<String> = out
+                .iter()
+                .map(|a| match a {
+                    Arg::Text(t) => t.clone(),
+                    Arg::Now { .. } => "0".into(),
+                })
+                .collect();
+            crate::dfcmd::check(&words, allow_scripts)
         }
+        None => Ok(()),
     };
-    if DENIED_COMMANDS.contains(&name.as_str()) {
-        return Err(config(format!(
-            "{at}: {name} is not allowed in scenarios (it reaches outside the side's logical database or blocks)"
-        )));
-    }
-    if name == "COPY"
-        && out
-            .iter()
-            .any(|a| matches!(a, Arg::Text(t) if t.eq_ignore_ascii_case("DB")))
-    {
-        return Err(config(format!(
-            "{at}: COPY ... DB is not allowed (it reaches another logical database)"
-        )));
-    }
+    checked.map_err(|e| config(format!("{at}: {e}")))?;
     Ok(out)
 }
 
@@ -713,6 +723,10 @@ impl Loader<'_> {
             }
             let v = read_json(&canon)?;
             self.hash_input.push_str(&v.to_string());
+            self.files.push((
+                relative_name(&self.root, &canon),
+                format!("fnv1a64:{:016x}", fnv1a64(v.to_string().as_bytes())),
+            ));
             let sf: SeedFile = parse(&canon, &v)?;
             if sf.rig_seed != SEED_VERSION {
                 return Err(config(format!(
@@ -759,6 +773,7 @@ impl Loader<'_> {
                     )));
                 }
                 collect_inputs(self.patterns, d, &mut self.known);
+                seed_offsets(d, &mut self.seed_offsets);
             }
             match self.mongo.iter_mut().find(|(c, _)| *c == coll) {
                 Some((_, list)) => list.extend(docs),
@@ -766,9 +781,19 @@ impl Loader<'_> {
             }
         }
         for (i, c) in body.dragonfly.iter().enumerate() {
-            let cmd = command(c, &format!("{at}: seed.dragonfly[{i}]"), &BTreeSet::new())?;
+            let cmd = command(
+                c,
+                &format!("{at}: seed.dragonfly[{i}]"),
+                &BTreeSet::new(),
+                self.allow_scripts,
+            )?;
             c.iter()
                 .for_each(|v| collect_inputs(self.patterns, v, &mut self.known));
+            for a in &cmd {
+                if let Arg::Now { offset_ms, fmt } = a {
+                    self.seed_offsets.push((*offset_ms, *fmt == NowFmt::S));
+                }
+            }
             self.dragonfly.push(cmd);
         }
         Ok(())
@@ -1010,36 +1035,23 @@ fn selection(s: Option<SelFile>) -> Selection {
     .unwrap_or_default()
 }
 
+/// The response headers not compared: the noise list minus `compare.headers.include`. Every
+/// other header is compared (ignore one with an allowance, which needs a reason).
 pub(crate) fn headers(h: Option<HeaderSelFile>, at: &str) -> Result<Vec<String>> {
-    let Some(h) = h else {
-        return Ok(DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
-    };
-    for n in h.only.iter().flatten().chain(&h.add).chain(&h.remove) {
-        if n.is_empty() || *n != n.to_ascii_lowercase() {
-            return Err(config(format!("{at}: header names are lower case (`{n}`)")));
-        }
-    }
-    if h.only.is_some() && (!h.add.is_empty() || !h.remove.is_empty()) {
-        return Err(config(format!("{at}: use either only, or add/remove")));
-    }
-    let mut list: Vec<String> = h
-        .only
-        .unwrap_or_else(|| DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect());
-    for a in h.add {
-        if !list.contains(&a) {
-            list.push(a);
-        }
-    }
-    for r in &h.remove {
-        if !list.contains(r) {
+    let include = h.map(|h| h.include).unwrap_or_default();
+    for n in &include {
+        if !NOISE_HEADERS.contains(&n.as_str()) {
             return Err(config(format!(
-                "{at}: remove `{r}`: not in the list ({})",
-                list.join(", ")
+                "{at}.include: `{n}` is compared already; include names only from the noise list ({})",
+                NOISE_HEADERS.join(", ")
             )));
         }
     }
-    list.retain(|x| !h.remove.contains(x));
-    Ok(list)
+    Ok(NOISE_HEADERS
+        .iter()
+        .filter(|n| !include.iter().any(|i| i == *n))
+        .map(|n| n.to_string())
+        .collect())
 }
 
 pub(crate) fn allowances(
@@ -1071,12 +1083,23 @@ pub(crate) fn allowances(
                 )),
                 None => AllowKind::Generated(None),
             },
+            "exact" => AllowKind::Exact,
+            "time" => match a.unit.as_deref() {
+                None | Some("ms") => AllowKind::Time { seconds: false },
+                Some("s") => AllowKind::Time { seconds: true },
+                Some(other) => {
+                    return Err(config(format!("{here}.unit: `{other}` (use ms or s)")));
+                }
+            },
             other => {
                 return Err(config(format!(
-                    "{here}.kind: `{other}` (use ignore, set, tolerance or generated)"
+                    "{here}.kind: `{other}` (use ignore, set, tolerance, generated, exact or time)"
                 )));
             }
         };
+        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. }) {
+            return Err(config(format!("{here}: \"unit\" only goes with kind time")));
+        }
         if a.ms.is_some() && !matches!(kind, AllowKind::Tolerance(_)) {
             return Err(config(format!(
                 "{here}: \"ms\" only goes with kind tolerance"
@@ -1090,6 +1113,28 @@ pub(crate) fn allowances(
         out.push((path, kind, a.reason));
     }
     Ok(out)
+}
+
+/// `tolerance_ms` (default 2000) and `relation_tolerance_ms` (default 50).
+pub(crate) fn tolerances(
+    window: Option<u64>,
+    relation: Option<u64>,
+    at: &str,
+) -> Result<crate::compare::Tolerances> {
+    let d = crate::compare::Tolerances::default();
+    let ms = |v: Option<u64>, default: i64, name: &str| -> Result<i64> {
+        match v {
+            None => Ok(default),
+            Some(v) if v <= 86_400_000 => {
+                i64::try_from(v).map_err(|_| config(format!("{at}: {name} too large")))
+            }
+            Some(_) => Err(config(format!("{at}: {name} at most 86400000"))),
+        }
+    };
+    Ok(crate::compare::Tolerances {
+        window_ms: ms(window, d.window_ms, "tolerance_ms")?,
+        relation_ms: ms(relation, d.relation_ms, "relation_tolerance_ms")?,
+    })
 }
 
 /// Read and check one scenario.
@@ -1114,9 +1159,16 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
     }
     let mut loader = Loader {
         patterns,
+        allow_scripts: f.allow_scripts,
         known: Known::default(),
         hash_input: v.to_string(),
         seen_files: HashSet::new(),
+        root: rig_dir.join("scenarios").join(target),
+        seed_offsets: Vec::new(),
+        files: vec![(
+            format!("{name}.json"),
+            format!("fnv1a64:{:016x}", fnv1a64(v.to_string().as_bytes())),
+        )],
         mongo: Vec::new(),
         dragonfly: Vec::new(),
     };
@@ -1159,7 +1211,12 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         } else if let Some(c) = s.dragonfly {
             c.iter()
                 .for_each(|x| collect_inputs(patterns, x, &mut loader.known));
-            StepKind::Dragonfly(command(&c, &format!("{here}.dragonfly"), &saved)?)
+            StepKind::Dragonfly(command(
+                &c,
+                &format!("{here}.dragonfly"),
+                &saved,
+                f.allow_scripts,
+            )?)
         } else if let Some(ms) = s.pause_ms {
             StepKind::Pause(timeout(ms, &format!("{here}.pause_ms"))?)
         } else if let Some(w) = s.wait_for {
@@ -1222,23 +1279,30 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .iter()
         .map(|p| Pattern::parse(p).map_err(|e| config(format!("{at}: compare.as_text: {e}"))))
         .collect::<Result<Vec<_>>>()?;
-    let tolerance_ms = i64::try_from(f.tolerance_ms.unwrap_or(2000))
-        .map_err(|_| config(format!("{at}: tolerance_ms too large")))?;
+    let tolerances = tolerances(f.tolerance_ms, f.relation_tolerance_ms, &at)?;
     Ok(Scenario {
         name: name.to_string(),
         file,
         description: f.description,
         restart: f.restart,
+        allow_scripts: f.allow_scripts,
         seed_mongo: loader.mongo,
         seed_dragonfly: loader.dragonfly,
         steps,
         mongo: selection(compare.mongo),
         dragonfly: selection(compare.dragonfly),
-        headers: headers(compare.headers, &format!("{at}: compare.headers"))?,
+        skip_headers: headers(compare.headers, &format!("{at}: compare.headers"))?,
         as_text,
         allow: allowances(f.allow, &at)?,
-        tolerance_ms,
+        tolerances,
         hash: format!("fnv1a64:{:016x}", fnv1a64(loader.hash_input.as_bytes())),
+        files: loader.files,
+        seed_offsets: {
+            let mut o = loader.seed_offsets;
+            o.sort_unstable();
+            o.dedup();
+            o
+        },
         known: loader.known,
     })
 }
@@ -1368,12 +1432,12 @@ mod tests {
     #[test]
     fn commands_are_checked() {
         assert!(
-            command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new())
+            command(&[json!("SELECT"), json!("2")], "c", &BTreeSet::new(), false)
                 .unwrap_err()
                 .to_string()
                 .contains("not allowed")
         );
-        assert!(command(&[json!("flushall")], "c", &BTreeSet::new()).is_err());
+        assert!(command(&[json!("flushall")], "c", &BTreeSet::new(), false).is_err());
         assert!(
             command(
                 &[
@@ -1384,12 +1448,59 @@ mod tests {
                     json!("3")
                 ],
                 "c",
-                &BTreeSet::new()
+                &BTreeSet::new(),
+                false
             )
             .is_err()
         );
-        assert!(command(&[json!("SET"), json!("k"), json!(5)], "c", &BTreeSet::new()).is_ok());
-        assert!(command(&[json!("GET"), json!("${missing}")], "c", &BTreeSet::new()).is_err());
+        assert!(
+            command(
+                &[json!("SET"), json!("k"), json!(5)],
+                "c",
+                &BTreeSet::new(),
+                false
+            )
+            .is_ok()
+        );
+        assert!(
+            command(
+                &[json!("GET"), json!("${missing}")],
+                "c",
+                &BTreeSet::new(),
+                false
+            )
+            .is_err()
+        );
+        // A saved value as the name is checked when the step runs.
+        let saved: BTreeSet<String> = ["cmd".to_string()].into();
+        assert!(
+            command(
+                &[json!("${cmd}"), json!("GET"), json!("x")],
+                "c",
+                &saved,
+                false
+            )
+            .is_ok()
+        );
+        // Scripts need the flag.
+        assert!(
+            command(
+                &[json!("EVAL"), json!("return 1"), json!("0")],
+                "c",
+                &saved,
+                false
+            )
+            .is_err()
+        );
+        assert!(
+            command(
+                &[json!("EVAL"), json!("return 1"), json!("0")],
+                "c",
+                &saved,
+                true
+            )
+            .is_ok()
+        );
     }
 
     #[test]

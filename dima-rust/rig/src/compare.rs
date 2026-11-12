@@ -7,8 +7,19 @@
 //!
 //! Forgiven by default: JSON object key order (reported as a note), JSON numbers that are equal
 //! by value (`5` and `5.0`), run-relative times within the tolerance. Nothing else.
+//!
+//! Times are compared twice. Each run-relative time against its counterpart, relative to its own
+//! side's run start, within the window tolerance (2 s): the coarse check. Then the relations
+//! between the times of one unit (a document, a response, a Dragonfly entry, a reply) must match
+//! the reference: where the reference shows one clock reading used twice (a difference of zero),
+//! the candidate must too; where it shows a whole number of seconds of at least one second (a
+//! lease or expiry computed as now plus a constant), the candidate's difference must be the same
+//! within the relation tolerance (50 ms); otherwise the order must be the same (a difference
+//! within the relation tolerance may become zero, never reversed). Times with one-second
+//! precision (epoch seconds, HTTP dates, ISO without milliseconds, TTLs) take part only by order,
+//! and only when more than a second apart.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use serde::Serialize;
 use serde_json::Number;
@@ -21,6 +32,42 @@ use crate::value::{Id, IdKind, Moment, Seg, Text, Val};
 
 /// Time tolerance when the scenario sets none.
 pub const DEFAULT_TOLERANCE_MS: i64 = 2000;
+/// Tolerance of a fixed duration between two times of one unit, when the scenario sets none.
+pub const DEFAULT_RELATION_TOLERANCE_MS: i64 = 50;
+/// Units with more times than this check the order of neighbours only (and each fixed
+/// duration and equality between neighbours), not every pair.
+const ALL_PAIRS_LIMIT: usize = 64;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tolerances {
+    /// A run-relative time against its counterpart.
+    pub window_ms: i64,
+    /// A fixed duration between two times of one unit.
+    pub relation_ms: i64,
+}
+
+impl Default for Tolerances {
+    fn default() -> Self {
+        Tolerances {
+            window_ms: DEFAULT_TOLERANCE_MS,
+            relation_ms: DEFAULT_RELATION_TOLERANCE_MS,
+        }
+    }
+}
+
+/// One time of a unit, on both sides: milliseconds relative to each side's run start.
+#[derive(Debug, Clone)]
+struct TimeObs {
+    path: Path,
+    /// Which time inside a string (strings may hold several).
+    label: String,
+    r: i64,
+    c: i64,
+    /// Millisecond precision on both sides.
+    fine: bool,
+    /// A value the seed wrote (`$rigNow`): anchored at the seed, not at the run start.
+    seeded: bool,
+}
 const SHOW: usize = 240;
 /// Above this many reference × candidate items, skip the quadratic matching passes.
 const QUADRATIC_LIMIT: usize = 250_000;
@@ -52,6 +99,11 @@ struct State {
 pub struct Comparator<'a> {
     allow: &'a Allowances,
     tolerance: i64,
+    relation: i64,
+    /// Times of the current unit, in the reference's order.
+    unit: Vec<TimeObs>,
+    /// Paths with a difference in the current unit (their relations are not checked again).
+    flagged: HashSet<String>,
     fwd: HashMap<(IdKind, u32), u32>,
     back: HashMap<(IdKind, u32), u32>,
     journal: Vec<(IdKind, u32, u32)>,
@@ -105,6 +157,7 @@ pub fn mask(v: &Val) -> String {
                 Seg::Time { shape, .. } => s.push_str(&format!("<t|{shape}>")),
                 Seg::Day { .. } => s.push_str("<day>"),
                 Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
+                Seg::Bytes(b) => s.push_str(&format!("<B:{}>", crate::value::hex(b))),
             }
         }
         serde_json::to_string(&s).unwrap_or(s)
@@ -113,6 +166,7 @@ pub fn mask(v: &Val) -> String {
         Val::Oid(Id::Lit(x)) | Val::Uuid(Id::Lit(x)) => format!("I{x}"),
         Val::Oid(_) | Val::Uuid(_) => "I<id>".into(),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}{ms}"),
+        Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, _) => format!("T{r:?}"),
         Val::Str(t) => format!("S{}", text(t)),
         Val::Json(inner) => format!("J{}", mask(inner)),
@@ -155,10 +209,13 @@ fn order_matters(path: &Path) -> bool {
 }
 
 impl<'a> Comparator<'a> {
-    pub fn new(allow: &'a Allowances, tolerance: i64) -> Comparator<'a> {
+    pub fn new(allow: &'a Allowances, tol: Tolerances) -> Comparator<'a> {
         Comparator {
             allow,
-            tolerance,
+            tolerance: tol.window_ms,
+            relation: tol.relation_ms,
+            unit: Vec::new(),
+            flagged: HashSet::new(),
             fwd: HashMap::new(),
             back: HashMap::new(),
             journal: Vec::new(),
@@ -175,6 +232,7 @@ impl<'a> Comparator<'a> {
             self.failed = true;
             return;
         }
+        self.flagged.insert(path.to_string());
         self.out.differences.push(Finding {
             path: path.to_string(),
             what: what.into(),
@@ -284,9 +342,11 @@ impl<'a> Comparator<'a> {
                     Err(format!("times differ by {}", human_duration(y - x)))
                 }
             }
-            (Moment::Rel { off: x, abs: ax }, Moment::Rel { off: y, abs: ay }) => {
+            // Relative to each side's own run start only: the same absolute time on both sides
+            // (a candidate replaying the reference's timestamp) is not a match.
+            (Moment::Rel { off: x, .. }, Moment::Rel { off: y, .. }) => {
                 let tol = self.tol(path);
-                if (x - y).abs() <= tol || (ax.is_some() && ax == ay) {
+                if (x - y).abs() <= tol {
                     Ok(())
                 } else {
                     Err(format!(
@@ -302,6 +362,25 @@ impl<'a> Comparator<'a> {
             {
                 Ok(())
             }
+            (Moment::Seed { seed: x, .. }, Moment::Seed { seed: y, .. }) => {
+                if x == y {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "seeded times differ: reference seed{}, candidate seed{}",
+                        crate::timefmt::format_offset(*x),
+                        crate::timefmt::format_offset(*y)
+                    ))
+                }
+            }
+            (Moment::Seed { seed, .. }, _) => Err(format!(
+                "reference keeps the seeded time seed{}, candidate has another time",
+                crate::timefmt::format_offset(*seed)
+            )),
+            (_, Moment::Seed { seed, .. }) => Err(format!(
+                "candidate has the seeded time seed{}, reference another time",
+                crate::timefmt::format_offset(*seed)
+            )),
             _ => Err("one side has a fixed time, the other a time relative to the run".into()),
         }
     }
@@ -320,12 +399,18 @@ impl<'a> Comparator<'a> {
                     }
                     self.moments(path, p, q)?;
                 }
-                (Seg::Day { off: p, abs: ap }, Seg::Day { off: q, abs: aq }) => {
-                    if p != q && !(ap.is_some() && ap == aq) {
+                (Seg::Day { off: p, .. }, Seg::Day { off: q, .. }) => {
+                    if p != q {
                         return Err(format!("days differ by {}", q - p));
                     }
                 }
                 (Seg::Name(p), Seg::Name(q)) if p == q => {}
+                (Seg::Bytes(p), Seg::Bytes(q)) if p == q => {}
+                (Seg::Bytes(_), _) | (_, Seg::Bytes(_)) => {
+                    return Err(
+                        "text differs (bytes that are not UTF-8 on one side or both)".into(),
+                    );
+                }
                 _ => return Err("text differs".into()),
             }
         }
@@ -402,6 +487,7 @@ impl<'a> Comparator<'a> {
                 } else if let Err(why) = self.moments(path, m1, m2) {
                     self.diff(path, why, Some(show(a)), Some(show(b)));
                 }
+                self.observe(path, String::new(), m1, m2, r1.fine() && r2.fine());
             }
             (Val::Oid(x), Val::Oid(y)) | (Val::Uuid(x), Val::Uuid(y)) => {
                 if let Err(why) = self.ids(x, y) {
@@ -416,6 +502,23 @@ impl<'a> Comparator<'a> {
                         why
                     };
                     self.diff(path, what, Some(show(a)), Some(show(b)));
+                } else {
+                    let times = x.0.iter().zip(&y.0).filter_map(|p| match p {
+                        (Seg::Time { at: m1, shape: s1 }, Seg::Time { at: m2, .. }) => {
+                            Some((*m1, *m2, shape_is_fine(s1)))
+                        }
+                        _ => None,
+                    });
+                    let times: Vec<_> = times.collect();
+                    let several = times.len() > 1;
+                    for (k, (m1, m2, fine)) in times.into_iter().enumerate() {
+                        let label = if several {
+                            format!(" (time {} in the text)", k + 1)
+                        } else {
+                            String::new()
+                        };
+                        self.observe(path, label, &m1, &m2, fine);
+                    }
                 }
             }
             (Val::Bytes(x), Val::Bytes(y)) => {
@@ -447,6 +550,81 @@ impl<'a> Comparator<'a> {
         }
     }
 
+    /// Note a time of the current unit (only while really comparing, not while probing).
+    fn observe(&mut self, path: &Path, label: String, a: &Moment, b: &Moment, fine: bool) {
+        if self.probe {
+            return;
+        }
+        if let (Some(r), Some(c)) = (a.run_offset(), b.run_offset()) {
+            self.unit.push(TimeObs {
+                path: path.clone(),
+                label,
+                r,
+                c,
+                fine,
+                seeded: matches!(a, Moment::Seed { .. }),
+            });
+        }
+    }
+
+    fn begin_unit(&mut self) {
+        self.unit.clear();
+        self.flagged.clear();
+    }
+
+    /// Check the relations between the times of the unit just compared.
+    fn end_unit(&mut self) {
+        let obs = std::mem::take(&mut self.unit);
+        let n = obs.len();
+        if n < 2 {
+            self.flagged.clear();
+            return;
+        }
+        let pairs: Vec<(usize, usize)> = if n <= ALL_PAIRS_LIMIT {
+            (0..n)
+                .flat_map(|i| (i + 1..n).map(move |j| (i, j)))
+                .collect()
+        } else {
+            // Neighbours in the reference's time order: the order of all follows from them.
+            let mut idx: Vec<usize> = (0..n).collect();
+            idx.sort_by_key(|i| obs.get(*i).map_or(0, |o| o.r));
+            idx.windows(2)
+                .filter_map(|w| match w {
+                    [a, b] => Some(((*a).min(*b), (*a).max(*b))),
+                    _ => None,
+                })
+                .collect()
+        };
+        for (i, j) in pairs {
+            let (Some(a), Some(b)) = (obs.get(i), obs.get(j)) else {
+                continue;
+            };
+            let (ka, kb) = (a.path.to_string(), b.path.to_string());
+            if self.flagged.contains(&ka) || self.flagged.contains(&kb) {
+                continue;
+            }
+            let tol = self
+                .allow
+                .tolerance(&a.path, false)
+                .into_iter()
+                .chain(self.allow.tolerance(&b.path, false))
+                .fold(self.relation, i64::max);
+            // A seeded time and a run time have different anchors (the process start lies
+            // between them, and varies): only their order means something.
+            let fine = a.fine && b.fine && a.seeded == b.seeded;
+            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, fine, tol) {
+                let what = format!("time relation to {ka}{} differs: {why}", a.label);
+                self.diff(
+                    &b.path,
+                    format!("{what}{}", b.label),
+                    Some(format!("{} after it", human_signed(b.r - a.r))),
+                    Some(format!("{} after it", human_signed(b.c - a.c))),
+                );
+            }
+        }
+        self.flagged.clear();
+    }
+
     fn int(&mut self, path: &Path, x: i64, y: i64, a: &Val, b: &Val) {
         let equal = match self.allow.tolerance(path, !self.probe) {
             Some(t) => (x - y).abs() <= t,
@@ -459,50 +637,61 @@ impl<'a> Comparator<'a> {
 
     fn obj(&mut self, path: &mut Path, a: &[(Text, Val)], b: &[(Text, Val)]) {
         let mut b_used = vec![false; b.len()];
-        let mut pairs: Vec<(usize, usize)> = Vec::new();
-        let mut missing: Vec<usize> = Vec::new();
+        let mut a_pair: Vec<Option<usize>> = vec![None; a.len()];
         let plain_b: HashMap<&str, usize> = b
             .iter()
             .enumerate()
             .filter_map(|(j, (k, _))| k.as_plain().map(|p| (p, j)))
             .collect();
+        // 1. Plain keys by name.
         for (i, (ka, _)) in a.iter().enumerate() {
-            let found = match ka.as_plain() {
-                Some(p) => plain_b
-                    .get(p)
-                    .copied()
-                    .filter(|j| !b_used.get(*j).copied().unwrap_or(true)),
-                None => {
-                    let mut hit = None;
-                    for (j, (kb, _)) in b.iter().enumerate() {
-                        if b_used.get(j).copied().unwrap_or(true) || kb.as_plain().is_some() {
-                            continue;
-                        }
-                        let kb = kb.clone();
-                        let ka = ka.clone();
-                        let p2 = path.clone();
-                        if self.probe_with(true, |s| {
-                            if s.text(&p2, &ka, &kb).is_err() {
-                                s.failed = true;
-                            }
-                        }) {
-                            hit = Some(j);
-                            break;
-                        }
-                    }
-                    hit
-                }
-            };
-            match found {
-                Some(j) => {
-                    if let Some(u) = b_used.get_mut(j) {
-                        *u = true;
-                    }
-                    pairs.push((i, j));
-                }
-                None => missing.push(i),
+            if let Some(p) = ka.as_plain()
+                && let Some(j) = plain_b.get(p).copied()
+                && !b_used.get(j).copied().unwrap_or(true)
+            {
+                b_used[j] = true;
+                a_pair[i] = Some(j);
             }
         }
+        // 2. Keys holding generated values: bound by key and value together, so equivalent
+        //    objects whose generated keys come in another order pair correctly ...
+        // 3. ... then by key alone (the values' differences are reported).
+        for whole in [true, false] {
+            for (i, (ka, va)) in a.iter().enumerate() {
+                if ka.as_plain().is_some() || a_pair.get(i).copied().flatten().is_some() {
+                    continue;
+                }
+                for (j, (kb, vb)) in b.iter().enumerate() {
+                    if b_used.get(j).copied().unwrap_or(true) || kb.as_plain().is_some() {
+                        continue;
+                    }
+                    let p2 = path.clone();
+                    let hit = self.probe_with(true, |s| {
+                        if s.text(&p2, ka, kb).is_err() {
+                            s.failed = true;
+                        } else if whole {
+                            s.val(&mut p2.with_key(ka.display()), va, vb);
+                        }
+                    });
+                    if hit {
+                        b_used[j] = true;
+                        a_pair[i] = Some(j);
+                        break;
+                    }
+                }
+            }
+        }
+        let pairs: Vec<(usize, usize)> = a_pair
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| p.map(|j| (i, j)))
+            .collect();
+        let missing: Vec<usize> = a_pair
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.is_none())
+            .map(|(i, _)| i)
+            .collect();
         for (i, j) in &pairs {
             if let (Some((k, x)), Some((_, y))) = (a.get(*i), b.get(*j)) {
                 path.push_key(k.display());
@@ -739,8 +928,16 @@ impl<'a> Comparator<'a> {
 
     fn steps(&mut self, a: &[StepCap], b: &[StepCap]) {
         for i in 0..a.len().max(b.len()) {
+            self.begin_unit();
+            self.step(i, a.get(i), b.get(i));
+            self.end_unit();
+        }
+    }
+
+    fn step(&mut self, i: usize, a: Option<&StepCap>, b: Option<&StepCap>) {
+        {
             let base = Path::root("steps").with_index(i);
-            match (a.get(i), b.get(i)) {
+            match (a, b) {
                 (
                     Some(StepCap::Http {
                         status: s1,
@@ -765,42 +962,26 @@ impl<'a> Comparator<'a> {
                     let names: BTreeSet<&String> =
                         h1.iter().chain(h2.iter()).map(|(n, _)| n).collect();
                     for name in names {
-                        let hp = base.with_key("headers").with_key(name.clone());
+                        let mut hp = base.with_key("headers").with_key(name.clone());
                         if self.ignored(&hp) {
                             continue;
                         }
                         let x = h1.iter().find(|(n, _)| n == name).map(|(_, v)| v);
                         let y = h2.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-                        let joined = |v: &Vec<Text>| {
-                            v.iter().map(Text::display).collect::<Vec<_>>().join(" | ")
-                        };
                         match (x, y) {
                             (Some(x), None) => {
-                                self.diff(&hp, "header missing in candidate", Some(joined(x)), None)
+                                self.diff(&hp, "header missing in candidate", Some(show(x)), None)
                             }
                             (None, Some(y)) => {
-                                self.diff(&hp, "header only in candidate", None, Some(joined(y)))
+                                self.diff(&hp, "header only in candidate", None, Some(show(y)))
                             }
-                            (Some(x), Some(y)) => {
-                                let ok = x.len() == y.len()
-                                    && x.iter()
-                                        .zip(y.iter())
-                                        .all(|(p, q)| self.text(&hp, p, q).is_ok());
-                                if !ok {
-                                    self.diff(
-                                        &hp,
-                                        "header differs",
-                                        Some(joined(x)),
-                                        Some(joined(y)),
-                                    );
-                                }
-                            }
+                            (Some(x), Some(y)) => self.val(&mut hp, x, y),
                             (None, None) => {}
                         }
                     }
                     let mut bp = base.with_key("body");
                     if self.ignored(&bp) {
-                        continue;
+                        return;
                     }
                     match (b1, b2) {
                         (Body::Json(x), Body::Json(y)) => self.val(&mut bp, x, y),
@@ -1039,7 +1220,9 @@ impl<'a> Comparator<'a> {
         for (i, j) in sorted {
             if let (Some(x), Some(y)) = (a.docs.get(i), b.docs.get(j)) {
                 self.context = doc_context(x);
+                self.begin_unit();
                 self.val(&mut base.with_index(i), x, y);
+                self.end_unit();
             }
         }
         for i in lone_a {
@@ -1120,6 +1303,8 @@ impl<'a> Comparator<'a> {
                             Some(fmt(&y.ttl)),
                         );
                     }
+                    // Measured, not written: one-second precision for relations.
+                    self.observe(&tp, String::new(), p, q, false);
                 }
             }
         }
@@ -1156,19 +1341,26 @@ impl<'a> Comparator<'a> {
                     }
                 })
             },
-            |_, x, y| {
-                if mask_text(&x.key) == mask_text(&y.key) {
-                    1.0
-                } else {
-                    0.0
+            // Keys alike, then the more alike values: entries named after the wrong id still
+            // pair with the entry that holds the same content.
+            |s, x, y| {
+                if mask_text(&x.key) != mask_text(&y.key) || x.kind != y.kind {
+                    return 0.0;
                 }
+                let unwrap = |v: &Val| match v {
+                    Val::Json(inner) => (**inner).clone(),
+                    other => other.clone(),
+                };
+                0.5 + 0.5 * s.top_level_similarity(&unwrap(&x.value), &unwrap(&y.value))
             },
         );
         let mut sorted = pairs;
         sorted.sort();
         for (i, j) in sorted {
             if let (Some(x), Some(y)) = (a.get(i), b.get(j)) {
+                self.begin_unit();
                 self.entry(x, y);
+                self.end_unit();
             }
         }
         for i in lone_a {
@@ -1235,7 +1427,65 @@ impl<'a> Comparator<'a> {
     }
 }
 
-/// Compare two captures with the given allowances and default tolerance.
-pub fn compare(a: &Capture, b: &Capture, allow: &Allowances, tolerance_ms: i64) -> Outcome {
-    Comparator::new(allow, tolerance_ms).compare(a, b)
+/// A time written with milliseconds (ISO with `.ddd`, a 13-digit epoch-ms run).
+fn shape_is_fine(shape: &str) -> bool {
+    shape == "ms" || shape.contains(".ddd")
+}
+
+fn human_signed(ms: i64) -> String {
+    if ms > 0 {
+        format!("+{}", human_duration(ms))
+    } else {
+        human_duration(ms)
+    }
+}
+
+/// Why the candidate's difference `dc` between two times breaks the reference's relation `dr`.
+fn relation_problem(dr: i64, dc: i64, fine: bool, tol: i64) -> Option<String> {
+    if !fine {
+        // One-second precision: only an order more than a second apart is meaningful.
+        return (dr.abs() > 1000 && dc.signum() != dr.signum()).then(|| {
+            format!(
+                "reference {} after it, candidate {} (order reversed)",
+                human_signed(dr),
+                human_signed(dc)
+            )
+        });
+    }
+    if dr == 0 {
+        return (dc != 0).then(|| {
+            format!(
+                "reference has the same time (one clock reading), candidate {} after it",
+                human_signed(dc)
+            )
+        });
+    }
+    if dr.abs() >= 1000 && dr % 1000 == 0 {
+        return ((dc - dr).abs() > tol).then(|| {
+            format!(
+                "reference exactly {} after it (a fixed duration), candidate {} (tolerance {})",
+                human_signed(dr),
+                human_signed(dc),
+                human_duration(tol)
+            )
+        });
+    }
+    let reversed = dc.signum() == -dr.signum();
+    let collapsed = dc == 0 && dr.abs() > tol;
+    (reversed || collapsed).then(|| {
+        format!(
+            "reference {} after it, candidate {}",
+            human_signed(dr),
+            if dc == 0 {
+                "the same time".to_string()
+            } else {
+                format!("{} after it", human_signed(dc))
+            }
+        )
+    })
+}
+
+/// Compare two captures with the given allowances and tolerances.
+pub fn compare(a: &Capture, b: &Capture, allow: &Allowances, tol: Tolerances) -> Outcome {
+    Comparator::new(allow, tol).compare(a, b)
 }

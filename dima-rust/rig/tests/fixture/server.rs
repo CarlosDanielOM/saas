@@ -29,6 +29,19 @@ enum Variant {
     Number,
     WrongRef,
     WritesOnGet,
+    JobKeyOrder,
+    NoCookie,
+    CookieAttr,
+    StrictStartup,
+    LeaseReplay,
+    NoBump,
+    LeaseLength,
+    DateAsString,
+    DateAsNumber,
+    IndexOrder,
+    IndexOption,
+    StreamField,
+    HashBytes,
 }
 
 impl Variant {
@@ -45,6 +58,19 @@ impl Variant {
             "number" => Variant::Number,
             "wrong-ref" => Variant::WrongRef,
             "writes-on-get" => Variant::WritesOnGet,
+            "job-key-order" => Variant::JobKeyOrder,
+            "no-cookie" => Variant::NoCookie,
+            "cookie-attr" => Variant::CookieAttr,
+            "strict-startup" => Variant::StrictStartup,
+            "lease-replay" => Variant::LeaseReplay,
+            "no-bump" => Variant::NoBump,
+            "lease-length" => Variant::LeaseLength,
+            "date-as-string" => Variant::DateAsString,
+            "date-as-number" => Variant::DateAsNumber,
+            "index-order" => Variant::IndexOrder,
+            "index-option" => Variant::IndexOption,
+            "stream-field" => Variant::StreamField,
+            "hash-bytes" => Variant::HashBytes,
             other => bail!("unknown variant {other}"),
         })
     }
@@ -67,6 +93,7 @@ struct Response {
     status: u16,
     content_type: &'static str,
     body: Vec<u8>,
+    headers: Vec<(&'static str, String)>,
 }
 
 fn json_resp(status: u16, v: &Value) -> Response {
@@ -74,6 +101,7 @@ fn json_resp(status: u16, v: &Value) -> Response {
         status,
         content_type: "application/json; charset=utf-8",
         body: serde_json::to_vec(v).unwrap_or_default(),
+        headers: Vec::new(),
     }
 }
 
@@ -84,6 +112,23 @@ fn iso(dt: bson::DateTime) -> String {
 
 fn env(name: &str) -> Result<String> {
     std::env::var(name).with_context(|| format!("{name} is not set"))
+}
+
+/// The lease deadline the reference wrote in `items/lease`, from its recording
+/// (`FIXTURE_CAPTURES`): a candidate that replays an absolute time.
+fn replayed_lease() -> Result<f64> {
+    let dir = std::env::var("FIXTURE_CAPTURES").context("FIXTURE_CAPTURES is not set")?;
+    let text = std::fs::read_to_string(format!("{dir}/selftest/items/lease.json"))?;
+    let v: Value = serde_json::from_str(&text)?;
+    let docs = v["mongo"]["items"]["documents"]
+        .as_array()
+        .ok_or_else(|| anyhow!("no items in the recording"))?;
+    let lease = docs
+        .iter()
+        .find(|d| d["name"] == "leased")
+        .and_then(|d| d["leaseUntil"]["$numberDouble"].as_str())
+        .ok_or_else(|| anyhow!("no leaseUntil in the recording"))?;
+    Ok(lease.parse()?)
 }
 
 async fn read_request(s: &mut TcpStream) -> Result<Request> {
@@ -127,7 +172,7 @@ async fn read_request(s: &mut TcpStream) -> Result<Request> {
     Ok(Request { method, path, body })
 }
 
-async fn write_response(s: &mut TcpStream, r: Response) -> Result<()> {
+async fn write_response(s: &mut TcpStream, v: Variant, r: Response) -> Result<()> {
     let reason = match r.status {
         200 => "OK",
         201 => "Created",
@@ -135,12 +180,27 @@ async fn write_response(s: &mut TcpStream, r: Response) -> Result<()> {
         404 => "Not Found",
         _ => "Status",
     };
-    let head = format!(
-        "HTTP/1.1 {} {reason}\r\ncontent-type: {}\r\ncontent-length: {}\r\nx-content-type-options: nosniff\r\nconnection: close\r\n\r\n",
+    let now = dima_rig::timefmt::now_ms();
+    let mut head = format!(
+        "HTTP/1.1 {} {reason}\r\ncontent-type: {}\r\ncontent-length: {}\r\nx-content-type-options: nosniff\r\nconnection: close\r\ndate: {}\r\n",
         r.status,
         r.content_type,
-        r.body.len()
+        r.body.len(),
+        dima_rig::timefmt::format_http_date(now).unwrap_or_default(),
     );
+    // Noise the rig does not compare: only the reference says who it is.
+    if v != Variant::Equivalent {
+        head.push_str("x-powered-by: Fixture\r\n");
+    }
+    // A weak ETag from the body, which holds generated values: compared by form only.
+    let hash = r.body.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+        (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    head.push_str(&format!("etag: W/\"{:x}-{hash:x}\"\r\n", r.body.len()));
+    for (k, val) in &r.headers {
+        head.push_str(&format!("{k}: {val}\r\n"));
+    }
+    head.push_str("\r\n");
     s.write_all(head.as_bytes()).await?;
     s.write_all(&r.body).await?;
     s.flush().await?;
@@ -176,11 +236,17 @@ impl App {
         } else {
             Bson::Int32(i32::try_from(qty)?)
         };
+        // One clock reading for createdAt and updatedAt; the lease is exactly 60 s after it.
         let lease = Bson::Double((now.timestamp_millis() + 60_000) as f64);
+        let created = match self.v {
+            Variant::DateAsString => Bson::String(iso(now)),
+            Variant::DateAsNumber => Bson::Double(now.timestamp_millis() as f64),
+            _ => Bson::DateTime(now),
+        };
         let mut item = if self.v == Variant::Equivalent {
-            doc! {"_id": id, "owner": owner, "uuid": &uuid, "tags": ["new"], "leaseUntil": lease, "createdAt": now, "qty": qty_bson, "name": &name}
+            doc! {"_id": id, "owner": owner, "uuid": &uuid, "tags": ["new"], "leaseUntil": lease, "updatedAt": now, "createdAt": created, "qty": qty_bson, "name": &name}
         } else {
-            doc! {"_id": id, "name": &name, "qty": qty_bson, "owner": owner, "uuid": &uuid, "createdAt": now, "leaseUntil": lease, "tags": ["new"]}
+            doc! {"_id": id, "name": &name, "qty": qty_bson, "owner": owner, "uuid": &uuid, "createdAt": created, "updatedAt": now, "leaseUntil": lease, "tags": ["new"]}
         };
         if self.v == Variant::NullField {
             item.insert("note", Bson::Null);
@@ -205,7 +271,12 @@ impl App {
         } else {
             id
         };
-        let cached = json!({"id": id.to_hex(), "name": name}).to_string();
+        // Key order differs in `equivalent`: this value is not byte-sensitive (a note only).
+        let cached = if self.v == Variant::Equivalent {
+            json!({"name": name, "id": id.to_hex()}).to_string()
+        } else {
+            json!({"id": id.to_hex(), "name": name}).to_string()
+        };
         let mut set = redis::cmd("SET");
         set.arg(format!("item:{}", key_id.to_hex())).arg(&cached);
         if self.v != Variant::NoTtl {
@@ -222,6 +293,18 @@ impl App {
             .arg("items:count")
             .query_async(&mut r)
             .await?;
+        // A stream entry that repeats a field name.
+        let mut xadd = redis::cmd("XADD");
+        xadd.arg("items:events")
+            .arg("*")
+            .arg("item")
+            .arg(id.to_hex())
+            .arg("tag")
+            .arg("new");
+        if self.v != Variant::StreamField {
+            xadd.arg("tag").arg("created");
+        }
+        xadd.query_async::<String>(&mut r).await?;
         let total = if self.v == Variant::Number {
             total + 1
         } else {
@@ -232,7 +315,50 @@ impl App {
         } else {
             json!({"id": id.to_hex(), "uuid": uuid, "name": name, "qty": qty, "createdAt": iso(now), "total": total})
         };
-        Ok(json_resp(201, &resp))
+        let mut r = json_resp(201, &resp);
+        // A session cookie with a generated value and an expiry an hour after now.
+        let expires = dima_rig::timefmt::format_http_date(now.timestamp_millis() + 3_600_000)
+            .unwrap_or_default();
+        let sid = uuid::Uuid::new_v4();
+        let cookie = match self.v {
+            Variant::NoCookie => None,
+            Variant::CookieAttr => Some(format!(
+                "sid={sid}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600; Expires={expires}"
+            )),
+            // Attribute order differs: a note, not a difference.
+            Variant::Equivalent => Some(format!(
+                "sid={sid}; Path=/; SameSite=Lax; Max-Age=3600; Expires={expires}; HttpOnly"
+            )),
+            _ => Some(format!(
+                "sid={sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Expires={expires}"
+            )),
+        };
+        if let Some(c) = cookie {
+            r.headers.push(("set-cookie", c));
+        }
+        Ok(r)
+    }
+
+    /// Renew an item's lease in a second operation: updatedAt moves to now and the lease is now
+    /// plus exactly 60 s.
+    async fn touch_item(&self, hex: &str) -> Result<Response> {
+        let id = ObjectId::parse_str(hex)?;
+        let now = bson::DateTime::now();
+        let lease = match self.v {
+            Variant::LeaseLength => (now.timestamp_millis() + 61_000) as f64,
+            // The reference's absolute deadline, read from its recording.
+            Variant::LeaseReplay => replayed_lease()?,
+            _ => (now.timestamp_millis() + 60_000) as f64,
+        };
+        let mut set = doc! {"leaseUntil": lease};
+        if self.v != Variant::NoBump {
+            set.insert("updatedAt", now);
+        }
+        self.db
+            .collection::<Document>("items")
+            .update_one(doc! {"_id": id}, doc! {"$set": set})
+            .await?;
+        Ok(json_resp(200, &json!({"ok": true})))
     }
 
     async fn get_item(&self, hex: &str) -> Result<Response> {
@@ -269,7 +395,12 @@ impl App {
                 "name": d.get_str("name").unwrap_or(""),
                 "qty": qty,
                 "owner": d.get_object_id("owner").map(|o| o.to_hex()).unwrap_or_default(),
-                "createdAt": d.get_datetime("createdAt").map(|t| iso(*t)).unwrap_or_default(),
+                "createdAt": match d.get("createdAt") {
+                    Some(Bson::DateTime(t)) => iso(*t),
+                    Some(Bson::String(s)) => s.clone(),
+                    Some(Bson::Double(f)) => iso(bson::DateTime::from_millis(*f as i64)),
+                    _ => String::new(),
+                },
             }),
         ))
     }
@@ -277,6 +408,26 @@ impl App {
     async fn queue_jobs(self: &Arc<Self>, body: &[u8]) -> Result<Response> {
         let input: Value = serde_json::from_slice(body)?;
         let item = ObjectId::parse_str(input.get("item").and_then(Value::as_str).unwrap_or(""))?;
+        // A queue item a reader removes by value (byte-sensitive: `cron:jobs:queue`).
+        let job = if self.v == Variant::JobKeyOrder {
+            format!(
+                r#"{{"job":"finish","id":"{}","requestedAt":{}}}"#,
+                item.to_hex(),
+                bson::DateTime::now().timestamp_millis()
+            )
+        } else {
+            format!(
+                r#"{{"id":"{}","job":"finish","requestedAt":{}}}"#,
+                item.to_hex(),
+                bson::DateTime::now().timestamp_millis()
+            )
+        };
+        let mut r = self.redis.clone();
+        redis::cmd("RPUSH")
+            .arg("cron:jobs:queue")
+            .arg(job)
+            .query_async::<i64>(&mut r)
+            .await?;
         let app = Arc::clone(self);
         tokio::spawn(async move {
             let delay = if app.v == Variant::Equivalent {
@@ -306,6 +457,15 @@ impl App {
         for d in docs {
             jobs.insert_one(d).await?;
         }
+        // An object keyed by generated ids; `equivalent` writes its keys in the other order.
+        let mut steps = doc! {a.to_hex(): {"step": 1}, b.to_hex(): {"step": 2}};
+        if self.v == Variant::Equivalent {
+            steps = doc! {b.to_hex(): {"step": 2}, a.to_hex(): {"step": 1}};
+        }
+        self.db
+            .collection::<Document>("batches")
+            .insert_one(doc! {"_id": ObjectId::new(), "item": item, "steps": steps})
+            .await?;
         let mut r = self.redis.clone();
         redis::cmd("RPUSH")
             .arg("jobs:done")
@@ -323,10 +483,19 @@ impl App {
                 status: 200,
                 content_type: "text/plain; charset=utf-8",
                 body: b"ok".to_vec(),
+                headers: Vec::new(),
             }),
             ("POST", ["items"]) => self.create_item(&req.body).await,
             ("GET", ["items", id]) => self.get_item(id).await,
+            ("POST", ["items", id, "touch"]) => self.touch_item(id).await,
             ("POST", ["jobs"]) => self.queue_jobs(&req.body).await,
+            // Echo one word (a scenario saves it and uses it in a later step).
+            ("GET", ["word", w]) => Ok(json_resp(200, &json!({"word": w}))),
+            // In-memory state of this process: how many items it created.
+            ("GET", ["memory"]) => Ok(json_resp(
+                200,
+                &json!({"posts": self.posts.load(Ordering::SeqCst)}),
+            )),
             _ => Ok(json_resp(404, &json!({"error": "no route"}))),
         }
     }
@@ -345,12 +514,17 @@ async fn serve(app: Arc<App>, mut s: TcpStream) {
         }
         Err(e) => json_resp(400, &json!({"error": e.to_string()})),
     };
-    let _ = write_response(&mut s, res).await;
+    let _ = write_response(&mut s, app.v, res).await;
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    // Which checkout built this binary (worktrees share one target directory).
+    if args.iter().any(|a| a == "--build-info") {
+        println!("{}", env!("CARGO_MANIFEST_DIR"));
+        return Ok(());
+    }
     let variant = match args
         .iter()
         .position(|a| a == "--variant")
@@ -360,14 +534,56 @@ async fn main() -> Result<()> {
         None => Variant::Good,
     };
     let port: u16 = env("PORT")?.parse()?;
-    let client = mongodb::Client::with_uri_str(env("MONGO_URI")?).await?;
+    // One connection, authenticated at start-up before the fixture reports ready: a new pooled
+    // connection costs a SCRAM handshake, slow in debug builds under load, which would move a
+    // request's times by seconds.
+    let mut opts = mongodb::options::ClientOptions::parse(env("MONGO_URI")?).await?;
+    opts.max_pool_size = Some(1);
+    let client = mongodb::Client::with_options(opts)?;
     let db = client.database(&env("MONGO_DB")?);
     let redis = redis::Client::open(env("REDIS_URL")?)?
         .get_multiplexed_async_connection()
         .await?;
-    // Start-up writes, like Mongoose's autoIndex and a boot marker.
-    db.run_command(doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]}).await?;
+    // Start-up writes, like Mongoose's autoIndex (which logs a failure and carries on) and a
+    // boot marker. `strict-startup` exits instead, like a target that needs write access.
+    let created = db.run_command(doc! {"createIndexes": "items", "indexes": [{"key": {"name": 1}, "name": "name_1", "unique": true}]}).await;
+    if let Err(e) = created {
+        if variant == Variant::StrictStartup {
+            return Err(e.into());
+        }
+        println!("fixture: createIndexes failed: {e}");
+    }
+    let compound = match variant {
+        Variant::IndexOrder => {
+            doc! {"key": {"createdAt": -1, "owner": 1}, "name": "owner_1_createdAt_-1"}
+        }
+        Variant::IndexOption => {
+            doc! {"key": {"owner": 1, "createdAt": -1}, "name": "owner_1_createdAt_-1", "sparse": true}
+        }
+        _ => doc! {"key": {"owner": 1, "createdAt": -1}, "name": "owner_1_createdAt_-1"},
+    };
+    if let Err(e) = db
+        .run_command(doc! {"createIndexes": "items", "indexes": [compound]})
+        .await
+    {
+        if variant == Variant::StrictStartup {
+            return Err(e.into());
+        }
+        println!("fixture: createIndexes failed: {e}");
+    }
     let mut r = redis.clone();
+    // A hash field that is not UTF-8.
+    let field: &[u8] = if variant == Variant::HashBytes {
+        b"\xff\x02"
+    } else {
+        b"\xff\x01"
+    };
+    redis::cmd("HSET")
+        .arg("fixture:bin")
+        .arg(field)
+        .arg("1")
+        .query_async::<i64>(&mut r)
+        .await?;
     redis::cmd("SET")
         .arg("fixture:boot")
         .arg("1")
@@ -375,7 +591,8 @@ async fn main() -> Result<()> {
         .await?;
     let listener = TcpListener::bind(("127.0.0.1", port)).await?;
     println!(
-        "fixture: listening on {port}, variant {variant:?}, PATH set: {}",
+        "fixture: listening on {port}, variant {variant:?}, pid {}, PATH set: {}",
+        std::process::id(),
         std::env::var_os("PATH").is_some()
     );
     let app = Arc::new(App {

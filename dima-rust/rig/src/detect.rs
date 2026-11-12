@@ -3,7 +3,8 @@
 //! Generated identifiers (ObjectIds whose timestamp falls in the side's lifetime, random UUIDs,
 //! values named by a `generated` allowance) become `Id::Raw` atoms; canonicalisation numbers them.
 //! Times within the horizon of the run (BSON dates, ISO strings, `YYYY-MM-DD` days, epoch
-//! milliseconds) become relative to the scenario start. Values that appear in the scenario's
+//! milliseconds, HTTP dates) become relative to the run start (just before the first step), and
+//! values the seed wrote with `$rigNow` are recognised by their offset. Values in the scenario's
 //! inputs (seed, request bodies, paths, commands) are known and stay exact.
 
 use std::collections::HashSet;
@@ -32,17 +33,23 @@ pub const MIN_GENERATED_LEN: usize = 6;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Window {
-    /// Scenario start (before reset and seed), rig clock.
+    /// The run start: just before the first step (rig clock). Run times are relative to it.
     pub start: i64,
     /// After the last step.
     pub end: i64,
     /// When the side's process was started.
     pub proc_start: i64,
+    /// The `$rigNow` of the seed (before the stores were reset and seeded).
+    pub seeded_at: i64,
 }
 
 impl Window {
+    fn first(&self) -> i64 {
+        self.start.min(self.seeded_at).min(self.proc_start)
+    }
+
     fn in_window(&self, ms: i64) -> bool {
-        ms >= self.start - WINDOW_SLACK_MS && ms <= self.end + WINDOW_SLACK_MS
+        ms >= self.first() - WINDOW_SLACK_MS && ms <= self.end + WINDOW_SLACK_MS
     }
 
     fn in_horizon(&self, ms: i64) -> bool {
@@ -57,7 +64,7 @@ impl Window {
     }
 
     fn generated_time(&self, ms: i64) -> bool {
-        ms >= self.proc_start.min(self.start) - OID_SLACK_MS && ms <= self.end + OID_SLACK_MS
+        ms >= self.first() - OID_SLACK_MS && ms <= self.end + OID_SLACK_MS
     }
 }
 
@@ -67,6 +74,8 @@ pub struct Known {
     pub ids: HashSet<String>,
     pub times: HashSet<i64>,
     pub days: HashSet<String>,
+    /// Every input string: a `generated` value never lands on one of them.
+    pub texts: HashSet<String>,
 }
 
 /// The fixed patterns the rig looks for inside strings.
@@ -91,8 +100,11 @@ impl Patterns {
         })
     }
 
-    /// Record every id, time and day that appears in an input string.
+    /// Record every id, time and day that appears in an input string, and the string itself.
     pub fn collect_known(&self, s: &str, known: &mut Known) {
+        if !s.is_empty() {
+            known.texts.insert(s.to_string());
+        }
         for m in self.oid.find_iter(s) {
             if bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
                 known.ids.insert(m.as_str().to_string());
@@ -212,17 +224,28 @@ fn uuid_string(subtype: &BinarySubtype, bytes: &[u8]) -> Option<String> {
     ))
 }
 
-/// Header names compared by default.
-pub const DEFAULT_HEADERS: &[&str] = &[
-    "content-type",
-    "location",
-    "cache-control",
-    "www-authenticate",
-    "retry-after",
-    "access-control-*",
-    "content-security-policy",
-    "x-content-type-options",
+/// Response headers not compared unless a scenario includes them: transport details that
+/// differ between servers without any client relying on them. Every other header is compared.
+pub const NOISE_HEADERS: &[&str] = &[
+    "date",
+    "connection",
+    "keep-alive",
+    "transfer-encoding",
+    "content-length",
+    "x-powered-by",
 ];
+
+/// An ETag compares by presence and weak/strong form only: its value derives from a body that
+/// holds generated values.
+fn etag_form(v: &[u8]) -> &'static str {
+    if v.starts_with(b"W/") {
+        "W/\"…\""
+    } else if v.starts_with(b"\"") {
+        "\"…\""
+    } else {
+        "… (not quoted)"
+    }
+}
 
 /// Everything detection needs to know about one side's run of one scenario.
 pub struct DetectCtx<'a> {
@@ -232,18 +255,23 @@ pub struct DetectCtx<'a> {
     pub allow: &'a Allowances,
     /// Run-time names to mask: (literal text, name). Example: ("127.0.0.1:41234", "port.http").
     pub names: Vec<(String, String)>,
-    /// Header name globs (lower case) to capture.
-    pub headers: Vec<String>,
-    /// When the Dragonfly TTLs were read.
-    pub captured_at: i64,
+    /// Response headers not compared (lower case).
+    pub skip_headers: Vec<String>,
     /// Dragonfly strings at or below these paths stay exact text (not parsed as JSON).
     pub as_text: Vec<crate::path::Pattern>,
+    /// Dragonfly key globs whose values stay exact text (`byte_sensitive.json`).
+    pub byte_sensitive: Vec<String>,
+    /// The `$rigNow` offsets of the seed (with `true` for epoch seconds): a value equal to the
+    /// seed time plus one of them is that seeded time, compared by its offset.
+    pub seed_offsets: Vec<(i64, bool)>,
 }
 
 struct Detector<'a, 'b> {
     ctx: &'b DetectCtx<'a>,
     extra: Option<Regex>,
     found: Vec<String>,
+    /// Inside the value of a byte-sensitive key (or the reply to a command on one).
+    exact_text: bool,
 }
 
 #[derive(Clone)]
@@ -255,8 +283,31 @@ struct Cand {
 }
 
 impl Detector<'_, '_> {
+    /// The value is known from the scenario's inputs: equal to an input string, or (when long
+    /// enough to mean something) part of one.
+    fn known_text(&self, v: &str) -> bool {
+        let texts = &self.ctx.known.texts;
+        texts.contains(v)
+            || (v.chars().count() >= MIN_GENERATED_LEN && texts.iter().any(|t| t.contains(v)))
+    }
+
     fn moment(&self, ms: i64) -> Moment {
-        self.ctx.window.moment(ms)
+        let w = &self.ctx.window;
+        for (seed, secs) in &self.ctx.seed_offsets {
+            let at = w.seeded_at + seed;
+            let at = if *secs {
+                at.div_euclid(1000) * 1000
+            } else {
+                at
+            };
+            if at == ms {
+                return Moment::Seed {
+                    seed: *seed,
+                    off: ms - w.start,
+                };
+            }
+        }
+        w.moment(ms)
     }
 
     fn oid_is_generated(&self, hex: &str) -> bool {
@@ -293,6 +344,18 @@ impl Detector<'_, '_> {
         if s.is_empty() {
             return Text::default();
         }
+        // A string of digits declared a time.
+        if let Some(secs) = self.ctx.allow.time_unit(path)
+            && s.bytes().all(|b| b.is_ascii_digit())
+            && let Ok(v) = s.parse::<i64>()
+        {
+            let ms = if secs { v.saturating_mul(1000) } else { v };
+            return Text(vec![Seg::Time {
+                at: self.declared_moment(v, ms),
+                shape: if secs { "s" } else { "ms" }.into(),
+            }]);
+        }
+        let times = !self.ctx.allow.exact(path);
         let p = self.ctx.patterns;
         let mut cands: Vec<Cand> = Vec::new();
         for (lit, name) in &self.ctx.names {
@@ -309,7 +372,12 @@ impl Detector<'_, '_> {
             }
         }
         if let Some(re) = &self.extra {
+            // A generated value found elsewhere, here only as a whole token (never glued to
+            // letters or digits on either side).
             for m in re.find_iter(s) {
+                if !bounded(s, m.start(), m.end(), char::is_alphanumeric) {
+                    continue;
+                }
                 cands.push(Cand {
                     start: m.start(),
                     end: m.end(),
@@ -320,7 +388,7 @@ impl Detector<'_, '_> {
         }
         for (idx, re) in self.ctx.allow.generated_patterns(path) {
             for m in re.find_iter(s) {
-                if m.as_str().is_empty() {
+                if m.as_str().is_empty() || self.known_text(m.as_str()) {
                     continue;
                 }
                 self.ctx.allow.mark_used(idx);
@@ -358,7 +426,7 @@ impl Detector<'_, '_> {
             }
         }
         for m in p.iso.find_iter(s) {
-            if !bounded(s, m.start(), m.end(), |c| c.is_ascii_digit()) {
+            if !times || !bounded(s, m.start(), m.end(), |c| c.is_ascii_digit()) {
                 continue;
             }
             let txt = m.as_str();
@@ -404,7 +472,7 @@ impl Detector<'_, '_> {
             }
         }
         for m in p.ms13.find_iter(s) {
-            if !bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
+            if !times || !bounded(s, m.start(), m.end(), |c| c.is_ascii_alphanumeric()) {
                 continue;
             }
             if let Ok(ms) = m.as_str().parse::<i64>()
@@ -444,8 +512,21 @@ impl Detector<'_, '_> {
         Text::from_segs(segs)
     }
 
+    /// Bytes as text: UTF-8 runs are searched for run-time values like any text, other bytes
+    /// become [`Seg::Bytes`], which never equals a text.
+    fn bytes_text(&mut self, path: &Path, b: &[u8]) -> Text {
+        let mut segs = Vec::new();
+        for chunk in b.utf8_chunks() {
+            segs.extend(self.text(path, chunk.valid()).0);
+            if !chunk.invalid().is_empty() {
+                segs.push(Seg::Bytes(chunk.invalid().to_vec()));
+            }
+        }
+        Text::from_segs(segs)
+    }
+
     fn generated_whole(&mut self, path: &Path, s: &str) -> Option<Val> {
-        if self.ctx.allow.generated_whole(path) {
+        if self.ctx.allow.generated_whole(path) && !s.is_empty() && !self.known_text(s) {
             self.found.push(s.to_string());
             return Some(Val::Str(Text(vec![Seg::Id(Id::Raw(
                 IdKind::Gen,
@@ -455,11 +536,38 @@ impl Detector<'_, '_> {
         None
     }
 
-    fn json_number(&self, n: &Number) -> Val {
-        match integral(n) {
-            Some(ms) if self.time_number(ms) => Val::Time(NumRepr::Json, self.moment(ms)),
-            _ => Val::Num(n.clone()),
+    /// A declared time: relative to the run unless it is known from the inputs or far away.
+    fn declared_moment(&self, v: i64, ms: i64) -> Moment {
+        let known = self.ctx.known.times.contains(&v) || self.ctx.known.times.contains(&ms);
+        if known || !self.ctx.window.in_horizon(ms) {
+            Moment::Abs(ms)
+        } else {
+            self.moment(ms)
         }
+    }
+
+    /// How an integral number at this path is read: exactly (`exact` allowance), as a declared
+    /// time (`time` allowance), or as epoch milliseconds when its magnitude is near the run.
+    fn num_time(&self, path: &Path, v: i64, ms_repr: NumRepr, s_repr: NumRepr) -> Option<Val> {
+        if self.ctx.allow.exact(path) {
+            return None;
+        }
+        match self.ctx.allow.time_unit(path) {
+            Some(true) => Some(Val::Time(
+                s_repr,
+                self.declared_moment(v, v.saturating_mul(1000)),
+            )),
+            Some(false) => Some(Val::Time(ms_repr, self.declared_moment(v, v))),
+            None => self
+                .time_number(v)
+                .then(|| Val::Time(ms_repr, self.moment(v))),
+        }
+    }
+
+    fn json_number(&self, path: &Path, n: &Number) -> Val {
+        integral(n)
+            .and_then(|v| self.num_time(path, v, NumRepr::Json, NumRepr::JsonSecs))
+            .unwrap_or_else(|| Val::Num(n.clone()))
     }
 
     fn json(&mut self, path: &mut Path, v: &Value) -> Val {
@@ -471,7 +579,7 @@ impl Detector<'_, '_> {
         match v {
             Value::Null => Val::Null,
             Value::Bool(b) => Val::Bool(*b),
-            Value::Number(n) => self.json_number(n),
+            Value::Number(n) => self.json_number(path, n),
             Value::String(s) => Val::Str(self.text(path, s)),
             Value::Array(items) => Val::Arr(
                 items
@@ -520,13 +628,20 @@ impl Detector<'_, '_> {
         match b {
             Bson::Null => Val::Null,
             Bson::Boolean(x) => Val::Bool(*x),
-            Bson::Int32(i) => Val::Int32(*i),
-            Bson::Int64(i) if self.time_number(*i) => Val::Time(NumRepr::Int64, self.moment(*i)),
-            Bson::Int64(i) => Val::Int64(*i),
-            Bson::Double(f) => match f64_integral(*f) {
-                Some(ms) if self.time_number(ms) => Val::Time(NumRepr::Double, self.moment(ms)),
-                _ => Val::Double(*f),
+            // An int32 cannot hold epoch milliseconds; as epoch seconds only when declared.
+            Bson::Int32(i) => match self.ctx.allow.time_unit(path) {
+                Some(true) if !self.ctx.allow.exact(path) => {
+                    let v = i64::from(*i);
+                    Val::Time(NumRepr::Int32Secs, self.declared_moment(v, v * 1000))
+                }
+                _ => Val::Int32(*i),
             },
+            Bson::Int64(i) => self
+                .num_time(path, *i, NumRepr::Int64, NumRepr::Int64Secs)
+                .unwrap_or(Val::Int64(*i)),
+            Bson::Double(f) => f64_integral(*f)
+                .and_then(|v| self.num_time(path, v, NumRepr::Double, NumRepr::DoubleSecs))
+                .unwrap_or(Val::Double(*f)),
             Bson::Decimal128(d) => Val::Dec(d.to_string()),
             Bson::String(s) => Val::Str(self.text(path, s)),
             Bson::Array(items) => Val::Arr(
@@ -552,7 +667,7 @@ impl Detector<'_, '_> {
             }
             Bson::DateTime(d) => {
                 let ms = d.timestamp_millis();
-                if self.time_number(ms) {
+                if !self.ctx.allow.exact(path) && self.time_number(ms) {
                     Val::Time(NumRepr::Date, self.moment(ms))
                 } else {
                     Val::Time(NumRepr::Date, Moment::Abs(ms))
@@ -577,11 +692,12 @@ impl Detector<'_, '_> {
         let Ok(s) = std::str::from_utf8(bytes) else {
             return Val::Bytes(bytes.to_vec());
         };
-        let as_text = self
-            .ctx
-            .as_text
-            .iter()
-            .any(|p| p.matches_self_or_ancestor(path));
+        let as_text = self.exact_text
+            || self
+                .ctx
+                .as_text
+                .iter()
+                .any(|p| p.matches_self_or_ancestor(path));
         if !as_text
             && (s.starts_with('{') || s.starts_with('['))
             && let Ok(parsed) = serde_json::from_str::<Value>(s)
@@ -598,7 +714,7 @@ impl Detector<'_, '_> {
     fn reply(&mut self, path: &mut Path, r: &RawReply) -> Val {
         match r {
             RawReply::Nil => Val::Null,
-            RawReply::Int(i) => self.json_number(&Number::from(*i)),
+            RawReply::Int(i) => self.json_number(path, &Number::from(*i)),
             RawReply::Bulk(b) => self.df_string(path, b),
             RawReply::Status(s) => {
                 Val::Obj(vec![(Text::lit("status"), Val::Str(self.text(path, s)))])
@@ -608,7 +724,7 @@ impl Detector<'_, '_> {
             }
             RawReply::Double(f) => Number::from_f64(*f)
                 .map_or(Val::Str(Text::lit(&f.to_string())), |n| {
-                    self.json_number(&n)
+                    self.json_number(path, &n)
                 }),
             RawReply::Bool(b) => Val::Bool(*b),
             RawReply::Array(items) => Val::Arr(
@@ -645,27 +761,47 @@ impl Detector<'_, '_> {
             RawStep::Done(kind) => StepCap::Done(kind.clone()),
             RawStep::Reply(r) => {
                 path.push_key("reply");
-                StepCap::Reply(self.reply(&mut path, r))
+                // A reply about a byte-sensitive key is exact text too.
+                self.exact_text = r
+                    .command
+                    .iter()
+                    .skip(1)
+                    .any(|a| self.byte_sensitive_key(a.as_bytes()));
+                let v = self.reply(&mut path, &r.reply);
+                self.exact_text = false;
+                StepCap::Reply(v)
             }
             RawStep::Http(h) => {
-                let mut headers: Vec<(String, Vec<Text>)> = Vec::new();
+                let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
                 for (name, value) in &h.headers {
-                    if !self.ctx.headers.iter().any(|g| name_glob(g, name)) {
+                    if self.ctx.skip_headers.iter().any(|n| n == name) {
                         continue;
                     }
-                    let hp = path.with_key("headers").with_key(name.clone());
-                    let t = self.text(&hp, value);
-                    match headers.iter_mut().find(|(n, _)| n == name) {
-                        Some((_, vals)) => vals.push(t),
-                        None => headers.push((name.clone(), vec![t])),
+                    match grouped.iter_mut().find(|(n, _)| n == name) {
+                        Some((_, vals)) => vals.push(value),
+                        None => grouped.push((name.clone(), vec![value])),
                     }
                 }
-                headers.sort_by(|a, b| a.0.cmp(&b.0));
+                grouped.sort_by(|a, b| a.0.cmp(&b.0));
+                let headers = grouped
+                    .into_iter()
+                    .map(|(name, vals)| {
+                        let hp = path.with_key("headers").with_key(name.clone());
+                        let v = if name == "set-cookie" {
+                            self.cookies(&hp, &vals)
+                        } else if let [one] = vals.as_slice() {
+                            self.header(&hp, &name, one)
+                        } else {
+                            Val::Arr(vals.iter().map(|v| self.header(&hp, &name, v)).collect())
+                        };
+                        (name, v)
+                    })
+                    .collect();
                 let content_type = h
                     .headers
                     .iter()
                     .find(|(n, _)| n == "content-type")
-                    .map(|(_, v)| v.to_ascii_lowercase())
+                    .map(|(_, v)| String::from_utf8_lossy(v).to_ascii_lowercase())
                     .unwrap_or_default();
                 let essence = content_type
                     .split(';')
@@ -725,25 +861,106 @@ impl Detector<'_, '_> {
         }
     }
 
+    /// An HTTP date (`Expires`, `Last-Modified`, a cookie's `Expires`) as a time with a
+    /// one-second precision, or `None` when the text is not one or is not near the run.
+    fn http_date(&self, path: &Path, s: &str) -> Option<Text> {
+        let ms = timefmt::parse_http_date(s.trim())?;
+        if self.ctx.allow.exact(path) || !self.time_number(ms) {
+            return None;
+        }
+        let shape = if s.contains('-') {
+            "http-date-dashes"
+        } else {
+            "http-date"
+        };
+        Some(Text(vec![Seg::Time {
+            at: self.moment(ms),
+            shape: shape.into(),
+        }]))
+    }
+
+    /// One response header value.
+    fn header(&mut self, hp: &Path, name: &str, value: &[u8]) -> Val {
+        if name == "etag" {
+            return Val::str(etag_form(value));
+        }
+        if let Ok(s) = std::str::from_utf8(value)
+            && let Some(t) = self.http_date(hp, s)
+        {
+            return Val::Str(t);
+        }
+        if let Ok(s) = std::str::from_utf8(value)
+            && let Some(g) = self.generated_whole(hp, s)
+        {
+            return g;
+        }
+        Val::Str(self.bytes_text(hp, value))
+    }
+
+    /// `Set-Cookie` headers, compared attribute by attribute: an object keyed by cookie name
+    /// (a repeated name gets `#2`, `#3`), holding `value` and each attribute by its lower-case
+    /// name (`true` for flags such as `httponly`).
+    fn cookies(&mut self, hp: &Path, vals: &[&[u8]]) -> Val {
+        let mut out: Vec<(Text, Val)> = Vec::new();
+        for raw in vals {
+            let text = String::from_utf8_lossy(raw);
+            let mut parts = text.split(';');
+            let first = parts.next().unwrap_or("");
+            let (name, value) = first.split_once('=').unwrap_or(("", first));
+            let mut key = name.trim().to_string();
+            let mut n = 1;
+            while out.iter().any(|(k, _)| k.as_plain() == Some(key.as_str())) {
+                n += 1;
+                key = format!("{}#{n}", name.trim());
+            }
+            let cp = hp.with_key(key.clone());
+            let vp = cp.with_key("value");
+            let value = value.trim();
+            let v = match self.generated_whole(&vp, value) {
+                Some(g) => g,
+                None => Val::Str(self.text(&vp, value)),
+            };
+            let mut fields = vec![(Text::lit("value"), v)];
+            for attr in parts {
+                let attr = attr.trim();
+                if attr.is_empty() {
+                    continue;
+                }
+                let (k, v) = match attr.split_once('=') {
+                    Some((k, v)) => (k.trim().to_ascii_lowercase(), Some(v.trim())),
+                    None => (attr.to_ascii_lowercase(), None),
+                };
+                let ap = cp.with_key(k.clone());
+                let val = match v {
+                    None => Val::Bool(true),
+                    Some(v) => match self.http_date(&ap, v) {
+                        Some(t) if k == "expires" => Val::Str(t),
+                        _ => Val::Str(self.text(&ap, v)),
+                    },
+                };
+                fields.push((Text::lit(&k), val));
+            }
+            out.push((Text::lit(&key), Val::Obj(fields)));
+        }
+        Val::Obj(out)
+    }
+
+    fn byte_sensitive_key(&self, key: &[u8]) -> bool {
+        let k = String::from_utf8_lossy(key);
+        self.ctx.byte_sensitive.iter().any(|g| name_glob(g, &k))
+    }
+
     fn entry(&mut self, e: &RawEntry) -> EntryCap {
         let root = Path::root("dragonfly");
-        let key = match std::str::from_utf8(&e.key) {
-            Ok(s) => self.text(&root, s),
-            Err(_) => Text::lit(&format!(
-                "<bytes:{}>",
-                e.key.iter().map(|b| format!("{b:02x}")).collect::<String>()
-            )),
-        };
+        let key = self.bytes_text(&root, &e.key);
+        self.exact_text = self.byte_sensitive_key(&e.key);
         let mut vp = root.with_key(key.display()).with_key("value");
         let value = match &e.value {
             RawValue::Str(b) => self.df_string(&mut vp, b),
             RawValue::Hash(pairs) => {
                 let mut kv = Vec::with_capacity(pairs.len());
                 for (f, v) in pairs {
-                    let field = match std::str::from_utf8(f) {
-                        Ok(s) => self.text(&vp, s),
-                        Err(_) => Text::lit(&String::from_utf8_lossy(f)),
-                    };
+                    let field = self.bytes_text(&vp, f);
                     vp.push_key(field.display());
                     let val = self.df_string(&mut vp, v);
                     vp.pop();
@@ -773,10 +990,13 @@ impl Detector<'_, '_> {
                         vp.push_key("member");
                         let member = self.df_string(&mut vp, m);
                         vp.pop();
-                        let score = Number::from_f64(*score)
-                            .map_or(Val::Str(Text::lit(&score.to_string())), |n| {
-                                self.json_number(&n)
-                            });
+                        vp.push_key("score");
+                        let score = score
+                            .parse::<f64>()
+                            .ok()
+                            .and_then(Number::from_f64)
+                            .map_or_else(|| Val::str(score), |n| self.json_number(&vp, &n));
+                        vp.pop();
                         vp.pop();
                         Val::Obj(vec![
                             (Text::lit("member"), member),
@@ -785,6 +1005,7 @@ impl Detector<'_, '_> {
                     })
                     .collect(),
             ),
+            // Fields stay ordered pairs: a stream entry may repeat a field name.
             RawValue::Stream(entries) => Val::Arr(
                 entries
                     .iter()
@@ -793,30 +1014,30 @@ impl Detector<'_, '_> {
                         vp.push_index(i);
                         let idt = self.text(&vp, id);
                         vp.push_key("fields");
-                        let mut kv = Vec::new();
-                        for (f, v) in fields {
-                            let field = self.text(&vp, &String::from_utf8_lossy(f));
-                            vp.push_key(field.display());
+                        let mut pairs = Vec::with_capacity(fields.len());
+                        for (j, (f, v)) in fields.iter().enumerate() {
+                            vp.push_index(j);
+                            let field = self.bytes_text(&vp, f);
+                            vp.push_index(1);
                             let val = self.df_string(&mut vp, v);
                             vp.pop();
-                            kv.push((field, val));
+                            vp.pop();
+                            pairs.push(Val::Arr(vec![Val::Str(field), val]));
                         }
                         vp.pop();
                         vp.pop();
                         Val::Obj(vec![
                             (Text::lit("id"), Val::Str(idt)),
-                            (Text::lit("fields"), Val::Obj(kv)),
+                            (Text::lit("fields"), Val::Arr(pairs)),
                         ])
                     })
                     .collect(),
             ),
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
-        let ttl = if e.pttl >= 0 {
-            Some(self.moment(self.ctx.captured_at + e.pttl))
-        } else {
-            None
-        };
+        self.exact_text = false;
+        // Each TTL relative to the time it was read.
+        let ttl = (e.pttl >= 0).then(|| self.moment(e.pttl_at + e.pttl));
         EntryCap {
             key,
             kind: e.kind.clone(),
@@ -846,6 +1067,11 @@ impl Detector<'_, '_> {
     }
 }
 
+fn first_known(ctx: &DetectCtx<'_>, v: &str) -> bool {
+    let texts = &ctx.known.texts;
+    texts.contains(v) || texts.iter().any(|t| t.contains(v))
+}
+
 /// Detect run-time values in a raw capture. The result still holds `Id::Raw` atoms; pass it to
 /// [`crate::canon::canonicalise`] to order and number it.
 pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
@@ -853,6 +1079,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         ctx,
         extra: None,
         found: Vec::new(),
+        exact_text: false,
     };
     let cap = first.run(raw);
     let mut found: Vec<String> = first
@@ -860,11 +1087,13 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         .into_iter()
         .filter(|s| s.chars().count() >= MIN_GENERATED_LEN)
         .collect();
+    found.retain(|s| !first_known(ctx, s));
     if found.is_empty() {
         return cap;
     }
-    // A generated value found at one path is also generated wherever else it appears (inside
-    // other strings and key names), so cross-references are checked.
+    // A generated value found at one path is also generated wherever else it appears as a whole
+    // value or a whole token (inside other strings and key names), so cross-references are
+    // checked; never as a bare substring, and never a value known from the inputs.
     found.sort_by_key(|s| std::cmp::Reverse(s.len()));
     found.dedup();
     let alternation = found
@@ -879,6 +1108,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         ctx,
         extra: Some(extra),
         found: Vec::new(),
+        exact_text: false,
     };
     second.run(raw)
 }
@@ -894,6 +1124,7 @@ pub(crate) mod tests {
             start: START,
             end: START + 3000,
             proc_start: START - 60_000,
+            seeded_at: START - 1000,
         }
     }
 
@@ -909,9 +1140,10 @@ pub(crate) mod tests {
             known,
             allow,
             names: vec![("127.0.0.1:41234".into(), "port.http".into())],
-            headers: DEFAULT_HEADERS.iter().map(|s| s.to_string()).collect(),
-            captured_at: START + 3000,
+            skip_headers: NOISE_HEADERS.iter().map(|s| s.to_string()).collect(),
             as_text: Vec::new(),
+            byte_sensitive: Vec::new(),
+            seed_offsets: Vec::new(),
         }
     }
 
@@ -923,6 +1155,7 @@ pub(crate) mod tests {
             ctx: &c,
             extra: None,
             found: Vec::new(),
+            exact_text: false,
         };
         d.text(&Path::root("x"), raw)
     }

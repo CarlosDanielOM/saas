@@ -16,9 +16,17 @@ pub enum AllowKind {
     /// Times (and plain numbers) at the path compare within this many milliseconds (units).
     Tolerance(i64),
     /// The value at the path is generated at run time (a random token): it becomes a numbered
-    /// placeholder. With a pattern, every match of the pattern inside strings and key names at or
-    /// below the path becomes a placeholder.
+    /// placeholder, and the same value elsewhere (whole, or as a token with clear boundaries)
+    /// follows it. With a pattern, every match of the pattern inside strings and key names at or
+    /// below the path becomes a placeholder. A value known from the scenario never does.
     Generated(Option<Regex>),
+    /// The value at the path is not a time: numbers, dates and strings there compare exactly,
+    /// with no run-relative time detection (a constant date, a number that only looks like
+    /// epoch milliseconds).
+    Exact,
+    /// The number at the path is a time in this unit (`true`: epoch seconds, which are not
+    /// detected by magnitude; `false`: epoch milliseconds).
+    Time { seconds: bool },
 }
 
 impl AllowKind {
@@ -28,6 +36,8 @@ impl AllowKind {
             AllowKind::Set => "set",
             AllowKind::Tolerance(_) => "tolerance",
             AllowKind::Generated(_) => "generated",
+            AllowKind::Exact => "exact",
+            AllowKind::Time { .. } => "time",
         }
     }
 }
@@ -92,6 +102,23 @@ impl Allowances {
             .kind
         {
             AllowKind::Tolerance(ms) => Some(ms),
+            _ => None,
+        }
+    }
+
+    /// An `exact` allowance matches this path (marked used).
+    pub fn exact(&self, path: &Path) -> bool {
+        self.find(path, true, |k| matches!(k, AllowKind::Exact))
+            .is_some()
+    }
+
+    /// The unit of a `time` allowance at this path (`true`: seconds), marked used.
+    pub fn time_unit(&self, path: &Path) -> Option<bool> {
+        match self
+            .find(path, true, |k| matches!(k, AllowKind::Time { .. }))?
+            .kind
+        {
+            AllowKind::Time { seconds } => Some(seconds),
             _ => None,
         }
     }

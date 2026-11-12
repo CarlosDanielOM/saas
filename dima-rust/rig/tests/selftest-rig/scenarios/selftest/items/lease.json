@@ -1,0 +1,41 @@
+{
+  "rig_scenario": 1,
+  "description": "Create an item, then renew its lease in a second operation: updatedAt moves, and the lease is updatedAt plus exactly 60 s.",
+  "tolerance_ms": 10000,
+  "seed": {
+    "include": [
+      "../_seeds/users.json"
+    ]
+  },
+  "steps": [
+    {
+      "http": {
+        "method": "POST",
+        "path": "/items",
+        "json": {
+          "name": "leased",
+          "qty": 1,
+          "owner": "650000000000000000000001"
+        },
+        "expect": {
+          "status": 201
+        },
+        "save": {
+          "item": "body.id"
+        }
+      }
+    },
+    {
+      "pause_ms": 120
+    },
+    {
+      "http": {
+        "method": "POST",
+        "path": "/items/${item}/touch",
+        "expect": {
+          "status": 200
+        }
+      }
+    }
+  ]
+}

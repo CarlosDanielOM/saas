@@ -1,0 +1,390 @@
+{
+  "rig_byte_sensitive": 1,
+  "description": "Dragonfly keys whose values are compared as exact text: key order, number text, escaping and whitespace all count; only generated identifiers and times are normalised. Every other value that holds compact JSON is parsed and compared by value, with key-order differences reported as notes. Seeded from the byteSensitive section of dima-rust/ledger/dragonfly.json (`ledger` is the key id there, `why` its byteSensitive item). Add an entry (pattern: a glob over key names, * matches any run) when a package finds another value that a reader compares byte by byte.",
+  "keys": [
+    {
+      "pattern": "twitch:*:ai:credits:plan-version",
+      "ledger": "plan.fence",
+      "type": "string",
+      "why": "Plan fence versions"
+    },
+    {
+      "pattern": "twitch:*:ai:credits:polar-version",
+      "ledger": "ai.credits.polar",
+      "type": "string",
+      "why": "Plan fence versions"
+    },
+    {
+      "pattern": "accounts:*:*:data",
+      "ledger": "accounts.data",
+      "type": "hash",
+      "why": "Plan fence versions; Numbers formatted to strings; Date/time strings"
+    },
+    {
+      "pattern": "twitch:*:ai:credits",
+      "ledger": "ai.credits",
+      "type": "string",
+      "why": "Plan fence versions; Raw-value compare-and-set; Values re-encoded by Lua cjson"
+    },
+    {
+      "pattern": "site_agent:s:*",
+      "ledger": "sa.session",
+      "type": "string",
+      "why": "Raw-value compare-and-set"
+    },
+    {
+      "pattern": "keywords:revision:*",
+      "ledger": "kw.revision",
+      "type": "string",
+      "why": "Raw-value compare-and-set"
+    },
+    {
+      "pattern": "cron:stream-memory:processing",
+      "ledger": "q.memory.processing",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS)"
+    },
+    {
+      "pattern": "cron:clip-recommendations:processing",
+      "ledger": "q.clips.processing",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS)"
+    },
+    {
+      "pattern": "cron:ai-usage-receipts:processing",
+      "ledger": "q.receipts.processing",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS)"
+    },
+    {
+      "pattern": "cron:ai-usage-backfills:processing",
+      "ledger": "q.backfills.processing",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS)"
+    },
+    {
+      "pattern": "observability:v1:processing",
+      "ledger": "obs.processing",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS)"
+    },
+    {
+      "pattern": "cron:stream-memory:queue",
+      "ledger": "q.memory",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS); CronQueueJob JSON"
+    },
+    {
+      "pattern": "cron:clip-recommendations:queue",
+      "ledger": "q.clips",
+      "type": "list",
+      "why": "Queue elements removed by value (LREM / LPOS); CronQueueJob JSON"
+    },
+    {
+      "pattern": "cron:jobs:queue",
+      "ledger": "q.cronjobs",
+      "type": "list",
+      "why": "CronQueueJob JSON"
+    },
+    {
+      "pattern": "cron:jobs:dead-letter",
+      "ledger": "q.cronjobs.dead",
+      "type": "list",
+      "why": "CronQueueJob JSON"
+    },
+    {
+      "pattern": "cron:stream-memory:dead-letter",
+      "ledger": "q.memory.dead",
+      "type": "list",
+      "why": "CronQueueJob JSON"
+    },
+    {
+      "pattern": "cron:ai-usage-receipts:queue:attempts:*",
+      "ledger": "q.receipts.attempts",
+      "type": "string",
+      "why": "Attempt-counter key hashes"
+    },
+    {
+      "pattern": "cron:ai-usage-backfills:queue:attempts:*",
+      "ledger": "q.backfills.attempts",
+      "type": "string",
+      "why": "Attempt-counter key hashes"
+    },
+    {
+      "pattern": "locks:ai-usage-write:*",
+      "ledger": "locks.aiusage",
+      "type": "string",
+      "why": "Keys hashed from JSON arrays"
+    },
+    {
+      "pattern": "moderation:seen:*",
+      "ledger": "mod.seen",
+      "type": "string",
+      "why": "Keys hashed from JSON arrays"
+    },
+    {
+      "pattern": "widget-signal:seen:*",
+      "ledger": "widget.signal.seen",
+      "type": "string",
+      "why": "Keys hashed from JSON arrays"
+    },
+    {
+      "pattern": "ast_catalog:vectors:v1:*",
+      "ledger": "ast.catalog.vectors",
+      "type": "string",
+      "why": "Keys hashed from JSON arrays"
+    },
+    {
+      "pattern": "billing:credit-packs:context:v1:*",
+      "ledger": "billing.packctx",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "twitch:*:ai:usage-local:*",
+      "ledger": "ai.usage.local",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "twitch:*:ai:usage-receipts:v2:*:*:*:*:*:*",
+      "ledger": "ai.receipts.cache",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "twitch:*:follow-defense:suppressed:*",
+      "ledger": "fd.suppressed",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "site_agent:docs:vec:*:*",
+      "ledger": "docs.vectors",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "pet:audio:*",
+      "ledger": "pet.audio",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "observability:v1:identity:*",
+      "ledger": "obs.identity",
+      "type": "string",
+      "why": "Other hashed key parts"
+    },
+    {
+      "pattern": "oauth:request:*",
+      "ledger": "oauth.request",
+      "type": "string",
+      "why": "base64url digests"
+    },
+    {
+      "pattern": "oauth:code:*",
+      "ledger": "oauth.code",
+      "type": "string",
+      "why": "base64url digests"
+    },
+    {
+      "pattern": "oauth:access:*",
+      "ledger": "oauth.access",
+      "type": "string",
+      "why": "base64url digests"
+    },
+    {
+      "pattern": "oauth:rate:*",
+      "ledger": "oauth.rate",
+      "type": "string",
+      "why": "base64url digests"
+    },
+    {
+      "pattern": "ratelimit:*:*",
+      "ledger": "ratelimit",
+      "type": "string",
+      "why": "base64url digests"
+    },
+    {
+      "pattern": "token:*",
+      "ledger": "auth.token",
+      "type": "hash",
+      "why": "Raw secret in key name"
+    },
+    {
+      "pattern": "moderation:*:permit:*",
+      "ledger": "mod.permit",
+      "type": "string",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "*:sumimetro:*",
+      "ledger": "sumimetro.user",
+      "type": "string",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "twitch:*:editors",
+      "ledger": "roles.editors",
+      "type": "set",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "twitch:*:admins",
+      "ledger": "roles.admins",
+      "type": "set",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "twitch:*:admins:*",
+      "ledger": "roles.admins.detail",
+      "type": "hash",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "*:*:variable:*",
+      "ledger": "ast.variable",
+      "type": "string",
+      "why": "Lowercased logins in keys / members"
+    },
+    {
+      "pattern": "site:analytics:channels",
+      "ledger": "site.analytics",
+      "type": "hash",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "docs_assistant:answer:*",
+      "ledger": "docs.answer",
+      "type": "hash",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "*:tts:usage",
+      "ledger": "tts.usage",
+      "type": "hash",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "twitch:*:clips:last_activity",
+      "ledger": "clips.lastactivity",
+      "type": "string",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "twitch:*:triggers:last_activity",
+      "ledger": "triggers.activity",
+      "type": "string",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "twitch:*:tts:last_cleanup",
+      "ledger": "tts.lastcleanup",
+      "type": "string",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "*:follows:event:*",
+      "ledger": "follows.event",
+      "type": "string",
+      "why": "Numbers formatted to strings"
+    },
+    {
+      "pattern": "follow:defense:baseline:*",
+      "ledger": "fd.baseline",
+      "type": "string",
+      "why": "JSON number formatting of floats"
+    },
+    {
+      "pattern": "ai-usage:queue-health:*:snapshot",
+      "ledger": "aiusage.health.snapshot",
+      "type": "string",
+      "why": "JSON number formatting of floats"
+    },
+    {
+      "pattern": "ai-usage:queue-health:*",
+      "ledger": "aiusage.health",
+      "type": "hash",
+      "why": "JSON number formatting of floats"
+    },
+    {
+      "pattern": "desktop:speech:slot:*",
+      "ledger": "desk.slot",
+      "type": "string",
+      "why": "Values re-encoded by Lua cjson"
+    },
+    {
+      "pattern": "twitch:*:tts:queue:data:*",
+      "ledger": "tts.queue.data",
+      "type": "string",
+      "why": "Values re-encoded by Lua cjson"
+    },
+    {
+      "pattern": "twitch:*:follow-defense:state",
+      "ledger": "fd.state",
+      "type": "string",
+      "why": "Values re-encoded by Lua cjson"
+    },
+    {
+      "pattern": "twitch:*:follow-defense:summary",
+      "ledger": "fd.summary",
+      "type": "string",
+      "why": "Values re-encoded by Lua cjson"
+    },
+    {
+      "pattern": "twitch:accounts",
+      "ledger": "twitch.accounts",
+      "type": "string",
+      "why": "HGETALL field order"
+    },
+    {
+      "pattern": "logger:*:*:*:*-*",
+      "ledger": "logger",
+      "type": "string",
+      "why": "Date/time strings"
+    },
+    {
+      "pattern": "site_agent:daily:*:*",
+      "ledger": "sa.daily",
+      "type": "string",
+      "why": "Date/time strings"
+    },
+    {
+      "pattern": "site_agent:stats:*",
+      "ledger": "sa.stats",
+      "type": "hash",
+      "why": "Date/time strings"
+    },
+    {
+      "pattern": "docs_assistant:stats:*",
+      "ledger": "docs.stats",
+      "type": "hash",
+      "why": "Date/time strings"
+    },
+    {
+      "pattern": "metrics:bot:*:*",
+      "ledger": "metrics.family",
+      "type": "hash",
+      "why": "Date/time strings"
+    },
+    {
+      "pattern": "desktop-ai:queue:*",
+      "ledger": "desk.queue",
+      "type": "zset",
+      "why": "Composite members and ids"
+    },
+    {
+      "pattern": "twitch:follow-defense:queue",
+      "ledger": "fd.queue",
+      "type": "zset",
+      "why": "Composite members and ids"
+    },
+    {
+      "pattern": "site_agent:t:*:ev",
+      "ledger": "sa.events",
+      "type": "stream",
+      "why": "Composite members and ids"
+    }
+  ]
+}

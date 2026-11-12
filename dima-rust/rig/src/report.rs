@@ -104,6 +104,9 @@ pub struct Report {
     pub scenarios: Vec<ScenarioReport>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<String>,
+    /// About the whole run (for example: `diff-get --allow-writes`).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
 }
 
 impl Report {
@@ -115,6 +118,7 @@ impl Report {
             ok: false,
             scenarios: Vec::new(),
             errors: Vec::new(),
+            warnings: Vec::new(),
         }
     }
 
@@ -182,6 +186,9 @@ impl Report {
         }
         for e in &self.errors {
             let _ = writeln!(o, "\nERROR {e}");
+        }
+        for w in &self.warnings {
+            let _ = writeln!(o, "\nWARNING {w}");
         }
         let count = |st: Status| self.scenarios.iter().filter(|s| s.status == st).count();
         let mut parts = Vec::new();

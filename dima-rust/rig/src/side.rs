@@ -26,6 +26,8 @@ pub struct LaunchSpec {
     pub env: Vec<(String, String)>,
     pub log_path: PathBuf,
     pub ports: BTreeMap<String, u16>,
+    /// The port requests and readiness use when they name none: the first one the target declares.
+    pub primary_port: String,
     pub ready: Ready,
     pub stop_signal: StopSignal,
     pub grace_ms: u64,
@@ -38,9 +40,13 @@ pub struct SideProcess {
     pub log_path: PathBuf,
     pub started_at: i64,
     pub ports: BTreeMap<String, u16>,
+    /// The first port the target declares (requests without a `port` go there).
+    pub primary_port: String,
     stop_signal: StopSignal,
     grace_ms: u64,
     exited: Option<ExitStatus>,
+    /// The whole process group is known to be gone (nothing left to kill).
+    group_gone: bool,
 }
 
 /// A free loopback port (the rig asks the kernel, then releases it for the side).
@@ -185,11 +191,17 @@ impl SideProcess {
             log_path: spec.log_path.clone(),
             started_at,
             ports: spec.ports.clone(),
+            primary_port: spec.primary_port.clone(),
             stop_signal: spec.stop_signal,
             grace_ms: spec.grace_ms,
             exited: None,
+            group_gone: false,
         };
-        p.wait_ready(&spec.ready).await?;
+        if let Err(f) = p.wait_ready(&spec.ready).await {
+            // The leader may have exited already while what it started lives on in its group.
+            p.kill_group().await;
+            return Err(f);
+        }
         Ok(p)
     }
 
@@ -271,9 +283,39 @@ impl SideProcess {
     }
 
     fn signal_group(&self, sig: Signal) {
-        if let Some(pg) = self.pgid {
+        if let Some(pg) = self.pgid
+            && !self.group_gone
+        {
             // ESRCH (nothing left in the group) is fine.
             let _ = killpg(Pid::from_raw(pg), sig);
+        }
+    }
+
+    /// SIGKILL the whole group, reap the leader, and wait (bounded) until no member is left.
+    async fn kill_group(&mut self) {
+        self.signal_group(Signal::SIGKILL);
+        if self.exited.is_none()
+            && let Ok(Ok(st)) =
+                tokio::time::timeout(Duration::from_secs(5), self.child.wait()).await
+        {
+            self.exited = Some(st);
+        }
+        let Some(pg) = self.pgid else {
+            self.group_gone = true;
+            return;
+        };
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+        loop {
+            // Signal 0 only checks: ESRCH means no process is left in the group.
+            if killpg(Pid::from_raw(pg), None) == Err(nix::errno::Errno::ESRCH) {
+                self.group_gone = true;
+                return;
+            }
+            if tokio::time::Instant::now() >= deadline {
+                return;
+            }
+            let _ = killpg(Pid::from_raw(pg), Signal::SIGKILL);
+            tokio::time::sleep(Duration::from_millis(20)).await;
         }
     }
 
@@ -289,20 +331,14 @@ impl SideProcess {
                 StopSignal::Hup => Signal::SIGHUP,
             };
             self.signal_group(sig);
-            match tokio::time::timeout(Duration::from_millis(self.grace_ms), self.child.wait())
-                .await
+            if let Ok(Ok(st)) =
+                tokio::time::timeout(Duration::from_millis(self.grace_ms), self.child.wait()).await
             {
-                Ok(Ok(st)) => self.exited = Some(st),
-                _ => {
-                    self.signal_group(Signal::SIGKILL);
-                    if let Ok(st) = self.child.wait().await {
-                        self.exited = Some(st);
-                    }
-                }
+                self.exited = Some(st);
             }
         }
-        // Anything the process started in its group goes too.
-        self.signal_group(Signal::SIGKILL);
+        // Anything the process started in its group goes too (also when the leader is gone).
+        self.kill_group().await;
         let _ = std::fs::OpenOptions::new()
             .append(true)
             .open(&self.log_path)
@@ -320,9 +356,149 @@ impl SideProcess {
 }
 
 impl Drop for SideProcess {
+    /// Every exit path (an error, a dropped future on Ctrl-C) kills the whole group, including
+    /// when the leader has already exited and only what it started is left.
     fn drop(&mut self) {
-        if self.exited.is_none() {
-            self.signal_group(Signal::SIGKILL);
+        self.signal_group(Signal::SIGKILL);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+    use crate::target::{Probe, Ready, StopSignal};
+
+    fn scratch(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("dima-rig-side-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    fn spec(dir: &FsPath, script: &str, timeout_ms: u64) -> LaunchSpec {
+        let port = free_port().unwrap();
+        LaunchSpec {
+            side: "candidate".into(),
+            command: vec!["/bin/sh".into(), "-c".into(), script.into()],
+            cwd: dir.to_path_buf(),
+            env: vec![("PATH".into(), "/usr/bin:/bin".into())],
+            log_path: dir.join("side.log"),
+            ports: [("http".to_string(), port)].into(),
+            primary_port: "http".into(),
+            ready: Ready {
+                probe: Probe::Tcp,
+                port: "http".into(),
+                timeout_ms,
+            },
+            stop_signal: StopSignal::Term,
+            grace_ms: 500,
         }
+    }
+
+    /// Wait until the process is gone (or a zombie nobody has reaped yet).
+    async fn gone(pid: &str) -> bool {
+        for _ in 0..150 {
+            match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
+                Err(_) => return true,
+                Ok(stat)
+                    if stat
+                        .rsplit(')')
+                        .next()
+                        .is_some_and(|t| t.trim_start().starts_with('Z')) =>
+                {
+                    return true;
+                }
+                Ok(_) => tokio::time::sleep(Duration::from_millis(20)).await,
+            }
+        }
+        false
+    }
+
+    async fn helper_pid(dir: &FsPath) -> String {
+        for _ in 0..100 {
+            if let Ok(s) = std::fs::read_to_string(dir.join("helper.pid"))
+                && !s.trim().is_empty()
+            {
+                return s.trim().to_string();
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the helper pid was not written");
+    }
+
+    #[tokio::test]
+    async fn the_group_is_killed_when_the_leader_exits_before_readiness() {
+        let dir = scratch("exit");
+        let s = spec(&dir, "sleep 300 & echo $! > helper.pid; exit 1", 5000);
+        let err = match SideProcess::launch(s, None).await {
+            Err(e) => e,
+            Ok(_) => panic!("a process that exits is never ready"),
+        };
+        assert!(
+            err.message.contains("did not become ready"),
+            "{}",
+            err.message
+        );
+        let pid = helper_pid(&dir).await;
+        assert!(
+            gone(&pid).await,
+            "the helper {pid} outlived its exited leader"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn the_group_is_killed_when_readiness_times_out() {
+        let dir = scratch("timeout");
+        let s = spec(
+            &dir,
+            "sleep 300 & echo $! > helper.pid; exec sleep 300",
+            400,
+        );
+        let err = match SideProcess::launch(s, None).await {
+            Err(e) => e,
+            Ok(_) => panic!("nothing listens, so it is never ready"),
+        };
+        assert!(
+            err.message.contains("not ready after 400 ms"),
+            "{}",
+            err.message
+        );
+        let pid = helper_pid(&dir).await;
+        assert!(gone(&pid).await, "the helper {pid} outlived the timeout");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn dropping_a_ready_side_kills_its_group() {
+        let dir = scratch("drop");
+        let port = free_port().unwrap();
+        let mut s = spec(
+            &dir,
+            &format!(
+                "sleep 300 & echo $! > helper.pid; exec python3 -c 'import socket,time; s=socket.socket(); s.bind((\"127.0.0.1\", {port})); s.listen(); time.sleep(300)'"
+            ),
+            5000,
+        );
+        s.ports = [("http".to_string(), port)].into();
+        if std::process::Command::new("python3")
+            .arg("-c")
+            .arg("pass")
+            .status()
+            .is_err()
+        {
+            eprintln!("skipping: python3 is not available");
+            return;
+        }
+        let p = SideProcess::launch(s, None).await.unwrap();
+        let pid = helper_pid(&dir).await;
+        drop(p);
+        assert!(
+            gone(&pid).await,
+            "the helper {pid} outlived the dropped side"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

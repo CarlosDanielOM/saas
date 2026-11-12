@@ -64,9 +64,14 @@ fn render_text(t: &Text, ctx: &Ctx<'_>) -> String {
                 at: Moment::Abs(ms),
                 shape,
             } => s.push_str(&format!("<T@{ms}|{shape}>")),
+            Seg::Time {
+                at: Moment::Seed { seed, .. },
+                shape,
+            } => s.push_str(&format!("<Tseed{seed}|{shape}>")),
             Seg::Time { shape, .. } => s.push_str(&format!("<T|{shape}>")),
             Seg::Day { .. } => s.push_str("<D>"),
             Seg::Name(n) => s.push_str(&format!("<run:{n}>")),
+            Seg::Bytes(b) => s.push_str(&format!("<B:{}>", crate::value::hex(b))),
         }
     }
     serde_json::to_string(&s).unwrap_or(s)
@@ -95,6 +100,7 @@ fn render(v: &Val, path: &mut Path, ctx: &Ctx<'_>, top_is_set: bool) -> String {
         Val::Double(f) => format!("d{f:?}"),
         Val::Dec(s) => format!("m{s}"),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}@{ms}"),
+        Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
         Val::Time(r, _) => format!("T{r:?}~"),
         Val::Oid(id) => format!("O{}", id_label(id, ctx)),
         Val::Uuid(id) => format!("U{}", id_label(id, ctx)),
@@ -186,8 +192,8 @@ impl Item<'_> {
         let mut out = Vec::new();
         match self {
             Item::Step(_, StepCap::Http { headers, body, .. }) => {
-                for (_, vals) in headers.iter() {
-                    vals.iter().for_each(|t| collect_text_ids(t, &mut out));
+                for (_, v) in headers.iter() {
+                    collect_ids(v, &mut out);
                 }
                 match body {
                     Body::Json(v) => collect_ids(v, &mut out),
@@ -220,14 +226,9 @@ impl Item<'_> {
                 let mut p = Path::root("steps").with_index(*i);
                 let h: Vec<String> = headers
                     .iter()
-                    .map(|(n, vals)| {
-                        format!(
-                            "{n}={}",
-                            vals.iter()
-                                .map(|t| render_text(t, ctx))
-                                .collect::<Vec<_>>()
-                                .join(",")
-                        )
+                    .map(|(n, v)| {
+                        let mut hp = p.with_key("headers").with_key(n.clone());
+                        format!("{n}={}", render(v, &mut hp, ctx, false))
                     })
                     .collect();
                 let b = match body {
@@ -564,8 +565,8 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     for s in &cap.steps {
         match s {
             StepCap::Http { headers, body, .. } => {
-                for (_, vals) in headers {
-                    vals.iter().for_each(|t| num.text(t));
+                for (_, v) in headers {
+                    num.val(v, &ctx);
                 }
                 match body {
                     Body::Json(v) => num.val(v, &ctx),
@@ -591,8 +592,8 @@ pub fn canonicalise(cap: &mut Capture, allow: &Allowances) {
     for s in cap.steps.iter_mut() {
         match s {
             StepCap::Http { headers, body, .. } => {
-                for (_, vals) in headers.iter_mut() {
-                    vals.iter_mut().for_each(|t| apply_text(t, &map));
+                for (_, v) in headers.iter_mut() {
+                    apply(v, &map);
                 }
                 match body {
                     Body::Json(v) => apply(v, &map),

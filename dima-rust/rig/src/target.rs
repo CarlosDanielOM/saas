@@ -18,6 +18,8 @@ struct TargetFile {
     description: String,
     #[serde(default)]
     ports: Option<Vec<String>>,
+    #[serde(default)]
+    share_process: bool,
     reference: SideFile,
     candidate: SideFile,
 }
@@ -100,6 +102,11 @@ pub struct Target {
     pub file: PathBuf,
     pub description: String,
     pub ports: Vec<String>,
+    /// Opt-in: the scenarios of a run share one process per side (stores reset between them).
+    /// Faster, but in-memory state of the process (caches, counters, timers, open
+    /// subscriptions) carries from one scenario into the next, so a scenario's result can
+    /// depend on which scenarios ran before it. Default: one process per scenario.
+    pub share_process: bool,
     pub reference: SideSpec,
     pub candidate: SideSpec,
 }
@@ -284,6 +291,7 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
         file,
         description: f.description,
         ports,
+        share_process: f.share_process,
         reference,
         candidate,
     })
