@@ -19,3 +19,22 @@ dima-billing = { workspace = true }
 dima-platform = { workspace = true }
 dima-model = { workspace = true }
 dima-store = { workspace = true }
+# P4-FEAT-GAMES (roulette, duel, bits rules).
+dima-core = { workspace = true }
+dima-text = { workspace = true }
+dima-http = { workspace = true }
+bson = { workspace = true }
+mongodb = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+futures-util = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+dima-core = { workspace = true, features = ["test-util"] }
+dima-http = { workspace = true, features = ["test-util"] }
+# Race and kill tests run a second copy of the test binary as a child process.
+tokio = { workspace = true, features = ["process", "io-util"] }

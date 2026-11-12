@@ -1766,15 +1766,27 @@ dependencies = [
 name = "dima-features"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bson",
  "dima-billing",
+ "dima-core",
  "dima-engine",
  "dima-events",
+ "dima-http",
  "dima-model",
  "dima-platform",
  "dima-store",
  "dima-stream",
+ "dima-text",
  "dima-tts",
  "dima-twitch",
+ "futures-util",
+ "mongodb",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
