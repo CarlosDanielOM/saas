@@ -49,6 +49,13 @@ impl Shutdown {
         }
     }
 
+    /// A `tokio_util` [`CancellationToken`] that is cancelled when this token fires, for APIs that
+    /// take one (for example `dima_web::serve`), so a binary keeps a single shutdown signal.
+    /// It is a child: cancelling it does not trigger this token or its clones.
+    pub fn cancellation_token(&self) -> CancellationToken {
+        self.token.child_token()
+    }
+
     /// The same signal (not a child: triggering either fires both), with work started under it
     /// registered in `registry`, replacing any registry this token carried.
     pub fn with_registry(&self, registry: &WorkRegistry) -> Self {
@@ -216,6 +223,22 @@ mod tests {
         .await;
         assert_eq!(report.steps[1], ("close", StepOutcome::Skipped));
         assert!(!*ran.lock().unwrap(), "a step started after the deadline");
+    }
+
+    #[tokio::test]
+    async fn a_cancellation_token_follows_shutdown_but_not_the_other_way() {
+        let shutdown = Shutdown::new();
+        let own = shutdown.cancellation_token();
+        own.cancel();
+        assert!(!shutdown.is_triggered(), "the child stopped its parent");
+        let token = shutdown.cancellation_token();
+        let child_of_child = shutdown.child().cancellation_token();
+        assert!(!token.is_cancelled());
+        shutdown.trigger();
+        token.cancelled().await;
+        child_of_child.cancelled().await;
+        // Already triggered: a new token is cancelled from the start.
+        assert!(shutdown.cancellation_token().is_cancelled());
     }
 
     #[tokio::test]
