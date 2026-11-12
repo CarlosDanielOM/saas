@@ -81,10 +81,18 @@ fn directory_entries_match_the_reference() -> Result<()> {
             user.polar_plan_event_at.map(|date| date.0),
             user.polar_plan_event_key.as_deref(),
         )?;
+        // Deliberate difference (lead's decision): the cache holds MongoDB's envelope, not the
+        // decrypted token; it decrypts to the reference's value.
         let mut args = vec![version.clone()];
         for (field, value) in fields {
             args.push(field.to_owned());
-            args.push(value);
+            if matches!(field, "access_token" | "refresh_token") && !value.is_empty() {
+                let envelope: dima_core::crypto::StoredCredential =
+                    serde_json::from_str(&value).context("an envelope")?;
+                args.push(cipher.decrypt(&envelope)?.unwrap_or_default());
+            } else {
+                args.push(value);
+            }
         }
         args.push("__polar_plan_version".to_owned());
         args.push(version);

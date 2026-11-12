@@ -5,7 +5,9 @@
 //! crate does it is where the token goes on the wire or into the store.
 
 use dima_core::SecretString;
+use dima_core::crypto::{CredentialCipher, StoredCredential};
 use dima_http::HeaderValue;
+use dima_model::users::EncryptedToken;
 use std::fmt;
 
 /// A Twitch user or app access token.
@@ -22,6 +24,11 @@ macro_rules! token_type {
             /// Wraps the token text.
             pub fn new(text: impl Into<String>) -> Self {
                 Self(SecretString::new(text.into()))
+            }
+
+            /// Wraps a secret without copying it.
+            pub(crate) fn from_secret(secret: SecretString) -> Self {
+                Self(secret)
             }
 
             /// The text. Call only where it goes on the wire or into the store.
@@ -75,9 +82,83 @@ impl AccessToken {
     }
 }
 
+/// A token as Dragonfly holds it (Rust's own encoding; `keys` family *rebuilt*): the `{iv,
+/// content}` envelope MongoDB holds, as JSON text, or `""` for no token. The cache never holds
+/// a token in plain text (the reference does).
+pub(crate) fn cache_text(envelope: &StoredCredential) -> String {
+    if envelope.iv.is_empty() || envelope.content.is_empty() {
+        return String::new();
+    }
+    serde_json::to_string(envelope).unwrap_or_default()
+}
+
+/// [`cache_text`] of MongoDB's stored envelope, copied as it is (no decryption).
+pub(crate) fn cache_text_of(envelope: &EncryptedToken) -> String {
+    match (envelope.iv.as_deref(), envelope.content.as_deref()) {
+        (Some(iv), Some(content)) if !iv.is_empty() && !content.is_empty() => {
+            cache_text(&StoredCredential {
+                iv: iv.to_owned(),
+                content: content.to_owned(),
+            })
+        }
+        _ => String::new(),
+    }
+}
+
+/// Encrypts `token` for the cache.
+pub(crate) fn seal(
+    cipher: &CredentialCipher,
+    random: &dyn dima_core::SecureRandom,
+    token: &str,
+) -> Result<String, dima_core::crypto::CipherError> {
+    Ok(cache_text(&cipher.encrypt(token, random)?))
+}
+
+/// The token in a cached value: `None` for `""`, for text that is not an envelope, or for an
+/// envelope that does not decrypt (each is treated as "no cached token": MongoDB decides).
+pub(crate) fn open_cached(cipher: &CredentialCipher, text: &str) -> Option<SecretString> {
+    if text.is_empty() {
+        return None;
+    }
+    let envelope: StoredCredential = serde_json::from_str(text).ok()?;
+    cipher
+        .decrypt(&envelope)
+        .ok()
+        .flatten()
+        .filter(|token| !token.is_empty())
+        .map(SecretString::new)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cached_tokens_are_envelopes() {
+        let cipher = CredentialCipher::new("test-secret-key").unwrap();
+        let sealed = seal(&cipher, &dima_core::SystemRandom, "live-access-1").unwrap();
+        assert!(!sealed.contains("live-access-1"));
+        let envelope: StoredCredential = serde_json::from_str(&sealed).unwrap();
+        assert_eq!(envelope.iv.len(), 32);
+        assert_eq!(
+            open_cached(&cipher, &sealed)
+                .as_ref()
+                .map(SecretString::expose),
+            Some("live-access-1")
+        );
+        assert_eq!(seal(&cipher, &dima_core::SystemRandom, "").unwrap(), "");
+        assert!(open_cached(&cipher, "").is_none());
+        assert!(
+            open_cached(&cipher, "live-access-1").is_none(),
+            "plain text is no token"
+        );
+        assert!(open_cached(&cipher, r#"{"iv":"00","content":"ab"}"#).is_none());
+        let empty = EncryptedToken {
+            iv: None,
+            content: None,
+        };
+        assert_eq!(cache_text_of(&empty), "");
+    }
 
     #[test]
     fn tokens_never_print() {

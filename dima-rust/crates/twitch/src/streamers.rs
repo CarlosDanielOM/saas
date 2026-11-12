@@ -2,10 +2,15 @@
 //!
 //! **What it holds.** One Dragonfly hash per streamer, `accounts:twitch:{id}:data`, with the
 //! account as strings: `id`, `name`, `email`, `plan_tier`, `plan_tier_until`
-//! (`Date.toDateString()` in UTC), `polar_sh_customer_id`, the decrypted `refresh_token` and
-//! `access_token`, `expires_at` (epoch seconds), the four flags as `"true"`/`"false"`, and the
-//! plan fence version `__polar_plan_version`; the set `streamers:by:id`; and the aggregate
+//! (`Date.toDateString()` in UTC), `polar_sh_customer_id`, `refresh_token` and `access_token`,
+//! `expires_at` (epoch seconds), the four flags as `"true"`/`"false"`, and the plan fence
+//! version `__polar_plan_version`; the set `streamers:by:id`; and the aggregate
 //! `twitch:accounts` (`EX 3600`) for the list read. MongoDB (`users`) is the source of truth.
+//!
+//! **Tokens are encrypted in the cache** (lead's decision; the reference keeps them in plain
+//! text): `refresh_token` and `access_token` hold MongoDB's own `{iv, content}` envelope as JSON
+//! text (copied, not re-encrypted), or `""` for none. A [`StreamerAccount`] decrypts them into
+//! wiping types and leaves them out of [`StreamerAccount::fields`].
 //!
 //! **How it is loaded.** [`Twitch::load_streamers`] at start-up (the API, the bot and several
 //! cron workers call `getTwitchAccountsFromDB` when they start): every user with a Twitch
@@ -36,7 +41,7 @@
 use crate::base::{Inner, Twitch};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
-use crate::secret::{AccessToken, RefreshToken};
+use crate::secret::{AccessToken, RefreshToken, cache_text_of, open_cached};
 use bson::{Document, RawDocumentBuf, doc};
 use dima_core::crypto::{CipherError, CredentialCipher};
 use dima_model::users::{Account, AccountType, EncryptedToken, User};
@@ -69,11 +74,15 @@ const READ_MAX_FIELDS: usize = 256;
 const READ_MAX_BYTES: usize = 64 * 1024;
 
 /// One streamer as the directory holds it (`IUsersCache`): the hash's string fields in the
-/// order the server returns them, without the internal plan version. `Debug` shows the id and
-/// the name only: the fields include both tokens and the e-mail.
+/// order the server returns them, without the internal plan version and without the two
+/// tokens, which are kept decrypted in wiping types ([`StreamerAccount::access_token`],
+/// [`StreamerAccount::refresh_token`]). `Debug` shows the id and the name only: the fields
+/// include the e-mail.
 #[derive(Clone, PartialEq, Eq)]
 pub struct StreamerAccount {
     fields: Vec<(String, String)>,
+    access_token: Option<AccessToken>,
+    refresh_token: Option<RefreshToken>,
 }
 
 impl fmt::Debug for StreamerAccount {
@@ -86,17 +95,33 @@ impl fmt::Debug for StreamerAccount {
 }
 
 impl StreamerAccount {
-    /// From a hash's fields (the internal plan version is dropped: `publicAccount`).
-    pub fn from_fields(fields: Vec<(String, String)>) -> Self {
+    /// From a hash's fields: the internal plan version is dropped (`publicAccount`), the token
+    /// envelopes are decrypted (one that does not decrypt counts as no token).
+    pub(crate) fn from_cache(fields: Vec<(String, String)>, cipher: &CredentialCipher) -> Self {
+        let mut access_token = None;
+        let mut refresh_token = None;
+        let mut kept = Vec::with_capacity(fields.len());
+        for (name, value) in fields {
+            match name.as_str() {
+                "access_token" => {
+                    access_token = open_cached(cipher, &value).map(AccessToken::from_secret);
+                }
+                "refresh_token" => {
+                    refresh_token = open_cached(cipher, &value).map(RefreshToken::from_secret);
+                }
+                PLAN_CACHE_VERSION_FIELD => {}
+                _ => kept.push((name, value)),
+            }
+        }
         Self {
-            fields: fields
-                .into_iter()
-                .filter(|(name, _)| name != PLAN_CACHE_VERSION_FIELD)
-                .collect(),
+            fields: kept,
+            access_token,
+            refresh_token,
         }
     }
 
-    /// Every field (tokens and e-mail included: never log them).
+    /// Every field but the tokens and the internal plan version (the e-mail is included:
+    /// never log it).
     pub fn fields(&self) -> &[(String, String)] {
         &self.fields
     }
@@ -144,18 +169,14 @@ impl StreamerAccount {
         self.field("expires_at")
     }
 
-    /// The access token, when not empty.
+    /// The access token, when the cache holds one.
     pub fn access_token(&self) -> Option<AccessToken> {
-        self.field("access_token")
-            .filter(|token| !token.is_empty())
-            .map(AccessToken::new)
+        self.access_token.clone()
     }
 
-    /// The refresh token, when not empty.
+    /// The refresh token, when the cache holds one.
     pub fn refresh_token(&self) -> Option<RefreshToken> {
-        self.field("refresh_token")
-            .filter(|token| !token.is_empty())
-            .map(RefreshToken::new)
+        self.refresh_token.clone()
     }
 
     /// `actived === 'true'`.
@@ -198,13 +219,22 @@ pub(crate) fn persisted_expires_at(account: &Account) -> Option<String> {
 
 /// The cache payload the reference builds for a user (`IUsersCache`), in its key order;
 /// `expires_at` is left out when neither the cache nor the document has one
-/// (`sanitizeCachePayload` drops `undefined`).
+/// (`sanitizeCachePayload` drops `undefined`). The tokens are MongoDB's envelopes as they are
+/// (the reference decrypts them); an envelope that cannot be decrypted is an error, as the
+/// reference's `decrypt` throws.
 pub(crate) fn cache_fields(
     user: &User,
     account: &Account,
     existing_expires_at: Option<String>,
     cipher: &CredentialCipher,
 ) -> Result<Vec<(&'static str, String)>, CipherError> {
+    for envelope in [
+        account.refresh_token.expose(),
+        account.access_token.expose(),
+    ] {
+        // Checked, then dropped at once (wiped): the cache keeps the envelope.
+        drop(decrypt_envelope(cipher, envelope)?.map(dima_core::SecretString::new));
+    }
     let flag = |value: bool| if value { "true" } else { "false" }.to_owned();
     let plan_tier_until = user.plan_tier_until.map_or_else(String::new, |date| {
         dima_text::to_date_string_utc(date.0).unwrap_or_else(|| "Invalid Date".to_owned())
@@ -231,12 +261,9 @@ pub(crate) fn cache_fields(
         ),
         (
             "refresh_token",
-            decrypt_envelope(cipher, account.refresh_token.expose())?.unwrap_or_default(),
+            cache_text_of(account.refresh_token.expose()),
         ),
-        (
-            "access_token",
-            decrypt_envelope(cipher, account.access_token.expose())?.unwrap_or_default(),
-        ),
+        ("access_token", cache_text_of(account.access_token.expose())),
     ];
     if let Some(expires_at) = existing_expires_at
         .filter(|value| !value.is_empty())
@@ -391,11 +418,12 @@ impl Inner {
             }
             self.sadd(&keys.streamer_ids(), id).await?;
             self.streamer_seen(id, account.name.as_deref().unwrap_or_default());
-            return Ok(Some(StreamerAccount::from_fields(
+            return Ok(Some(StreamerAccount::from_cache(
                 fields
                     .into_iter()
                     .map(|(name, value)| (name.to_owned(), value))
                     .collect(),
+                &self.cipher,
             )));
         }
         Ok(None)
@@ -480,7 +508,9 @@ impl Inner {
             .await
             .map_err(|error| TwitchError::cache("read account", error))?;
         match decode_read(reply)? {
-            HashRead::Accepted(fields) => Ok(Some(StreamerAccount::from_fields(fields))),
+            HashRead::Accepted(fields) => {
+                Ok(Some(StreamerAccount::from_cache(fields, &self.cipher)))
+            }
             HashRead::Missing | HashRead::Stale => self.hydrate(id).await,
             HashRead::TooLarge => Err(TwitchError::Protocol { op: "read account" }),
         }
@@ -531,7 +561,7 @@ impl Inner {
                 if self.check_versions(&accounts, None).await? {
                     return Ok(accounts
                         .into_iter()
-                        .map(StreamerAccount::from_fields)
+                        .map(|fields| StreamerAccount::from_cache(fields, &self.cipher))
                         .collect());
                 }
             }
@@ -569,7 +599,7 @@ impl Inner {
             if self.check_versions(&accounts, Some(&aggregate)).await? {
                 return Ok(accounts
                     .into_iter()
-                    .map(StreamerAccount::from_fields)
+                    .map(|fields| StreamerAccount::from_cache(fields, &self.cipher))
                     .collect());
             }
         }
@@ -784,19 +814,37 @@ mod tests {
 
     #[test]
     fn the_account_never_prints_tokens_and_drops_the_version() {
-        let account = StreamerAccount::from_fields(vec![
-            ("id".into(), "42".into()),
-            ("name".into(), "chan".into()),
-            ("access_token".into(), "secret-access".into()),
-            ("refresh_token".into(), "".into()),
-            (PLAN_CACHE_VERSION_FIELD.into(), "v".into()),
-            ("has_permissions".into(), "true".into()),
-        ]);
+        let cipher = CredentialCipher::new("test-secret-key").unwrap();
+        let sealed =
+            crate::secret::seal(&cipher, &dima_core::SystemRandom, "secret-access").unwrap();
+        let account = StreamerAccount::from_cache(
+            vec![
+                ("id".into(), "42".into()),
+                ("name".into(), "chan".into()),
+                ("access_token".into(), sealed),
+                ("refresh_token".into(), "".into()),
+                (PLAN_CACHE_VERSION_FIELD.into(), "v".into()),
+                ("has_permissions".into(), "true".into()),
+            ],
+            &cipher,
+        );
         let text = format!("{account:?}");
         assert!(!text.contains("secret-access"), "{text}");
         assert!(account.field(PLAN_CACHE_VERSION_FIELD).is_none());
-        assert!(account.access_token().is_some());
+        assert_eq!(
+            account
+                .access_token()
+                .map(|t| t.expose().to_owned())
+                .as_deref(),
+            Some("secret-access")
+        );
         assert!(account.refresh_token().is_none());
+        for field in ["access_token", "refresh_token"] {
+            assert!(
+                account.field(field).is_none(),
+                "{field} is not a plain field"
+            );
+        }
         assert!(account.has_permissions() && !account.chat_enabled());
     }
 

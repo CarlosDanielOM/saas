@@ -72,6 +72,7 @@ async fn the_start_up_load_writes_every_streamer_like_the_reference() -> Result<
         assert_eq!(pro["plan_tier"], "pro");
         assert_eq!(pro["plan_tier_until"], "Wed Nov 11 2026");
         assert_eq!(pro["refresh_token"], "r-200");
+        assert_no_plain_tokens(&stores, &["a-100", "r-100", "a-200", "r-200"]).await?;
         assert_eq!(pro["__polar_plan_version"], "1700000000000:evt_1");
         assert!(
             !pro.contains_key("expires_at"),

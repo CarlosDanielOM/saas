@@ -147,6 +147,19 @@ async fn an_expired_token_is_refreshed_and_stored_like_the_reference() -> Result
         assert_eq!(cache["expires_at"], (NOW_SECS + 14_400).to_string());
         assert_eq!(cache["has_permissions"], "true");
 
+        // No token is in Dragonfly in plain text (the cache holds MongoDB's envelopes).
+        assert_no_plain_tokens(
+            &stores,
+            &["u1-access-0", "u1-refresh-0", "u1-access-1", "u1-refresh-1"],
+        )
+        .await?;
+        let raw = raw_cache_fields(&stores, "u1").await?;
+        assert_eq!(
+            raw["refresh_token"],
+            serde_json::to_string(&after.get_document("refresh_token")?)?.replace(' ', ""),
+            "the cache holds MongoDB's own envelope"
+        );
+
         // The new token is now used from the cache.
         let again = process.twitch.streamer_token("u1", None, "test").await?;
         assert_eq!(again.expose(), "u1-access-1");
@@ -566,9 +579,10 @@ async fn the_app_token_is_requested_once_and_cached_with_its_expiry() -> Result<
         assert_token_request(&requests[0], "client_credentials", None);
         let key = stores.keys.app_token();
         assert_eq!(
-            stores.dragonfly.get_text(&key).await?.as_deref(),
+            cached_app_token(&stores).await?.as_deref(),
             Some("app-token-1")
         );
+        assert_no_plain_tokens(&stores, &["app-token-1"]).await?;
         let ttl = stores.dragonfly.ttl(&key).await?;
         assert!(
             matches!(ttl, dima_store::dragonfly::Ttl::Seconds(s) if s > 5_000_000),

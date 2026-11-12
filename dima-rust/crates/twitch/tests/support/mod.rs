@@ -3,7 +3,7 @@
 //! logical database 14 (15 for the real-data test) with a unique key prefix removed afterwards,
 //! and a stateful Twitch mock on `dima_http::testing::MockServer`. Without the stores a test
 //! skips with a notice, unless `DIMA_TEST_REQUIRE_STORES=1` (then it fails).
-#![allow(dead_code, clippy::expect_used, clippy::unwrap_used)]
+#![allow(dead_code, clippy::expect_used, clippy::unwrap_used, clippy::panic)]
 
 use anyhow::{Context, Result, bail};
 use bson::{Bson, Document, doc, oid::ObjectId};
@@ -221,8 +221,8 @@ pub fn decrypt_field(account: &Document, field: &str) -> Option<String> {
         .flatten()
 }
 
-/// The hash of `id` as a map.
-pub async fn cache_fields(stores: &Stores, id: &str) -> Result<HashMap<String, String>> {
+/// The hash of `id` as stored (tokens as envelopes).
+pub async fn raw_cache_fields(stores: &Stores, id: &str) -> Result<HashMap<String, String>> {
     Ok(stores
         .dragonfly
         .hgetall(&stores.keys.account(id))
@@ -231,12 +231,90 @@ pub async fn cache_fields(stores: &Stores, id: &str) -> Result<HashMap<String, S
         .collect())
 }
 
+/// The token in a cached value: `""` stays `""`; anything else must be an envelope (a token
+/// in plain text in Dragonfly fails the test).
+pub fn open_cached(value: &str) -> String {
+    if value.is_empty() {
+        return String::new();
+    }
+    let envelope: StoredCredential = serde_json::from_str(value)
+        .unwrap_or_else(|_| panic!("a cached token is not an envelope ({} bytes)", value.len()));
+    cipher()
+        .decrypt(&envelope)
+        .expect("the cached envelope decrypts")
+        .unwrap_or_default()
+}
+
+/// The hash of `id` as a map, the token envelopes decrypted.
+pub async fn cache_fields(stores: &Stores, id: &str) -> Result<HashMap<String, String>> {
+    let mut fields = raw_cache_fields(stores, id).await?;
+    for name in ["access_token", "refresh_token"] {
+        if let Some(value) = fields.get_mut(name) {
+            *value = open_cached(value);
+        }
+    }
+    Ok(fields)
+}
+
+/// Writes fields of the hash of `id`; token values are sealed as the crate stores them.
 pub async fn set_cache(stores: &Stores, id: &str, fields: &[(&str, &str)]) -> Result<()> {
-    let fields: Vec<(&str, &[u8])> = fields.iter().map(|(k, v)| (*k, v.as_bytes())).collect();
+    let sealed: Vec<(&str, String)> = fields
+        .iter()
+        .map(|(k, v)| {
+            let value = if matches!(*k, "access_token" | "refresh_token") && !v.is_empty() {
+                serde_json::to_string(&encrypt(v)).expect("envelope")
+            } else {
+                (*v).to_owned()
+            };
+            (*k, value)
+        })
+        .collect();
+    let fields: Vec<(&str, &[u8])> = sealed.iter().map(|(k, v)| (*k, v.as_bytes())).collect();
     stores
         .dragonfly
         .hset(&stores.keys.account(id), &fields)
         .await?;
+    Ok(())
+}
+
+/// The cached app token, decrypted.
+pub async fn cached_app_token(stores: &Stores) -> Result<Option<String>> {
+    Ok(stores
+        .dragonfly
+        .get_text(&stores.keys.app_token())
+        .await?
+        .map(|text| open_cached(&text)))
+}
+
+/// Asserts that no value under the test prefix holds any of `tokens` in plain text.
+pub async fn assert_no_plain_tokens(stores: &Stores, tokens: &[&str]) -> Result<()> {
+    let mut scan = stores
+        .dragonfly
+        .scan(&format!("{}*", stores.keys.prefix()), Some(500));
+    while let Some(page) = scan.next_page().await? {
+        for key in page {
+            let key = String::from_utf8(key)?;
+            let values: Vec<String> = match stores.dragonfly.hgetall(&key).await {
+                Ok(fields) => fields.into_iter().flat_map(|(k, v)| [k, v]).collect(),
+                Err(_) => stores
+                    .dragonfly
+                    .get_text(&key)
+                    .await
+                    .ok()
+                    .flatten()
+                    .into_iter()
+                    .collect(),
+            };
+            for value in values {
+                for token in tokens {
+                    assert!(
+                        !value.contains(token),
+                        "a Dragonfly value holds a token in plain text"
+                    );
+                }
+            }
+        }
+    }
     Ok(())
 }
 

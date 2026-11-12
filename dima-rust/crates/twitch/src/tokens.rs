@@ -7,9 +7,11 @@
 //!   requests a new one (`getAppToken`); no lock across processes, as in the reference.
 //! - **Streamer and bot tokens**: MongoDB `users.accounts[]` (`access_token` and
 //!   `refresh_token` as the `{iv, content}` envelope of `utils/crypto.ts`,
-//!   `access_token_expires_at` in epoch seconds), mirrored in plaintext in the directory hash
-//!   `accounts:twitch:{id}:data` (`access_token`, `refresh_token`, `expires_at`). The bot is the
-//!   streamer account [`crate::TWITCH_BOT_ACCOUNT_ID`].
+//!   `access_token_expires_at` in epoch seconds), mirrored in the directory hash
+//!   `accounts:twitch:{id}:data` (`access_token`, `refresh_token` as the same envelopes, as
+//!   JSON text; `expires_at`). The bot is the streamer account [`crate::TWITCH_BOT_ACCOUNT_ID`].
+//!   The app token is cached as an envelope too. No token is ever in Dragonfly in plain text
+//!   (the reference keeps them so: lead's decision, the family is Rust's own).
 //!
 //! # When a token is refreshed
 //!
@@ -72,10 +74,11 @@ use crate::base::{Inner, Twitch};
 use crate::error::TwitchError;
 use crate::events::{Destination, Level};
 use crate::oauth::{RefreshContext, RefreshFailureKind, RefreshFailureReason, classify_refusal};
-use crate::secret::{AccessToken, RefreshToken};
+use crate::secret::{AccessToken, RefreshToken, cache_text, cache_text_of, open_cached, seal};
 use crate::streamers::{decrypt_envelope, persisted_expires_at};
 use bson::oid::ObjectId;
 use bson::{Bson, Document, RawDocumentBuf, doc};
+use dima_core::SecretString;
 use dima_core::crypto::StoredCredential;
 use dima_model::users::{AccountType, EncryptedToken, User};
 use dima_store::dragonfly::commands::reply;
@@ -203,12 +206,18 @@ pub(crate) struct StoredAccount {
     expires_at: Option<String>,
 }
 
-/// The cache's credential fields of one streamer.
+/// The cache's credential fields of one streamer, decrypted.
 #[derive(Default)]
 struct CachedCredentials {
-    access_token: Option<String>,
+    access_token: Option<AccessToken>,
     expires_at: Option<String>,
-    refresh_token: Option<String>,
+    refresh_token: Option<RefreshToken>,
+}
+
+impl CachedCredentials {
+    fn access(&self) -> Option<&str> {
+        self.access_token.as_ref().map(AccessToken::expose)
+    }
 }
 
 /// What a compare-and-set write found.
@@ -273,10 +282,12 @@ impl Inner {
                     .transpose()
             });
         let mut next = || values.next().transpose().map(Option::flatten);
+        let (access, expires_at, refresh) = (next()?, next()?, next()?);
+        let open = |text: Option<String>| text.and_then(|text| open_cached(&self.cipher, &text));
         Ok(CachedCredentials {
-            access_token: next()?,
-            expires_at: next()?,
-            refresh_token: next()?,
+            access_token: open(access).map(AccessToken::from_secret),
+            expires_at,
+            refresh_token: open(refresh).map(RefreshToken::from_secret),
         })
     }
 
@@ -396,22 +407,29 @@ impl Inner {
         id: &str,
         stored: &StoredAccount,
     ) -> Result<CachedCredentials, TwitchError> {
-        let access = decrypt_envelope(&self.cipher, &stored.access)?.unwrap_or_default();
-        let refresh = decrypt_envelope(&self.cipher, &stored.refresh)?.unwrap_or_default();
+        let open = |envelope: &EncryptedToken| {
+            decrypt_envelope(&self.cipher, envelope).map(|token| {
+                token
+                    .filter(|token| !token.is_empty())
+                    .map(SecretString::new)
+            })
+        };
+        let access = open(&stored.access)?;
+        let refresh = open(&stored.refresh)?;
         let expires_at = stored.expires_at.clone().unwrap_or_default();
         self.set_cached_credentials(
             id,
             &[
-                ("access_token", &access),
-                ("refresh_token", &refresh),
+                ("access_token", &cache_text_of(&stored.access)),
+                ("refresh_token", &cache_text_of(&stored.refresh)),
                 ("expires_at", &expires_at),
             ],
         )
         .await?;
         Ok(CachedCredentials {
-            access_token: Some(access),
+            access_token: access.map(AccessToken::from_secret),
             expires_at: Some(expires_at),
-            refresh_token: Some(refresh),
+            refresh_token: refresh.map(RefreshToken::from_secret),
         })
     }
 
@@ -639,18 +657,16 @@ impl Inner {
                         "reason": "a newer refresh token is stored; this refresh was not written",
                     }),
                 );
-                if is_access_token_usable(
-                    cached.access_token.as_deref(),
-                    cached.expires_at.as_deref(),
-                    now,
-                    skew,
-                ) {
+                if is_access_token_usable(cached.access(), cached.expires_at.as_deref(), now, skew)
+                    && let (Some(access_token), Some(refresh_token)) =
+                        (cached.access_token, cached.refresh_token)
+                {
                     let expiry = cached.expires_at.as_deref().map_or(f64::NAN, |raw| {
                         dima_text::parse_int(raw, dima_text::Radix::Decimal)
                     });
                     return Ok(RefreshOutcome::Success {
-                        access_token: AccessToken::new(cached.access_token.unwrap_or_default()),
-                        refresh_token: RefreshToken::new(cached.refresh_token.unwrap_or_default()),
+                        access_token,
+                        refresh_token,
                         expires_in: expiry - now as f64,
                     });
                 }
@@ -665,8 +681,8 @@ impl Inner {
                 self.set_cached_credentials(
                     user_id,
                     &[
-                        ("access_token", access.expose()),
-                        ("refresh_token", refresh.expose()),
+                        ("access_token", &cache_text(&access_envelope)),
+                        ("refresh_token", &cache_text(&refresh_envelope)),
                         ("expires_at", &expires_text),
                         ("has_permissions", "true"),
                         ("up_to_date_permissions", "true"),
@@ -782,17 +798,14 @@ impl Inner {
         context: &RefreshContext,
     ) -> Result<RefreshOutcome, TwitchError> {
         let mut cached = self.cached_credentials(user_id).await?;
-        if cached.refresh_token.as_deref() != Some(current) {
+        if cached.refresh_token.as_ref().map(RefreshToken::expose) != Some(current) {
             cached = self.sync_cache_from(user_id, stored).await?;
         }
         let now = self.now_secs();
         let skew = self.config.timings.waiter_expiry_skew_secs;
-        if is_access_token_usable(
-            cached.access_token.as_deref(),
-            cached.expires_at.as_deref(),
-            now,
-            skew,
-        ) {
+        if is_access_token_usable(cached.access(), cached.expires_at.as_deref(), now, skew)
+            && let Some(access_token) = cached.access_token
+        {
             let expiry = cached.expires_at.as_deref().map_or(f64::NAN, |raw| {
                 dima_text::parse_int(raw, dima_text::Radix::Decimal)
             });
@@ -810,7 +823,7 @@ impl Inner {
                 }),
             );
             return Ok(RefreshOutcome::Success {
-                access_token: AccessToken::new(cached.access_token.unwrap_or_default()),
+                access_token,
                 refresh_token: RefreshToken::new(current),
                 expires_in: expiry - now as f64,
             });
@@ -842,8 +855,8 @@ impl Inner {
         let cached = self
             .hget_text(&self.config.keys.account(id), "refresh_token")
             .await?;
-        if let Some(token) = cached.filter(|token| !token.is_empty()) {
-            return Ok(Some(RefreshToken::new(token)));
+        if let Some(token) = cached.and_then(|text| open_cached(&self.cipher, &text)) {
+            return Ok(Some(RefreshToken::from_secret(token)));
         }
         Ok(self
             .hydrate(id)
@@ -892,7 +905,7 @@ impl Inner {
         while Instant::now() < deadline {
             tokio::time::sleep(timings.refresh_wait_poll).await;
             let cached = self.cached_credentials(id).await?;
-            let token = cached.access_token.as_deref();
+            let token = cached.access();
             let not_rejected = rejected.is_none_or(|rejected| token != Some(rejected.expose()));
             if not_rejected
                 && is_access_token_usable(
@@ -902,7 +915,7 @@ impl Inner {
                     timings.waiter_expiry_skew_secs,
                 )
             {
-                return Ok(token.map(AccessToken::new));
+                return Ok(cached.access_token);
             }
             let held = self
                 .dragonfly
@@ -979,7 +992,7 @@ impl Inner {
         caller: &str,
     ) -> Result<AccessToken, TokenError> {
         let cached = self.cached_credentials(id).await?;
-        let token = cached.access_token.as_deref();
+        let token = cached.access();
         let not_rejected = rejected.is_none_or(|rejected| token != Some(rejected.expose()));
         if not_rejected
             && is_access_token_usable(
@@ -988,7 +1001,7 @@ impl Inner {
                 self.now_secs(),
                 self.config.timings.token_expiry_skew_secs,
             )
-            && let Some(token) = token
+            && let Some(token) = cached.access_token
         {
             self.token_log(
                 Level::Debug,
@@ -996,7 +1009,7 @@ impl Inner {
                 caller,
                 json!({ "action": "returned_token_refreshed_before_lock" }),
             );
-            return Ok(AccessToken::new(token));
+            return Ok(token);
         }
         let refreshed = self.perform_refresh(id, caller).await?;
         if rejected.is_some_and(|rejected| *rejected == refreshed) {
@@ -1095,7 +1108,7 @@ impl Inner {
             dima_text::parse_int(raw, dima_text::Radix::Decimal)
         });
         let seconds_until = parsed.is_finite().then_some(parsed - now as f64);
-        let token = cached.access_token.as_deref().filter(|t| !t.is_empty());
+        let token = cached.access();
         self.token_log(
             Level::Debug,
             id,
@@ -1116,6 +1129,7 @@ impl Inner {
                 now,
                 timings.token_expiry_skew_secs,
             )
+            && let Some(token) = cached.access_token.clone()
         {
             self.token_log(
                 Level::Debug,
@@ -1123,7 +1137,7 @@ impl Inner {
                 caller,
                 json!({ "action": "returning_cached_token", "secondsUntilExpiry": seconds_until }),
             );
-            return Ok(AccessToken::new(token));
+            return Ok(token);
         }
         let reason = match token {
             None => "no_cached_token",
@@ -1220,11 +1234,15 @@ impl Inner {
             return internal_error("expires_in is not a positive integer".to_owned());
         }
         let seconds = seconds as u64;
+        let sealed = match seal(&self.cipher, &*self.random, &token) {
+            Ok(sealed) => sealed,
+            Err(error) => return internal_error(error.to_string()),
+        };
         if let Err(error) = self
             .dragonfly
             .set(
                 &self.config.keys.app_token(),
-                token.as_bytes(),
+                sealed.as_bytes(),
                 SetOptions::ex(seconds),
             )
             .await
@@ -1277,8 +1295,12 @@ impl Twitch {
             .get_text(&inner.config.keys.app_token())
             .await
         {
-            Ok(Some(token)) if !token.is_empty() => return Some(AccessToken::new(token)),
-            Ok(_) => {}
+            Ok(Some(text)) => {
+                if let Some(token) = open_cached(&inner.cipher, &text) {
+                    return Some(AccessToken::from_secret(token));
+                }
+            }
+            Ok(None) => {}
             Err(error) => {
                 inner.log(
                     Level::Error,
