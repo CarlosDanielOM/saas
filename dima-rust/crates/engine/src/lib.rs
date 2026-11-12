@@ -16,6 +16,7 @@
 //! - [`registry`]: every function of the reference with its metadata, and which run in the
 //!   engine ([`registry::Builtin`]) or in the host ([`host::HostFunction`]).
 //! - [`permissions`]: what the evaluator needs from the permission system.
+//! - [`stack`]: the stack contract of parsing and evaluation.
 //!
 //! Text rules (`MIGRATION.md` section 4): all text is UTF-8; our own limits count characters;
 //! positions inside the crate are byte offsets ([`syntax::Span`]). The language's text
@@ -36,6 +37,7 @@ pub mod json;
 pub mod map;
 pub mod permissions;
 pub mod registry;
+pub mod stack;
 pub mod syntax;
 mod text;
 pub mod value;

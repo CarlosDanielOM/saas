@@ -811,11 +811,10 @@ impl Parser<'_, '_> {
             }
             let inner = opening + 2..end - 1;
             // The reference's `try` also catches a stack overflow (`RangeError`) and shows the
-            // interpolation's text; a nesting limit here stands for it ([`MAX_NESTING`] is above
-            // the deepest nesting the reference parses). Other resource limits fail the program.
-            let caught = |error: &Diagnostic, budget: &Budget| {
-                error.code == DiagnosticCode::NestingLimit && !budget.needs_stack()
-            };
+            // interpolation's text; a nesting limit here stands for it. Other resource limits
+            // fail the program.
+            let caught =
+                |error: &Diagnostic, _: &Budget| error.code == DiagnosticCode::NestingLimit;
             match tokenize(
                 view.clone(),
                 inner.clone(),

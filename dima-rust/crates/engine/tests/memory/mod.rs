@@ -106,8 +106,31 @@ impl MemoryHost {
     }
 }
 
+thread_local! {
+    /// Stack every host future uses when it is polled (the stack contract's host share).
+    static BURN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Makes every host future of this thread use `bytes` of stack when it is polled.
+pub fn burn_in_host_calls(bytes: usize) {
+    BURN.with(|burn| burn.set(bytes));
+}
+
+/// Uses at least `bytes` of stack.
+#[inline(never)]
+fn burn(bytes: usize) {
+    if bytes >= 4096 {
+        let pad = [1u8; 4096];
+        std::hint::black_box(&pad);
+        burn(bytes - 4096);
+    }
+}
+
 fn ready<'a, T: Send + 'a>(value: Result<T, HostError>) -> HostFuture<'a, Result<T, HostError>> {
-    Box::pin(async move { value })
+    Box::pin(async move {
+        burn(BURN.with(std::cell::Cell::get));
+        value
+    })
 }
 
 impl Host for MemoryHost {
@@ -293,11 +316,22 @@ pub fn engine_with(extra: &[(&str, Option<f64>)]) -> Engine {
     Engine::new(Arc::new(registry), dima_engine::syntax::Limits::default())
 }
 
-pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
-    tokio::runtime::Builder::new_current_thread()
-        .build()
-        .unwrap()
-        .block_on(future)
+/// The stack of the threads tests evaluate on (registered: the stack contract).
+pub const TEST_STACK: usize = 4 * 1024 * 1024;
+
+/// Runs `future` to completion on a registered thread ([`dima_engine::stack`]).
+pub fn block_on<F>(future: F) -> F::Output
+where
+    F: std::future::Future + Send,
+    F::Output: Send,
+{
+    dima_engine::stack::run_on_thread(TEST_STACK, || {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(future)
+    })
+    .unwrap()
 }
 
 /// `evaluate(parse(source).ast, ctx)`.

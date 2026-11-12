@@ -1576,6 +1576,11 @@ pub struct Tally {
 }
 
 pub fn run_corpus(name: &str) -> Tally {
+    // On a registered thread: the evaluator's stack contract (`dima_engine::stack`).
+    dima_engine::stack::run_on_thread(8 * 1024 * 1024, || run_corpus_here(name)).unwrap()
+}
+
+fn run_corpus_here(name: &str) -> Tally {
     let corpus = load(name);
     let rt = runtime();
     let mut tally = Tally::default();

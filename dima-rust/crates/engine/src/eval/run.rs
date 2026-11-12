@@ -4,7 +4,6 @@ use super::coerce::{
     arithmetic, compare, is_truthy, loop_assignment, resolve_array_index, to_number_safe,
 };
 use super::frame::{Frames, Scalars};
-use super::stack::StackBase;
 use super::{Engine, EvalError, EvalStats, LimitKind};
 use crate::context::{
     BudgetSnapshot, CommandReference, Context, LoopExit, Origin, ReferenceAuthorization,
@@ -69,10 +68,10 @@ pub(super) struct Run<'a> {
     pub(super) stats: EvalStats,
     /// How deep the evaluation recursion is.
     depth: usize,
-    /// Where the current poll's stack started.
-    stack: StackBase,
     /// Bytes this run added to what it keeps ([`Kept`], command reference arguments).
     memory: usize,
+    /// The stack left where the evaluation started (at its first level).
+    stack_start: Option<usize>,
 }
 
 /// Whether `node` nests deeper than `limit` (checked without recursion, so a tree the parser
@@ -83,103 +82,9 @@ pub(super) fn depth_exceeds(node: &AstNode, limit: usize) -> bool {
         if depth > limit {
             return true;
         }
-        children(node, |child| pending.push((child, depth + 1)));
+        node.for_each_child(|child| pending.push((child, depth + 1)));
     }
     false
-}
-
-fn accessor_index(accessor: Option<&ArrayAccessor>) -> Option<&AstNode> {
-    match accessor {
-        Some(
-            ArrayAccessor::Index { index }
-            | ArrayAccessor::SetIndex { index }
-            | ArrayAccessor::Remove { index },
-        ) => Some(index),
-        _ => None,
-    }
-}
-
-/// Calls `visit` with each child of `node`.
-fn children<'a>(node: &'a AstNode, mut visit: impl FnMut(&'a AstNode)) {
-    match node {
-        AstNode::Root { children: nodes }
-        | AstNode::Function { args: nodes, .. }
-        | AstNode::CommandRef { args: nodes, .. } => nodes.iter().for_each(visit),
-        AstNode::ArrayLiteral { items, accessor } => {
-            items.iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::SetVar {
-            value,
-            accessor,
-            user_selector,
-            ..
-        } => {
-            visit(value);
-            user_selector.as_deref().into_iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::GetVar {
-            accessor,
-            user_selector,
-            ..
-        }
-        | AstNode::Exists {
-            accessor,
-            user_selector,
-            ..
-        }
-        | AstNode::DeleteVar {
-            accessor,
-            user_selector,
-            ..
-        } => {
-            user_selector.as_deref().into_iter().for_each(&mut visit);
-            accessor_index(accessor.as_ref())
-                .into_iter()
-                .for_each(visit);
-        }
-        AstNode::Binary { left, right, .. } => {
-            visit(left);
-            visit(right);
-        }
-        AstNode::Unary { argument, .. } => visit(argument),
-        AstNode::Ternary {
-            test,
-            consequent,
-            alternate,
-        } => {
-            visit(test);
-            visit(consequent);
-            visit(alternate);
-        }
-        AstNode::Template { segments } => {
-            for segment in segments {
-                if let TemplateSegment::Expr { node } = segment {
-                    visit(node);
-                }
-            }
-        }
-        AstNode::LoopAssign { value, .. } => value.as_deref().into_iter().for_each(visit),
-        AstNode::ForLoop {
-            init,
-            condition,
-            update,
-            iterable,
-            body,
-            ..
-        } => {
-            for part in [init, condition, update, iterable].into_iter().flatten() {
-                visit(part);
-            }
-            body.iter().for_each(visit);
-        }
-        AstNode::Literal { .. } | AstNode::LoopVar { .. } | AstNode::Custom { .. } => {}
-    }
 }
 
 /// `String(item ?? '')` of each item.
@@ -297,7 +202,6 @@ impl<'a> Run<'a> {
         context: &'a Context,
         mut state: State,
         host: &'a mut dyn Host,
-        stack: StackBase,
     ) -> Self {
         let scalars = Scalars {
             count: state.count,
@@ -315,8 +219,8 @@ impl<'a> Run<'a> {
             frames: Frames::new(scalars, loop_vars),
             stats: EvalStats::default(),
             depth: 0,
-            stack,
             memory: 0,
+            stack_start: None,
         }
     }
 
@@ -468,7 +372,9 @@ impl<'a> Run<'a> {
 
     /// Evaluates a child. Leaves are evaluated in place; any other node runs as its own boxed
     /// future (one allocation per non-leaf node), whose depth is checked against the nesting
-    /// limit as a guard (the stack grows with it: every level polls the one below).
+    /// limit as a guard (the stack grows with it: every level polls the one below), and so is
+    /// the stack left: within the contract ([`crate::stack`]) neither check fires before the
+    /// nesting limit does.
     pub(super) async fn child(&mut self, node: &AstNode) -> Result<Value, EvalError> {
         self.step()?;
         match node {
@@ -476,8 +382,14 @@ impl<'a> Run<'a> {
             AstNode::LoopVar { name } => return Ok(Value::Text(self.loop_var(name))),
             _ => {}
         }
+        let room = crate::stack::remaining();
+        if let Some(room) = room {
+            let start = *self.stack_start.get_or_insert(room);
+            let used = start.saturating_sub(room);
+            self.stats.stack_bytes = self.stats.stack_bytes.max(used);
+        }
         if self.depth >= self.engine.limits.nesting
-            || self.stack.used() > self.engine.limits.stack_bytes
+            || room.is_none_or(|room| room < crate::stack::HOST_STACK_BYTES)
         {
             return Err(EvalError::Limit(LimitKind::Nesting));
         }

@@ -13,7 +13,7 @@ mod memory;
 
 use dima_engine::context::{Context, Plan, State};
 use dima_engine::eval::{EvalLimits, LimitKind};
-use memory::{MemoryHost, block_on, engine_with};
+use memory::{MemoryHost, TEST_STACK, engine_with};
 
 /// The process's peak resident memory, in bytes.
 fn peak_resident() -> usize {
@@ -69,12 +69,7 @@ fn measure(text_bytes: usize, source: &str) -> (String, usize) {
     let warm = engine
         .compile("%(w a) $(upper %(w)) $(title %(w)) $(replace a b %(w)) %(l %[%(w)])")
         .unwrap();
-    drop(block_on(engine.render(
-        &warm,
-        &context,
-        State::default(),
-        &mut host,
-    )));
+    drop(runtime.block_on(engine.render(&warm, &context, State::default(), &mut host)));
     reset_peak();
     let before = peak_resident();
     let rendered = runtime
@@ -90,6 +85,11 @@ fn limit_text(kind: LimitKind) -> String {
 
 #[test]
 fn builtins_and_aggregates_stay_within_a_small_multiple_of_the_budget() {
+    // On a registered thread (the stack contract, `dima_engine::stack`).
+    dima_engine::stack::run_on_thread(TEST_STACK, check).unwrap();
+}
+
+fn check() {
     // Reduced budget first: before the fix, this `replace` built 256 MiB.
     let small = 16 * 1024;
     let text = LimitKind::TextSize;

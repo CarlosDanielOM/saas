@@ -280,6 +280,48 @@ fn actual(case: &Value) -> Value {
     }
 }
 
+/// The height of a block tree (a block with no children is 1), counted without recursion.
+fn block_height(root: &Value) -> usize {
+    let mut deepest = 0;
+    let mut pending = vec![(root, 1usize)];
+    while let Some((node, depth)) = pending.pop() {
+        deepest = deepest.max(depth);
+        for key in ["children", "args", "items", "body"] {
+            for child in node[key].as_array().into_iter().flatten() {
+                pending.push((child, depth + 1));
+            }
+        }
+    }
+    deepest
+}
+
+/// The intended difference: the reference parses until V8's stack ends; the port refuses text
+/// nested deeper than `syntax::MAX_NESTING`. Such text imports as the importer's fallback for
+/// text it cannot read (one raw block), and a block tree that deep cannot be written back: its
+/// outermost block "would run differently". `None` for every other case.
+fn nested_too_deep(case: &Value) -> Option<Value> {
+    let input = &case["input"];
+    match case["operation"].as_str()? {
+        "import" => {
+            let text = input["text"].as_str()?;
+            let error = dima_engine::syntax::SyntaxEngine::default()
+                .parse(text)
+                .err()?;
+            (error.code == dima_engine::syntax::DiagnosticCode::NestingLimit).then(|| {
+                json!({"outcome": "imported", "root": {"id": "n1", "type": "root",
+                    "children": [{"id": "n2", "type": "raw", "source": text}]},
+                    "advancedCount": 1})
+            })
+        }
+        "compile" if block_height(input) > dima_engine::syntax::MAX_NESTING => {
+            Some(json!({"outcome": "error", "error": {"name": "Error",
+                "message": "This block would run differently than it looks. Try retyping its text.",
+                "blockId": input["children"][0]["id"]}}))
+        }
+        _ => None,
+    }
+}
+
 #[test]
 fn every_corpus_case_gives_the_typescript_result() {
     let corpus = corpus();
@@ -291,11 +333,17 @@ fn every_corpus_case_gives_the_typescript_result() {
     );
     assert_eq!(corpus["baseline"]["tsMaxBlockNodes"], MAX_BLOCK_NODES);
     let mut failures = Vec::new();
-    let (mut twins, mut changed_by_twin) = (0, 0);
+    let (mut twins, mut changed_by_twin, mut deeper_than_the_limit) = (0, 0, 0);
     for case in cases {
         let name = case["name"].as_str().unwrap_or_default();
         assert_eq!(case["parity"], "source-parity", "{name}");
-        let expected = expected(case);
+        let mut expected = expected(case);
+        if let Some(port) = nested_too_deep(case) {
+            if port != expected {
+                deeper_than_the_limit += 1;
+            }
+            expected = port;
+        }
         if !case["twin"].is_null() {
             twins += 1;
             if expected
@@ -320,6 +368,10 @@ fn every_corpus_case_gives_the_typescript_result() {
         eprintln!("{failure}");
     }
     assert!(failures.is_empty(), "{} corpus mismatches", failures.len());
+    assert_eq!(
+        deeper_than_the_limit, 3,
+        "cases nested deeper than the port's limit"
+    );
     assert_eq!(twins, 61, "cases with astral characters (each has a twin)");
     // Where the character rule changes the result: the 10,000-character text and raw limits
     // (7 cases), variable names (5), command names (5), function and counter names (1 each,

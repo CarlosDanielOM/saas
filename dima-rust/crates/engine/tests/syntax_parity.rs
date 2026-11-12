@@ -2,9 +2,10 @@
 //! `fixtures/ast_syntax_reference.mjs` under Node 24) run against `dima_engine::syntax`.
 //!
 //! Every case must give the TypeScript result (`expected.legacy`: the reference's AST or error
-//! message, plus the generator's UTF-16 location of the error). The one intended difference is
-//! positions: the port's spans are byte offsets; [`Span::to_utf16`] must give the recorded UTF-16
-//! span exactly. Sources over the 10,000-character limit of a stored command parse like any
+//! message, plus the generator's UTF-16 location of the error). Intended differences: positions
+//! (the port's spans are byte offsets; [`Span::to_utf16`] must give the recorded UTF-16 span
+//! exactly), and nesting: the reference parses until V8's stack ends, the port refuses a program
+//! nested deeper than [`MAX_NESTING`] with its nesting diagnostic (counted below). Sources over the 10,000-character limit of a stored command parse like any
 //! other: that limit is [`SyntaxEngine::check_source`], and parsing takes substituted text.
 //!
 //! Everything else is compared exactly.
@@ -13,8 +14,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use dima_engine::syntax::{
-    AstNode, CompiledProgram, Diagnostic, DiagnosticCode, Limits, SegmentKind, SegmentStep,
-    SourceSegment, Span, SyntaxEngine, unescape_literal, unescape_rendered_text,
+    AstNode, CompiledProgram, Diagnostic, DiagnosticCode, Limits, MAX_NESTING, SegmentKind,
+    SegmentStep, SourceSegment, Span, SyntaxEngine, unescape_literal, unescape_rendered_text,
 };
 use serde_json::{Value, json};
 
@@ -168,6 +169,7 @@ fn every_corpus_case_gives_the_typescript_result() {
     let mut failures = Vec::new();
     let mut over_source_limit = 0;
     let mut converted_spans = 0;
+    let mut deeper_than_the_limit = 0;
     for case in cases {
         let name = case["name"].as_str().unwrap_or_default();
         let source = case["input"]["source"].as_str().unwrap_or_default();
@@ -206,6 +208,16 @@ fn every_corpus_case_gives_the_typescript_result() {
         }
         let expected = expectation(case);
         let actual = actual(&engine, case);
+        // Difference 2: nested deeper than the port's limit, where the reference has no error.
+        let refused = |value: &Value| value.to_string().contains("\"NESTING_LIMIT\"");
+        if actual != expected
+            && refused(&actual)
+            && !refused(&expected)
+            && source.matches(['(', '[', '{']).count() > MAX_NESTING
+        {
+            deeper_than_the_limit += 1;
+            continue;
+        }
         if actual != expected {
             failures.push(format!(
                 "{name}\n  expected {}\n  actual   {}",
@@ -223,10 +235,14 @@ fn every_corpus_case_gives_the_typescript_result() {
         over_source_limit, 7,
         "cases over the 10,000-character source limit"
     );
-    // The intended difference and how many cases it touches.
+    // The intended differences and how many cases they touch.
     assert_eq!(
         converted_spans, 29,
         "cases whose byte spans differ from UTF-16 spans"
+    );
+    assert_eq!(
+        deeper_than_the_limit, 2,
+        "cases the reference parses and the port refuses for their nesting"
     );
 }
 

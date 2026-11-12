@@ -23,10 +23,12 @@
 //!   result before building it, the values one step gathers (a call's arguments, a list
 //!   literal's items, a reference's argument, a list written as JSON) are counted as they are
 //!   gathered, and what a run keeps (variables, the database memo, loop variables, reference
-//!   arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper than [`EvalLimits::nesting`] (256; the parser accepts
-//!   16,384) is refused before any of it runs, and the stack an evaluation uses is measured
-//!   against [`EvalLimits::stack_bytes`] as it recurses, so no tree can overflow the thread's
-//!   stack in any build;
+//!   arguments) is charged to [`EvalLimits::memory_bytes`]. A tree deeper than
+//!   [`EvalLimits::nesting`] (32, as the parser) is refused before any of it runs;
+//! - the stack contract ([`crate::stack`]): every poll of an evaluation needs
+//!   [`crate::stack::EVAL_STACK_BYTES`] left on a registered thread, or it stops with
+//!   [`EvalError::Stack`]; within it, the deepest tree fits, as `tests/stack_contract.rs`
+//!   proves in a debug build;
 //! - `String()` and `Number()` fail where JavaScript throws ([`crate::value::CoercionError`]:
 //!   an object with an own `toString` key, or a list holding one). Where the reference catches
 //!   the throw, so does the port: a stored JSON value read as a list is then empty
@@ -49,7 +51,7 @@ mod run;
 mod stack;
 mod storage;
 
-pub use limits::{EvalLimits, LimitKind};
+pub use limits::{EvalLimits, LimitKind, MAX_EVAL_NESTING};
 
 use crate::context::{Context, State, TimerSnapshot};
 use crate::host::{Host, HostError};
@@ -77,6 +79,10 @@ pub enum EvalError {
     /// stops, as the reference's render does.
     #[error(transparent)]
     Coercion(#[from] CoercionError),
+    /// The evaluation was polled with less stack than its contract needs
+    /// ([`crate::stack::EVAL_STACK_BYTES`] left on a registered thread): it did not run on.
+    #[error("the command engine was run with too little stack (see dima_engine::stack)")]
+    Stack,
 }
 
 /// Work counters of a run.
@@ -86,6 +92,9 @@ pub struct EvalStats {
     pub steps: u64,
     /// Host calls made.
     pub host_calls: u64,
+    /// The most stack the evaluation used below where it started, in bytes, seen at each level
+    /// of the tree (on the thread of each poll).
+    pub stack_bytes: usize,
 }
 
 /// The result of [`Engine::evaluate`].
@@ -147,8 +156,10 @@ impl Engine {
         }
     }
 
-    /// The same engine with other evaluation limits.
-    pub fn with_limits(mut self, limits: EvalLimits) -> Self {
+    /// The same engine with other evaluation limits; the nesting is capped at
+    /// [`MAX_EVAL_NESTING`].
+    pub fn with_limits(mut self, mut limits: EvalLimits) -> Self {
+        limits.nesting = limits.nesting.min(MAX_EVAL_NESTING);
         self.limits = limits;
         self
     }
@@ -194,20 +205,17 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Rendered, EvalError> {
-        let base = stack::StackBase::default();
-        let inner = self.render_metered(template, context, state, host, base.clone());
-        stack::Metered::new(inner, base).await
+        stack::Guarded::new(self.render_guarded(template, context, state, host)).await
     }
 
-    async fn render_metered(
+    async fn render_guarded(
         &self,
         template: &CompiledTemplate,
         context: &Context,
         state: State,
         host: &mut dyn Host,
-        base: stack::StackBase,
     ) -> Result<Rendered, EvalError> {
-        let mut run = run::Run::new(self, context, state, host, base);
+        let mut run = run::Run::new(self, context, state, host);
         let mut text = String::new();
         for plan in template.segments() {
             match plan.step() {
@@ -265,9 +273,8 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let base = stack::StackBase::default();
-        let run = run::Run::new(self, context, state, host, base.clone());
-        stack::Metered::new(Self::finish_program(run, node), base).await
+        let run = run::Run::new(self, context, state, host);
+        stack::Guarded::new(Self::finish_program(run, node)).await
     }
 
     async fn finish_program<'a>(
@@ -291,9 +298,8 @@ impl Engine {
         state: State,
         host: &mut dyn Host,
     ) -> Result<Evaluated, EvalError> {
-        let base = stack::StackBase::default();
-        let run = run::Run::new(self, context, state, host, base.clone());
-        stack::Metered::new(Self::finish_timer(run, args), base).await
+        let run = run::Run::new(self, context, state, host);
+        stack::Guarded::new(Self::finish_timer(run, args)).await
     }
 
     async fn finish_timer<'a>(

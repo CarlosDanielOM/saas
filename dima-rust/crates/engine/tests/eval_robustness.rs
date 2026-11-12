@@ -6,6 +6,8 @@
 
 mod memory;
 
+use dima_engine::syntax::MAX_NESTING;
+
 use dima_engine::context::{Context, Plan, State};
 use dima_engine::eval::{Engine, EvalLimits, LimitKind};
 use dima_engine::value::Value;
@@ -335,8 +337,11 @@ fn evaluations_are_send_and_run_concurrently() {
         let future = engine.render(&template, &context, State::default(), &mut host);
         assert_send(&future);
     }
+    const STACK: usize = 2 * 1024 * 1024;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(4)
+        .thread_stack_size(STACK)
+        .on_thread_start(|| dima_engine::stack::register_thread(STACK))
         .build()
         .unwrap();
     let outputs: Vec<String> = runtime.block_on(async {
@@ -408,10 +413,10 @@ fn stored_lists_with_lone_surrogate_escapes_read_as_replacement_characters() {
 }
 
 #[test]
-fn a_tree_16000_levels_deep_is_an_error_text_not_a_stack_overflow() {
+fn a_tree_too_deep_is_an_error_text_not_a_stack_overflow() {
     let engine = engine_with(&[]);
     let nested = |levels: usize| format!("{}x{}", "$(upper ".repeat(levels), ")".repeat(levels));
-    // The parser accepts it (up to MAX_NESTING levels, parsed on its own thread).
+    // The parser refuses it; its segment shows the error and rendering goes on.
     let template = engine
         .compile(&format!("before {} after *(1 + 1)", nested(16_000)))
         .unwrap();
@@ -426,12 +431,25 @@ fn a_tree_16000_levels_deep_is_an_error_text_not_a_stack_overflow() {
         rendered.len(),
         rendered.get(..200)
     );
-    // The same through evaluate(), and nothing in the tree ran.
-    let program = engine
-        .parse(&format!("%(ran yes) {}", nested(16_000)))
-        .unwrap();
-    let result = block_on(engine.evaluate_program(
-        &program,
+    // A tree deeper than the evaluator's limit that the parser did not make (read back from
+    // storage, say) is refused before any of it runs.
+    let mut node = dima_engine::syntax::AstNode::SetVar {
+        name: "ran".into(),
+        storage: dima_engine::syntax::VariableStorage::Memory,
+        value: Box::new(dima_engine::syntax::AstNode::Literal {
+            value: "yes".into(),
+        }),
+        accessor: None,
+        user_selector: None,
+    };
+    for _ in 0..16_000 {
+        node = dima_engine::syntax::AstNode::Function {
+            name: "upper".into(),
+            args: vec![node],
+        };
+    }
+    let result = block_on(engine.evaluate(
+        &node,
         &Context::default(),
         State::default(),
         &mut MemoryHost::new(1),
@@ -440,26 +458,30 @@ fn a_tree_16000_levels_deep_is_an_error_text_not_a_stack_overflow() {
         result.unwrap_err(),
         dima_engine::eval::EvalError::Limit(LimitKind::Nesting)
     );
-    // Below the limit, every kind of nesting either evaluates or stops with the same error
-    // text; none may overflow the test thread's 2 MiB stack (a debug build spends several
-    // kilobytes per level, so some kinds reach the stack guard before 256 levels).
+    // Free the tree without recursion.
+    let mut node = node;
+    while let dima_engine::syntax::AstNode::Function { mut args, .. } = node {
+        node = args.pop().unwrap();
+    }
+    // Below the limit, every kind of nesting evaluates (the stack contract test proves the
+    // deepest of each fits; `tests/stack_contract.rs`).
     let wrap = |open: &str, inner: &str, close: &str, levels: usize| {
         format!("{}{inner}{}", open.repeat(levels), close.repeat(levels))
     };
     let limit_text = format!("[Parse error: {}]", LimitKind::Nesting.message());
+    let levels = MAX_NESTING - 4;
     for (open, inner, close, levels, value) in [
-        ("$(upper ", "x", ")", 255, "X"),
-        // List-index chains stay at 100 levels: the parser itself overflows a 2 MiB debug
-        // stack at about 130 of them (its 128-level inline ceiling), before evaluation.
-        ("%(*l[", "0", "])", 100, "0"),
-        ("%del(*l[", "0", "])", 100, ""),
-        ("^(*l[", "0", "])", 100, "false"),
-        ("%(a ", "x", ")", 255, ""),
-        ("%(**u(", "caller", "))", 255, ""),
-        ("*(1 ? ", "x", " : 0)", 255, "x"),
-        ("*(1 + ", "1", ")", 255, "256"),
-        ("#(", "x", ")", 255, ""),
-        ("*(\"${", "x", "}\")", 120, "x"),
+        ("$(upper ", "x", ")", levels, "X".to_owned()),
+        ("%(*l[", "0", "])", levels, "0".to_owned()),
+        ("%del(*l[", "0", "])", levels, String::new()),
+        ("^(*l[", "0", "])", levels, "false".to_owned()),
+        ("%(a ", "x", ")", levels, String::new()),
+        ("%(**u(", "caller", "))", levels, String::new()),
+        // Two levels each: the compute and its operator.
+        ("*(1 ? ", "x", " : 0)", levels / 2, "x".to_owned()),
+        ("*(1 + ", "1", ")", levels / 2, (levels / 2 + 1).to_string()),
+        ("#(", "x", ")", levels, String::new()),
+        ("*(\"${", "x", "}\")", levels / 2, "x".to_owned()),
     ] {
         let source = wrap(open, inner, close, levels);
         let context = Context {
@@ -471,15 +493,12 @@ fn a_tree_16000_levels_deep_is_an_error_text_not_a_stack_overflow() {
         host.channel.insert("l".into(), "[\"0\",\"1\"]".into());
         let text = render(&engine, &source, &context, State::default(), &mut host).text;
         assert!(
-            text == value || text == limit_text,
-            "{open}: {:?}",
-            text.get(..80)
+            text == value && text != limit_text,
+            "{open}: {}",
+            dima_text::truncate_chars(&text, 80)
         );
-        let shallow = wrap(open, inner, close, 40);
-        let text = render(&engine, &shallow, &context, State::default(), &mut host).text;
-        assert!(text != limit_text, "{open} at 40 levels");
     }
-    assert!(render_with(&engine, &nested(300), Plan::Pro).contains(LimitKind::Nesting.message()));
+    assert!(render_with(&engine, &nested(40), Plan::Pro).contains(LimitKind::Nesting.message()));
 }
 
 fn render_template(engine: &Engine, template: &dima_engine::syntax::CompiledTemplate) -> String {

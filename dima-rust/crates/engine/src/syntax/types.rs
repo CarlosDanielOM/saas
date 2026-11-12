@@ -639,22 +639,18 @@ pub const MAX_ARGUMENT_CHARS: usize = 500;
 /// becomes `%(cmd_arg_<32 hex digits>_<n>)` instead, at most 48 characters, which is shorter.
 pub const MAX_INPUT_CHARS: usize = MAX_SOURCE_CHARS / 2 * MAX_ARGUMENT_CHARS;
 
-/// The nesting a program is parsed with on the caller's stack. A deeper program is parsed again
-/// on a dedicated thread whose stack fits [`Limits::nesting`] (see [`MAX_NESTING`]). The block
-/// editor parses with this limit, so its recursive conversions stay on an ordinary stack.
-pub const HARD_NESTING_CEILING: usize = 128;
-
-/// The deepest nesting any configuration may allow, and the default.
+/// The deepest nesting any configuration may allow, and the default: recursion levels of the
+/// parser and the height of the tree, counted on every recursive path of the grammar.
 ///
-/// The reference has no limit of its own: it fails where V8's call stack ends. Measured with
-/// Node 24's default stack (`node:24-alpine`, the production image), it parses at most 11,264
-/// nested unary operators (the cheapest nesting, one frame per level), 5,632 parentheses,
-/// 7,673 ternary branches and 2,048 nested arrays, and it evaluates far less of most of them
-/// (767 unary operators). This is above all of those, so nothing the reference can parse is
-/// refused for its depth, and it is above the depth of any text within the source limit
-/// (every level of nesting needs at least one character). A program this deep is parsed on a
-/// thread with a stack sized for it, and its tree is freed without recursion.
-pub const MAX_NESTING: usize = 16_384;
+/// The reference has no limit of its own: it fails where V8's call stack ends (with Node 24's
+/// default stack, at 11,264 nested unary operators, 5,632 parentheses, 2,048 nested arrays,
+/// and it evaluates far less of most of them). This port bounds nesting so that parsing and
+/// evaluation fit a fixed stack ([`crate::stack`]), proven at this depth for every recursive
+/// path. The command texts stored in the production copy nest at most 11 levels (tree height
+/// 10); the real-data test asserts they stay within half of this limit. A deeper program is
+/// refused with [`DiagnosticCode::NestingLimit`]; inside an interpolation the interpolation
+/// shows its own text instead, as the reference does where its stack overflows.
+pub const MAX_NESTING: usize = 32;
 
 /// Exclusive ceiling for the persisted JSON shape's container depth: `serde_json` refuses to
 /// enter its 128th container. Parsing does not apply it (the reference never stores a tree); a
@@ -681,9 +677,9 @@ pub const BUDGET_BASE: usize = 64;
 pub const WORK_PER_INPUT_BYTE: usize = 32;
 
 /// The work budget of every program, however short. Quoted templates nested in each other are
-/// lexed once per level, like the reference re-tokenizes them, which is quadratic in the depth:
-/// the worst text within the 10,000-character source limit (about 950 levels around 4,300 emoji)
-/// visits about 19 million bytes; this is 64 Mi. Longer, substituted text gets
+/// lexed once per level, like the reference re-tokenizes them, which is quadratic in the depth
+/// (bounded by [`MAX_NESTING`]): the worst text within the 10,000-character source limit visits
+/// about 1.2 million bytes; this is 64 Mi. Longer, substituted text gets
 /// [`WORK_PER_INPUT_BYTE`] per byte, so the work stays linear in the input.
 pub const WORK_BASE: usize = 1 << 26;
 
@@ -712,6 +708,13 @@ pub struct ParseStats {
     pub array_indexed_bytes: usize,
     /// Bytes consumed by the lexer (an array token counts its `%[` and `]` as three).
     pub lexed_bytes: usize,
+    /// The most stack the parse used below where it started, in bytes, seen at each level of
+    /// recursion (0 on a thread not registered with [`crate::stack`]). The deepest of the
+    /// programs for a template.
+    pub stack_bytes: usize,
+    /// The deepest nesting the parse reached (recursion levels and tree height, as
+    /// [`Limits::nesting`] counts them). The deepest of the programs for a template.
+    pub nesting: usize,
 }
 
 impl ParseStats {
@@ -722,12 +725,14 @@ impl ParseStats {
             arrays: self.arrays + other.arrays,
             array_indexed_bytes: self.array_indexed_bytes + other.array_indexed_bytes,
             lexed_bytes: self.lexed_bytes + other.lexed_bytes,
+            stack_bytes: self.stack_bytes.max(other.stack_bytes),
+            nesting: self.nesting.max(other.nesting),
         }
     }
 }
 
 /// A parsed program and the source it came from. Cloning it shares the tree; dropping the
-/// last clone frees the tree without recursion, however deep it is ([`MAX_NESTING`]).
+/// last clone frees the tree without recursion.
 #[derive(Clone, Debug)]
 pub struct CompiledProgram {
     pub(crate) source: Arc<str>,
@@ -858,8 +863,8 @@ impl CompiledProgram {
         }
     }
 
-    /// The AST as JSON. Serializing recurses: a caller with a deep tree (above
-    /// [`HARD_NESTING_CEILING`]) checks [`Self::check_json_depth`] first.
+    /// The AST as JSON. Serializing recurses (at most [`MAX_NESTING`] levels); a caller that
+    /// reads the JSON back with `serde_json` checks [`Self::check_json_depth`] first.
     pub fn to_value(&self) -> Value {
         self.root.to_value()
     }
@@ -905,5 +910,113 @@ impl SegmentPlan {
     /// What to do with it.
     pub fn step(&self) -> &SegmentStep {
         &self.step
+    }
+}
+
+fn accessor_index(accessor: Option<&ArrayAccessor>) -> Option<&AstNode> {
+    match accessor {
+        Some(
+            ArrayAccessor::Index { index }
+            | ArrayAccessor::SetIndex { index }
+            | ArrayAccessor::Remove { index },
+        ) => Some(index),
+        _ => None,
+    }
+}
+
+impl AstNode {
+    /// Calls `visit` with each child node (the evaluator's children: arguments, operands,
+    /// branches, selectors, list indexes, template expressions, loop parts and bodies).
+    pub fn for_each_child<'a>(&'a self, mut visit: impl FnMut(&'a AstNode)) {
+        match self {
+            AstNode::Root { children: nodes }
+            | AstNode::Function { args: nodes, .. }
+            | AstNode::CommandRef { args: nodes, .. } => nodes.iter().for_each(visit),
+            AstNode::ArrayLiteral { items, accessor } => {
+                items.iter().for_each(&mut visit);
+                accessor_index(accessor.as_ref())
+                    .into_iter()
+                    .for_each(visit);
+            }
+            AstNode::SetVar {
+                value,
+                accessor,
+                user_selector,
+                ..
+            } => {
+                visit(value);
+                user_selector.as_deref().into_iter().for_each(&mut visit);
+                accessor_index(accessor.as_ref())
+                    .into_iter()
+                    .for_each(visit);
+            }
+            AstNode::GetVar {
+                accessor,
+                user_selector,
+                ..
+            }
+            | AstNode::Exists {
+                accessor,
+                user_selector,
+                ..
+            }
+            | AstNode::DeleteVar {
+                accessor,
+                user_selector,
+                ..
+            } => {
+                user_selector.as_deref().into_iter().for_each(&mut visit);
+                accessor_index(accessor.as_ref())
+                    .into_iter()
+                    .for_each(visit);
+            }
+            AstNode::Binary { left, right, .. } => {
+                visit(left);
+                visit(right);
+            }
+            AstNode::Unary { argument, .. } => visit(argument),
+            AstNode::Ternary {
+                test,
+                consequent,
+                alternate,
+            } => {
+                visit(test);
+                visit(consequent);
+                visit(alternate);
+            }
+            AstNode::Template { segments } => {
+                for segment in segments {
+                    if let TemplateSegment::Expr { node } = segment {
+                        visit(node);
+                    }
+                }
+            }
+            AstNode::LoopAssign { value, .. } => value.as_deref().into_iter().for_each(visit),
+            AstNode::ForLoop {
+                init,
+                condition,
+                update,
+                iterable,
+                body,
+                ..
+            } => {
+                for part in [init, condition, update, iterable].into_iter().flatten() {
+                    visit(part);
+                }
+                body.iter().for_each(visit);
+            }
+            AstNode::Literal { .. } | AstNode::LoopVar { .. } | AstNode::Custom { .. } => {}
+        }
+    }
+
+    /// The height of the tree under this node (a leaf is 1), counted without recursion.
+    pub fn height(&self) -> usize {
+        let mut deepest = 0;
+        let mut pending = vec![(self, 1usize)];
+        while let Some((node, depth)) = pending.pop() {
+            deepest = deepest.max(depth);
+            node.for_each_child(|child| pending.push((child, depth + 1)));
+        }
+        deepest
     }
 }

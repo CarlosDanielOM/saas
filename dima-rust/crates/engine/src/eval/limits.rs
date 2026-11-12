@@ -21,17 +21,18 @@ pub struct EvalLimits {
     /// database memo), its loop variables and the arguments of the command references it
     /// starts. Each value is within [`Self::text_bytes`]; this bounds how many there are.
     pub memory_bytes: usize,
-    /// The deepest tree evaluated. The parser accepts up to [`crate::syntax::MAX_NESTING`]
-    /// levels, but the evaluator recurses on the thread's stack, one level per tree level; a
-    /// deeper program is refused before it runs (its segment shows `[Parse error: …]`) and the
-    /// running depth is checked again as a guard. The deepest stored command in the production
-    /// copy has 12 levels.
+    /// The deepest tree evaluated, at most [`MAX_EVAL_NESTING`]. The evaluator recurses on the
+    /// thread's stack, one level per tree level, within the stack contract ([`crate::stack`]).
+    /// A deeper tree (read back from storage, say: the parser already stops at the same depth)
+    /// is refused before it runs (its segment shows `[Parse error: …]`) and the running depth is
+    /// checked again as a guard. The deepest stored command in the production copy has 10
+    /// levels.
     pub nesting: usize,
-    /// The most stack, in bytes, an evaluation may use below its entry point before going a
-    /// level deeper; beyond it the expression fails as if it were too deeply nested. Half of
-    /// the 2 MiB stack a tokio worker thread has by default.
-    pub stack_bytes: usize,
 }
+
+/// The deepest nesting [`EvalLimits::nesting`] may allow: the depth the stack contract is
+/// proven for ([`crate::stack::EVAL_STACK_BYTES`]).
+pub const MAX_EVAL_NESTING: usize = 32;
 
 impl Default for EvalLimits {
     fn default() -> Self {
@@ -40,8 +41,7 @@ impl Default for EvalLimits {
             host_calls: 2_000,
             text_bytes: 256 * 1024,
             memory_bytes: 4 * 1024 * 1024,
-            nesting: 256,
-            stack_bytes: 1024 * 1024,
+            nesting: MAX_EVAL_NESTING,
         }
     }
 }

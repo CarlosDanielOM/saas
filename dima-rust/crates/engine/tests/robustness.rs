@@ -305,9 +305,9 @@ fn arbitrary_utf8_syntax_never_panics_and_respects_every_limit() {
 }
 
 #[test]
-fn deep_nesting_parses_like_the_reference_and_stops_at_the_ceiling() {
-    // Runs on the test harness's ordinary thread (2 MiB): deep programs are parsed on their own
-    // stack and their trees are freed without recursion.
+fn deep_nesting_stops_at_the_limit_without_overflowing() {
+    // Runs on the test harness's own thread, which is not registered with the stack contract:
+    // every program is parsed on a thread of its own (`dima_engine::stack`).
     let engine = SyntaxEngine::default();
     let n = 4_000;
     let inputs = [
@@ -316,6 +316,7 @@ fn deep_nesting_parses_like_the_reference_and_stops_at_the_ceiling() {
         format!("{}1{}", "%[".repeat(n), "]".repeat(n)),
         format!("*({}1{})", "(".repeat(n), ")".repeat(n)),
         format!("*({}1)", "-".repeat(n)),
+        format!("*({}1)", "- ".repeat(n)),
         format!("*({}1)", "1 ? ".repeat(n)),
         format!("*({})", vec!["1"; n].join(" + ")),
         "\"${".repeat(n),
@@ -343,26 +344,16 @@ fn deep_nesting_parses_like_the_reference_and_stops_at_the_ceiling() {
             dima_text::truncate_chars(source, 40)
         );
     }
-    // Within the 10,000-character source limit, what the reference parses parses here too
-    // (it parses 5,632 parentheses, 7,673 ternary branches, 11,264 unary operators, 2,048
-    // arrays in a fresh Node 24 stack).
-    for source in [
-        format!("*({}1{})", "(".repeat(4_998), ")".repeat(4_998)),
-        format!("*({}1)", "1?".repeat(4_998)),
-        format!("*({}1)", "-+".repeat(4_998)),
-        format!("{}1{}", "%[".repeat(2_048), "]".repeat(2_048)),
-        format!("{}x{}", "$(s ".repeat(1_999), ")".repeat(1_999)),
-    ] {
-        assert!(dima_text::char_len(&source) <= 10_000);
-        let program = engine.parse(&source).unwrap_or_else(|error| {
-            panic!("{error:?}: {}", dima_text::truncate_chars(&source, 30))
-        });
-        let plan = engine.compile_template(&format!("*({source})")).unwrap();
-        assert!(matches!(plan.segments()[0].step(), SegmentStep::Program(_)));
-        drop((program.clone(), plan.clone()));
-    }
-    // Past the ceiling: a nesting diagnostic, at the top level and per template segment.
-    let deep = format!("*({}1)", "-+".repeat(MAX_NESTING / 2 + 10));
+    // At the limit a program parses; one level past it, the nesting diagnostic, at the top
+    // level and per template segment. (The reference parses far deeper: 5,632 parentheses,
+    // 11,264 unary operators, 2,048 arrays in a fresh Node 24 stack.)
+    let parentheses = |levels: usize| format!("*({}1{})", "(".repeat(levels), ")".repeat(levels));
+    let deepest = (1..=MAX_NESTING)
+        .take_while(|levels| engine.parse(&parentheses(*levels)).is_ok())
+        .last()
+        .unwrap();
+    assert!(deepest >= MAX_NESTING - 2, "{deepest}");
+    let deep = parentheses(deepest + 1);
     assert_eq!(
         engine.parse(&deep).unwrap_err().code,
         DiagnosticCode::NestingLimit
@@ -750,30 +741,27 @@ fn budgets_are_per_segment_and_cover_nested_regions() {
 }
 
 #[test]
-fn arrays_nest_like_the_reference_and_the_json_depth_is_checked_on_request() {
+fn arrays_nest_to_the_limit_and_the_json_depth_is_checked_on_request() {
     let engine = SyntaxEngine::default();
-    // Each nested array adds two JSON containers (the node and its `items`). The reference
-    // parses 2,048 nested arrays; a caller that stores a tree as JSON asks for the check.
+    // Each nested array adds two JSON containers (the node and its `items`); a caller that
+    // stores a tree as JSON asks for the check. Arrays nest to the parser's limit (the
+    // reference parses 2,048).
     let wrapped = |n: usize| format!("{}1{}", "%[".repeat(n), "]".repeat(n));
-    let mut readable = 0;
-    for n in (1..=80).chain([2_048]) {
-        let program = engine.parse(&wrapped(n)).unwrap();
-        match program.check_json_depth() {
-            Ok(()) => {
-                readable = n;
-                let text = serde_json::to_string(&program.to_value()).unwrap();
-                assert!(serde_json::from_str::<Value>(&text).is_ok(), "depth {n}");
-            }
-            Err(error) => {
-                assert_eq!(error.code, DiagnosticCode::NestingLimit);
-                assert_eq!(
-                    error.message,
-                    "AST JSON serialization nesting limit exceeded"
-                );
-            }
-        }
+    let mut deepest = 0;
+    for n in 1..=MAX_NESTING {
+        let Ok(program) = engine.parse(&wrapped(n)) else {
+            break;
+        };
+        deepest = n;
+        program.check_json_depth().unwrap();
+        let text = serde_json::to_string(&program.to_value()).unwrap();
+        assert!(serde_json::from_str::<Value>(&text).is_ok(), "depth {n}");
     }
-    assert_eq!(readable, 62);
+    assert!(deepest >= MAX_NESTING - 2, "{deepest}");
+    assert_eq!(
+        engine.parse(&wrapped(deepest + 1)).unwrap_err().code,
+        DiagnosticCode::NestingLimit
+    );
 }
 
 #[test]
