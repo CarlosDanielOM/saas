@@ -29,3 +29,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 dima-core = { workspace = true, features = ["test-util"] }
 tokio = { workspace = true, features = ["test-util"] }
+# tests/real_data.rs only: reads the stored patterns and keywords of the local production copy.
+dima-store = { workspace = true }
+futures-util = { workspace = true }
+anyhow = { workspace = true }
