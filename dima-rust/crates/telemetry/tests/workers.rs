@@ -7,7 +7,7 @@ use dima_telemetry::{LogOptions, RunOutcome, WorkerState};
 use std::time::{Duration, Instant};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_process_reports_memory_cpu_runtime_health_loss_and_uptime() {
+async fn the_process_reports_memory_cpu_wake_lateness_loss_and_uptime() {
     let telemetry = support::in_memory(0.0);
     let running = telemetry.start();
     telemetry.sample();
@@ -44,11 +44,10 @@ async fn the_process_reports_memory_cpu_runtime_health_loss_and_uptime() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_worker_reports_runs_state_and_busy_time() {
+async fn a_worker_reports_runs_state_poll_busy_time_and_longest_poll() {
     let telemetry = support::in_memory(0.0);
     let worker = telemetry.worker("goals.worker");
     assert_eq!(worker.prefix(), "goals.worker");
-    telemetry.sample(); // opens the busy-time window
     let task = worker.instrument({
         let worker = worker.clone();
         async move {
@@ -100,9 +99,12 @@ async fn a_worker_reports_runs_state_and_busy_time() {
     assert_eq!(codes, ["E_LEASE", "WORKER_ERROR"]);
     assert_eq!(snapshot.logs[0].name, "goals.worker");
 
-    let cpu = snapshot.metric("goals.worker.cpu_cores");
-    assert_eq!(cpu[0].kind, "runtime");
-    assert!(cpu[0].sum > 0.0);
+    // Poll busy time and the longest poll, under the wire names of a process row. The window
+    // started at registration: the first sample already has both.
+    let busy = snapshot.metric("goals.worker.cpu_cores");
+    assert_eq!(busy.len(), 1);
+    assert_eq!(busy[0].kind, "runtime");
+    assert!(busy[0].sum > 0.0 && busy[0].sum <= 1.0, "{}", busy[0].sum);
     let longest = snapshot.metric("goals.worker.event_loop_p99_ms")[0].sum;
     assert!(longest >= 29.0, "{longest}");
     // Restarting after `restarted()`.

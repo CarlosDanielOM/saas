@@ -12,8 +12,8 @@
 //!
 //! | Metric | Kind | Value |
 //! |---|---|---|
-//! | `<prefix>.cpu_cores` | `runtime` | time spent polling the worker's futures over wall time (busy cores) |
-//! | `<prefix>.event_loop_p99_ms` | `runtime` | longest single poll in the window, ms: how long the worker held a runtime thread |
+//! | `<prefix>.cpu_cores` | `runtime` | **poll busy time**, not CPU time: wall time spent inside polls of the instrumented future over the window (see below) |
+//! | `<prefix>.event_loop_p99_ms` | `runtime` | **the longest single poll** in the window, ms, not a percentile: how long the worker held a runtime thread at once |
 //! | `<prefix>.state` | `worker` | 0 idle, 1 running, 2 restarting (backoff), 3 stopped, 4 fatal |
 //! | `<prefix>.since_success_ms` | `worker` | time since the last successful run |
 //! | `<prefix>.runs` | `worker` | one per finished run, outcome `ok`, `idle` or `error` |
@@ -24,8 +24,21 @@
 //! | `<prefix>.phase.<phase>` | `queue_run` | [`Worker::phase`] |
 //! | `<prefix>.health_query`, `health_errors`, gauges | `worker` | [`Worker::health`], [`Worker::gauge`] |
 //!
-//! **What a worker row shows after the migration.** CPU (busy cores) and the longest poll in the
-//! "lag" column, from the figures above. Memory per worker no longer exists: all workers share one
+//! The wire names are the ones the admin page reads for a process row ("CPU" and "lag"); the
+//! figures behind them are not those of a process.
+//!
+//! **What poll busy time measures.** Two monotonic clock reads around each poll of the future
+//! given to [`Worker::instrument`], summed, over the wall time since the previous sample (the
+//! first window starts when the worker is registered with [`crate::Telemetry::worker`]). It is
+//! wall time on a runtime thread, so a poll that waits for a lock or is descheduled by the
+//! operating system counts as busy, and a busy figure above 1 is impossible for one future. It
+//! misses: work in tasks the worker spawns (they are polled by the runtime, not through the
+//! wrapper, unless they are instrumented too), work handed to `spawn_blocking` or another thread,
+//! and a poll that panics (it has no end; the worker then stops, see [`Worker::instrument`]). The
+//! longest poll has the same coverage.
+//!
+//! **What a worker row shows after the migration.** Poll busy time in the "CPU" column and the
+//! longest poll in the "lag" column. Memory per worker no longer exists: all workers share one
 //! allocator, so the row shows no memory and the process row (`cron` / `index`, "Workers host")
 //! carries the resident size of all of them together.
 
@@ -83,8 +96,10 @@ struct Names {
     errors: &'static str,
     state: &'static str,
     since_success: &'static str,
-    cpu: &'static str,
-    lag: &'static str,
+    /// Wire name `<prefix>.cpu_cores`.
+    poll_busy_cores: &'static str,
+    /// Wire name `<prefix>.event_loop_p99_ms`.
+    longest_poll_ms: &'static str,
     project_batch: &'static str,
     health_query: &'static str,
     health_errors: &'static str,
@@ -93,11 +108,12 @@ struct Names {
 pub(crate) struct WorkerCell {
     prefix: &'static str,
     names: Names,
-    busy_ns: AtomicU64,
-    max_poll_ns: AtomicU64,
+    poll_busy_ns: AtomicU64,
+    longest_poll_ns: AtomicU64,
     state: AtomicU8,
     last_success_ms: AtomicI64,
-    window: std::sync::Mutex<Option<Instant>>,
+    /// Where the current measurement window began: the registration, then the last sample.
+    window: std::sync::Mutex<Instant>,
 }
 
 impl WorkerCell {
@@ -111,18 +127,18 @@ impl WorkerCell {
                 errors: name("errors"),
                 state: name("state"),
                 since_success: name("since_success_ms"),
-                cpu: name("cpu_cores"),
-                lag: name("event_loop_p99_ms"),
+                poll_busy_cores: name("cpu_cores"),
+                longest_poll_ms: name("event_loop_p99_ms"),
                 project_batch: name("project_batch"),
                 health_query: name("health_query"),
                 health_errors: name("health_errors"),
             },
             prefix,
-            busy_ns: AtomicU64::new(0),
-            max_poll_ns: AtomicU64::new(0),
+            poll_busy_ns: AtomicU64::new(0),
+            longest_poll_ns: AtomicU64::new(0),
             state: AtomicU8::new(WorkerState::Idle as u8),
             last_success_ms: AtomicI64::new(i64::MIN),
-            window: std::sync::Mutex::new(None),
+            window: std::sync::Mutex::new(Instant::now()),
         }
     }
 
@@ -132,8 +148,8 @@ impl WorkerCell {
 
     fn polled(&self, elapsed: Duration) {
         let nanos = u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX);
-        self.busy_ns.fetch_add(nanos, Ordering::Relaxed);
-        self.max_poll_ns.fetch_max(nanos, Ordering::Relaxed);
+        self.poll_busy_ns.fetch_add(nanos, Ordering::Relaxed);
+        self.longest_poll_ns.fetch_max(nanos, Ordering::Relaxed);
     }
 }
 
@@ -394,31 +410,28 @@ pub(crate) fn sample_workers(telemetry: &Telemetry, now: Instant) {
         .clone();
     let now_ms = telemetry.0.clock.now_ms();
     for cell in workers {
-        let busy = cell.busy_ns.swap(0, Ordering::Relaxed);
-        let longest = cell.max_poll_ns.swap(0, Ordering::Relaxed);
-        let previous = cell
-            .window
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .replace(now);
+        let busy = cell.poll_busy_ns.swap(0, Ordering::Relaxed);
+        let longest = cell.longest_poll_ns.swap(0, Ordering::Relaxed);
+        let previous = std::mem::replace(
+            &mut *cell.window.lock().unwrap_or_else(PoisonError::into_inner),
+            now,
+        );
         let state = WorkerState::from_u8(cell.state.load(Ordering::Relaxed));
         if state.is_terminal() {
             // A worker that ended reports nothing; its window restarts with it.
             continue;
         }
-        if let Some(previous) = previous {
-            let wall = now.saturating_duration_since(previous).as_secs_f64();
-            if wall > 0.0 {
-                let cores = busy as f64 / 1e9 / wall;
-                telemetry.observe_with("runtime", cell.names.cpu, cores, "ok", Some(""));
-                telemetry.observe_with(
-                    "runtime",
-                    cell.names.lag,
-                    longest as f64 / 1e6,
-                    "ok",
-                    Some(""),
-                );
-            }
+        let wall = now.saturating_duration_since(previous).as_secs_f64();
+        if wall > 0.0 {
+            let cores = busy as f64 / 1e9 / wall;
+            telemetry.observe_with("runtime", cell.names.poll_busy_cores, cores, "ok", Some(""));
+            telemetry.observe_with(
+                "runtime",
+                cell.names.longest_poll_ms,
+                longest as f64 / 1e6,
+                "ok",
+                Some(""),
+            );
         }
         let state = f64::from(state as u8);
         telemetry.observe_with("worker", cell.names.state, state, "ok", Some(""));

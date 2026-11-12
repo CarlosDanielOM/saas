@@ -12,7 +12,8 @@
 //! **Cost on hot paths** (`tests/overhead.rs`, this crate optimised, on a laptop whose HPET clock
 //! source makes one clock read cost 1.2 µs): a filtered log call 1.6 ns (one comparison); a
 //! counter increment or an observation about 125 ns (a stack key, an uncontended shard lock, an
-//! existing series; the bucket comes from a coarse clock the probe task refreshes every 20 ms);
+//! existing series; the bucket comes from a coarse clock the probe task refreshes on each wake,
+//! normally every 20 ms);
 //! a span that is not kept about 230 ns plus two monotonic clock reads. On an existing series
 //! none of them allocates (eight million such calls leave the resident size unchanged; that
 //! bounds the growth, it is not an allocation count); the first observation of a series after a

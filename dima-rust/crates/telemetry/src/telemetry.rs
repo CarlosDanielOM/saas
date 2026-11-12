@@ -8,7 +8,7 @@ use crate::logger::{
     ConsoleMessage, ConsoleTarget, Level, LogOptions, Receivers, Sinks, cache_entry,
 };
 use crate::otlp::{self, PosthogConfig};
-use crate::process::{Probe, ProcessSampler};
+use crate::process::{ProcessSampler, WakeProbe};
 use crate::redact::Redactor;
 use crate::span::Span;
 use crate::trace::{self, SavedTrace, SpanId, SpanIds, TraceContext, TraceId};
@@ -269,8 +269,9 @@ pub(crate) struct Shared {
     pub(crate) secret: Option<SecretString>,
     pub(crate) min_level: Level,
     pub(crate) clock: Arc<dyn Clock>,
-    /// The wall clock as the probe task last read it (every 20 ms), 0 when it is not running.
-    /// It picks the 10-second bucket of an observation without a clock read per call.
+    /// The wall clock as the probe task last read it, 0 when it is not running. It picks the
+    /// 10-second bucket of an observation without a clock read per call. It is as old as the
+    /// probe's last wake: normally under 20 ms, more when the runtime is starved.
     pub(crate) coarse_ms: AtomicU64,
     pub(crate) metrics: Metrics,
     pub(crate) spans: Rows<SpanRow>,
@@ -286,7 +287,7 @@ pub(crate) struct Shared {
     pub(crate) store: Store,
     pub(crate) redactor: Redactor,
     pub(crate) http_exclude: Vec<String>,
-    pub(crate) probe: Probe,
+    pub(crate) wake_probe: WakeProbe,
     pub(crate) inbox_key: String,
     pub(crate) overflow_key: String,
     pub(crate) flushing: tokio::sync::Mutex<()>,
@@ -298,7 +299,8 @@ pub(crate) struct Shared {
 pub(crate) struct ProcessNames {
     pub(crate) rss: &'static str,
     pub(crate) cpu: &'static str,
-    pub(crate) lag: &'static str,
+    /// Wire name `<process>.event_loop_p99_ms`.
+    pub(crate) wake_lateness_p99_ms: &'static str,
     pub(crate) dropped: &'static str,
     pub(crate) uptime: &'static str,
 }
@@ -364,7 +366,7 @@ impl Telemetry {
         let names = ProcessNames {
             rss: name("rss_bytes"),
             cpu: name("cpu_cores"),
-            lag: name("event_loop_p99_ms"),
+            wake_lateness_p99_ms: name("event_loop_p99_ms"),
             dropped: name("telemetry_dropped"),
             uptime: name("uptime_s"),
         };
@@ -394,7 +396,7 @@ impl Telemetry {
             store: Store::new(config.dragonfly),
             redactor: Redactor::new(),
             http_exclude: config.http_exclude,
-            probe: Probe::new(),
+            wake_probe: WakeProbe::new(),
             inbox_key: config.inbox_key,
             overflow_key: config.overflow_key,
             flushing: tokio::sync::Mutex::new(()),
@@ -447,9 +449,10 @@ impl Telemetry {
         u64::try_from(self.0.clock.now_ms()).unwrap_or_default()
     }
 
-    /// The time that picks an observation's bucket: the probe's last reading when it runs (at
-    /// most 20 ms old: an observation that close after a boundary lands in the previous bucket),
-    /// otherwise the clock.
+    /// The time that picks an observation's bucket: the probe's last reading when it runs,
+    /// otherwise the clock. The reading is as old as the probe's last wake, normally under 20 ms
+    /// but more when the runtime is starved; an observation made within that age after a
+    /// boundary lands in the previous bucket.
     pub(crate) fn bucket_ms(&self) -> u64 {
         match self.0.coarse_ms.load(Ordering::Relaxed) {
             0 => self.now_ms(),
@@ -908,7 +911,7 @@ impl Telemetry {
                 )));
             }
             if self.0.export {
-                tasks.push(tokio::spawn(crate::process::run_probe(
+                tasks.push(tokio::spawn(crate::process::run_wake_probe(
                     self.clone(),
                     stop.clone(),
                 )));

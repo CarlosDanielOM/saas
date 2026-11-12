@@ -4,16 +4,19 @@
 //! |---|---|
 //! | `<process>.rss_bytes` | `VmRSS` of `/proc/self/status` |
 //! | `<process>.cpu_cores` | `getrusage(RUSAGE_SELF)` user + system time over wall time since the last sample (all threads) |
-//! | `<process>.event_loop_p99_ms` | runtime health: p99 of the scheduling delay of a probe task (below) |
+//! | `<process>.event_loop_p99_ms` | **one probe task's wake lateness**, p99 over the window (below); not an event-loop delay |
 //! | `<process>.telemetry_dropped` | everything this process failed to report so far ([`crate::Stats::total_dropped`]) |
 //! | `<process>.uptime_s` | seconds since the handle was built |
 //!
-//! **Runtime health.** Node's figure is the p99 of event-loop delay (`monitorEventLoopDelay`,
-//! 20 ms resolution). The stand-in measures the same symptom on tokio: a probe task sleeps 20 ms
-//! in a loop and records how late it wakes. Lateness means the runtime's workers were busy (a
-//! blocking call, a long poll, CPU saturation) or the timer is behind; it is what a request or
-//! chat message would also wait. The p99 over the last window is reported in milliseconds (the
-//! timer's 1 ms granularity is part of the baseline). Cost: 50 wake-ups per second.
+//! **Wake lateness.** Node's figure is the p99 of event-loop delay (`monitorEventLoopDelay`,
+//! 20 ms resolution); tokio has no single loop. The stand-in, kept under Node's wire name, is one
+//! probe task that sleeps 20 ms in a loop and records how late it wakes; the p99 over the window
+//! is reported in milliseconds (the timer's 1 ms granularity is part of the baseline). It shows
+//! the runtime being starved where the probe runs: lateness means the worker thread that runs
+//! the probe was busy (a blocking call, a long poll), all threads were, the CPU is saturated, or
+//! the timer is behind. It misses a single blocked thread while the probe keeps running on
+//! another one (a multi-threaded runtime moves it), and work outside the runtime
+//! (`spawn_blocking`, other threads). Cost: 50 wake-ups per second.
 //!
 //! `heap_bytes` is not reported: there is no garbage-collected heap, and the resident size is the
 //! figure that matters.
@@ -30,8 +33,8 @@ pub const PROBE_PERIOD: Duration = Duration::from_millis(20);
 const PROBE_SAMPLES: usize = 512;
 const PROC_LIMIT: u64 = 16_384;
 
-/// Scheduling-delay samples of the current window, in microseconds.
-pub(crate) struct Probe {
+/// Wake-lateness samples of the probe task in the current window, in microseconds.
+pub(crate) struct WakeProbe {
     window: Mutex<ProbeWindow>,
 }
 
@@ -41,7 +44,7 @@ struct ProbeWindow {
     seen: usize,
 }
 
-impl Probe {
+impl WakeProbe {
     pub(crate) fn new() -> Self {
         Self {
             window: Mutex::new(ProbeWindow {
@@ -95,9 +98,9 @@ impl Probe {
     }
 }
 
-/// The probe task.
-/// Also keeps the coarse clock that picks metric buckets.
-pub(crate) async fn run_probe(telemetry: Telemetry, stop: dima_core::Shutdown) {
+/// The probe task. It also keeps the coarse clock that picks metric buckets: a reading as old as
+/// the probe's last wake, so normally under 20 ms, but older by however late the probe wakes.
+pub(crate) async fn run_wake_probe(telemetry: Telemetry, stop: dima_core::Shutdown) {
     let coarse = &telemetry.0.coarse_ms;
     coarse.store(telemetry.now_ms().max(1), Ordering::Relaxed);
     loop {
@@ -106,7 +109,7 @@ pub(crate) async fn run_probe(telemetry: Telemetry, stop: dima_core::Shutdown) {
             () = stop.wait() => break,
             () = tokio::time::sleep(PROBE_PERIOD) => {
                 let late = started.elapsed().saturating_sub(PROBE_PERIOD);
-                telemetry.0.probe.record(late);
+                telemetry.0.wake_probe.record(late);
                 coarse.store(telemetry.now_ms().max(1), Ordering::Relaxed);
             }
         }
@@ -180,8 +183,8 @@ impl ProcessSampler {
         if let Some(cores) = cpu_time().and_then(|cpu| self.cpu.sample(cpu, now)) {
             telemetry.observe_with("runtime", names.cpu, cores, "ok", Some(""));
         }
-        if let Some(lag) = telemetry.0.probe.take_p99_ms() {
-            telemetry.observe_with("runtime", names.lag, lag, "ok", Some(""));
+        if let Some(late) = telemetry.0.wake_probe.take_p99_ms() {
+            telemetry.observe_with("runtime", names.wake_lateness_p99_ms, late, "ok", Some(""));
         }
         let dropped = telemetry.stats().total_dropped().min(1_000_000_000_000_000);
         telemetry.observe_with("runtime", names.dropped, dropped as f64, "ok", Some(""));
@@ -223,7 +226,7 @@ mod tests {
 
     #[test]
     fn probe_p99_keeps_the_slowest_wakeups() {
-        let probe = Probe::new();
+        let probe = WakeProbe::new();
         assert_eq!(probe.take_p99_ms(), None);
         for _ in 0..495 {
             probe.record(Duration::from_micros(100));
