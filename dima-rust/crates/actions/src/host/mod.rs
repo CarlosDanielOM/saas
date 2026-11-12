@@ -20,6 +20,31 @@
 //! [`HostDeps`]; a group package fills its module and its `Deps` and touches nothing else. Until
 //! it does, its entry function answers [`ActionError::NotYetPorted`] for each of its functions.
 //!
+//! # What a group function gets
+//!
+//! The [`HostCall`]: the function, its evaluated arguments, the run's [`Context`](dima_engine::context::Context) (channel,
+//! user id, login and name, plan, level, event data, scope, authorization), the run's effect
+//! authority at that point (read it with [`effects`]) and the run's `randomuser` memory. And
+//! the [`DimaHost`] it was called on:
+//!
+//! - [`DimaHost::deps`]: the process's handles ([`HostDeps`]: MongoDB, Dragonfly with its key
+//!   prefix, Twitch with the streamer directory, the command cache, the wall clock, randomness,
+//!   telemetry, and the group's own `Deps`);
+//! - [`DimaHost::channel_id`] and [`DimaHost::event_user`]: the channel the run belongs to and
+//!   the user its event names (what the reference's storage closures use);
+//! - [`DimaHost::now_ms`]: `Date.now()` on the injected wall clock;
+//! - [`DimaHost::chat`]: the process's [`ChatOut`] (rendering then posting, and the plain
+//!   post), and [`DimaHost::runner`]: the [`CommandRunner`] (for the AI chat's tools). Both are
+//!   `None` only for a host made without a delivery (tests of a group);
+//! - [`DimaHost::required_goal_contribution`]: the error `goal.add` throws when a durable
+//!   EventSub action's contribution could not be journaled; delivery recognises it and passes
+//!   it on ([`dima_twitch::chat::ChatError::RequiredGoalContribution`]);
+//! - [`Host::clock`] is the message's deadline clock (see below), not the wall clock.
+//!
+//! A group function must be cancellable (its future may be dropped at the message's deadline),
+//! must bound every call it makes (deadlines on network and store calls), and must bound what it
+//! returns (the engine charges it to the message, but it has to be held first).
+//!
 //! # "Not yet ported" is a thrown error
 //!
 //! The engine has exactly one failure kind for "this host cannot do that":
@@ -29,25 +54,35 @@
 //! carrying its message at the trait boundary, so a function that is not ported yet fails
 //! loudly instead of answering something plausible.
 //!
-//! # Storage (P4-ACT-CORE)
+//! # Storage, timers, effects (P4-ACT-CORE)
 //!
-//! The storage methods of the trait (cache variables, channel and viewer variables, responses,
-//! [`Host::schedule_timer`], [`Host::fork_effect`]) and the effect authority they carry
-//! (`utils/ast_parser/effects.ts`: minting, scoping and forking authority, the pet, goal and
-//! widget-signal keys) are package P4-ACT-CORE's. Until it lands, every fallible storage method
-//! answers [`ActionError::StorageNotYetPorted`]; [`Host::fork_effect`] answers `None` (no
-//! authority for a command reference, the reference's answer when the run has none);
-//! [`Host::sleep`] waits on the runtime's clock. [`Host::alarm`] keeps the engine's default (it
-//! never fires) until P4-ACT-CORE implements it, as the bot must (`packages.md`, phase 7).
+//! The storage methods are [`storage`]'s (where each kind of variable lives is tabled there);
+//! [`Host::schedule_timer`] writes through [`crate::timers`]; [`Host::fork_effect`] is
+//! [`effects::fork_effect`]; [`Host::sleep`] waits on tokio's clock; `save_responses` does
+//! nothing, as the reference's default does (no caller of the reference sets it).
+//!
+//! # Time
+//!
+//! [`Host::clock`] answers a [`DeadlineClock`]: the injected wall clock read once when the host
+//! is made, plus the time elapsed since on tokio's monotonic clock. It cannot go back, so a
+//! wall clock stepped backwards never extends a message's deadline. [`Host::alarm`] is
+//! `tokio::time::sleep`: it always wakes, and dropping it cancels it; the engine races every
+//! host call against it, so a host call that never answers ends at the message's deadline. In
+//! tests with tokio's paused clock both move together.
 //!
 //! TypeScript of the dispatch: `utils/ast_parser/functions/index.ts` (`registerAllFunctions`)
 //! and `utils/ast_parser/index.ts` (`parseAndEvaluate`), both P4-ACT-CORE's.
 
 pub mod ai;
 pub mod channel;
+pub mod effects;
 pub mod media;
 pub mod moderation;
+pub mod storage;
 
+use crate::runner::CommandRunner;
+use dima_commands::runtime::KeyPrefix;
+use dima_commands::runtime::lookup::CommandCache;
 use dima_core::{Clock, Random};
 use dima_engine::context::{Effect, TimerSnapshot};
 use dima_engine::host::{Host, HostCall, HostError, HostFunction, HostFuture};
@@ -55,9 +90,13 @@ use dima_engine::syntax::AstNode;
 use dima_engine::value::Value;
 use dima_store::dragonfly::Dragonfly;
 use dima_store::mongo::MongoStore;
+use dima_telemetry::Telemetry;
 use dima_twitch::Twitch;
+use dima_twitch::chat::ChatOut;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+pub use storage::{StorageConfig, VariableScope};
 
 /// The four groups of effectful functions, one module and one package each (plan section 2.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -205,7 +244,8 @@ pub enum ActionError {
     /// The function's group module has not been filled by its package yet.
     #[error("$({}) is not ported yet", .0.name().unwrap_or("?"))]
     NotYetPorted(HostFunction),
-    /// A storage method of the host (named as in [`Host`]) is not ported yet (P4-ACT-CORE).
+    /// A storage method of the host (named as in [`Host`]) is not ported yet. No longer
+    /// answered (P4-ACT-CORE ported them); kept for the group packages' tests.
     #[error("the command engine's {0} is not ported yet")]
     StorageNotYetPorted(&'static str),
     /// A function registered at run time ([`HostFunction::Custom`]) that this host does not
@@ -227,16 +267,29 @@ impl From<ActionError> for HostError {
 /// adds the handles it needs there (the features, moderation, AI, TTS and billing services).
 /// The binaries build it at start-up (P4-BIN-BOT, P4-BIN-API, P2-CRON-01).
 pub struct HostDeps {
-    /// MongoDB: channel and viewer variables, responses, the features' collections.
+    /// MongoDB: channel and viewer variables, command counters, the features' collections.
     pub mongo: MongoStore,
-    /// Dragonfly: cache variables, the carried `ast:timers:*` family, queues.
+    /// Dragonfly (the Rust processes' logical database): cache variables, cooldowns, the
+    /// carried `ast:timers:*` family.
     pub dragonfly: Dragonfly,
-    /// Twitch: Helix calls and the streamer directory.
+    /// [`Self::dragonfly`]'s key prefix for every key this crate builds (empty in production;
+    /// tests give each run its own).
+    pub keys: KeyPrefix,
+    /// Twitch: Helix calls, the plain chat send and the streamer directory.
     pub twitch: Twitch,
+    /// The command lookup and the counter writes (`dima-commands`).
+    pub commands: CommandCache,
     /// The wall clock (`Date.now()`).
     pub clock: Arc<dyn Clock>,
-    /// `Math.random()` and friends.
+    /// `Math.random()`, `crypto.randomUUID()` and friends of the command language (the
+    /// placeholder variable names, timer ids, `$(random)`).
     pub random: Arc<dyn Random>,
+    /// Logs (`None` in tests that do not look at them).
+    pub telemetry: Option<Telemetry>,
+    /// The storage's deadlines and bounds.
+    pub storage: StorageConfig,
+    /// The AST timers' limits and the in-process wake-up of the scheduler.
+    pub timers: crate::timers::TimerQueue,
     /// The moderation group's handles (P4-ACT-MOD).
     pub moderation: moderation::Deps,
     /// The channel group's handles (P4-ACT-CHANNEL).
@@ -247,17 +300,94 @@ pub struct HostDeps {
     pub ai: ai::Deps,
 }
 
-/// The host of one evaluation: what the engine calls for every effect. Cheap to make (one
-/// [`Arc`] clone); make one per message, as the per-run state P4-ACT-CORE adds (the message's
-/// channel, its effect authority) belongs to one evaluation.
+/// A clock that cannot go back: the wall clock read once, plus the time elapsed since on
+/// tokio's monotonic clock. The engine measures a message's deadline with it
+/// ([`Host::clock`]).
+#[derive(Clone, Debug)]
+pub struct DeadlineClock {
+    wall_at_start: i64,
+    start: tokio::time::Instant,
+}
+
+impl DeadlineClock {
+    /// A clock that starts at `wall`'s current time.
+    pub fn starting_at(wall: &dyn Clock) -> Self {
+        Self {
+            wall_at_start: wall.now_ms(),
+            start: tokio::time::Instant::now(),
+        }
+    }
+}
+
+impl Clock for DeadlineClock {
+    fn now_ms(&self) -> i64 {
+        let elapsed = i64::try_from(self.start.elapsed().as_millis()).unwrap_or(i64::MAX);
+        self.wall_at_start.saturating_add(elapsed)
+    }
+}
+
+/// What the run tells its caller beyond the engine's answer.
+#[derive(Debug, Default)]
+pub(crate) struct HostSignals {
+    /// `goal.add` threw `RequiredGoalContributionError`.
+    pub(crate) required_goal: AtomicBool,
+}
+
+/// The process's chat delivery and command runner, as a host function sees them.
+#[derive(Clone)]
+pub(crate) struct Services {
+    pub(crate) chat: Arc<dyn ChatOut>,
+    pub(crate) runner: Arc<dyn CommandRunner>,
+}
+
+/// The host of one evaluation: what the engine calls for every effect. Cheap to make; the
+/// delivery makes one per rendering (a command and each of its references get their own, as
+/// each has its own event user in the reference).
 pub struct DimaHost {
     deps: Arc<HostDeps>,
+    channel_id: String,
+    variables: VariableScope,
+    clock: DeadlineClock,
+    services: Option<Services>,
+    signals: Arc<HostSignals>,
 }
 
 impl DimaHost {
-    /// A host over the process's shared handles.
+    /// A host over the process's shared handles for no channel: variables are detached and no
+    /// delivery is attached. For tests of a group module; evaluations go through
+    /// [`crate::delivery::ChatDelivery`], which makes its hosts with [`DimaHost::for_channel`].
     pub fn new(deps: Arc<HostDeps>) -> Self {
-        Self { deps }
+        let clock = DeadlineClock::starting_at(deps.clock.as_ref());
+        Self {
+            deps,
+            channel_id: String::new(),
+            variables: VariableScope::Detached,
+            clock,
+            services: None,
+            signals: Arc::default(),
+        }
+    }
+
+    /// A host for a run of `channel_id` whose persistent variables are `variables`.
+    pub fn for_channel(
+        deps: Arc<HostDeps>,
+        channel_id: impl Into<String>,
+        variables: VariableScope,
+    ) -> Self {
+        let mut host = Self::new(deps);
+        host.channel_id = channel_id.into();
+        host.variables = variables;
+        host
+    }
+
+    /// The same host with the process's chat delivery and command runner attached.
+    pub(crate) fn with_services(mut self, services: Services) -> Self {
+        self.services = Some(services);
+        self
+    }
+
+    pub(crate) fn signals(&self) -> Arc<HostSignals> {
+        Arc::clone(&self.signals)
     }
 
     /// The process's shared handles, for the group modules.
@@ -265,18 +395,57 @@ impl DimaHost {
         &self.deps
     }
 
-    /// The answer of a storage method that is not ported yet.
-    fn storage<T>(method: &'static str) -> HostFuture<'static, Result<T, HostError>>
-    where
-        T: Send + 'static,
-    {
-        Box::pin(async move { Err(ActionError::StorageNotYetPorted(method).into()) })
+    /// The shared handles, owned.
+    pub fn deps_arc(&self) -> &Arc<HostDeps> {
+        &self.deps
+    }
+
+    /// The channel the run belongs to (`''` for a host made with [`DimaHost::new`]).
+    pub fn channel_id(&self) -> &str {
+        &self.channel_id
+    }
+
+    /// The user id and login the run's event names (`extractUserInfo(eventData)`), which the
+    /// viewer variables belong to; `None` for a detached run.
+    pub fn event_user(&self) -> Option<(&str, &str)> {
+        match &self.variables {
+            VariableScope::Event {
+                user_id,
+                user_login,
+            } => Some((user_id, user_login)),
+            VariableScope::Detached => None,
+        }
+    }
+
+    /// `Date.now()` on the injected wall clock.
+    pub fn now_ms(&self) -> i64 {
+        self.deps.clock.now_ms()
+    }
+
+    /// The process's chat delivery, for functions that post chat.
+    pub fn chat(&self) -> Option<&Arc<dyn ChatOut>> {
+        self.services.as_ref().map(|services| &services.chat)
+    }
+
+    /// The process's command runner, for the AI chat's tools.
+    pub fn runner(&self) -> Option<&Arc<dyn CommandRunner>> {
+        self.services.as_ref().map(|services| &services.runner)
+    }
+
+    /// The error `goal.add` throws for a durable EventSub action whose contribution could not
+    /// be journaled (`RequiredGoalContributionError`): return it from the function; delivery
+    /// lets it through to the caller so the event is retried.
+    pub fn required_goal_contribution(&self) -> HostError {
+        self.signals.required_goal.store(true, Ordering::SeqCst);
+        HostError::new(
+            dima_commands::runtime::goal_error::RequiredGoalContributionError.to_string(),
+        )
     }
 }
 
 impl Host for DimaHost {
     fn clock(&self) -> &dyn Clock {
-        self.deps.clock.as_ref()
+        &self.clock
     }
 
     fn random(&self) -> &dyn Random {
@@ -295,106 +464,194 @@ impl Host for DimaHost {
         })
     }
 
+    fn alarm(&self, millis: u64) -> HostFuture<'static, ()> {
+        Box::pin(tokio::time::sleep(Duration::from_millis(millis)))
+    }
+
     fn sleep(&mut self, millis: u64) -> HostFuture<'_, ()> {
         Box::pin(tokio::time::sleep(Duration::from_millis(millis)))
     }
 
     fn cache_get<'a>(
         &'a mut self,
-        _key: &'a str,
+        key: &'a str,
     ) -> HostFuture<'a, Result<Option<String>, HostError>> {
-        Self::storage("cache_get")
+        Box::pin(storage::cache_get(&self.deps, key))
     }
 
-    fn cache_exists<'a>(&'a mut self, _key: &'a str) -> HostFuture<'a, Result<bool, HostError>> {
-        Self::storage("cache_exists")
+    fn cache_exists<'a>(&'a mut self, key: &'a str) -> HostFuture<'a, Result<bool, HostError>> {
+        Box::pin(storage::cache_exists(&self.deps, key))
     }
 
     fn cache_set<'a>(
         &'a mut self,
-        _key: &'a str,
-        _value: &'a str,
+        key: &'a str,
+        value: &'a str,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("cache_set")
+        Box::pin(storage::cache_set(&self.deps, key, value))
     }
 
     fn cache_expire<'a>(
         &'a mut self,
-        _key: &'a str,
-        _seconds: u64,
+        key: &'a str,
+        seconds: u64,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("cache_expire")
+        Box::pin(storage::cache_expire(&self.deps, key, seconds))
     }
 
-    fn cache_delete<'a>(&'a mut self, _key: &'a str) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("cache_delete")
+    fn cache_delete<'a>(&'a mut self, key: &'a str) -> HostFuture<'a, Result<(), HostError>> {
+        Box::pin(storage::cache_delete(&self.deps, key))
     }
 
     fn load_channel_variable<'a>(
         &'a mut self,
-        _name: &'a str,
+        name: &'a str,
     ) -> HostFuture<'a, Result<String, HostError>> {
-        Self::storage("load_channel_variable")
+        Box::pin(async move {
+            Ok(match self.variables {
+                VariableScope::Event { .. } => {
+                    storage::load_channel_variable(&self.deps, &self.channel_id, name).await
+                }
+                VariableScope::Detached => String::new(),
+            })
+        })
     }
 
     fn save_channel_variable<'a>(
         &'a mut self,
-        _name: &'a str,
-        _value: &'a str,
+        name: &'a str,
+        value: &'a str,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("save_channel_variable")
+        Box::pin(async move {
+            if let VariableScope::Event { .. } = self.variables {
+                storage::save_channel_variable(&self.deps, &self.channel_id, name, value).await;
+            }
+            Ok(())
+        })
     }
 
     fn delete_channel_variable<'a>(
         &'a mut self,
-        _name: &'a str,
+        name: &'a str,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("delete_channel_variable")
+        Box::pin(async move {
+            if let VariableScope::Event { .. } = self.variables {
+                storage::delete_channel_variable(&self.deps, &self.channel_id, name).await;
+            }
+            Ok(())
+        })
     }
 
     fn load_user_variable<'a>(
         &'a mut self,
-        _name: &'a str,
-        _target: Option<&'a str>,
+        name: &'a str,
+        target: Option<&'a str>,
     ) -> HostFuture<'a, Result<String, HostError>> {
-        Self::storage("load_user_variable")
+        Box::pin(async move {
+            Ok(match &self.variables {
+                VariableScope::Event {
+                    user_id,
+                    user_login,
+                } => {
+                    storage::load_user_variable(
+                        &self.deps,
+                        &self.channel_id,
+                        (user_id, user_login),
+                        name,
+                        target,
+                    )
+                    .await
+                }
+                VariableScope::Detached => String::new(),
+            })
+        })
     }
 
     fn save_user_variable<'a>(
         &'a mut self,
-        _name: &'a str,
-        _value: &'a str,
-        _target: Option<&'a str>,
+        name: &'a str,
+        value: &'a str,
+        target: Option<&'a str>,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("save_user_variable")
+        Box::pin(async move {
+            if let VariableScope::Event {
+                user_id,
+                user_login,
+            } = &self.variables
+            {
+                storage::save_user_variable(
+                    &self.deps,
+                    &self.channel_id,
+                    (user_id, user_login),
+                    name,
+                    value,
+                    target,
+                )
+                .await;
+            }
+            Ok(())
+        })
     }
 
     fn delete_user_variable<'a>(
         &'a mut self,
-        _name: &'a str,
-        _target: Option<&'a str>,
+        name: &'a str,
+        target: Option<&'a str>,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("delete_user_variable")
+        Box::pin(async move {
+            if let VariableScope::Event {
+                user_id,
+                user_login,
+            } = &self.variables
+            {
+                storage::delete_user_variable(
+                    &self.deps,
+                    &self.channel_id,
+                    (user_id, user_login),
+                    name,
+                    target,
+                )
+                .await;
+            }
+            Ok(())
+        })
     }
 
     fn save_responses<'a>(
         &'a mut self,
         _responses: &'a [String],
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("save_responses")
+        Box::pin(async { Ok(()) })
     }
 
     fn schedule_timer<'a>(
         &'a mut self,
-        _seconds: f64,
-        _body: &'a [AstNode],
-        _snapshot: TimerSnapshot,
+        seconds: f64,
+        body: &'a [AstNode],
+        snapshot: TimerSnapshot,
     ) -> HostFuture<'a, Result<(), HostError>> {
-        Self::storage("schedule_timer")
+        Box::pin(async move {
+            crate::timers::schedule(&self.deps, seconds, body, snapshot)
+                .await
+                .map(drop)
+                .map_err(|error| {
+                    if let Some(telemetry) = &self.deps.telemetry {
+                        telemetry.error(
+                            &serde_json::json!({
+                                "message": "AST timer scheduling failed",
+                                "channelID": self.channel_id,
+                                "error": error.to_string(),
+                            }),
+                            dima_telemetry::LogOptions::console().channel(&self.channel_id),
+                        );
+                    }
+                    HostError::new(error.to_string())
+                })
+        })
     }
 
-    fn fork_effect(&mut self, _effect: &Effect) -> Option<Effect> {
-        None
+    fn fork_effect(&mut self, effect: &Effect) -> Option<Effect> {
+        effects::fork_effect(effect)
     }
 }
 
