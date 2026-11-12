@@ -31,6 +31,9 @@ pub struct State {
     pub presence: HashMap<String, Option<String>>,
     /// A call (by its first element) that never answers.
     pub hang: Option<String>,
+    /// Write each demotion to the `fake_twitch` collection (the kill test reads it after the
+    /// process died).
+    pub persist: bool,
 }
 
 #[derive(Clone)]
@@ -130,7 +133,19 @@ impl DuelModeration for FakeModeration {
                 });
             }
             // Twitch applies the demotion; the answer may still be lost.
-            self.0.state.lock().unwrap().mods.remove(user);
+            let persist = {
+                let mut state = self.0.state.lock().unwrap();
+                state.mods.remove(user);
+                state.persist
+            };
+            if persist {
+                self.0
+                    .mongo
+                    .documents("fake_twitch")
+                    .insert_one(doc! {"_id": user, "demoted": true})
+                    .await
+                    .unwrap();
+            }
             if hangs {
                 forever().await;
             }
