@@ -38,6 +38,11 @@
 //!   `LIMIT_FILE_SIZE`), `files`, `fields`, `parts` (the n-th delimiter after the first, so
 //!   `parts: 2` allows one part), `fieldSize` (1 MiB by default; reaching it is
 //!   `LIMIT_FIELD_VALUE`), `fieldNameSize`; a field without a name is `MISSING_FIELD_NAME`.
+//! - Not in multer, bounds of this crate ([`Budget`]): bytes on the wire
+//!   ([`Limits::body_size`]), bytes of all text fields ([`Limits::fields_size`]), parts of any
+//!   kind ([`Limits::max_parts`]), and field-name nesting and array slots
+//!   ([`fields::MAX_DEPTH`], [`fields::MAX_SLOTS`]). Each is checked before the bytes or values
+//!   it is about are buffered; multer has none of them and reads on until the request times out.
 //! - busboy's own errors: `Malformed content type`, `Unsupported content type`,
 //!   `Multipart: Boundary not found`, `Malformed part header`, `Unexpected end of form`.
 //! - On any error every stored file is removed through the storage before the error is
@@ -82,7 +87,30 @@ pub struct Limits {
     pub files: Option<usize>,
     /// `parts`: delimiters after the first (so the number of parts must stay below it).
     pub parts: Option<usize>,
+    /// Not in multer: bytes of the whole body on the wire. `None` allows the file size (1 GiB
+    /// when `file_size` is unset), plus `fields_size`, plus 1 MiB for part headers and
+    /// delimiters. Past it the rest is left unread and the upload fails with
+    /// [`Budget::Body`].
+    pub body_size: Option<u64>,
+    /// Not in multer: bytes of all text fields together, names included ([`DEFAULT_FIELDS_SIZE`]
+    /// by default). Past it the upload fails with [`Budget::Fields`].
+    pub fields_size: u64,
+    /// Not in multer: parts of any kind (text fields, files, skipped parts) one form may have
+    /// ([`DEFAULT_MAX_PARTS`] by default). One more fails the upload with [`Budget::Parts`].
+    pub max_parts: usize,
 }
+
+/// The default [`Limits::fields_size`]: 4 MiB.
+pub const DEFAULT_FIELDS_SIZE: u64 = 4 * 1024 * 1024;
+
+/// The default [`Limits::max_parts`] (body-parser's `parameterLimit` for urlencoded forms).
+pub const DEFAULT_MAX_PARTS: usize = 1000;
+
+/// The file size [`Limits::body_size`] assumes when `file_size` is unset: 1 GiB.
+pub const DEFAULT_FILE_BUDGET: u64 = 1024 * 1024 * 1024;
+
+/// What [`Limits::body_size`] adds for part headers and delimiters: 1 MiB.
+const FRAMING_BUDGET: u64 = 1024 * 1024;
 
 impl Default for Limits {
     fn default() -> Self {
@@ -93,7 +121,22 @@ impl Default for Limits {
             file_size: None,
             files: None,
             parts: None,
+            body_size: None,
+            fields_size: DEFAULT_FIELDS_SIZE,
+            max_parts: DEFAULT_MAX_PARTS,
         }
+    }
+}
+
+impl Limits {
+    /// The bytes allowed on the wire ([`Limits::body_size`] or its derived default).
+    pub fn wire_budget(&self) -> u64 {
+        self.body_size.unwrap_or_else(|| {
+            self.file_size
+                .unwrap_or(DEFAULT_FILE_BUDGET)
+                .saturating_add(self.fields_size)
+                .saturating_add(FRAMING_BUDGET)
+        })
     }
 }
 
@@ -191,6 +234,13 @@ pub enum Budget {
     /// A field name nested deeper than [`fields::MAX_DEPTH`] bracket groups, or the form's names
     /// would build more than [`fields::MAX_SLOTS`] values (array holes included).
     FieldName,
+    /// The body went past [`Limits::body_size`] on the wire. The rest is left unread: answer
+    /// with `Connection: close`.
+    Body,
+    /// The text fields went past [`Limits::fields_size`].
+    Fields,
+    /// The form has more than [`Limits::max_parts`] parts.
+    Parts,
 }
 
 impl Budget {
@@ -198,6 +248,9 @@ impl Budget {
     pub fn message(self) -> &'static str {
         match self {
             Self::FieldName => "Field names nest too deep or build too many values",
+            Self::Body => "Request body too large",
+            Self::Fields => "Fields too large",
+            Self::Parts => "Too many parts",
         }
     }
 }
@@ -345,12 +398,14 @@ fn form_message(error: &ScanError) -> &'static str {
         ScanError::MalformedHeader => "Malformed part header",
         ScanError::UnexpectedEnd => "Unexpected end of form",
         ScanError::Aborted => "Request aborted",
+        ScanError::TooLarge => Budget::Body.message(),
     }
 }
 
 fn scan_error(error: ScanError) -> UploadError {
     match error {
         ScanError::Aborted => UploadError::Aborted,
+        ScanError::TooLarge => UploadError::Budget(Budget::Body),
         other => UploadError::Form(form_message(&other).to_owned()),
     }
 }
@@ -584,6 +639,8 @@ struct Tally {
     files: usize,
     fields: usize,
     files_left: usize,
+    /// Parts of any kind, for [`Limits::max_parts`].
+    parts: usize,
 }
 
 impl Single {
@@ -606,7 +663,8 @@ impl Single {
                 other => UploadError::Form(other.to_owned()),
             },
         )?;
-        let mut scanner = Scanner::new(req.take_body_stream(), &boundary);
+        let mut scanner =
+            Scanner::new(req.take_body_stream(), &boundary).limit(self.multer.limits.wire_budget());
         let mut progress = Progress::default();
         let outcome = {
             let read = self.read(&mut scanner, &mut progress);
@@ -625,7 +683,10 @@ impl Single {
             if let Some(file) = progress.accepted.and_then(|at| progress.stored.get(at)) {
                 req.extensions_mut().insert(file.clone());
             }
-            if !matches!(error, UploadError::Aborted | UploadError::TimedOut) {
+            if !matches!(
+                error,
+                UploadError::Aborted | UploadError::TimedOut | UploadError::Budget(Budget::Body)
+            ) {
                 scanner.drain(DRAIN_BUDGET).await;
             }
             return Err(error);
@@ -653,6 +714,7 @@ impl Single {
             files: 0,
             fields: 0,
             files_left: 1,
+            parts: 0,
         };
         loop {
             let item = match scanner.next().await {
@@ -675,6 +737,9 @@ impl Single {
                         progress.fail(limit(MulterCode::LimitPartCount, None))?;
                     }
                 }
+                Item::Headers(_) if tally.parts >= limits.max_parts => {
+                    return Err(progress.settle(UploadError::Budget(Budget::Parts)));
+                }
                 // Past the parts limit busboy no longer parses part headers: nothing after it
                 // reaches req.body or the storage, even while multer reads on.
                 Item::Headers(_)
@@ -682,9 +747,11 @@ impl Single {
                         i64::try_from(parts).is_ok_and(|p| tally.delimiters >= p)
                     }) =>
                 {
+                    tally.parts += 1;
                     skip_part(scanner, progress).await?;
                 }
                 Item::Headers(headers) => {
+                    tally.parts += 1;
                     match parse::classify(&headers, self.multer.preserve_path) {
                         Part::Skip => skip_part(scanner, progress).await?,
                         Part::File {
@@ -744,8 +811,10 @@ impl Single {
                                 continue;
                             }
                             tally.fields += 1;
-                            let (bytes, truncated) =
-                                read_field(scanner, limits.field_size, progress).await?;
+                            // The name is kept too: it counts before the value is read.
+                            let name_bytes = name.as_ref().map_or(0, |n| n.len() as u64);
+                            progress.charge_fields(name_bytes, limits.fields_size)?;
+                            let (bytes, truncated) = read_field(scanner, limits, progress).await?;
                             let Some(name) = name else {
                                 progress.fail(limit(MulterCode::MissingFieldName, None))?;
                                 continue;
@@ -822,6 +891,8 @@ struct Progress {
     storage_used: bool,
     /// The first limit error, while reading on.
     first_error: Option<UploadError>,
+    /// Text field bytes read so far (names and values), for [`Limits::fields_size`].
+    fields_bytes: u64,
 }
 
 impl Progress {
@@ -840,6 +911,16 @@ impl Progress {
     /// A fatal error, unless an earlier one is waiting to be reported.
     fn settle(&mut self, error: UploadError) -> UploadError {
         self.first_error.take().unwrap_or(error)
+    }
+
+    /// Counts text field bytes before they are buffered.
+    fn charge_fields(&mut self, bytes: u64, budget: u64) -> Result<(), UploadError> {
+        let total = self.fields_bytes.saturating_add(bytes);
+        if total > budget {
+            return Err(self.settle(UploadError::Budget(Budget::Fields)));
+        }
+        self.fields_bytes = total;
+        Ok(())
     }
 }
 
@@ -865,9 +946,10 @@ async fn skip_part(scanner: &mut Scanner, progress: &mut Progress) -> Result<(),
 /// marks the value truncated, even when it is exactly that long).
 async fn read_field(
     scanner: &mut Scanner,
-    limit: u64,
+    limits: &Limits,
     progress: &mut Progress,
 ) -> Result<(Vec<u8>, bool), UploadError> {
+    let limit = limits.field_size;
     let mut value: Vec<u8> = Vec::new();
     let mut truncated = false;
     loop {
@@ -882,6 +964,7 @@ async fn read_field(
                 }
                 let room = limit.saturating_sub(value.len() as u64);
                 let take = usize::try_from(room.min(data.len() as u64)).unwrap_or(data.len());
+                progress.charge_fields(take as u64, limits.fields_size)?;
                 value.extend_from_slice(data.get(..take).unwrap_or(&[]));
                 if value.len() as u64 == limit {
                     truncated = true;
@@ -901,5 +984,174 @@ impl<S: Send + Sync + 'static> Handler<S> for Single {
             self.run(req).await?;
             Ok(Flow::Next)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Body;
+
+    const BOUNDARY: &str = "b0undary";
+
+    fn field(name: &str, value: &[u8]) -> Vec<u8> {
+        let mut part =
+            format!("--{BOUNDARY}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n")
+                .into_bytes();
+        part.extend_from_slice(value);
+        part.extend_from_slice(b"\r\n");
+        part
+    }
+
+    fn file(name: &str, filename: &str, data: &[u8]) -> Vec<u8> {
+        let mut part = format!(
+            "--{BOUNDARY}\r\nContent-Disposition: form-data; name=\"{name}\"; filename=\"{filename}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+        )
+        .into_bytes();
+        part.extend_from_slice(data);
+        part.extend_from_slice(b"\r\n");
+        part
+    }
+
+    fn form(parts: &[Vec<u8>]) -> Vec<u8> {
+        let mut body = parts.concat();
+        body.extend_from_slice(format!("--{BOUNDARY}--\r\n").as_bytes());
+        body
+    }
+
+    fn request(body: Body) -> Req<()> {
+        let (parts, ()) = http::Request::builder()
+            .method("POST")
+            .uri("/upload")
+            .header(
+                "content-type",
+                format!("multipart/form-data; boundary={BOUNDARY}"),
+            )
+            .header("transfer-encoding", "chunked")
+            .body(())
+            .expect("request")
+            .into_parts();
+        Req::new(Arc::new(()), parts, body)
+    }
+
+    /// A storage that keeps nothing.
+    struct Discard;
+
+    impl Storage for Discard {
+        fn handle_file<'a>(
+            &'a self,
+            _file: &'a FileInfo,
+            data: &'a mut FileStream<'_>,
+        ) -> BoxFuture<'a, Result<StoredFile, Error>> {
+            Box::pin(async move {
+                let mut size = 0;
+                while let Some(chunk) = data.chunk().await {
+                    size += chunk?.len() as u64;
+                }
+                Ok(StoredFile {
+                    size,
+                    ..StoredFile::default()
+                })
+            })
+        }
+
+        fn remove_file<'a>(
+            &'a self,
+            _file: &'a mut UploadedFile,
+        ) -> BoxFuture<'a, Result<(), Error>> {
+            Box::pin(async { Ok(()) })
+        }
+    }
+
+    async fn upload(limits: Limits, body: Vec<u8>) -> Result<Option<UploadedFile>, UploadError> {
+        let mut req = request(Body::from(body));
+        Multer::new(Discard)
+            .limits(limits)
+            .single("file")
+            .run(&mut req)
+            .await
+    }
+
+    fn budget(outcome: Result<Option<UploadedFile>, UploadError>) -> Option<Budget> {
+        match outcome {
+            Err(UploadError::Budget(budget)) => Some(budget),
+            _ => None,
+        }
+    }
+
+    /// Review finding: with default limits every permitted field was kept and the number of
+    /// fields and parts was unlimited, so a route with only a file-size limit took arbitrarily
+    /// many small fields until the request timed out.
+    #[tokio::test]
+    async fn many_small_fields_hit_the_parts_budget() {
+        let limits = Limits {
+            file_size: Some(1024),
+            ..Limits::default()
+        };
+        let parts: Vec<Vec<u8>> = (0..DEFAULT_MAX_PARTS)
+            .map(|i| field(&format!("f{i}"), b"v"))
+            .collect();
+        assert!(upload(limits.clone(), form(&parts)).await.is_ok());
+        let parts: Vec<Vec<u8>> = (0..=DEFAULT_MAX_PARTS)
+            .map(|i| field(&format!("f{i}"), b"v"))
+            .collect();
+        assert_eq!(
+            budget(upload(limits, form(&parts)).await),
+            Some(Budget::Parts)
+        );
+    }
+
+    #[tokio::test]
+    async fn retained_fields_have_a_total_budget() {
+        let value = vec![b'x'; 1024 * 1024 - 1];
+        let parts: Vec<Vec<u8>> = (0..5).map(|i| field(&format!("f{i}"), &value)).collect();
+        assert_eq!(
+            budget(upload(Limits::default(), form(&parts)).await),
+            Some(Budget::Fields)
+        );
+        let parts: Vec<Vec<u8>> = (0..3).map(|i| field(&format!("f{i}"), &value)).collect();
+        assert!(upload(Limits::default(), form(&parts)).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn the_wire_has_a_budget() {
+        // Parts that are skipped (no form-data disposition) cost nothing but wire bytes.
+        let mut skipped = format!("--{BOUNDARY}\r\nX-Other: 1\r\n\r\n").into_bytes();
+        skipped.extend(std::iter::repeat_n(b'z', 6 * 1024 * 1024));
+        skipped.extend_from_slice(b"\r\n");
+        let limits = Limits {
+            file_size: Some(1024),
+            ..Limits::default()
+        };
+        assert_eq!(limits.wire_budget(), 1024 + 5 * 1024 * 1024);
+        assert_eq!(
+            budget(upload(limits, form(&[skipped])).await),
+            Some(Budget::Body)
+        );
+        let explicit = Limits {
+            body_size: Some(10_000),
+            ..Limits::default()
+        };
+        assert_eq!(
+            budget(
+                upload(
+                    explicit.clone(),
+                    form(&[file("file", "a.bin", &[7; 20_000])])
+                )
+                .await
+            ),
+            Some(Budget::Body)
+        );
+        let small = upload(explicit, form(&[file("file", "a.bin", &[7; 2_000])])).await;
+        assert_eq!(small.ok().flatten().map(|f| f.size()), Some(2_000));
+    }
+
+    #[tokio::test]
+    async fn hostile_field_names_fail_the_upload() {
+        let name = format!("a{}", "[10000]".repeat(2000));
+        assert_eq!(
+            budget(upload(Limits::default(), form(&[field(&name, b"x")])).await),
+            Some(Budget::FieldName)
+        );
     }
 }
