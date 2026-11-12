@@ -240,13 +240,17 @@ pub fn comma_list<'a>(raw: Option<&'a str>, def: &'a str) -> Vec<&'a str> {
 
 /// `JSON.parse(x)` in a `try`: `None` when unset or not JSON (the caller's fallback applies).
 ///
-/// Lone surrogate escapes become U+FFFD (text rule 3). Numbers keep their JSON literal; read
-/// them with `as_f64` for the double JavaScript holds (`9007199254740993` is 2^53 there). A
-/// number beyond the double range, which JavaScript reads as an infinity, is rejected here.
+/// Lone surrogate escapes become U+FFFD (text rule 3). Numbers and key order follow
+/// `JSON.parse` through dima-text. Out-of-range doubles are rejected (allowed difference).
 pub fn json_value(raw: Option<&str>) -> Option<Value> {
-    let text = raw?;
-    let bytes = dima_text::sanitize_lone_surrogates(text.as_bytes());
-    serde_json::from_slice(&bytes).ok()
+    dima_text::parse_js_json(
+        raw?,
+        dima_text::JsonLimits {
+            max_depth: 127,
+            max_bytes: usize::MAX,
+        },
+    )
+    .ok()
 }
 
 /// The delay Node's `setTimeout`/`setInterval` actually use for `after`: values that are not in
@@ -266,6 +270,27 @@ mod tests {
 
     fn same(a: f64, b: f64) -> bool {
         a.to_bits() == b.to_bits() || (a.is_nan() && b.is_nan())
+    }
+
+    #[test]
+    fn json_shared_contract() {
+        // Node rounds integers and enumerates index keys first; the old copy did neither.
+        let value = json_value(Some(
+            r#"{"b":1,"2":2,"b":3,"1":9007199254740993,"z":-0,"e":1e2}"#,
+        ))
+        .unwrap();
+        assert_eq!(value["1"].as_u64(), Some(9007199254740992));
+        assert_eq!(
+            value
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            ["1", "2", "b", "z", "e"]
+        );
+        assert!(json_value(Some(&format!("{}0{}", "[".repeat(127), "]".repeat(127)))).is_some());
+        assert!(json_value(Some(&format!("{}0{}", "[".repeat(128), "]".repeat(128)))).is_none());
     }
 
     #[test]

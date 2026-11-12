@@ -565,14 +565,19 @@ impl Js {
         matches!(value, None | Some(Js::Null))
     }
 
-    fn truthy(&self) -> bool {
+    fn view(&self) -> dima_text::Js<'_, Self> {
         match self {
-            Self::Null => false,
-            Self::Bool(flag) => *flag,
-            Self::Number(n) => *n != 0.0 && !n.is_nan(),
-            Self::String(text) => !text.is_empty(),
-            _ => true,
+            Self::Null => dima_text::Js::Null,
+            Self::Bool(flag) => dima_text::Js::Bool(*flag),
+            Self::Number(n) => dima_text::Js::Number(*n),
+            Self::String(text) => dima_text::Js::String(text),
+            Self::Array(items) => dima_text::Js::Array(items),
+            _ => dima_text::Js::Other,
         }
+    }
+
+    fn truthy(&self) -> bool {
+        dima_text::js_truthy_with(self, Self::view)
     }
 
     fn type_of(&self) -> &'static str {
@@ -586,24 +591,11 @@ impl Js {
 
     /// `String(value)` for the values a codec reads as text.
     fn text(&self) -> String {
-        match self {
-            Self::String(text) | Self::Symbol(text) => text.clone(),
-            Self::Number(n) => dima_text::number_to_string(*n),
-            Self::Bool(flag) => flag.to_string(),
-            Self::Null => "null".to_owned(),
-            Self::Array(items) => items
-                .iter()
-                .map(|item| {
-                    if matches!(item, Js::Null) {
-                        String::new()
-                    } else {
-                        item.text()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(","),
-            _ => "[object Object]".to_owned(),
-        }
+        dima_text::js_string_with(self, |value| match value {
+            // BSONSymbol is an object (truthy) but its driver text is the symbol's text.
+            Self::Symbol(text) => dima_text::Js::String(text),
+            _ => value.view(),
+        })
     }
 
     /// The JSON text `JSON.stringify` writes for a value that is still plain JSON.

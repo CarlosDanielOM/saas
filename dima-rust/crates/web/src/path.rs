@@ -58,20 +58,16 @@ impl Params {
 
     /// Keys and values in JavaScript enumeration order (array-index keys first).
     pub fn iter(&self) -> impl Iterator<Item = (&str, Option<&str>)> {
-        let mut indexed: Vec<(u64, &(String, Option<String>))> = Vec::new();
-        let mut named: Vec<&(String, Option<String>)> = Vec::new();
-        for entry in &self.entries {
-            match index_key(&entry.0) {
-                Some(i) => indexed.push((i, entry)),
-                None => named.push(entry),
-            }
-        }
-        indexed.sort_by_key(|(i, _)| *i);
-        indexed
-            .into_iter()
-            .map(|(_, e)| e)
-            .chain(named)
-            .map(|(k, v)| (k.as_str(), v.as_deref()))
+        let values: std::collections::HashMap<_, _> = self
+            .entries
+            .iter()
+            .map(|(key, value)| (key.as_str(), value.as_deref()))
+            .collect();
+        let keys = dima_text::js_property_order(
+            self.entries.iter().map(|(key, _)| key.as_str()).collect(),
+        );
+        keys.into_iter()
+            .map(move |key| (key, values.get(key).copied().flatten()))
     }
 
     /// `req.params` as JSON (`undefined` values omitted, like `JSON.stringify`).
@@ -140,16 +136,6 @@ impl Params {
         }
         out
     }
-}
-
-fn index_key(key: &str) -> Option<u64> {
-    if key.is_empty()
-        || (key.len() > 1 && key.starts_with('0'))
-        || !key.bytes().all(|b| b.is_ascii_digit())
-    {
-        return None;
-    }
-    key.parse::<u64>().ok().filter(|n| *n <= 4_294_967_294)
 }
 
 /// A successful match: the matched part of the path (for prefix layers) and the parameters.
@@ -390,6 +376,21 @@ mod tests {
             .iter()
             .map(|(k, v)| (k.to_owned(), v.map(str::to_owned)))
             .collect()
+    }
+
+    #[test]
+    fn parameter_keys_follow_shared_property_order() {
+        let mut params = Params::default();
+        for key in ["b", "4294967295", "2", "01", "0", "4294967294", "😀"] {
+            params.set(key.to_owned(), None);
+        }
+        let entries: Vec<_> = params.iter().collect();
+        assert_eq!(
+            entries.iter().map(|(key, _)| *key).collect::<Vec<_>>(),
+            ["0", "2", "4294967294", "b", "4294967295", "01", "😀"]
+        );
+        assert!(entries.iter().all(|(_, value)| value.is_none()));
+        assert_eq!(params.to_json(), serde_json::json!({}));
     }
 
     #[test]

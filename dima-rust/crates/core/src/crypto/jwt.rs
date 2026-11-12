@@ -321,8 +321,14 @@ fn timespan(time: Timespan<'_>, timestamp: f64) -> Option<f64> {
 
 /// `JSON.parse(text)`, with lone surrogate escapes repaired (text rule 3).
 fn json_parse(text: &str) -> Option<Value> {
-    let bytes = dima_text::sanitize_lone_surrogates(text.as_bytes());
-    serde_json::from_slice(&bytes).ok()
+    dima_text::parse_js_json(
+        text,
+        dima_text::JsonLimits {
+            max_depth: 127,
+            max_bytes: usize::MAX,
+        },
+    )
+    .ok()
 }
 
 /// `jwt.sign(payload, key, options)` at `now_ms` (`Date.now()`).
@@ -686,10 +692,11 @@ mod tests {
     }
 
     #[test]
-    fn json_copy_baseline() {
+    fn json_shared_contract() {
+        // Node rounds large integers and enumerates index keys first; the old copy did neither.
         let value =
             json_parse(r#"{"b":1,"2":2,"b":3,"1":9007199254740993,"z":-0,"e":1e2}"#).unwrap();
-        assert_eq!(value["1"].as_u64(), Some(9007199254740993));
+        assert_eq!(value["1"].as_u64(), Some(9007199254740992));
         assert_eq!(
             value
                 .as_object()
@@ -697,7 +704,7 @@ mod tests {
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            ["b", "2", "1", "z", "e"]
+            ["1", "2", "b", "z", "e"]
         );
     }
 

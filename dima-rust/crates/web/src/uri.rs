@@ -66,44 +66,8 @@ fn url_allowed(c: char) -> bool {
 
 /// JavaScript `encodeURI` for one character.
 fn push_encode_uri(out: &mut String, c: char) {
-    let keep = c.is_ascii_alphanumeric()
-        || matches!(
-            c,
-            '-' | '_'
-                | '.'
-                | '!'
-                | '~'
-                | '*'
-                | '\''
-                | '('
-                | ')'
-                | ';'
-                | ','
-                | '/'
-                | '?'
-                | ':'
-                | '@'
-                | '&'
-                | '='
-                | '+'
-                | '$'
-                | '#'
-        );
-    if keep {
-        out.push(c);
-        return;
-    }
-    let mut buf = [0u8; 4];
-    for byte in c.encode_utf8(&mut buf).bytes() {
-        push_percent(out, byte);
-    }
-}
-
-pub(crate) fn push_percent(out: &mut String, byte: u8) {
-    const HEX: &[u8; 16] = b"0123456789ABCDEF";
-    out.push('%');
-    out.push(char::from(HEX[usize::from(byte >> 4)]));
-    out.push(char::from(HEX[usize::from(byte & 0x0F)]));
+    let mut buf = [0; 4];
+    out.push_str(&dima_text::encode_uri(c.encode_utf8(&mut buf)));
 }
 
 /// `escape-html`: `& < > " '`.

@@ -411,9 +411,11 @@ pub const LOG_FIELDS: [&str; 9] = [
 fn name_of(value: &Value) -> String {
     match value {
         Value::String(text) => Label::<NAME_MAX>::clean(text).as_str().to_owned(),
-        Value::Number(number) => Label::<NAME_MAX>::clean(&number.to_string())
-            .as_str()
-            .to_owned(),
+        Value::Number(number) => Label::<NAME_MAX>::clean(&dima_text::number_to_string(
+            number.as_f64().unwrap_or(f64::NAN),
+        ))
+        .as_str()
+        .to_owned(),
         Value::Bool(flag) => flag.to_string(),
         Value::Array(_) => "application".to_owned(),
         Value::Object(_) => "_object Object_".to_owned(),
@@ -596,9 +598,10 @@ mod tests {
     }
 
     #[test]
-    fn numeric_name_copy_baseline() {
-        assert_eq!(name_of(&serde_json::json!(-0.0)), "-0.0");
-        assert_eq!(name_of(&serde_json::json!(1.0)), "1.0");
+    fn numeric_name_shared_contract() {
+        // Node String(number) drops negative zero and the integral .0 suffix.
+        assert_eq!(name_of(&serde_json::json!(-0.0)), "0");
+        assert_eq!(name_of(&serde_json::json!(1.0)), "1");
     }
 
     #[test]

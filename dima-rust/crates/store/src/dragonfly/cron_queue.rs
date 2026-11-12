@@ -439,9 +439,13 @@ pub fn parse_cron_queue_job(
 ) -> Result<Option<CronQueueJob>, CronQueueDepthError> {
     let text = String::from_utf8_lossy(item.as_bytes());
     check_json_depth(&text)?;
-    let Ok(parsed) =
-        serde_json::from_slice::<Value>(&dima_text::sanitize_lone_surrogates(text.as_bytes()))
-    else {
+    let Ok(parsed) = dima_text::parse_js_json(
+        &text,
+        dima_text::JsonLimits {
+            max_depth: CRON_QUEUE_JSON_MAX_DEPTH,
+            max_bytes: usize::MAX,
+        },
+    ) else {
         return Ok(None);
     };
     let Value::Object(parsed) = parsed else {
@@ -545,21 +549,22 @@ mod tests {
     }
 
     #[test]
-    fn parsed_job_number_copy_baseline() {
+    fn parsed_job_number_shared_contract() {
+        // Node rounds/reorders parsed data; acknowledgment still uses the popped bytes.
         let item = QueueItem::from_popped(
             br#"{"job":"test","data":{"b":1,"2":2,"b":3,"1":9007199254740993}}"#.to_vec(),
         );
         let raw = item.as_bytes().to_vec();
         let job = parse_cron_queue_job(&item, NOW, "fresh").unwrap().unwrap();
         let data = job.data.unwrap();
-        assert_eq!(data["1"].as_u64(), Some(9007199254740993));
+        assert_eq!(data["1"].as_u64(), Some(9007199254740992));
         assert_eq!(
             data.as_object()
                 .unwrap()
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            ["b", "2", "1"]
+            ["1", "2", "b"]
         );
         assert_eq!(item.as_bytes(), raw);
     }
