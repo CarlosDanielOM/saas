@@ -12,6 +12,7 @@ workspace = true
 test-util = []
 
 [dependencies]
+dima-events.workspace = true
 dima-core.workspace = true
 dima-model.workspace = true
 dima-store.workspace = true
