@@ -1,0 +1,3115 @@
+{
+  "now": 1793534400000,
+  "seeds": [
+    {
+      "phase": "empty",
+      "collection": "streamsessions",
+      "documents": []
+    },
+    {
+      "phase": "empty",
+      "collection": "streamviewersnapshots",
+      "documents": []
+    },
+    {
+      "phase": "one",
+      "collection": "streamsessions",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s2",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793491800000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793495820000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberInt": "0"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "one",
+      "collection": "streamviewersnapshots",
+      "documents": []
+    },
+    {
+      "phase": "boundaries",
+      "collection": "streamsessions",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s2",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793491800000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793495820000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberInt": "0"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000002"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s3",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793490000000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793494800000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "2.5"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberDouble": "1.5"
+          },
+          "subs": {
+            "$numberDouble": "2.5"
+          },
+          "bits": {
+            "$numberDouble": "2.5"
+          },
+          "donations": {
+            "$numberDouble": "1.005"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000003"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s4",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793493000000"
+            }
+          },
+          "ended_at": null,
+          "status": "orphaned",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "0.5"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberDouble": "2.675"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000004"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s5",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1790899140000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1790902860000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "1.25"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberDouble": "62.123"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "boundaries",
+      "collection": "streamviewersnapshots",
+      "documents": []
+    },
+    {
+      "phase": "live",
+      "collection": "streamsessions",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s2",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793491800000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793495820000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberInt": "0"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000002"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s3",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793490000000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793494800000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "2.5"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberDouble": "1.5"
+          },
+          "subs": {
+            "$numberDouble": "2.5"
+          },
+          "bits": {
+            "$numberDouble": "2.5"
+          },
+          "donations": {
+            "$numberDouble": "1.005"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000003"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s4",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793493000000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "status": "orphaned",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "0.5"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberDouble": "2.675"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000004"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s5",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1790899140000"
+            }
+          },
+          "ended_at": {
+            "$date": {
+              "$numberLong": "1790902860000"
+            }
+          },
+          "status": "offline",
+          "peak_viewers": {
+            "$numberInt": "0"
+          },
+          "average_viewers": {
+            "$numberDouble": "1.25"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberDouble": "62.123"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "0"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "000000000000000000000005"
+          },
+          "channelID": "channel",
+          "channel": "",
+          "stream_id": "s6",
+          "started_at": {
+            "$date": {
+              "$numberLong": "1793527230000"
+            }
+          },
+          "ended_at": null,
+          "status": "live",
+          "peak_viewers": {
+            "$numberInt": "20"
+          },
+          "average_viewers": {
+            "$numberDouble": "3.5"
+          },
+          "sample_count": {
+            "$numberInt": "0"
+          },
+          "sample_total_viewers": {
+            "$numberInt": "0"
+          },
+          "duration_minutes": {
+            "$numberInt": "0"
+          },
+          "follows": {
+            "$numberInt": "0"
+          },
+          "subs": {
+            "$numberInt": "1001"
+          },
+          "bits": {
+            "$numberInt": "0"
+          },
+          "donations": {
+            "$numberInt": "0"
+          },
+          "messages": {
+            "$numberInt": "12"
+          },
+          "commands": {
+            "$numberInt": "3"
+          },
+          "applied_domain_event_keys": [],
+          "offline_summary_enqueued_at": null,
+          "offline_clips_completed_at": null,
+          "last_seen_live_at": null,
+          "consecutive_offline_checks": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "live",
+      "collection": "streamviewersnapshots",
+      "documents": [
+        {
+          "_id": {
+            "$oid": "6ae729c0866a499af88962f6"
+          },
+          "channelID": "channel",
+          "session_id": {
+            "$oid": "000000000000000000000005"
+          },
+          "stream_id": "s6",
+          "captured_at": {
+            "$date": {
+              "$numberLong": "1793534399000"
+            }
+          },
+          "viewers": {
+            "$numberDouble": "12.5"
+          },
+          "title": "",
+          "game_name": "",
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6ae729c0866a499af88962f8"
+          },
+          "channelID": "channel",
+          "session_id": {
+            "$oid": "000000000000000000000005"
+          },
+          "stream_id": "s6",
+          "captured_at": {
+            "$date": {
+              "$numberLong": "1793534398000"
+            }
+          },
+          "viewers": {
+            "$numberInt": "90"
+          },
+          "title": "",
+          "game_name": "",
+          "messages": {
+            "$numberInt": "0"
+          },
+          "commands": {
+            "$numberInt": "0"
+          },
+          "created_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "updated_at": {
+            "$date": {
+              "$numberLong": "1793534400000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "default",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "30",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "0",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "-1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "2",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "31",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "0.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "1.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "12.75",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "NaN",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "Infinity",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "-Infinity",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 0,
+          "totalBits": 0,
+          "totalStreams": 0,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [],
+        "streamHistory": []
+      },
+      "error": false
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "days": "1e+100",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "viewers": "default",
+      "live": null
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "viewers": null,
+      "live": null
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "viewers": 0,
+      "live": null
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "viewers": -1,
+      "live": null
+    },
+    {
+      "phase": "empty",
+      "channel": "channel",
+      "viewers": 12.25,
+      "live": null
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "default",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "30",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "0",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "-1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "2",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "31",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "0.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "1.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "12.75",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "NaN",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "Infinity",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "-Infinity",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 0,
+          "monthlyAverageViewers": 0,
+          "averageHoursPerStream": 1.1,
+          "totalBits": 0,
+          "totalStreams": 1,
+          "totalDonations": 0,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 0,
+            "hours": 1.1
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "days": "1e+100",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "viewers": "default",
+      "live": null
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "viewers": null,
+      "live": null
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "viewers": 0,
+      "live": null
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "viewers": -1,
+      "live": null
+    },
+    {
+      "phase": "one",
+      "channel": "channel",
+      "viewers": 12.25,
+      "live": null
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "default",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "30",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 6.3,
+          "totalBits": 0,
+          "totalStreams": 2,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "0",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 6.3,
+          "totalBits": 0,
+          "totalStreams": 2,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "-1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 6.3,
+          "totalBits": 0,
+          "totalStreams": 2,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "2",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "31",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "0.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 6.3,
+          "totalBits": 0,
+          "totalStreams": 2,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "1.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "12.75",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 4.6,
+          "totalBits": 3,
+          "totalStreams": 3,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 3,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "NaN",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "Infinity",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "-Infinity",
+      "expected": {
+        "kpis": {
+          "activeViewers": 0,
+          "averageViewers": 1,
+          "monthlyAverageViewers": 1,
+          "averageHoursPerStream": 6.3,
+          "totalBits": 0,
+          "totalStreams": 2,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 0,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 0
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 1,
+            "hours": 12.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "days": "1e+100",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "viewers": "default",
+      "live": null
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "viewers": null,
+      "live": null
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "viewers": 0,
+      "live": null
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "viewers": -1,
+      "live": null
+    },
+    {
+      "phase": "boundaries",
+      "channel": "channel",
+      "viewers": 12.25,
+      "live": null
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "default",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "30",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4.9,
+          "totalBits": 0,
+          "totalStreams": 3,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 1001,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "0",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4.9,
+          "totalBits": 0,
+          "totalStreams": 3,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 1001,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "-1",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4.9,
+          "totalBits": 0,
+          "totalStreams": 3,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 1001,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "2",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "31",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "0.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4.9,
+          "totalBits": 0,
+          "totalStreams": 3,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 1001,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "1.5",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "12.75",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4,
+          "totalBits": 3,
+          "totalStreams": 4,
+          "totalDonations": 3.67,
+          "activeFollows": 2,
+          "activeSubs": 1004,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-10-31T00:00:00.000Z",
+            "viewers": 3,
+            "hours": 1.3
+          },
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-10-31T23:40:00.000Z",
+            "viewers": 3,
+            "hours": 1.3,
+            "bits": 3,
+            "donations": 1,
+            "follows": 2,
+            "subs": 3
+          },
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "NaN",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "Infinity",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "-Infinity",
+      "expected": {
+        "kpis": {
+          "activeViewers": 13,
+          "averageViewers": 2,
+          "monthlyAverageViewers": 2,
+          "averageHoursPerStream": 4.9,
+          "totalBits": 0,
+          "totalStreams": 3,
+          "totalDonations": 2.67,
+          "activeFollows": 0,
+          "activeSubs": 1001,
+          "monthlyGoalSubs": 1000,
+          "subsProgressPct": 100
+        },
+        "trend": [
+          {
+            "date": "2026-11-01T00:00:00.000Z",
+            "viewers": 2,
+            "hours": 14.6
+          }
+        ],
+        "streamHistory": [
+          {
+            "date": "2026-11-01T00:10:00.000Z",
+            "viewers": 0,
+            "hours": 1.1,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T00:30:00.000Z",
+            "viewers": 1,
+            "hours": 11.5,
+            "bits": 0,
+            "donations": 2.67,
+            "follows": 0,
+            "subs": 0
+          },
+          {
+            "date": "2026-11-01T12:00:00.000Z",
+            "viewers": 4,
+            "hours": 2,
+            "bits": 0,
+            "donations": 0,
+            "follows": 0,
+            "subs": 1001
+          }
+        ]
+      },
+      "error": false
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "days": "1e+100",
+      "expected": null,
+      "error": true
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "viewers": "default",
+      "live": {
+        "isLive": true,
+        "startedAt": "2026-11-01T10:00:30.000Z",
+        "durationMinutes": 120,
+        "averageViewers": 3.5,
+        "peakViewers": 20,
+        "currentViewers": 12.5,
+        "follows": 0,
+        "subs": 1001,
+        "bits": 0,
+        "donations": 0,
+        "messages": 12,
+        "commands": 3
+      }
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "viewers": null,
+      "live": {
+        "isLive": true,
+        "startedAt": "2026-11-01T10:00:30.000Z",
+        "durationMinutes": 120,
+        "averageViewers": 3.5,
+        "peakViewers": 20,
+        "currentViewers": 12.5,
+        "follows": 0,
+        "subs": 1001,
+        "bits": 0,
+        "donations": 0,
+        "messages": 12,
+        "commands": 3
+      }
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "viewers": 0,
+      "live": {
+        "isLive": true,
+        "startedAt": "2026-11-01T10:00:30.000Z",
+        "durationMinutes": 120,
+        "averageViewers": 3.5,
+        "peakViewers": 20,
+        "currentViewers": 0,
+        "follows": 0,
+        "subs": 1001,
+        "bits": 0,
+        "donations": 0,
+        "messages": 12,
+        "commands": 3
+      }
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "viewers": -1,
+      "live": {
+        "isLive": true,
+        "startedAt": "2026-11-01T10:00:30.000Z",
+        "durationMinutes": 120,
+        "averageViewers": 3.5,
+        "peakViewers": 20,
+        "currentViewers": 0,
+        "follows": 0,
+        "subs": 1001,
+        "bits": 0,
+        "donations": 0,
+        "messages": 12,
+        "commands": 3
+      }
+    },
+    {
+      "phase": "live",
+      "channel": "channel",
+      "viewers": 12.25,
+      "live": {
+        "isLive": true,
+        "startedAt": "2026-11-01T10:00:30.000Z",
+        "durationMinutes": 120,
+        "averageViewers": 3.5,
+        "peakViewers": 20,
+        "currentViewers": 12.25,
+        "follows": 0,
+        "subs": 1001,
+        "bits": 0,
+        "donations": 0,
+        "messages": 12,
+        "commands": 3
+      }
+    }
+  ]
+}

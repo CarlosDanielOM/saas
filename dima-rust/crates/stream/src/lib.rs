@@ -50,3 +50,5 @@ where
 }
 
 pub mod subscription_ledger;
+
+pub mod dashboard_analytics;
