@@ -11,9 +11,12 @@
 //!   304) moves from that cap to a quota of its own, [`ServeOptions::max_streams`], and stays
 //!   there until it closes, so overlays holding streams open cannot shut ordinary HTTP out. An
 //!   event stream is answered with `Connection: close`: when it ends the connection closes
-//!   instead of serving more requests under the stream quota. When the stream quota is full the answer is
-//!   replaced with `503 Service Unavailable` (the upgrade does not happen, the event stream's
-//!   body is dropped and its senders see the client gone).
+//!   instead of serving more requests under the stream quota. When the stream quota is full
+//!   the answer is replaced with `503 Service Unavailable` (the upgrade does not happen, the
+//!   event stream's body is dropped and its senders see the client gone), and observers see
+//!   that `503`. That check comes after the handler ran: an owner that creates something for
+//!   its stream (a session) reserves the slot first with the request's [`StreamAdmission`] and
+//!   refuses before creating anything.
 //! - **Shutdown**: the server stops accepting, lets open requests finish and waits for upgraded
 //!   sockets and their [`UpgradeGuard`]s, all up to [`ServeOptions::drain_timeout`]; then HTTP
 //!   connections are aborted and every upgraded socket fails its reads and writes (the owner
@@ -96,7 +99,8 @@ pub struct ServeOptions {
     /// Long-lived streams open at once: upgraded connections and event streams, which leave the
     /// [`ServeOptions::max_connections`] cap when they start (10 000 by default). Beyond it the
     /// answer that would start one becomes `503`. A connection that served an event stream
-    /// closes when the stream ends.
+    /// closes when the stream ends. Handlers can reserve a slot before they create anything
+    /// with [`StreamAdmission`].
     pub max_streams: usize,
     /// After shutdown is requested, how long open connections may finish their requests, and
     /// upgraded connections may close, before they are closed.
@@ -297,14 +301,15 @@ impl Slot {
         }))
     }
 
-    /// Moves the connection to the stream quota (releasing its HTTP slot); `false` when the
-    /// stream quota is full.
-    fn promote(&self, streams: &Arc<Semaphore>) -> bool {
+    /// Moves the connection to the stream quota (releasing its HTTP slot), with the permit a
+    /// handler reserved or a new one; `false` when there was no reservation and the stream
+    /// quota is full.
+    fn promote(&self, streams: &Arc<Semaphore>, reserved: Option<OwnedSemaphorePermit>) -> bool {
         let mut quota = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         if quota.stream {
             return true;
         }
-        match Arc::clone(streams).try_acquire_owned() {
+        match reserved.map_or_else(|| Arc::clone(streams).try_acquire_owned(), Ok) {
             Ok(permit) => {
                 *quota = Quota {
                     stream: true,
@@ -313,6 +318,100 @@ impl Slot {
                 true
             }
             Err(_) => false,
+        }
+    }
+}
+
+/// The stream quota as one request sees it: [`serve`] puts one in the extensions of every
+/// request (beside the [`UpgradeGuard`] of an upgrade request), so the owner of an upgrade or
+/// an event stream can reserve its slot before it creates anything (a session, a subscription)
+/// and refuse cleanly when there is none. Read it with [`crate::Req::stream_admission`], or
+/// from `http::Request::extensions` in a service in front of the [`crate::App`].
+///
+/// - [`StreamAdmission::reserve`] takes a slot now or answers [`StreamsFull`]. Reserving again
+///   is a no-op.
+/// - An answer that starts a stream (`101`, or an event stream with a body) for a request with a
+///   reservation is promoted with it, without a second check. Any other answer gives the slot
+///   back, and so does a request that ends without an answer.
+/// - Owners that do not reserve still get the late check: when the quota is full at the moment
+///   the answer is ready, the client receives `503` instead (see [`ServeOptions::max_streams`]).
+///
+/// Clones share the reservation. Once the request's answer was handed to the connection,
+/// `reserve` answers [`StreamsFull`].
+#[derive(Clone)]
+pub struct StreamAdmission {
+    streams: Arc<Semaphore>,
+    state: Arc<Mutex<Admission>>,
+}
+
+/// Where one request's reservation stands.
+enum Admission {
+    Open,
+    Reserved(OwnedSemaphorePermit),
+    /// The answer was handed over (the permit, if any, went with it).
+    Settled,
+}
+
+/// [`StreamAdmission::reserve`]: no stream slot is free.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("the stream quota is full")]
+pub struct StreamsFull;
+
+impl std::fmt::Debug for StreamAdmission {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamAdmission")
+            .field("reserved", &self.is_reserved())
+            .field("available", &self.streams.available_permits())
+            .finish()
+    }
+}
+
+impl StreamAdmission {
+    fn new(streams: &Arc<Semaphore>) -> Self {
+        Self {
+            streams: Arc::clone(streams),
+            state: Arc::new(Mutex::new(Admission::Open)),
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, Admission> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Reserves a stream slot for this request's answer, or says the quota is full.
+    pub fn reserve(&self) -> Result<(), StreamsFull> {
+        let mut state = self.lock();
+        match &*state {
+            Admission::Reserved(_) => Ok(()),
+            Admission::Settled => Err(StreamsFull),
+            Admission::Open => match Arc::clone(&self.streams).try_acquire_owned() {
+                Ok(permit) => {
+                    *state = Admission::Reserved(permit);
+                    Ok(())
+                }
+                Err(_) => Err(StreamsFull),
+            },
+        }
+    }
+
+    /// A slot is reserved for this request.
+    pub fn is_reserved(&self) -> bool {
+        matches!(&*self.lock(), Admission::Reserved(_))
+    }
+
+    /// Gives a reserved slot back (the owner decided not to start a stream after all).
+    pub fn release(&self) {
+        let mut state = self.lock();
+        if matches!(&*state, Admission::Reserved(_)) {
+            *state = Admission::Open;
+        }
+    }
+
+    /// The answer is ready: the reserved permit, if any; later reservations are refused.
+    fn settle(&self) -> Option<OwnedSemaphorePermit> {
+        match std::mem::replace(&mut *self.lock(), Admission::Settled) {
+            Admission::Reserved(permit) => Some(permit),
+            Admission::Open | Admission::Settled => None,
         }
     }
 }
@@ -349,7 +448,8 @@ struct Shared {
 ///   for this connection only.
 ///
 /// The connection counts against [`ServeOptions::max_streams`] once the `101` is sent, until the
-/// socket is dropped. A clone is a second guard: shutdown waits for every one.
+/// socket is dropped. To refuse before creating a session when that quota is full, reserve the
+/// slot first with the request's [`StreamAdmission`]. A clone is a second guard: shutdown waits for every one.
 #[derive(Clone)]
 pub struct UpgradeGuard {
     shutdown: CancellationToken,
@@ -677,6 +777,8 @@ async fn connection<T, B>(
         let deadline = Box::pin(tokio::time::sleep(options.request_timeout));
         let mut request = request.map(|inner| Body::new(DeadlineBody { inner, deadline }));
         request.extensions_mut().insert(PeerAddr(peer));
+        let admission = StreamAdmission::new(&shared.streams);
+        request.extensions_mut().insert(admission.clone());
         if request
             .extensions()
             .get::<hyper::upgrade::OnUpgrade>()
@@ -694,9 +796,10 @@ async fn connection<T, B>(
         let streams = Arc::clone(&shared.streams);
         async move {
             let mut response = response.await?.map(Body::new);
+            let reserved = admission.settle();
             if is_long_lived(&method, &response) {
-                if !slot.promote(&streams) {
-                    response = streams_full();
+                if !slot.promote(&streams, reserved) {
+                    response = crate::exchange::replace_answer(response, streams_full());
                 } else if response.status() != http::StatusCode::SWITCHING_PROTOCOLS {
                     // The stream slot stays with the connection until it closes, so it must
                     // not go back to ordinary requests: close it when the stream ends.

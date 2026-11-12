@@ -161,6 +161,7 @@ pub use request::{BodyState, PeerAddr, Req, ResponseState};
 pub use response::Response;
 pub use router::Router;
 pub use server::{
-    MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, UpgradeGuard, bind, bind_to, serve,
+    MAX_HEAD_BYTES, MAX_HEADER_LINES, ServeOptions, StreamAdmission, StreamsFull, UpgradeGuard,
+    bind, bind_to, serve,
 };
 pub use static_files::{ServeStatic, serve_static};

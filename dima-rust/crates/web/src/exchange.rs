@@ -323,25 +323,60 @@ impl Exchange {
         let Some(mut completion) = self.completion.take() else {
             return response;
         };
-        let status = response.status().as_u16();
-        completion.status = Some(status);
         if trace.is_some() {
             completion.trace = trace;
         }
-        // Bodies hyper never sends: their end is the end of the exchange.
-        let bodiless = completion.method == Method::HEAD
-            || status == 204
-            || status == 304
-            || (100..200).contains(&status);
-        response.map(|inner| {
-            Body::new(Finish {
-                inner,
-                bytes: 0,
-                ended: AtomicBool::new(false),
-                bodiless,
-                completion: Some(completion),
-            })
+        attach(response, completion)
+    }
+}
+
+/// The completion of an answer [`crate::App`] built, kept in the response's extensions so that
+/// the server, when it sends another answer instead (the stream quota was full), reports the
+/// answer that was sent.
+#[derive(Clone)]
+struct Answer(Arc<Mutex<Option<Completion>>>);
+
+/// Wraps `response`'s body so that it reports `completion` with the response's status.
+fn attach(response: http::Response<Body>, mut completion: Completion) -> http::Response<Body> {
+    let status = response.status().as_u16();
+    completion.status = Some(status);
+    // Bodies hyper never sends: their end is the end of the exchange.
+    let bodiless = completion.method == Method::HEAD
+        || status == 204
+        || status == 304
+        || (100..200).contains(&status);
+    let completion = Arc::new(Mutex::new(Some(completion)));
+    let mut response = response.map(|inner| {
+        Body::new(Finish {
+            inner,
+            bytes: 0,
+            ended: AtomicBool::new(false),
+            bodiless,
+            completion: Arc::clone(&completion),
         })
+    });
+    response.extensions_mut().insert(Answer(completion));
+    response
+}
+
+/// Sends `instead` in place of `built`: the exchange `built` would have reported (if it came
+/// from an [`crate::App`]) is reported with `instead`'s status, bytes and end, and `built` is
+/// dropped without a report.
+pub(crate) fn replace_answer(
+    built: http::Response<Body>,
+    instead: http::Response<Body>,
+) -> http::Response<Body> {
+    let completion = built.extensions().get::<Answer>().and_then(|answer| {
+        answer
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
+    });
+    drop(built);
+    match completion {
+        Some(completion) => attach(instead, completion),
+        None => instead,
     }
 }
 
@@ -361,12 +396,18 @@ struct Finish {
     /// `is_end_stream` said so (hyper may then drop the body without polling it).
     ended: AtomicBool,
     bodiless: bool,
-    completion: Option<Completion>,
+    /// Shared with the response's [`Answer`]; taken by the first report.
+    completion: Arc<Mutex<Option<Completion>>>,
 }
 
 impl Finish {
     fn complete(&mut self, aborted: bool) {
-        if let Some(completion) = self.completion.take() {
+        let completion = self
+            .completion
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        if let Some(completion) = completion {
             completion.report(self.bytes, aborted);
         }
     }

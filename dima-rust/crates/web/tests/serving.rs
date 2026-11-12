@@ -9,7 +9,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bytes::Bytes;
-use dima_web::{App, Body, Error, Req, Response, Router, ServeOptions, serve};
+use dima_web::{
+    App, Body, Error, Observer, Req, RequestEnd, Response, Router, ServeOptions, serve,
+};
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;
@@ -19,9 +21,42 @@ use tokio_util::sync::CancellationToken;
 struct Probe {
     /// How the upgraded flood's last write failed.
     flood_error: Mutex<Option<std::io::ErrorKind>>,
+    /// Sessions the reserving upgrade created.
+    sessions: Mutex<usize>,
+    /// What the observer saw end.
+    ended: Mutex<Vec<RequestEnd>>,
 }
 
 type State = Arc<Probe>;
+
+struct Watch(State);
+
+impl Observer for Watch {
+    fn on_response(&self, end: RequestEnd) {
+        self.0.ended.lock().unwrap().push(end);
+    }
+}
+
+impl Probe {
+    /// The observed (status, aborted) of the exchanges for `url`, waiting until `count` ended.
+    async fn ended_for(&self, url: &str, count: usize) -> Vec<(Option<u16>, bool)> {
+        for _ in 0..200 {
+            let seen: Vec<_> = self
+                .ended
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|end| end.url == url)
+                .map(|end| (end.status, end.aborted))
+                .collect();
+            if seen.len() >= count {
+                return seen;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        panic!("fewer than {count} exchanges for {url} ended");
+    }
+}
 
 /// 64 KiB of filler, sent over and over.
 fn chunk() -> Bytes {
@@ -119,6 +154,54 @@ async fn sse_none(_req: &mut Req<State>) -> Response {
     Response::send_status(204).header("Content-Type", "text/event-stream")
 }
 
+/// The answer an owner gives when it cannot have a stream slot: nothing was created.
+fn no_room() -> Response {
+    Response::send_status(503).header("X-Refused-By", "handler")
+}
+
+/// GET /reserve-up: reserves a stream slot before creating its session, then upgrades and holds
+/// the socket until shutdown.
+async fn reserve_up(req: &mut Req<State>) -> Result<Response, Error> {
+    let admission = req.stream_admission().cloned();
+    if admission.is_none_or(|admission| admission.reserve().is_err()) {
+        return Ok(no_room());
+    }
+    let (Some(upgrade), Some(guard)) = (req.take_upgrade(), req.take_upgrade_guard()) else {
+        return Ok(Response::send_status(426));
+    };
+    *req.state().sessions.lock().unwrap() += 1;
+    tokio::spawn(async move {
+        let Ok(upgraded) = upgrade.await else { return };
+        guard.shutting_down().await;
+        drop(upgraded);
+    });
+    let response = http::Response::builder()
+        .status(101)
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "flood")
+        .body(Body::empty())?;
+    Ok(Response::from_http(response))
+}
+
+/// GET /reserve-sse: reserves, then streams until the client goes away.
+async fn reserve_sse(req: &mut Req<State>) -> Response {
+    let reserved = req
+        .stream_admission()
+        .is_some_and(|admission| admission.reserve().is_ok());
+    if !reserved {
+        return no_room();
+    }
+    sse_hold(req).await
+}
+
+/// GET /reserve-then-fail: reserves, then answers an ordinary 400.
+async fn reserve_then_fail(req: &mut Req<State>) -> Response {
+    let reserved = req
+        .stream_admission()
+        .is_some_and(|admission| admission.reserve().is_ok());
+    Response::send_status(if reserved { 400 } else { 500 })
+}
+
 async fn who(_req: &mut Req<State>) -> Response {
     Response::new().text("here")
 }
@@ -139,9 +222,14 @@ async fn start(
     root.get("/sse-once", sse_once);
     root.get("/sse-hold", sse_hold);
     root.get("/sse-none", sse_none);
+    root.get("/reserve-up", reserve_up);
+    root.get("/reserve-sse", reserve_sse);
+    root.get("/reserve-then-fail", reserve_then_fail);
     root.get("/who", who);
     let probe = State::default();
-    let app = App::new(root, Arc::clone(&probe)).expect("app");
+    let app = App::new(root, Arc::clone(&probe))
+        .expect("app")
+        .observe(Watch(Arc::clone(&probe)));
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
     let token = CancellationToken::new();
@@ -373,6 +461,101 @@ async fn answers_without_a_body_never_take_a_stream_slot() {
         status_of(addr, &format!("GET /sse-hold HTTP/1.1\r\n{close}")).await,
         "HTTP/1.1 503 Service Unavailable"
     );
+    drop(held);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+const UPGRADE: &str = "Host: x\r\nConnection: Upgrade\r\nUpgrade: flood\r\n\r\n";
+
+/// Review finding: the stream quota was checked only once the answer was built, so a refused
+/// upgrade had already created its session. A handler now reserves the slot first, and a
+/// reserved answer is promoted without a second check.
+#[tokio::test]
+async fn a_handler_reserves_a_stream_slot_before_creating_anything() {
+    let options = ServeOptions {
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, probe, token, server) = start(options).await;
+    // The reservation holds the only slot; its own answer is still promoted.
+    let held = stalled_reader(addr, "/reserve-sse").await;
+    let mut refused = TcpStream::connect(addr).await.expect("connect");
+    refused
+        .write_all(format!("GET /reserve-up HTTP/1.1\r\n{UPGRADE}").as_bytes())
+        .await
+        .expect("write");
+    let head = read_head(&mut refused).await;
+    assert!(head.starts_with("HTTP/1.1 503"), "{head}");
+    assert!(head.contains("x-refused-by: handler"), "{head}");
+    assert_eq!(*probe.sessions.lock().unwrap(), 0, "nothing was created");
+    drop(refused);
+    drop(held);
+    let mut head = String::new();
+    let mut upgraded = None;
+    for _ in 0..100 {
+        let mut stream = TcpStream::connect(addr).await.expect("connect");
+        stream
+            .write_all(format!("GET /reserve-up HTTP/1.1\r\n{UPGRADE}").as_bytes())
+            .await
+            .expect("write");
+        head = read_head(&mut stream).await;
+        if head.starts_with("HTTP/1.1 101") {
+            upgraded = Some(stream);
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(upgraded.is_some(), "{head}");
+    assert_eq!(*probe.sessions.lock().unwrap(), 1);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// A reservation whose answer starts no stream gives its slot back.
+#[tokio::test]
+async fn a_reservation_without_a_stream_is_released() {
+    let options = ServeOptions {
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, _probe, token, server) = start(options).await;
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    assert_eq!(
+        status_of(addr, &format!("GET /reserve-then-fail HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 400 Bad Request"
+    );
+    assert_eq!(
+        status_of(addr, &format!("GET /reserve-then-fail HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 400 Bad Request"
+    );
+    let held = stalled_reader(addr, "/sse-hold").await;
+    drop(held);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: when the late check refused a stream, the completion record said 101 (or
+/// the event stream's 200) although the client received 503.
+#[tokio::test]
+async fn observers_see_the_refusal_that_was_sent() {
+    let options = ServeOptions {
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, probe, token, server) = start(options).await;
+    let held = stalled_reader(addr, "/sse-hold").await;
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    assert_eq!(
+        status_of(addr, &format!("GET /sse-once HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    assert_eq!(
+        status_of(addr, &format!("GET /flood-up HTTP/1.1\r\n{UPGRADE}")).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    assert_eq!(probe.ended_for("/sse-once", 1).await, [(Some(503), false)]);
+    assert_eq!(probe.ended_for("/flood-up", 1).await, [(Some(503), false)]);
     drop(held);
     token.cancel();
     server.await.expect("join").expect("serve");

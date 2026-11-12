@@ -419,6 +419,13 @@ impl<S> Req<S> {
         self.extensions.remove::<crate::UpgradeGuard>()
     }
 
+    /// The stream quota as this request sees it: reserve a slot before creating the session or
+    /// subscription behind an upgrade or an event stream (see [`crate::StreamAdmission`]).
+    /// `None` when the request was not served by [`crate::serve`].
+    pub fn stream_admission(&self) -> Option<&crate::StreamAdmission> {
+        self.extensions.get::<crate::StreamAdmission>()
+    }
+
     /// `typeis.hasBody(req)`: a `Transfer-Encoding` or a numeric `Content-Length` header.
     pub fn has_body(&self) -> bool {
         if self.headers.contains_key(http::header::TRANSFER_ENCODING) {
