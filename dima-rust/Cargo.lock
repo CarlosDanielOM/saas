@@ -1546,6 +1546,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-email"
+version = "0.1.0"
+dependencies = [
+ "dima-core",
+ "dima-http",
+ "dima-text",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-engine"
 version = "0.1.0"
 dependencies = [

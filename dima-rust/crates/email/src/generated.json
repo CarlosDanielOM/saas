@@ -10,10 +10,12 @@
     "patches": {
       "discount": {
         "html": {
+          "start": 9430,
           "old": "background-color:#2a2414;border:1px solid #5c4a17;border-radius:14px;padding:16px 18px;margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 6px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#fbbf24;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">Welcome gift</p><p style=\"font-size:22px;line-height:28px;margin:0 0 6px;font-weight:800;letter-spacing:0.12em;color:#f5f7fb;font-family:&#x27;SFMono-Regular&#x27;, Menlo, Consolas, &#x27;Courier New&#x27;, monospace;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">DIMA_DISCOUNT_TOKEN</p><p style=\"font-size:14px;line-height:20px;margin:0;color:#a7b0c2;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">Use this code at checkout if you upgrade to Premium or Pro.</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 529,
           "old": "Welcome gift\n\nDIMA_DISCOUNT_TOKEN\n\nUse this code at checkout if you upgrade to Premium or Pro.\n\n",
           "replacement": ""
         }
@@ -31,10 +33,12 @@
     "patches": {
       "discount": {
         "html": {
+          "start": 9437,
           "old": "background-color:#fdf6e7;border:1px solid #ecd5a3;border-radius:14px;padding:16px 18px;margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 6px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">Welcome gift</p><p style=\"font-size:22px;line-height:28px;margin:0 0 6px;font-weight:800;letter-spacing:0.12em;color:#14151a;font-family:&#x27;SFMono-Regular&#x27;, Menlo, Consolas, &#x27;Courier New&#x27;, monospace;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">DIMA_DISCOUNT_TOKEN</p><p style=\"font-size:14px;line-height:20px;margin:0;color:#596273;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">Use this code at checkout if you upgrade to Premium or Pro.</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 529,
           "old": "Welcome gift\n\nDIMA_DISCOUNT_TOKEN\n\nUse this code at checkout if you upgrade to Premium or Pro.\n\n",
           "replacement": ""
         }
@@ -52,10 +56,12 @@
     "patches": {
       "discount": {
         "html": {
+          "start": 9497,
           "old": "background-color:#2a2414;border:1px solid #5c4a17;border-radius:14px;padding:16px 18px;margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 6px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#fbbf24;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">Regalo de bienvenida</p><p style=\"font-size:22px;line-height:28px;margin:0 0 6px;font-weight:800;letter-spacing:0.12em;color:#f5f7fb;font-family:&#x27;SFMono-Regular&#x27;, Menlo, Consolas, &#x27;Courier New&#x27;, monospace;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">DIMA_DISCOUNT_TOKEN</p><p style=\"font-size:14px;line-height:20px;margin:0;color:#a7b0c2;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">Usa este código al pagar si mejoras a Premium o Pro.</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 557,
           "old": "Regalo de bienvenida\n\nDIMA_DISCOUNT_TOKEN\n\nUsa este código al pagar si mejoras a Premium o Pro.\n\n",
           "replacement": ""
         }
@@ -73,10 +79,12 @@
     "patches": {
       "discount": {
         "html": {
+          "start": 9504,
           "old": "background-color:#fdf6e7;border:1px solid #ecd5a3;border-radius:14px;padding:16px 18px;margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 6px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#92400e;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">Regalo de bienvenida</p><p style=\"font-size:22px;line-height:28px;margin:0 0 6px;font-weight:800;letter-spacing:0.12em;color:#14151a;font-family:&#x27;SFMono-Regular&#x27;, Menlo, Consolas, &#x27;Courier New&#x27;, monospace;margin-top:0;margin-right:0;margin-bottom:6px;margin-left:0\">DIMA_DISCOUNT_TOKEN</p><p style=\"font-size:14px;line-height:20px;margin:0;color:#596273;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">Usa este código al pagar si mejoras a Premium o Pro.</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 557,
           "old": "Regalo de bienvenida\n\nDIMA_DISCOUNT_TOKEN\n\nUsa este código al pagar si mejoras a Premium o Pro.\n\n",
           "replacement": ""
         }
@@ -134,60 +142,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 11858,
           "old": "margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 239,
           "old": "cap\n\nDIMA_RECAP_TOKEN\n\nRe",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -205,60 +225,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12087,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -276,60 +308,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12087,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -347,60 +391,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12087,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -418,60 +474,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12087,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -489,60 +557,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6135,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6420,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12087,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9832,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10612,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11383,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -560,60 +640,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 11865,
           "old": "margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 239,
           "old": "cap\n\nDIMA_RECAP_TOKEN\n\nRe",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -631,60 +723,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12094,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -702,60 +806,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12094,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -773,60 +889,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12094,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -844,60 +972,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12094,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -915,60 +1055,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6142,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->The bot saved 789 new memories from this stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 84,
           "old": "✦  The bot saved 789 new memories from this stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6427,
           "old": "789 new memories",
           "replacement": "1 new memory"
         },
         "text": {
+          "start": 104,
           "old": "789 new memories",
           "replacement": "1 new memory"
         }
       },
       "recap": {
         "html": {
+          "start": 12094,
           "old": "Recap</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 237,
           "old": "Recap\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9839,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 197,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10619,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 215,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11390,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 226,
           "old": "345",
           "replacement": "0"
         }
@@ -986,60 +1138,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11758,
           "old": "margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1057,60 +1221,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11987,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1128,60 +1304,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11987,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1199,60 +1387,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11987,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1270,60 +1470,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11987,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1341,60 +1553,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6046,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#16281e;border:1px solid #262b37;font-weight:600;color:#86efac;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6332,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11987,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7d8698;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9733,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10512,
           "old": "f5f7fb;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11283,
           "old": "fbbf24;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "7d8698;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1412,60 +1636,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11765,
           "old": "margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1483,60 +1719,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11994,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1554,60 +1802,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11994,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1625,60 +1885,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11994,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1696,60 +1968,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11994,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1767,60 +2051,72 @@
     "patches": {
       "memory0": {
         "html": {
+          "start": 6053,
           "old": "p style=\"font-size:13px;line-height:18px;margin:16px 0 0;display:inline-block;padding:6px 12px;border-radius:999px;background-color:#ecf8f0;border:1px solid #e5e7ee;font-weight:600;color:#166534;margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0\">✦  <!-- -->El bot guardó 789 recuerdos nuevos de este stream</p><",
           "replacement": ""
         },
         "text": {
+          "start": 90,
           "old": "✦  El bot guardó 789 recuerdos nuevos de este stream\n\n",
           "replacement": ""
         }
       },
       "memory1": {
         "html": {
+          "start": 6339,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         },
         "text": {
+          "start": 111,
           "old": "789 recuerdos nuevos",
           "replacement": "1 recuerdo nuevo"
         }
       },
       "recap": {
         "html": {
+          "start": 11994,
           "old": "Resumen</p><p style=\"font-size:15px;line-height:24px;margin:0;padding:2px 0 2px 14px;border-left:3px solid #7c3aed;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_RECAP_TOKEN</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"margin:0 0 22px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7383;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\">",
           "replacement": ""
         },
         "text": {
+          "start": 232,
           "old": "Resumen\n\nDIMA_RECAP_TOKEN\n\n",
           "replacement": ""
         }
       },
       "follows": {
         "html": {
+          "start": 9740,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">123",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 193,
           "old": "123",
           "replacement": "0"
         }
       },
       "subs": {
         "html": {
+          "start": 10519,
           "old": "14151a;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">234",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 210,
           "old": "234",
           "replacement": "0"
         }
       },
       "bits": {
         "html": {
+          "start": 11290,
           "old": "92400e;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">345",
           "replacement": "6b7383;letter-spacing:-0.01em;white-space:nowrap;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">0"
         },
         "text": {
+          "start": 221,
           "old": "345",
           "replacement": "0"
         }
@@ -1838,10 +2134,12 @@
     "patches": {
       "count1": {
         "html": {
+          "start": 1332,
           "old": "678 likely clip moments in your latest VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#0f1115;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#f5f7fb;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#171a21;border:1px solid #262b37;border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,0.35)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#1b1628;background-image:radial-gradient(120% 140% at 0% 0%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.14) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #262b37;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#c4b5fd;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#fbbf24;font-size:14px\">●</span>  <!-- -->VOD analysis finished</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, your clip picks are ready</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#1d2230;border:1px solid #262b37;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#fbbf24;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">678</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">likely clip moments",
           "replacement": "1 likely clip moment in your latest VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#0f1115;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#f5f7fb;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#171a21;border:1px solid #262b37;border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,0.35)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#1b1628;background-image:radial-gradient(120% 140% at 0% 0%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.14) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #262b37;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#c4b5fd;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#fbbf24;font-size:14px\">●</span>  <!-- -->VOD analysis finished</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, your clip picks are ready</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#1d2230;border:1px solid #262b37;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#fbbf24;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">1</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">likely clip moment"
         },
         "text": {
+          "start": 97,
           "old": "678\n\nlikely clip moments",
           "replacement": "1\n\nlikely clip moment"
         }
@@ -1859,10 +2157,12 @@
     "patches": {
       "count1": {
         "html": {
+          "start": 1334,
           "old": "678 likely clip moments in your latest VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#f4f5f8;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#14151a;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#ffffff;border:1px solid #e5e7ee;border-radius:20px;box-shadow:0 10px 30px rgba(15,17,21,0.06)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#f6f1ff;background-image:radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.14) 0%, rgba(124,58,237,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #e5e7ee;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#92400e;font-size:14px\">●</span>  <!-- -->VOD analysis finished</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, your clip picks are ready</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#f4f5f8;border:1px solid #e5e7ee;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#92400e;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">678</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">likely clip moments",
           "replacement": "1 likely clip moment in your latest VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#f4f5f8;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#14151a;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#ffffff;border:1px solid #e5e7ee;border-radius:20px;box-shadow:0 10px 30px rgba(15,17,21,0.06)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#f6f1ff;background-image:radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.14) 0%, rgba(124,58,237,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #e5e7ee;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#92400e;font-size:14px\">●</span>  <!-- -->VOD analysis finished</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, your clip picks are ready</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#f4f5f8;border:1px solid #e5e7ee;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#92400e;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">1</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">likely clip moment"
         },
         "text": {
+          "start": 97,
           "old": "678\n\nlikely clip moments",
           "replacement": "1\n\nlikely clip moment"
         }
@@ -1880,10 +2180,12 @@
     "patches": {
       "count1": {
         "html": {
+          "start": 1335,
           "old": "678 posibles momentos para clip en tu último VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#0f1115;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#f5f7fb;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#171a21;border:1px solid #262b37;border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,0.35)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#1b1628;background-image:radial-gradient(120% 140% at 0% 0%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.14) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #262b37;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#c4b5fd;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#fbbf24;font-size:14px\">●</span>  <!-- -->Análisis del VOD terminado</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, tus clips sugeridos están listos</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#1d2230;border:1px solid #262b37;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#fbbf24;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">678</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">posibles momentos",
           "replacement": "1 posible momento para clip en tu último VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#0f1115;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-dark.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#f5f7fb;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#171a21;border:1px solid #262b37;border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,0.35)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#1b1628;background-image:radial-gradient(120% 140% at 0% 0%, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.14) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #262b37;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#c4b5fd;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#fbbf24;font-size:14px\">●</span>  <!-- -->Análisis del VOD terminado</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, tus clips sugeridos están listos</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#1d2230;border:1px solid #262b37;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#fbbf24;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">1</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#f5f7fb;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">posible momento"
         },
         "text": {
+          "start": 111,
           "old": "678\n\nposibles momentos",
           "replacement": "1\n\nposible momento"
         }
@@ -1901,10 +2203,12 @@
     "patches": {
       "count1": {
         "html": {
+          "start": 1337,
           "old": "678 posibles momentos para clip en tu último VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#f4f5f8;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#14151a;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#ffffff;border:1px solid #e5e7ee;border-radius:20px;box-shadow:0 10px 30px rgba(15,17,21,0.06)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#f6f1ff;background-image:radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.14) 0%, rgba(124,58,237,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #e5e7ee;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#92400e;font-size:14px\">●</span>  <!-- -->Análisis del VOD terminado</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, tus clips sugeridos están listos</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#f4f5f8;border:1px solid #e5e7ee;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#92400e;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">678</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">posibles momentos",
           "replacement": "1 posible momento para clip en tu último VOD.<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div></div><!--body--><table border=\"0\" width=\"100%\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" align=\"center\"><tbody><tr><td style=\"margin:0;padding:0;background-color:#f4f5f8;font-family:&#x27;Plus Jakarta Sans&#x27;, -apple-system, BlinkMacSystemFont, &#x27;Segoe UI&#x27;, Roboto, &#x27;Helvetica Neue&#x27;, Arial, sans-serif;-webkit-text-size-adjust:100%\"><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"max-width:600px;width:100%;margin:0 auto\"><tbody><tr style=\"width:100%\"><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-shell\" style=\"padding:32px 16px 40px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"padding:0 4px 18px\"><tbody><tr><td><a href=\"https://domdimabot.com\" style=\"color:#067df7;text-decoration-line:none;text-decoration:none\" target=\"_blank\"><img alt=\"\" height=\"32\" src=\"https://domdimabot.com/assets/brand/mark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle\" width=\"30\"/><img alt=\"DomDimaBot\" height=\"28\" src=\"https://domdimabot.com/assets/brand/wordmark-on-light.png\" style=\"display:inline-block;outline:none;border:0;text-decoration:none;vertical-align:middle;margin-left:8px;color:#14151a;font-weight:700\" width=\"94\"/></a></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#ffffff;border:1px solid #e5e7ee;border-radius:20px;box-shadow:0 10px 30px rgba(15,17,21,0.06)\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"background-color:#f6f1ff;background-image:radial-gradient(120% 140% at 0% 0%, rgba(124,58,237,0.14) 0%, rgba(124,58,237,0) 55%), radial-gradient(90% 120% at 100% 0%, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0) 50%);border-radius:19px 19px 0 0;border-bottom:1px solid #e5e7ee;padding:30px 36px 28px\"><tbody><tr><td><p style=\"font-size:12px;line-height:16px;margin:0 0 10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6d28d9;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0\"><span style=\"color:#92400e;font-size:14px\">●</span>  <!-- -->Análisis del VOD terminado</p><p class=\"lf-title\" style=\"font-size:28px;line-height:36px;margin:0;font-weight:800;letter-spacing:-0.01em;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">DIMA_NAME_TOKEN, tus clips sugeridos están listos</p></td></tr></tbody></table><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" class=\"lf-pad\" style=\"padding:28px 36px 32px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\" style=\"background-color:#f4f5f8;border:1px solid #e5e7ee;border-radius:16px;padding:18px 20px;margin:0 0 18px\"><tbody><tr><td><table align=\"center\" width=\"100%\" border=\"0\" cellPadding=\"0\" cellSpacing=\"0\" role=\"presentation\"><tbody style=\"width:100%\"><tr style=\"width:100%\"><td data-id=\"__react-email-column\" style=\"width:1%;white-space:nowrap;padding-right:18px;vertical-align:middle\"><p style=\"font-size:52px;line-height:56px;margin:0;font-weight:800;color:#92400e;letter-spacing:-0.02em;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">1</p></td><td data-id=\"__react-email-column\" style=\"vertical-align:middle\"><p style=\"font-size:16px;line-height:23px;margin:0;font-weight:700;color:#14151a;margin-top:0;margin-bottom:0;margin-left:0;margin-right:0\">posible momento"
         },
         "text": {
+          "start": 111,
           "old": "678\n\nposibles momentos",
           "replacement": "1\n\nposible momento"
         }
