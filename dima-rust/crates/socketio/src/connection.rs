@@ -564,7 +564,10 @@ impl Connection {
         for socket in joined {
             socket.disconnect();
         }
-        self.close(DisconnectReason::ForcedServerClose);
+        // Called from a handler, which may hold its data's lock: a socket still joined (its
+        // DISCONNECT did not fit) is measured for its session when it leaves, which takes that
+        // lock, so the close runs on the connection's task.
+        self.close_soon(DisconnectReason::ForcedServerClose);
     }
 
     /// Closes the connection (`Client.close`): every socket leaves with `reason` and inbound

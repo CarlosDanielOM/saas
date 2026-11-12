@@ -255,13 +255,17 @@ impl<N: Namespace> Def<N> {
     /// Once the socket that left a session has no handler running, its session (if still kept
     /// for it) is measured again: `on_disconnect` may have changed the data.
     fn settle(&self, core: &Core<N::Data>) {
-        if let Some(mut store) = self.store()
-            && store.owns(&core.nsp, &core.pid, core.key)
+        if self.recovery != Recovery::Full
+            || !self.shared.store().owns(&core.nsp, &core.pid, core.key)
         {
-            let cost = recovery::session_cost(&core.id, &core.pid, core.data.as_ref());
-            let now = self.shared.clock.now_ms();
-            store.settle(&core.nsp, &core.pid, core.key, cost, &self.ctx(now));
+            return;
         }
+        // Measured (and compacted) without the store lock: see `recovery::session_cost`.
+        let cost = recovery::session_cost(&core.id, &core.pid, core.data.as_ref());
+        let now = self.shared.clock.now_ms();
+        self.shared
+            .store()
+            .settle(&core.nsp, &core.pid, core.key, cost, &self.ctx(now));
     }
 
     fn child(&self, name: &str) -> Option<Arc<Child<N::Data>>> {
@@ -346,9 +350,12 @@ impl<N: Namespace> DefOps<N::Data> for Def<N> {
             return;
         };
         let persist = reason.recoverable() && !self.shared.stopping();
+        // Measured (and compacted) before the store lock is taken: see `recovery::session_cost`.
+        let cost = (persist && self.recovery == Recovery::Full)
+            .then(|| recovery::session_cost(&core.id, &core.pid, core.data.as_ref()));
         {
             let store = self.store();
-            if let (Some(mut store), true) = (store, persist) {
+            if let (Some(mut store), Some(cost)) = (store, cost) {
                 let now = self.shared.clock.now_ms();
                 let session = Session::new(
                     core.id.clone(),
@@ -357,6 +364,7 @@ impl<N: Namespace> DefOps<N::Data> for Def<N> {
                     core.key,
                     core.ended.clone(),
                     now,
+                    cost,
                 );
                 store.persist(&core.nsp, session, &self.ctx(now));
                 child.lock().sockets.remove(&core.key);
@@ -605,11 +613,13 @@ async fn run_socket<N: Namespace>(
                 return;
             };
             let refusal = match result {
-                Ok(Ok(data)) => match (
+                Ok(Ok(mut data)) => match (
                     ids::base64id(shared.random.as_ref()),
                     ids::base64id(shared.random.as_ref()),
                 ) {
                     (Some(sid), Some(pid)) => {
+                        // Spare capacity of what the check built goes before it is shared.
+                        data.compact();
                         let data = Arc::new(data);
                         Ok((sid, pid, data))
                     }

@@ -134,7 +134,10 @@ impl std::fmt::Debug for Session {
     }
 }
 
-/// What a session costs: its ids, its data as it is now, and a fixed overhead.
+/// What a session costs: its ids, its data as it is now, and a fixed overhead. Measuring
+/// compacts what the data's locks guard ([`crate::RetainedSize`]), so it takes the data's own
+/// locks: never call it with the store lock held (a handler holding its data's lock may be
+/// waiting for the store lock to emit).
 pub fn session_cost<D: crate::RetainedSize>(sid: &str, pid: &str, data: &D) -> usize {
     OVERHEAD
         .saturating_add(sid.len())
@@ -144,16 +147,17 @@ pub fn session_cost<D: crate::RetainedSize>(sid: &str, pid: &str, data: &D) -> u
 }
 
 impl Session {
-    /// A session for a socket that just left.
-    pub fn new<D: crate::RetainedSize + Send + Sync + 'static>(
+    /// A session for a socket that just left; `cost` is [`session_cost`] of it, measured
+    /// before the store lock was taken.
+    pub fn new<D: Send + Sync + 'static>(
         sid: String,
         pid: String,
         data: Arc<D>,
         owner: u64,
         released: CancellationToken,
         disconnected_ms: i64,
+        cost: usize,
     ) -> Self {
-        let cost = session_cost(&sid, &pid, data.as_ref());
         Self {
             sid,
             pid,
@@ -684,6 +688,7 @@ mod tests {
         data: D,
         at: i64,
     ) -> Session {
+        let cost = session_cost(sid, pid, &data);
         Session::new(
             sid.into(),
             pid.into(),
@@ -691,6 +696,7 @@ mod tests {
             0,
             CancellationToken::new(),
             at,
+            cost,
         )
     }
 

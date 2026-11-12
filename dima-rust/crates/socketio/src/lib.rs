@@ -120,7 +120,10 @@
 //!   Work that must outlive the socket belongs in a task of the feature, not in a handler. A
 //!   recovered socket starts once the old socket's handlers have all ended.
 //! - **Socket data implements [`RetainedSize`]** (add up the fields), so a recovery session is
-//!   measured by what it really keeps.
+//!   measured by what it really keeps. It is compacted first (JSON maps rebuilt at their length,
+//!   spare capacity given back): measuring takes the locks inside the data, never while the
+//!   crate holds one of its own, and `Socket::disconnect_connection` closes the connection on
+//!   its task, so a handler holding its data's lock cannot deadlock with it.
 //! - **Recovery re-runs the check** ([`Namespace::recheck`], on by default; the reference skips
 //!   its middlewares): a namespace whose check cannot pass twice (a one-time ticket) sets
 //!   [`NamespaceOptions::recheck_recovery`] to `false` or overrides `recheck`. [`Dispatch::Sequential`] (the default)
