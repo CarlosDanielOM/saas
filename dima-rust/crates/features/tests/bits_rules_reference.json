@@ -1,0 +1,5771 @@
+{
+ "reference": "0c71108e",
+ "matches": [
+  {
+   "set": "ranges",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": 1,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": 5,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 9,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 10,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 15,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 25,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 35,
+   "match": "any",
+   "chat": "say any",
+   "chatEmptyDefault": "say any"
+  },
+  {
+   "set": "ranges",
+   "bits": 50,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 55,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 60,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 69,
+   "match": "nice",
+   "chat": "say nice",
+   "chatEmptyDefault": "say nice"
+  },
+  {
+   "set": "ranges",
+   "bits": 99,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 100,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 101,
+   "match": "wide",
+   "chat": "say wide",
+   "chatEmptyDefault": "say wide"
+  },
+  {
+   "set": "ranges",
+   "bits": 999,
+   "match": "hundreds",
+   "chat": "say hundreds",
+   "chatEmptyDefault": "say hundreds"
+  },
+  {
+   "set": "ranges",
+   "bits": 1000,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 5000,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 999999,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 1000000,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 1000001,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 9007199254740991,
+   "match": "thousand",
+   "chat": "say thousand",
+   "chatEmptyDefault": "say thousand"
+  },
+  {
+   "set": "ranges",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "ranges",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 1,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 5,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 9,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 10,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 15,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 25,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 35,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 50,
+   "match": "b",
+   "chat": "say b",
+   "chatEmptyDefault": "say b"
+  },
+  {
+   "set": "overlaps",
+   "bits": 55,
+   "match": "d",
+   "chat": "say d",
+   "chatEmptyDefault": "say d"
+  },
+  {
+   "set": "overlaps",
+   "bits": 60,
+   "match": "d",
+   "chat": "say d",
+   "chatEmptyDefault": "say d"
+  },
+  {
+   "set": "overlaps",
+   "bits": 69,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 99,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 100,
+   "match": "a",
+   "chat": "say a",
+   "chatEmptyDefault": "say a"
+  },
+  {
+   "set": "overlaps",
+   "bits": 101,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 999,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 1000,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 5000,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 999999,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 1000000,
+   "match": "e",
+   "chat": "say e",
+   "chatEmptyDefault": "say e"
+  },
+  {
+   "set": "overlaps",
+   "bits": 1000001,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 9007199254740991,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "overlaps",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 1,
+   "match": "low",
+   "chat": "say low",
+   "chatEmptyDefault": "say low"
+  },
+  {
+   "set": "gaps",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 5,
+   "match": "low",
+   "chat": "say low",
+   "chatEmptyDefault": "say low"
+  },
+  {
+   "set": "gaps",
+   "bits": 9,
+   "match": "low",
+   "chat": "say low",
+   "chatEmptyDefault": "say low"
+  },
+  {
+   "set": "gaps",
+   "bits": 10,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 15,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 25,
+   "match": "mid",
+   "chat": "say mid",
+   "chatEmptyDefault": "say mid"
+  },
+  {
+   "set": "gaps",
+   "bits": 35,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 50,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 55,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 60,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 69,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 99,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 100,
+   "match": "high",
+   "chat": "say high",
+   "chatEmptyDefault": "say high"
+  },
+  {
+   "set": "gaps",
+   "bits": 101,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 1000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 5000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 999999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 1000000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 1000001,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 9007199254740991,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "gaps",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": 1,
+   "match": "one",
+   "chat": "say one",
+   "chatEmptyDefault": "say one"
+  },
+  {
+   "set": "open",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": 5,
+   "match": "one",
+   "chat": "say one",
+   "chatEmptyDefault": "say one"
+  },
+  {
+   "set": "open",
+   "bits": 9,
+   "match": "one",
+   "chat": "say one",
+   "chatEmptyDefault": "say one"
+  },
+  {
+   "set": "open",
+   "bits": 10,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 15,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 25,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 35,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 50,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 55,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 60,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 69,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 99,
+   "match": "ten",
+   "chat": "say ten",
+   "chatEmptyDefault": "say ten"
+  },
+  {
+   "set": "open",
+   "bits": 100,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 101,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 999,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 1000,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 5000,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 999999,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 1000000,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 1000001,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 9007199254740991,
+   "match": "hundred",
+   "chat": "say hundred",
+   "chatEmptyDefault": "say hundred"
+  },
+  {
+   "set": "open",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "open",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 5,
+   "match": "on",
+   "chat": "say on",
+   "chatEmptyDefault": "say on"
+  },
+  {
+   "set": "disabled",
+   "bits": 9,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 10,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 15,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 25,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 35,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 50,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 55,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 60,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 69,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 99,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 100,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 101,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 5000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 999999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1000000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1000001,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 9007199254740991,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "disabled",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 1,
+   "match": "custom",
+   "chat": "say custom",
+   "chatEmptyDefault": "say custom"
+  },
+  {
+   "set": "modes",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 5,
+   "match": "custom",
+   "chat": "say custom",
+   "chatEmptyDefault": "say custom"
+  },
+  {
+   "set": "modes",
+   "bits": 9,
+   "match": "custom",
+   "chat": "say custom",
+   "chatEmptyDefault": "say custom"
+  },
+  {
+   "set": "modes",
+   "bits": 10,
+   "match": "custom",
+   "chat": "say custom",
+   "chatEmptyDefault": "say custom"
+  },
+  {
+   "set": "modes",
+   "bits": 15,
+   "match": "silent",
+   "chat": "",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 25,
+   "match": "default",
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 35,
+   "match": "chatless-alert",
+   "chat": "say chatless-alert",
+   "chatEmptyDefault": "say chatless-alert"
+  },
+  {
+   "set": "modes",
+   "bits": 50,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 55,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 60,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 69,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 99,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 100,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 101,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 1000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 5000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 999999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 1000000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 1000001,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 9007199254740991,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "modes",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 9,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 10,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 15,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 25,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 35,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 50,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 55,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 60,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 69,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 99,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 100,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 101,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 5000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 999999,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1000000,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1000001,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 9007199254740991,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "empty",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": 0,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": -5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": 1,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 1.5,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": 5,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 9,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 10,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 15,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 25,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 35,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 50,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 55,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 60,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 69,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 99,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 100,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 101,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 999,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 1000,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 5000,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 999999,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 1000000,
+   "match": "top",
+   "chat": "say top",
+   "chatEmptyDefault": "say top"
+  },
+  {
+   "set": "max",
+   "bits": 1000001,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 9007199254740991,
+   "match": "all",
+   "chat": "say all",
+   "chatEmptyDefault": "say all"
+  },
+  {
+   "set": "max",
+   "bits": 9007199254740992,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": 1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": -1e+21,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": "100",
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": null,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": true,
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": [
+    5
+   ],
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  },
+  {
+   "set": "max",
+   "bits": {
+    "bits": 5
+   },
+   "match": null,
+   "chat": "Default thanks",
+   "chatEmptyDefault": ""
+  }
+ ],
+ "parses": [
+  {
+   "body": {
+    "name": " Big ",
+    "min": 100,
+    "max": null,
+    "chat": {
+     "mode": "default"
+    }
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "Big",
+     "enabled": true,
+     "min": 100,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 1
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 1000000,
+    "max": 1000000
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 1000000,
+     "max": 1000000,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 1,
+    "max": 1
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 1,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": null,
+    "enabled": null,
+    "alert": null,
+    "min": 5,
+    "max": null,
+    "chat": null
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 5,
+    "chat": {
+     "mode": "custom",
+     "message": " x "
+    }
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "custom",
+      "message": " x "
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 5,
+    "chat": {
+     "mode": "silent",
+     "message": null
+    }
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 5,
+    "chat": {
+     "mode": "default",
+     "message": "kept"
+    }
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": "kept"
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋",
+    "min": 5
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "min": 5
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "min": 5
+   },
+   "created": {
+    "error": "Names can be up to 60 characters",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "name": "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  ",
+    "min": 5
+   },
+   "created": {
+    "error": "Names can be up to 60 characters",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "name": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+    "min": 5
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "שלום עולם",
+    "min": 5
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "שלום עולם",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "é",
+    "min": 5
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "é",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 5,
+    "chat": {
+     "mode": "custom",
+     "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+    }
+   },
+   "created": {
+    "ok": {
+     "id": "r1",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": null,
+     "chat": {
+      "mode": "custom",
+      "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 5,
+    "chat": {
+     "mode": "custom",
+     "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+    }
+   },
+   "created": {
+    "error": "Messages can be up to 1000 characters",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 0
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": -1
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 1.5
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 1000001
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": "5"
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": true
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": null
+   },
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {},
+   "created": {
+    "error": "The amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "max": 5
+   },
+   "created": {
+    "error": "The highest amount must be at least the lowest amount",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "max": 10.5
+   },
+   "created": {
+    "error": "The highest amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "max": 0
+   },
+   "created": {
+    "error": "The highest amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "max": "20"
+   },
+   "created": {
+    "error": "The highest amount must be a whole number of Bits from 1 to 1,000,000",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "extra": 1
+   },
+   "created": {
+    "error": "Unknown rule field",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "chat": {
+     "mode": "loud"
+    }
+   },
+   "created": {
+    "error": "Invalid chat action",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "chat": "custom"
+   },
+   "created": {
+    "error": "Invalid chat action",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "chat": []
+   },
+   "created": {
+    "error": "Invalid chat action",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "chat": {
+     "mode": "custom"
+    }
+   },
+   "created": {
+    "error": "Write the chat message, or choose the default message",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "chat": {
+     "mode": "custom",
+     "message": 5
+    }
+   },
+   "created": {
+    "error": "Messages can be up to 1000 characters",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "enabled": "yes"
+   },
+   "created": {
+    "error": "Expected on or off",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "alert": 1
+   },
+   "created": {
+    "error": "Expected alert on or off",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "min": 10,
+    "name": 5
+   },
+   "created": {
+    "error": "Names can be up to 60 characters",
+    "status": 400
+   }
+  },
+  {
+   "body": null,
+   "created": {
+    "error": "Expected a rule",
+    "status": 400
+   }
+  },
+  {
+   "body": [],
+   "created": {
+    "error": "Expected a rule",
+    "status": 400
+   }
+  },
+  {
+   "body": "rule",
+   "created": {
+    "error": "Expected a rule",
+    "status": 400
+   }
+  },
+  {
+   "body": 5,
+   "created": {
+    "error": "Expected a rule",
+    "status": 400
+   }
+  }
+ ],
+ "merges": [
+  {
+   "body": {
+    "enabled": false
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": false,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {},
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {
+    "max": null
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 10,
+     "max": null,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 25
+   },
+   "merged": {
+    "error": "The highest amount must be at least the lowest amount",
+    "status": 400
+   }
+  },
+  {
+   "body": {
+    "chat": {
+     "mode": "default"
+    }
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {
+    "name": "New"
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "New",
+     "enabled": true,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {
+    "min": 15,
+    "max": 15
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 15,
+     "max": 15,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": false
+    }
+   }
+  },
+  {
+   "body": {
+    "alert": true
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "custom",
+      "message": "hi 👋"
+     },
+     "alert": true
+    }
+   }
+  },
+  {
+   "body": {
+    "chat": null
+   },
+   "merged": {
+    "ok": {
+     "id": "prev",
+     "name": "Prev",
+     "enabled": true,
+     "min": 10,
+     "max": 20,
+     "chat": {
+      "mode": "default",
+      "message": ""
+     },
+     "alert": false
+    }
+   }
+  }
+ ],
+ "previous": {
+  "id": "prev",
+  "name": "Prev",
+  "enabled": true,
+  "min": 10,
+  "max": 20,
+  "chat": {
+   "mode": "custom",
+   "message": "hi 👋"
+  },
+  "alert": false
+ },
+ "legacy": [
+  {
+   "tiers": [
+    {
+     "id": "tier-1",
+     "name": "Nice",
+     "message": "Nice",
+     "minAmount": {
+      "$numberInt": "69"
+     },
+     "maxAmount": {
+      "$numberInt": "69"
+     }
+    },
+    {
+     "id": "tier 2",
+     "name": "Quiet",
+     "message": "",
+     "min_amount": {
+      "$numberInt": "0"
+     },
+     "max_amount": {
+      "$numberInt": "10"
+     }
+    },
+    {
+     "name": "broken"
+    }
+   ],
+   "rules": [
+    {
+     "id": "tier-1",
+     "name": "Nice",
+     "enabled": true,
+     "min": 69,
+     "max": 69,
+     "chat": {
+      "mode": "custom",
+      "message": "Nice"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-2",
+     "name": "Quiet",
+     "enabled": true,
+     "min": 1,
+     "max": 10,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    }
+   ]
+  },
+  {
+   "tiers": [
+    {
+     "min_amount": "100",
+     "max_amount": "200",
+     "message": "text amounts"
+    },
+    {
+     "min_amount": "",
+     "max_amount": " 7 ",
+     "message": " "
+    },
+    {
+     "min_amount": null,
+     "minAmount": {
+      "$numberInt": "3"
+     },
+     "max_amount": {
+      "$numberInt": "4"
+     },
+     "message": "snake null"
+    }
+   ],
+   "rules": [
+    {
+     "id": "legacy-1",
+     "name": "",
+     "enabled": true,
+     "min": 100,
+     "max": 200,
+     "chat": {
+      "mode": "custom",
+      "message": "text amounts"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-2",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 7,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-3",
+     "name": "",
+     "enabled": true,
+     "min": 3,
+     "max": 4,
+     "chat": {
+      "mode": "custom",
+      "message": "snake null"
+     },
+     "alert": true
+    }
+   ]
+  },
+  {
+   "tiers": [
+    {
+     "min_amount": true,
+     "max_amount": [
+      {
+       "$numberInt": "5"
+      }
+     ],
+     "message": "bool and array"
+    },
+    {
+     "min_amount": {},
+     "max_amount": {
+      "$numberInt": "5"
+     }
+    },
+    {
+     "min_amount": {
+      "$numberDouble": "2.5"
+     },
+     "max_amount": {
+      "$numberDouble": "-0.5"
+     }
+    },
+    {
+     "min_amount": {
+      "$numberInt": "1000000000"
+     },
+     "max_amount": {
+      "$numberInt": "2000000000"
+     }
+    }
+   ],
+   "rules": [
+    {
+     "id": "legacy-1",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 5,
+     "chat": {
+      "mode": "custom",
+      "message": "bool and array"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-3",
+     "name": "",
+     "enabled": true,
+     "min": 3,
+     "max": 3,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-4",
+     "name": "",
+     "enabled": true,
+     "min": 1000000,
+     "max": 1000000,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    }
+   ]
+  },
+  {
+   "tiers": [
+    {
+     "min_amount": {
+      "$numberDouble": "Infinity"
+     },
+     "max_amount": {
+      "$numberInt": "5"
+     }
+    },
+    {
+     "min_amount": "abc",
+     "max_amount": {
+      "$numberInt": "5"
+     }
+    },
+    {
+     "min_amount": {
+      "$numberInt": "16"
+     },
+     "max_amount": "0x20"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "50"
+     },
+     "max_amount": {
+      "$numberInt": "10"
+     },
+     "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "name": "  nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    }
+   ],
+   "rules": [
+    {
+     "id": "legacy-3",
+     "name": "",
+     "enabled": true,
+     "min": 16,
+     "max": 32,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-4",
+     "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+     "enabled": true,
+     "min": 50,
+     "max": 50,
+     "chat": {
+      "mode": "custom",
+      "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "alert": true
+    }
+   ]
+  },
+  {
+   "tiers": [
+    {
+     "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "min_amount": {
+      "$numberInt": "1"
+     },
+     "max_amount": {
+      "$numberInt": "2"
+     }
+    },
+    {
+     "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "min_amount": {
+      "$numberInt": "1"
+     },
+     "max_amount": {
+      "$numberInt": "2"
+     }
+    },
+    {
+     "id": {
+      "$numberInt": "5"
+     },
+     "min_amount": {
+      "$numberInt": "1"
+     },
+     "max_amount": {
+      "$numberInt": "2"
+     }
+    },
+    {
+     "$numberInt": "7"
+    },
+    null,
+    [
+     {
+      "$numberInt": "1"
+     },
+     {
+      "$numberInt": "2"
+     }
+    ],
+    {
+     "min_amount": {
+      "$numberInt": "1"
+     },
+     "max_amount": {
+      "$numberInt": "2"
+     },
+     "message": "👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋"
+    }
+   ],
+   "rules": [
+    {
+     "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 2,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-2",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 2,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-3",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 2,
+     "chat": {
+      "mode": "silent",
+      "message": ""
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-7",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 2,
+     "chat": {
+      "mode": "custom",
+      "message": "👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋👋"
+     },
+     "alert": true
+    }
+   ]
+  },
+  {
+   "tiers": [
+    {
+     "min_amount": {
+      "$numberInt": "1"
+     },
+     "max_amount": {
+      "$numberInt": "1"
+     },
+     "message": "m0"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "2"
+     },
+     "max_amount": {
+      "$numberInt": "2"
+     },
+     "message": "m1"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "3"
+     },
+     "max_amount": {
+      "$numberInt": "3"
+     },
+     "message": "m2"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "4"
+     },
+     "max_amount": {
+      "$numberInt": "4"
+     },
+     "message": "m3"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "5"
+     },
+     "max_amount": {
+      "$numberInt": "5"
+     },
+     "message": "m4"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "6"
+     },
+     "max_amount": {
+      "$numberInt": "6"
+     },
+     "message": "m5"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "7"
+     },
+     "max_amount": {
+      "$numberInt": "7"
+     },
+     "message": "m6"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "8"
+     },
+     "max_amount": {
+      "$numberInt": "8"
+     },
+     "message": "m7"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "9"
+     },
+     "max_amount": {
+      "$numberInt": "9"
+     },
+     "message": "m8"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "10"
+     },
+     "max_amount": {
+      "$numberInt": "10"
+     },
+     "message": "m9"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "11"
+     },
+     "max_amount": {
+      "$numberInt": "11"
+     },
+     "message": "m10"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "12"
+     },
+     "max_amount": {
+      "$numberInt": "12"
+     },
+     "message": "m11"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "13"
+     },
+     "max_amount": {
+      "$numberInt": "13"
+     },
+     "message": "m12"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "14"
+     },
+     "max_amount": {
+      "$numberInt": "14"
+     },
+     "message": "m13"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "15"
+     },
+     "max_amount": {
+      "$numberInt": "15"
+     },
+     "message": "m14"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "16"
+     },
+     "max_amount": {
+      "$numberInt": "16"
+     },
+     "message": "m15"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "17"
+     },
+     "max_amount": {
+      "$numberInt": "17"
+     },
+     "message": "m16"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "18"
+     },
+     "max_amount": {
+      "$numberInt": "18"
+     },
+     "message": "m17"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "19"
+     },
+     "max_amount": {
+      "$numberInt": "19"
+     },
+     "message": "m18"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "20"
+     },
+     "max_amount": {
+      "$numberInt": "20"
+     },
+     "message": "m19"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "21"
+     },
+     "max_amount": {
+      "$numberInt": "21"
+     },
+     "message": "m20"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "22"
+     },
+     "max_amount": {
+      "$numberInt": "22"
+     },
+     "message": "m21"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "23"
+     },
+     "max_amount": {
+      "$numberInt": "23"
+     },
+     "message": "m22"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "24"
+     },
+     "max_amount": {
+      "$numberInt": "24"
+     },
+     "message": "m23"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "25"
+     },
+     "max_amount": {
+      "$numberInt": "25"
+     },
+     "message": "m24"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "26"
+     },
+     "max_amount": {
+      "$numberInt": "26"
+     },
+     "message": "m25"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "27"
+     },
+     "max_amount": {
+      "$numberInt": "27"
+     },
+     "message": "m26"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "28"
+     },
+     "max_amount": {
+      "$numberInt": "28"
+     },
+     "message": "m27"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "29"
+     },
+     "max_amount": {
+      "$numberInt": "29"
+     },
+     "message": "m28"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "30"
+     },
+     "max_amount": {
+      "$numberInt": "30"
+     },
+     "message": "m29"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "31"
+     },
+     "max_amount": {
+      "$numberInt": "31"
+     },
+     "message": "m30"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "32"
+     },
+     "max_amount": {
+      "$numberInt": "32"
+     },
+     "message": "m31"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "33"
+     },
+     "max_amount": {
+      "$numberInt": "33"
+     },
+     "message": "m32"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "34"
+     },
+     "max_amount": {
+      "$numberInt": "34"
+     },
+     "message": "m33"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "35"
+     },
+     "max_amount": {
+      "$numberInt": "35"
+     },
+     "message": "m34"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "36"
+     },
+     "max_amount": {
+      "$numberInt": "36"
+     },
+     "message": "m35"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "37"
+     },
+     "max_amount": {
+      "$numberInt": "37"
+     },
+     "message": "m36"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "38"
+     },
+     "max_amount": {
+      "$numberInt": "38"
+     },
+     "message": "m37"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "39"
+     },
+     "max_amount": {
+      "$numberInt": "39"
+     },
+     "message": "m38"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "40"
+     },
+     "max_amount": {
+      "$numberInt": "40"
+     },
+     "message": "m39"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "41"
+     },
+     "max_amount": {
+      "$numberInt": "41"
+     },
+     "message": "m40"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "42"
+     },
+     "max_amount": {
+      "$numberInt": "42"
+     },
+     "message": "m41"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "43"
+     },
+     "max_amount": {
+      "$numberInt": "43"
+     },
+     "message": "m42"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "44"
+     },
+     "max_amount": {
+      "$numberInt": "44"
+     },
+     "message": "m43"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "45"
+     },
+     "max_amount": {
+      "$numberInt": "45"
+     },
+     "message": "m44"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "46"
+     },
+     "max_amount": {
+      "$numberInt": "46"
+     },
+     "message": "m45"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "47"
+     },
+     "max_amount": {
+      "$numberInt": "47"
+     },
+     "message": "m46"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "48"
+     },
+     "max_amount": {
+      "$numberInt": "48"
+     },
+     "message": "m47"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "49"
+     },
+     "max_amount": {
+      "$numberInt": "49"
+     },
+     "message": "m48"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "50"
+     },
+     "max_amount": {
+      "$numberInt": "50"
+     },
+     "message": "m49"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "51"
+     },
+     "max_amount": {
+      "$numberInt": "51"
+     },
+     "message": "m50"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "52"
+     },
+     "max_amount": {
+      "$numberInt": "52"
+     },
+     "message": "m51"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "53"
+     },
+     "max_amount": {
+      "$numberInt": "53"
+     },
+     "message": "m52"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "54"
+     },
+     "max_amount": {
+      "$numberInt": "54"
+     },
+     "message": "m53"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "55"
+     },
+     "max_amount": {
+      "$numberInt": "55"
+     },
+     "message": "m54"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "56"
+     },
+     "max_amount": {
+      "$numberInt": "56"
+     },
+     "message": "m55"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "57"
+     },
+     "max_amount": {
+      "$numberInt": "57"
+     },
+     "message": "m56"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "58"
+     },
+     "max_amount": {
+      "$numberInt": "58"
+     },
+     "message": "m57"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "59"
+     },
+     "max_amount": {
+      "$numberInt": "59"
+     },
+     "message": "m58"
+    },
+    {
+     "min_amount": {
+      "$numberInt": "60"
+     },
+     "max_amount": {
+      "$numberInt": "60"
+     },
+     "message": "m59"
+    }
+   ],
+   "rules": [
+    {
+     "id": "legacy-1",
+     "name": "",
+     "enabled": true,
+     "min": 1,
+     "max": 1,
+     "chat": {
+      "mode": "custom",
+      "message": "m0"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-2",
+     "name": "",
+     "enabled": true,
+     "min": 2,
+     "max": 2,
+     "chat": {
+      "mode": "custom",
+      "message": "m1"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-3",
+     "name": "",
+     "enabled": true,
+     "min": 3,
+     "max": 3,
+     "chat": {
+      "mode": "custom",
+      "message": "m2"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-4",
+     "name": "",
+     "enabled": true,
+     "min": 4,
+     "max": 4,
+     "chat": {
+      "mode": "custom",
+      "message": "m3"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-5",
+     "name": "",
+     "enabled": true,
+     "min": 5,
+     "max": 5,
+     "chat": {
+      "mode": "custom",
+      "message": "m4"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-6",
+     "name": "",
+     "enabled": true,
+     "min": 6,
+     "max": 6,
+     "chat": {
+      "mode": "custom",
+      "message": "m5"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-7",
+     "name": "",
+     "enabled": true,
+     "min": 7,
+     "max": 7,
+     "chat": {
+      "mode": "custom",
+      "message": "m6"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-8",
+     "name": "",
+     "enabled": true,
+     "min": 8,
+     "max": 8,
+     "chat": {
+      "mode": "custom",
+      "message": "m7"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-9",
+     "name": "",
+     "enabled": true,
+     "min": 9,
+     "max": 9,
+     "chat": {
+      "mode": "custom",
+      "message": "m8"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-10",
+     "name": "",
+     "enabled": true,
+     "min": 10,
+     "max": 10,
+     "chat": {
+      "mode": "custom",
+      "message": "m9"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-11",
+     "name": "",
+     "enabled": true,
+     "min": 11,
+     "max": 11,
+     "chat": {
+      "mode": "custom",
+      "message": "m10"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-12",
+     "name": "",
+     "enabled": true,
+     "min": 12,
+     "max": 12,
+     "chat": {
+      "mode": "custom",
+      "message": "m11"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-13",
+     "name": "",
+     "enabled": true,
+     "min": 13,
+     "max": 13,
+     "chat": {
+      "mode": "custom",
+      "message": "m12"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-14",
+     "name": "",
+     "enabled": true,
+     "min": 14,
+     "max": 14,
+     "chat": {
+      "mode": "custom",
+      "message": "m13"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-15",
+     "name": "",
+     "enabled": true,
+     "min": 15,
+     "max": 15,
+     "chat": {
+      "mode": "custom",
+      "message": "m14"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-16",
+     "name": "",
+     "enabled": true,
+     "min": 16,
+     "max": 16,
+     "chat": {
+      "mode": "custom",
+      "message": "m15"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-17",
+     "name": "",
+     "enabled": true,
+     "min": 17,
+     "max": 17,
+     "chat": {
+      "mode": "custom",
+      "message": "m16"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-18",
+     "name": "",
+     "enabled": true,
+     "min": 18,
+     "max": 18,
+     "chat": {
+      "mode": "custom",
+      "message": "m17"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-19",
+     "name": "",
+     "enabled": true,
+     "min": 19,
+     "max": 19,
+     "chat": {
+      "mode": "custom",
+      "message": "m18"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-20",
+     "name": "",
+     "enabled": true,
+     "min": 20,
+     "max": 20,
+     "chat": {
+      "mode": "custom",
+      "message": "m19"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-21",
+     "name": "",
+     "enabled": true,
+     "min": 21,
+     "max": 21,
+     "chat": {
+      "mode": "custom",
+      "message": "m20"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-22",
+     "name": "",
+     "enabled": true,
+     "min": 22,
+     "max": 22,
+     "chat": {
+      "mode": "custom",
+      "message": "m21"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-23",
+     "name": "",
+     "enabled": true,
+     "min": 23,
+     "max": 23,
+     "chat": {
+      "mode": "custom",
+      "message": "m22"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-24",
+     "name": "",
+     "enabled": true,
+     "min": 24,
+     "max": 24,
+     "chat": {
+      "mode": "custom",
+      "message": "m23"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-25",
+     "name": "",
+     "enabled": true,
+     "min": 25,
+     "max": 25,
+     "chat": {
+      "mode": "custom",
+      "message": "m24"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-26",
+     "name": "",
+     "enabled": true,
+     "min": 26,
+     "max": 26,
+     "chat": {
+      "mode": "custom",
+      "message": "m25"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-27",
+     "name": "",
+     "enabled": true,
+     "min": 27,
+     "max": 27,
+     "chat": {
+      "mode": "custom",
+      "message": "m26"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-28",
+     "name": "",
+     "enabled": true,
+     "min": 28,
+     "max": 28,
+     "chat": {
+      "mode": "custom",
+      "message": "m27"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-29",
+     "name": "",
+     "enabled": true,
+     "min": 29,
+     "max": 29,
+     "chat": {
+      "mode": "custom",
+      "message": "m28"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-30",
+     "name": "",
+     "enabled": true,
+     "min": 30,
+     "max": 30,
+     "chat": {
+      "mode": "custom",
+      "message": "m29"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-31",
+     "name": "",
+     "enabled": true,
+     "min": 31,
+     "max": 31,
+     "chat": {
+      "mode": "custom",
+      "message": "m30"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-32",
+     "name": "",
+     "enabled": true,
+     "min": 32,
+     "max": 32,
+     "chat": {
+      "mode": "custom",
+      "message": "m31"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-33",
+     "name": "",
+     "enabled": true,
+     "min": 33,
+     "max": 33,
+     "chat": {
+      "mode": "custom",
+      "message": "m32"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-34",
+     "name": "",
+     "enabled": true,
+     "min": 34,
+     "max": 34,
+     "chat": {
+      "mode": "custom",
+      "message": "m33"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-35",
+     "name": "",
+     "enabled": true,
+     "min": 35,
+     "max": 35,
+     "chat": {
+      "mode": "custom",
+      "message": "m34"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-36",
+     "name": "",
+     "enabled": true,
+     "min": 36,
+     "max": 36,
+     "chat": {
+      "mode": "custom",
+      "message": "m35"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-37",
+     "name": "",
+     "enabled": true,
+     "min": 37,
+     "max": 37,
+     "chat": {
+      "mode": "custom",
+      "message": "m36"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-38",
+     "name": "",
+     "enabled": true,
+     "min": 38,
+     "max": 38,
+     "chat": {
+      "mode": "custom",
+      "message": "m37"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-39",
+     "name": "",
+     "enabled": true,
+     "min": 39,
+     "max": 39,
+     "chat": {
+      "mode": "custom",
+      "message": "m38"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-40",
+     "name": "",
+     "enabled": true,
+     "min": 40,
+     "max": 40,
+     "chat": {
+      "mode": "custom",
+      "message": "m39"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-41",
+     "name": "",
+     "enabled": true,
+     "min": 41,
+     "max": 41,
+     "chat": {
+      "mode": "custom",
+      "message": "m40"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-42",
+     "name": "",
+     "enabled": true,
+     "min": 42,
+     "max": 42,
+     "chat": {
+      "mode": "custom",
+      "message": "m41"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-43",
+     "name": "",
+     "enabled": true,
+     "min": 43,
+     "max": 43,
+     "chat": {
+      "mode": "custom",
+      "message": "m42"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-44",
+     "name": "",
+     "enabled": true,
+     "min": 44,
+     "max": 44,
+     "chat": {
+      "mode": "custom",
+      "message": "m43"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-45",
+     "name": "",
+     "enabled": true,
+     "min": 45,
+     "max": 45,
+     "chat": {
+      "mode": "custom",
+      "message": "m44"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-46",
+     "name": "",
+     "enabled": true,
+     "min": 46,
+     "max": 46,
+     "chat": {
+      "mode": "custom",
+      "message": "m45"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-47",
+     "name": "",
+     "enabled": true,
+     "min": 47,
+     "max": 47,
+     "chat": {
+      "mode": "custom",
+      "message": "m46"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-48",
+     "name": "",
+     "enabled": true,
+     "min": 48,
+     "max": 48,
+     "chat": {
+      "mode": "custom",
+      "message": "m47"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-49",
+     "name": "",
+     "enabled": true,
+     "min": 49,
+     "max": 49,
+     "chat": {
+      "mode": "custom",
+      "message": "m48"
+     },
+     "alert": true
+    },
+    {
+     "id": "legacy-50",
+     "name": "",
+     "enabled": true,
+     "min": 50,
+     "max": 50,
+     "chat": {
+      "mode": "custom",
+      "message": "m49"
+     },
+     "alert": true
+    }
+   ]
+  }
+ ],
+ "ids": [
+  {
+   "id": "a",
+   "valid": true
+  },
+  {
+   "id": "A-z_0",
+   "valid": true
+  },
+  {
+   "id": "",
+   "valid": false
+  },
+  {
+   "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "id": "a b",
+   "valid": false
+  },
+  {
+   "id": "é",
+   "valid": false
+  },
+  {
+   "id": "rule-65f1e108e8b4",
+   "valid": true
+  }
+ ],
+ "eventsubSeeds": [
+  {
+   "_id": {
+    "$oid": "6af3b0002e2d1162012cb5da"
+   },
+   "id": "sub-100-channel.bits.use",
+   "status": "enabled",
+   "type": "channel.bits.use",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "100"
+   },
+   "created_at": "2026-11-11T00:00:00Z",
+   "transport": {
+    "method": "webhook"
+   },
+   "cost": {
+    "$numberInt": "0"
+   },
+   "channel": "login100",
+   "channelID": "100",
+   "enabled": true,
+   "message": "Thanks $(user)",
+   "watchStreakEnabled": true,
+   "modiversaryMessage": "",
+   "modiversaryEnabled": true,
+   "endMessage": "",
+   "endEnabled": false,
+   "minViewers": {
+    "$numberInt": "2"
+   },
+   "temporalBanMessage": "",
+   "clipEnabled": false,
+   "delay": {
+    "$numberInt": "0"
+   },
+   "cheerTiers": [
+    {
+     "id": "tier-1",
+     "name": "Nice",
+     "message": "Nice one",
+     "minAmount": {
+      "$numberInt": "69"
+     },
+     "maxAmount": {
+      "$numberInt": "69"
+     }
+    },
+    {
+     "name": "Big",
+     "message": "Big!",
+     "min_amount": {
+      "$numberInt": "1000"
+     },
+     "max_amount": {
+      "$numberInt": "5000"
+     }
+    }
+   ],
+   "todayFollows": false,
+   "remote_missing_since": null,
+   "__v": {
+    "$numberInt": "0"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6af3b0002e2d1162012cb5de"
+   },
+   "id": "sub-200-channel.cheer",
+   "status": "enabled",
+   "type": "channel.cheer",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "200"
+   },
+   "created_at": "2026-11-11T00:00:00Z",
+   "transport": {
+    "method": "webhook"
+   },
+   "cost": {
+    "$numberInt": "0"
+   },
+   "channel": "login200",
+   "channelID": "200",
+   "enabled": true,
+   "message": "Thanks $(user)",
+   "watchStreakEnabled": true,
+   "modiversaryMessage": "",
+   "modiversaryEnabled": true,
+   "endMessage": "",
+   "endEnabled": false,
+   "minViewers": {
+    "$numberInt": "2"
+   },
+   "temporalBanMessage": "",
+   "clipEnabled": false,
+   "delay": {
+    "$numberInt": "0"
+   },
+   "cheerTiers": [
+    {
+     "name": "Big",
+     "message": "Big!",
+     "min_amount": {
+      "$numberInt": "1000"
+     },
+     "max_amount": {
+      "$numberInt": "5000"
+     }
+    }
+   ],
+   "todayFollows": false,
+   "remote_missing_since": null,
+   "__v": {
+    "$numberInt": "0"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6af3b0002e2d1162012cb5e0"
+   },
+   "id": "sub-300-channel.cheer",
+   "status": "enabled",
+   "type": "channel.cheer",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "300"
+   },
+   "created_at": "2026-11-11T00:00:00Z",
+   "transport": {
+    "method": "webhook"
+   },
+   "cost": {
+    "$numberInt": "0"
+   },
+   "channel": "login300",
+   "channelID": "300",
+   "enabled": true,
+   "message": "Thanks $(user)",
+   "watchStreakEnabled": true,
+   "modiversaryMessage": "",
+   "modiversaryEnabled": true,
+   "endMessage": "",
+   "endEnabled": false,
+   "minViewers": {
+    "$numberInt": "2"
+   },
+   "temporalBanMessage": "",
+   "clipEnabled": false,
+   "delay": {
+    "$numberInt": "0"
+   },
+   "cheerTiers": [
+    {
+     "id": "tier-1",
+     "name": "Nice",
+     "message": "Nice one",
+     "minAmount": {
+      "$numberInt": "69"
+     },
+     "maxAmount": {
+      "$numberInt": "69"
+     }
+    }
+   ],
+   "todayFollows": false,
+   "remote_missing_since": null,
+   "__v": {
+    "$numberInt": "0"
+   }
+  },
+  {
+   "_id": {
+    "$oid": "6af3b0002e2d1162012cb5e2"
+   },
+   "id": "sub-300-channel.bits.use",
+   "status": "enabled",
+   "type": "channel.bits.use",
+   "version": "1",
+   "condition": {
+    "broadcaster_user_id": "300"
+   },
+   "created_at": "2026-11-11T00:00:00Z",
+   "transport": {
+    "method": "webhook"
+   },
+   "cost": {
+    "$numberInt": "0"
+   },
+   "channel": "login300",
+   "channelID": "300",
+   "enabled": false,
+   "message": "Thanks $(user)",
+   "watchStreakEnabled": true,
+   "modiversaryMessage": "",
+   "modiversaryEnabled": true,
+   "endMessage": "",
+   "endEnabled": false,
+   "minViewers": {
+    "$numberInt": "2"
+   },
+   "temporalBanMessage": "",
+   "clipEnabled": false,
+   "delay": {
+    "$numberInt": "0"
+   },
+   "cheerTiers": [],
+   "todayFollows": false,
+   "remote_missing_since": null,
+   "__v": {
+    "$numberInt": "0"
+   }
+  }
+ ],
+ "found": [
+  {
+   "channel": "100",
+   "id": "sub-100-channel.bits.use",
+   "type": "channel.bits.use"
+  },
+  {
+   "channel": "200",
+   "id": "sub-200-channel.cheer",
+   "type": "channel.cheer"
+  },
+  {
+   "channel": "300",
+   "id": "sub-300-channel.bits.use",
+   "type": "channel.bits.use"
+  },
+  {
+   "channel": "400",
+   "id": null,
+   "type": null
+  }
+ ],
+ "steps": [
+  {
+   "name": "load-empty",
+   "now": 1794355200000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": []
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "load-legacy-lookup",
+   "now": 1794355201000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": [
+      {
+       "id": "tier-1",
+       "name": "Nice",
+       "enabled": true,
+       "min": 69,
+       "max": 69,
+       "chat": {
+        "mode": "custom",
+        "message": "Nice one"
+       },
+       "alert": true
+      },
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "load-legacy-given-null",
+   "now": 1794355202000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": []
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "load-legacy-given",
+   "now": 1794355203000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": [
+      {
+       "id": "legacy-1",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "load-legacy-type",
+   "now": 1794355204000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": [
+      {
+       "id": "legacy-1",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "load-canonical-wins",
+   "now": 1794355205000,
+   "result": {
+    "ok": {
+     "revision": 0,
+     "rules": []
+    }
+   },
+   "documents": []
+  },
+  {
+   "name": "create-copies-legacy",
+   "now": 1794355206000,
+   "result": {
+    "ok": {
+     "revision": 1,
+     "rules": [
+      {
+       "id": "tier-1",
+       "name": "Nice",
+       "enabled": true,
+       "min": 69,
+       "max": 69,
+       "chat": {
+        "mode": "custom",
+        "message": "Nice one"
+       },
+       "alert": true
+      },
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": true,
+       "min": 100,
+       "max": 999,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "1"
+     },
+     "rules": [
+      {
+       "id": "tier-1",
+       "name": "Nice",
+       "enabled": true,
+       "min": {
+        "$numberInt": "69"
+       },
+       "max": {
+        "$numberInt": "69"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Nice one"
+       },
+       "alert": true
+      },
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": true,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": {
+        "$numberInt": "999"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355206000"
+      }
+     },
+     "updatedBy": "editor-1"
+    }
+   ]
+  },
+  {
+   "name": "update",
+   "now": 1794355207000,
+   "result": {
+    "ok": {
+     "revision": 2,
+     "rules": [
+      {
+       "id": "tier-1",
+       "name": "Nice",
+       "enabled": true,
+       "min": 69,
+       "max": 69,
+       "chat": {
+        "mode": "custom",
+        "message": "Nice one"
+       },
+       "alert": true
+      },
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": 100,
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "2"
+     },
+     "rules": [
+      {
+       "id": "tier-1",
+       "name": "Nice",
+       "enabled": true,
+       "min": {
+        "$numberInt": "69"
+       },
+       "max": {
+        "$numberInt": "69"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Nice one"
+       },
+       "alert": true
+      },
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355207000"
+      }
+     },
+     "updatedBy": "editor-2"
+    }
+   ]
+  },
+  {
+   "name": "delete",
+   "now": 1794355208000,
+   "result": {
+    "ok": {
+     "revision": 3,
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": 100,
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    }
+   ]
+  },
+  {
+   "name": "refused-404",
+   "now": 1794355209000,
+   "result": {
+    "error": "This rule was already deleted.",
+    "status": 404
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    }
+   ]
+  },
+  {
+   "name": "create-empty-channel",
+   "now": 1794355210000,
+   "result": {
+    "ok": {
+     "revision": 1,
+     "rules": [
+      {
+       "id": "only",
+       "name": "",
+       "enabled": true,
+       "min": 1,
+       "max": null,
+       "chat": {
+        "mode": "silent",
+        "message": ""
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    },
+    {
+     "_id": "400",
+     "revision": {
+      "$numberInt": "1"
+     },
+     "rules": [
+      {
+       "id": "only",
+       "name": "",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1"
+       },
+       "max": null,
+       "chat": {
+        "mode": "silent",
+        "message": ""
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355210000"
+      }
+     },
+     "updatedBy": "editor-3"
+    }
+   ]
+  },
+  {
+   "name": "load-stored",
+   "now": 1794355211000,
+   "result": {
+    "ok": {
+     "revision": 3,
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": 1000,
+       "max": 5000,
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": 100,
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ]
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    },
+    {
+     "_id": "400",
+     "revision": {
+      "$numberInt": "1"
+     },
+     "rules": [
+      {
+       "id": "only",
+       "name": "",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1"
+       },
+       "max": null,
+       "chat": {
+        "mode": "silent",
+        "message": ""
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355210000"
+      }
+     },
+     "updatedBy": "editor-3"
+    }
+   ]
+  },
+  {
+   "name": "clear-all",
+   "now": 1794355212000,
+   "result": {
+    "ok": {
+     "revision": 2,
+     "rules": []
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    },
+    {
+     "_id": "400",
+     "revision": {
+      "$numberInt": "2"
+     },
+     "rules": [],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355212000"
+      }
+     },
+     "updatedBy": "editor-3"
+    }
+   ]
+  },
+  {
+   "name": "load-cleared",
+   "now": 1794355213000,
+   "result": {
+    "ok": {
+     "revision": 2,
+     "rules": []
+    }
+   },
+   "documents": [
+    {
+     "_id": "100",
+     "revision": {
+      "$numberInt": "3"
+     },
+     "rules": [
+      {
+       "id": "legacy-2",
+       "name": "Big",
+       "enabled": true,
+       "min": {
+        "$numberInt": "1000"
+       },
+       "max": {
+        "$numberInt": "5000"
+       },
+       "chat": {
+        "mode": "custom",
+        "message": "Big!"
+       },
+       "alert": true
+      },
+      {
+       "id": "rule-aaaaaaaaaaaa",
+       "name": "Hype",
+       "enabled": false,
+       "min": {
+        "$numberInt": "100"
+       },
+       "max": null,
+       "chat": {
+        "mode": "custom",
+        "message": "Hype $(user)!"
+       },
+       "alert": true
+      }
+     ],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355208000"
+      }
+     },
+     "updatedBy": "editor-1"
+    },
+    {
+     "_id": "400",
+     "revision": {
+      "$numberInt": "2"
+     },
+     "rules": [],
+     "updatedAt": {
+      "$date": {
+       "$numberLong": "1794355212000"
+      }
+     },
+     "updatedBy": "editor-3"
+    }
+   ]
+  }
+ ],
+ "real": [
+  {
+   "channel": "451357802",
+   "eventsub": "6954ab9f1793fc5881a3ed7d",
+   "revision": 0,
+   "rules": [
+    {
+     "id": "tier-1773370610517-3r24yve05",
+     "enabled": true,
+     "min": 12,
+     "max": 12,
+     "mode": "custom",
+     "alert": true,
+     "name": "f5273e236d498c359c7a91edb712e28728d902bf6dd4f60984dfbc9501a9bf4c",
+     "message": "1ac57eae0254d90096d5a6d1e9fd95f7de91eb2616f24327581a5b9d54e22c24"
+    },
+    {
+     "id": "tier-1773378711736-5mqyey39o",
+     "enabled": true,
+     "min": 13,
+     "max": 13,
+     "mode": "custom",
+     "alert": true,
+     "name": "e03d5e6e71a43c4144ed25001e6818ede68ee712eeea15630249782fecd8fbc3",
+     "message": "e87d060760b8ca9b526390cfc79532c5f87693003e6a7ef67bf0a970cd14b0df"
+    },
+    {
+     "id": "tier-1782119967189-2bl4rjm3d",
+     "enabled": true,
+     "min": 5,
+     "max": 10000,
+     "mode": "custom",
+     "alert": true,
+     "name": "45c42c19907324e86632377717481687fe78ac752d291aa3c1c28a8c321a2274",
+     "message": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    }
+   ],
+   "lookupRevision": 0,
+   "lookupRules": [
+    {
+     "id": "tier-1773370610517-3r24yve05",
+     "enabled": true,
+     "min": 12,
+     "max": 12,
+     "mode": "custom",
+     "alert": true,
+     "name": "f5273e236d498c359c7a91edb712e28728d902bf6dd4f60984dfbc9501a9bf4c",
+     "message": "1ac57eae0254d90096d5a6d1e9fd95f7de91eb2616f24327581a5b9d54e22c24"
+    },
+    {
+     "id": "tier-1773378711736-5mqyey39o",
+     "enabled": true,
+     "min": 13,
+     "max": 13,
+     "mode": "custom",
+     "alert": true,
+     "name": "e03d5e6e71a43c4144ed25001e6818ede68ee712eeea15630249782fecd8fbc3",
+     "message": "e87d060760b8ca9b526390cfc79532c5f87693003e6a7ef67bf0a970cd14b0df"
+    },
+    {
+     "id": "tier-1782119967189-2bl4rjm3d",
+     "enabled": true,
+     "min": 5,
+     "max": 10000,
+     "mode": "custom",
+     "alert": true,
+     "name": "45c42c19907324e86632377717481687fe78ac752d291aa3c1c28a8c321a2274",
+     "message": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    }
+   ],
+   "table": [
+    {
+     "bits": 1,
+     "match": null,
+     "chat": "89e904deca1d8cf037511cdbb83effb0deec44d9fb957b292c91099e2045aa77"
+    },
+    {
+     "bits": 10,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 50,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 51,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 69,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 70,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 99,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 100,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 400,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 401,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 500,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 999,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 1000,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 5000,
+     "match": "tier-1782119967189-2bl4rjm3d",
+     "chat": "02497d99667597cce06a4401bb92f8005db1a475de78c53d02b46a8e5e1745a4"
+    },
+    {
+     "bits": 1000000,
+     "match": null,
+     "chat": "89e904deca1d8cf037511cdbb83effb0deec44d9fb957b292c91099e2045aa77"
+    }
+   ]
+  },
+  {
+   "channel": "452912249",
+   "eventsub": "6a075ac992895fe82fdccd62",
+   "revision": 4,
+   "rules": [
+    {
+     "id": "rule-65f1e108e8b4",
+     "enabled": true,
+     "min": 500,
+     "max": null,
+     "mode": "custom",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "id": "rule-18aa1946f09d",
+     "enabled": true,
+     "min": 10,
+     "max": 50,
+     "mode": "default",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+     "id": "rule-71f2e4625f06",
+     "enabled": true,
+     "min": 100,
+     "max": 400,
+     "mode": "custom",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "a42928625ecc35eb6b0f5b9e21db1aac2958081fb812fae6272f68aac728bdb3"
+    }
+   ],
+   "lookupRevision": 4,
+   "lookupRules": [
+    {
+     "id": "rule-65f1e108e8b4",
+     "enabled": true,
+     "min": 500,
+     "max": null,
+     "mode": "custom",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "id": "rule-18aa1946f09d",
+     "enabled": true,
+     "min": 10,
+     "max": 50,
+     "mode": "default",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+     "id": "rule-71f2e4625f06",
+     "enabled": true,
+     "min": 100,
+     "max": 400,
+     "mode": "custom",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "a42928625ecc35eb6b0f5b9e21db1aac2958081fb812fae6272f68aac728bdb3"
+    }
+   ],
+   "table": [
+    {
+     "bits": 1,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 10,
+     "match": "rule-18aa1946f09d",
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 50,
+     "match": "rule-18aa1946f09d",
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 51,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 69,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 70,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 99,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 100,
+     "match": "rule-71f2e4625f06",
+     "chat": "a42928625ecc35eb6b0f5b9e21db1aac2958081fb812fae6272f68aac728bdb3"
+    },
+    {
+     "bits": 400,
+     "match": "rule-71f2e4625f06",
+     "chat": "a42928625ecc35eb6b0f5b9e21db1aac2958081fb812fae6272f68aac728bdb3"
+    },
+    {
+     "bits": 401,
+     "match": null,
+     "chat": "362adc89807a374916db688d0b4b8330ffe961f76fca4ba6b9ad9cbc06cf2596"
+    },
+    {
+     "bits": 500,
+     "match": "rule-65f1e108e8b4",
+     "chat": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "bits": 999,
+     "match": "rule-65f1e108e8b4",
+     "chat": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "bits": 1000,
+     "match": "rule-65f1e108e8b4",
+     "chat": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "bits": 5000,
+     "match": "rule-65f1e108e8b4",
+     "chat": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    },
+    {
+     "bits": 1000000,
+     "match": "rule-65f1e108e8b4",
+     "chat": "11d4f6926609d109064540a096f3ecfdda210b681601799682f91de4e059dd81"
+    }
+   ]
+  },
+  {
+   "channel": "533538623",
+   "eventsub": "68881b7eefc8ac91a85c2480",
+   "revision": 1,
+   "rules": [
+    {
+     "id": "tier-1773124051521-xalfo07r4",
+     "enabled": true,
+     "min": 69,
+     "max": 69,
+     "mode": "custom",
+     "alert": true,
+     "name": "0706c613d8ef85acea965b8e500f3d0da201a1c85ea1ac6f6814b903306571f3",
+     "message": "4119cac47123d5d9041b22c2f002da9132fc439d995a12e32eb751a2c992c90f"
+    },
+    {
+     "id": "rule-dbd25013e88e",
+     "enabled": true,
+     "min": 100,
+     "max": null,
+     "mode": "default",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+   ],
+   "lookupRevision": 1,
+   "lookupRules": [
+    {
+     "id": "tier-1773124051521-xalfo07r4",
+     "enabled": true,
+     "min": 69,
+     "max": 69,
+     "mode": "custom",
+     "alert": true,
+     "name": "0706c613d8ef85acea965b8e500f3d0da201a1c85ea1ac6f6814b903306571f3",
+     "message": "4119cac47123d5d9041b22c2f002da9132fc439d995a12e32eb751a2c992c90f"
+    },
+    {
+     "id": "rule-dbd25013e88e",
+     "enabled": true,
+     "min": 100,
+     "max": null,
+     "mode": "default",
+     "alert": true,
+     "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "message": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+   ],
+   "table": [
+    {
+     "bits": 1,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 10,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 50,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 51,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 69,
+     "match": "tier-1773124051521-xalfo07r4",
+     "chat": "4119cac47123d5d9041b22c2f002da9132fc439d995a12e32eb751a2c992c90f"
+    },
+    {
+     "bits": 70,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 99,
+     "match": null,
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 100,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 400,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 401,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 500,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 999,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 1000,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 5000,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    },
+    {
+     "bits": 1000000,
+     "match": "rule-dbd25013e88e",
+     "chat": "1a4fdd5721f4e72ebfc6eb0dad1571fb84c30ed816a18654c8db73daf3e3731c"
+    }
+   ]
+  },
+  {
+   "channel": "810249317",
+   "eventsub": "698bc53f38fc9d3d449abc9d",
+   "revision": 0,
+   "rules": [
+    {
+     "id": "tier-1773273613633-mw6hjl1m5",
+     "enabled": true,
+     "min": 12,
+     "max": 12,
+     "mode": "custom",
+     "alert": true,
+     "name": "f12958816a49adfa2c6c8de8dd2144c163e92c5e375de964d533187c7d236c36",
+     "message": "cd46fdb6279ff55a6256e07876709d12351e133d39b6892f08ddf44bc36453eb"
+    },
+    {
+     "id": "tier-1774130796408-xkrj6jm7x",
+     "enabled": true,
+     "min": 5,
+     "max": 10,
+     "mode": "custom",
+     "alert": true,
+     "name": "f15e9d51292bc501af7c89a429d3e68888dee0d242fdb13f7170abf476b2e568",
+     "message": "e340ba6a745f282cd08b3bd815c824686bac32b28a00a3240323438660621dd0"
+    }
+   ],
+   "lookupRevision": 0,
+   "lookupRules": [
+    {
+     "id": "tier-1773273613633-mw6hjl1m5",
+     "enabled": true,
+     "min": 12,
+     "max": 12,
+     "mode": "custom",
+     "alert": true,
+     "name": "f12958816a49adfa2c6c8de8dd2144c163e92c5e375de964d533187c7d236c36",
+     "message": "cd46fdb6279ff55a6256e07876709d12351e133d39b6892f08ddf44bc36453eb"
+    },
+    {
+     "id": "tier-1774130796408-xkrj6jm7x",
+     "enabled": true,
+     "min": 5,
+     "max": 10,
+     "mode": "custom",
+     "alert": true,
+     "name": "f15e9d51292bc501af7c89a429d3e68888dee0d242fdb13f7170abf476b2e568",
+     "message": "e340ba6a745f282cd08b3bd815c824686bac32b28a00a3240323438660621dd0"
+    }
+   ],
+   "table": [
+    {
+     "bits": 1,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 10,
+     "match": "tier-1774130796408-xkrj6jm7x",
+     "chat": "e340ba6a745f282cd08b3bd815c824686bac32b28a00a3240323438660621dd0"
+    },
+    {
+     "bits": 50,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 51,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 69,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 70,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 99,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 100,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 400,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 401,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 500,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 999,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 1000,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 5000,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    },
+    {
+     "bits": 1000000,
+     "match": null,
+     "chat": "8ef1a97be5e4cb40d0fdc248a55eb79217f96ab53ffb6bd6641464d217d6f05a"
+    }
+   ]
+  }
+ ]
+}
