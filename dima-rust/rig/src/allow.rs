@@ -31,6 +31,10 @@ pub enum AllowKind {
     /// compared as the moment it ends, relative to the run (`true`: seconds; `false`: ms).
     /// Negative values (no TTL, no key) stay numbers.
     Ttl { seconds: bool },
+    /// The number (or digit string) at the path is a time in whole minutes since the epoch
+    /// (`floor(now / 60 s)`, a rate-limit window): compared relative to the run within at least
+    /// a minute.
+    Minutes,
 }
 
 impl AllowKind {
@@ -43,6 +47,7 @@ impl AllowKind {
             AllowKind::Exact => "exact",
             AllowKind::Time { .. } => "time",
             AllowKind::Ttl { .. } => "ttl",
+            AllowKind::Minutes => "time",
         }
     }
 }
@@ -126,6 +131,12 @@ impl Allowances {
             AllowKind::Time { seconds } => Some(seconds),
             _ => None,
         }
+    }
+
+    /// A `time` allowance with `"unit": "min"` matches this path (marked used).
+    pub fn minutes(&self, path: &Path) -> bool {
+        self.find(path, true, |k| matches!(k, AllowKind::Minutes))
+            .is_some()
     }
 
     /// The unit of a `ttl` allowance at this path (`true`: seconds), marked used.

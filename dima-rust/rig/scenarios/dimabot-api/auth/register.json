@@ -1,0 +1,102 @@
+{
+  "rig_scenario": 1,
+  "description": "An endpoint that calls outside services and writes MongoDB: GET /auth/register exchanges the OAuth code at Twitch, looks the user up with the new token, stores the encrypted tokens and activates the account, sends the welcome email, makes the bot a moderator, subscribes the channel's EventSub subscriptions and creates the reserved commands, then redirects to the dashboard login.",
+  "seed": {
+    "include": [
+      "../_seeds/streamer.json"
+    ]
+  },
+  "mock": {
+    "twitch": {
+      "users": [
+        {
+          "id": "1001",
+          "login": "rigstreamer",
+          "display_name": "RigStreamer",
+          "email": "rigstreamer@example.test"
+        }
+      ],
+      "tokens": [
+        {
+          "token": "rigusertoken1001",
+          "user_id": "1001",
+          "code": "rigcode1001",
+          "refresh_token": "rigrefresh1001",
+          "expires_in": 14400,
+          "scopes": [
+            "user:read:email",
+            "moderation:read",
+            "channel:manage:moderators",
+            "channel:bot"
+          ]
+        }
+      ]
+    },
+    "routes": [
+      {
+        "host": "api.twitch.tv",
+        "method": "POST",
+        "path": "/helix/moderation/moderators",
+        "respond": {
+          "status": 204
+        },
+        "reason": "The bot account becomes a moderator of the channel."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "name": "OAuth callback",
+      "http": {
+        "method": "GET",
+        "path": "/auth/register?code=rigcode1001&state=rigstreamer",
+        "expect": {
+          "status": 302
+        }
+      }
+    },
+    {
+      "name": "the welcome email",
+      "wait_call": {
+        "host": "api.resend.com",
+        "method": "POST",
+        "path": "/emails",
+        "timeout_ms": 20000
+      }
+    },
+    {
+      "wait_quiet": {
+        "quiet_ms": 1000,
+        "timeout_ms": 30000
+      }
+    }
+  ],
+  "compare": {
+    "dragonfly": {
+      "exclude": [
+        "logger:*",
+        "observability:*",
+        "ast_catalog:*"
+      ]
+    }
+  },
+  "allow": [
+    {
+      "path": "mongo.users[*].accounts[*].*_token.*",
+      "kind": "generated",
+      "reason": "The stored tokens are AES-256-CTR with a random IV (utils/crypto.ts): iv and content differ on every run; the plaintext is checked through the token cache."
+    },
+    {
+      "path": "mongo.users[*].accounts[*].access_token_expires_at",
+      "kind": "time",
+      "unit": "s",
+      "reason": "Epoch seconds: now plus the token's expires_in, written as an int32."
+    },
+    {
+      "path": "dragonfly[\"accounts:twitch:1001:data\"].value.expires_at",
+      "kind": "time",
+      "unit": "s",
+      "reason": "The token cache keeps the expiry as epoch seconds in text: now plus the token's expires_in."
+    }
+  ]
+}

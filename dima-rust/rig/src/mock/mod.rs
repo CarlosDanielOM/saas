@@ -171,6 +171,12 @@ pub struct MockFile {
     /// waits until the mock and the stores are quiet for 300 ms, at most this long; default 3000).
     #[serde(default)]
     pub settle_ms: Option<u64>,
+    /// Provider name → `ordered`, `multiset` or `ignore` for every scenario (a scenario's
+    /// `compare.calls` wins), with `compare_reason`.
+    #[serde(default)]
+    pub compare: BTreeMap<String, String>,
+    #[serde(default)]
+    pub compare_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -188,6 +194,7 @@ pub struct MockSpec {
     pub s3: BTreeMap<String, S3Object>,
     pub startup_ignore: bool,
     pub settle_ms: Option<u64>,
+    pub call_order: BTreeMap<String, providers::CallOrder>,
 }
 
 impl MockSpec {
@@ -233,12 +240,34 @@ impl MockSpec {
             }
         };
         let s3 = handlers::s3_objects(&f.s3.map(|s| s.objects).unwrap_or_default())?;
+        let mut call_order = BTreeMap::new();
+        if !f.compare.is_empty()
+            && f.compare_reason
+                .as_deref()
+                .is_none_or(|r| r.trim().chars().count() < 8)
+        {
+            return Err(format!(
+                "{origin} mock.compare_reason: say why these providers compare this way"
+            ));
+        }
+        for (p, mode) in &f.compare {
+            if providers.by_name(p).is_none() {
+                return Err(format!(
+                    "{origin} mock.compare: `{p}` is not a provider name"
+                ));
+            }
+            let order = providers::CallOrder::parse(mode).ok_or_else(|| {
+                format!("{origin} mock.compare.{p}: `{mode}` (ordered, multiset or ignore)")
+            })?;
+            call_order.insert(p.clone(), order);
+        }
         Ok(MockSpec {
             routes,
             twitch: f.twitch.unwrap_or_default(),
             s3,
             startup_ignore,
             settle_ms: f.settle_ms.map(|m| m.min(120_000)),
+            call_order,
         })
     }
 
@@ -266,12 +295,15 @@ impl MockSpec {
         twitch.subscriptions.extend(s.subscriptions.iter().cloned());
         let mut s3 = target.s3.clone();
         s3.extend(scenario.s3.clone());
+        let mut call_order = target.call_order.clone();
+        call_order.extend(scenario.call_order.clone());
         MockSpec {
             routes,
             twitch,
             s3,
             startup_ignore: scenario.startup_ignore || target.startup_ignore,
             settle_ms: scenario.settle_ms.or(target.settle_ms),
+            call_order,
         }
     }
 }
@@ -291,6 +323,8 @@ struct State {
     side_ports: BTreeMap<String, u16>,
     /// The last request (rig clock, epoch ms), for "wait until quiet".
     last_request: i64,
+    /// The last request per provider.
+    last_by_provider: HashMap<String, i64>,
 }
 
 struct Shared {
@@ -622,7 +656,11 @@ async fn handle(
             answered_by
         },
     };
-    shared.state().calls.push(call);
+    {
+        let mut st = shared.state();
+        st.last_by_provider.insert(call.provider.clone(), now);
+        st.calls.push(call);
+    }
     match chosen {
         Chosen::Handler { .. } | Chosen::Unmatched => {
             let d = describe(&method, &host, &path, &query, &plain);
@@ -891,6 +929,7 @@ impl Mock {
                 seen: HashMap::new(),
                 side_ports: BTreeMap::new(),
                 last_request: 0,
+                last_by_provider: HashMap::new(),
             }),
             client,
             qdrant: qdrant.clone(),
@@ -933,6 +972,7 @@ impl Mock {
         st.seen.clear();
         st.side_ports = side_ports.clone();
         st.last_request = 0;
+        st.last_by_provider.clear();
     }
 
     pub fn calls(&self) -> Vec<RawCall> {
@@ -946,6 +986,21 @@ impl Mock {
     /// When the mock last received a request (epoch ms, 0 for never).
     pub fn last_request(&self) -> i64 {
         self.shared.state().last_request
+    }
+
+    /// When the mock last received a request for a provider not in `ignored`, or anything it
+    /// did not expect (epoch ms, 0 for never).
+    pub fn last_request_except(&self, ignored: &[String]) -> i64 {
+        let st = self.shared.state();
+        let calls = st
+            .last_by_provider
+            .iter()
+            .filter(|(p, _)| !ignored.contains(p))
+            .map(|(_, t)| *t)
+            .max()
+            .unwrap_or(0);
+        let problems = st.problems.iter().map(|p| p.at).max().unwrap_or(0);
+        calls.max(problems)
     }
 
     /// Calls recorded so far that satisfy `f`.

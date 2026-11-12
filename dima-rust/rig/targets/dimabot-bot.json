@@ -1,6 +1,6 @@
 {
   "rig_target": 1,
-  "description": "dimabot bot (dima-bot): the frozen TypeScript bot at 0c71108e in image dimabot-ref:0c71108e, production command and variable names with test values only, every outbound request sent to the side's mock by the Node preload. The EventSub ingress listens on 3333 inside, remapped to the rig's port `eventsub`. The API is not running: calls to dima-server:3000 (INTERNAL_API_URL) and api.domdimabot.com are answered by scenario routes. Candidate: not ported yet.",
+  "description": "dimabot bot (dima-bot): the frozen TypeScript bot at 0c71108e in image dimabot-ref:0c71108e, production command and variable names with test values only, every outbound request sent to the side's mock by the Node preload. The EventSub ingress listens on 3333 inside, remapped to the rig's port `eventsub`. The API is not running: calls to dima-server:3000 (INTERNAL_API_URL) and api.domdimabot.com are answered by scenario routes. Ready when the AST command catalog's vector index is built (the key ast_catalog:vectors:v1:<hash>), which the bot does in the background after it starts listening: a chat message delivered earlier is handled seconds late while that work runs. Candidate: not ported yet.",
   "ports": [
     "eventsub"
   ],
@@ -12,7 +12,11 @@
     "routes": [],
     "twitch": {
       "client_id": "rigclientid0c71108e00000000001"
-    }
+    },
+    "compare": {
+      "posthog": "ignore"
+    },
+    "compare_reason": "posthog-node sends its batches on its own 10 s timer, so whether the start-up $identify batch (or any event's) lands inside a scenario depends on timing. A scenario that checks analytics events sets compare.calls.posthog to multiset and waits for the batch with wait_call."
   },
   "reference": {
     "container": {
@@ -71,7 +75,7 @@
       "RIG_LISTEN": "3333={port.eventsub}"
     },
     "ready": {
-      "tcp": true,
+      "key": "ast_catalog:vectors:v1:*",
       "port": "eventsub",
       "timeout_ms": 120000
     },

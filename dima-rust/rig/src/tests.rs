@@ -87,6 +87,7 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
         dragonfly,
         calls: Vec::new(),
         startup_ignored: BTreeMap::new(),
+        startup_keys: Vec::new(),
     }
 }
 
@@ -2134,5 +2135,123 @@ fn binary_command_arguments() {
             json!({"$rigBytes": "/wA=", "x": 1})
         ])
         .contains("$rigBytes")
+    );
+}
+
+#[test]
+fn minute_windows_compare_relative_to_the_run() {
+    let minute = |at: i64| {
+        RawStep::Http(RawHttp {
+            at,
+            status: 200,
+            headers: vec![("content-type".into(), b"application/json".to_vec())],
+            body: format!(r#"{{"window":{},"text":"{}"}}"#, at / 60_000, at / 60_000).into_bytes(),
+        })
+    };
+    let al = allow(&[
+        ("steps[*].body.window", AllowKind::Minutes),
+        ("steps[*].body.text", AllowKind::Minutes),
+    ]);
+    // A day apart, and the candidate's minute rolled over during its run: still the same.
+    let a = raw(vec![minute(START + 1000)], vec![], vec![]);
+    let b = raw(vec![minute(START + DAY + 59_000)], vec![], vec![]);
+    assert_match(&diff_w(&a, window(), &b, shifted(DAY), &al));
+    // Ten minutes off is a difference.
+    let c = raw(vec![minute(START + DAY + 600_000)], vec![], vec![]);
+    let o = diff_w(&a, window(), &c, shifted(DAY), &al);
+    assert_one(&o, "steps[0].body.window", "minute precision");
+    assert_one(&o, "steps[0].body.text", "minute precision");
+}
+
+#[test]
+fn times_written_during_start_up_compare_as_such() {
+    // Own process: seeded, then the process starts, then the first step.
+    let w = |boot: i64| Window {
+        start: START,
+        end: START + 3000,
+        proc_start: START - boot,
+        seeded_at: START - boot - 500,
+    };
+    let doc_at = |t: i64| {
+        raw(
+            vec![],
+            vec![(
+                "clients",
+                coll(vec![
+                    doc! {"_id": 1, "createdAt": date(t), "updatedAt": date(t)},
+                ]),
+            )],
+            vec![RawEntry {
+                key: b"app:token".to_vec(),
+                kind: "string".into(),
+                value: RawValue::Str(b"t".to_vec()),
+                pttl: 5_000_000_000 - (START + 3000 - t),
+                pttl_at: START + 3000,
+            }],
+        )
+    };
+    let with_startup = |mut r: RawCapture, t: i64| {
+        r.startup_keys = vec![(b"app:token".to_vec(), t + 5_000_000_000)];
+        r
+    };
+    // The reference took 7 s to start and wrote 6 s before the first step; the candidate
+    // started in 100 ms and wrote 50 ms before it: both wrote during start-up, same TTL length.
+    let a = with_startup(doc_at(START - 6000), START - 6000);
+    let b = with_startup(doc_at(START - 50), START - 50);
+    let known = Known::default();
+    let al = Allowances::default();
+    let ca = norm_run(
+        &RawRun {
+            raw: a.clone(),
+            run: meta(w(7000), 41234),
+        },
+        &known,
+        &al,
+    );
+    let cb = norm_run(
+        &RawRun {
+            raw: b,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    assert_match(&compare::compare(
+        &ca,
+        &cb,
+        &al,
+        compare::Tolerances::default(),
+    ));
+    // A candidate that writes during the run instead, with a TTL a day shorter.
+    let mut late = doc_at(START + 500);
+    late.dragonfly[0].pttl -= 86_400_000;
+    let cl = norm_run(
+        &RawRun {
+            raw: late,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    let o = compare::compare(&ca, &cl, &al, compare::Tolerances::default());
+    assert_one(&o, "mongo.clients[0].createdAt", "during start-up");
+    assert_one(&o, r#"dragonfly["app:token"].ttl"#, "during start-up");
+    // A start-up TTL of another length.
+    let mut short = with_startup(doc_at(START - 50), START - 50);
+    short.dragonfly[0].pttl -= 86_400_000;
+    short.startup_keys[0].1 -= 86_400_000;
+    let cs = norm_run(
+        &RawRun {
+            raw: short,
+            run: meta(w(100), 41234),
+        },
+        &known,
+        &al,
+    );
+    let o = compare::compare(&ca, &cs, &al, compare::Tolerances::default());
+    assert_one(
+        &o,
+        r#"dragonfly["app:token"].ttl"#,
+        "TTLs set during start-up differ",
     );
 }

@@ -454,16 +454,23 @@ impl<'s> SideRunner<'s> {
 
     /// Let a fresh process finish its start-up writes and start-up calls to the mock: until the
     /// stores were quiet for 200 ms and the mock for 300 ms, at most `max_ms` (never fails).
-    async fn settle(&mut self, max_ms: u64) {
+    /// What is not compared does not count (log and telemetry keys a scenario excludes, calls
+    /// to providers that are not compared): such traffic never stops.
+    async fn settle(&mut self, max_ms: u64, quiet: &SettleIgnore) {
         let mut last = None;
         let mut since = tokio::time::Instant::now();
         let deadline = since + Duration::from_millis(max_ms);
         while tokio::time::Instant::now() < deadline {
-            let Ok(fp) = self.stores.fingerprint(&[], &[]).await else {
+            let Ok(fp) = self
+                .stores
+                .fingerprint(&quiet.keys, &quiet.collections)
+                .await
+            else {
                 return;
             };
             let t = tokio::time::Instant::now();
-            let mock_quiet = timefmt::now_ms() - self.mock.last_request() >= 300;
+            let mock_quiet =
+                timefmt::now_ms() - self.mock.last_request_except(&quiet.providers) >= 300;
             if last != Some(fp) {
                 last = Some(fp);
                 since = t;
@@ -476,6 +483,33 @@ impl<'s> SideRunner<'s> {
 
     fn settle_ms(&self, mock: &MockSpec) -> u64 {
         mock.settle_ms.unwrap_or(3000)
+    }
+
+    /// What the settle step ignores for this scenario (or the target alone).
+    fn settle_ignore(&self, sc: Option<&Scenario>, mock: &MockSpec) -> SettleIgnore {
+        let mut order = mock.call_order.clone();
+        if let Some(sc) = sc {
+            order.extend(sc.call_rules.order.clone());
+        }
+        let mut providers: Vec<String> = order
+            .iter()
+            .filter(|(_, o)| **o == crate::mock::providers::CallOrder::Ignore)
+            .map(|(p, _)| p.clone())
+            .collect();
+        if let Ok(table) = crate::mock::providers::Providers::builtin() {
+            for p in &table.list {
+                if p.order == crate::mock::providers::CallOrder::Ignore
+                    && !order.contains_key(&p.name)
+                {
+                    providers.push(p.name.clone());
+                }
+            }
+        }
+        SettleIgnore {
+            keys: sc.map(|s| s.dragonfly.exclude.clone()).unwrap_or_default(),
+            collections: sc.map(|s| s.mongo.exclude.clone()).unwrap_or_default(),
+            providers,
+        }
     }
 
     /// The side's data directory: emptied (when `wipe`), then the scenario's `seed.files`.
@@ -531,7 +565,8 @@ impl<'s> SideRunner<'s> {
         let _ = std::fs::create_dir_all(&self.data_dir);
         let target_mock = self.target.mock.clone();
         self.launch(&target_mock).await?;
-        self.settle(self.settle_ms(&target_mock)).await;
+        let quiet = self.settle_ignore(None, &target_mock);
+        self.settle(self.settle_ms(&target_mock), &quiet).await;
         let b = self
             .stores
             .snapshot()
@@ -546,6 +581,7 @@ impl<'s> SideRunner<'s> {
         let start = seeded_at;
         let own_process = !(self.target.share_process || sc.share_process) || sc.restart;
         let mock_spec = MockSpec::merged(&self.target.mock, &sc.mock);
+        let mut startup_keys = Vec::new();
         if own_process {
             let _ = self.stop_process().await;
             self.baseline = None;
@@ -559,8 +595,17 @@ impl<'s> SideRunner<'s> {
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
             self.seed_files(sc, true)?;
+            // Keys the seed gave a TTL are the seed's, not the start-up's.
+            let seeded = self.stores.ttl_keys().await.unwrap_or_default();
             self.launch(&mock_spec).await?;
-            self.settle(self.settle_ms(&mock_spec)).await;
+            let quiet = self.settle_ignore(Some(sc), &mock_spec);
+            self.settle(self.settle_ms(&mock_spec), &quiet).await;
+            startup_keys = self.stores.ttl_keys().await.unwrap_or_default();
+            startup_keys.retain(|(k, e)| {
+                !seeded
+                    .iter()
+                    .any(|(sk, se)| sk == k && (se - e).abs() <= 1000)
+            });
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
@@ -689,6 +734,7 @@ impl<'s> SideRunner<'s> {
             dragonfly,
             calls,
             startup_ignored,
+            startup_keys,
         };
         raw.sort();
         Ok(RawRun { raw, run })
@@ -725,6 +771,14 @@ fn require_candidate(target: &Target) -> Result<()> {
         ))),
         None => Ok(()),
     }
+}
+
+/// What the start-up settle step does not wait for.
+#[derive(Debug, Default)]
+struct SettleIgnore {
+    keys: Vec<String>,
+    collections: Vec<String>,
+    providers: Vec<String>,
 }
 
 /// An existing database a side reads (`diff-get`), and the URI it gets for it.
@@ -889,15 +943,20 @@ fn load_scenarios(
             settings.rig_dir.join("scenarios").join(target).display()
         )));
     }
-    let target_mock = target::load(&settings.rig_dir, target)
-        .map(|t| t.mock_json)
-        .unwrap_or(serde_json::Value::Null);
+    let (target_mock, target_order) = target::load(&settings.rig_dir, target)
+        .map(|t| (t.mock_json, t.mock.call_order))
+        .unwrap_or((serde_json::Value::Null, BTreeMap::new()));
     let mut out = Vec::new();
     for n in names {
         match scenario::load(&settings.rig_dir, target, &n, p) {
             Ok(mut s) => {
                 // Values the target's mock answers with are inputs too.
                 detect::collect_known_json(p, &target_mock, &mut s.known);
+                // How calls compare: the scenario's compare.calls, then its mock.compare,
+                // then the target's mock.compare, then the provider table.
+                for (k, v) in s.mock.call_order.iter().chain(target_order.iter()) {
+                    s.call_rules.order.entry(k.clone()).or_insert(*v);
+                }
                 out.push(s)
             }
             Err(e) => report.scenarios.push(ScenarioReport::error(
@@ -1179,7 +1238,7 @@ pub async fn record(
         }
         let path = capture_path(settings, target_name, &sc.name);
         // Unchanged: the stored capture, normalised by the current code, still matches.
-        let unchanged = match read_capture(&path) {
+        let (unchanged, had_capture) = match read_capture(&path) {
             Ok(old)
                 if old.hashes.scenario == sc.hash
                     && old.provenance.target == target_name
@@ -1192,15 +1251,23 @@ pub async fn record(
                 };
                 let oc = normalise_sc(&old, sc, &fresh, &p, settings);
                 let nc = normalise_sc(&r1, sc, &fresh, &p, settings);
-                compare::compare(&oc, &nc, &fresh, sc.tolerances)
-                    .differences
-                    .is_empty()
+                (
+                    compare::compare(&oc, &nc, &fresh, sc.tolerances).differences,
+                    true,
+                )
             }
-            _ => false,
+            _ => (Vec::new(), false),
         };
-        if unchanged {
+        if unchanged.is_empty() && had_capture {
             rep.status = Status::Unchanged;
         } else {
+            // Say what changed against the stored capture (a reviewer checks it).
+            for f in unchanged.iter().take(20) {
+                rep.warnings.push(format!(
+                    "changed from the stored capture: {}: {}",
+                    f.path, f.what
+                ));
+            }
             let text = capture::to_file_string(&capture_file(target_name, sc, &r1, label));
             if let Some(dir) = path.parent() {
                 std::fs::create_dir_all(dir)

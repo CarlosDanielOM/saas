@@ -68,6 +68,8 @@ struct TimeObs {
     fine: bool,
     /// A value the seed wrote (`$rigNow`): anchored at the seed, not at the run start.
     seeded: bool,
+    /// Written during start-up on one side or both: anchored at the process start.
+    startup: bool,
 }
 const SHOW: usize = 240;
 /// Above this many reference × candidate items, skip the quadratic matching passes.
@@ -170,6 +172,8 @@ pub fn mask(v: &Val) -> String {
         Val::Oid(_) | Val::Uuid(_) => "I<id>".into(),
         Val::Time(r, Moment::Abs(ms)) => format!("T{r:?}{ms}"),
         Val::Time(r, Moment::Seed { seed, .. }) => format!("T{r:?}seed{seed}"),
+        Val::Time(r, Moment::Startup { .. }) => format!("T{r:?}startup"),
+        Val::Time(r, Moment::StartupTtl { .. }) => format!("T{r:?}startupttl"),
         Val::Time(r, _) => format!("T{r:?}"),
         Val::Str(t) => format!("S{}", text(t)),
         Val::Json(inner) => format!("J{}", mask(inner)),
@@ -351,6 +355,31 @@ impl<'a> Comparator<'a> {
         }
     }
 
+    /// Minute-precision times: at least a minute and a second of tolerance.
+    fn moments_coarse(&self, path: &Path, a: &Moment, b: &Moment) -> Result<(), String> {
+        // The start of a minute can lie before the first step even when the value was written
+        // during the run: run times and start-up times compare alike at this precision.
+        let rel = |m: &Moment| match m {
+            Moment::Rel { off, .. } | Moment::Startup { off } => Some(*off),
+            _ => None,
+        };
+        match (rel(a), rel(b)) {
+            (Some(x), Some(y)) => {
+                let tol = self.tol(path).max(61_000);
+                if (x - y).abs() <= tol {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "run-relative times differ by {} (tolerance {}, minute precision)",
+                        human_duration(y - x),
+                        human_duration(tol)
+                    ))
+                }
+            }
+            _ => self.moments(path, a, b),
+        }
+    }
+
     fn moments(&self, path: &Path, a: &Moment, b: &Moment) -> Result<(), String> {
         match (a, b) {
             (Moment::Abs(x), Moment::Abs(y)) => {
@@ -391,6 +420,37 @@ impl<'a> Comparator<'a> {
                     ))
                 }
             }
+            (Moment::Startup { .. }, Moment::Startup { .. }) => Ok(()),
+            (Moment::StartupTtl { lo: a1, hi: a2 }, Moment::StartupTtl { lo: b1, hi: b2 }) => {
+                let tol = self.tol(path);
+                let gap = (*a1).max(*b1) - (*a2).min(*b2);
+                if gap <= tol {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "TTLs set during start-up differ: reference {}..{}, candidate {}..{} (tolerance {})",
+                        human_duration(*a1),
+                        human_duration(*a2),
+                        human_duration(*b1),
+                        human_duration(*b2),
+                        human_duration(tol)
+                    ))
+                }
+            }
+            (Moment::StartupTtl { .. }, _) => {
+                Err("reference set this TTL during start-up, candidate during the run".into())
+            }
+            (_, Moment::StartupTtl { .. }) => {
+                Err("candidate set this TTL during start-up, reference during the run".into())
+            }
+            (Moment::Startup { .. }, _) => Err(
+                "reference wrote this time during start-up, candidate during the run or another time"
+                    .into(),
+            ),
+            (_, Moment::Startup { .. }) => Err(
+                "candidate wrote this time during start-up, reference during the run or another time"
+                    .into(),
+            ),
             (Moment::Seed { seed, .. }, _) => Err(format!(
                 "reference keeps the seeded time seed{}, candidate has another time",
                 crate::timefmt::format_offset(*seed)
@@ -415,7 +475,11 @@ impl<'a> Comparator<'a> {
                     if sp != sq {
                         return Err(format!("time written in a different format ({sp} vs {sq})"));
                     }
-                    self.moments(path, p, q)?;
+                    if sp == "min" {
+                        self.moments_coarse(path, p, q)?;
+                    } else {
+                        self.moments(path, p, q)?;
+                    }
                 }
                 (Seg::Day { off: p, .. }, Seg::Day { off: q, .. }) => {
                     if p != q {
@@ -500,9 +564,14 @@ impl<'a> Comparator<'a> {
                 }
             }
             (Val::Time(r1, m1), Val::Time(r2, m2)) => {
+                let compared = if *r1 == crate::value::NumRepr::JsonMinutes {
+                    self.moments_coarse(path, m1, m2)
+                } else {
+                    self.moments(path, m1, m2)
+                };
                 if r1 != r2 {
                     type_diff(self, path);
-                } else if let Err(why) = self.moments(path, m1, m2) {
+                } else if let Err(why) = compared {
                     self.diff(path, why, Some(show(a)), Some(show(b)));
                 }
                 self.observe(path, String::new(), m1, m2, r1.fine() && r2.fine());
@@ -581,6 +650,7 @@ impl<'a> Comparator<'a> {
                 c,
                 fine,
                 seeded: matches!(a, Moment::Seed { .. }),
+                startup: matches!(a, Moment::Startup { .. }) || matches!(b, Moment::Startup { .. }),
             });
         }
     }
@@ -621,16 +691,20 @@ impl<'a> Comparator<'a> {
             if self.flagged.contains(&ka) || self.flagged.contains(&kb) {
                 continue;
             }
-            let tol = self
+            let allowed = self
                 .allow
                 .tolerance(&a.path, false)
                 .into_iter()
                 .chain(self.allow.tolerance(&b.path, false))
-                .fold(self.relation, i64::max);
+                .max();
+            let tol = allowed.map_or(self.relation, |t| t.max(self.relation));
             // A seeded time and a run time have different anchors (the process start lies
             // between them, and varies): only their order means something.
-            let fine = a.fine && b.fine && a.seeded == b.seeded;
-            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, fine, tol) {
+            let fine = a.fine && b.fine && a.seeded == b.seeded && a.startup == b.startup;
+            // "One clock reading" is exact unless a tolerance allowance covers one of the two
+            // (two clock readings that usually fall in the same millisecond).
+            let same_tol = allowed.unwrap_or(0);
+            if let Some(why) = relation_problem(b.r - a.r, b.c - a.c, fine, tol, same_tol) {
                 let what = format!("time relation to {ka}{} differs: {why}", a.label);
                 self.diff(
                     &b.path,
@@ -1542,7 +1616,7 @@ fn human_signed(ms: i64) -> String {
 }
 
 /// Why the candidate's difference `dc` between two times breaks the reference's relation `dr`.
-fn relation_problem(dr: i64, dc: i64, fine: bool, tol: i64) -> Option<String> {
+fn relation_problem(dr: i64, dc: i64, fine: bool, tol: i64, same_tol: i64) -> Option<String> {
     if !fine {
         // One-second precision: only an order more than a second apart is meaningful.
         return (dr.abs() > 1000 && dc.signum() != dr.signum()).then(|| {
@@ -1554,7 +1628,7 @@ fn relation_problem(dr: i64, dc: i64, fine: bool, tol: i64) -> Option<String> {
         });
     }
     if dr == 0 {
-        return (dc != 0).then(|| {
+        return (dc.abs() > same_tol).then(|| {
             format!(
                 "reference has the same time (one clock reading), candidate {} after it",
                 human_signed(dc)

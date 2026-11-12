@@ -1,0 +1,91 @@
+{
+  "rig_scenario": 1,
+  "description": "A signed EventSub chat message (channel.chat.message) with the !hola command reaches the bot's ingress; the bot answers through Twitch chat (an app token from client credentials, then POST helix/chat/messages) and embeds the message for chat memory. Times compare within a 10 s window: the reference loads its chat pipeline lazily on the first notification (a dynamic import of the event handlers), which takes seconds when the machine is busy; relations inside each document and key are still exact.",
+  "seed": {
+    "include": [
+      "../_seeds/channel.json"
+    ]
+  },
+  "steps": [
+    {
+      "name": "!hola in chat",
+      "eventsub": {
+        "type": "channel.chat.message",
+        "condition": {
+          "broadcaster_user_id": "1001",
+          "user_id": "698614112"
+        },
+        "event": {
+          "broadcaster_user_id": "1001",
+          "broadcaster_user_login": "rigstreamer",
+          "broadcaster_user_name": "RigStreamer",
+          "chatter_user_id": "2002",
+          "chatter_user_login": "rigviewer",
+          "chatter_user_name": "RigViewer",
+          "message_id": "c0ffee00-0000-4000-8000-000000000101",
+          "message": {
+            "text": "!hola",
+            "fragments": [
+              {
+                "type": "text",
+                "text": "!hola",
+                "cheermote": null,
+                "emote": null,
+                "mention": null
+              }
+            ]
+          },
+          "color": "#1E90FF",
+          "badges": [],
+          "message_type": "text",
+          "cheer": null,
+          "reply": null,
+          "channel_points_custom_reward_id": null,
+          "source_broadcaster_user_id": null,
+          "source_message_id": null,
+          "is_source_only": null
+        },
+        "expect": {
+          "status": 204
+        }
+      }
+    },
+    {
+      "name": "the answer in chat",
+      "wait_call": {
+        "host": "api.twitch.tv",
+        "method": "POST",
+        "path": "/helix/chat/messages",
+        "body": {
+          "broadcaster_id": "1001"
+        },
+        "timeout_ms": 20000
+      }
+    },
+    {
+      "wait_quiet": {
+        "quiet_ms": 1500,
+        "timeout_ms": 30000
+      }
+    }
+  ],
+  "compare": {
+    "dragonfly": {
+      "exclude": [
+        "logger:*",
+        "observability:*",
+        "metrics:bot:*",
+        "ast_catalog:*"
+      ]
+    }
+  },
+  "allow": [
+    {
+      "path": "dragonfly[\"moderation:spam-budget:*\"].value.window",
+      "kind": "time",
+      "unit": "min",
+      "reason": "The spam budget's window is the epoch minute (floor(now / 60 s), utils/moderation/spam.ts)."
+    }
+  ],
+  "tolerance_ms": 10000
+}

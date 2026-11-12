@@ -989,6 +989,20 @@ impl SideStores {
         }
     }
 
+    /// Every key that has a TTL now, with its expiry (rig clock, epoch ms).
+    pub async fn ttl_keys(&mut self) -> Result<Vec<(Vec<u8>, i64)>> {
+        let mut out = Vec::new();
+        for key in self.keys().await? {
+            let before = crate::timefmt::now_ms();
+            if let redis::Value::Int(p) = self.q(redis::cmd("PTTL").arg(&key)).await?
+                && p >= 0
+            {
+                out.push((key, before + p));
+            }
+        }
+        Ok(out)
+    }
+
     pub async fn count(&self, collection: &str, filter: Document) -> Result<u64> {
         timed(
             "MongoDB count",

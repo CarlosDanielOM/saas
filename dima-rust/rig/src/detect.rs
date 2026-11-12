@@ -59,6 +59,12 @@ impl Window {
     }
 
     fn moment(&self, ms: i64) -> Moment {
+        // After the process started, before the first step: written during start-up.
+        if ms >= self.proc_start && ms < self.start && self.proc_start > self.seeded_at {
+            return Moment::Startup {
+                off: ms - self.start,
+            };
+        }
         Moment::Rel {
             off: ms - self.start,
             abs: if self.in_window(ms) { None } else { Some(ms) },
@@ -292,6 +298,8 @@ struct Detector<'a, 'b> {
     exact_text: bool,
     /// When the answer being read arrived (a `ttl` value ends this long after it).
     read_at: Option<i64>,
+    /// Keys that had a TTL when the start-up settled, with their expiry then.
+    startup_keys: std::collections::HashMap<Vec<u8>, i64>,
 }
 
 #[derive(Clone)]
@@ -363,6 +371,17 @@ impl Detector<'_, '_> {
     fn text(&mut self, path: &Path, s: &str) -> Text {
         if s.is_empty() {
             return Text::default();
+        }
+        // A string of digits declared a time in minutes.
+        if self.ctx.allow.minutes(path)
+            && s.bytes().all(|b| b.is_ascii_digit())
+            && let Ok(v) = s.parse::<i64>()
+        {
+            let ms = v.saturating_mul(60_000);
+            return Text(vec![Seg::Time {
+                at: self.declared_moment(v, ms),
+                shape: "min".into(),
+            }]);
         }
         // A string of digits declared a time.
         if let Some(secs) = self.ctx.allow.time_unit(path)
@@ -571,6 +590,12 @@ impl Detector<'_, '_> {
     fn num_time(&self, path: &Path, v: i64, ms_repr: NumRepr, s_repr: NumRepr) -> Option<Val> {
         if self.ctx.allow.exact(path) {
             return None;
+        }
+        if self.ctx.allow.minutes(path) {
+            return Some(Val::Time(
+                NumRepr::JsonMinutes,
+                self.declared_moment(v, v.saturating_mul(60_000)),
+            ));
         }
         match self.ctx.allow.time_unit(path) {
             Some(true) => Some(Val::Time(
@@ -1067,8 +1092,21 @@ impl Detector<'_, '_> {
             RawValue::Other => Val::Unsupported(e.kind.clone()),
         };
         self.exact_text = false;
-        // Each TTL relative to the time it was read.
-        let ttl = (e.pttl >= 0).then(|| self.moment(e.pttl_at + e.pttl));
+        // Each TTL relative to the time it was read; a key that still expires as it did when
+        // the start-up settled was written during start-up: its TTL length is what compares.
+        let ttl = (e.pttl >= 0).then(|| {
+            let expiry = e.pttl_at + e.pttl;
+            let w = &self.ctx.window;
+            match self.startup_keys.get(&e.key) {
+                Some(then) if (expiry - then).abs() <= 1000 && w.proc_start > w.seeded_at => {
+                    Moment::StartupTtl {
+                        lo: expiry - w.start,
+                        hi: expiry - w.proc_start,
+                    }
+                }
+                _ => self.moment(expiry),
+            }
+        });
         EntryCap {
             key,
             kind: e.kind.clone(),
@@ -1194,6 +1232,7 @@ impl Detector<'_, '_> {
     }
 
     fn run(&mut self, raw: &RawCapture) -> Capture {
+        self.startup_keys = raw.startup_keys.iter().cloned().collect();
         let steps = raw
             .steps
             .iter()
@@ -1230,6 +1269,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         found: Vec::new(),
         exact_text: false,
         read_at: None,
+        startup_keys: std::collections::HashMap::new(),
     };
     let cap = first.run(raw);
     let mut found: Vec<String> = first
@@ -1260,6 +1300,7 @@ pub fn detect(ctx: &DetectCtx<'_>, raw: &RawCapture) -> Capture {
         found: Vec::new(),
         exact_text: false,
         read_at: None,
+        startup_keys: std::collections::HashMap::new(),
     };
     second.run(raw)
 }
@@ -1309,6 +1350,7 @@ pub(crate) mod tests {
             found: Vec::new(),
             exact_text: false,
             read_at: None,
+            startup_keys: std::collections::HashMap::new(),
         };
         d.text(&Path::root("x"), raw)
     }

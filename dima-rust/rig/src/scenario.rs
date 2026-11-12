@@ -1643,8 +1643,9 @@ pub(crate) fn allowances(
             "time" => match a.unit.as_deref() {
                 None | Some("ms") => AllowKind::Time { seconds: false },
                 Some("s") => AllowKind::Time { seconds: true },
+                Some("min") => AllowKind::Minutes,
                 Some(other) => {
-                    return Err(config(format!("{here}.unit: `{other}` (use ms or s)")));
+                    return Err(config(format!("{here}.unit: `{other}` (use ms, s or min)")));
                 }
             },
             other => {
@@ -1653,7 +1654,12 @@ pub(crate) fn allowances(
                 )));
             }
         };
-        if a.unit.is_some() && !matches!(kind, AllowKind::Time { .. } | AllowKind::Ttl { .. }) {
+        if a.unit.is_some()
+            && !matches!(
+                kind,
+                AllowKind::Time { .. } | AllowKind::Ttl { .. } | AllowKind::Minutes
+            )
+        {
             return Err(config(format!(
                 "{here}: \"unit\" only goes with kind time or ttl"
             )));

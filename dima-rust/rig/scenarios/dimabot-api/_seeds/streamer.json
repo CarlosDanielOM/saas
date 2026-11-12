@@ -1,0 +1,25 @@
+{
+  "rig_seed": 1,
+  "description": "One registered streamer, rigstreamer (Twitch id 1001), not activated yet: no tokens stored.",
+  "mongo": {
+    "users": [
+      {
+        "_id": { "$oid": "650000000000000000001001" },
+        "name": "RigStreamer",
+        "email": "rigstreamer@example.test",
+        "accounts": [
+          {
+            "type": "twitch", "id": "1001", "name": "rigstreamer", "email": "rigstreamer@example.test",
+            "actived": false, "chat_enabled": true, "has_permissions": false, "up_to_date_permissions": false,
+            "_id": { "$oid": "650000000000000000002001" }, "access_token_expires_at": null
+          }
+        ],
+        "plan_tier": "free",
+        "language": "es",
+        "created_at": { "$date": "2026-01-01T00:00:00Z" },
+        "updated_at": { "$date": "2026-01-01T00:00:00Z" },
+        "__v": { "$numberInt": "0" }
+      }
+    ]
+  }
+}

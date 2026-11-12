@@ -40,6 +40,10 @@ pub struct RawCapture {
     pub calls: Vec<RawCall>,
     /// Start-up calls left out, per provider.
     pub startup_ignored: BTreeMap<String, u32>,
+    /// Dragonfly keys that already had a TTL when the start-up settled, with the expiry they
+    /// had then (rig clock, epoch ms): a key still expiring then at the end was written during
+    /// start-up, and its TTL length is compared as such.
+    pub startup_keys: Vec<(Vec<u8>, i64)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -761,6 +765,7 @@ pub fn to_file_json(f: &CaptureFile) -> Value {
         "dragonfly": dragonfly,
         "calls": calls,
         "startup_ignored": f.raw.startup_ignored,
+        "startup_keys": f.raw.startup_keys.iter().map(|(k, e)| json!([enc_bytes(k), e])).collect::<Vec<_>>(),
     })
 }
 
@@ -955,6 +960,19 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
             startup_ignored.insert(k.clone(), n);
         }
     }
+    let mut startup_keys = Vec::new();
+    if let Some(Value::Array(items)) = o.get("startup_keys") {
+        for (i, it) in items.iter().enumerate() {
+            match it.as_array().map(Vec::as_slice) {
+                Some([k, Value::Number(n)]) => startup_keys.push((
+                    dec_bytes(k, &format!("startup_keys[{i}]"))?,
+                    n.as_i64()
+                        .ok_or_else(|| format!("startup_keys[{i}]: an expiry in ms"))?,
+                )),
+                _ => return Err(format!("startup_keys[{i}]: [key, expiry]")),
+            }
+        }
+    }
     Ok(CaptureFile {
         provenance,
         hashes,
@@ -965,6 +983,7 @@ pub fn from_file_json(v: &Value) -> Result<CaptureFile, String> {
             dragonfly,
             calls,
             startup_ignored,
+            startup_keys,
         },
     })
 }
@@ -1081,6 +1100,7 @@ mod tests {
                 answered: "default twitch route 4 (twitch.chat.send)".into(),
             }],
             startup_ignored: [("embeddings".to_string(), 3)].into(),
+            startup_keys: vec![(b"stream".to_vec(), 1_794_400_005_301)],
         };
         raw.sort();
         CaptureFile {
@@ -1141,6 +1161,7 @@ mod tests {
         assert!(docs[0].get("$rigBson").is_some() && docs[1].get("$rigBson").is_some());
         assert_eq!(back.raw.calls, f.raw.calls);
         assert_eq!(back.raw.startup_ignored, f.raw.startup_ignored);
+        assert_eq!(back.raw.startup_keys, f.raw.startup_keys);
         let mut wrong = v.clone();
         wrong["rig_capture"] = json!(1);
         assert!(from_file_json(&wrong).unwrap_err().contains("re-record"));

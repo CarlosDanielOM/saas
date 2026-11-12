@@ -12,7 +12,11 @@
     "routes": [],
     "twitch": {
       "client_id": "rigclientid0c71108e00000000001"
-    }
+    },
+    "compare": {
+      "posthog": "ignore"
+    },
+    "compare_reason": "posthog-node sends its batches on its own 10 s timer, so whether the start-up $identify batch (or any event's) lands inside a scenario depends on timing. A scenario that checks analytics events sets compare.calls.posthog to multiset and waits for the batch with wait_call."
   },
   "reference": {
     "container": {

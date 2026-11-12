@@ -91,6 +91,7 @@ pub(super) async fn handle(
     {
         let mut st = shared.state();
         st.last_request = now;
+        st.last_by_provider.insert("qdrant".into(), now);
         let mut recorded = headers.clone();
         for (k, v) in &mut recorded {
             if super::CREDENTIAL_HEADERS.contains(&k.as_str()) {
