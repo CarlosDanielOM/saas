@@ -164,16 +164,43 @@ fn parse_expr(expr: &str) -> Result<Piece, String> {
             }
         }
     }
+    if let Some(rest) = e.strip_prefix("port.").or_else(|| e.strip_prefix("var."))
+        && !rest.is_empty()
+        && rest
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Ok(Piece::Saved(e.to_string()));
+    }
     let mut chars = e.chars();
     let ok_first = chars
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
     if !ok_first || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') || e.starts_with("now") {
         return Err(format!(
-            "bad expression `${{{expr}}}`: use a saved name (letters, digits, _) or now_ms / now_s / now_iso with an optional offset such as +60s"
+            "bad expression `${{{expr}}}`: use a saved name (letters, digits, _), a side value ({}, port.<name>, var.<name>) or now_ms / now_s / now_iso with an optional offset such as +60s",
+            SIDE_VALUES.join(", ")
         ));
     }
     Ok(Piece::Saved(e.to_string()))
+}
+
+/// Values of the side a step string can use (`${mongo_db}`, `${port.http}`, `${var.x}`); a
+/// step cannot save under these names.
+pub const SIDE_VALUES: &[&str] = &[
+    "port",
+    "mongo_db",
+    "dragonfly_db",
+    "dragonfly_url",
+    "mock_url",
+    "mock_port",
+    "qdrant_port",
+    "side",
+];
+
+/// Whether a `${...}` name is a side value rather than a saved one.
+pub fn is_side_value(name: &str) -> bool {
+    SIDE_VALUES.contains(&name) || name.starts_with("port.") || name.starts_with("var.")
 }
 
 /// Names of saved values a scenario string refers to.
@@ -249,6 +276,19 @@ mod tests {
         assert!(render("{port", &v).is_err());
         assert!(render("a}b", &v).is_err());
         assert_eq!(placeholders("{a}-{b.c}").unwrap(), vec!["a", "b.c"]);
+    }
+
+    #[test]
+    fn side_values_in_step_strings() {
+        let v = vars(&[("port.http", "4100"), ("mongo_db", "rig_1_0_ref")]);
+        assert_eq!(
+            interpolate("http://127.0.0.1:${port.http}/${mongo_db}", &v, 0).unwrap(),
+            "http://127.0.0.1:4100/rig_1_0_ref"
+        );
+        assert!(is_side_value("port.http") && is_side_value("mongo_db") && is_side_value("var.x"));
+        assert!(!is_side_value("item"));
+        assert!(parse_interp("${port.}").is_err());
+        assert!(parse_interp("${port.a b}").is_err());
     }
 
     #[test]

@@ -1,0 +1,21 @@
+{
+  "rig_scenario": 1,
+  "description": "EventSub: a verification answered with its challenge, a bad signature refused, a signed chat message answered in chat through the mock (waited for, then compared as an outbound call), a durable retry header; Polar: a signed delivery accepted, one signed with another secret refused, one too old refused.",
+  "steps": [
+    { "name": "verification", "eventsub": { "type": "channel.chat.message", "message_type": "webhook_callback_verification",
+        "condition": { "broadcaster_user_id": "1001", "user_id": "698614112" }, "expect": { "status": 200 } } },
+    { "name": "bad signature", "eventsub": { "type": "channel.chat.message", "secret": "not-the-secret",
+        "condition": { "broadcaster_user_id": "1001", "user_id": "698614112" },
+        "event": { "broadcaster_user_id": "1001", "message": { "text": "nope" } }, "expect": { "status": 403 } } },
+    { "name": "chat message", "eventsub": { "type": "channel.chat.message", "retry": 1,
+        "condition": { "broadcaster_user_id": "1001", "user_id": "698614112" },
+        "event": { "broadcaster_user_id": "1001", "chatter_user_id": "2002", "chatter_user_login": "viewer",
+          "message_id": "c0ffee00-0000-4000-8000-000000000001", "message": { "text": "hola 👋 ñandú" } },
+        "expect": { "status": 204 } } },
+    { "name": "the answer", "wait_call": { "host": "api.twitch.tv", "method": "POST", "path": "/helix/chat/messages",
+        "body": { "broadcaster_id": "1001" }, "timeout_ms": 10000 } },
+    { "name": "polar", "polar": { "type": "order.paid", "data": { "id": "ord_1", "amount": 499 }, "expect": { "status": 202 } } },
+    { "name": "polar other secret", "polar": { "type": "order.paid", "data": { "id": "ord_2" }, "secret": "other", "expect": { "status": 403 } } },
+    { "name": "polar too old", "polar": { "type": "order.paid", "data": { "id": "ord_3" }, "timestamp_s": { "$rigNow": "-10m", "as": "s" }, "expect": { "status": 403 } } }
+  ]
+}

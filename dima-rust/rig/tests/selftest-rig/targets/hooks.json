@@ -1,0 +1,32 @@
+{
+  "rig_target": 1,
+  "description": "Self-test of the webhook steps, wait_call and the outbound comparison: the fixture server's EventSub ingress (answers chat through the mock) and Polar route. Pass --set fixture=<path to dima-rig-fixture> --set variant=<candidate variant>.",
+  "ports": ["http"],
+  "webhooks": {
+    "eventsub": { "secret": "fixture-eventsub-secret", "path": "/eventsub" },
+    "polar": { "secret": "fixture-polar-secret", "path": "/polar/webhook" }
+  },
+  "mock": {
+    "twitch": { "tokens": [{ "token": "fixture-bot-token", "user_id": "698614112" }] }
+  },
+  "reference": {
+    "command": ["{var.fixture}", "--variant", "good"],
+    "env": {
+      "PORT": "{port}", "MONGO_URI": "{mongo_uri}", "MONGO_DB": "{mongo_db}", "REDIS_URL": "{dragonfly_url}",
+      "FIXTURE_EVENTSUB_SECRET": "fixture-eventsub-secret", "FIXTURE_POLAR_SECRET": "fixture-polar-secret",
+      "FIXTURE_MOCK_URL": "{mock_url}"
+    },
+    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
+  },
+  "candidate": {
+    "command": ["{var.fixture}", "--variant", "{var.variant}"],
+    "env": {
+      "PORT": "{port}", "MONGO_URI": "{mongo_uri}", "MONGO_DB": "{mongo_db}", "REDIS_URL": "{dragonfly_url}",
+      "FIXTURE_EVENTSUB_SECRET": "fixture-eventsub-secret", "FIXTURE_POLAR_SECRET": "fixture-polar-secret",
+      "FIXTURE_MOCK_URL": "{mock_url}"
+    },
+    "ready": { "http": "/health", "timeout_ms": 15000 },
+    "stop": { "signal": "SIGTERM", "grace_ms": 3000 }
+  }
+}

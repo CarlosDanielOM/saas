@@ -112,6 +112,10 @@ struct SideRunner<'s> {
     mock: Mock,
     qdrant: Option<qdrant::Upstream>,
     reg: Registry,
+    /// The target's webhooks with this side's rendered secrets.
+    hooks: crate::steps::Hooks,
+    /// `${mongo_db}`, `${port.http}` ... for step strings.
+    side_values: BTreeMap<String, String>,
 }
 
 impl<'s> SideRunner<'s> {
@@ -170,6 +174,8 @@ impl<'s> SideRunner<'s> {
             mock,
             qdrant,
             reg: reg.clone(),
+            hooks: crate::steps::Hooks::default(),
+            side_values: BTreeMap::new(),
         })
     }
 
@@ -242,6 +248,25 @@ impl<'s> SideRunner<'s> {
             template::render(t, &vars)
                 .map_err(|e| self.fail(format!("{e} (pass var.<name> with --set name=value)")))
         };
+        let hook = |w: &Option<target::Webhook>| -> std::result::Result<Option<crate::steps::HookTarget>, SideFailure> {
+            match w {
+                None => Ok(None),
+                Some(w) => Ok(Some(crate::steps::HookTarget {
+                    secret: render(&w.secret)?,
+                    port: w.port.clone(),
+                    path: w.path.clone(),
+                })),
+            }
+        };
+        let hooks = crate::steps::Hooks {
+            eventsub: hook(&self.target.eventsub)?,
+            polar: hook(&self.target.polar)?,
+        };
+        let side_values: BTreeMap<String, String> = vars
+            .iter()
+            .filter(|(k, _)| template::is_side_value(k))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         let mut command = spec
             .command
             .iter()
@@ -362,6 +387,8 @@ impl<'s> SideRunner<'s> {
         };
         let p = SideProcess::launch(ls, s.env.get("PATH").map(String::as_str)).await?;
         self.proc = Some(p);
+        self.hooks = hooks;
+        self.side_values = side_values;
         self.wait_store_ready().await
     }
 
@@ -527,6 +554,9 @@ impl<'s> SideRunner<'s> {
             http: &self.http,
             saved: BTreeMap::new(),
             allow_scripts: sc.allow_scripts,
+            mock: &self.mock,
+            hooks: &self.hooks,
+            side_values: self.side_values.clone(),
         };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
