@@ -552,9 +552,12 @@ impl GuardedRequest<'_> {
                         reason: BlockReason::BadRedirect,
                     })?;
                 drop(response);
-                let to_get = matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
-                    && method == Method::POST
-                    || status == StatusCode::SEE_OTHER && method != Method::HEAD;
+                let to_get = redirect_to_get(status, &method);
+                let carries_body = !to_get && !matches!(body, Body::Empty);
+                check_hop(&url, &origin, &next, carries_body).map_err(|reason| Error::Blocked {
+                    info: info(method.clone()),
+                    reason,
+                })?;
                 if to_get {
                     method = Method::GET;
                     body = Body::Empty;
@@ -579,6 +582,32 @@ impl GuardedRequest<'_> {
             ));
         }
     }
+}
+
+/// Whether a redirect with `status` turns `method` into GET: 301/302 turn POST into GET and 303
+/// turns everything but HEAD into GET, as fetch does.
+pub(crate) fn redirect_to_get(status: StatusCode, method: &Method) -> bool {
+    (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND) && *method == Method::POST)
+        || (status == StatusCode::SEE_OTHER && *method != Method::HEAD)
+}
+
+/// The two rules every followed redirect obeys, in the guarded client and the provider client
+/// alike: never from https to plain http, and never with a request body to an origin other than
+/// `origin`, the one the caller addressed (a 307 or 308 keeps the body; a key inside a JSON body
+/// must not reach another host, scheme or port).
+pub(crate) fn check_hop(
+    current: &Url,
+    origin: &url::Origin,
+    next: &Url,
+    carries_body: bool,
+) -> std::result::Result<(), BlockReason> {
+    if current.scheme() == "https" && next.scheme() != "https" {
+        return Err(BlockReason::InsecureRedirect);
+    }
+    if carries_body && next.origin() != *origin {
+        return Err(BlockReason::BodyToOtherOrigin);
+    }
+    Ok(())
 }
 
 /// Whether the authority holds an IPv6 zone id (`%25` inside brackets).
@@ -729,6 +758,54 @@ mod tests {
             strict.check_url(&Url::parse("https://8.8.8.8/").unwrap()),
             Err(BlockReason::Host)
         );
+    }
+
+    #[test]
+    fn redirects_never_downgrade_and_never_carry_a_body_elsewhere() {
+        let url = |raw: &str| Url::parse(raw).unwrap();
+        let start = url("https://a.test/start");
+        let origin = start.origin();
+        // A downgrade is refused with or without a body, even to the same host.
+        for body in [false, true] {
+            assert_eq!(
+                check_hop(&start, &origin, &url("http://a.test/x"), body),
+                Err(BlockReason::InsecureRedirect)
+            );
+        }
+        // A body stays on the addressed origin: host, scheme and port all count.
+        for other in ["https://b.test/x", "https://a.test:8443/x"] {
+            assert_eq!(
+                check_hop(&start, &origin, &url(other), true),
+                Err(BlockReason::BodyToOtherOrigin),
+                "{other}"
+            );
+            assert_eq!(check_hop(&start, &origin, &url(other), false), Ok(()));
+        }
+        assert_eq!(
+            check_hop(&start, &origin, &url("https://a.test/kept"), true),
+            Ok(())
+        );
+        // A hop back to the addressed origin after leaving it is still checked against it.
+        let away = url("https://b.test/x");
+        assert_eq!(
+            check_hop(&away, &origin, &url("https://a.test/back"), true),
+            Ok(())
+        );
+        // Plain http to plain http is the policy's business, not this rule's.
+        let plain = url("http://a.test/");
+        assert_eq!(
+            check_hop(&plain, &plain.origin(), &url("http://a.test/y"), true),
+            Ok(())
+        );
+        // Which redirects drop the body.
+        assert!(redirect_to_get(StatusCode::FOUND, &Method::POST));
+        assert!(!redirect_to_get(StatusCode::FOUND, &Method::PUT));
+        assert!(redirect_to_get(StatusCode::SEE_OTHER, &Method::PUT));
+        assert!(!redirect_to_get(StatusCode::SEE_OTHER, &Method::HEAD));
+        assert!(!redirect_to_get(
+            StatusCode::TEMPORARY_REDIRECT,
+            &Method::POST
+        ));
     }
 
     #[test]

@@ -464,3 +464,46 @@ async fn the_reference_policy_refuses_what_media_ts_refuses() {
         BlockReason::Address("192.168.1.10".parse().unwrap())
     );
 }
+
+/// A 307 or 308 keeps the body: to another host, scheme or port it is refused before anything
+/// is sent there. A 303 to another origin drops the body and is followed.
+#[tokio::test]
+async fn a_body_never_follows_a_redirect_to_another_origin() {
+    let server = MockServer::start().await.unwrap();
+    let resolver = Arc::new(ScriptedResolver::default());
+    resolver.answer("a.test", &[&[LOOPBACK]]);
+    resolver.answer("b.test", &[&[LOOPBACK]]);
+    let port = server.addr().port();
+    let client = client(policy(&server, &["a.test", "b.test"]), &resolver);
+    for status in [307, 308] {
+        server.push(
+            MockResponse::new(status).header("location", &format!("http://b.test:{port}/steal")),
+        );
+        let error = client
+            .request(Method::POST, &format!("http://a.test:{port}/start"))
+            .header("content-type", "application/json")
+            .body(r#"{"api_key":"SECRET"}"#)
+            .send()
+            .await
+            .unwrap_err();
+        assert_eq!(reason(&error), BlockReason::BodyToOtherOrigin, "{status}");
+    }
+    let requests = server.requests();
+    assert_eq!(requests.len(), 2);
+    assert!(requests.iter().all(|r| r.target == "/start"));
+
+    server.push(MockResponse::new(303).header("location", &format!("http://b.test:{port}/got")));
+    server.push(MockResponse::new(200));
+    client
+        .request(Method::POST, &format!("http://a.test:{port}/start"))
+        .body(r#"{"api_key":"SECRET"}"#)
+        .send()
+        .await
+        .unwrap();
+    let last = server.requests().pop().unwrap();
+    assert_eq!(
+        (last.method.as_str(), last.target.as_str()),
+        ("GET", "/got")
+    );
+    assert!(last.body.is_empty());
+}

@@ -64,6 +64,10 @@ pub enum BlockReason {
     TooManyRedirects,
     /// A redirect without a usable `Location`.
     BadRedirect,
+    /// A redirect from https to plain http.
+    InsecureRedirect,
+    /// A redirect that would carry the request body to another origin (a 307 or 308 elsewhere).
+    BodyToOtherOrigin,
 }
 
 impl fmt::Display for BlockReason {
@@ -78,6 +82,10 @@ impl fmt::Display for BlockReason {
             Self::Address(ip) => write!(f, "address {ip} not allowed"),
             Self::TooManyRedirects => f.write_str("too many redirects"),
             Self::BadRedirect => f.write_str("redirect without a valid location"),
+            Self::InsecureRedirect => f.write_str("redirect from https to http"),
+            Self::BodyToOtherOrigin => {
+                f.write_str("redirect would send the body to another origin")
+            }
         }
     }
 }

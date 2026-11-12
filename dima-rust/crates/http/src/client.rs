@@ -781,13 +781,21 @@ impl<'a> Sender<'a> {
                 .and_then(|l| l.to_str().ok())
                 .and_then(|l| url.join(l).ok());
             // 301/302 turn POST into GET and 303 turns everything but HEAD into GET, as fetch
-            // does; any other hop re-sends the body, which a consumed stream cannot.
-            let to_get = (matches!(status, StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND)
-                && method == Method::POST)
-                || (status == StatusCode::SEE_OTHER && method != Method::HEAD);
+            // does; any other hop re-sends the body, which a consumed stream cannot. The guard's
+            // two hop rules (no downgrade, no body to another origin) hold here too; the
+            // same-origin rule already implies them, they are checked anyway so that a looser
+            // mode added later cannot drop them.
+            let to_get = crate::guard::redirect_to_get(status, &method);
             let replay_ok = to_get || !matches!(self.body, Body::Stream(_));
+            let carries_body = !to_get && !matches!(self.body, Body::Empty);
+            let origin = self.url.origin();
             match next {
-                Some(next) if hops < max && next.origin() == url.origin() && replay_ok => {
+                Some(next)
+                    if hops < max
+                        && next.origin() == url.origin()
+                        && replay_ok
+                        && crate::guard::check_hop(&url, &origin, &next, carries_body).is_ok() =>
+                {
                     if to_get {
                         method = Method::GET;
                         self.body = Body::Empty;
