@@ -1892,6 +1892,7 @@ dependencies = [
  "futures-util",
  "hex",
  "mongodb",
+ "redis",
  "regex",
  "regex-syntax",
  "serde",

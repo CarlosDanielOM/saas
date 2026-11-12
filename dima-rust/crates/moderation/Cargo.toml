@@ -35,4 +35,5 @@ unicode-normalization = { workspace = true }
 anyhow = { workspace = true }
 flate2 = { workspace = true }
 futures-util = { workspace = true }
+redis = { workspace = true }
 tokio = { workspace = true }
