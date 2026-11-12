@@ -31,6 +31,8 @@ redis.workspace = true
 dima-web.workspace = true
 dima-telemetry.workspace = true
 serde_json.workspace = true
+# Clips and thumbnails (src/process.rs): killing a child's process group without `unsafe`.
+nix.workspace = true
 [dev-dependencies]
 dima-platform = { path = ".", features = ["test-util"] }
 anyhow.workspace = true

@@ -1,0 +1,2031 @@
+{
+  "sha256": "9059140525909de8903f9f03521e7fe1682b9daa20c8668dd8943d282552bcde",
+  "now": 1794355200000,
+  "publicUrl": "https://cdn.test/examplebucket",
+  "cases": [
+    {
+      "name": "video",
+      "byte": 17,
+      "parentID": "000000000000000000000001",
+      "source": "VIDEO-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_1.mp4",
+          "displayName": "Clip_1",
+          "fileName": "abababababab-Clip_1-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1001"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_1-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_1-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-ss",
+          "00:00:01",
+          "-i",
+          "<tmp>/dima-in-111111111111",
+          "-vframes",
+          "1",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-111111111111.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_1-1773261735099.mp4",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        },
+        {
+          "method": "PUT",
+          "target": "/examplebucket/library/thumbnails/1111111111111111.jpg?x-id=PutObject",
+          "headers": {
+            "x-amz-acl": "public-read",
+            "cache-control": "public, max-age=31536000, immutable",
+            "content-type": "image/jpeg",
+            "content-length": "406",
+            "x-amz-sdk-checksum-algorithm": "CRC32",
+            "x-amz-checksum-crc32": "3mZEQw==",
+            "x-amz-content-sha256": "0cf474c23f82eae1c71e46faad27bd7d03bb3ec967c80f6846f00f517cd713e6"
+          },
+          "body": "/9j/4EFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUr/2Q=="
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000001"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_1.mp4",
+          "displayName": "Clip_1",
+          "fileName": "abababababab-Clip_1-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1001"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_1-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_1-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "6af5ccd7424c6deccfcfe465"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6af5ccd7424c6deccfcfe465"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_1.mp4.thumb.jpg",
+          "displayName": "Clip_1 (thumbnail)",
+          "fileName": "abababababab-Clip_1-1773261735099.mp4.thumb.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "406"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "library/thumbnails/1111111111111111.jpg",
+          "storageUrl": "https://cdn.test/examplebucket/library/thumbnails/1111111111111111.jpg",
+          "proxyPath": null,
+          "scope": "system",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "image",
+      "byte": 34,
+      "parentID": "000000000000000000000002",
+      "source": "PNG-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000002"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_2.png",
+          "displayName": "Clip_2",
+          "fileName": "abababababab-Clip_2-1773261735099.png",
+          "extension": "png",
+          "mimeType": "image/png",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1002"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_2-1773261735099.png",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_2-1773261735099.png",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-i",
+          "<tmp>/dima-in-222222222222",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-222222222222.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_2-1773261735099.png",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        },
+        {
+          "method": "PUT",
+          "target": "/examplebucket/library/thumbnails/2222222222222222.jpg?x-id=PutObject",
+          "headers": {
+            "x-amz-acl": "public-read",
+            "cache-control": "public, max-age=31536000, immutable",
+            "content-type": "image/jpeg",
+            "content-length": "406",
+            "x-amz-sdk-checksum-algorithm": "CRC32",
+            "x-amz-checksum-crc32": "3mZEQw==",
+            "x-amz-content-sha256": "0cf474c23f82eae1c71e46faad27bd7d03bb3ec967c80f6846f00f517cd713e6"
+          },
+          "body": "/9j/4EFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUr/2Q=="
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000002"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_2.png",
+          "displayName": "Clip_2",
+          "fileName": "abababababab-Clip_2-1773261735099.png",
+          "extension": "png",
+          "mimeType": "image/png",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1002"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_2-1773261735099.png",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_2-1773261735099.png",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "6af5ccd7424c6deccfcfe46f"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6af5ccd7424c6deccfcfe46f"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_2.png.thumb.jpg",
+          "displayName": "Clip_2 (thumbnail)",
+          "fileName": "abababababab-Clip_2-1773261735099.png.thumb.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "406"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "library/thumbnails/2222222222222222.jpg",
+          "storageUrl": "https://cdn.test/examplebucket/library/thumbnails/2222222222222222.jpg",
+          "proxyPath": null,
+          "scope": "system",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "gif",
+      "byte": 51,
+      "parentID": "000000000000000000000003",
+      "source": "GIF-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000003"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_3.gif",
+          "displayName": "Clip_3",
+          "fileName": "abababababab-Clip_3-1773261735099.gif",
+          "extension": "gif",
+          "mimeType": "image/gif",
+          "mediaType": "gif",
+          "bytes": {
+            "$numberInt": "1003"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_3-1773261735099.gif",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_3-1773261735099.gif",
+          "proxyPath": null,
+          "scope": "public",
+          "marketplaceStatus": "published",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-i",
+          "<tmp>/dima-in-333333333333",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-333333333333.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_3-1773261735099.gif",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        },
+        {
+          "method": "PUT",
+          "target": "/examplebucket/library/thumbnails/3333333333333333.jpg?x-id=PutObject",
+          "headers": {
+            "x-amz-acl": "public-read",
+            "cache-control": "public, max-age=31536000, immutable",
+            "content-type": "image/jpeg",
+            "content-length": "406",
+            "x-amz-sdk-checksum-algorithm": "CRC32",
+            "x-amz-checksum-crc32": "3mZEQw==",
+            "x-amz-content-sha256": "0cf474c23f82eae1c71e46faad27bd7d03bb3ec967c80f6846f00f517cd713e6"
+          },
+          "body": "/9j/4EFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUr/2Q=="
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000003"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_3.gif",
+          "displayName": "Clip_3",
+          "fileName": "abababababab-Clip_3-1773261735099.gif",
+          "extension": "gif",
+          "mimeType": "image/gif",
+          "mediaType": "gif",
+          "bytes": {
+            "$numberInt": "1003"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_3-1773261735099.gif",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_3-1773261735099.gif",
+          "proxyPath": null,
+          "scope": "public",
+          "marketplaceStatus": "published",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "6af5ccd7424c6deccfcfe479"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6af5ccd7424c6deccfcfe479"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_3.gif.thumb.jpg",
+          "displayName": "Clip_3 (thumbnail)",
+          "fileName": "abababababab-Clip_3-1773261735099.gif.thumb.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "406"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "library/thumbnails/3333333333333333.jpg",
+          "storageUrl": "https://cdn.test/examplebucket/library/thumbnails/3333333333333333.jpg",
+          "proxyPath": null,
+          "scope": "system",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "audio",
+      "byte": 68,
+      "parentID": "000000000000000000000004",
+      "source": "AUDIO",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000004"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_4.mp3",
+          "displayName": "Clip_4",
+          "fileName": "abababababab-Clip_4-1773261735099.mp3",
+          "extension": "mp3",
+          "mimeType": "audio/mpeg",
+          "mediaType": "audio",
+          "bytes": {
+            "$numberInt": "1004"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_4-1773261735099.mp3",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_4-1773261735099.mp3",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [],
+      "requests": [],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000004"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_4.mp3",
+          "displayName": "Clip_4",
+          "fileName": "abababababab-Clip_4-1773261735099.mp3",
+          "extension": "mp3",
+          "mimeType": "audio/mpeg",
+          "mediaType": "audio",
+          "bytes": {
+            "$numberInt": "1004"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_4-1773261735099.mp3",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_4-1773261735099.mp3",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "skipped",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "already_ready",
+      "byte": 85,
+      "parentID": "000000000000000000000005",
+      "source": "X",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000005"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_5.mp4",
+          "displayName": "Clip_5",
+          "fileName": "abababababab-Clip_5-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1005"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_5-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_5-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "0000000000000000000001f4"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [],
+      "requests": [],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000005"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_5.mp4",
+          "displayName": "Clip_5",
+          "fileName": "abababababab-Clip_5-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1005"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_5-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_5-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "0000000000000000000001f4"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ready_without_asset",
+      "byte": 102,
+      "parentID": "000000000000000000000006",
+      "source": "VIDEO-AGAIN",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000006"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_6.mp4",
+          "displayName": "Clip_6",
+          "fileName": "abababababab-Clip_6-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1006"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_6-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_6-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "2"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-ss",
+          "00:00:01",
+          "-i",
+          "<tmp>/dima-in-666666666666",
+          "-vframes",
+          "1",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-666666666666.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_6-1773261735099.mp4",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        },
+        {
+          "method": "PUT",
+          "target": "/examplebucket/library/thumbnails/6666666666666666.jpg?x-id=PutObject",
+          "headers": {
+            "x-amz-acl": "public-read",
+            "cache-control": "public, max-age=31536000, immutable",
+            "content-type": "image/jpeg",
+            "content-length": "406",
+            "x-amz-sdk-checksum-algorithm": "CRC32",
+            "x-amz-checksum-crc32": "3mZEQw==",
+            "x-amz-content-sha256": "0cf474c23f82eae1c71e46faad27bd7d03bb3ec967c80f6846f00f517cd713e6"
+          },
+          "body": "/9j/4EFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUr/2Q=="
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000006"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_6.mp4",
+          "displayName": "Clip_6",
+          "fileName": "abababababab-Clip_6-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1006"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_6-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_6-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "6af5ccd7424c6deccfcfe490"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "3"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6af5ccd7424c6deccfcfe490"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_6.mp4.thumb.jpg",
+          "displayName": "Clip_6 (thumbnail)",
+          "fileName": "abababababab-Clip_6-1773261735099.mp4.thumb.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "406"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "library/thumbnails/6666666666666666.jpg",
+          "storageUrl": "https://cdn.test/examplebucket/library/thumbnails/6666666666666666.jpg",
+          "proxyPath": null,
+          "scope": "system",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "missing_parent",
+      "byte": 119,
+      "parentID": "000000000000000000000063",
+      "source": "X",
+      "sourceStatus": 200,
+      "seed": [],
+      "error": null,
+      "ffmpeg": [],
+      "requests": [],
+      "documents": []
+    },
+    {
+      "name": "ffmpeg_fails",
+      "byte": 136,
+      "parentID": "000000000000000000000008",
+      "source": "FAIL-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000008"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_8.mp4",
+          "displayName": "Clip_8",
+          "fileName": "abababababab-Clip_8-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1008"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_8-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_8-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-ss",
+          "00:00:01",
+          "-i",
+          "<tmp>/dima-in-888888888888",
+          "-vframes",
+          "1",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-888888888888.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_8-1773261735099.mp4",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000008"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_8.mp4",
+          "displayName": "Clip_8",
+          "fileName": "abababababab-Clip_8-1773261735099.mp4",
+          "extension": "mp4",
+          "mimeType": "video/mp4",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1008"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_8-1773261735099.mp4",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_8-1773261735099.mp4",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "failed",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": "Command failed: ffmpeg -y -ss 00:00:01 -i <tmp>/dima-in-888888888888 -vframes 1 -vf scale=480:-1 -q:v 5 <tmp>/dima-out-888888888888.jpg\nboom: invalid data found when processing input\n",
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tiny_output",
+      "byte": 153,
+      "parentID": "000000000000000000000009",
+      "source": "TINY-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000009"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_9.jpg",
+          "displayName": "Clip_9",
+          "fileName": "abababababab-Clip_9-1773261735099.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1009"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_9-1773261735099.jpg",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_9-1773261735099.jpg",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-i",
+          "<tmp>/dima-in-999999999999",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-999999999999.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_9-1773261735099.jpg",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "000000000000000000000009"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_9.jpg",
+          "displayName": "Clip_9",
+          "fileName": "abababababab-Clip_9-1773261735099.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1009"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_9-1773261735099.jpg",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_9-1773261735099.jpg",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "failed",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": "ffmpeg produced an empty/invalid output",
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "no_output",
+      "byte": 170,
+      "parentID": "00000000000000000000000a",
+      "source": "NONE-SOURCE",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000a"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_10.webp",
+          "displayName": "Clip_10",
+          "fileName": "abababababab-Clip_10-1773261735099.webp",
+          "extension": "webp",
+          "mimeType": "image/webp",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1010"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_10-1773261735099.webp",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_10-1773261735099.webp",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-i",
+          "<tmp>/dima-in-aaaaaaaaaaaa",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-aaaaaaaaaaaa.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_10-1773261735099.webp",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000a"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_10.webp",
+          "displayName": "Clip_10",
+          "fileName": "abababababab-Clip_10-1773261735099.webp",
+          "extension": "webp",
+          "mimeType": "image/webp",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1010"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_10-1773261735099.webp",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_10-1773261735099.webp",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "failed",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": "ENOENT: no such file or directory, stat '<tmp>/dima-out-aaaaaaaaaaaa.jpg'",
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "source_404",
+      "byte": 187,
+      "parentID": "00000000000000000000000b",
+      "source": "<Error><Code>NoSuchKey</Code></Error>",
+      "sourceStatus": 404,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000b"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_11.webm",
+          "displayName": "Clip_11",
+          "fileName": "abababababab-Clip_11-1773261735099.webm",
+          "extension": "webm",
+          "mimeType": "video/webm",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1011"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_11-1773261735099.webm",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_11-1773261735099.webm",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_11-1773261735099.webm",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000b"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Clip_11.webm",
+          "displayName": "Clip_11",
+          "fileName": "abababababab-Clip_11-1773261735099.webm",
+          "extension": "webm",
+          "mimeType": "video/webm",
+          "mediaType": "video",
+          "bytes": {
+            "$numberInt": "1011"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_11-1773261735099.webm",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_11-1773261735099.webm",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "failed",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": "Failed to fetch source: HTTP 404",
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "text_names",
+      "byte": 204,
+      "parentID": "00000000000000000000000c",
+      "source": "PNG-TEXT",
+      "sourceStatus": 200,
+      "seed": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000c"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Mejor País 🇨🇱 שלום é.png",
+          "displayName": "Mejor_País_é_😀",
+          "fileName": "abababababab-x-1.png",
+          "extension": "png",
+          "mimeType": "image/png",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1012"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_12-1773261735099.png",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_12-1773261735099.png",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ],
+      "error": null,
+      "ffmpeg": [
+        [
+          "-y",
+          "-i",
+          "<tmp>/dima-in-cccccccccccc",
+          "-vf",
+          "scale=480:-1",
+          "-q:v",
+          "5",
+          "<tmp>/dima-out-cccccccccccc.jpg"
+        ]
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "target": "/examplebucket/533538623/triggers/abababababab-Clip_12-1773261735099.png",
+          "headers": {
+            "accept": "*/*",
+            "accept-language": "*",
+            "sec-fetch-mode": "cors",
+            "accept-encoding": "gzip, deflate"
+          },
+          "body": ""
+        },
+        {
+          "method": "PUT",
+          "target": "/examplebucket/library/thumbnails/cccccccccccccccc.jpg?x-id=PutObject",
+          "headers": {
+            "x-amz-acl": "public-read",
+            "cache-control": "public, max-age=31536000, immutable",
+            "content-type": "image/jpeg",
+            "content-length": "406",
+            "x-amz-sdk-checksum-algorithm": "CRC32",
+            "x-amz-checksum-crc32": "3mZEQw==",
+            "x-amz-content-sha256": "0cf474c23f82eae1c71e46faad27bd7d03bb3ec967c80f6846f00f517cd713e6"
+          },
+          "body": "/9j/4EFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUpBQkNERUZHSElKQUJDREVGR0hJSkFCQ0RFRkdISUr/2Q=="
+        }
+      ],
+      "documents": [
+        {
+          "_id": {
+            "$oid": "00000000000000000000000c"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Mejor País 🇨🇱 שלום é.png",
+          "displayName": "Mejor_País_é_😀",
+          "fileName": "abababababab-x-1.png",
+          "extension": "png",
+          "mimeType": "image/png",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "1012"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "533538623/triggers/abababababab-Clip_12-1773261735099.png",
+          "storageUrl": "http://127.0.0.1:18744/examplebucket/533538623/triggers/abababababab-Clip_12-1773261735099.png",
+          "proxyPath": null,
+          "scope": "private",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": {
+            "$oid": "6af5ccd7424c6deccfcfe4be"
+          },
+          "thumbnailStatus": "ready",
+          "thumbnailAttempts": {
+            "$numberInt": "1"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        },
+        {
+          "_id": {
+            "$oid": "6af5ccd7424c6deccfcfe4be"
+          },
+          "legacyTriggerFileID": null,
+          "ownerUserID": "656ec726be85da7a473664ad",
+          "ownerChannelID": "533538623",
+          "ownerChannelName": "cdom201",
+          "uploadedByUserID": "656ec726be85da7a473664ad",
+          "originalName": "Mejor País 🇨🇱 שלום é.png.thumb.jpg",
+          "displayName": "Mejor_País_é_😀 (thumbnail)",
+          "fileName": "abababababab-x-1.png.thumb.jpg",
+          "extension": "jpg",
+          "mimeType": "image/jpeg",
+          "mediaType": "image",
+          "bytes": {
+            "$numberInt": "406"
+          },
+          "bucket": "examplebucket",
+          "s3Key": "library/thumbnails/cccccccccccccccc.jpg",
+          "storageUrl": "https://cdn.test/examplebucket/library/thumbnails/cccccccccccccccc.jpg",
+          "proxyPath": null,
+          "scope": "system",
+          "marketplaceStatus": "not_listed",
+          "checksumSha256": null,
+          "thumbnailAssetID": null,
+          "thumbnailStatus": "pending",
+          "thumbnailAttempts": {
+            "$numberInt": "0"
+          },
+          "thumbnailLastError": null,
+          "libraryCount": {
+            "$numberInt": "0"
+          },
+          "triggerReferenceCount": {
+            "$numberInt": "0"
+          },
+          "alertReferenceCount": {
+            "$numberInt": "0"
+          },
+          "extensionReferenceCount": {
+            "$numberInt": "0"
+          },
+          "deletedAt": null,
+          "createdAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "updatedAt": {
+            "$date": {
+              "$numberLong": "1794355200000"
+            }
+          },
+          "__v": {
+            "$numberInt": "0"
+          }
+        }
+      ]
+    }
+  ]
+}
