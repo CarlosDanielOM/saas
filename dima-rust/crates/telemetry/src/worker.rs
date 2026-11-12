@@ -164,9 +164,19 @@ impl Worker {
 
     /// Wraps the worker's future so the time spent polling it is counted (two clock reads per
     /// poll). Wrap the whole task once, at the supervisor.
-    pub fn instrument<F: Future>(&self, future: F) -> impl Future<Output = F::Output> {
+    ///
+    /// The worker is alive while the wrapped future is: when it is first polled the state becomes
+    /// `idle`, and every way out of it (it returns, it is dropped or cancelled, it panics, or it is
+    /// dropped without ever being polled) sets `stopped`, after which the sampler emits no rows for
+    /// the worker until it runs again: the admin page shows a dead worker as stale, as it does a
+    /// dead process. [`Worker::restarted`] marks the backoff before the next instance.
+    /// The returned future does not borrow the handle, so it can be spawned.
+    pub fn instrument<F: Future>(&self, future: F) -> impl Future<Output = F::Output> + use<F> {
         let cell = self.cell.clone();
+        let alive = Alive(self.cell.clone());
         async move {
+            let _alive = alive;
+            cell.state.store(WorkerState::Idle as u8, Ordering::Relaxed);
             let mut future = std::pin::pin!(future);
             std::future::poll_fn(|cx| {
                 let started = std::time::Instant::now();
@@ -184,6 +194,11 @@ impl Worker {
     /// Sets the state gauge.
     pub fn set_state(&self, state: WorkerState) {
         self.cell.state.store(state as u8, Ordering::Relaxed);
+    }
+
+    /// The current state.
+    pub fn state(&self) -> WorkerState {
+        WorkerState::from_u8(self.cell.state.load(Ordering::Relaxed))
     }
 
     /// Starts a run: state `running`, and a `queue_run` span named `<prefix>.run`.
@@ -292,6 +307,34 @@ impl Worker {
     }
 }
 
+/// Sets the terminal state when the instrumented future goes away, however it goes.
+struct Alive(Arc<WorkerCell>);
+
+impl Drop for Alive {
+    fn drop(&mut self) {
+        self.0
+            .state
+            .store(WorkerState::Stopped as u8, Ordering::Relaxed);
+    }
+}
+
+impl WorkerState {
+    fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Idle,
+            1 => Self::Running,
+            2 => Self::Restarting,
+            3 => Self::Stopped,
+            _ => Self::Fatal,
+        }
+    }
+
+    /// Whether the worker has ended (`stopped` or `fatal`): no rows are emitted for it.
+    pub fn is_terminal(self) -> bool {
+        matches!(self, Self::Stopped | Self::Fatal)
+    }
+}
+
 /// One run in progress; ends `error` if dropped unfinished.
 pub struct Run<'a> {
     worker: &'a Worker,
@@ -358,6 +401,11 @@ pub(crate) fn sample_workers(telemetry: &Telemetry, now: Instant) {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .replace(now);
+        let state = WorkerState::from_u8(cell.state.load(Ordering::Relaxed));
+        if state.is_terminal() {
+            // A worker that ended reports nothing; its window restarts with it.
+            continue;
+        }
         if let Some(previous) = previous {
             let wall = now.saturating_duration_since(previous).as_secs_f64();
             if wall > 0.0 {
@@ -372,7 +420,7 @@ pub(crate) fn sample_workers(telemetry: &Telemetry, now: Instant) {
                 );
             }
         }
-        let state = f64::from(cell.state.load(Ordering::Relaxed));
+        let state = f64::from(state as u8);
         telemetry.observe_with("worker", cell.names.state, state, "ok", Some(""));
         let last = cell.last_success_ms.load(Ordering::Relaxed);
         if last != i64::MIN {

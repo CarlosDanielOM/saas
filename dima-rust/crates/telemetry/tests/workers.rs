@@ -108,12 +108,78 @@ async fn a_worker_reports_runs_state_and_busy_time() {
     // Restarting after `restarted()`.
     assert_eq!(snapshot.metric("goals.worker.state")[0].sum, 2.0);
     assert!(snapshot.metric("goals.worker.since_success_ms")[0].sum < 5000.0);
+    // A stopped worker reports nothing (the page shows it as stale).
     worker.set_state(WorkerState::Stopped);
     telemetry.sample();
-    assert_eq!(
-        telemetry.take_snapshot().metric("goals.worker.state")[0].sum,
-        3.0
+    assert!(
+        telemetry
+            .take_snapshot()
+            .metrics
+            .iter()
+            .all(|row| !row.name.starts_with("goals.worker."))
     );
+}
+
+fn rows_of(snapshot: &dima_telemetry::Snapshot, prefix: &str) -> usize {
+    snapshot
+        .metrics
+        .iter()
+        .filter(|row| row.name.starts_with(prefix))
+        .count()
+}
+
+/// Every way out of an instrumented task ends the worker: it returns, it is cancelled, it
+/// panics, or it is dropped before it ever ran. A worker that ended keeps no fresh-looking row.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_worker_that_ends_in_any_way_stops_reporting() {
+    let telemetry = support::in_memory(0.0);
+    let returns = telemetry.worker("ends_by_returning.worker");
+    let cancelled = telemetry.worker("ends_by_cancel.worker");
+    let panics = telemetry.worker("ends_by_panic.worker");
+    let unpolled = telemetry.worker("ends_unpolled.worker");
+    let alive = telemetry.worker("stays_alive.worker");
+
+    returns.instrument(async {}).await;
+    let task = tokio::spawn(cancelled.instrument(std::future::pending::<()>()));
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert_eq!(cancelled.state(), WorkerState::Idle);
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    let task = tokio::spawn(panics.instrument(async {
+        panic!("a worker panicked");
+    }));
+    assert!(task.await.unwrap_err().is_panic());
+    drop(unpolled.instrument(async {}));
+    let keep = tokio::spawn(alive.instrument(std::future::pending::<()>()));
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    for worker in [&returns, &cancelled, &panics, &unpolled] {
+        assert_eq!(worker.state(), WorkerState::Stopped, "{}", worker.prefix());
+    }
+    telemetry.sample();
+    telemetry.sample();
+    let snapshot = telemetry.take_snapshot();
+    for prefix in [
+        "ends_by_returning",
+        "ends_by_cancel",
+        "ends_by_panic",
+        "ends_unpolled",
+    ] {
+        assert_eq!(rows_of(&snapshot, prefix), 0, "{prefix}");
+    }
+    assert!(rows_of(&snapshot, "stays_alive.worker.") > 0);
+
+    // The supervisor restarts it: it reports again.
+    panics.restarted();
+    telemetry.sample();
+    assert_eq!(
+        telemetry
+            .take_snapshot()
+            .metric("ends_by_panic.worker.state")[0]
+            .sum,
+        2.0
+    );
+    keep.abort();
 }
 
 #[tokio::test]
