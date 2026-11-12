@@ -105,6 +105,8 @@ pub enum DecodeCategory {
     Eof,
     /// The compressed body (gzip, deflate, brotli) could not be decompressed.
     Compression,
+    /// An event stream passed one of its limits (line length, event size, queued events).
+    EventStream,
 }
 
 impl fmt::Display for DecodeCategory {
@@ -114,6 +116,7 @@ impl fmt::Display for DecodeCategory {
             Self::Data => "data",
             Self::Eof => "eof",
             Self::Compression => "compression",
+            Self::EventStream => "event stream",
         })
     }
 }

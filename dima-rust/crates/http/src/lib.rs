@@ -134,7 +134,7 @@ pub use path::{Path, PathError};
 pub use provider::{ConfigError, Provider, ProviderBuilder, ProviderRegistry, Redirects};
 pub use response::Response;
 pub use retry::RetryPolicy;
-pub use sse::{SseEvent, SseStream};
+pub use sse::{SseError, SseEvent, SseLimits, SseStream};
 
 /// Re-exported so callers name headers and methods without another dependency.
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, header};

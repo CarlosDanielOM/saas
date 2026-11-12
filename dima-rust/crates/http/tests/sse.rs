@@ -231,3 +231,45 @@ async fn shutdown_ends_a_stream() {
     let error = stream.next_event().await.unwrap().unwrap_err();
     assert!(matches!(error, Error::Cancelled { .. }), "{error:?}");
 }
+
+/// One network chunk holding thousands of events does not trip the queue bound: the stream
+/// feeds the decoder in pieces and takes events out between them. Custom limits are enforced
+/// as a decode error.
+#[tokio::test]
+async fn decoder_limits_hold_over_the_network() {
+    let (server, client, provider, _) = setup().await;
+    server.push(MockResponse::new(200).body("data:x\n\n".repeat(2000)));
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse();
+    let (events, error) = collect(&mut stream).await;
+    assert!(error.is_none(), "{error:?}");
+    assert_eq!(events.len(), 2000);
+
+    server.push(MockResponse::new(200).body(format!("data: {}\n\n", "y".repeat(64))));
+    let mut stream = client
+        .post(&provider, "/chat/completions")
+        .send()
+        .await
+        .unwrap()
+        .sse_with_limits(dima_http::SseLimits {
+            max_line: 32,
+            ..dima_http::SseLimits::default()
+        });
+    let (events, error) = collect(&mut stream).await;
+    assert!(events.is_empty());
+    assert!(
+        matches!(
+            error,
+            Some(Error::Decode {
+                category: dima_http::DecodeCategory::EventStream,
+                ..
+            })
+        ),
+        "{error:?}"
+    );
+    assert!(stream.next_event().await.is_none());
+}

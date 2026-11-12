@@ -10,10 +10,55 @@
 //!   no colon has an empty value; one space after the colon is removed.
 //! - An empty line dispatches; an event with no data is not dispatched; an event still open when
 //!   the stream ends is discarded.
+//!
+//! **Limits.** A decoder holds at most [`SseLimits::max_line`] bytes of one line,
+//! [`SseLimits::max_event`] bytes of one event (its data and type) and
+//! [`SseLimits::max_queued`] dispatched events not yet taken out. Passing one is an
+//! [`SseError`] from [`SseDecoder::feed`]; the decoder then refuses further input. An
+//! [`SseStream`] uses the response's byte limit for the line and event bounds and feeds the
+//! decoder in pieces of at most [`SseStream::PIECE`] bytes, taking events out between pieces,
+//! so its queue bound holds for any chunk the network delivers.
 
 use crate::error::Result;
 use crate::response::Response;
+use bytes::Bytes;
 use std::collections::VecDeque;
+
+/// The bounds of an [`SseDecoder`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SseLimits {
+    /// The longest line, in bytes, without its line end.
+    pub max_line: usize,
+    /// The largest event: its joined data plus its type, in bytes.
+    pub max_event: usize,
+    /// Dispatched events waiting to be taken out with [`SseDecoder::next_event`].
+    pub max_queued: usize,
+}
+
+impl Default for SseLimits {
+    /// 8 MiB per line and per event (the default response body limit), 1024 queued events.
+    fn default() -> Self {
+        Self {
+            max_line: 8 * 1024 * 1024,
+            max_event: 8 * 1024 * 1024,
+            max_queued: 1024,
+        }
+    }
+}
+
+/// Which [`SseLimits`] bound the input passed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum SseError {
+    /// A line longer than [`SseLimits::max_line`].
+    #[error("event stream line longer than {0} bytes")]
+    LineTooLong(usize),
+    /// An event larger than [`SseLimits::max_event`].
+    #[error("event stream event larger than {0} bytes")]
+    EventTooLarge(usize),
+    /// More than [`SseLimits::max_queued`] events waiting.
+    #[error("more than {0} event stream events queued")]
+    TooManyQueued(usize),
+}
 
 /// One dispatched event.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,6 +74,8 @@ pub struct SseEvent {
 /// The incremental decoder: feed it bytes, take events out.
 #[derive(Default)]
 pub struct SseDecoder {
+    limits: SseLimits,
+    failed: Option<SseError>,
     line: Vec<u8>,
     after_cr: bool,
     started: bool,
@@ -51,13 +98,40 @@ impl std::fmt::Debug for SseDecoder {
 }
 
 impl SseDecoder {
-    /// A decoder at the start of a stream.
+    /// A decoder at the start of a stream, with the default [`SseLimits`].
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Feeds bytes; complete events become available from [`SseDecoder::next_event`].
-    pub fn feed(&mut self, mut bytes: &[u8]) {
+    /// A decoder at the start of a stream, with these limits.
+    pub fn with_limits(limits: SseLimits) -> Self {
+        Self {
+            limits,
+            ..Self::default()
+        }
+    }
+
+    /// The limits.
+    pub fn limits(&self) -> SseLimits {
+        self.limits
+    }
+
+    /// Feeds bytes; complete events become available from [`SseDecoder::next_event`]. Passing a
+    /// limit is an error, and every later call returns the same error.
+    pub fn feed(&mut self, bytes: &[u8]) -> std::result::Result<(), SseError> {
+        if let Some(error) = self.failed {
+            return Err(error);
+        }
+        let result = self.feed_inner(bytes);
+        if let Err(error) = result {
+            self.failed = Some(error);
+            self.line = Vec::new();
+            self.data = String::new();
+        }
+        result
+    }
+
+    fn feed_inner(&mut self, mut bytes: &[u8]) -> std::result::Result<(), SseError> {
         if self.after_cr {
             self.after_cr = false;
             if let Some((b'\n', rest)) = bytes.split_first() {
@@ -75,18 +149,26 @@ impl SseDecoder {
                     Some(_) => {}
                 }
             }
+            if self.line.len() + head.len() > self.limits.max_line {
+                return Err(SseError::LineTooLong(self.limits.max_line));
+            }
             if self.line.is_empty() {
-                self.process_line(head);
+                self.process_line(head)?;
             } else {
                 self.line.extend_from_slice(head);
                 let line = std::mem::take(&mut self.line);
-                self.process_line(&line);
+                let result = self.process_line(&line);
                 self.line = line;
                 self.line.clear();
+                result?;
             }
             bytes = rest;
         }
+        if self.line.len() + bytes.len() > self.limits.max_line {
+            return Err(SseError::LineTooLong(self.limits.max_line));
+        }
         self.line.extend_from_slice(bytes);
+        Ok(())
     }
 
     /// The next complete event, if any.
@@ -109,7 +191,7 @@ impl SseDecoder {
         &self.last_id
     }
 
-    fn process_line(&mut self, mut line: &[u8]) {
+    fn process_line(&mut self, mut line: &[u8]) -> std::result::Result<(), SseError> {
         if !self.started {
             self.started = true;
             if let Some(rest) = line.strip_prefix(b"\xEF\xBB\xBF") {
@@ -117,11 +199,10 @@ impl SseDecoder {
             }
         }
         if line.is_empty() {
-            self.dispatch();
-            return;
+            return self.dispatch();
         }
         if line.first() == Some(&b':') {
-            return;
+            return Ok(());
         }
         let (field, value) = match line.iter().position(|b| *b == b':') {
             Some(colon) => {
@@ -133,11 +214,20 @@ impl SseDecoder {
         };
         match field {
             b"data" => {
+                if self.data.len() + self.event.len() + value.len() + 1 > self.limits.max_event {
+                    return Err(SseError::EventTooLarge(self.limits.max_event));
+                }
                 self.data.push_str(&String::from_utf8_lossy(value));
                 self.data.push('\n');
                 self.has_data = true;
             }
-            b"event" => self.event = String::from_utf8_lossy(value).into_owned(),
+            b"event" => {
+                // Checked before the copy: the decoded text is at most three times longer.
+                if self.data.len() + value.len() > self.limits.max_event {
+                    return Err(SseError::EventTooLarge(self.limits.max_event));
+                }
+                self.event = String::from_utf8_lossy(value).into_owned();
+            }
             b"id" => {
                 if !value.contains(&0) {
                     self.last_id = String::from_utf8_lossy(value).into_owned();
@@ -151,13 +241,17 @@ impl SseDecoder {
             }
             _ => {}
         }
+        Ok(())
     }
 
-    fn dispatch(&mut self) {
+    fn dispatch(&mut self) -> std::result::Result<(), SseError> {
         let event = std::mem::take(&mut self.event);
         if !self.has_data {
             self.data.clear();
-            return;
+            return Ok(());
+        }
+        if self.events.len() >= self.limits.max_queued {
+            return Err(SseError::TooManyQueued(self.limits.max_queued));
         }
         self.has_data = false;
         let mut data = std::mem::take(&mut self.data);
@@ -173,6 +267,7 @@ impl SseDecoder {
             data,
             id: self.last_id.clone(),
         });
+        Ok(())
     }
 }
 
@@ -183,14 +278,34 @@ impl SseDecoder {
 pub struct SseStream {
     response: Response,
     decoder: SseDecoder,
+    /// The rest of the last network chunk, not fed yet.
+    pending: Bytes,
     done: bool,
 }
 
 impl SseStream {
+    /// The most bytes fed to the decoder at once. Every dispatched event after the first takes at
+    /// least 6 bytes (`data\n\n`), so one piece queues at most 172 events, fewer than the
+    /// default [`SseLimits::max_queued`], and the stream takes them out before the next piece.
+    pub const PIECE: usize = 1024;
+
+    /// A stream whose line and event bounds are the response's byte limit (nothing larger can
+    /// arrive) and whose queue holds the default number of events.
     pub(crate) fn new(response: Response) -> Self {
+        let body = usize::try_from(response.max_body_bytes()).unwrap_or(usize::MAX);
+        let limits = SseLimits {
+            max_line: body,
+            max_event: body,
+            ..SseLimits::default()
+        };
+        Self::with_limits(response, limits)
+    }
+
+    pub(crate) fn with_limits(response: Response, limits: SseLimits) -> Self {
         Self {
             response,
-            decoder: SseDecoder::new(),
+            decoder: SseDecoder::with_limits(limits),
+            pending: Bytes::new(),
             done: false,
         }
     }
@@ -201,11 +316,20 @@ impl SseStream {
             if let Some(event) = self.decoder.next_event() {
                 return Some(Ok(event));
             }
+            if !self.pending.is_empty() {
+                let piece = self.pending.split_to(self.pending.len().min(Self::PIECE));
+                if let Err(error) = self.decoder.feed(&piece) {
+                    self.done = true;
+                    self.pending = Bytes::new();
+                    return Some(Err(self.response.decode_failed(error)));
+                }
+                continue;
+            }
             if self.done {
                 return None;
             }
             match self.response.chunk().await {
-                Ok(Some(bytes)) => self.decoder.feed(&bytes),
+                Ok(Some(bytes)) => self.pending = bytes,
                 Ok(None) => {
                     self.done = true;
                     return None;
@@ -242,7 +366,7 @@ mod tests {
         let mut decoder = SseDecoder::new();
         let mut out = Vec::new();
         for chunk in chunks {
-            decoder.feed(chunk);
+            decoder.feed(chunk).unwrap();
             while let Some(event) = decoder.next_event() {
                 out.push(event);
             }
@@ -341,6 +465,58 @@ mod tests {
             decode(&[b"data:  {\"a\": 1}\n\n"]),
             vec![ev("message", " {\"a\": 1}", "")]
         );
+    }
+
+    #[test]
+    fn limits_bound_lines_events_and_the_queue() {
+        let limits = SseLimits {
+            max_line: 16,
+            max_event: 24,
+            max_queued: 2,
+        };
+        // A line that never ends, in one piece or many.
+        let mut decoder = SseDecoder::with_limits(limits);
+        assert_eq!(decoder.feed(&[b'a'; 17]), Err(SseError::LineTooLong(16)));
+        let mut decoder = SseDecoder::with_limits(limits);
+        for _ in 0..16 {
+            decoder.feed(b"a").unwrap();
+        }
+        assert_eq!(decoder.feed(b"a"), Err(SseError::LineTooLong(16)));
+        // Once failed, always failed, and nothing is held.
+        assert_eq!(decoder.feed(b"\n\n"), Err(SseError::LineTooLong(16)));
+        assert_eq!(decoder.pending_bytes(), 0);
+        // A complete line over the limit inside one feed.
+        let mut decoder = SseDecoder::with_limits(limits);
+        assert_eq!(
+            decoder.feed(b"data: 0123456789abcdef\n"),
+            Err(SseError::LineTooLong(16))
+        );
+        // Exactly at the line limit is fine.
+        let mut decoder = SseDecoder::with_limits(limits);
+        decoder.feed(b"data: 0123456789\n\n").unwrap();
+        assert_eq!(decoder.next_event().unwrap().data, "0123456789");
+        // Many short data lines add up to one event over the limit.
+        let mut decoder = SseDecoder::with_limits(limits);
+        decoder.feed(b"data: 0123456789\n").unwrap();
+        decoder.feed(b"data: 0123456789\n").unwrap();
+        assert_eq!(
+            decoder.feed(b"data: 0123456789\n"),
+            Err(SseError::EventTooLarge(24))
+        );
+        // Events not taken out are bounded.
+        let mut decoder = SseDecoder::with_limits(limits);
+        decoder.feed(b"data: 1\n\ndata: 2\n\n").unwrap();
+        assert_eq!(
+            decoder.feed(b"data: 3\n\n"),
+            Err(SseError::TooManyQueued(2))
+        );
+        // Taking them out makes room.
+        let mut decoder = SseDecoder::with_limits(limits);
+        for n in 0..10 {
+            decoder.feed(format!("data: {n}\n\n").as_bytes()).unwrap();
+            assert_eq!(decoder.next_event().unwrap().data, n.to_string());
+        }
+        assert_eq!(SseDecoder::new().limits(), SseLimits::default());
     }
 
     #[test]

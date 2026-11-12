@@ -298,9 +298,33 @@ impl Response {
         }
     }
 
-    /// Reads the body as a Server-Sent Events stream.
+    /// Reads the body as a Server-Sent Events stream. Lines and events are bounded by the body
+    /// limit, and at most the default number of events is queued (see [`crate::sse`]).
     pub fn sse(self) -> SseStream {
         SseStream::new(self)
+    }
+
+    /// Reads the body as a Server-Sent Events stream with these limits.
+    pub fn sse_with_limits(self, limits: crate::sse::SseLimits) -> SseStream {
+        SseStream::with_limits(self, limits)
+    }
+
+    /// The body byte limit in force.
+    pub(crate) fn max_body_bytes(&self) -> u64 {
+        self.limits.max_bytes
+    }
+
+    /// Records an event stream that passed a decoder limit and builds its error.
+    pub(crate) fn decode_failed(&mut self, _error: crate::sse::SseError) -> Error {
+        if let Some(end) = &mut self.end {
+            end.fail(FailureClass::Decode);
+        }
+        Error::Decode {
+            info: self.info(),
+            category: crate::error::DecodeCategory::EventStream,
+            line: 0,
+            column: 0,
+        }
     }
 
     /// `Ok(self)` for a 2xx status; otherwise [`Error::Status`] with allow-listed headers and the
