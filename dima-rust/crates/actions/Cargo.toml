@@ -26,6 +26,17 @@ dima-core = { workspace = true }
 dima-store = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+# P4-BOT-INGRESS: the bot runtime metrics, the pub/sub manager and the product events.
+dima-http = { workspace = true }
+dima-telemetry = { workspace = true }
+dima-text = { workspace = true }
+redis = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
+anyhow = { workspace = true }
+dima-http = { workspace = true, features = ["test-util"] }
+
