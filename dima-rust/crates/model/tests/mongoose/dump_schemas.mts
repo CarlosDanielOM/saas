@@ -30,6 +30,10 @@ import { pathToFileURL } from 'node:url';
 
 // One entry per collection module of the registry: the schema file and the model name.
 const MODELS: Array<[string, string]> = [
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_job'],
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_cache'],
+    ['src/schemas/moderation_chatter.schema.ts', 'moderation_chatter'],
+    ['src/schemas/moderation_action_log.schema.ts', 'moderation_action_log'],
     ['src/schemas/follow_attack_log.schema.ts', 'follow_attack_log'],
     ['src/schemas/follow_relationship_ledger.schema.ts', 'follow_relationship_ledger'],
     ['src/schemas/follow_hate_raid_source.schema.ts', 'follow_hate_raid_source'],

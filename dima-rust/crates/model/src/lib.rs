@@ -340,6 +340,10 @@ pub mod follow_defense_settings;
 pub mod follow_hate_raid_sources;
 pub mod follow_relationship_ledgers;
 pub mod media_assets;
+pub mod moderation_action_logs;
+pub mod moderation_chatters;
+pub mod moderation_variation_caches;
+pub mod moderation_variation_jobs;
 pub mod oauth_clients;
 pub mod oauth_grants;
 pub mod oauth_refresh_tokens;
@@ -396,6 +400,10 @@ pub static REGISTRY: &[&CollectionInfo] = &[
     &follow_hate_raid_sources::INFO,
     &follow_relationship_ledgers::INFO,
     &follow_attack_logs::INFO,
+    &moderation_action_logs::INFO,
+    &moderation_chatters::INFO,
+    &moderation_variation_caches::INFO,
+    &moderation_variation_jobs::INFO,
     &users::INFO,
     &admins::INFO,
     &app_configs::INFO,

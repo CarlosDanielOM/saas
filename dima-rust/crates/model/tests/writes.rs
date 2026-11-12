@@ -348,6 +348,62 @@ fn typed_create(
         Ok((given, prepared?))
     };
     match (collection, key) {
+        ("moderation_variation_jobs", "typed") => {
+            use dima_model::moderation_variation_jobs::*;
+            let input = NewModerationVariationJob {
+                id: "seed".into(),
+                channel_id: None,
+                terms: None,
+                state: None,
+                entries: None,
+                error: None,
+                attempts: None,
+                created_at: None,
+                deadline: None,
+                expires_at: None,
+                model: None,
+                version: None,
+                provider_usage: None,
+                credits_charged: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("moderation_variation_caches", "typed") => {
+            use dima_model::moderation_variation_caches::*;
+            let input = NewModerationVariationCache {
+                id: "seed".into(),
+                channel_id: None,
+                entry: None,
+                model: None,
+                expires_at: None,
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("moderation_chatters", "typed") => {
+            use dima_model::moderation_chatters::*;
+            let input = NewModerationChatter {
+                id: "seed".into(),
+                first_seen_at: JsDate(1623053350011),
+            };
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
+        ("moderation_action_logs", "typed") => {
+            use dima_model::moderation_action_logs::*;
+            let mut input = NewModerationActionLog::new(
+                "seed",
+                "seed",
+                "seed",
+                "seed",
+                dima_model::moderation_action_logs::ActionKind::Off,
+                dima_model::Private::new(text.into()),
+            )?;
+            input.error_message = dima_model::values::Nullable::Null;
+            pair(input.to_document()?, input.prepare(ctx))
+        }
+
         ("follow_attack_logs", "typed") => {
             use dima_model::follow_attack_logs::*;
             let input = NewFollowAttackLog {

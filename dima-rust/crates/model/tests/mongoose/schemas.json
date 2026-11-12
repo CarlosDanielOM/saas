@@ -764,8 +764,16 @@
    "sha256": "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b"
   },
   {
+   "path": "src/schemas/moderation_chatter.schema.ts",
+   "sha256": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e"
+  },
+  {
    "path": "src/schemas/moderation_decision.schema.ts",
    "sha256": "749f450beb060ccba72447cc765f4e372b8d6fcbfa20d7c74ecd21a7d09b4466"
+  },
+  {
+   "path": "src/schemas/moderation_variation.schema.ts",
+   "sha256": "75847e39ad4c22338bef0dd7d74a624b7f8bc666ebbed4fc33a6579ba6f5f143"
   },
   {
    "path": "src/schemas/oauth_client.schema.ts",
@@ -1621,6 +1629,431 @@
   }
  ],
  "models": {
+  "moderation_variation_jobs": {
+   "model": "moderation_variation_job",
+   "file": "src/schemas/moderation_variation.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "terms",
+      "kind": "array",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "state",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "entries",
+      "kind": "mixedArray",
+      "default": {
+       "function": false,
+       "implicit": true,
+       "value": []
+      }
+     },
+     {
+      "name": "error",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "attempts",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "deadline",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     },
+     {
+      "name": "model",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "version",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "providerUsage",
+      "kind": "mixed",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": []
+      }
+     },
+     {
+      "name": "creditsCharged",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "0"
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "state",
+       1
+      ],
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "moderation_variation_caches": {
+   "model": "moderation_variation_cache",
+   "file": "src/schemas/moderation_variation.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "entry",
+      "kind": "mixed"
+     },
+     {
+      "name": "model",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "expiresAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [],
+   "indexes": [
+    {
+     "key": [
+      [
+       "expiresAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 0,
+      "background": true
+     }
+    }
+   ]
+  },
+  "moderation_chatters": {
+   "model": "moderation_chatter",
+   "file": "src/schemas/moderation_chatter.schema.ts",
+   "schema": {
+    "id": "declared",
+    "timestamps": null,
+    "versionKey": null,
+    "minimize": true,
+    "fields": [
+     {
+      "name": "_id",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "firstSeenAt",
+      "kind": "value",
+      "type": "Date"
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "_id",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "firstSeenAt",
+     "type": "required",
+     "conditional": false
+    }
+   ],
+   "indexes": []
+  },
+  "moderation_action_logs": {
+   "model": "moderation_action_log",
+   "file": "src/schemas/moderation_action_log.schema.ts",
+   "schema": {
+    "id": "auto",
+    "timestamps": null,
+    "versionKey": "__v",
+    "minimize": true,
+    "fields": [
+     {
+      "name": "channelID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "userID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "username",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "ruleID",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "ruleType",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "action",
+      "kind": "value",
+      "type": "String"
+     },
+     {
+      "name": "offenseNumber",
+      "kind": "value",
+      "type": "Number",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": {
+        "$numberInt": "1"
+       }
+      }
+     },
+     {
+      "name": "reason",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "messageID",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "messageExcerpt",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": ""
+      }
+     },
+     {
+      "name": "success",
+      "kind": "value",
+      "type": "Boolean",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": false
+      }
+     },
+     {
+      "name": "errorMessage",
+      "kind": "value",
+      "type": "String",
+      "default": {
+       "function": false,
+       "implicit": false,
+       "value": null
+      }
+     },
+     {
+      "name": "createdAt",
+      "kind": "value",
+      "type": "Date",
+      "default": {
+       "function": true,
+       "implicit": false,
+       "value": {
+        "$date": {
+         "$numberLong": "1794392430456"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "hidden": [],
+   "validators": [
+    {
+     "path": "channelID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "userID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ruleID",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "ruleType",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "action",
+     "type": "required",
+     "conditional": false
+    },
+    {
+     "path": "action",
+     "type": "enum",
+     "values": [
+      "off",
+      "warn",
+      "delete",
+      "timeout",
+      "ban"
+     ]
+    },
+    {
+     "path": "messageExcerpt",
+     "type": "maxlength",
+     "maxlength": 200
+    }
+   ],
+   "indexes": [
+    {
+     "key": [
+      [
+       "channelID",
+       1
+      ]
+     ],
+     "options": {
+      "background": true
+     }
+    },
+    {
+     "key": [
+      [
+       "createdAt",
+       1
+      ]
+     ],
+     "options": {
+      "expireAfterSeconds": 2592000,
+      "background": true
+     }
+    }
+   ]
+  },
   "follow_attack_logs": {
    "model": "follow_attack_log",
    "file": "src/schemas/follow_attack_log.schema.ts",
@@ -14473,7 +14906,7 @@
          "default": {
           "function": true,
           "implicit": false,
-          "value": "6af4416e1b49f841fe2dc81b"
+          "value": "6af4416efdc4e94c26066412"
          }
         },
         {

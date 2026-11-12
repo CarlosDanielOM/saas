@@ -60,6 +60,10 @@ const imported = async (file: string) => import(pathToFileURL(path.join(root, fi
 
 // One entry per registered collection: the schema file and the model name.
 const FILES: Array<[string, string]> = [
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_job'],
+    ['src/schemas/moderation_variation.schema.ts', 'moderation_variation_cache'],
+    ['src/schemas/moderation_chatter.schema.ts', 'moderation_chatter'],
+    ['src/schemas/moderation_action_log.schema.ts', 'moderation_action_log'],
     ['src/schemas/follow_attack_log.schema.ts', 'follow_attack_log'],
     ['src/schemas/follow_relationship_ledger.schema.ts', 'follow_relationship_ledger'],
     ['src/schemas/follow_hate_raid_source.schema.ts', 'follow_hate_raid_source'],
@@ -392,6 +396,30 @@ const libraryItem = (extra: any = {}) => ({
 const librarySeed = (extra: any = {}) => ({ _id: OID(1), ...libraryItem(), createdAt: T1, updatedAt: T1, __v: 0, ...extra });
 
 const CASES: Record<string, any[]> = {
+    moderation_variation_jobs: [
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    moderation_variation_caches: [
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed"} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed"}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "channelID": TEXT } } },
+    ],
+
+    moderation_chatters: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'duplicate_marker', op: 'create', seed: [{ _id: 'seed', firstSeenAt: T2 }], doc: { _id: 'seed', firstSeenAt: T2 } },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"_id":"seed","firstSeenAt":T2} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"_id":"seed","firstSeenAt":T2}, _id: 'seed' }], filter: { _id: 'seed' }, update: { $set: { "firstSeenAt": T1 } } },
+    ],
+
+    moderation_action_logs: [
+        { name: 'missing_required', op: 'validate', doc: {} },
+        { name: 'excerpt_too_long', op: 'validate', doc: { channelID: 'seed', userID: 'seed', ruleID: 'seed', ruleType: 'caps', action: 'warn', messageExcerpt: 'x'.repeat(201) } },
+        { name: 'create', op: 'create', rust: 'typed', doc: {"channelID":"seed","userID":"seed","ruleID":"seed","ruleType":"seed","action":"off","messageExcerpt":TEXT,"errorMessage":null} },
+        { name: 'update', op: 'updateOne', seed: [{ ...{"channelID":"seed","userID":"seed","ruleID":"seed","ruleType":"seed","action":"off","messageExcerpt":TEXT,"errorMessage":null}, _id: OID(1) }], filter: { _id: OID(1) }, update: { $set: { "channelID": TEXT } } },
+    ],
+
 follow_attack_logs:[{name:'create',op:'create',rust:'typed',doc:{_id:OID(1),"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]}},{name:'update',op:'updateOne',seed:[{...{"targetChannelID":"seed","modeTriggered":"silent","triggeredBy":"threshold","raidInfo":{"raiderChannelID":"seed"},"trackedFollows":[{"followerID":"seed","followedAt":T2,"eventID":"seed"}]},_id:OID(1)}],filter:{_id:OID(1)},update:{$set:{totalFollows:5}}}],
     follow_relationship_ledgers: [
         { name: 'duplicate_active', op: 'create', seed: [{ _id: OID(1), platform: 'twitch', follower_id: 'seed', followed_id: 'seed', status: 'active' }], doc: { follower_id: 'seed', followed_id: 'seed' } },
