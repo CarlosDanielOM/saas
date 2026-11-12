@@ -26,8 +26,20 @@
 //!
 //! Every Dragonfly and MongoDB call has [`AuthConfig::store_deadline`], every Twitch call
 //! [`AuthConfig::twitch_timeout`] (the reference's `fetch` has none). A cache that cannot be read
-//! is a miss (Twitch decides, as in the reference); a cache or activity write that fails is
-//! reported and ignored (as in the reference). Twitch unreachable is a refusal, never access.
+//! is a miss (Twitch decides, as in the reference) and the validation is then not cached; a cache
+//! or activity write that fails is reported and ignored (as in the reference). Twitch unreachable
+//! is a refusal, never access.
+//!
+//! # Forgetting
+//!
+//! [`Authenticator::forget`] (sign-out) and [`Authenticator::forget_user`] (account deletion, a
+//! ban) end cached validations at once, including one that an authentication already waiting for
+//! Twitch would publish afterwards ([`cache`] has the fences). They return the store's failure:
+//! a sign-out that could not reach Dragonfly has **not** ended the cached validation, which
+//! may still be accepted for up to [`DEFAULT_CACHE_TTL`]. The sign-out route then answers an
+//! error (`503`, so the client knows the session may outlive it and can retry; a retry is
+//! harmless) instead of a success, and the client discards its token either way. An account
+//! deletion or a ban that cannot forget retries or fails the operation, never ignores it.
 //!
 //! # Intended differences (all invisible to a client that sends a real token)
 //!
@@ -36,8 +48,9 @@
 //!   `expires_in` ([`cache`] has the reasons). Worst-case staleness after a revocation on
 //!   Twitch's side (the user disconnects the app, changes password, Twitch bans the account):
 //!   one hour, and less when the token expires sooner; [`Authenticator::forget`] ends it at once
-//!   for a sign-out or an account deletion. Roles are never cached here: every access decision
-//!   reads MongoDB ([`crate::access`]), so losing a role takes effect on the next request.
+//!   for a sign-out, [`Authenticator::forget_user`] for an account deletion or a ban. Roles are
+//!   never cached here: every access decision reads MongoDB ([`crate::access`]), so losing a
+//!   role takes effect on the next request.
 //! - A token that is longer than [`MAX_TOKEN_CHARS`] or holds characters no OAuth token has
 //!   (outside RFC 6750's `token68` set) is refused as "Invalid token" without asking Twitch, which
 //!   would have refused it the same way.
@@ -118,6 +131,28 @@ impl AuthConfig {
             activity_touch_ttl: ACTIVITY_TOUCH_TTL,
         }
         .validated()
+    }
+
+    /// The longest an authentication may take between its cache lookup and its publication:
+    /// the lookup, the two Twitch calls and the publication under their deadlines, plus 5 s.
+    /// A publication later than that is refused ([`cache`]).
+    pub fn publish_window(&self) -> Duration {
+        self.store_deadline
+            .saturating_mul(2)
+            .saturating_add(self.twitch_timeout.saturating_mul(2))
+            .saturating_add(Duration::from_secs(5))
+    }
+
+    /// Lifetime of a token's fence: twice the window, plus the clock allowance.
+    pub fn token_fence_ttl(&self) -> Duration {
+        self.publish_window()
+            .saturating_mul(2)
+            .saturating_add(cache::CLOCK_ALLOWANCE)
+    }
+
+    /// Lifetime of a user's fence: it must outlive every entry it covers.
+    pub fn user_fence_ttl(&self) -> Duration {
+        self.cache_ttl.saturating_add(self.token_fence_ttl())
     }
 
     /// Checks a configuration built by hand.
@@ -253,6 +288,11 @@ impl AuthFailure {
     }
 }
 
+/// A forget did not reach the validation cache: the cached validation may still be accepted.
+#[derive(Debug, thiserror::Error)]
+#[error("the validation cache could not be updated: {0}")]
+pub struct ForgetError(#[from] cache::CacheError);
+
 /// Where failures of best-effort steps go (the reference's `error(…, {destination: 'both'})`).
 /// Messages never contain a token.
 pub trait AuthReport: Send + Sync + fmt::Debug {
@@ -346,25 +386,34 @@ impl Authenticator {
         if !plausible_token(token) {
             return Err(AuthFailure::InvalidToken(InvalidReason::Refused));
         }
-        match cache::get(&self.deps.cache, token, self.config.store_deadline).await {
-            Ok(Some(user)) => return Ok(user),
-            Ok(None) => {}
-            Err(error) => self.deps.report.error("getCachedToken", &error.to_string()),
-        }
+        let began = match cache::get(&self.deps.cache, token, self.config.store_deadline).await {
+            Ok(cache::Lookup {
+                user: Some(user), ..
+            }) => return Ok(user),
+            Ok(lookup) => Some(lookup.began),
+            Err(error) => {
+                self.deps.report.error("getCachedToken", &error.to_string());
+                None
+            }
+        };
         let secret = SecretString::new(token.to_owned());
         let validation = self.validate(&secret).await?;
         let user = self.user(&secret).await?;
-        let ttl = cache_ttl(self.config.cache_ttl, validation.as_ref());
-        if let Err(error) = cache::put(
-            &self.deps.cache,
-            token,
-            &user,
-            ttl,
-            self.config.store_deadline,
-        )
-        .await
-        {
-            self.deps.report.error("cacheToken", &error.to_string());
+        // Without the server time of the lookup, a forget racing this authentication could not
+        // be detected: the validation is used for this request only.
+        if let Some(began) = began {
+            let publication = cache::Publication {
+                token,
+                user: &user,
+                began,
+                ttl_seconds: cache_ttl(self.config.cache_ttl, validation.as_ref()),
+                window: self.config.publish_window(),
+            };
+            if let Err(error) =
+                cache::publish(&self.deps.cache, publication, self.config.store_deadline).await
+            {
+                self.deps.report.error("cacheToken", &error.to_string());
+            }
         }
         Ok(user)
     }
@@ -495,20 +544,43 @@ impl Authenticator {
         cache::get(&self.deps.cache, token, self.config.store_deadline)
             .await
             .ok()
-            .flatten()
+            .and_then(|lookup| lookup.user)
     }
 
-    /// Ends a token's cached validation at once (sign-out, account deletion), so a revoked token
-    /// is checked with Twitch on its next use.
-    pub async fn forget(&self, authorization: &str) {
+    /// Ends a token's cached validation at once (sign-out), so it is checked with Twitch on its
+    /// next use, and keeps an authentication of it already in flight from caching it again.
+    /// `Err` when Dragonfly could not be reached: the validation may still be cached (see the
+    /// module docs for what the route answers).
+    pub async fn forget(&self, authorization: &str) -> Result<(), ForgetError> {
         let token = bearer_token(authorization);
         if token.is_empty() {
-            return;
+            return Ok(());
         }
-        if let Err(error) = cache::forget(&self.deps.cache, token, self.config.store_deadline).await
-        {
-            self.deps.report.error("forgetToken", &error.to_string());
+        cache::forget_token(
+            &self.deps.cache,
+            token,
+            self.config.token_fence_ttl(),
+            self.config.store_deadline,
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Ends every cached validation of a Twitch user's tokens (account deletion, a ban), and
+    /// keeps authentications in flight for that user from caching. `Err` as for
+    /// [`Authenticator::forget`].
+    pub async fn forget_user(&self, twitch_user_id: &str) -> Result<(), ForgetError> {
+        if twitch_user_id.is_empty() {
+            return Ok(());
         }
+        cache::forget_user(
+            &self.deps.cache,
+            twitch_user_id,
+            self.config.user_fence_ttl(),
+            self.config.store_deadline,
+        )
+        .await?;
+        Ok(())
     }
 }
 
