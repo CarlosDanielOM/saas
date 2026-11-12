@@ -18,6 +18,7 @@
 //! - [`health`]: the admin page's journal health report.
 //! - [`jobs`]: durable cron-job intents on the store's cron queue.
 //! - [`value`]: JavaScript-shaped values (payloads, metadata, SDK data).
+//! - [`indexes`]: the unique indexes every writer here checks before it starts.
 //! - [`store`]: deadlines and errors of every store call.
 //! - [`config`]: typed configuration.
 #![forbid(unsafe_code)]
@@ -29,6 +30,7 @@ pub mod dispatch;
 pub mod envelope;
 pub mod health;
 pub mod identity;
+pub mod indexes;
 pub mod jobs;
 pub mod producers;
 pub mod store;

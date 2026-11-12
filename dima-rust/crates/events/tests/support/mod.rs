@@ -238,53 +238,161 @@ pub async fn clean_keys(client: &dima_store::dragonfly::Dragonfly, prefix: &str)
     Ok(())
 }
 
-/// A TCP proxy in front of a store that can go silent: while blackholed, it accepts and holds
-/// connections and forwards nothing in either direction, as a hung server or a network
-/// partition would. Dropping it stops it.
+/// A TCP proxy in front of a store that can go silent, or lose one reply.
+///
+/// - [`Proxy::blackhole`]: it accepts and holds connections and forwards nothing in either
+///   direction, as a hung server or a network partition would.
+/// - [`Proxy::lose_reply_to`]: the next MongoDB request that contains every given byte string
+///   reaches the server (so a write commits), and everything the server sends back on that
+///   connection is discarded: the caller sees its deadline pass on a write that was applied. The
+///   proxy reads requests whole (the wire protocol's 4-byte little-endian length), so a request
+///   is matched as one message. Other connections, and connections opened afterwards, work.
+///
+/// Dropping it stops it.
 pub struct Proxy {
     /// `127.0.0.1:<port>`.
     pub address: String,
     silent: tokio::sync::watch::Sender<bool>,
+    trap: std::sync::Arc<Trap>,
     task: tokio::task::JoinHandle<()>,
 }
 
+/// The armed "lose the reply" request.
+#[derive(Default)]
+struct Trap {
+    needles: std::sync::Mutex<Option<Vec<Vec<u8>>>>,
+    fired: std::sync::atomic::AtomicUsize,
+}
+
+impl Trap {
+    /// Whether `message` is the armed request (disarming the trap).
+    fn take(&self, message: &[u8]) -> bool {
+        let Ok(mut armed) = self.needles.lock() else {
+            return false;
+        };
+        let matches = armed.as_ref().is_some_and(|needles| {
+            needles.iter().all(|needle| {
+                message
+                    .windows(needle.len())
+                    .any(|w| w == needle.as_slice())
+            })
+        });
+        if matches {
+            *armed = None;
+            self.fired.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+        matches
+    }
+}
+
+async fn relay(
+    inbound: tokio::net::TcpStream,
+    upstream: String,
+    mut watch: tokio::sync::watch::Receiver<bool>,
+    trap: std::sync::Arc<Trap>,
+    framed: bool,
+) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    if *watch.borrow() {
+        // Hold the connection without answering.
+        let _ = watch.wait_for(|silent| !*silent).await;
+        return;
+    }
+    let Ok(outbound) = tokio::net::TcpStream::connect(upstream).await else {
+        return;
+    };
+    let (mut client_read, mut client_write) = inbound.into_split();
+    let (mut server_read, mut server_write) = outbound.into_split();
+    let dropping = std::sync::atomic::AtomicBool::new(false);
+    let requests = async {
+        if !framed {
+            let _ = tokio::io::copy(&mut client_read, &mut server_write).await;
+            return;
+        }
+        loop {
+            let mut header = [0_u8; 4];
+            if client_read.read_exact(&mut header).await.is_err() {
+                return;
+            }
+            let length = u32::from_le_bytes(header) as usize;
+            if !(4..=64 * 1024 * 1024).contains(&length) {
+                return;
+            }
+            let mut message = vec![0_u8; length];
+            message[..4].copy_from_slice(&header);
+            if client_read.read_exact(&mut message[4..]).await.is_err() {
+                return;
+            }
+            if trap.take(&message) {
+                dropping.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+            if server_write.write_all(&message).await.is_err() {
+                return;
+            }
+        }
+    };
+    let replies = async {
+        let mut buffer = vec![0_u8; 64 * 1024];
+        loop {
+            let read = match server_read.read(&mut buffer).await {
+                Ok(0) | Err(_) => return,
+                Ok(read) => read,
+            };
+            if dropping.load(std::sync::atomic::Ordering::SeqCst) {
+                continue;
+            }
+            if client_write.write_all(&buffer[..read]).await.is_err() {
+                return;
+            }
+        }
+    };
+    let went_silent = tokio::select! {
+        () = requests => false,
+        () = replies => false,
+        silenced = async { watch.wait_for(|silent| *silent).await.is_ok() } => silenced,
+    };
+    if went_silent {
+        // Go silent: keep both sockets open, forward nothing.
+        let _ = watch.wait_for(|silent| !*silent).await;
+    }
+}
+
 impl Proxy {
-    /// A proxy to `upstream` (`host:port`).
+    /// A proxy to `upstream` (`host:port`) of any protocol (bytes are copied as they come; the
+    /// reply trap is not available).
     pub async fn start(upstream: String) -> Result<Self> {
+        Self::start_with(upstream, false).await
+    }
+
+    /// A proxy to a MongoDB server: requests are read whole, so [`Proxy::lose_reply_to`] works.
+    pub async fn start_mongo(upstream: String) -> Result<Self> {
+        Self::start_with(upstream, true).await
+    }
+
+    async fn start_with(upstream: String, framed: bool) -> Result<Self> {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let address = listener.local_addr()?.to_string();
         let (silent, watch) = tokio::sync::watch::channel(false);
+        let trap = std::sync::Arc::new(Trap::default());
+        let connection_trap = trap.clone();
         let task = tokio::spawn(async move {
             loop {
-                let Ok((mut inbound, _)) = listener.accept().await else {
+                let Ok((inbound, _)) = listener.accept().await else {
                     return;
                 };
-                let upstream = upstream.clone();
-                let mut watch = watch.clone();
-                tokio::spawn(async move {
-                    let silent_now = *watch.borrow();
-                    if silent_now {
-                        // Hold the connection without answering.
-                        let _ = watch.wait_for(|silent| !*silent).await;
-                        return;
-                    }
-                    let Ok(mut outbound) = tokio::net::TcpStream::connect(upstream).await else {
-                        return;
-                    };
-                    let went_silent = tokio::select! {
-                        _ = tokio::io::copy_bidirectional(&mut inbound, &mut outbound) => false,
-                        silenced = async { watch.wait_for(|silent| *silent).await.is_ok() } => silenced,
-                    };
-                    if went_silent {
-                        // Go silent: keep both sockets open, forward nothing.
-                        let _ = watch.wait_for(|silent| !*silent).await;
-                    }
-                });
+                tokio::spawn(relay(
+                    inbound,
+                    upstream.clone(),
+                    watch.clone(),
+                    connection_trap.clone(),
+                    framed,
+                ));
             }
         });
         Ok(Self {
             address,
             silent,
+            trap,
             task,
         })
     }
@@ -297,6 +405,26 @@ impl Proxy {
     /// Forwards again (connections that went silent are closed; new ones work).
     pub fn restore(&self) {
         let _ = self.silent.send(false);
+    }
+
+    /// Arms the trap: the next request containing every one of `needles` is delivered and its
+    /// reply (with everything after it on that connection) is lost.
+    pub fn lose_reply_to(&self, needles: &[&[u8]]) {
+        if let Ok(mut armed) = self.trap.needles.lock() {
+            *armed = Some(needles.iter().map(|n| n.to_vec()).collect());
+        }
+    }
+
+    /// How many replies the trap has lost so far.
+    pub fn replies_lost(&self) -> usize {
+        self.trap.fired.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Disarms the trap (when the request it was set for never came).
+    pub fn disarm(&self) {
+        if let Ok(mut armed) = self.trap.needles.lock() {
+            *armed = None;
+        }
     }
 }
 

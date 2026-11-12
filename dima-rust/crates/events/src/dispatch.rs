@@ -22,7 +22,7 @@ use bson::{Bson, Document, doc, oid::ObjectId};
 use dima_core::Clock;
 use dima_model::domain_event_deliveries as deliveries;
 use dima_model::domain_events as events;
-use dima_model::index::{IndexStatus, RequiredIndexError};
+use dima_model::index::RequiredIndexError;
 use dima_model::{IndexReport, ModelError, StrEnum};
 use dima_store::mongo::update::{Returned, UpdateOptions};
 use dima_store::mongo::{MongoStore, WriteContext};
@@ -96,35 +96,10 @@ impl DispatchEvent {
     }
 }
 
-/// `Ok` when the report of `domain_event_deliveries` shows its unique indexes in place.
+/// `Ok` when the report of `domain_event_deliveries` shows its unique indexes in place
+/// ([`crate::indexes::require_unique`]).
 pub fn require_unique_delivery_index(indexes: &IndexReport) -> Result<(), RequiredIndexError> {
-    let missing: Vec<String> = if indexes.collection != deliveries::COLLECTION {
-        vec![format!("no index report (got {})", indexes.collection)]
-    } else {
-        deliveries::INDEXES
-            .iter()
-            .filter(|spec| spec.unique)
-            .filter_map(|spec| {
-                let name = spec.name();
-                match indexes.outcomes.iter().find(|o| o.index == name) {
-                    Some(outcome) if !matches!(outcome.status, IndexStatus::Failed(_)) => None,
-                    Some(outcome) => Some(match &outcome.status {
-                        IndexStatus::Failed(error) => format!("{name}: {error}"),
-                        _ => name,
-                    }),
-                    None => Some(format!("{name}: not in the report")),
-                }
-            })
-            .collect()
-    };
-    if missing.is_empty() {
-        Ok(())
-    } else {
-        Err(RequiredIndexError {
-            collection: deliveries::COLLECTION,
-            missing,
-        })
-    }
+    crate::indexes::require_unique(indexes, deliveries::COLLECTION, deliveries::INDEXES)
 }
 
 /// `{w: 1, j: true}`.
