@@ -136,7 +136,14 @@ async fn dispatch(cmd: &Cmd, s: &Settings, reg: &Registry) -> Result<Option<Repo
         Cmd::Check { target, scenarios } => run::check(s, target, scenarios)?,
         Cmd::Mock { .. } => return Ok(None),
         Cmd::Gc => {
-            let dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
+            let mut dropped = dima_rig::stores::gc(&s.stores.mongo_uri).await?;
+            match config::qdrant_store(&s.env) {
+                Ok(q) => match dima_rig::stores::gc_qdrant(&q).await {
+                    Ok(names) => dropped.extend(names),
+                    Err(e) => eprintln!("dima-rig: Qdrant not cleaned: {e}"),
+                },
+                Err(e) => eprintln!("dima-rig: Qdrant not cleaned: {e}"),
+            }
             println!(
                 "dropped {} database(s){}{}",
                 dropped.len(),

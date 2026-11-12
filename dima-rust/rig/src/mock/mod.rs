@@ -125,14 +125,19 @@ pub fn decode_body(headers: &[(String, Vec<u8>)], body: &[u8]) -> (Vec<u8>, Opti
         body.to_vec()
     };
     let ct = get("content-type");
+    let looks_json = matches!(plain.first(), Some(b'{' | b'['));
     let json = if ct.contains("x-www-form-urlencoded") {
         let mut m = Map::new();
         for (k, v) in parse_query(&String::from_utf8_lossy(&plain)) {
             m.insert(k, Value::String(v));
         }
         Some(Value::Object(m))
-    } else {
+    } else if ct.contains("json") || looks_json {
         serde_json::from_slice::<Value>(&plain).ok()
+    } else if ct.contains("msgpack") {
+        crate::msgpack::decode(&plain)
+    } else {
+        None
     };
     (plain, json)
 }

@@ -7,7 +7,7 @@
 //! values the seed wrote with `$rigNow` are recognised by their offset. Values in the scenario's
 //! inputs (seed, request bodies, paths, commands) are known and stay exact.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use bson::{Bson, Document, spec::BinarySubtype};
 use regex::Regex;
@@ -15,8 +15,10 @@ use serde_json::{Number, Value};
 
 use crate::allow::Allowances;
 use crate::capture::{
-    Body, Capture, CollCap, EntryCap, RawCapture, RawEntry, RawReply, RawStep, RawValue, StepCap,
+    Body, CallsCap, Capture, CollCap, EntryCap, RawCall, RawCapture, RawEntry, RawReply, RawStep,
+    RawValue, StepCap,
 };
+use crate::mock::providers::{CallOrder, Providers};
 use crate::path::{Path, name_glob};
 use crate::timefmt::{self, MS_PER_DAY};
 use crate::value::{Id, IdKind, Moment, NumRepr, Seg, Text, Val};
@@ -247,6 +249,15 @@ fn etag_form(v: &[u8]) -> &'static str {
     }
 }
 
+/// How outbound calls are read and compared, besides the provider table.
+#[derive(Debug, Clone, Default)]
+pub struct CallRules {
+    /// `compare.calls`: provider name → how its calls compare (overrides the provider table).
+    pub order: BTreeMap<String, CallOrder>,
+    /// `compare.call_headers.include`: more request headers to compare.
+    pub include_headers: Vec<String>,
+}
+
 /// Everything detection needs to know about one side's run of one scenario.
 pub struct DetectCtx<'a> {
     pub patterns: &'a Patterns,
@@ -264,6 +275,7 @@ pub struct DetectCtx<'a> {
     /// The `$rigNow` offsets of the seed (with `true` for epoch seconds): a value equal to the
     /// seed time plus one of them is that seeded time, compared by its offset.
     pub seed_offsets: Vec<(i64, bool)>,
+    pub calls: CallRules,
 }
 
 struct Detector<'a, 'b> {
@@ -1046,6 +1058,122 @@ impl Detector<'_, '_> {
         }
     }
 
+    /// One outbound call as an object (see [`CallsCap::calls`]).
+    fn call(&mut self, provider: &str, i: usize, c: &RawCall, compared: &[String]) -> Val {
+        let base = Path::root("calls").with_key(provider).with_index(i);
+        let mut kv: Vec<(Text, Val)> = vec![
+            (Text::lit("method"), Val::str(&c.method)),
+            (
+                Text::lit("path"),
+                Val::Str(self.text(&base.with_key("path"), &c.path)),
+            ),
+        ];
+        if !c.query.is_empty() {
+            let qp = base.with_key("query");
+            let mut grouped: Vec<(String, Vec<String>)> = Vec::new();
+            for (k, v) in crate::mock::parse_query(&c.query) {
+                match grouped.iter_mut().find(|(n, _)| *n == k) {
+                    Some((_, vals)) => vals.push(v),
+                    None => grouped.push((k, vec![v])),
+                }
+            }
+            let fields = grouped
+                .into_iter()
+                .map(|(k, vals)| {
+                    let kp = qp.with_key(k.clone());
+                    let v = if let [one] = vals.as_slice() {
+                        match self.generated_whole(&kp, one) {
+                            Some(g) => g,
+                            None => Val::Str(self.text(&kp, one)),
+                        }
+                    } else {
+                        Val::Arr(vals.iter().map(|v| Val::Str(self.text(&kp, v))).collect())
+                    };
+                    (self.text(&qp, &k), v)
+                })
+                .collect();
+            kv.push((Text::lit("query"), Val::Obj(fields)));
+        }
+        let hp = base.with_key("headers");
+        let mut grouped: Vec<(String, Vec<&[u8]>)> = Vec::new();
+        for (name, value) in &c.headers {
+            if !compared.iter().any(|n| n == name) {
+                continue;
+            }
+            match grouped.iter_mut().find(|(n, _)| n == name) {
+                Some((_, vals)) => vals.push(value),
+                None => grouped.push((name.clone(), vec![value])),
+            }
+        }
+        grouped.sort_by(|a, b| a.0.cmp(&b.0));
+        let headers = grouped
+            .into_iter()
+            .map(|(name, vals)| {
+                let p = hp.with_key(name.clone());
+                let v = if let [one] = vals.as_slice() {
+                    self.header(&p, &name, one)
+                } else {
+                    Val::Arr(vals.iter().map(|v| self.header(&p, &name, v)).collect())
+                };
+                (Text::lit(&name), v)
+            })
+            .collect();
+        kv.push((Text::lit("headers"), Val::Obj(headers)));
+        let (plain, json) = crate::mock::decode_body(&c.headers, &c.body);
+        if !plain.is_empty() {
+            match (json, std::str::from_utf8(&plain)) {
+                (Some(v), _) => {
+                    let mut bp = base.with_key("body");
+                    kv.push((Text::lit("body"), self.json(&mut bp, &v)));
+                }
+                (None, Ok(t)) => {
+                    kv.push((
+                        Text::lit("text"),
+                        Val::Str(self.text(&base.with_key("text"), t)),
+                    ));
+                }
+                (None, Err(_)) => kv.push((Text::lit("bytes"), Val::Bytes(plain))),
+            }
+        }
+        Val::Obj(kv)
+    }
+
+    fn calls(&mut self, raw: &[RawCall]) -> Vec<CallsCap> {
+        let providers = Providers::builtin().ok();
+        let mut by: BTreeMap<&str, Vec<&RawCall>> = BTreeMap::new();
+        for c in raw {
+            by.entry(c.provider.as_str()).or_default().push(c);
+        }
+        by.into_iter()
+            .map(|(name, list)| {
+                let p = providers.and_then(|ps| ps.by_name(name));
+                let mut compared: Vec<String> = providers
+                    .map(|ps| ps.common_headers.clone())
+                    .unwrap_or_default();
+                compared.extend(p.map(|p| p.headers.clone()).unwrap_or_default());
+                compared.extend(self.ctx.calls.include_headers.iter().cloned());
+                let order = self
+                    .ctx
+                    .calls
+                    .order
+                    .get(name)
+                    .copied()
+                    .or(p.map(|p| p.order))
+                    .unwrap_or(CallOrder::Ordered);
+                CallsCap {
+                    provider: name.to_string(),
+                    order,
+                    key_order: p.is_some_and(|p| p.json_key_order),
+                    calls: list
+                        .iter()
+                        .enumerate()
+                        .map(|(i, c)| self.call(name, i, c, &compared))
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
     fn run(&mut self, raw: &RawCapture) -> Capture {
         let steps = raw
             .steps
@@ -1059,10 +1187,12 @@ impl Detector<'_, '_> {
             .map(|(n, c)| (n.clone(), self.coll(n, c)))
             .collect();
         let dragonfly = raw.dragonfly.iter().map(|e| self.entry(e)).collect();
+        let calls = self.calls(&raw.calls);
         Capture {
             steps,
             mongo,
             dragonfly,
+            calls,
         }
     }
 }
@@ -1144,6 +1274,7 @@ pub(crate) mod tests {
             as_text: Vec::new(),
             byte_sensitive: Vec::new(),
             seed_offsets: Vec::new(),
+            calls: CallRules::default(),
         }
     }
 

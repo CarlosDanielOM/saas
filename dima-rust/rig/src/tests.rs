@@ -7,8 +7,8 @@ use serde_json::{Value, json};
 
 use crate::allow::{AllowKind, Allowances};
 use crate::capture::{
-    self, Capture, CaptureFile, Hashes, Provenance, RawCapture, RawColl, RawEntry, RawHttp,
-    RawStep, RawValue, RunMeta,
+    self, Capture, CaptureFile, Hashes, Provenance, RawCall, RawCapture, RawColl, RawEntry,
+    RawHttp, RawStep, RawValue, RunMeta,
 };
 use crate::compare::{self, Outcome};
 use crate::detect::tests::{START, oid_at, window};
@@ -85,6 +85,8 @@ fn raw(steps: Vec<RawStep>, mongo: Vec<(&str, RawColl)>, dragonfly: Vec<RawEntry
             .map(|(n, c)| (n.to_string(), c))
             .collect::<BTreeMap<_, _>>(),
         dragonfly,
+        calls: Vec::new(),
+        startup_ignored: BTreeMap::new(),
     }
 }
 
@@ -113,6 +115,9 @@ fn meta(w: Window, port: u16) -> RunMeta {
         mongo_uri: "mongodb://127.0.0.1:27017/rig_1_0_ref".into(),
         dragonfly_db: 3,
         dragonfly_url: "redis://127.0.0.1:6379/3".into(),
+        mock_port: Some(41300),
+        qdrant_port: None,
+        qdrant_prefix: None,
     }
 }
 
@@ -129,6 +134,15 @@ fn run_of(r: &RawCapture, w: Window, port: u16) -> RawRun {
 const BYTE_SENSITIVE: &[&str] = &["q:*", "cas:*"];
 
 fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
+    norm_run_with(run, known, a, &crate::detect::CallRules::default())
+}
+
+fn norm_run_with(
+    run: &RawRun,
+    known: &Known,
+    a: &Allowances,
+    calls: &crate::detect::CallRules,
+) -> Capture {
     let p = Patterns::new().unwrap();
     let skip: Vec<String> = NOISE_HEADERS.iter().map(|s| s.to_string()).collect();
     let bs: Vec<String> = BYTE_SENSITIVE.iter().map(|s| s.to_string()).collect();
@@ -139,6 +153,7 @@ fn norm_run(run: &RawRun, known: &Known, a: &Allowances) -> Capture {
         as_text: &[],
         byte_sensitive: &bs,
         seed_offsets: &[(60_000, false)],
+        calls,
     };
     normalise(run, &rules, a)
 }
@@ -1756,4 +1771,287 @@ fn generated_object_keys_bind_by_key_and_value() {
     );
     assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
     assert!(o.differences[0].path.ends_with(".name"), "{:#?}", paths(&o));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Outbound calls.
+
+fn call(provider: &str, method: &str, path: &str, headers: &[(&str, &str)], body: &str) -> RawCall {
+    RawCall {
+        at: START + 500,
+        provider: provider.into(),
+        host: "h".into(),
+        method: method.into(),
+        path: path.into(),
+        query: String::new(),
+        headers: headers
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+            .collect(),
+        body: body.as_bytes().to_vec(),
+        answered: "test".into(),
+    }
+}
+
+fn with_calls(calls: Vec<RawCall>) -> RawCapture {
+    RawCapture {
+        calls,
+        ..raw(vec![], vec![], vec![])
+    }
+}
+
+fn diff_calls(a: Vec<RawCall>, b: Vec<RawCall>, rules: &crate::detect::CallRules) -> Outcome {
+    let known = Known::default();
+    let al = Allowances::default();
+    let ca = norm_run_with(
+        &through_file(&run_of(&with_calls(a), window(), 41234)),
+        &known,
+        &al,
+        rules,
+    );
+    let cb = norm_run_with(
+        &run_of(&with_calls(b), shifted(MIN), 41234),
+        &known,
+        &al,
+        rules,
+    );
+    compare::compare(&ca, &cb, &al, compare::Tolerances::default())
+}
+
+const JSON: (&str, &str) = ("content-type", "application/json");
+
+#[test]
+fn calls_match_when_only_generated_values_differ() {
+    let chat = |id: &str, at: i64| {
+        let iso = crate::timefmt::format_iso_ms(at).unwrap();
+        call(
+            "twitch",
+            "POST",
+            "/helix/chat/messages",
+            &[
+                JSON,
+                ("authorization", "Bearer <redacted>"),
+                ("client-id", "c"),
+                ("user-agent", "node"),
+            ],
+            &format!(r#"{{"broadcaster_id":"1001","message":"hola 👋 {id}","sent":"{iso}"}}"#),
+        )
+    };
+    let a = vec![chat(&oid_at(START + 100, 1), START + 100)];
+    let mut b = vec![chat(&oid_at(START + MIN + 100, 9), START + MIN + 120)];
+    b[0].headers[3].1 = b"undici".to_vec();
+    assert_match(&diff_calls(a, b, &Default::default()));
+}
+
+#[test]
+fn call_differences_are_found_at_their_paths() {
+    let prompt = |text: &str| {
+        call(
+            "openrouter",
+            "POST",
+            "/api/v1/chat/completions",
+            &[JSON, ("authorization", "Bearer <redacted>")],
+            &format!(r#"{{"model":"m","messages":[{{"role":"system","content":"{text}"}}]}}"#),
+        )
+    };
+    // The prompt text compares exactly.
+    let o = diff_calls(
+        vec![prompt("Eres un bot.")],
+        vec![prompt("Eres un bot. ")],
+        &Default::default(),
+    );
+    assert_one(
+        &o,
+        "calls.openrouter[0].body.messages[0].content",
+        "text differs",
+    );
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    // Key order counts for a provider that caches prompts ...
+    let reordered = call(
+        "openrouter",
+        "POST",
+        "/api/v1/chat/completions",
+        &[JSON, ("authorization", "Bearer <redacted>")],
+        r#"{"messages":[{"role":"system","content":"Eres un bot."}],"model":"m"}"#,
+    );
+    let o = diff_calls(
+        vec![prompt("Eres un bot.")],
+        vec![reordered],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.openrouter[0].body", "key order");
+    // ... and is only a note elsewhere.
+    let tw = |body: &str| call("twitch", "POST", "/helix/chat/messages", &[JSON], body);
+    let o = diff_calls(
+        vec![tw(r#"{"a":"1","b":"2"}"#)],
+        vec![tw(r#"{"b":"2","a":"1"}"#)],
+        &Default::default(),
+    );
+    assert_match(&o);
+    assert!(!o.notes.is_empty());
+    // The authorization scheme counts, never the value; an extra call is one difference.
+    let o = diff_calls(
+        vec![call(
+            "twitch-id",
+            "GET",
+            "/oauth2/validate",
+            &[("authorization", "OAuth <redacted>")],
+            "",
+        )],
+        vec![
+            call(
+                "twitch-id",
+                "GET",
+                "/oauth2/validate",
+                &[("authorization", "Bearer <redacted>")],
+                "",
+            ),
+            call(
+                "twitch-id",
+                "GET",
+                "/oauth2/validate",
+                &[("authorization", "Bearer <redacted>")],
+                "",
+            ),
+        ],
+        &Default::default(),
+    );
+    assert!(
+        o.differences
+            .iter()
+            .any(|d| d.what.contains("call only in candidate")),
+        "{:#?}",
+        paths(&o)
+    );
+    // A call to a provider the reference never called.
+    let o = diff_calls(
+        vec![],
+        vec![call("resend", "POST", "/emails", &[JSON], "{}")],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.resend[0]", "call only in candidate");
+}
+
+#[test]
+fn call_order_per_provider() {
+    let ev = |name: &str| {
+        call(
+            "posthog",
+            "POST",
+            "/batch",
+            &[JSON],
+            &format!(r#"{{"event":"{name}"}}"#),
+        )
+    };
+    let tw = |m: &str| {
+        call(
+            "twitch",
+            "POST",
+            "/helix/chat/messages",
+            &[JSON],
+            &format!(r#"{{"message":"{m}"}}"#),
+        )
+    };
+    // PostHog flushes on its own timer: a multiset by default.
+    assert_match(&diff_calls(
+        vec![ev("a"), ev("b")],
+        vec![ev("b"), ev("a")],
+        &Default::default(),
+    ));
+    // Twitch chat is ordered: the same two messages swapped are two differences.
+    let o = diff_calls(
+        vec![tw("1"), tw("2")],
+        vec![tw("2"), tw("1")],
+        &Default::default(),
+    );
+    assert_eq!(o.differences.len(), 2, "{:#?}", paths(&o));
+    // A scenario may compare one provider as a multiset, or not at all.
+    let mut rules = crate::detect::CallRules::default();
+    rules
+        .order
+        .insert("twitch".into(), crate::mock::providers::CallOrder::Multiset);
+    assert_match(&diff_calls(
+        vec![tw("1"), tw("2")],
+        vec![tw("2"), tw("1")],
+        &rules,
+    ));
+    rules
+        .order
+        .insert("twitch".into(), crate::mock::providers::CallOrder::Ignore);
+    assert_match(&diff_calls(vec![tw("1")], vec![], &rules));
+    // OTLP log records are recorded, not compared.
+    assert_match(&diff_calls(
+        vec![call(
+            "otlp-logs",
+            "POST",
+            "/i/v1/logs",
+            &[JSON],
+            r#"{"x":1}"#,
+        )],
+        vec![],
+        &Default::default(),
+    ));
+}
+
+#[test]
+fn call_bodies_by_content_type() {
+    let gz = |s: &str| {
+        let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        std::io::Write::write_all(&mut e, s.as_bytes()).unwrap();
+        e.finish().unwrap()
+    };
+    let mut a = call(
+        "posthog",
+        "POST",
+        "/batch",
+        &[JSON, ("content-encoding", "gzip")],
+        "",
+    );
+    a.body = gz(r#"{"batch":[{"event":"x","properties":{"n":1}}]}"#);
+    let mut b = a.clone();
+    b.body = gz(r#"{"batch":[{"event":"x","properties":{"n":2}}]}"#);
+    let o = diff_calls(vec![a], vec![b], &Default::default());
+    assert_one(
+        &o,
+        "calls.posthog[0].body.batch[0].properties.n",
+        "number differs",
+    );
+    let form = ("content-type", "application/x-www-form-urlencoded");
+    let o = diff_calls(
+        vec![call(
+            "twitch-id",
+            "POST",
+            "/oauth2/token",
+            &[form],
+            "grant_type=client_credentials&client_id=a",
+        )],
+        vec![call(
+            "twitch-id",
+            "POST",
+            "/oauth2/token",
+            &[form],
+            "client_id=a&grant_type=refresh_token",
+        )],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.twitch-id[0].body.grant_type", "text differs");
+    assert_eq!(o.differences.len(), 1, "{:#?}", paths(&o));
+    let o = diff_calls(
+        vec![call(
+            "piper",
+            "POST",
+            "/synthesize",
+            &[("content-type", "text/plain")],
+            "hola",
+        )],
+        vec![call(
+            "piper",
+            "POST",
+            "/synthesize",
+            &[("content-type", "text/plain")],
+            "adiós",
+        )],
+        &Default::default(),
+    );
+    assert_one(&o, "calls.piper[0].text", "text differs");
 }

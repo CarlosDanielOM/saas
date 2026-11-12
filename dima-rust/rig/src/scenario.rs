@@ -40,6 +40,10 @@ struct ScenarioFile {
     description: String,
     #[serde(default)]
     restart: bool,
+    /// The scenario does not depend on the process's in-memory state: it may run in one process
+    /// with the other scenarios of the run that say so (stores reset between them).
+    #[serde(default)]
+    share_process: bool,
     #[serde(default)]
     allow_scripts: bool,
     #[serde(default)]
@@ -53,6 +57,9 @@ struct ScenarioFile {
     tolerance_ms: Option<u64>,
     #[serde(default)]
     relation_tolerance_ms: Option<u64>,
+    /// The mock's routes and seeds for this scenario (over the target's).
+    #[serde(default)]
+    mock: Option<Value>,
 }
 
 #[derive(Deserialize, Default)]
@@ -171,6 +178,12 @@ pub(crate) struct CompareFile {
     pub(crate) headers: Option<HeaderSelFile>,
     #[serde(default)]
     as_text: Vec<String>,
+    /// Provider name → `ordered`, `multiset` or `ignore` (overrides the provider table).
+    #[serde(default)]
+    calls: BTreeMap<String, String>,
+    /// More request headers of outbound calls to compare.
+    #[serde(default)]
+    call_headers: Option<HeaderSelFile>,
 }
 
 #[derive(Deserialize)]
@@ -325,6 +338,8 @@ pub struct Scenario {
     pub file: PathBuf,
     pub description: String,
     pub restart: bool,
+    /// Independent of process state: may share a process (see [`ScenarioFile`]).
+    pub share_process: bool,
     /// `EVAL`, `EVALSHA` and `SCRIPT LOAD|EXISTS` may run in steps and seeds.
     pub allow_scripts: bool,
     /// Collection → documents (Extended JSON, `$rigNow` resolved at seed time).
@@ -344,6 +359,9 @@ pub struct Scenario {
     /// Every `$rigNow` offset of the seed (`true`: written as epoch seconds).
     pub seed_offsets: Vec<(i64, bool)>,
     pub known: Known,
+    /// The scenario's `mock` section (merged over the target's when it runs).
+    pub mock: crate::mock::MockSpec,
+    pub call_rules: crate::detect::CallRules,
 }
 
 impl Scenario {
@@ -1280,11 +1298,45 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
         .map(|p| Pattern::parse(p).map_err(|e| config(format!("{at}: compare.as_text: {e}"))))
         .collect::<Result<Vec<_>>>()?;
     let tolerances = tolerances(f.tolerance_ms, f.relation_tolerance_ms, &at)?;
+    let mock = match &f.mock {
+        None => crate::mock::MockSpec::default(),
+        Some(v) => {
+            collect_inputs(patterns, v, &mut loader.known);
+            let mf: crate::mock::MockFile = serde_json::from_value(v.clone())
+                .map_err(|e| config(format!("{at}: mock: {e}")))?;
+            crate::mock::MockSpec::from_file(mf, &at).map_err(config)?
+        }
+    };
+    let providers = crate::mock::providers::Providers::builtin().map_err(config)?;
+    let mut call_rules = crate::detect::CallRules::default();
+    for (p, mode) in &compare.calls {
+        if providers.by_name(p).is_none() {
+            return Err(config(format!(
+                "{at}: compare.calls: `{p}` is not a provider name ({})",
+                providers
+                    .list
+                    .iter()
+                    .map(|x| x.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+        let order = crate::mock::providers::CallOrder::parse(mode).ok_or_else(|| {
+            config(format!(
+                "{at}: compare.calls.{p}: `{mode}` (ordered, multiset or ignore)"
+            ))
+        })?;
+        call_rules.order.insert(p.clone(), order);
+    }
+    if let Some(h) = &compare.call_headers {
+        call_rules.include_headers = h.include.iter().map(|n| n.to_ascii_lowercase()).collect();
+    }
     Ok(Scenario {
         name: name.to_string(),
         file,
         description: f.description,
         restart: f.restart,
+        share_process: f.share_process,
         allow_scripts: f.allow_scripts,
         seed_mongo: loader.mongo,
         seed_dragonfly: loader.dragonfly,
@@ -1304,6 +1356,8 @@ pub fn load(rig_dir: &FsPath, target: &str, name: &str, patterns: &Patterns) -> 
             o
         },
         known: loader.known,
+        mock,
+        call_rules,
     })
 }
 

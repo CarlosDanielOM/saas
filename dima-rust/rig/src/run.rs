@@ -20,6 +20,7 @@ use crate::compare;
 use crate::detect::{self, DetectCtx, Known, Patterns, Window};
 use crate::error::{Result, config};
 use crate::getlist;
+use crate::mock::{Mock, MockSpec, qdrant};
 use crate::report::{Report, ScenarioReport, SideFailure, Status};
 use crate::scenario::{self, Scenario, Selection};
 use crate::side::{self, LaunchSpec, SideProcess};
@@ -107,6 +108,9 @@ struct SideRunner<'s> {
     last_log: Option<PathBuf>,
     http: reqwest::Client,
     run_id: String,
+    /// The side's mock of the outside world (and Qdrant proxy).
+    mock: Mock,
+    qdrant: Option<qdrant::Upstream>,
 }
 
 impl<'s> SideRunner<'s> {
@@ -126,6 +130,21 @@ impl<'s> SideRunner<'s> {
         )
         .await?;
         stores.side_uri = existing.and_then(|e| e.side_uri.clone());
+        let qdrant = if target.qdrant {
+            let q = crate::config::qdrant_store(&settings.env)?;
+            let up = qdrant::Upstream {
+                url: q.url,
+                api_key: q.api_key,
+                prefix: format!("{}__", stores.db_name),
+            };
+            reg.add_qdrant(&up);
+            Some(up)
+        } else {
+            None
+        };
+        let mock = Mock::start(qdrant.clone())
+            .await
+            .map_err(|e| config(format!("the mock of the outside world did not start: {e}")))?;
         let http = reqwest::Client::builder()
             .no_proxy()
             .no_gzip()
@@ -147,6 +166,8 @@ impl<'s> SideRunner<'s> {
             last_log: None,
             http,
             run_id: run_id(),
+            mock,
+            qdrant,
         })
     }
 
@@ -171,7 +192,9 @@ impl<'s> SideRunner<'s> {
         }
     }
 
-    async fn launch(&mut self) -> std::result::Result<(), SideFailure> {
+    /// Start the side's process. The mock is reset to `mock` first, so it records the
+    /// process's start-up calls.
+    async fn launch(&mut self, mock: &MockSpec) -> std::result::Result<(), SideFailure> {
         let spec = self.spec();
         let s = self.settings;
         let mut ports = BTreeMap::new();
@@ -179,6 +202,7 @@ impl<'s> SideRunner<'s> {
             let p = side::free_port().map_err(|e| self.fail(format!("no free port: {e}")))?;
             ports.insert(name.clone(), p);
         }
+        self.mock.reset(mock, &ports);
         let mut vars: BTreeMap<String, String> = BTreeMap::new();
         if let Some(first) = self.target.ports.first().and_then(|n| ports.get(n)) {
             vars.insert("port".into(), first.to_string());
@@ -197,6 +221,16 @@ impl<'s> SideRunner<'s> {
         vars.insert("repo".into(), s.repo_dir.display().to_string());
         vars.insert("rig_dir".into(), s.rig_dir.display().to_string());
         vars.insert("cargo_target_dir".into(), s.cargo_target_dir.clone());
+        vars.insert("mock_url".into(), self.mock.url());
+        vars.insert("mock_port".into(), self.mock.port.to_string());
+        vars.insert(
+            "qdrant_port".into(),
+            self.mock
+                .qdrant_port
+                .map_or_else(|| "0".to_string(), |p| p.to_string()),
+        );
+        // The side never sees the real key: its proxy sends that.
+        vars.insert("qdrant_api_key".into(), "rig-qdrant-placeholder".into());
         for (k, v) in &s.vars {
             vars.insert(format!("var.{k}"), v.clone());
         }
@@ -257,24 +291,40 @@ impl<'s> SideRunner<'s> {
         p.stop().await
     }
 
-    /// Let a fresh process finish its start-up writes (bounded; never fails).
-    async fn settle(&mut self) {
+    /// Let a fresh process finish its start-up writes and start-up calls to the mock: until the
+    /// stores were quiet for 200 ms and the mock for 300 ms, at most `max_ms` (never fails).
+    async fn settle(&mut self, max_ms: u64) {
         let mut last = None;
         let mut since = tokio::time::Instant::now();
-        let deadline = since + Duration::from_secs(3);
+        let deadline = since + Duration::from_millis(max_ms);
         while tokio::time::Instant::now() < deadline {
             let Ok(fp) = self.stores.fingerprint(&[], &[]).await else {
                 return;
             };
             let t = tokio::time::Instant::now();
+            let mock_quiet = timefmt::now_ms() - self.mock.last_request() >= 300;
             if last != Some(fp) {
                 last = Some(fp);
                 since = t;
-            } else if t.duration_since(since) >= Duration::from_millis(200) {
+            } else if t.duration_since(since) >= Duration::from_millis(200) && mock_quiet {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
+    }
+
+    fn settle_ms(&self, mock: &MockSpec) -> u64 {
+        mock.settle_ms.unwrap_or(3000)
+    }
+
+    /// Each own-process scenario starts with an empty Qdrant, like the other stores.
+    async fn reset_qdrant(&self) -> std::result::Result<(), SideFailure> {
+        if let Some(up) = &self.qdrant {
+            qdrant::drop_prefixed(up)
+                .await
+                .map_err(|e| self.fail(format!("emptying the side's Qdrant collections: {e}")))?;
+        }
+        Ok(())
     }
 
     async fn ensure_shared(&mut self) -> std::result::Result<(), SideFailure> {
@@ -288,8 +338,10 @@ impl<'s> SideRunner<'s> {
             .reset_empty()
             .await
             .map_err(|e| self.fail(e.to_string()))?;
-        self.launch().await?;
-        self.settle().await;
+        self.reset_qdrant().await?;
+        let target_mock = self.target.mock.clone();
+        self.launch(&target_mock).await?;
+        self.settle(self.settle_ms(&target_mock)).await;
         let b = self
             .stores
             .snapshot()
@@ -302,7 +354,8 @@ impl<'s> SideRunner<'s> {
     async fn run_scenario(&mut self, sc: &Scenario) -> SideOutcome {
         let seeded_at = timefmt::now_ms();
         let start = seeded_at;
-        let own_process = !self.target.share_process || sc.restart;
+        let own_process = !(self.target.share_process || sc.share_process) || sc.restart;
+        let mock_spec = MockSpec::merged(&self.target.mock, &sc.mock);
         if own_process {
             let _ = self.stop_process().await;
             self.baseline = None;
@@ -310,12 +363,13 @@ impl<'s> SideRunner<'s> {
                 .reset_empty()
                 .await
                 .map_err(|e| self.fail(e.to_string()))?;
+            self.reset_qdrant().await?;
             self.stores
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
-            self.launch().await?;
-            self.settle().await;
+            self.launch(&mock_spec).await?;
+            self.settle(self.settle_ms(&mock_spec)).await;
         } else {
             self.ensure_shared().await?;
             if let Some(b) = self.baseline.clone() {
@@ -328,6 +382,12 @@ impl<'s> SideRunner<'s> {
                 .seed(sc, start)
                 .await
                 .map_err(|e| self.fail(format!("seed: {e}")))?;
+            let ports = self
+                .proc
+                .as_ref()
+                .map(|p| p.ports.clone())
+                .unwrap_or_default();
+            self.mock.reset(&mock_spec, &ports);
         }
         let Some(proc) = self.proc.as_mut() else {
             return Err(self.fail("no process"));
@@ -345,6 +405,12 @@ impl<'s> SideRunner<'s> {
         };
         let result = runner.run(&sc.steps).await;
         let end = timefmt::now_ms();
+        let problems = self.mock.problems();
+        let problem_text = problems
+            .iter()
+            .map(|p| format!("{} ({}ms into the run): {}", p.kind, p.at - start, p.detail))
+            .collect::<Vec<_>>()
+            .join("; ");
         let steps = match result {
             Ok(s) => s,
             Err(e) => {
@@ -352,13 +418,37 @@ impl<'s> SideRunner<'s> {
                 // or dead): the next scenario gets a fresh one.
                 let _ = self.stop_process().await;
                 self.baseline = None;
+                let message = if problems.is_empty() {
+                    e.message
+                } else {
+                    format!("{}; the mock also saw: {problem_text}", e.message)
+                };
                 let failure = SideFailure {
                     step: Some(e.step),
-                    ..self.fail_with_log(e.message)
+                    ..self.fail_with_log(message)
                 };
                 return Err(failure);
             }
         };
+        if !problems.is_empty() {
+            let _ = self.stop_process().await;
+            self.baseline = None;
+            return Err(self.fail_with_log(format!(
+                "the side called the outside world in a way the mock does not answer: {problem_text}"
+            )));
+        }
+        let mut calls = self.mock.calls();
+        let mut startup_ignored = BTreeMap::new();
+        if mock_spec.startup_ignore {
+            calls.retain(|c| {
+                if c.at < start {
+                    *startup_ignored.entry(c.provider.clone()).or_insert(0) += 1;
+                    false
+                } else {
+                    true
+                }
+            });
+        }
         let mongo = self
             .stores
             .capture_mongo(&sc.mongo)
@@ -383,6 +473,9 @@ impl<'s> SideRunner<'s> {
             mongo_uri: capture::redact_uri(&self.stores.mongo_uri()),
             dragonfly_db: self.stores.df_index,
             dragonfly_url: self.stores.dragonfly_url(),
+            mock_port: Some(self.mock.port),
+            qdrant_port: self.mock.qdrant_port,
+            qdrant_prefix: self.mock.qdrant_prefix.clone(),
         };
         if let Some(p) = self.proc.as_mut()
             && let Err(why) = p.check_alive()
@@ -399,14 +492,17 @@ impl<'s> SideRunner<'s> {
             steps,
             mongo,
             dragonfly,
+            calls,
+            startup_ignored,
         };
         raw.sort();
         Ok(RawRun { raw, run })
     }
 
-    /// Stop the process; the stores stay claimed until [`Registry::cleanup`].
+    /// Stop the process and the mock; the stores stay claimed until [`Registry::cleanup`].
     async fn finish(mut self) {
         let _ = self.stop_process().await;
+        self.mock.stop().await;
     }
 }
 
@@ -447,6 +543,7 @@ pub struct Rules<'a> {
     pub byte_sensitive: &'a [String],
     /// The `$rigNow` offsets of the seed (`true`: epoch seconds).
     pub seed_offsets: &'a [(i64, bool)],
+    pub calls: &'a crate::detect::CallRules,
 }
 
 impl<'a> Rules<'a> {
@@ -458,6 +555,7 @@ impl<'a> Rules<'a> {
             as_text: &sc.as_text,
             byte_sensitive,
             seed_offsets: &sc.seed_offsets,
+            calls: &sc.call_rules,
         }
     }
 }
@@ -479,6 +577,7 @@ pub fn normalise(run: &RawRun, rules: &Rules<'_>, allow: &Allowances) -> Capture
         as_text: rules.as_text.to_vec(),
         byte_sensitive: rules.byte_sensitive.to_vec(),
         seed_offsets: rules.seed_offsets.to_vec(),
+        calls: rules.calls.clone(),
     };
     let mut cap = detect::detect(&ctx, &run.raw);
     canon::canonicalise(&mut cap, allow);
@@ -569,10 +668,17 @@ fn load_scenarios(
             settings.rig_dir.join("scenarios").join(target).display()
         )));
     }
+    let target_mock = target::load(&settings.rig_dir, target)
+        .map(|t| t.mock_json)
+        .unwrap_or(serde_json::Value::Null);
     let mut out = Vec::new();
     for n in names {
         match scenario::load(&settings.rig_dir, target, &n, p) {
-            Ok(s) => out.push(s),
+            Ok(mut s) => {
+                // Values the target's mock answers with are inputs too.
+                detect::collect_known_json(p, &target_mock, &mut s.known);
+                out.push(s)
+            }
             Err(e) => report.scenarios.push(ScenarioReport::error(
                 &n,
                 "",
@@ -945,6 +1051,9 @@ pub async fn diff_get(
         files: Vec::new(),
         seed_offsets: Vec::new(),
         known,
+        mock: MockSpec::default(),
+        call_rules: crate::detect::CallRules::default(),
+        share_process: false,
     };
     if allow_writes {
         report.warnings.push(format!(

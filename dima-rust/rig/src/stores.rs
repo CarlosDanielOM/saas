@@ -187,6 +187,10 @@ struct Held {
     /// Users defined in the `admin` database.
     users: Vec<String>,
     dragonfly: Vec<(u8, File)>,
+    /// Qdrant collection prefixes of the sides' proxies.
+    qdrant: Vec<crate::mock::qdrant::Upstream>,
+    /// Containers started for sides (`docker rm -f` on cleanup).
+    containers: Vec<String>,
 }
 
 /// What [`Registry::cleanup`] did.
@@ -197,6 +201,8 @@ pub struct Cleanup {
     pub dropped_users: Vec<String>,
     pub flushed: Vec<u8>,
     pub kept_dragonfly: Vec<u8>,
+    pub dropped_collections: Vec<String>,
+    pub removed_containers: Vec<String>,
     pub errors: Vec<String>,
 }
 
@@ -214,6 +220,18 @@ impl Cleanup {
             parts.push(format!(
                 "dropped MongoDB users {}",
                 self.dropped_users.join(", ")
+            ));
+        }
+        if !self.dropped_collections.is_empty() {
+            parts.push(format!(
+                "dropped Qdrant collections {}",
+                self.dropped_collections.join(", ")
+            ));
+        }
+        if !self.removed_containers.is_empty() {
+            parts.push(format!(
+                "removed containers {}",
+                self.removed_containers.join(", ")
             ));
         }
         if !self.flushed.is_empty() {
@@ -252,19 +270,50 @@ impl Registry {
         self.held().dragonfly.push((idx, lock));
     }
 
+    pub fn add_qdrant(&self, up: &crate::mock::qdrant::Upstream) {
+        self.held().qdrant.push(up.clone());
+    }
+
+    /// A side's container, removed by the cleanup path if it is still there.
+    pub fn add_container(&self, name: &str) {
+        self.held().containers.push(name.to_string());
+    }
+
     /// Release everything: drop the MongoDB databases (unless `keep`) and the temporary users
     /// (always), flush each claimed logical database (unless `keep`), then release its lock.
     /// Idempotent: what was released is forgotten.
     pub async fn cleanup(&self, cfg: &StoreConfig, keep: bool) -> Cleanup {
-        let (dbs, users, dragonfly) = {
+        let (dbs, users, dragonfly, qdrant, containers) = {
             let mut h = self.held();
             (
                 std::mem::take(&mut h.mongo_dbs),
                 std::mem::take(&mut h.users),
                 std::mem::take(&mut h.dragonfly),
+                std::mem::take(&mut h.qdrant),
+                std::mem::take(&mut h.containers),
             )
         };
         let mut out = Cleanup::default();
+        // Containers first: nothing may write to the stores while they are released.
+        for name in containers {
+            match crate::side::remove_container(&name).await {
+                Ok(true) => out.removed_containers.push(name),
+                Ok(false) => {}
+                Err(e) => out.errors.push(format!("removing container {name}: {e}")),
+            }
+        }
+        for up in qdrant {
+            if keep {
+                continue;
+            }
+            match crate::mock::qdrant::drop_prefixed(&up).await {
+                Ok(names) => out.dropped_collections.extend(names),
+                Err(e) => out.errors.push(format!(
+                    "dropping Qdrant collections {}*: {e}; run `dima-rig gc`",
+                    up.prefix
+                )),
+            }
+        }
         if !dbs.is_empty() || !users.is_empty() {
             match mongo_client(&cfg.mongo_uri).await {
                 Ok(client) => {
@@ -1007,6 +1056,56 @@ pub async fn db_hash(client: &Client, db: &str) -> Result<BTreeMap<String, Strin
         out.insert(format!("{name} (indexes)"), specs.join(";"));
     }
     Ok(out)
+}
+
+/// Delete Qdrant collections `rig_<pid>_...` whose rig process is gone.
+pub async fn gc_qdrant(store: &crate::config::QdrantStore) -> Result<Vec<String>> {
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| store_err("Qdrant", e))?;
+    let base = store.url.trim_end_matches('/');
+    let with_key = |rb: reqwest::RequestBuilder| match &store.api_key {
+        Some(k) => rb.header("api-key", k.as_str()),
+        None => rb,
+    };
+    let list: serde_json::Value = with_key(client.get(format!("{base}/collections")))
+        .send()
+        .await
+        .map_err(|e| store_err("Qdrant", e))?
+        .json()
+        .await
+        .map_err(|e| store_err("Qdrant", e))?;
+    let mut dropped = Vec::new();
+    for name in list
+        .pointer("/result/collections")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c.get("name").and_then(serde_json::Value::as_str))
+    {
+        let Some(pid) = name
+            .strip_prefix("rig_")
+            .and_then(|rest| rest.split('_').next())
+            .and_then(|p| p.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        if std::path::Path::new(&format!("/proc/{pid}")).exists() {
+            continue;
+        }
+        with_key(client.delete(format!("{base}/collections/{name}")))
+            .send()
+            .await
+            .map_err(|e| store_err("Qdrant", e))?;
+        dropped.push(format!("Qdrant collection {name}"));
+    }
+    Ok(dropped)
+}
+
+fn store_err(what: &str, e: impl std::fmt::Display) -> RigError {
+    store(what, e)
 }
 
 /// Drop `rig_<pid>_...` databases and users whose rig process is gone. Returns the dropped names.

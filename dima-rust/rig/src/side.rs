@@ -49,6 +49,30 @@ pub struct SideProcess {
     group_gone: bool,
 }
 
+/// `docker rm -f <name>`: `Ok(true)` when a container was removed, `Ok(false)` when there was
+/// none. Bounded by a timeout.
+pub async fn remove_container(name: &str) -> Result<bool, String> {
+    let out = tokio::time::timeout(
+        Duration::from_secs(30),
+        tokio::process::Command::new("docker")
+            .args(["rm", "-f", name])
+            .stdin(Stdio::null())
+            .output(),
+    )
+    .await
+    .map_err(|_| format!("docker rm -f {name} timed out"))?
+    .map_err(|e| format!("docker rm -f {name}: {e}"))?;
+    if out.status.success() {
+        return Ok(true);
+    }
+    let err = String::from_utf8_lossy(&out.stderr);
+    if err.contains("No such container") {
+        Ok(false)
+    } else {
+        Err(format!("docker rm -f {name}: {}", err.trim()))
+    }
+}
+
 /// A free loopback port (the rig asks the kernel, then releases it for the side).
 pub fn free_port() -> std::io::Result<u16> {
     let l = std::net::TcpListener::bind("127.0.0.1:0")?;

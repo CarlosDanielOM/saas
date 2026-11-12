@@ -142,11 +142,9 @@ pub fn settings(o: &Overrides, env: BTreeMap<String, String>) -> Result<Settings
         }
         vars.insert(k.to_string(), v.to_string());
     }
-    let cargo_target_dir = get("CARGO_TARGET_DIR").unwrap_or_else(|| {
-        let cache = get("XDG_CACHE_HOME")
-            .unwrap_or_else(|| format!("{}/.cache", get("HOME").unwrap_or_default()));
-        format!("{cache}/dima-rust/target")
-    });
+    // tools/cargo builds every checkout into its own dima-rust/target.
+    let cargo_target_dir = get("CARGO_TARGET_DIR")
+        .unwrap_or_else(|| repo_dir.join("dima-rust/target").display().to_string());
     let byte_sensitive = crate::bytesens::load(
         &o.byte_sensitive
             .clone()

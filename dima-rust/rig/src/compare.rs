@@ -25,7 +25,8 @@ use serde::Serialize;
 use serde_json::Number;
 
 use crate::allow::Allowances;
-use crate::capture::{Body, Capture, CollCap, EntryCap, StepCap};
+use crate::capture::{Body, CallsCap, Capture, CollCap, EntryCap, StepCap};
+use crate::mock::providers::CallOrder;
 use crate::path::{Path, Seg as PSeg};
 use crate::timefmt::human_duration;
 use crate::value::{Id, IdKind, Moment, Seg, Text, Val};
@@ -111,6 +112,8 @@ pub struct Comparator<'a> {
     failed: bool,
     in_json_text: bool,
     context: Option<String>,
+    /// Providers whose request bodies keep JSON key order (a reorder is a difference).
+    key_order: HashSet<String>,
     out: Outcome,
 }
 
@@ -202,10 +205,24 @@ fn doc_id(v: &Val) -> Option<&Val> {
     }
 }
 
-/// `mongo.<collection>.indexes.<name>.key`: the order of fields in an index key is meaningful.
-fn order_matters(path: &Path) -> bool {
-    matches!(path.0.as_slice(), [PSeg::Key(m), PSeg::Key(_), PSeg::Key(i), PSeg::Key(_), PSeg::Key(k)]
-        if m == "mongo" && i == "indexes" && k == "key")
+/// `mongo.<collection>.indexes.<name>.key`: the order of fields in an index key is meaningful;
+/// so is object key order anywhere in the body of a call to a provider that caches prompts.
+fn order_matters(path: &Path, key_order: &HashSet<String>) -> bool {
+    match path.0.as_slice() {
+        [
+            PSeg::Key(m),
+            PSeg::Key(_),
+            PSeg::Key(i),
+            PSeg::Key(_),
+            PSeg::Key(k),
+        ] if m == "mongo" && i == "indexes" && k == "key" => true,
+        [PSeg::Key(c), PSeg::Key(p), PSeg::Index(_), PSeg::Key(b), ..]
+            if c == "calls" && b == "body" =>
+        {
+            key_order.contains(p)
+        }
+        _ => false,
+    }
 }
 
 impl<'a> Comparator<'a> {
@@ -223,6 +240,7 @@ impl<'a> Comparator<'a> {
             failed: false,
             in_json_text: false,
             context: None,
+            key_order: HashSet::new(),
             out: Outcome::default(),
         }
     }
@@ -736,13 +754,13 @@ impl<'a> Comparator<'a> {
         if reordered {
             let ra: Vec<String> = a.iter().map(|(k, _)| k.display()).collect();
             let rb: Vec<String> = b.iter().map(|(k, _)| k.display()).collect();
-            if order_matters(path) {
-                self.diff(
-                    path,
-                    "index key order differs",
-                    Some(ra.join(", ")),
-                    Some(rb.join(", ")),
-                );
+            if order_matters(path, &self.key_order) {
+                let what = if matches!(path.0.first(), Some(PSeg::Key(c)) if c == "calls") {
+                    "object key order differs in a request body whose bytes the provider caches"
+                } else {
+                    "index key order differs"
+                };
+                self.diff(path, what, Some(ra.join(", ")), Some(rb.join(", ")));
             } else {
                 self.note(
                     path,
@@ -1391,6 +1409,78 @@ impl<'a> Comparator<'a> {
         }
     }
 
+    /// The calls to one provider: in order (aligned by content when the counts differ) or as a
+    /// multiset, each call one unit for time relations when the lists line up.
+    fn provider_calls(&mut self, name: &str, a: Option<&CallsCap>, b: Option<&CallsCap>) {
+        let base = Path::root("calls").with_key(name);
+        let order = a.or(b).map_or(CallOrder::Ordered, |c| c.order);
+        if order == CallOrder::Ignore || self.ignored(&base) {
+            return;
+        }
+        if a.or(b).is_some_and(|c| c.key_order) {
+            self.key_order.insert(name.to_string());
+        }
+        let empty = Vec::new();
+        let x = a.map_or(&empty, |c| &c.calls);
+        let y = b.map_or(&empty, |c| &c.calls);
+        let first = self.out.differences.len();
+        let multiset = order == CallOrder::Multiset || self.allow.is_set(&base, true);
+        if multiset {
+            // Paired like documents: equal first, then the most similar, so a changed field is
+            // reported where it is.
+            let (pairs, lone_a, lone_b) = self.pair(
+                x,
+                y,
+                mask,
+                |s, p, q| s.val(&mut base.with_index(0), p, q),
+                |_, _, _| false,
+                |s, p, q| s.top_level_similarity(p, q),
+            );
+            let mut sorted = pairs;
+            sorted.sort();
+            for (i, j) in sorted {
+                if let (Some(p), Some(q)) = (x.get(i), y.get(j)) {
+                    self.begin_unit();
+                    self.val(&mut base.with_index(i), p, q);
+                    self.end_unit();
+                }
+            }
+            for i in lone_a {
+                let p = base.with_index(i);
+                if !self.ignored(&p) {
+                    self.diff(&p, "call missing in candidate", x.get(i).map(show), None);
+                }
+            }
+            for j in lone_b {
+                let p = base.with_index(j);
+                if !self.ignored(&p) {
+                    self.diff(
+                        &p,
+                        format!("call only in candidate (candidate index {j})"),
+                        None,
+                        y.get(j).map(show),
+                    );
+                }
+            }
+        } else if x.len() == y.len() {
+            for (i, (p, q)) in x.iter().zip(y).enumerate() {
+                self.begin_unit();
+                self.val(&mut base.with_index(i), p, q);
+                self.end_unit();
+            }
+        } else {
+            self.begin_unit();
+            self.arr(&mut base.clone(), x, y);
+            self.end_unit();
+        }
+        for f in self.out.differences.iter_mut().skip(first) {
+            f.what = f
+                .what
+                .replace("array element", "call")
+                .replace("set element", "call");
+        }
+    }
+
     /// Compare a reference capture with a candidate capture.
     pub fn compare(mut self, a: &Capture, b: &Capture) -> Outcome {
         self.steps(&a.steps, &b.steps);
@@ -1423,6 +1513,17 @@ impl<'a> Comparator<'a> {
             }
         }
         self.dragonfly(&a.dragonfly, &b.dragonfly);
+        let providers: BTreeSet<&String> = a
+            .calls
+            .iter()
+            .chain(b.calls.iter())
+            .map(|c| &c.provider)
+            .collect();
+        for name in providers {
+            let x = a.calls.iter().find(|c| &c.provider == name);
+            let y = b.calls.iter().find(|c| &c.provider == name);
+            self.provider_calls(name, x, y);
+        }
         self.out
     }
 }

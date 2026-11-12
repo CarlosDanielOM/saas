@@ -6,6 +6,7 @@ use std::path::{Path as FsPath, PathBuf};
 use serde::Deserialize;
 
 use crate::error::{Result, config};
+use crate::mock::{MockFile, MockSpec};
 use crate::template;
 
 pub const TARGET_VERSION: u64 = 1;
@@ -20,6 +21,12 @@ struct TargetFile {
     ports: Option<Vec<String>>,
     #[serde(default)]
     share_process: bool,
+    /// The mock's routes and seeds for every scenario of the target.
+    #[serde(default)]
+    mock: Option<serde_json::Value>,
+    /// Give each side a prefixing proxy to the local Qdrant (`{qdrant_port}`).
+    #[serde(default)]
+    qdrant: bool,
     reference: SideFile,
     candidate: SideFile,
 }
@@ -107,6 +114,10 @@ pub struct Target {
     /// subscriptions) carries from one scenario into the next, so a scenario's result can
     /// depend on which scenarios ran before it. Default: one process per scenario.
     pub share_process: bool,
+    pub mock: MockSpec,
+    /// The target's `mock` section as written (its values are known inputs).
+    pub mock_json: serde_json::Value,
+    pub qdrant: bool,
     pub reference: SideSpec,
     pub candidate: SideSpec,
 }
@@ -125,6 +136,10 @@ pub const PLACEHOLDERS: &[&str] = &[
     "repo",
     "rig_dir",
     "cargo_target_dir",
+    "mock_url",
+    "mock_port",
+    "qdrant_port",
+    "qdrant_api_key",
 ];
 
 fn valid_name(s: &str) -> bool {
@@ -286,12 +301,23 @@ pub fn load(rig_dir: &FsPath, name: &str) -> Result<Target> {
     }
     let reference = side(f.reference, &ports, &format!("{at}: reference"))?;
     let candidate = side(f.candidate, &ports, &format!("{at}: candidate"))?;
+    let mock_json = f.mock.unwrap_or(serde_json::Value::Null);
+    let mock = if mock_json.is_null() {
+        MockSpec::default()
+    } else {
+        let mf: MockFile = serde_json::from_value(mock_json.clone())
+            .map_err(|e| config(format!("{at}: mock: {e}")))?;
+        MockSpec::from_file(mf, &format!("{at}: target")).map_err(config)?
+    };
     Ok(Target {
         name: name.to_string(),
         file,
         description: f.description,
         ports,
         share_process: f.share_process,
+        mock,
+        mock_json,
+        qdrant: f.qdrant,
         reference,
         candidate,
     })
