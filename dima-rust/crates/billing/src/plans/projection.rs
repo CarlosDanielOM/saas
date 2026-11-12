@@ -9,11 +9,14 @@
 //!
 //! **Ordering.** A plan write is versioned by when the lookup started (`observed_at`), then the
 //! event key: the `$or` filter accepts a write only over an older or equal version, so an old
-//! webhook that reads fresh state still wins over nothing newer. A write that changes the plan
-//! sets `polar_plan_effects_pending: true`; the flag is removed (filtered on the event key) only
-//! after retention and every cache invalidation succeeded, so a retry after a crash redoes the
-//! effects. The fence (`twitch:{id}:ai:credits:plan-version`) is raised with the same version
-//! atomically with the cache deletion.
+//! webhook that reads fresh state still wins over nothing newer. Every accepted write sets
+//! `polar_plan_effects_pending: true` and returns the document it replaced; the fence
+//! (`twitch:{id}:ai:credits:plan-version`) is raised with the write's version atomically with the
+//! cache deletion, the retention follows when the plan differs from the replaced one, and the
+//! flag is removed (filtered on the event key and time) only after both succeeded, so a retry
+//! after a crash redoes the effects. Intended difference (item 3 of P2-BILLING-01b): the
+//! reference decided whether to run the effects against the owner it had read before the
+//! write, and ran retention before invalidating.
 //!
 //! Writes go through `dima_model::users::INFO` (timestamps as Mongoose adds them) and the store's
 //! `PlanCacheFence` (`INVALIDATE_PLAN_SCRIPT`, `SYNC_CREDITS_SCRIPT`, verbatim).
@@ -174,6 +177,17 @@ fn until_bson(until: Option<i64>) -> Bson {
 /// `projectPolarPlan(owner, plan, observedAt, eventKey, customerId, deps, fingerprint)`: `true`
 /// when this write was applied (and its effects ran), `false` when a newer equal plan was
 /// already stored.
+///
+/// Item 3 of P2-BILLING-01b (review finding 3). Whether the plan changed is decided against
+/// the document this write **replaced**, which the conditional update returns atomically with
+/// the write (`returnDocument: 'before'`), not against `owner` as the caller read it earlier:
+/// two processes that both read Free could otherwise let the newer one write Free over the
+/// older one's Premium and skip the invalidation. Every accepted write sets
+/// `polar_plan_effects_pending` and then, in this order: raises the fence to its version and
+/// drops the plan caches (always, so no stale cache stays readable while retention runs),
+/// adjusts the usage retention when the plan differs from the replaced one (or the replaced
+/// one had effects pending), and clears the flag (filtered on this write's event key and
+/// time). `owner` still names the customer link the write requires.
 #[allow(clippy::too_many_arguments)]
 pub async fn project_polar_plan(
     stores: ProjectionStores<'_>,
@@ -186,9 +200,6 @@ pub async fn project_polar_plan(
     fingerprint: &str,
     now_ms: i64,
 ) -> Result<bool, ProjectionError> {
-    let needs_effects = owner.effects_pending
-        || owner.plan_tier != plan.plan_tier.as_str()
-        || owner.plan_tier_until != plan.until_ms;
     let customer = owner
         .customer_id
         .as_ref()
@@ -202,30 +213,28 @@ pub async fn project_polar_plan(
             { "polar_plan_event_at": date(observed_at_ms), "polar_plan_event_key": { "$lte": event_key } },
         ],
     };
-    let mut set = doc! {
+    let set = doc! {
         "plan_tier": plan.plan_tier.as_str(),
         "plan_tier_until": until_bson(plan.until_ms),
         "polar_plan_event_at": date(observed_at_ms),
         "polar_plan_event_key": event_key,
         "polar_plan_entitlement_fingerprint": fingerprint,
+        "polar_plan_effects_pending": true,
     };
-    if needs_effects {
-        set.insert("polar_plan_effects_pending", true);
-    }
     let mut ctx = WriteContext::new(now_ms);
     let prepared = dima_model::users::INFO.prepare_find_one_and_update(
         &filter,
         doc! { "$set": set },
         UpdateOptions::default(),
-        Returned::After,
+        Returned::Before,
         &mut ctx,
     )?;
-    let updated = stores
+    let replaced = stores
         .mongo
         .writes(dima_model::users::COLLECTION)
         .find_one_and_update(&prepared)
         .await?;
-    let Some(updated) = updated else {
+    let Some(replaced) = replaced else {
         let current = stores
             .mongo
             .documents(dima_model::users::COLLECTION)
@@ -251,20 +260,14 @@ pub async fn project_polar_plan(
         }
         return Ok(false);
     };
-    let updated_pending = updated
-        .get_bool("polar_plan_effects_pending")
-        .unwrap_or(false);
-    if !needs_effects && !updated_pending {
-        return Ok(true);
-    }
-    if !owner.twitch_ids.is_empty() {
-        effects
-            .adjust_usage_retention(&owner.twitch_ids, plan.plan_tier)
-            .await
-            .map_err(ProjectionError::Retention)?;
-    }
+    let replaced = PlanOwnerState::of(&dima_model::decode_document::<User>(&replaced)?);
+    let plan_changed = replaced.effects_pending
+        || replaced.plan_tier != plan.plan_tier.as_str()
+        || replaced.plan_tier_until != plan.until_ms;
+    let twitch_ids = &replaced.twitch_ids;
+
     let context_key = context_cache_key(customer_id);
-    if owner.twitch_ids.is_empty() {
+    if twitch_ids.is_empty() {
         stores
             .dragonfly
             .del(&[&context_key])
@@ -276,13 +279,23 @@ pub async fn project_polar_plan(
     }
     let fence = PlanCacheFence::new(stores.dragonfly.clone());
     let version = plan_cache_version(Some(observed_at_ms), Some(event_key))?;
-    for id in &owner.twitch_ids {
+    for id in twitch_ids {
         // A newer fence (0) means a later plan write already invalidated: nothing to redo.
         let _: Acceptance = fence.invalidate_plan(id, &version, &context_key).await?;
     }
+    if plan_changed && !twitch_ids.is_empty() {
+        effects
+            .adjust_usage_retention(twitch_ids, plan.plan_tier)
+            .await
+            .map_err(ProjectionError::Retention)?;
+    }
     let mut ctx = WriteContext::new(now_ms);
     let clear = dima_model::users::INFO.prepare_update(
-        &doc! { "_id": owner.id, "polar_plan_event_key": event_key },
+        &doc! {
+            "_id": owner.id,
+            "polar_plan_event_key": event_key,
+            "polar_plan_event_at": date(observed_at_ms),
+        },
         doc! { "$unset": { "polar_plan_effects_pending": "" } },
         UpdateOptions::default(),
         &mut ctx,
