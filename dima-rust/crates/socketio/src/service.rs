@@ -373,11 +373,21 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
     parts
         .headers
         .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
-    // The payload is complete (`engineioxide` answers with a full body).
-    let payload = match body.collect().await {
-        Ok(collected) => collected.to_bytes(),
-        Err(never) => match never {},
-    };
+    // The payload is complete (`engineioxide` answers with a full body). Its frames are read
+    // without consuming the body: Engine.IO counts the messages in it as done when the body is
+    // dropped, so the body travels inside this answer's until that is written (finding 4).
+    let mut body = Box::pin(body);
+    let mut payload = bytes::BytesMut::new();
+    while let Some(frame) = body.frame().await {
+        let frame = match frame {
+            Ok(frame) => frame,
+            Err(never) => match never {},
+        };
+        if let Ok(data) = frame.into_data() {
+            payload.extend_from_slice(&data);
+        }
+    }
+    let payload = payload.freeze();
     let threshold = io.shared.options.http_compression_threshold;
     let encoding = (payload.len() >= threshold)
         .then(|| negotiate::preferred(accept.as_deref(), &["gzip", "deflate"]))
@@ -407,7 +417,48 @@ async fn engine(io: Arc<ServerInner>, mut req: Request<Body>, target: String) ->
     parts
         .headers
         .insert(header::CONTENT_LENGTH, HeaderValue::from(payload.len()));
-    Response::from_parts(parts, Body::from(payload))
+    Response::from_parts(parts, Body::new(Holding::new(payload, body)))
+}
+
+/// A complete answer body that keeps another value (Engine.IO's own body) alive until it is
+/// dropped itself, which the HTTP server does once the answer is written or abandoned.
+struct Holding<H> {
+    data: Option<Bytes>,
+    _held: H,
+}
+
+impl<H> Holding<H> {
+    fn new(data: Bytes, held: H) -> Self {
+        Self {
+            data: (!data.is_empty()).then_some(data),
+            _held: held,
+        }
+    }
+}
+
+impl<H: Unpin> hyper::body::Body for Holding<H> {
+    type Data = Bytes;
+    type Error = Infallible;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<hyper::body::Frame<Bytes>, Infallible>>> {
+        Poll::Ready(
+            self.get_mut()
+                .data
+                .take()
+                .map(|data| Ok(hyper::body::Frame::data(data))),
+        )
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.data.is_none()
+    }
+
+    fn size_hint(&self) -> hyper::body::SizeHint {
+        hyper::body::SizeHint::with_exact(self.data.as_ref().map_or(0, |d| d.len() as u64))
+    }
 }
 
 /// `zlib.createGzip()` / `createDeflate()` with the default level.
@@ -421,4 +472,35 @@ fn compress(data: &[u8], gzip: bool) -> Option<Bytes> {
         encoder.write_all(data).and_then(|()| encoder.finish())
     };
     written.ok().map(Bytes::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Flag(Arc<std::sync::atomic::AtomicBool>);
+
+    impl Drop for Flag {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::Release);
+        }
+    }
+
+    /// Finding 4: Engine.IO's body (whose drop marks its messages written) lives as long as
+    /// the answer's body, not only until its bytes were copied out.
+    #[tokio::test]
+    async fn a_polling_answer_holds_the_engine_body_until_it_is_dropped() {
+        let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let body = Body::new(Holding::new(
+            Bytes::from_static(b"40"),
+            Flag(Arc::clone(&dropped)),
+        ));
+        let mut body = Box::pin(body);
+        let frame = body.frame().await;
+        assert!(frame.is_some_and(|frame| frame.is_ok()));
+        assert!(body.frame().await.is_none());
+        assert!(!dropped.load(std::sync::atomic::Ordering::Acquire));
+        drop(body);
+        assert!(dropped.load(std::sync::atomic::Ordering::Acquire));
+    }
 }

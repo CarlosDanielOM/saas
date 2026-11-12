@@ -248,29 +248,8 @@ struct AckSlot<'a, D> {
 impl<D> Drop for AckSlot<'_, D> {
     fn drop(&mut self) {
         self.core.lock().acks.remove(&self.id);
-        release(&self.core.def.shared().pending_acks, 1);
+        crate::budget::release(&self.core.def.shared().pending_acks, 1);
     }
-}
-
-/// Takes `amount` from a counter bounded by `max` in one step (no check-then-increment race);
-/// `false` when it does not fit.
-pub(crate) fn reserve(counter: &std::sync::atomic::AtomicUsize, amount: usize, max: usize) -> bool {
-    counter
-        .try_update(
-            std::sync::atomic::Ordering::AcqRel,
-            std::sync::atomic::Ordering::Acquire,
-            |n| n.checked_add(amount).filter(|total| *total <= max),
-        )
-        .is_ok()
-}
-
-/// Gives back what [`reserve`] took.
-pub(crate) fn release(counter: &std::sync::atomic::AtomicUsize, amount: usize) {
-    let _ = counter.try_update(
-        std::sync::atomic::Ordering::AcqRel,
-        std::sync::atomic::Ordering::Acquire,
-        |n| Some(n.saturating_sub(amount)),
-    );
 }
 
 /// A client socket in a namespace. Clones share the socket.
@@ -407,7 +386,7 @@ impl<D: Send + Sync + 'static> Socket<D> {
             if state.acks.len() >= shared.options.max_pending_acks {
                 return Err(AckError::TooMany);
             }
-            if !reserve(
+            if !crate::budget::reserve(
                 &shared.pending_acks,
                 1,
                 shared.options.max_pending_acks_total,

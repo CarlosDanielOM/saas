@@ -48,6 +48,10 @@ impl Transport for EngineSocket {
             tokio::sync::mpsc::error::TrySendError::Closed(_) => TransportFull::Closed,
         })
     }
+
+    fn done(&self) -> u64 {
+        self.messages_done()
+    }
 }
 
 /// A namespace this connection is joining or has joined.
@@ -71,7 +75,7 @@ struct State {
     guard: Option<UpgradeGuard>,
 }
 
-/// How often a busy connection's queue is swept while nothing else happens.
+/// How often a restore waiting for room in a full queue tries again, besides being woken.
 const TICK: Duration = Duration::from_millis(100);
 
 pub(crate) struct Connection {
@@ -383,14 +387,12 @@ impl Connection {
         let Some(engine) = self.engine() else {
             return Err(NotSent::Closed);
         };
-        let result = self.outbox().push(
+        self.outbox().push(
             engine.as_ref(),
             outgoing,
             &self.shared.outbound_bytes,
             self.shared.options.max_outbound_total,
-        );
-        self.poke.notify_one();
-        result
+        )
     }
 
     /// A packet that belongs to no socket (CONNECT_ERROR). A client that never reads them is a
@@ -442,29 +444,36 @@ impl Connection {
         self.outbox().open_socket(key);
     }
 
+    /// The socket has left: its slots are dropped, its entry goes with its last packet.
     pub fn forget_socket(&self, key: u64) {
-        self.outbox().forget_socket(key);
+        self.outbox()
+            .forget_socket(key, &self.shared.outbound_bytes);
+        self.drained.notify_waiters();
+    }
+
+    /// How many messages the transport has finished (everything, once the session is gone).
+    fn done(&self) -> u64 {
+        self.engine()
+            .map_or(u64::MAX, |engine| engine.messages_done())
     }
 
     /// Whether packets still wait for the client.
     pub fn has_queued(&self) -> bool {
+        let done = self.done();
         let mut outbox = self.outbox();
-        outbox.sweep(&self.shared.outbound_bytes);
-        outbox.queued() > 0
+        outbox.sweep(done, &self.shared.outbound_bytes);
+        outbox.busy()
     }
 
     fn sweep_and_flush(&self) {
+        let done = self.done();
         let released = {
             let mut outbox = self.outbox();
-            let released = outbox.sweep(&self.shared.outbound_bytes);
+            let released = outbox.sweep(done, &self.shared.outbound_bytes);
             if outbox.has_waiting()
                 && let Some(engine) = self.engine()
             {
-                outbox.flush_waiting(
-                    engine.as_ref(),
-                    &self.shared.outbound_bytes,
-                    self.shared.options.max_outbound_total,
-                );
+                outbox.flush_waiting(engine.as_ref(), &self.shared.outbound_bytes);
             }
             released
         };
@@ -608,13 +617,20 @@ impl Connection {
         self.close_engine();
     }
 
-    /// The connection's own task: the connect timeout and the queue sweeps.
+    /// The connection's own task: the connect timeout, and releasing output as the transport
+    /// finishes it (woken by its count of finished messages).
     pub async fn run(self: Arc<Self>) {
         let timeout = tokio::time::sleep(self.shared.options.connect_timeout);
         tokio::pin!(timeout);
         let mut waiting_for_join = true;
+        let mut finished = self.engine().map(|engine| engine.watch_messages_done());
         loop {
-            let busy = self.outbox().busy();
+            let progress = async {
+                match finished.as_mut() {
+                    Some(finished) => finished.changed().await.is_ok(),
+                    None => std::future::pending().await,
+                }
+            };
             tokio::select! {
                 biased;
                 () = self.closed.cancelled() => break,
@@ -629,7 +645,13 @@ impl Connection {
                         self.close(*reason);
                     }
                 }
-                () = tokio::time::sleep(TICK), if busy => self.sweep_and_flush(),
+                alive = progress => {
+                    if alive {
+                        self.sweep_and_flush();
+                    } else {
+                        finished = None;
+                    }
+                }
             }
         }
         if self.gone.is_cancelled() {

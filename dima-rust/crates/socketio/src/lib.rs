@@ -152,6 +152,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod budget;
 mod client_files;
 mod codec;
 pub mod config;
