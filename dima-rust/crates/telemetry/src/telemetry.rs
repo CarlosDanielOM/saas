@@ -164,6 +164,10 @@ pub struct Stats {
     /// Log platforms and channel ids that were not valid identifiers and were replaced by
     /// [`crate::logger::INVALID_IDENTIFIER`] (not a loss: the entry is still written).
     pub log_metadata_replaced: u64,
+    /// Log entries not exported to PostHog because they are below
+    /// [`crate::PosthogConfig::min_level`]. A configured choice, not a loss: not part of
+    /// [`Stats::total_dropped`].
+    pub posthog_below_level: u64,
 }
 
 impl Stats {
@@ -342,13 +346,17 @@ impl Telemetry {
 
     fn build(config: TelemetryConfig, posthog: Option<otlp::Exporter>) -> Self {
         let export = config.export && config.dragonfly.is_some();
-        let (sinks, receivers) = Sinks::new(
+        let (mut sinks, receivers) = Sinks::new(
             config.console.clone(),
             config.dragonfly.is_some(),
             config.posthog.is_some(),
             config.log_queue,
             config.log_budget,
         );
+        sinks.posthog_min = config
+            .posthog
+            .as_ref()
+            .and_then(|posthog| posthog.min_level);
         let process = label::Label::<60>::clean(&config.process)
             .as_str()
             .to_owned();
@@ -680,7 +688,7 @@ impl Telemetry {
                 if options.destination != crate::logger::Destination::Console {
                     drops.cache.fetch_add(1, Ordering::Relaxed);
                 }
-                if self.0.sinks.posthog.is_some() {
+                if self.0.sinks.to_posthog(level) {
                     drops.posthog.fetch_add(1, Ordering::Relaxed);
                 }
             }
@@ -780,6 +788,7 @@ impl Telemetry {
             cache_written: self.0.cache_written.load(Ordering::Relaxed),
             unserializable: self.0.unserializable.load(Ordering::Relaxed),
             log_metadata_replaced: self.0.sinks.replaced.load(Ordering::Relaxed),
+            posthog_below_level: self.0.sinks.posthog_below.load(Ordering::Relaxed),
         }
     }
 

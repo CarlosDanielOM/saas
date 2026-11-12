@@ -46,6 +46,10 @@ pub struct PosthogConfig {
     pub token: SecretString,
     /// Resource `service.name`.
     pub service_name: String,
+    /// Entries below this level are not exported (counted as
+    /// [`crate::Stats::posthog_below_level`]). `None`, the default: every entry the logger's own
+    /// minimum level lets through, as the reference exports every log call whatever its level.
+    pub min_level: Option<Level>,
 }
 
 impl PosthogConfig {
@@ -55,6 +59,7 @@ impl PosthogConfig {
             base_url: POSTHOG_BASE_URL.to_owned(),
             token: SecretString::new(POSTHOG_PROJECT_KEY.to_owned()),
             service_name: SERVICE_NAME.to_owned(),
+            min_level: None,
         }
     }
 }

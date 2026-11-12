@@ -26,7 +26,10 @@
 //! - **telemetry**: warn and above also become metadata-only rows in the telemetry pipeline
 //!   (`recordLog`), whatever the destination.
 //! - **PostHog**: every entry, whatever the destination (`openLog.emit` in the reference), when the
-//!   process exports logs there (API and bot); see [`crate::otlp`].
+//!   process exports logs there (API and bot); see [`crate::otlp`]. An optional minimum level
+//!   ([`crate::PosthogConfig::min_level`]) keeps lower entries out and counts them
+//!   ([`crate::Stats::posthog_below_level`]); unset, as in the reference, every enabled entry is
+//!   exported.
 
 use crate::label::{self, Channel, Label};
 use crate::trace::SpanIds;
@@ -267,6 +270,10 @@ pub(crate) struct Sinks {
     pub(crate) drops: LogDrops,
     /// Platforms and channel ids replaced by [`INVALID_IDENTIFIER`].
     pub(crate) replaced: AtomicU64,
+    /// Entries below this level are not exported to PostHog (`None`: every entry).
+    pub(crate) posthog_min: Option<Level>,
+    /// Entries kept from PostHog by [`Sinks::posthog_min`].
+    pub(crate) posthog_below: AtomicU64,
 }
 
 /// The receiving ends, taken by [`crate::Telemetry::start`].
@@ -312,6 +319,8 @@ impl Sinks {
                 budget_max,
                 drops: LogDrops::default(),
                 replaced: AtomicU64::new(0),
+                posthog_min: None,
+                posthog_below: AtomicU64::new(0),
             },
             Receivers {
                 console: console_rx,
@@ -385,12 +394,28 @@ impl Sinks {
             }
         }
         if let Some(posthog) = &self.posthog
+            && self.to_posthog(record.level)
             && posthog.try_send(record.clone()).is_err()
         {
             self.drops.posthog.fetch_add(1, Ordering::Relaxed);
             lost += 1;
         }
         lost
+    }
+
+    /// Whether an entry at `level` is exported to PostHog; counts the ones the minimum level
+    /// keeps out. Without an exporter nothing is exported or counted.
+    pub(crate) fn to_posthog(&self, level: Level) -> bool {
+        if self.posthog.is_none() {
+            return false;
+        }
+        match self.posthog_min {
+            Some(min) if level < min => {
+                self.posthog_below.fetch_add(1, Ordering::Relaxed);
+                false
+            }
+            _ => true,
+        }
     }
 
     /// A pre-formatted line for the console only (connection-error reports).
