@@ -7,9 +7,11 @@
 //!   backlog (511, as in Node) until one closes, and the kernel refuses connections once the
 //!   backlog is full.
 //! - **Long-lived streams**: a connection that is upgraded (`101`, WebSocket) or starts an
-//!   event stream (`Content-Type: text/event-stream`) moves from that cap to a quota of its own,
-//!   [`ServeOptions::max_streams`], and stays there until it closes, so overlays holding
-//!   streams open cannot shut ordinary HTTP out. When the stream quota is full the answer is
+//!   event stream (`Content-Type: text/event-stream` on an answer with a body: not HEAD, 204 or
+//!   304) moves from that cap to a quota of its own, [`ServeOptions::max_streams`], and stays
+//!   there until it closes, so overlays holding streams open cannot shut ordinary HTTP out. An
+//!   event stream is answered with `Connection: close`: when it ends the connection closes
+//!   instead of serving more requests under the stream quota. When the stream quota is full the answer is
 //!   replaced with `503 Service Unavailable` (the upgrade does not happen, the event stream's
 //!   body is dropped and its senders see the client gone).
 //! - **Shutdown**: the server stops accepting, lets open requests finish and waits for upgraded
@@ -93,7 +95,8 @@ pub struct ServeOptions {
     pub max_connections: usize,
     /// Long-lived streams open at once: upgraded connections and event streams, which leave the
     /// [`ServeOptions::max_connections`] cap when they start (10 000 by default). Beyond it the
-    /// answer that would start one becomes `503`.
+    /// answer that would start one becomes `503`. A connection that served an event stream
+    /// closes when the stream ends.
     pub max_streams: usize,
     /// After shutdown is requested, how long open connections may finish their requests, and
     /// upgraded connections may close, before they are closed.
@@ -598,19 +601,30 @@ where
     Ok(())
 }
 
-/// An answer that starts a long-lived stream: a protocol switch or an event stream.
-fn is_long_lived<B>(response: &http::Response<B>) -> bool {
-    response.status() == http::StatusCode::SWITCHING_PROTOCOLS
-        || response
-            .headers()
-            .get(http::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .is_some_and(|value| {
-                value
-                    .trim_start()
-                    .get(..17)
-                    .is_some_and(|kind| kind.eq_ignore_ascii_case("text/event-stream"))
-            })
+/// An answer that starts a long-lived stream: a protocol switch, or an event stream with a body
+/// (not the answer to HEAD, not 204, 304 or another informational status).
+fn is_long_lived<B>(method: &http::Method, response: &http::Response<B>) -> bool {
+    let status = response.status();
+    if status == http::StatusCode::SWITCHING_PROTOCOLS {
+        return true;
+    }
+    if method == http::Method::HEAD
+        || status == http::StatusCode::NO_CONTENT
+        || status == http::StatusCode::NOT_MODIFIED
+        || status.is_informational()
+    {
+        return false;
+    }
+    response
+        .headers()
+        .get(http::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| {
+            value
+                .trim_start()
+                .get(..17)
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("text/event-stream"))
+        })
 }
 
 /// The answer when the stream quota is full.
@@ -674,16 +688,24 @@ async fn connection<T, B>(
                 _tracked: shared.sockets.token(),
             });
         }
+        let method = request.method().clone();
         let response = service.clone().oneshot(request);
         let slot = Arc::clone(&slot);
         let streams = Arc::clone(&shared.streams);
         async move {
-            let response = response.await?.map(Body::new);
-            let response = if is_long_lived(&response) && !slot.promote(&streams) {
-                streams_full()
-            } else {
-                response
-            };
+            let mut response = response.await?.map(Body::new);
+            if is_long_lived(&method, &response) {
+                if !slot.promote(&streams) {
+                    response = streams_full();
+                } else if response.status() != http::StatusCode::SWITCHING_PROTOCOLS {
+                    // The stream slot stays with the connection until it closes, so it must
+                    // not go back to ordinary requests: close it when the stream ends.
+                    response.headers_mut().insert(
+                        http::header::CONNECTION,
+                        http::HeaderValue::from_static("close"),
+                    );
+                }
+            }
             Ok::<_, Infallible>(response.map(|inner| TrackedBody {
                 inner,
                 _in_flight: in_flight,

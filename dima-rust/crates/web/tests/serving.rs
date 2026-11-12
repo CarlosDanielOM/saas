@@ -91,6 +91,34 @@ async fn flood_up(req: &mut Req<State>) -> Result<Response, Error> {
     Ok(Response::from_http(response))
 }
 
+/// GET /sse-once: one comment, then the end of the stream.
+async fn sse_once(_req: &mut Req<State>) -> Response {
+    let (events, body) = dima_web::sse::channel(dima_web::sse::SseOptions::new());
+    tokio::spawn(async move {
+        let _ = events.comment("once").await;
+    });
+    Response::new()
+        .header("Content-Type", "text/event-stream")
+        .stream(body)
+}
+
+/// GET /sse-hold: an event stream that stays open until the client goes away.
+async fn sse_hold(_req: &mut Req<State>) -> Response {
+    let (events, body) = dima_web::sse::channel(dima_web::sse::SseOptions::new());
+    tokio::spawn(async move {
+        let _ = events.comment("open").await;
+        events.closed().await;
+    });
+    Response::new()
+        .header("Content-Type", "text/event-stream")
+        .stream(body)
+}
+
+/// GET /sse-none: an event-stream type on an answer without a body.
+async fn sse_none(_req: &mut Req<State>) -> Response {
+    Response::send_status(204).header("Content-Type", "text/event-stream")
+}
+
 async fn who(_req: &mut Req<State>) -> Response {
     Response::new().text("here")
 }
@@ -108,6 +136,9 @@ async fn start(
     root.get("/sse-flood", sse_flood);
     root.get("/sse-quiet", sse_quiet);
     root.get("/flood-up", flood_up);
+    root.get("/sse-once", sse_once);
+    root.get("/sse-hold", sse_hold);
+    root.get("/sse-none", sse_none);
     root.get("/who", who);
     let probe = State::default();
     let app = App::new(root, Arc::clone(&probe)).expect("app");
@@ -277,6 +308,72 @@ async fn an_upgraded_socket_whose_peer_stops_reading_fails_its_writes() {
     }
     assert_eq!(failed, Some(std::io::ErrorKind::TimedOut));
     assert!(closes_within(&mut stream, Duration::from_secs(5)).await);
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: after a finite event stream the connection went back to keep-alive requests
+/// while still holding its stream slot. A promoted connection now closes when its answer ends.
+#[tokio::test]
+async fn a_finished_event_stream_closes_its_connection() {
+    let options = ServeOptions {
+        max_connections: 1,
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, _probe, token, server) = start(options).await;
+    let mut stream = TcpStream::connect(addr).await.expect("connect");
+    stream
+        .write_all(b"GET /sse-once HTTP/1.1\r\nHost: x\r\n\r\n")
+        .await
+        .expect("write");
+    let mut received = Vec::new();
+    // Well before the 5 s keep-alive timeout.
+    tokio::time::timeout(Duration::from_secs(2), stream.read_to_end(&mut received))
+        .await
+        .expect("the server closed the connection")
+        .expect("read");
+    let text = String::from_utf8_lossy(&received);
+    assert!(text.starts_with("HTTP/1.1 200"), "{text}");
+    assert!(text.contains(": once"), "{text}");
+    assert!(
+        text.to_ascii_lowercase().contains("connection: close"),
+        "{text}"
+    );
+    // Both quotas are free again.
+    assert_eq!(
+        status_of(addr, "GET /sse-hold HTTP/1.1\r\nHost: x\r\n\r\n").await,
+        "HTTP/1.1 200 OK"
+    );
+    token.cancel();
+    server.await.expect("join").expect("serve");
+}
+
+/// Review finding: HEAD, 204 and 304 answers with an event-stream type were promoted (or
+/// refused with 503) although no stream follows them.
+#[tokio::test]
+async fn answers_without_a_body_never_take_a_stream_slot() {
+    let options = ServeOptions {
+        max_streams: 1,
+        ..ServeOptions::default()
+    };
+    let (addr, _probe, token, server) = start(options).await;
+    let held = stalled_reader(addr, "/sse-hold").await;
+    let close = "Host: x\r\nConnection: close\r\n\r\n";
+    assert_eq!(
+        status_of(addr, &format!("HEAD /sse-hold HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 200 OK"
+    );
+    assert_eq!(
+        status_of(addr, &format!("GET /sse-none HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 204 No Content"
+    );
+    // A real second stream is still refused.
+    assert_eq!(
+        status_of(addr, &format!("GET /sse-hold HTTP/1.1\r\n{close}")).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    drop(held);
     token.cancel();
     server.await.expect("join").expect("serve");
 }
