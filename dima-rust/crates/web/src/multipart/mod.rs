@@ -47,7 +47,7 @@
 //!   `defParamCharset`): a UTF-8 file name arrives as mojibake (`😀` becomes `ð\u{9f}\u{98}\u{80}`).
 //!   `filename*=utf-8''…` is decoded. Field values are UTF-8.
 
-mod fields;
+pub mod fields;
 mod parse;
 
 use std::path::PathBuf;
@@ -179,6 +179,27 @@ pub enum UploadError {
     /// The upload's own deadline ([`Multer::deadline`]) passed.
     #[error("upload deadline passed")]
     TimedOut,
+    /// Not in multer: one of this crate's own bounds on a form was exceeded.
+    #[error("{}", .0.message())]
+    Budget(Budget),
+}
+
+/// This crate's bounds on a form, beyond multer's [`Limits`] (multer and append-field have none
+/// of these and allocate their way through).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Budget {
+    /// A field name nested deeper than [`fields::MAX_DEPTH`] bracket groups, or the form's names
+    /// would build more than [`fields::MAX_SLOTS`] values (array holes included).
+    FieldName,
+}
+
+impl Budget {
+    /// The error message.
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::FieldName => "Field names nest too deep or build too many values",
+        }
+    }
 }
 
 /// What multer knows about a file before it is stored (`fieldname`, `originalname`,
@@ -586,10 +607,7 @@ impl Single {
             },
         )?;
         let mut scanner = Scanner::new(req.take_body_stream(), &boundary);
-        let mut progress = Progress {
-            fields: Value::Object(Map::new()),
-            ..Progress::default()
-        };
+        let mut progress = Progress::default();
         let outcome = {
             let read = self.read(&mut scanner, &mut progress);
             match self.multer.deadline {
@@ -599,9 +617,7 @@ impl Single {
                 None => read.await,
             }
         };
-        let mut fields = std::mem::take(&mut progress.fields);
-        dima_text::js_key_order(&mut fields);
-        req.body = BodyState::Value(fields);
+        req.body = BodyState::Value(std::mem::take(&mut progress.fields).into_value());
         if let Err(error) = outcome {
             for file in &mut progress.stored {
                 let _ = self.multer.storage.remove_file(file).await;
@@ -744,11 +760,12 @@ impl Single {
                                 progress.fail(limit(MulterCode::LimitFieldKey, None))?;
                                 continue;
                             }
-                            fields::append_field(
-                                &mut progress.fields,
-                                &name,
-                                parse::decode_bytes(&bytes, &charset),
-                            );
+                            progress
+                                .fields
+                                .append(&name, parse::decode_bytes(&bytes, &charset))
+                                .map_err(|_| {
+                                    progress.settle(UploadError::Budget(Budget::FieldName))
+                                })?;
                         }
                     }
                 }
@@ -796,7 +813,7 @@ impl Single {
 /// What one upload has produced so far.
 #[derive(Default)]
 struct Progress {
-    fields: Value,
+    fields: fields::Fields,
     stored: Vec<UploadedFile>,
     /// `req.file`, as an index into `stored`.
     accepted: Option<usize>,
