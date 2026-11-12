@@ -29,6 +29,7 @@ use bson::{Bson, DateTime, Document};
 pub struct WriteContext {
     now_ms: i64,
     sequence: Option<u64>,
+    preserve_numbers: bool,
 }
 
 impl WriteContext {
@@ -37,6 +38,7 @@ impl WriteContext {
         Self {
             now_ms,
             sequence: None,
+            preserve_numbers: false,
         }
     }
 
@@ -46,6 +48,26 @@ impl WriteContext {
         Self {
             now_ms,
             sequence: Some(first),
+            preserve_numbers: false,
+        }
+    }
+
+    /// Preserve caller-supplied BSON int32, int64 and double values for this write.
+    ///
+    /// Only ports of writers already native Rust in production may use this, and only for
+    /// fields those writers store. Type checking, validation, strict paths, timestamps and
+    /// versioning still apply. Schema defaults retain Mongoose/Node numeric types; native
+    /// writers must supply their required types explicitly. Dates, booleans, strings and ids
+    /// are unaffected. MongoDB computes result types: `$inc` with a double promotes an int64
+    /// to double; an int64 increment of a double leaves a double (covered against MongoDB).
+    pub fn native_numbers(mut self) -> Self {
+        self.preserve_numbers = true;
+        self
+    }
+
+    pub(crate) fn normalize_numbers(&self, document: &mut Document) {
+        if !self.preserve_numbers {
+            crate::mongo::number::normalize_js_numbers(document);
         }
     }
 
@@ -261,6 +283,8 @@ impl<'c> Caster<'c> {
             }
             (_, other) => other,
         };
+        let mut value = value;
+        crate::mongo::number::normalize_js_value(&mut value);
         Ok(Some(value))
     }
 

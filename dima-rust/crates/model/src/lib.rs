@@ -230,6 +230,12 @@
 //!   runs [`preflight_indexes`] (read only) against production first; its [`Preflight`] lists the
 //!   differences, and the collections start-up does not initialise apart.
 //!
+//! Ports of existing native production writers may opt into
+//! `WriteContext::new(now_ms).native_numbers()` at the same entry points. This preserves
+//! their explicit BSON numeric types while retaining validation and the write guard.
+//! Schema defaults still use Node types; see `WriteContext::native_numbers` for restrictions
+//! and MongoDB increment promotion rules. New TypeScript ports must keep the default context.
+//!
 //! # Tests every collection gets
 //!
 //! All five run from the registry. A new collection is covered once it is registered, its

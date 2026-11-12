@@ -105,7 +105,7 @@ pub(crate) fn cast_write_filter(
         FilterStyle::Bulk => filter.clone(),
     };
     let mut out = FilterCaster::new(caster, upsert).document(schema, &ordered)?;
-    normalize_js_numbers(&mut out);
+    caster.ctx.normalize_numbers(&mut out);
     Ok(out)
 }
 
@@ -898,7 +898,8 @@ fn cast_number(value: &Bson, path: &str) -> Result<Bson, PrepareError> {
         Bson::String(text) if text.is_empty() => return Ok(Bson::Null),
         Bson::String(text) => dima_text::parse_number(text),
         Bson::Boolean(v) => f64::from(u8::from(*v)),
-        Bson::Int32(_) | Bson::Int64(_) | Bson::Double(_) => js_value(value).unwrap_or(f64::NAN),
+        Bson::Int32(_) | Bson::Int64(_) => return Ok(value.clone()),
+        Bson::Double(v) if !v.is_nan() => return Ok(value.clone()),
         Bson::DateTime(date) => date.timestamp_millis() as f64,
         // `Number(objectId)`: its hex text through `Number()`.
         Bson::ObjectId(id) => dima_text::parse_number(&id.to_hex()),
@@ -907,7 +908,7 @@ fn cast_number(value: &Bson, path: &str) -> Result<Bson, PrepareError> {
     if number.is_nan() {
         return Err(cast_error("Number", path));
     }
-    Ok(Bson::Double(number))
+    Ok(crate::mongo::number::js_number(number))
 }
 
 /// `castDate`.

@@ -413,7 +413,7 @@ pub fn prepare_save(
         minimize_update(schema, &mut update);
     }
     normalize_js_numbers(&mut filter);
-    normalize_js_numbers(&mut update);
+    caster.ctx.normalize_numbers(&mut update);
     Ok(PreparedSave {
         filter,
         update: Some(update),

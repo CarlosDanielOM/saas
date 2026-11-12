@@ -98,10 +98,12 @@ pub enum UpdateDoc {
 
 impl UpdateDoc {
     /// Every number typed as the Node BSON writer types a JavaScript number.
-    fn node_numbers(mut self) -> Self {
+    fn node_numbers(mut self, ctx: &WriteContext) -> Self {
         match &mut self {
-            Self::Document(document) => normalize_js_numbers(document),
-            Self::Pipeline(stages) => stages.iter_mut().for_each(normalize_js_numbers),
+            Self::Document(document) => ctx.normalize_numbers(document),
+            Self::Pipeline(stages) => stages
+                .iter_mut()
+                .for_each(|stage| ctx.normalize_numbers(stage)),
         }
         self
     }
@@ -227,7 +229,7 @@ pub fn prepare_update(
     };
     Ok(PreparedUpdate {
         filter: filter.clone(),
-        update: prepared.map(UpdateDoc::node_numbers),
+        update: prepared.map(|update| update.node_numbers(caster.ctx)),
         upsert: options.upsert,
         array_filters,
         dropped_paths: caster.dropped,
@@ -335,7 +337,7 @@ pub fn prepare_find_one_and_update(
     };
     Ok(PreparedFindAndModify {
         filter: filter.clone(),
-        update: prepared.map(UpdateDoc::node_numbers),
+        update: prepared.map(|update| update.node_numbers(caster.ctx)),
         array_filters,
         returned,
         upsert: options.upsert,
@@ -413,7 +415,7 @@ pub fn prepare_bulk_update(
     };
     Ok(PreparedUpdate {
         filter: filter.clone(),
-        update: Some(prepared.node_numbers()),
+        update: Some(prepared.node_numbers(caster.ctx)),
         upsert: options.upsert,
         array_filters,
         dropped_paths: caster.dropped,

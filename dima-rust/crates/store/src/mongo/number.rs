@@ -370,3 +370,188 @@ mod tests {
         assert_eq!(document.get_document("nested").ok(), Some(&expected));
     }
 }
+
+#[cfg(test)]
+mod native_write_tests {
+    use crate::mongo::{
+        WriteContext,
+        insert::{InsertStyle, prepare_insert},
+        save::{Change, prepare_save},
+        schema::{DefaultValue as D, Field, Schema, ValueType},
+        update::{
+            BulkUpdate, Returned, UpdateOptions, prepare_bulk_update, prepare_find_one_and_update,
+            prepare_update,
+        },
+    };
+    use bson::{Bson, doc};
+
+    static S: Schema = Schema::new(&[
+        Field::number("n"),
+        Field::number("d").default(D::Double(5.0)),
+        Field::array("items", ValueType::Number),
+        Field::mixed("meta"),
+    ]);
+
+    #[test]
+    fn native_numbers_are_recursive_exact_and_leave_other_values_alone() {
+        let id = bson::oid::ObjectId::new();
+        let date = bson::DateTime::from_millis(5);
+        let given = doc! {"n":i64::MAX,"meta":{"values":[5_i64,5.0],"date":date,"id":id,"flag":true,"text":"5"}};
+        for native in [false, true] {
+            let mut ctx = WriteContext::new(0);
+            if native {
+                ctx = ctx.native_numbers();
+            }
+            let made = prepare_insert(&S, &given, InsertStyle::Create, &mut ctx).unwrap();
+            assert_eq!(
+                made.document.get("n"),
+                Some(&if native {
+                    Bson::Int64(i64::MAX)
+                } else {
+                    Bson::Double(i64::MAX as f64)
+                })
+            );
+            let meta = made.document.get_document("meta").unwrap();
+            assert_eq!(meta.get("date"), Some(&Bson::DateTime(date)));
+            assert_eq!(meta.get("id"), Some(&Bson::ObjectId(id)));
+            assert_eq!(meta.get("flag"), Some(&Bson::Boolean(true)));
+            assert_eq!(meta.get_str("text").unwrap(), "5");
+            assert_eq!(
+                meta.get_array("values").unwrap(),
+                &if native {
+                    vec![Bson::Int64(5), Bson::Double(5.0)]
+                } else {
+                    vec![Bson::Int32(5), Bson::Int32(5)]
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn every_write_form_preserves_only_explicit_numbers_when_opted_in() {
+        for native in [false, true] {
+            let context = || {
+                if native {
+                    WriteContext::new(0).native_numbers()
+                } else {
+                    WriteContext::new(0)
+                }
+            };
+            let expected = if native {
+                Bson::Int64(5)
+            } else {
+                Bson::Int32(5)
+            };
+            for style in [
+                InsertStyle::Create,
+                InsertStyle::InsertMany,
+                InsertStyle::BulkInsertOne,
+            ] {
+                let made = prepare_insert(
+                    &S,
+                    &doc! {"n":5_i64,"meta":{"x":5.0},"unknown":5_i64},
+                    style,
+                    &mut context(),
+                )
+                .unwrap();
+                assert_eq!(made.document.get("n"), Some(&expected));
+                assert_eq!(made.document.get("d"), Some(&Bson::Int32(5)));
+                assert_eq!(made.dropped_paths, ["unknown"]);
+            }
+            for op in ["$set", "$setOnInsert", "$inc", "$max", "$min"] {
+                for value in [Bson::Int64(5), Bson::Double(5.0)] {
+                    let expected = if native {
+                        value.clone()
+                    } else {
+                        Bson::Int32(5)
+                    };
+                    let update = doc! {op:{"n":value}};
+                    let a = prepare_update(
+                        &S,
+                        &doc! {},
+                        update.clone(),
+                        UpdateOptions::upsert(),
+                        &mut context(),
+                    )
+                    .unwrap();
+                    let b = prepare_find_one_and_update(
+                        &S,
+                        &doc! {},
+                        update.clone(),
+                        UpdateOptions::upsert(),
+                        Returned::After,
+                        &mut context(),
+                    )
+                    .unwrap();
+                    let c = prepare_bulk_update(
+                        &S,
+                        &doc! {},
+                        update.clone(),
+                        BulkUpdate::UpdateOne,
+                        UpdateOptions::upsert(),
+                        &mut context(),
+                    )
+                    .unwrap();
+                    let d = prepare_bulk_update(
+                        &S,
+                        &doc! {},
+                        update,
+                        BulkUpdate::UpdateMany,
+                        UpdateOptions::upsert(),
+                        &mut context(),
+                    )
+                    .unwrap();
+                    for prepared in [&a.update, &b.update, &c.update, &d.update] {
+                        let out = prepared.as_ref().unwrap().as_document().unwrap();
+                        assert_eq!(out.get_document(op).unwrap().get("n"), Some(&expected));
+                        assert_eq!(
+                            out.get_document("$setOnInsert").unwrap().get("d"),
+                            Some(&Bson::Int32(5))
+                        );
+                    }
+                }
+            }
+            let push = prepare_update(
+                &S,
+                &doc! {"n":5_i64},
+                doc! {"$push":{"items":{"$each":[5_i64,5.0],"$slice":3,"$position":0,"$sort":1}}},
+                UpdateOptions::upsert(),
+                &mut context(),
+            )
+            .unwrap();
+            assert_eq!(push.filter.get("n"), Some(&expected));
+            let items = push
+                .update
+                .unwrap()
+                .as_document()
+                .unwrap()
+                .get_document("$push")
+                .unwrap()
+                .get_document("items")
+                .unwrap()
+                .clone();
+            assert_eq!(
+                items.get_array("$each").unwrap(),
+                &if native {
+                    vec![Bson::Int64(5), Bson::Double(5.0)]
+                } else {
+                    vec![Bson::Int32(5), Bson::Int32(5)]
+                }
+            );
+            let saved = prepare_save(
+                &S,
+                &doc! {"_id":bson::oid::ObjectId::new(),"n":0},
+                &[
+                    Change::set("n", 5_i64),
+                    Change::push("items", [Bson::Double(5.0)]),
+                ],
+                &mut context(),
+            )
+            .unwrap();
+            assert_eq!(
+                saved.update.unwrap().get_document("$set").unwrap().get("n"),
+                Some(&expected)
+            );
+        }
+    }
+}
