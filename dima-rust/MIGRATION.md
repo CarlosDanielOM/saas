@@ -65,15 +65,20 @@ unless section 4 or the decision log allows it.
 
 **Dragonfly is internal.** After the cutover only Rust reads and writes it, so a value's encoding is
 Rust's choice: it does not have to match the bytes Node wrote. What matters is the moment of cutover.
-Each key family in `ledger/dragonfly.md` is one of: *drained* (queues of work, emptied by the
-TypeScript processes before they stop), *rebuilt* (caches and derived state, deleted at cutover and
-recomputed), or *carried* (sessions, counters and anything users would notice losing: Rust must read
-what TypeScript left). The package that ports a key family says which, and only *carried* families
-need a fixture of the TypeScript format.
+Almost all of it is cache that the processes repopulate from MongoDB and Twitch on a clean start (the
+`token:<token>` key, for instance, is a validation cache: on a miss the auth middleware validates the
+token with Twitch and caches it again, so clearing it logs nobody out). Each key family in
+`ledger/dragonfly.md` is one of: *rebuilt* (caches and derived state: cleared at cutover and
+recomputed), *drained* (queues of work: emptied by the TypeScript processes before they stop), or
+*carried* (work scheduled for later that exists only in Dragonfly, such as delayed command timers and
+pending moderator restores, when it cannot be drained: Rust must read what TypeScript left). The
+package that ports a key family says which, and only *carried* families need a fixture of the
+TypeScript format.
 
 **Rollback.** Going back to TypeScript after the cutover stays possible because MongoDB writes stay
-compatible; it requires clearing the Dragonfly families Rust rewrote, which logs users out and drops
-queued work. That is the accepted price of one cutover.
+compatible. It needs the same steps in reverse: stop the Rust producers, let the queues drain, clear
+Dragonfly, start TypeScript, which repopulates its caches. Whatever is still queued at that moment is
+lost; nobody is logged out.
 
 **Queues and handoff.** The cutover procedure stops the TypeScript producers first, lets the
 TypeScript workers drain their queues (money-bearing queues such as AI usage receipts must be empty),
@@ -269,8 +274,10 @@ in one window, and is the owner's to trigger.
 
 - **Always** run cargo through `dima-rust/tools/cargo` (same arguments as cargo). It puts every build in
   one cgroup with a 6 GB soft cap, an 8 GB hard cap, 8 CPUs and no swap, sizes each run to the memory
-  that is actually free (and waits when there is too little), and uses one shared target directory so
-  worktrees reuse compiled dependencies. Never run plain `cargo`. Never run `cargo clean`.
+  that is actually free (and waits when there is too little), and lets one build or test run at a time
+  across the machine. Each checkout builds into its own `dima-rust/target`: a shared target directory
+  let one worktree's tests run against another worktree's code, so never set `CARGO_TARGET_DIR` to a
+  shared place. Never run plain `cargo`. Start long-lived programs from the built binary, not `cargo run`.
 - Implementation agents run `check`, `clippy` and `test` scoped to their crates (`-p <crate>`). Release
   builds and whole-workspace runs are the lead's.
 - The laptop has 16 GB in total and is the owner's working machine: it must never run out of memory.
@@ -305,7 +312,8 @@ in one window, and is the owner's to trigger.
   runs beside TypeScript in production, so Dragonfly encodings are Rust's own (key families are drained,
   rebuilt or carried at cutover), byte-for-byte agreement with node-redis writers is no longer required,
   and reviews stop looking for TypeScript/Rust interleavings. MongoDB writes stay compatible (the helpers
-  exist and it keeps rollback possible). Rollback needs a Dragonfly clear.
+  exist and it keeps rollback possible). Dragonfly is a cache that repopulates on a clean start, as the
+  owner pointed out; a clear costs only what is queued at that moment.
 - 2026-11-11: After the reviewer's second view (GPT-6.1 Sol): the compatibility rule now also covers the
   rollback release; the reference is named per responsibility; text rules gained the purpose table so
   that money counts, identity inputs, mirrored outside limits and stored positions keep today's values;

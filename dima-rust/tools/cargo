@@ -2,15 +2,19 @@
 # Capped cargo for the Rust migration. Every cargo command on a development
 # machine goes through this wrapper (see dima-rust/MIGRATION.md, "Machine limits").
 #
-# - One systemd slice holds every cargo process from every agent and worktree,
-#   so the TOTAL stays under the caps however many builds are queued:
-#   soft cap 6 GB (the kernel throttles and reclaims above it), hard cap 8 GB
-#   (processes are killed above it), 8 CPUs, no swap.
-# - Each invocation also gets its own cap sized to what the machine has free
-#   right now, minus a reserve, so a build never pushes the laptop itself out
-#   of memory. If there is too little free memory it waits instead of starting.
-# - One shared target directory, so worktrees reuse compiled dependencies and
-#   cargo's own build lock serialises compilation.
+# - Each checkout (the main one and every worktree) builds into its OWN target
+#   directory, `dima-rust/target`. A shared one is not safe: crates with the same
+#   name in two worktrees get the same artifact names, so one worktree's tests
+#   could run against another worktree's code.
+# - Compiling commands take one machine-wide lock, so only one build or test run
+#   is active at a time however many agents are working.
+# - One systemd slice holds every cargo process: soft cap 6 GB (the kernel
+#   throttles and reclaims above it), hard cap 8 GB (processes are killed above
+#   it), 8 CPUs, no swap. Each run is also sized to the memory that is free right
+#   now, minus a reserve, and waits when there is too little.
+#
+# `run` holds the lock for as long as the program runs: for anything long-lived,
+# build it, then start the binary from `dima-rust/target/` yourself.
 #
 # Overrides: DIMA_BUILD_CPUS (8), DIMA_BUILD_MEM_SOFT_MB (6144),
 # DIMA_BUILD_MEM_HARD_MB (8192), DIMA_BUILD_RESERVE_MB (1500),
@@ -26,20 +30,23 @@ min_scope_mb=1536
 wait_secs="${DIMA_BUILD_WAIT_SECS:-900}"
 slice="${DIMA_BUILD_SLICE:-dima-build.slice}"
 
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust/target}"
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$workspace/target}"
 mkdir -p "$CARGO_TARGET_DIR"
 
-# A clean in the shared target directory throws away everyone's build.
-if [[ "${1:-}" == "clean" && "${DIMA_ALLOW_CLEAN:-0}" != "1" ]]; then
-    echo "tools/cargo: 'clean' is disabled for the shared target directory (set DIMA_ALLOW_CLEAN=1 to override)" >&2
-    exit 2
-fi
-
-# Commands that do not compile need no memory guard.
+# Commands that do not compile need neither the lock nor the memory guard.
 case "${1:-}" in
-    ""|-V|--version|help|--help|-h|fmt|metadata|tree|fetch|update|generate-lockfile|locate-project|pkgid|search|login|logout)
+    ""|-V|--version|help|--help|-h|fmt|metadata|tree|fetch|update|generate-lockfile|locate-project|pkgid|search|login|logout|clean)
         exec cargo "$@" ;;
 esac
+
+# One build at a time across the machine. `flock -o` keeps the lock in the flock
+# process only, so a program the build leaves running cannot hold it.
+if [[ -z "${DIMA_CARGO_LOCKED:-}" ]] && command -v flock >/dev/null 2>&1; then
+    lock_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dima-rust"
+    mkdir -p "$lock_dir"
+    exec env DIMA_CARGO_LOCKED=1 flock -o "$lock_dir/build.lock" "${BASH_SOURCE[0]}" "$@"
+fi
 
 mem_available_mb() { awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo; }
 
