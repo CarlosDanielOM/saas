@@ -21,7 +21,8 @@
 //!   `$set` to `$unset` (appended last);
 //! - every number in the filter and the update is typed as the Node BSON writer types a
 //!   JavaScript number (a loaded int64 `__v` goes into the filter as int32);
-//! - nothing to write: `Ok(None)`, no command at all.
+//! - nothing to write: `update` is `None`, no command at all (the dropped paths are still
+//!   reported).
 //!
 //! Hooks are not part of this: the `pre('save')` hooks of `admins`, `events`, `clipdesigns`,
 //! `app_configs`, `referralcodes`, `channelaipersonalities` and the availability hook must be
@@ -65,13 +66,15 @@ impl Change {
     }
 }
 
-/// The `updateOne` a save sends.
+/// The `updateOne` a save sends. Run it with [`crate::mongo::write::Writes::save`], which
+/// enforces [`PreparedSave::dropped_paths`] and reports a conflict when nothing matched.
+#[must_use = "a prepared save does nothing until it is executed, and its dropped paths must be checked"]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedSave {
     /// `{_id, [__v]}`. A `matched_count` of 0 with `__v` in it is Mongoose's `VersionError`.
     pub filter: Document,
-    /// The update.
-    pub update: Document,
+    /// The update, or `None` when nothing changed (Mongoose sends no command).
+    pub update: Option<Document>,
     /// Paths strict mode dropped (unknown to the schema).
     pub dropped_paths: Vec<String>,
 }
@@ -82,7 +85,7 @@ pub fn prepare_save(
     loaded: &Document,
     changes: &[Change],
     ctx: &mut WriteContext,
-) -> Result<Option<PreparedSave>, PrepareError> {
+) -> Result<PreparedSave, PrepareError> {
     let id = loaded.get("_id").cloned().ok_or(PrepareError::MissingId)?;
     check_document_depth(loaded)?;
     for change in changes {
@@ -228,8 +231,15 @@ pub fn prepare_save(
             Some(parent) => tracker.replace_array(&parent),
         }
     }
+    let mut filter = Document::new();
+    filter.insert("_id", id);
     if minimal.is_empty() {
-        return Ok(None);
+        normalize_js_numbers(&mut filter);
+        return Ok(PreparedSave {
+            filter,
+            update: None,
+            dropped_paths: caster.dropped,
+        });
     }
 
     // `$__delta` with versioning.
@@ -255,8 +265,6 @@ pub fn prepare_save(
             },
         }
     }
-    let mut filter = Document::new();
-    filter.insert("_id", id);
     if let Some(key) = schema.version_key {
         if version.where_clause
             && let Some(current) = doc
@@ -293,11 +301,11 @@ pub fn prepare_save(
     }
     normalize_js_numbers(&mut filter);
     normalize_js_numbers(&mut update);
-    Ok(Some(PreparedSave {
+    Ok(PreparedSave {
         filter,
-        update,
+        update: Some(update),
         dropped_paths: caster.dropped,
-    }))
+    })
 }
 
 /// Which paths changed, in order, and how each changed array is to be written. Lookups are
@@ -528,10 +536,21 @@ mod tests {
     #[test]
     fn no_change_sends_nothing() -> Result<(), PrepareError> {
         let mut ctx = WriteContext::new(NOW);
-        assert_eq!(prepare_save(&S, &loaded(), &[], &mut ctx)?, None);
+        assert_eq!(prepare_save(&S, &loaded(), &[], &mut ctx)?.update, None);
         assert_eq!(
-            prepare_save(&S, &loaded(), &[Change::set("count", 2.0)], &mut ctx)?,
+            prepare_save(&S, &loaded(), &[Change::set("count", 2.0)], &mut ctx)?.update,
             None
+        );
+        // Only unknown paths: nothing to send, and the caller still learns what was dropped.
+        let unknown = prepare_save(
+            &S,
+            &loaded(),
+            &[Change::set("zz", 1), Change::unset("yy")],
+            &mut ctx,
+        )?;
+        assert_eq!(
+            (unknown.update, unknown.dropped_paths),
+            (None, vec!["zz".to_owned(), "yy".to_owned()])
         );
         Ok(())
     }
@@ -547,10 +566,12 @@ mod tests {
         )?;
         let now = DateTime::from_millis(NOW);
         assert_eq!(
-            push.map(|p| (p.filter, p.update)),
+            Some((push.filter, push.update)),
             Some((
                 doc! { "_id": ObjectId::from_bytes([1; 12]) },
-                doc! { "$push": { "tags": { "$each": ["y"] } }, "$set": { "updatedAt": now }, "$inc": { "__v": 1 } }
+                Some(
+                    doc! { "$push": { "tags": { "$each": ["y"] } }, "$set": { "updatedAt": now }, "$inc": { "__v": 1 } }
+                )
             ))
         );
         let replace = prepare_save(
@@ -560,8 +581,8 @@ mod tests {
             &mut ctx,
         )?;
         assert_eq!(
-            replace.map(|p| p.filter),
-            Some(doc! { "_id": ObjectId::from_bytes([1; 12]), "__v": 3 })
+            replace.filter,
+            doc! { "_id": ObjectId::from_bytes([1; 12]), "__v": 3 }
         );
         let element = prepare_save(
             &S,
@@ -570,11 +591,11 @@ mod tests {
             &mut ctx,
         )?;
         assert_eq!(
-            element.map(|p| (p.filter, p.update)),
-            Some((
+            (element.filter, element.update),
+            (
                 doc! { "_id": ObjectId::from_bytes([1; 12]), "__v": 3 },
-                doc! { "$set": { "items.0.label": "שלום", "updatedAt": now } }
-            ))
+                Some(doc! { "$set": { "items.0.label": "שלום", "updatedAt": now } })
+            )
         );
         Ok(())
     }
@@ -589,7 +610,7 @@ mod tests {
             &mut ctx,
         )?;
         assert_eq!(
-            out.map(|p| p.update),
+            out.update,
             Some(
                 doc! { "$set": { "updatedAt": DateTime::from_millis(NOW) }, "$unset": { "meta": 1 } }
             )

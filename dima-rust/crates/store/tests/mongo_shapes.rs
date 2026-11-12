@@ -72,10 +72,9 @@ fn unicode_keys_in_mixed_and_maps_are_kept_and_never_trimmed() -> Result<(), Pre
     set.insert(format!("vars.{key}"), format!(" {RTL} "));
     set.insert(RTL.to_string(), 1);
     let update = doc! { "$set": set };
-    let prepared = prepare_update(&S, &doc! {}, update, UpdateOptions::default(), &mut ctx)?
-        .ok_or(PrepareError::MissingId)?;
+    let prepared = prepare_update(&S, &doc! {}, update, UpdateOptions::default(), &mut ctx)?;
     assert_eq!(prepared.dropped_paths, vec![RTL.to_owned()]);
-    let UpdateDoc::Document(update) = prepared.update else {
+    let Some(UpdateDoc::Document(update)) = prepared.update else {
         return Err(PrepareError::MissingId);
     };
     let set = update
@@ -145,7 +144,8 @@ fn empty_objects_and_arrays() -> Result<(), PrepareError> {
         &mut ctx,
     )?;
     let set = prepared
-        .and_then(|p| p.update.as_document().cloned())
+        .update
+        .and_then(|u| u.as_document().cloned())
         .and_then(|u| u.get_document("$set").ok().cloned());
     assert_eq!(
         set.and_then(|s| s.get("meta").cloned()),
@@ -203,15 +203,15 @@ fn save_with_unicode_values_and_pushes() -> Result<(), PrepareError> {
         ),
         Change::set(format!("meta.{RTL}"), EMOJI),
     ];
-    let saved = prepare_save(&S, &loaded, &changes, &mut ctx)?.ok_or(PrepareError::MissingId)?;
+    let prepared = prepare_save(&S, &loaded, &changes, &mut ctx)?;
+    assert_eq!(prepared.filter, doc! { "_id": "id-👋" });
+    let saved = prepared.update.ok_or(PrepareError::MissingId)?;
     let set = saved
-        .update
         .get_document("$set")
         .map_err(|_| PrepareError::MissingId)?;
     assert_eq!(set.get_str("name").ok(), Some(COMBINING));
     assert_eq!(set.get_str(format!("meta.{RTL}")).ok(), Some(EMOJI));
     let push = saved
-        .update
         .get_document("$push")
         .map_err(|_| PrepareError::MissingId)?;
     assert_eq!(
@@ -227,7 +227,6 @@ fn save_with_unicode_values_and_pushes() -> Result<(), PrepareError> {
         .ok_or(PrepareError::MissingId)?;
     assert_eq!(item.get_str("label").ok(), Some(EMOJI));
     assert_eq!(item.get("n"), Some(&Bson::Int32(1)));
-    assert_eq!(saved.filter, doc! { "_id": "id-👋" });
     Ok(())
 }
 

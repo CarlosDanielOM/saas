@@ -33,7 +33,9 @@ pub enum InsertStyle {
     BulkInsertOne,
 }
 
-/// A prepared insert.
+/// A prepared insert. Run it with [`crate::mongo::write::Writes`], which also enforces
+/// [`PreparedInsert::dropped_paths`].
+#[must_use = "a prepared insert does nothing until it is executed, and its dropped paths must be checked"]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreparedInsert {
     /// The document to insert.

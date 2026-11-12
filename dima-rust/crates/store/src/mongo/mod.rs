@@ -15,6 +15,9 @@
 //!   the caller's intent (timestamps, `__v`, defaults on insert and upsert, `minimize`, `trim`,
 //!   immutable paths, sub-document ids, the save delta). They take the time and id source as a
 //!   [`WriteContext`], so callers stay deterministic.
+//! - [`write`](mod@write): the one checked way to run a prepared write ([`write::Writes`]): unknown
+//!   paths fail in debug builds and are reported in release builds; a save that matched
+//!   nothing is a conflict.
 //! - [`json`]: documents rendered as Express renders a `.lean()` read.
 //! - [`error`]: duplicate-key detection; [`transaction`]: transaction with the standalone
 //!   fallback.
@@ -32,6 +35,7 @@ pub mod save;
 pub mod schema;
 pub mod transaction;
 pub mod update;
+pub mod write;
 
 pub use cast::{MAX_DEPTH, PrepareError, WriteContext};
 pub use connection::{CommandHook, MongoConfig, MongoStore};

@@ -644,10 +644,11 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
             let update = update_of(intent.get("update").context("update")?)?;
             let opts = update_options(options);
             let upsert = opts.upsert;
-            if let Some(prepared) = prepare_update(schema, &filter, update, opts, &mut ctx)? {
+            let prepared = prepare_update(schema, &filter, update, opts, &mut ctx)?;
+            if let Some(update) = prepared.update {
                 let statement = statement(
                     prepared.filter,
-                    prepared.update,
+                    update,
                     upsert,
                     op == "updateMany",
                     prepared.array_filters,
@@ -747,9 +748,12 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                     opts,
                     &mut ctx,
                 )?;
+                let Some(update) = prepared.update else {
+                    bail!("bulkWrite always sends its update");
+                };
                 updates.push(statement(
                     prepared.filter,
-                    prepared.update,
+                    update,
                     upsert,
                     kind == "updateMany",
                     None,
@@ -795,10 +799,11 @@ async fn run_case(db: &Database, case: &Value, now: i64, numbers: Numbers) -> Re
                     })
                 })
                 .collect::<Result<Vec<_>>>()?;
-            if let Some(prepared) = prepare_save(schema, &loaded, &changes, &mut ctx)? {
+            let prepared = prepare_save(schema, &loaded, &changes, &mut ctx)?;
+            if let Some(update) = prepared.update {
                 let statement = statement(
                     prepared.filter,
-                    UpdateDoc::Document(prepared.update),
+                    UpdateDoc::Document(update),
                     false,
                     false,
                     None,

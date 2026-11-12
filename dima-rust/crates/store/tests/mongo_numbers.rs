@@ -133,12 +133,10 @@ fn updates_type_numbers_in_filter_operators_and_pipelines() -> Result<(), Prepar
             "$push": { "list": { "$each": [given.clone()], "$position": given.clone() } },
         };
         for options in [UpdateOptions::default(), UpdateOptions::upsert()] {
-            let Some(out) = prepare_update(&S, &filter, update.clone(), options, &mut ctx)? else {
-                panic!("update not sent");
-            };
+            let out = prepare_update(&S, &filter, update.clone(), options, &mut ctx)?;
             check(get(&out.filter, "n"), &stored, "filter n");
             check(get(&out.filter, "count.$gt"), &stored, "filter $gt");
-            let UpdateDoc::Document(sent) = &out.update else {
+            let Some(UpdateDoc::Document(sent)) = &out.update else {
                 panic!("not a document");
             };
             check(get(sent, "$set.free.x.0"), &stored, "$set");
@@ -149,27 +147,21 @@ fn updates_type_numbers_in_filter_operators_and_pipelines() -> Result<(), Prepar
         }
         // An empty upsert sends `{$setOnInsert: <filter>}`: the copy is typed too.
         static PLAIN: Schema = Schema::new(&[Field::value("n")]).no_version_key();
-        let Some(out) = prepare_update(
+        let out = prepare_update(
             &PLAIN,
             &doc! { "n": given.clone() },
             doc! {},
             UpdateOptions::upsert(),
             &mut ctx,
-        )?
-        else {
-            panic!("upsert not sent");
-        };
-        let UpdateDoc::Document(sent) = &out.update else {
+        )?;
+        let Some(UpdateDoc::Document(sent)) = &out.update else {
             panic!("not a document");
         };
         check(get(sent, "$setOnInsert.n"), &stored, "upsert filter copy");
 
         let pipeline = vec![doc! { "$set": { "n": { "$add": ["$n", given.clone()] } } }];
-        let Some(out) = prepare_update(&S, &doc! {}, pipeline, UpdateOptions::default(), &mut ctx)?
-        else {
-            panic!("pipeline not sent");
-        };
-        let UpdateDoc::Pipeline(stages) = &out.update else {
+        let out = prepare_update(&S, &doc! {}, pipeline, UpdateOptions::default(), &mut ctx)?;
+        let Some(UpdateDoc::Pipeline(stages)) = &out.update else {
             panic!("not a pipeline");
         };
         check(
@@ -202,7 +194,7 @@ fn updates_type_numbers_in_filter_operators_and_pipelines() -> Result<(), Prepar
                 &mut ctx,
             )?;
             check(get(&bulk.filter, "n"), &stored, "bulk filter");
-            let UpdateDoc::Document(sent) = &bulk.update else {
+            let Some(UpdateDoc::Document(sent)) = &bulk.update else {
                 panic!("not a document");
             };
             check(get(sent, "$set.n"), &stored, "bulk $set");
@@ -230,29 +222,26 @@ fn saves_type_numbers_including_the_loaded_version() -> Result<(), PrepareError>
             Change::set("free", doc! { "a": given.clone() }),
             Change::set("list", vec![given.clone(), Bson::Int64(5)]),
         ];
-        let Some(out) = prepare_save(&S, &loaded, &changes, &mut ctx)? else {
+        let out = prepare_save(&S, &loaded, &changes, &mut ctx)?;
+        let Some(update) = &out.update else {
             panic!("save not sent");
         };
         check(get(&out.filter, "__v"), &Bson::Int32(4), "filter __v");
-        check(get(&out.update, "$set.free.a"), &stored, "$set free.a");
-        check(get(&out.update, "$set.list.0"), &stored, "$set list.0");
-        check(
-            get(&out.update, "$set.list.1"),
-            &Bson::Int32(5),
-            "$set list.1",
-        );
-        check(get(&out.update, "$inc.__v"), &Bson::Int32(1), "$inc __v");
+        check(get(update, "$set.free.a"), &stored, "$set free.a");
+        check(get(update, "$set.list.0"), &stored, "$set list.0");
+        check(get(update, "$set.list.1"), &Bson::Int32(5), "$set list.1");
+        check(get(update, "$inc.__v"), &Bson::Int32(1), "$inc __v");
 
-        let Some(out) = prepare_save(
+        let out = prepare_save(
             &S,
             &loaded,
             &[Change::push("list", [given.clone()])],
             &mut ctx,
-        )?
-        else {
-            panic!("push not sent");
+        )?;
+        let Some(update) = &out.update else {
+            panic!("save not sent");
         };
-        check(get(&out.update, "$push.list.$each.0"), &stored, "$push");
+        check(get(update, "$push.list.$each.0"), &stored, "$push");
     }
     Ok(())
 }

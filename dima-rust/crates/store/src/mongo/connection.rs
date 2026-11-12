@@ -19,6 +19,7 @@
 //! the environment by the binary, never here.
 
 use crate::mongo::error::MongoError;
+use crate::mongo::write::{DroppedPathPolicy, DroppedPaths};
 use bson::{Document, doc};
 use mongodb::event::EventHandler;
 use mongodb::event::command::CommandEvent;
@@ -148,13 +149,29 @@ pub trait CommandHook: Send + Sync + 'static {
     fn succeeded(&self, _event: &CommandSucceeded<'_>) {}
     /// A command failed.
     fn failed(&self, _event: &CommandFailed<'_>) {}
+    /// A write named paths the schema does not know and ran anyway
+    /// ([`DroppedPathPolicy::Report`]): a mistake in the caller, to be logged.
+    fn dropped_paths(&self, _event: &DroppedPaths<'_>) {}
 }
 
 /// The connected database: cheap to clone, shared by every task.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MongoStore {
     client: Client,
     database: Database,
+    hook: Option<Arc<dyn CommandHook>>,
+    dropped_paths: DroppedPathPolicy,
+}
+
+impl fmt::Debug for MongoStore {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("MongoStore")
+            .field("database", &self.database.name())
+            .field("hook", &self.hook.is_some())
+            .field("dropped_paths", &self.dropped_paths)
+            .finish()
+    }
 }
 
 impl MongoStore {
@@ -171,8 +188,8 @@ impl MongoStore {
             MongoError::Config("the MongoDB URI is not a usable connection string (value omitted)")
         })?;
         apply_config(&mut options, config);
-        if let Some(hook) = hook {
-            options.command_event_handler = Some(monitor(hook));
+        if let Some(hook) = &hook {
+            options.command_event_handler = Some(monitor(Arc::clone(hook)));
         }
         let database_name = config
             .database
@@ -181,9 +198,31 @@ impl MongoStore {
             .unwrap_or_else(|| DEFAULT_DATABASE.to_owned());
         let client = Client::with_options(options)?;
         let database = client.database(&database_name);
-        let store = Self { client, database };
+        let store = Self {
+            client,
+            database,
+            hook,
+            dropped_paths: DroppedPathPolicy::default(),
+        };
         store.ping().await?;
         Ok(store)
+    }
+
+    /// The same store with another [`DroppedPathPolicy`] for its [`crate::mongo::write`]s
+    /// (the default fails in debug builds and reports in release builds).
+    pub fn with_dropped_path_policy(mut self, policy: DroppedPathPolicy) -> Self {
+        self.dropped_paths = policy;
+        self
+    }
+
+    /// The store's [`DroppedPathPolicy`].
+    pub fn dropped_path_policy(&self) -> DroppedPathPolicy {
+        self.dropped_paths
+    }
+
+    /// The telemetry hook given to [`MongoStore::connect`].
+    pub fn hook(&self) -> Option<&dyn CommandHook> {
+        self.hook.as_deref()
     }
 
     /// The driver client (sessions, other databases).

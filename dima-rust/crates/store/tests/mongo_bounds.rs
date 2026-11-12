@@ -30,12 +30,13 @@ const TOO_DEEP: PrepareError = PrepareError::TooDeep { limit: MAX_DEPTH };
 fn nesting_up_to_the_limit_is_accepted() -> Result<(), PrepareError> {
     let mut ctx = WriteContext::new(0);
     // The document itself is level 1, so `meta` may hold MAX_DEPTH - 1 levels.
-    prepare_insert(
+    let out = prepare_insert(
         &S,
         &doc! { "meta": deep(MAX_DEPTH - 1) },
         InsertStyle::Create,
         &mut ctx,
     )?;
+    assert!(out.document.contains_key("meta"));
     Ok(())
 }
 
@@ -125,12 +126,12 @@ fn many_pushes_and_changes_stay_linear() -> Result<(), PrepareError> {
     changes.extend((0..20_000).map(|i| Change::set("n", i)));
     let started = Instant::now();
     let mut ctx = WriteContext::new(0);
-    let Some(out) = prepare_save(&ARRAYS, &loaded, &changes, &mut ctx)? else {
+    let out = prepare_save(&ARRAYS, &loaded, &changes, &mut ctx)?;
+    let Some(update) = out.update else {
         panic!("nothing to save");
     };
     let elapsed = started.elapsed();
-    let pushed = out
-        .update
+    let pushed = update
         .get_document("$push")
         .and_then(|p| p.get_document("tags"))
         .and_then(|t| t.get_array("$each"))
@@ -138,10 +139,7 @@ fn many_pushes_and_changes_stay_linear() -> Result<(), PrepareError> {
         .ok();
     assert_eq!(pushed, Some(20_000));
     assert_eq!(
-        out.update
-            .get_document("$set")
-            .ok()
-            .and_then(|s| s.get("n")),
+        update.get_document("$set").ok().and_then(|s| s.get("n")),
         Some(&Bson::Int32(19_999))
     );
     // Quadratic behaviour (copying the 10 000-element array on every push) takes tens of
