@@ -1840,6 +1840,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-tts"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "dima-billing",
+ "dima-core",
+ "dima-http",
+ "dima-model",
+ "dima-store",
+ "dima-text",
+ "dima-twitch",
+ "redis",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-twitch"
 version = "0.1.0"
 dependencies = [
