@@ -12,6 +12,8 @@
 //!   or offline (`utils/cache.ts`), and the Dragonfly [`crate::permissions::RoleCache`].
 //! - [`speech`]: the end of a stream's speech session (`utils/speech.ts`).
 //! - [`cooldown_map`]: the bot's per-process chat cooldowns (`classes/cooldown.class.ts`).
+//! - [`keyword_store`]: the keyword cache's MongoDB and Dragonfly store
+//!   ([`crate::keywords::KeywordStorage`]).
 //! - [`user_level`], [`random_user`], [`ast_variables`], [`goal_error`]: small helpers of the
 //!   command language's host.
 //!
@@ -38,6 +40,7 @@ pub mod channel_cache;
 pub mod chat_history;
 pub mod cooldown_map;
 pub mod goal_error;
+pub mod keyword_store;
 pub mod lookup;
 pub mod random_user;
 pub mod speech;
