@@ -360,7 +360,7 @@ pub struct Account {
     /// Encrypted access token.
     #[serde(default)]
     pub access_token: Private<EncryptedToken>,
-    /// Access token expiry (epoch milliseconds).
+    /// Access token expiry (epoch seconds).
     #[serde(default)]
     pub access_token_expires_at: Option<JsNumber>,
     /// The account is active.
