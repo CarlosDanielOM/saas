@@ -1581,6 +1581,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dima-events"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bson",
+ "dima-core",
+ "dima-model",
+ "dima-store",
+ "dima-text",
+ "futures-util",
+ "mongodb",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dima-hoststats"
 version = "0.1.0"
 dependencies = [
