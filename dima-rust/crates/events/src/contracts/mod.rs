@@ -26,6 +26,10 @@ pub use validate::{
     Check, ContractError, MAX_JSON_BYTES, Mode, check_json, serialize_provider_data,
     validate_contract,
 };
+pub(crate) use validate::{
+    is_goal_item_key as validate_goal_item_key, is_outgoing_raid_condition as validate_outgoing_raid,
+    is_safe_integer as validate_is_safe_integer,
+};
 
 use crate::value::{Object, Value};
 use dima_model::StrEnum;
