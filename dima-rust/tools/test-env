@@ -8,6 +8,8 @@
 #   DIMA_TEST_DRAGONFLY     host:port of the local Dragonfly container (no authentication)
 #   DIMA_TEST_QDRANT_URL    base URL of the local Qdrant container (no authentication)
 #   DIMA_TEST_POSTGRES_URI  URI of the local Postgres container
+#   DIMA_TEST_REQUIRE_STORES=1  a test that needs one of these fails instead of skipping when it is
+#                           missing (MIGRATION.md section 8)
 #
 # Credentials are read from the running containers and never written to disk.
 # Tests create their own databases named dima_test_<crate>_<random> and drop them;
@@ -26,6 +28,7 @@ else
     printf 'export DIMA_TEST_MONGO_URI=%q\n' "mongodb://127.0.0.1:27017/?directConnection=true"
 fi
 
+printf 'export DIMA_TEST_REQUIRE_STORES=1\n'
 printf 'export DIMA_TEST_DRAGONFLY=%q\n' "127.0.0.1:6379"
 printf 'export DIMA_TEST_QDRANT_URL=%q\n' "http://127.0.0.1:6333"
 

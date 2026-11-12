@@ -221,6 +221,12 @@ A package is done when all of these hold:
 4. The ledger marks its files and contract items done, and the package report lists deviations,
    quirks, pauses and timeouts, non-default text classifications, and open questions.
 
+**A skipped test is not a passed test.** A test that needs a local store may skip when the store is
+absent, so that a plain `cargo test` works anywhere, but `tools/test-env` exports
+`DIMA_TEST_REQUIRE_STORES=1`, and with it set such a test must fail when the store, or the data it
+expects there, is missing. The lead's gate always runs with it. A read type must decode everything the
+write helpers for its collection accept: each collection has a write-then-read test.
+
 **The rig** runs the reference and the Rust candidate on the same inputs and compares responses,
 database and cache effects, outbound calls and socket emissions. Allowed differences are listed in its
 allow-list with a reason.
