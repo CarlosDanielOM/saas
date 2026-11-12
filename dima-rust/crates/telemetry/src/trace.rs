@@ -453,6 +453,13 @@ pub fn sign(secret: &SecretString, ids: &SpanIds) -> Option<(HexId<55>, String)>
 
 /// The remote parent of an incoming request: trusted only when the signature verifies, so public
 /// callers cannot force capture or join a trace.
+///
+/// The signature covers the `traceparent` text only: it has no expiry and no audience, so a
+/// header captured from one of our calls can be replayed. That is accepted: a replayed header can
+/// only make the request continue that trace, sampled or not as the header says, so the most it
+/// can do is force the capture of that request's spans. Those spans carry only fixed names,
+/// validated channel ids and durations, and are bounded and aggregated like any others (300 per
+/// flush, then dropped and counted); the header grants no access and reveals nothing.
 pub fn verify(
     secret: Option<&SecretString>,
     traceparent: &str,
