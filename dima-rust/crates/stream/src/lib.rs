@@ -6,6 +6,7 @@ pub mod defense_baseline;
 pub mod follow_ledger;
 pub mod follow_ledger_queue;
 mod seen;
+pub mod site_analytics;
 pub mod stream_memory_queue;
 
 use std::{future::IntoFuture, time::Duration};

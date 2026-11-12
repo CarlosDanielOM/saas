@@ -1,0 +1,660 @@
+{
+  "now": 1794355200000,
+  "counters": [
+    {
+      "op": "get",
+      "filter": null,
+      "result": {},
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "",
+      "result": {},
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "unknown",
+      "result": null,
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "registered",
+      "result": null,
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "live",
+      "result": null,
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "active",
+      "result": null,
+      "state": []
+    },
+    {
+      "op": "get",
+      "filter": "total_messages",
+      "result": null,
+      "state": []
+    },
+    {
+      "op": "inc",
+      "filter": "registered",
+      "value": 2,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "inc",
+      "filter": "live_users",
+      "value": 3,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "dec",
+      "filter": "active",
+      "value": 5,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3",
+            "authorized_accounts": "-5",
+            "active": "-5"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "inc",
+      "filter": "unknown",
+      "value": 7,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3",
+            "authorized_accounts": "-5",
+            "active": "-5",
+            "unknown": "7"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "dec",
+      "filter": "",
+      "value": 2,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3",
+            "authorized_accounts": "-5",
+            "active": "-5",
+            "unknown": "7",
+            "": "-2"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "inc",
+      "filter": "total_messages",
+      "value": 12,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3",
+            "authorized_accounts": "-5",
+            "active": "-5",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "12"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "dec",
+      "filter": "total_messages",
+      "value": 20,
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "2",
+            "registered": "2",
+            "live_users": "3",
+            "live": "3",
+            "authorized_accounts": "-5",
+            "active": "-5",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "concurrent",
+      "operations": [
+        {
+          "op": "dec",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "total_commands",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "registered",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "live",
+          "value": 2
+        },
+        {
+          "op": "inc",
+          "filter": "active",
+          "value": 2
+        },
+        {
+          "op": "dec",
+          "filter": "total_commands",
+          "value": 2
+        }
+      ],
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": null,
+      "result": {
+        "registered_users": "6",
+        "registered": "6",
+        "live_users": "11",
+        "live": "11",
+        "authorized_accounts": "3",
+        "active": "3",
+        "unknown": "7",
+        "": "-2",
+        "total_messages": "-8",
+        "total_commands": "4"
+      },
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "",
+      "result": {
+        "registered_users": "6",
+        "registered": "6",
+        "live_users": "11",
+        "live": "11",
+        "authorized_accounts": "3",
+        "active": "3",
+        "unknown": "7",
+        "": "-2",
+        "total_messages": "-8",
+        "total_commands": "4"
+      },
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "unknown",
+      "result": "7",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "registered",
+      "result": "6",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "registered_users",
+      "result": "6",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "live",
+      "result": "11",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "active",
+      "result": "3",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": "total_messages",
+      "result": "-8",
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    },
+    {
+      "op": "get",
+      "filter": " absent ",
+      "result": null,
+      "state": [
+        {
+          "key": "site:analytics:channels",
+          "type": "hash",
+          "value": {
+            "registered_users": "6",
+            "registered": "6",
+            "live_users": "11",
+            "live": "11",
+            "authorized_accounts": "3",
+            "active": "3",
+            "unknown": "7",
+            "": "-2",
+            "total_messages": "-8",
+            "total_commands": "4"
+          },
+          "ttl": -1
+        }
+      ]
+    }
+  ]
+}
