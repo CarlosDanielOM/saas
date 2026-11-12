@@ -1856,6 +1856,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dimafx-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dima-core",
+ "dima-http",
+ "dima-text",
+ "dima-web",
+ "http",
+ "http-body-util",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "dispatch2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

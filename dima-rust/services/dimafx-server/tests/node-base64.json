@@ -1,0 +1,105 @@
+{
+  "node": "v26.13.0",
+  "cases": [
+    {
+      "input": "",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "Zg",
+      "base64": "66",
+      "base64url": "66"
+    },
+    {
+      "input": "Zg=",
+      "base64": "66",
+      "base64url": "66"
+    },
+    {
+      "input": "Zg===junk",
+      "base64": "66",
+      "base64url": "66"
+    },
+    {
+      "input": "Z",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "Zh",
+      "base64": "66",
+      "base64url": "66"
+    },
+    {
+      "input": "Zm9",
+      "base64": "666f",
+      "base64url": "666f"
+    },
+    {
+      "input": "Zm9v",
+      "base64": "666f6f",
+      "base64url": "666f6f"
+    },
+    {
+      "input": " Z!m\n9v?",
+      "base64": "666f6f",
+      "base64url": "666f6f"
+    },
+    {
+      "input": "-_8",
+      "base64": "fbff",
+      "base64url": "fbff"
+    },
+    {
+      "input": "+/8=",
+      "base64": "fbff",
+      "base64url": "fbff"
+    },
+    {
+      "input": "====",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "ab=c",
+      "base64": "69",
+      "base64url": "69"
+    },
+    {
+      "input": "a",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "abcde",
+      "base64": "69b71d",
+      "base64url": "69b71d"
+    },
+    {
+      "input": "💩",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "ŁŁ",
+      "base64": "00",
+      "base64url": "00"
+    },
+    {
+      "input": "ＡＡ",
+      "base64": "",
+      "base64url": ""
+    },
+    {
+      "input": "ŁŁ",
+      "base64": "00",
+      "base64url": "00"
+    },
+    {
+      "input": "Zm9vĽAAAA",
+      "base64": "666f6f",
+      "base64url": "666f6f"
+    }
+  ]
+}
