@@ -275,6 +275,11 @@ impl Builder {
     /// `serve.max_streams`: every WebSocket of this server also holds one of the web server's
     /// stream slots (reserved before its handshake reaches Engine.IO), so a larger cap here
     /// would promise connections the web server refuses.
+    ///
+    /// It also compresses the browser client files (gzip and deflate, about 1.2 MB of
+    /// JavaScript and source maps, on one thread per file): about 160 ms in a debug build on
+    /// the development laptop, a fraction of that in a release build. It blocks the calling
+    /// thread meanwhile, once, before anything is served.
     pub fn build(mut self, serve: &dima_web::ServeOptions) -> Result<SocketIo, BuildError> {
         let connections = self.shared.options.max_connections;
         if connections > serve.max_streams {
@@ -334,6 +339,8 @@ impl Builder {
             families: self.families,
         });
         let shared = self.shared;
+        // The client files are compressed here, once (H4), not on a request.
+        let client_files = crate::client_files::ClientFiles::compress();
         let inner = Arc::new_cyclic(|weak: &Weak<ServerInner>| ServerInner {
             shared: Arc::clone(&shared),
             registry,
@@ -344,6 +351,7 @@ impl Builder {
                 }),
                 config,
             ),
+            client_files,
             connection_slots: Arc::new(tokio::sync::Semaphore::new(shared.options.max_connections)),
             engines: Mutex::new(Vec::new()),
             report: std::sync::OnceLock::new(),
@@ -391,6 +399,8 @@ pub(crate) struct ServerInner {
     pub registry: Arc<Registry>,
     connections: Mutex<HashMap<String, Arc<Connection>>>,
     pub engine: EngineIoService<EngineHandler, NotFoundService>,
+    /// The browser client files with their compressed forms.
+    pub client_files: crate::client_files::ClientFiles,
     /// `max_connections` slots: each Engine.IO session holds one from its handshake to its end.
     connection_slots: Arc<tokio::sync::Semaphore>,
     /// Every Engine.IO session whose tasks may still run: shutdown waits for them through

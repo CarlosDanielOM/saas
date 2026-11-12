@@ -129,7 +129,7 @@ where
     let upgrade = wants_upgrade(req.headers());
     match target {
         Some(target) if !upgrade && client_files::is_client_path(&target) => {
-            client_files::serve(req.headers(), &target).await
+            io.client_files.serve(req.headers(), &target)
         }
         Some(target) if target.starts_with("/socket.io/") => engine(io, req, target).await,
         _ => match inner.oneshot(req).await {
