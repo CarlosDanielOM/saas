@@ -1957,8 +1957,6 @@ dependencies = [
 [[package]]
 name = "engineioxide"
 version = "0.17.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0235543b6e1a5fef2a8a7871ae410d5d1c440d8ced9217ec0f1b344edfe30673"
 dependencies = [
  "bytes",
  "engineioxide-core",
@@ -1984,8 +1982,6 @@ dependencies = [
 [[package]]
 name = "engineioxide-core"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06c5f98b2d2338ec0713bc222c753bfd18746bd76cbb115afa18aa07c6096553"
 dependencies = [
  "base64 0.22.1",
  "bytes",

@@ -75,16 +75,6 @@ path = "tests/peek_packet.rs"
 name = "volatile"
 path = "tests/volatile.rs"
 
-[[bench]]
-name = "packet_decode"
-path = "benches/packet_decode.rs"
-harness = false
-
-[[bench]]
-name = "packet_encode"
-path = "benches/packet_encode.rs"
-harness = false
-
 [dependencies.bytes]
 version = "1.11"
 features = ["serde"]
@@ -165,10 +155,6 @@ optional = true
 
 [dev-dependencies.axum]
 version = "0.8"
-
-[dev-dependencies.criterion]
-version = "4"
-package = "codspeed-criterion-compat"
 
 [dev-dependencies.hyper]
 version = "1.9"
