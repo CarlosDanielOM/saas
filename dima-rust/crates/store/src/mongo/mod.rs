@@ -33,6 +33,6 @@ pub mod schema;
 pub mod transaction;
 pub mod update;
 
-pub use cast::{PrepareError, WriteContext};
+pub use cast::{MAX_DEPTH, PrepareError, WriteContext};
 pub use connection::{CommandHook, MongoConfig, MongoStore};
 pub use error::MongoError;

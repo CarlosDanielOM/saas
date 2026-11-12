@@ -31,7 +31,9 @@
 //! (none in the reference), dotted timestamp names, and casting of filter values (callers build
 //! filters with the right BSON types; see [`crate::mongo::id`]).
 
-use crate::mongo::cast::{Caster, PrepareError, WriteContext, get_path, truthy};
+use crate::mongo::cast::{
+    Caster, PrepareError, WriteContext, check_document_depth, get_path, truthy,
+};
 use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Leaf, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
@@ -178,9 +180,11 @@ pub fn prepare_update(
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<Option<PreparedUpdate>, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
             if stages.is_empty() {
@@ -265,9 +269,11 @@ pub fn prepare_find_one_and_update(
     returned: Returned,
     ctx: &mut WriteContext,
 ) -> Result<PreparedFindAndModify, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let prepared = match update {
         Update::Pipeline(stages) => {
             let stages = timestamps_on_pipeline(schema, stages, caster.ctx.now());
             (!stages.is_empty()).then_some(UpdateDoc::Pipeline(stages))
@@ -323,9 +329,11 @@ pub fn prepare_bulk_update(
     options: UpdateOptions,
     ctx: &mut WriteContext,
 ) -> Result<PreparedUpdate, PrepareError> {
+    let update = update.into();
+    check_inputs(filter, &update, &options)?;
     let filter = &node_filter(filter);
     let mut caster = Caster::new(ctx);
-    let prepared = match update.into() {
+    let prepared = match update {
         Update::Pipeline(stages) => {
             UpdateDoc::Pipeline(timestamps_on_pipeline(schema, stages, caster.ctx.now()))
         }
@@ -363,6 +371,24 @@ pub fn prepare_bulk_update(
         array_filters: node_array_filters(options.array_filters),
         dropped_paths: caster.dropped,
     })
+}
+
+/// Bounds the nesting of everything the caller passed ([`crate::mongo::cast::MAX_DEPTH`]).
+fn check_inputs(
+    filter: &Document,
+    update: &Update,
+    options: &UpdateOptions,
+) -> Result<(), PrepareError> {
+    check_document_depth(filter)?;
+    match update {
+        Update::Document(doc) => check_document_depth(doc)?,
+        Update::Pipeline(stages) => stages.iter().try_for_each(check_document_depth)?,
+    }
+    options
+        .array_filters
+        .iter()
+        .flatten()
+        .try_for_each(check_document_depth)
 }
 
 fn node_array_filters(filters: Option<Vec<Document>>) -> Option<Vec<Document>> {

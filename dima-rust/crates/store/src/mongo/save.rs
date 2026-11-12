@@ -29,11 +29,13 @@
 //! listed in the ledger's hooks table.
 
 use crate::mongo::cast::{
-    Caster, PrepareError, WriteContext, deep_equal, get_path, remove_path, set_path,
+    Caster, PrepareError, WriteContext, check_depth_at, check_document_depth, deep_equal, get_path,
+    get_path_mut, remove_path, set_path,
 };
 use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::{Field, Kind, Schema, TargetKind, resolve};
 use bson::{Bson, Document};
+use std::collections::{HashMap, HashSet};
 
 /// One change the code makes to a loaded document before calling `save()`.
 #[derive(Clone, Debug, PartialEq)]
@@ -82,6 +84,20 @@ pub fn prepare_save(
     ctx: &mut WriteContext,
 ) -> Result<Option<PreparedSave>, PrepareError> {
     let id = loaded.get("_id").cloned().ok_or(PrepareError::MissingId)?;
+    check_document_depth(loaded)?;
+    for change in changes {
+        match change {
+            // A value set at `a.b` sits at level 3 of the document; a pushed one, one deeper.
+            Change::Set(path, value) => check_depth_at(value, path.split('.').count() + 1)?,
+            Change::Unset(_) => {}
+            Change::Push(path, values) => {
+                let level = path.split('.').count() + 2;
+                values
+                    .iter()
+                    .try_for_each(|value| check_depth_at(value, level))?;
+            }
+        }
+    }
     let mut caster = Caster::new(ctx);
     let (mut doc, mut defaults) = caster.hydrate(schema, loaded)?;
     let mut tracker = Tracker::default();
@@ -152,22 +168,23 @@ pub fn prepare_save(
                     .iter()
                     .map(|value| caster.cast_array_element(target, value.clone(), path))
                     .collect::<Result<_, _>>()?;
-                let mut items = match get_path(&doc, path) {
-                    Some(Bson::Array(items)) => items.clone(),
-                    None | Some(Bson::Null) => Vec::new(),
+                // Appended in place: repeated pushes stay linear in what they add.
+                match get_path_mut(&mut doc, path) {
+                    Some(Bson::Array(items)) => items.extend(cast.iter().cloned()),
+                    None | Some(Bson::Null) => {
+                        if !set_path(&mut doc, path, Bson::Array(cast.clone())) {
+                            return Err(PrepareError::InvalidChange {
+                                path: path.clone(),
+                                reason: "its parent is not a document",
+                            });
+                        }
+                    }
                     Some(_) => {
                         return Err(PrepareError::InvalidChange {
                             path: path.clone(),
                             reason: "not an array",
                         });
                     }
-                };
-                items.extend(cast.iter().cloned());
-                if !set_path(&mut doc, path, Bson::Array(items)) {
-                    return Err(PrepareError::InvalidChange {
-                        path: path.clone(),
-                        reason: "its parent is not a document",
-                    });
                 }
                 defaults.retain(|d| d != path);
                 tracker.modify(path);
@@ -199,7 +216,7 @@ pub fn prepare_save(
             dirty.push((path.clone(), Some(value.clone())));
         }
     }
-    let all: Vec<String> = dirty.iter().map(|(p, _)| p.clone()).collect();
+    let all: HashSet<String> = dirty.iter().map(|(p, _)| p.clone()).collect();
     let mut minimal = Vec::new();
     for (path, value) in dirty {
         let pieces: Vec<&str> = path.split('.').collect();
@@ -283,11 +300,13 @@ pub fn prepare_save(
     }))
 }
 
-/// Which paths changed, in order, and how each changed array is to be written.
+/// Which paths changed, in order, and how each changed array is to be written. Lookups are
+/// hashed, so a save with many changes stays linear.
 #[derive(Default)]
 struct Tracker {
     modified: Vec<String>,
-    arrays: Vec<(String, ArrayWrite)>,
+    modified_set: HashSet<String>,
+    arrays: HashMap<String, ArrayWrite>,
 }
 
 enum ArrayWrite {
@@ -297,40 +316,35 @@ enum ArrayWrite {
 
 impl Tracker {
     fn is_modified(&self, path: &str) -> bool {
-        self.modified.iter().any(|p| p == path)
+        self.modified_set.contains(path)
     }
 
     fn modify(&mut self, path: &str) {
-        if !self.is_modified(path) {
+        if self.modified_set.insert(path.to_owned()) {
             self.modified.push(path.to_owned());
         }
     }
 
     fn replace_array(&mut self, path: &str) {
-        match self.arrays.iter_mut().find(|(p, _)| p == path) {
-            Some((_, write)) => *write = ArrayWrite::Replace,
-            None => self.arrays.push((path.to_owned(), ArrayWrite::Replace)),
-        }
+        self.arrays.insert(path.to_owned(), ArrayWrite::Replace);
     }
 
     fn push(&mut self, path: &str, values: Vec<Bson>) {
-        match self.arrays.iter_mut().find(|(p, _)| p == path) {
-            Some((_, ArrayWrite::Push(existing))) => existing.extend(values),
-            Some((_, ArrayWrite::Replace)) => {}
-            None => self
-                .arrays
-                .push((path.to_owned(), ArrayWrite::Push(values))),
+        match self.arrays.get_mut(path) {
+            Some(ArrayWrite::Push(existing)) => existing.extend(values),
+            Some(ArrayWrite::Replace) => {}
+            None => {
+                self.arrays
+                    .insert(path.to_owned(), ArrayWrite::Push(values));
+            }
         }
     }
 
     fn pushed(&self, path: &str) -> Option<&[Bson]> {
-        self.arrays
-            .iter()
-            .find(|(p, _)| p == path)
-            .and_then(|(_, write)| match write {
-                ArrayWrite::Push(values) => Some(values.as_slice()),
-                ArrayWrite::Replace => None,
-            })
+        match self.arrays.get(path) {
+            Some(ArrayWrite::Push(values)) => Some(values.as_slice()),
+            _ => None,
+        }
     }
 }
 

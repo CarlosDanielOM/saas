@@ -15,7 +15,9 @@
 //! the caller used. `minimize` removes empty objects (not arrays, not Maps, and not an object inside an array,
 //! which is kept even when emptied).
 
-use crate::mongo::cast::{Caster, PrepareError, WriteContext, minimize, truthy};
+use crate::mongo::cast::{
+    Caster, PrepareError, WriteContext, check_document_depth, minimize, truthy,
+};
 use crate::mongo::number::normalize_js_numbers;
 use crate::mongo::schema::Schema;
 use bson::{Bson, Document};
@@ -47,6 +49,7 @@ pub fn prepare_insert(
     style: InsertStyle,
     ctx: &mut WriteContext,
 ) -> Result<PreparedInsert, PrepareError> {
+    check_document_depth(document)?;
     let mut caster = Caster::new(ctx);
     let mut doc = caster.construct(schema, Some(document), "")?;
     let now = Bson::DateTime(caster.ctx.now());

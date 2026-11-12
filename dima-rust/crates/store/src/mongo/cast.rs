@@ -114,12 +114,56 @@ pub enum PrepareError {
     /// The loaded document of a save has no `_id`.
     #[error("the loaded document has no _id")]
     MissingId,
+    /// An input nests documents and arrays deeper than [`MAX_DEPTH`] levels (MongoDB stores at
+    /// most 100), or a schema refers to itself through defaults deeper than that.
+    #[error("nested deeper than {limit} levels")]
+    TooDeep {
+        /// The limit.
+        limit: usize,
+    },
+}
+
+/// The deepest nesting of documents and arrays the write helpers accept in any input (the
+/// top-level document is level 1). MongoDB refuses to store documents nested more than 100
+/// levels, so no valid write comes close; the limit bounds the helpers' recursion.
+pub const MAX_DEPTH: usize = 128;
+
+/// Fails when `value`, placed at nesting level `level` (a value directly in the top-level
+/// document is at level 2), nests documents and arrays deeper than [`MAX_DEPTH`]. Iterative, so
+/// the check itself cannot overflow the stack.
+pub(crate) fn check_depth_at(value: &Bson, level: usize) -> Result<(), PrepareError> {
+    depth_within(vec![(value, level)])
+}
+
+/// [`check_depth`] for a document (level 1).
+pub(crate) fn check_document_depth(doc: &Document) -> Result<(), PrepareError> {
+    depth_within(doc.values().map(|v| (v, 2)).collect())
+}
+
+fn depth_within(mut stack: Vec<(&Bson, usize)>) -> Result<(), PrepareError> {
+    while let Some((value, depth)) = stack.pop() {
+        let (Bson::Document(_) | Bson::Array(_)) = value else {
+            continue;
+        };
+        if depth > MAX_DEPTH {
+            return Err(PrepareError::TooDeep { limit: MAX_DEPTH });
+        }
+        match value {
+            Bson::Document(inner) => stack.extend(inner.values().map(|v| (v, depth + 1))),
+            Bson::Array(items) => stack.extend(items.iter().map(|v| (v, depth + 1))),
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Collects what strict mode dropped while casting.
 pub(crate) struct Caster<'c> {
     pub ctx: &'c mut WriteContext,
     pub dropped: Vec<String>,
+    /// How many documents deep the caster is building (bounds schemas that refer to themselves
+    /// through their defaults).
+    depth: usize,
 }
 
 impl<'c> Caster<'c> {
@@ -127,7 +171,22 @@ impl<'c> Caster<'c> {
         Self {
             ctx,
             dropped: Vec::new(),
+            depth: 0,
         }
+    }
+
+    /// Runs `build` one document level deeper, failing past [`MAX_DEPTH`].
+    fn deeper<T>(
+        &mut self,
+        build: impl FnOnce(&mut Self) -> Result<T, PrepareError>,
+    ) -> Result<T, PrepareError> {
+        if self.depth >= MAX_DEPTH {
+            return Err(PrepareError::TooDeep { limit: MAX_DEPTH });
+        }
+        self.depth += 1;
+        let out = build(self);
+        self.depth -= 1;
+        out
     }
 
     pub fn drop_path(&mut self, path: String) {
@@ -186,6 +245,15 @@ impl<'c> Caster<'c> {
     /// A new document built from `input` as Mongoose's `Document` constructor builds it (see
     /// the module notes). Unknown keys are dropped and recorded.
     pub fn construct(
+        &mut self,
+        schema: &Schema,
+        input: Option<&Document>,
+        prefix: &str,
+    ) -> Result<Document, PrepareError> {
+        self.deeper(|caster| caster.construct_here(schema, input, prefix))
+    }
+
+    fn construct_here(
         &mut self,
         schema: &Schema,
         input: Option<&Document>,
@@ -310,6 +378,15 @@ impl<'c> Caster<'c> {
         given: &Document,
         prefix: &str,
     ) -> Result<Document, PrepareError> {
+        self.deeper(|caster| caster.set_nested_here(fields, given, prefix))
+    }
+
+    fn set_nested_here(
+        &mut self,
+        fields: &'static [Field],
+        given: &Document,
+        prefix: &str,
+    ) -> Result<Document, PrepareError> {
         let mut out = Document::new();
         for key in keys_in_order(fields.iter().map(|f| f.name), given) {
             let Some(value) = given.get(&key) else {
@@ -338,6 +415,15 @@ impl<'c> Caster<'c> {
     /// `$applyDefaultsToNested`: every default under a given nested object, in path order,
     /// creating missing (or null) intermediate objects on the way.
     fn apply_defaults_to_nested(
+        &mut self,
+        nested: &mut Document,
+        fields: &'static [Field],
+        prefix: &str,
+    ) -> Result<(), PrepareError> {
+        self.deeper(|caster| caster.apply_defaults_to_nested_here(nested, fields, prefix))
+    }
+
+    fn apply_defaults_to_nested_here(
         &mut self,
         nested: &mut Document,
         fields: &'static [Field],
@@ -391,6 +477,14 @@ impl<'c> Caster<'c> {
         schema: &Schema,
         given: &Document,
     ) -> Result<(Document, Vec<String>), PrepareError> {
+        self.deeper(|caster| caster.init_subdocument_here(schema, given))
+    }
+
+    fn init_subdocument_here(
+        &mut self,
+        schema: &Schema,
+        given: &Document,
+    ) -> Result<(Document, Vec<String>), PrepareError> {
         let mut doc = skeleton(schema);
         merge_init(&mut doc, given);
         let mut added = Vec::new();
@@ -415,6 +509,14 @@ impl<'c> Caster<'c> {
     /// document and the default paths in the order Mongoose marks them (paths inside single
     /// nested sub-documents included).
     pub fn hydrate(
+        &mut self,
+        schema: &Schema,
+        stored: &Document,
+    ) -> Result<(Document, Vec<String>), PrepareError> {
+        self.deeper(|caster| caster.hydrate_here(schema, stored))
+    }
+
+    fn hydrate_here(
         &mut self,
         schema: &Schema,
         stored: &Document,
@@ -673,6 +775,21 @@ pub(crate) fn get_path<'a>(doc: &'a Document, path: &str) -> Option<&'a Bson> {
         current = match current {
             Bson::Document(inner) => inner.get(piece)?,
             Bson::Array(items) => items.get(piece.parse::<usize>().ok()?)?,
+            _ => return None,
+        };
+    }
+    Some(current)
+}
+
+/// [`get_path`], mutably.
+pub(crate) fn get_path_mut<'a>(doc: &'a mut Document, path: &str) -> Option<&'a mut Bson> {
+    let mut pieces = path.split('.');
+    let first = pieces.next()?;
+    let mut current = doc.get_mut(first)?;
+    for piece in pieces {
+        current = match current {
+            Bson::Document(inner) => inner.get_mut(piece)?,
+            Bson::Array(items) => items.get_mut(piece.parse::<usize>().ok()?)?,
             _ => return None,
         };
     }
