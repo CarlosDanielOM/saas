@@ -517,6 +517,96 @@ class OpsTests(unittest.TestCase):
         self.assertGreater(self.saved()["deployed_at"], 1_700_000_000)
         self.assertIn("Retention skipped", errors.getvalue())
 
+    def site_releases(self, count, newest_status="deployed"):
+        """Stored site releases (newest last), each with one hashed file of its own in its bundle."""
+        paths = []
+        for index in range(count):
+            path = self.stored_run("site", 300 + index, newest_status if index == count - 1 else "deployed", deployed_at=2000 + index)
+            (path / "bundle" / f"chunk-R{index:07d}.js").write_text("release")
+            paths.append(path)
+        return paths
+
+    def live_assets(self, output):
+        """Hashed and other files in a served folder: two unused old ones, the rest must survive pruning."""
+        old = {"chunk-OLD00001.js": "unused", "styles-OLD00002.css": "unused"}
+        kept = {"chunk-R0000000.js": "oldest kept release", "chunk-NEW00001.js": "written recently by other means",
+                "robots.txt": "not hashed", "favicon.ico": "not hashed", "main-legacy.js": "not hash-shaped"}
+        for name, text in {**old, **kept}.items():
+            (output / name).write_text(text)
+        (output / "assets").mkdir(exist_ok=True)
+        (output / "assets" / "chunk-OLD00003.js").write_text("subfolders are never pruned")
+        for name in [*old, "robots.txt", "favicon.ico", "main-legacy.js", "chunk-R0000000.js", "assets/chunk-OLD00003.js"]:
+            os.utime(output / name, (1000, 1000))
+        return set(old), set(kept) | {"assets/chunk-OLD00003.js"}
+
+    def test_site_deploy_removes_build_files_no_recent_release_uses(self):
+        output = self.website()
+        self.site_releases(9)
+        old, kept = self.live_assets(output)
+        (self.path / "bundle" / "chunk-CUR00001.js").write_text("this release")
+        self.receipt.update(artifact_digest=mod.tree_hash(self.path / "bundle"), baseline_bundle=mod.tree_hash(output))
+        self.ops.save(self.path, self.receipt)
+        with patch.object(self.ops, "verify_served"), contextlib.redirect_stdout(io.StringIO()):
+            self.ops.deploy(RUN)
+        self.assertFalse(any((output / name).exists() for name in old))
+        self.assertTrue(all((output / name).exists() for name in kept | {"chunk-CUR00001.js", "index.html", "new.js", "old.js"}))
+        self.assertEqual(self.saved()["assets_pruned"], len(old))
+        self.assertEqual(self.saved()["deployed_bundle"], mod.tree_hash(output))
+
+    def test_site_deploy_keeps_every_file_until_ten_releases_define_the_window(self):
+        output = self.website()
+        self.site_releases(8)
+        old, kept = self.live_assets(output)
+        self.receipt["baseline_bundle"] = mod.tree_hash(output)
+        self.ops.save(self.path, self.receipt)
+        with patch.object(self.ops, "verify_served"), contextlib.redirect_stdout(io.StringIO()):
+            self.ops.deploy(RUN)
+        self.assertTrue(all((output / name).exists() for name in old | kept))
+        self.assertEqual(self.saved()["assets_pruned"], 0)
+
+    def test_asset_pruning_failure_never_fails_a_release(self):
+        output = self.website()
+        errors = io.StringIO()
+        with patch.object(self.ops, "verify_served"), patch.object(self.ops, "prune_assets", side_effect=OSError("disk")), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+            self.ops.deploy(RUN)
+        self.assertEqual(self.saved()["status"], "deployed")
+        self.assertEqual((output / "index.html").read_text(), "new homepage")
+        self.assertIn("Asset pruning skipped", errors.getvalue())
+
+    def test_prune_command_trims_the_live_folder_and_the_current_release_can_still_roll_back(self):
+        target = mod.TARGETS["site"]
+        output = self.root / target.project / target.output
+        output.mkdir(parents=True)
+        (output / "index.html").write_text("current homepage")
+        self.ops.current["Mounts"] = [{"Destination": "/usr/share/nginx/html", "Source": str(output), "Type": "bind", "RW": False}]
+        releases = self.site_releases(10)
+        old, kept = self.live_assets(output)
+        (output / "chunk-R0000009.js").write_text("current release")
+        current = releases[-1]
+        receipt = json.loads((current / "receipt.json").read_text())
+        receipt.update(deployed_bundle=mod.tree_hash(output), previous_bundle_digest=mod.tree_hash(current / "previous-bundle"))
+        self.ops.save(current, receipt)
+        (output / "index.html").write_text("changed outside the helper")
+        with self.assertRaisesRegex(mod.OpsError, "differ from the current release"):
+            self.ops.prune("site")
+        self.assertTrue(all((output / name).exists() for name in old))
+        (output / "index.html").write_text("current homepage")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.ops.prune("site")
+        self.assertFalse(any((output / name).exists() for name in old))
+        self.assertTrue(all((output / name).exists() for name in kept | {"chunk-R0000009.js", "index.html"}))
+        saved = json.loads((current / "receipt.json").read_text())
+        self.assertEqual((saved["deployed_bundle"], saved["assets_pruned"]), (mod.tree_hash(output), len(old)))
+        with patch.object(self.ops, "verify_served"), contextlib.redirect_stdout(io.StringIO()):
+            self.ops.rollback(current.name)
+        self.assertEqual(json.loads((current / "receipt.json").read_text())["status"], "rolled-back")
+
+    def test_prune_is_only_offered_for_served_folders(self):
+        for target in ("cron", "api"):
+            with self.subTest(target=target), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                mod.main(["prune", target])
+
     def website(self):
         target = mod.TARGETS["site"]
         output = self.root / target.project / target.output

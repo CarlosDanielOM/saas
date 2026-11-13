@@ -32,6 +32,9 @@ EXCLUDED = {"node_modules", "dist", "target", ".git", ".angular", ".astro", "dat
 RETAINED_RELEASES = 10
 STALE_CANDIDATE_SECONDS = 7 * 24 * 3600
 RETAINED_DIRECTORIES = ("previous-bundle", "bundle", "source", "fixtures", "rust-source", "rust-work", "rust-artifacts")
+# Content-hashed build files at the top of a served folder (Angular's `chunk-ABCD1234.js`). Publishing keeps
+# old ones for open tabs; files no release in the retention window uses are removed. Nothing else is pruned.
+HASHED_ASSET = re.compile(r"[a-z][a-z0-9-]*-[A-Z0-9]{8}\.(?:js|css)(?:\.map)?")
 
 
 class OpsError(Exception):
@@ -228,8 +231,8 @@ class Ops:
     def intact(receipt):
         require(not receipt.get("pruned"), "This run is older than the retention window and its stored files were removed; build a new run")
 
-    def retain(self, name):
-        """Remove the stored bundles and sources of old runs for one target. Returns how many runs were trimmed."""
+    def runs(self, name):
+        """(release time, path, receipt) of every run of one target that belongs to this checkout."""
         runs = []
         for path in self.state.glob(name + "-*"):
             if path.is_symlink() or not path.is_dir() or not RUN_RE.fullmatch(path.name):
@@ -244,7 +247,17 @@ class Ops:
             # Receipts written before releases were timestamped: the backup is created at deploy time.
             when = receipt.get("deployed_at") or (backup if backup.is_dir() else path / "receipt.json").stat().st_mtime
             runs.append((when, path, receipt))
-        releases = sorted((run for run in runs if run[2].get("status") in {"deployed", "rolled-back"}), key=lambda run: run[0], reverse=True)
+        return runs
+
+    def releases(self, name, runs=None):
+        """Released runs of one target, newest first."""
+        return sorted((run for run in (self.runs(name) if runs is None else runs) if run[2].get("status") in {"deployed", "rolled-back"}),
+                      key=lambda run: run[0], reverse=True)
+
+    def retain(self, name):
+        """Remove the stored bundles and sources of old runs for one target. Returns how many runs were trimmed."""
+        runs = self.runs(name)
+        releases = self.releases(name, runs)
         cutoff = time.time() - STALE_CANDIDATE_SECONDS
         # Candidates that were never released are dropped once stale. A run that is mid-verify,
         # mid-deploy or holds recovery state is never touched, however old.
@@ -626,6 +639,42 @@ class Ops:
                 served = self.docker("exec", live["Id"], "wget", "-qO-", "http://127.0.0.1/" + name, capture=True, timeout=15)
                 require(served.encode() == file.read_bytes(), f"Served {name} differs from tested bundle")
 
+    def prune_assets(self, name, output, bundle, current_run):
+        """Delete hashed build files that none of the newest RETAINED_RELEASES releases use. Returns how many."""
+        others = [run for run in self.releases(name) if run[1].name != current_run][:RETAINED_RELEASES - 1]
+        # Until ten releases with known file lists define the window, keep everything.
+        if len(others) < RETAINED_RELEASES - 1 or any(not (path / "bundle").is_dir() for _, path, _ in others):
+            return 0
+        keep = {file.name for file in bundle.iterdir() if file.is_file()}
+        for _, path, _ in others:
+            keep |= {file.name for file in (path / "bundle").iterdir() if file.is_file()}
+        # A file written since the oldest kept release stays as well, e.g. from a build published by other means.
+        since = others[-1][0]
+        removed = 0
+        for file in output.iterdir():
+            if (file.is_symlink() or not file.is_file() or not HASHED_ASSET.fullmatch(file.name)
+                    or file.name in keep or file.stat().st_mtime >= since):
+                continue
+            file.unlink()
+            removed += 1
+        return removed
+
+    def prune(self, name):
+        """Apply the asset window to the live folder now; the current release's rollback keeps working."""
+        target = TARGETS[name]
+        require(bool(target.output), "prune applies to site, admin and docs")
+        releases = self.releases(name)
+        require(bool(releases) and releases[0][2].get("status") == "deployed", "This target has no current release")
+        _, path, receipt = releases[0]
+        self.intact(receipt)
+        output = self.live_output(target, self.live(target))
+        require(tree_hash(output) == receipt.get("deployed_bundle"), "Live files differ from the current release; deploy through the helper first")
+        removed = self.prune_assets(name, output, path / "bundle", receipt["run"])
+        receipt["deployed_bundle"] = tree_hash(output)
+        receipt["assets_pruned"] = receipt.get("assets_pruned", 0) + removed
+        self.save(path, receipt)
+        print(f"Removed {removed} build files no {name} release among the newest {RETAINED_RELEASES} uses; current release {receipt['run']} can still be rolled back")
+
     def deploy(self, run_id):
         path, receipt, target = self.load(run_id)
         self.intact(receipt)
@@ -647,6 +696,10 @@ class Ops:
         try:
             if target.output:
                 self.publish(path / "bundle", output)
+                try:
+                    receipt["assets_pruned"] = self.prune_assets(receipt["target"], output, path / "bundle", run_id)
+                except Exception as exc:  # housekeeping never fails a release
+                    print(f"Asset pruning skipped: {exc}", file=sys.stderr)
                 self.verify_served(target, live, path / "bundle")
                 receipt["deployed_bundle"] = tree_hash(output)
             else:
@@ -762,6 +815,8 @@ def main(argv=None):
         sub.add_argument("target", choices=TARGETS)
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
+    sub = commands.add_parser("prune", help="remove build files no release among the newest 10 uses")
+    sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
     sub = commands.add_parser("preview")
     sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
     sub.add_argument("--port", type=int, default=4201)
@@ -806,6 +861,8 @@ def main(argv=None):
             ops.build(args.target, args.source_dir)
         elif args.command == "verify":
             ops.verify(args.run, args.check, args.fixtures, args.seed_models, args.test_env, args.dependency)
+        elif args.command == "prune":
+            ops.prune(args.target)
         else:
             getattr(ops, args.command)(args.run)
     return 0
