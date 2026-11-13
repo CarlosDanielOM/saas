@@ -227,7 +227,7 @@
                     </span>
                   </div>
                   @if (!canAttachItem(item)) {
-                    <span class="lf-chip lf-chip--xs" [title]="t('triggers.mediaComingSoon')">{{ t('triggers.page.notTriggerReady') }}</span>
+                    <span class="lf-chip lf-chip--xs" [title]="t('triggers.mediaUnavailable')">{{ t('triggers.page.notTriggerReady') }}</span>
                   } @else if (usageFor(item._id); as uses) {
                     <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t(uses === 1 ? 'triggers.page.usedOne' : 'triggers.page.usedMany', { count: uses }) }}</span>
                   } @else if (canAttach()) {
@@ -501,7 +501,7 @@
           (dragleave)="handleUploadDragLeave($event)"
           (drop)="handleUploadDrop($event)"
         >
-          <input #uploadFileInput type="file" class="lf-drop__input" accept="video/*,audio/*" (change)="onUploadFileChange($event)" />
+          <input #uploadFileInput type="file" class="lf-drop__input" accept="image/*,video/*,audio/*" (change)="onUploadFileChange($event)" />
           <lucide-icon class="lf-icon lf-drop__icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
           <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
           <span>

@@ -59,6 +59,7 @@ import {
   MediaScope,
   MediaType,
   PlanTier,
+  SUPPORTED_TRIGGER_MEDIA_TYPES,
   TriggerRecord,
   TriggerTestPayload,
   UpdateTriggerRequest
@@ -109,7 +110,6 @@ const DEFAULT_LIBRARY_META: MediaLibraryMeta = {
   quotaBytesLimit: 0
 };
 
-const SUPPORTED_TRIGGER_MEDIA_TYPES = new Set<MediaType>(['video', 'audio']);
 const TRIGGER_NAME_REGEX = /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/;
 const SAFE_NAME_MAX_LENGTH = 60;
 

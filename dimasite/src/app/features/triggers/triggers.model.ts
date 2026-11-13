@@ -1,6 +1,7 @@
 export type PlanTier = 'free' | 'premium' | 'pro';
 export type MediaScope = 'public' | 'private';
 export type MediaType = 'video' | 'audio' | 'image' | 'gif';
+export const SUPPORTED_TRIGGER_MEDIA_TYPES: ReadonlySet<MediaType> = new Set(['video', 'audio', 'image', 'gif']);
 export type TriggersTab = 'library' | 'marketplace';
 
 export interface ApiEnvelope<T> {

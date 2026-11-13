@@ -15,7 +15,8 @@ import { ToastService } from '../../../services/toast.service';
 import {
   MediaAsset,
   MediaLibraryMutationResult,
-  MediaType
+  MediaType,
+  SUPPORTED_TRIGGER_MEDIA_TYPES
 } from '../triggers.model';
 import { TriggersService } from '../triggers.service';
 import { LazyVideoFrameDirective } from '../lazy-video-frame.directive';
@@ -154,7 +155,7 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   }
 
   isTriggerReady(asset: MediaAsset): boolean {
-    return asset.mediaType === 'audio' || asset.mediaType === 'video';
+    return SUPPORTED_TRIGGER_MEDIA_TYPES.has(asset.mediaType);
   }
 
   refreshAssets(): void {
