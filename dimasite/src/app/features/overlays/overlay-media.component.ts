@@ -7,20 +7,16 @@ export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progres
   selector: 'app-overlay-media',
   template: `
     @if (media().type === 'image') {
-      <img [src]="media().url" [style.object-fit]="fit()" [alt]="media().title" (load)="started.emit(undefined)" (error)="failed.emit()" />
+      <img [src]="media().url" [style.object-fit]="fit()" alt="" (load)="started.emit(undefined)" (error)="failed.emit()" />
     } @else {
       <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
         (canplay)="play()" (playing)="onPlaying()" (waiting)="recovering()" (stalled)="recovering()" (ended)="ended.emit()" (error)="failed.emit()"></video>
       @if (blocked()) { <button type="button" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation(); play()">{{ playLabel() }}</button> }
-      @if (media().type === 'audio' && showAudioLabel()) { <span class="audio-label">{{ media().title }}</span> }
     }
-    @if (showTitle()) { <span class="media-title">{{ media().title }}</span> }
   `,
   styles: `
     :host { position:absolute; inset:0; display:block; overflow:hidden; border-radius:inherit; background:transparent }
     video,img { width:100%; height:100%; object-fit:contain; display:block }
-    .media-title { position:absolute; bottom:0; left:0; right:0; padding:4px 6px; color:white; background:#10121acc; font:10px/1.3 sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none }
-    .audio-label { position:absolute; inset:15%; display:grid; place-content:center; color:white; font:12px/1.5 sans-serif; overflow-wrap:anywhere }
     button { position:absolute; z-index:1; inset:0; margin:auto; width:max-content; max-width:100%; height:44px; min-width:44px; padding:8px; border:1px solid #ddd; border-radius:8px; background:#22143f; color:#fff; cursor:pointer }
     button:focus-visible { outline:3px solid #c4b5fd }
   `,
@@ -29,8 +25,6 @@ export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progres
 export class OverlayMediaComponent {
   readonly media = input.required<TestMedia>();
   readonly muted = input(false);
-  readonly showTitle = input(true);
-  readonly showAudioLabel = input(true);
   readonly fit = input<'contain' | 'cover'>('contain');
   readonly playLabel = input.required<string>();
   readonly ended = output<void>();

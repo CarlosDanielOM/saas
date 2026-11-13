@@ -10,6 +10,7 @@ wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8
 wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(rate * 2, 28);
 wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(wav.length - 44, 40);
 for (let i = 0; i < rate * seconds; i++) wav.writeInt16LE(Math.sin(i * 2 * Math.PI * 440 / rate) * 2000, 44 + i * 2);
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 async function until(predicate, label) { for (let i = 0; i < 300; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 20)); } throw new Error(label); }
 async function screenshot(page, name) { if (!process.env.SAAS_SCREENSHOT_DIR) return; await mkdir(process.env.SAAS_SCREENSHOT_DIR, { recursive: true }); await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/${name}.png`, fullPage: true }); }
@@ -27,7 +28,7 @@ try {
   });
   await runtime.route('**/*', route => {
     const url = new URL(route.request().url());
-    if (url.hostname === 'fixture.invalid') return url.pathname === '/broken.wav' ? route.fulfill({ status: 503 }) : route.fulfill({ contentType: 'audio/wav', body: wav });
+    if (url.hostname === 'fixture.invalid') return url.pathname === '/broken.wav' ? route.fulfill({ status: 503 }) : url.pathname === '/pic.png' ? route.fulfill({ contentType: 'image/png', body: png }) : route.fulfill({ contentType: 'audio/wav', body: wav });
     if (url.origin === new URL(base).origin) return route.continue();
     if (url.pathname.includes('/events/')) return route.fulfill({ json: { data: events.get(url.pathname.split('/').at(-1)) } });
     if (url.pathname.startsWith('/overlay-studio/public/')) return route.fulfill({ json: { data: { revision: 1, snapshot } } });
@@ -62,14 +63,23 @@ try {
   await until(() => outbound.some(e => e[0] === 'overlay-ended' && e[1] === 'broken'), 'failed media releases its queue slot');
   assert(outbound.some(e => e[0] === 'overlay-health' && e[1].issue === 'media'));
   await play('after-failure', [widget], 0);
-  events.set('trigger-audio', { id: 'trigger-audio', kind: 'trigger', snapshot: { ...snapshot, widgets: [{ ...widget, kind: 'trigger' }] }, media: { type: 'audio', url: 'https://fixture.invalid/speech.wav', title: 'Trigger title', volume: .75 } });
-  for (const ws of sockets) ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-event', { id: 'trigger-audio', kind: 'trigger' }])}`);
-  await page.locator('[data-event="trigger"] video').waitFor();
-  assert.equal(await page.locator('[data-event="trigger"] .audio-label').innerText(), 'Trigger title');
-  assert.equal(await page.locator('[data-event="trigger"] .media-title').innerText(), 'Trigger title');
-  await until(() => outbound.some(e => e[0] === 'overlay-ended' && e[1] === 'trigger-audio'), 'trigger completes normally');
+  // Trigger media never shows its file name on stream: no caption strip, no audio label, no alt text.
+  for (const [type, url] of [['video', 'https://fixture.invalid/clip.webm'], ['audio', 'https://fixture.invalid/speech.wav'], ['image', 'https://fixture.invalid/pic.png']]) {
+    const id = `trigger-${type}`;
+    events.set(id, { id, kind: 'trigger', snapshot: { ...snapshot, widgets: [{ ...widget, kind: 'trigger' }] }, media: { type, url, title: 'Se_esta_volviendo_salvaje', volume: .75 } });
+    for (const ws of sockets) ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-event', { id, kind: 'trigger' }])}`);
+    await page.locator(`[data-event="trigger"] ${type === 'image' ? 'img' : 'video'}`).waitFor();
+    if (type === 'image') { await page.waitForFunction(() => document.querySelector('[data-event="trigger"] img')?.complete); assert.equal(await page.locator('[data-event="trigger"] img').getAttribute('alt'), ''); }
+    else await page.waitForFunction(() => [...document.querySelectorAll('[data-event="trigger"] video')].some(v => v.currentTime > .1));
+    assert.equal(await page.locator('.audio-label,.media-title').count(), 0, `${type} trigger has no title elements`);
+    assert.equal((await page.locator('[data-event="trigger"]').allTextContents()).join('').trim(), '', `${type} trigger shows no text`);
+    assert.equal(await page.getByText('Se_esta_volviendo_salvaje').count(), 0, `${type} trigger title never rendered`);
+    await screenshot(page, id);
+    if (type === 'image') for (const ws of sockets) ws.send(`42/overlay-studio/${publicId},${JSON.stringify(['overlay-control', { id: 'skip-image', action: 'skip', eventIds: [id] }])}`);
+    await until(() => outbound.some(e => e[0] === 'overlay-ended' && e[1] === id), `${type} trigger completes normally`);
+  }
   await runtime.close();
-  console.log('PASS TTS runtime: omitted/off/on/mixed settings, transparent text-free playback, real audible media, one audio copy, acknowledgements and healthy connection.');
+  console.log('PASS TTS runtime: omitted/off/on/mixed settings, transparent text-free playback, title-free trigger video/audio/image, real audible media, one audio copy, acknowledgements and healthy connection.');
   const user = { id: '990391', login: 'ttstextfixture', display_name: 'Fixture' };
   const app = { name: 'Fixture', email: 'fixture@example.invalid', language: 'en', plan_tier: 'free', actived: true, chat_enabled: true,
     twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };

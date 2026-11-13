@@ -49,7 +49,7 @@ import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
             @if (job.event.kind === 'clip') {
               <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="audioWidget(job) !== w.id" (started)="started.emit({id:job.event.id,widgetId:w.id,duration:$event})" (playbackBlocked)="issue.emit('autoplay')" (ended)="ended.emit({id:job.event.id,widgetId:w.id})" (failed)="failed.emit({id:job.event.id,widgetId:w.id})" />
             } @else {
-              <app-overlay-media [media]="media" [muted]="audioWidget(job) !== w.id" [reportSpeech]="!!job.event.tts && audioWidget(job) === w.id" (speechPlayback)="speechPlayback.emit({id:job.event.id,widgetId:w.id,report:$event})" [showTitle]="job.event.kind !== 'tts'" [showAudioLabel]="job.event.kind !== 'tts'" [playLabel]="language.translate('overlayStudio.tapToPlay')" (started)="started.emit({id:job.event.id,widgetId:w.id,duration:$event})" (playbackBlocked)="issue.emit('autoplay')" (ended)="ended.emit({id:job.event.id,widgetId:w.id})" (failed)="failed.emit({id:job.event.id,widgetId:w.id})" />
+              <app-overlay-media [media]="media" [muted]="audioWidget(job) !== w.id" [reportSpeech]="!!job.event.tts && audioWidget(job) === w.id" (speechPlayback)="speechPlayback.emit({id:job.event.id,widgetId:w.id,report:$event})" [playLabel]="language.translate('overlayStudio.tapToPlay')" (started)="started.emit({id:job.event.id,widgetId:w.id,duration:$event})" (playbackBlocked)="issue.emit('autoplay')" (ended)="ended.emit({id:job.event.id,widgetId:w.id})" (failed)="failed.emit({id:job.event.id,widgetId:w.id})" />
             }
           } @else if (!job.event.tts) {
             @if (job.event.layouts?.[w.designId || '']; as layout) {
