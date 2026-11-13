@@ -27,6 +27,11 @@ OWNER = "io.domdimabot.saas-ops"
 RUN_RE = re.compile(r"[a-z][a-z0-9-]*-[0-9a-f]{12}\Z")
 IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 EXCLUDED = {"node_modules", "dist", "target", ".git", ".angular", ".astro", "data", "coverage"}
+# Only the current release can ever be rolled back, and a site release stores a full copy of the
+# live folder. Keep those copies for the newest releases of each target; older runs keep their receipt.
+RETAINED_RELEASES = 10
+STALE_CANDIDATE_SECONDS = 7 * 24 * 3600
+RETAINED_DIRECTORIES = ("previous-bundle", "bundle", "source", "fixtures", "rust-source", "rust-work", "rust-artifacts")
 
 
 class OpsError(Exception):
@@ -218,6 +223,46 @@ class Ops:
 
     def save(self, path, receipt):
         atomic_json(path / "receipt.json", receipt)
+
+    @staticmethod
+    def intact(receipt):
+        require(not receipt.get("pruned"), "This run is older than the retention window and its stored files were removed; build a new run")
+
+    def retain(self, name):
+        """Remove the stored bundles and sources of old runs for one target. Returns how many runs were trimmed."""
+        runs = []
+        for path in self.state.glob(name + "-*"):
+            if path.is_symlink() or not path.is_dir() or not RUN_RE.fullmatch(path.name):
+                continue
+            try:
+                receipt = json.loads((path / "receipt.json").read_text())
+            except (OSError, ValueError):
+                continue
+            if receipt.get("run") != path.name or receipt.get("repo") != str(self.root) or receipt.get("target") != name:
+                continue
+            backup = path / "previous-bundle"
+            # Receipts written before releases were timestamped: the backup is created at deploy time.
+            when = receipt.get("deployed_at") or (backup if backup.is_dir() else path / "receipt.json").stat().st_mtime
+            runs.append((when, path, receipt))
+        releases = sorted((run for run in runs if run[2].get("status") in {"deployed", "rolled-back"}), key=lambda run: run[0], reverse=True)
+        cutoff = time.time() - STALE_CANDIDATE_SECONDS
+        # Candidates that were never released are dropped once stale. A run that is mid-verify,
+        # mid-deploy or holds recovery state is never touched, however old.
+        expired = releases[RETAINED_RELEASES:] + [
+            run for run in runs if run[2].get("status") in {"built", "verified", "verify-failed", "build-failed", "cleaned", "building"}
+            and (run[1] / "receipt.json").stat().st_mtime < cutoff]
+        trimmed = 0
+        for _, path, receipt in expired:
+            removed = False
+            for directory in (path / entry for entry in RETAINED_DIRECTORIES):
+                if directory.is_dir() and not directory.is_symlink():
+                    shutil.rmtree(directory)
+                    removed = True
+            if removed:
+                receipt["pruned"] = True
+                self.save(path, receipt)
+                trimmed += 1
+        return trimmed
 
     def labels(self, run_id):
         return ["--label", OWNER + ".repo=" + self.repo_id, "--label", OWNER + ".run=" + run_id]
@@ -412,6 +457,7 @@ class Ops:
 
     def verify(self, run_id, check, fixtures=None, seed_models=False, test_env=None, dependencies=()):
         path, receipt, target = self.load(run_id)
+        self.intact(receipt)
         require(receipt["status"] in {"built", "verify-failed", "verified"}, "Run is not available for verification")
         require(not receipt["resources"], "Clean up interrupted test resources first")
         self.artifact(path, receipt, target)
@@ -582,6 +628,7 @@ class Ops:
 
     def deploy(self, run_id):
         path, receipt, target = self.load(run_id)
+        self.intact(receipt)
         require(receipt["status"] == "verified" and not receipt["resources"], "Deployment requires a verified run with test resources cleaned up")
         self.artifact(path, receipt, target)
         live = self.unchanged(receipt, target)
@@ -605,6 +652,7 @@ class Ops:
             else:
                 receipt["deployed_container"] = self.replace_container(path, receipt, target, receipt["image"], "deploy")
             receipt["status"] = "deployed"
+            receipt["deployed_at"] = int(time.time())
         except BaseException:
             receipt["status"] = "deploy-failed"
             self.save(path, receipt)
@@ -619,6 +667,12 @@ class Ops:
         finally:
             self.save(path, receipt)
         print(f"Deployed {run_id}. Rollback: scripts/saas-ops rollback {run_id}")
+        try:
+            trimmed = self.retain(receipt["target"])
+            if trimmed:
+                print(f"Retention: removed stored files of {trimmed} older {receipt['target']} run(s); the newest {RETAINED_RELEASES} releases are kept")
+        except Exception as exc:  # housekeeping never fails a finished release
+            print(f"Retention skipped: {exc}", file=sys.stderr)
 
     def restore(self, path, receipt, target):
         if target.output:
@@ -632,6 +686,7 @@ class Ops:
 
     def rollback(self, run_id):
         path, receipt, target = self.load(run_id)
+        self.intact(receipt)
         require(receipt["status"] == "deployed", "Only the currently deployed run can be rolled back")
         live = self.unchanged(receipt, target)
         if target.output:

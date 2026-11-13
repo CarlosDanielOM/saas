@@ -448,6 +448,75 @@ class OpsTests(unittest.TestCase):
         self.ops.cleanup(RUN)
         self.assertFalse([entry.name for entry in self.path.iterdir() if entry.is_dir()])
 
+    def stored_run(self, target, index, status="deployed", **extra):
+        run = f"{target}-{index:012x}"
+        path = self.ops.state / run
+        for name in ("previous-bundle", "bundle"):
+            (path / name).mkdir(parents=True)
+            (path / name / "index.html").write_text(run)
+        self.ops.save(path, {"run": run, "repo": str(self.root), "target": target, "status": status, "resources": [], **extra})
+        return path
+
+    def test_retention_keeps_the_newest_ten_releases_and_every_receipt(self):
+        runs = [self.stored_run("site", index, deployed_at=1000 + index) for index in range(13)]
+        other_target = self.stored_run("docs", 99, deployed_at=1)
+        foreign = self.stored_run("site", 500, deployed_at=1)
+        receipt = json.loads((foreign / "receipt.json").read_text())
+        self.ops.save(foreign, {**receipt, "repo": "/another/checkout"})
+        outside = Path(self.temp.name) / "outside"
+        outside.mkdir()
+        (outside / "keep.txt").write_text("unrelated")
+        (runs[0] / "source").symlink_to(outside)
+        self.assertEqual(self.ops.retain("site"), 3)
+        for path in runs[:3]:
+            self.assertFalse((path / "previous-bundle").exists() or (path / "bundle").exists())
+            self.assertTrue(json.loads((path / "receipt.json").read_text())["pruned"])
+        for path in [*runs[3:], other_target, foreign]:
+            self.assertTrue((path / "previous-bundle/index.html").is_file() and (path / "bundle/index.html").is_file())
+            self.assertNotIn("pruned", json.loads((path / "receipt.json").read_text()))
+        self.assertEqual((outside / "keep.txt").read_text(), "unrelated")  # a symlink is never followed
+        self.assertEqual(self.ops.retain("site"), 0)  # nothing left to trim
+
+    def test_retention_orders_older_receipts_by_their_backup_time(self):
+        runs = [self.stored_run("site", index) for index in range(12)]
+        for age, path in enumerate(reversed(runs)):
+            os.utime(path / "previous-bundle", (10_000 - age, 10_000 - age))
+        self.ops.retain("site")
+        self.assertEqual([(path / "bundle").exists() for path in runs], [False, False] + [True] * 10)
+
+    def test_retention_drops_stale_candidates_but_never_a_run_in_flight(self):
+        old = 1_000_000
+        stale = [self.stored_run("site", index, status) for index, status in enumerate(("verified", "built", "verify-failed", "build-failed", "building"))]
+        busy = [self.stored_run("site", 100 + index, status) for index, status in enumerate(("verifying", "deploying", "deploy-failed", "rolling-back", "rollback-failed"))]
+        fresh = self.stored_run("site", 200, "verified")
+        for path in stale + busy:
+            os.utime(path / "receipt.json", (old, old))
+        self.assertEqual(self.ops.retain("site"), len(stale))
+        self.assertFalse(any((path / "bundle").exists() for path in stale))
+        self.assertTrue(all((path / "bundle").is_dir() and (path / "previous-bundle").is_dir() for path in [*busy, fresh]))
+
+    def test_a_trimmed_run_cannot_be_verified_deployed_or_rolled_back(self):
+        self.receipt["pruned"] = True
+        self.ops.save(self.path, self.receipt)
+        check = self.root / "check.mjs"
+        check.write_text("")
+        for action in (lambda: self.ops.deploy(RUN), lambda: self.ops.rollback(RUN), lambda: self.ops.verify(RUN, check)):
+            with self.assertRaisesRegex(mod.OpsError, "retention window"):
+                action()
+        self.assertEqual(self.ops.calls, [])
+        self.ops.cleanup(RUN)  # status and cleanup still work
+
+    def test_deploy_timestamps_the_release_and_survives_a_retention_failure(self):
+        self.ops.objects[("image", NEW)] = {"Id": NEW, "Config": {"Labels": self.labels()}}
+        errors = io.StringIO()
+        with patch.object(self.ops, "retain", side_effect=OSError("disk")) as retain, \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+            self.ops.deploy(RUN)
+        retain.assert_called_once_with("dimadb")
+        self.assertEqual(self.saved()["status"], "deployed")
+        self.assertGreater(self.saved()["deployed_at"], 1_700_000_000)
+        self.assertIn("Retention skipped", errors.getvalue())
+
     def website(self):
         target = mod.TARGETS["site"]
         output = self.root / target.project / target.output
