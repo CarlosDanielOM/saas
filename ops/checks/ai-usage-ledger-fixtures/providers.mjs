@@ -34,7 +34,7 @@ const events = [
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
   if (url.hostname === 'api.polar.sh' && url.pathname.replace(/\/$/, '') === '/v1/events') {
-    log({ type: 'polar-events-list', page: url.searchParams.get('page') });
+    log({ type: 'polar-events-list', name: url.searchParams.get('name'), page: url.searchParams.get('page') });
     return json({ items: events, pagination: { total_count: events.length, max_page: 1 } });
   }
   if (url.hostname === 'api.polar.sh' && url.pathname.replace(/\/$/, '') === '/v1/events/ingest') {

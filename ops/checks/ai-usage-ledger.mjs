@@ -77,6 +77,11 @@ assert.equal(listCalls.length, 0, 'API request must not download Polar history')
 
 const backfillOutput = await runWorker(backfillWorkerEntry);
 assert.match(backfillOutput, /AI usage ledger sync completed/);
+// One history download reads each Polar event stream (usage plus the three credit-source streams) once.
+const downloadCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+  .filter(call => call.type === 'polar-events-list');
+assert.deepEqual(downloadCalls.map(call => call.name).sort(), ['ai_usage', 'benefit.cycled', 'benefit.granted', 'meter.credited'],
+  'the backfill downloads each event stream exactly once');
 const afterBackfill = await summary();
 assert.equal(afterBackfill.analytics.totalSpentCredits, 200);
 assert.equal(afterBackfill.ledger.status, 'ready');
@@ -95,7 +100,7 @@ const second = await summary();
 assert.equal(second.analytics.totalSpentCredits, 200);
 listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
   .filter(call => call.type === 'polar-events-list');
-assert.equal(listCalls.length, 1, 'Mongo coverage should avoid a second Polar history download');
+assert.equal(listCalls.length, downloadCalls.length, 'Mongo coverage should avoid a second Polar history download');
 
 const tiers = [['free', 30], ['premium', 60], ['pro', 90]];
 const queuedAt = new Date().toISOString();
