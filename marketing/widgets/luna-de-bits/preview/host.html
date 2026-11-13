@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luna de Bits</title>
+<style>
+  :root { --bg: #0b0d12; --panel: #141821; --line: #262c3a; --text: #e8ecf4; --muted: #9aa4b8; --accent: #38bdf8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 18px; } p { margin: 0; color: var(--muted); }
+  .stage { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 16 / 9;
+    background: radial-gradient(60% 80% at 75% 30%, #3b2a4a, transparent 70%), radial-gradient(70% 90% at 20% 80%, #1f3b2e, transparent 70%), linear-gradient(135deg, #2a2f3a, #14161c); }
+  .stage::after { content: 'tu juego aquí'; position: absolute; right: 18px; bottom: 12px; color: rgba(255,255,255,.18); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+  .layer { position: absolute; outline: 1px dashed rgba(255,255,255,0); }
+  .layer iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: #0c4a6e; border-color: #0369a1; }
+  .group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #10131a; }
+  .group > span { color: var(--muted); font-size: 12px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <div><h1>Luna de Bits · meta de Bits para moonplayslive</h1><p>Vista previa con el Dima SDK real. Los cheers llegan como en OBS: primero la alerta y, un segundo y medio después, el total nuevo.</p></div>
+  <div class="stage" id="stage"><div class="layer" id="layer"><iframe id="frame" sandbox="allow-scripts" title="Widget"></iframe></div></div>
+  <div class="controls">
+    <div class="group"><span>Cheers</span>
+      <button class="primary" data-cheer="100">Cheer 100</button>
+      <button class="primary" data-cheer="500">Cheer 500</button>
+      <button class="primary" data-cheer="1000">Cheer 1,000</button>
+      <button id="complete">Completar meta</button>
+      <button id="reset">Reiniciar</button>
+    </div>
+    <div class="group"><span>Formato</span>
+      <button data-layout="row">Horizontal</button>
+      <button data-layout="stack">Vertical</button>
+    </div>
+    <div class="group"><span>Estilo</span>
+      <button data-field="theme" data-value="luna">Luna</button>
+      <button data-field="theme" data-value="estrella">Estrella</button>
+      <button id="panel">Fondo on/off</button>
+    </div>
+  </div>
+</main>
+<script>
+const SRCDOC = __SRCDOC__;
+const EXEC = __EXEC__;
+let fields = __FIELDS__;
+const frame = document.getElementById('frame'), layer = document.getElementById('layer'), stage = document.getElementById('stage');
+window.__logs = [];
+const now = Date.now();
+let goal = { id: 'g1', source: 'dima', name: 'Meta de Bits', metric: 'bits', mode: 'total', target: 5000, current: 1240, percent: 24.8, currency: null,
+  twitchType: null, achieved: null, status: 'active', startsAt: now - 86400000, endsAt: null, windowSeconds: null, period: null };
+const otherGoal = { id: 'g0', source: 'dima', name: 'Road to 1k', metric: 'follows', mode: 'total', target: 1000, current: 640, percent: 64, currency: null,
+  twitchType: null, achieved: null, status: 'active', startsAt: now - 86400000, endsAt: null, windowSeconds: null, period: null };
+const goalsState = () => [otherGoal, Object.assign({}, goal, { percent: Math.min(100, goal.current / goal.target * 100), status: goal.current >= goal.target ? 'reached' : 'active' })];
+const params = new URLSearchParams(location.search);
+const MODE = params.get('mode') || 'live';
+const SEND_GOALS = params.get('goals') !== 'none';
+const post = message => frame.contentWindow.postMessage(Object.assign({ dima: 1, exec: EXEC }, message), '*');
+
+addEventListener('message', event => {
+  if (event.source !== frame.contentWindow) return;
+  const m = event.data;
+  if (!m || m.dima !== 1 || m.exec !== EXEC) return;
+  if (m.type === 'loaded') {
+    post({ type: 'init', context: { widget: { id: 'w1', layerId: 'l1', name: 'Luna de Bits', revision: 1 }, channel: { id: '589813891', login: 'moonplayslive', name: 'moonplayslive' },
+      fields, mode: MODE, muted: false, goalSource: 'dima', session: null, states: SEND_GOALS ? { goals: goalsState() } : {} } });
+  } else if (m.type === 'log' || m.type === 'error') {
+    window.__logs.push(m);
+    if (m.type === 'error') console.error('[widget]', m.message, m.stack || '');
+  } else if (m.type === 'rpc') {
+    post({ type: 'rpc-result', id: m.id, ok: false, error: 'not available in preview' });
+  }
+});
+
+const sendGoals = () => post({ type: 'event', event: { type: 'state', data: { name: 'goals', value: goalsState() } } });
+const alert = (amount, name, test) => post({ type: 'event', event: { type: 'alert', data: { id: 'a' + Math.random().toString(36).slice(2), type: 'bits', at: Date.now(), test: !!test,
+  user: name ? { id: '1', login: name.toLowerCase(), name } : null, amount, tier: null, months: null, streak: null, message: 'Cheer' + amount, recipient: null, currency: null, rule: null } } });
+// A real cheer: the alert first, then the new goal total (the API refreshes goal state ~1.5 s after an alert).
+function realCheer(amount, name) {
+  alert(amount, name, false);
+  setTimeout(() => { goal.current += amount; sendGoals(); }, 1500);
+}
+const NAMES = ['Estrellita', 'Nebulosa_mx', 'Selene', 'Orion77', 'Cometa'];
+window.harness = {
+  realCheer, alert, sendGoals,
+  setGoal(patch) { Object.assign(goal, patch); sendGoals(); },
+  goals(value) { post({ type: 'event', event: { type: 'state', data: { name: 'goals', value } } }); },
+  button(field) { post({ type: 'event', event: { type: 'button', data: { field, value: field } } }); },
+  fields(patch) { fields = Object.assign({}, fields, patch); post({ type: 'fields', fields }); },
+  layout(kind) {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (kind === 'stack') Object.assign(layer.style, { width: Math.round(w * 0.3) + 'px', height: Math.round(h * 0.62) + 'px', left: Math.round(w * 0.035) + 'px', top: Math.round(h * 0.06) + 'px' });
+    else Object.assign(layer.style, { width: Math.round(w * 0.5) + 'px', height: Math.round(w * 0.5 / 4) + 'px', left: Math.round(w * 0.025) + 'px', top: Math.round(h * 0.04) + 'px' });
+  },
+  size(w, h) { Object.assign(layer.style, { width: w + 'px', height: h + 'px', left: '12px', top: '12px' }); },
+  get goal() { return goal; }
+};
+document.querySelectorAll('[data-cheer]').forEach(b => b.addEventListener('click', () => realCheer(Number(b.dataset.cheer), NAMES[Math.floor(Math.random() * NAMES.length)])));
+document.getElementById('complete').addEventListener('click', () => realCheer(Math.max(100, goal.target - goal.current), 'Selene'));
+document.getElementById('reset').addEventListener('click', () => { goal = Object.assign({}, goal, { id: 'g' + Date.now(), current: 0 }); sendGoals(); });
+document.querySelectorAll('[data-layout]').forEach(b => b.addEventListener('click', () => harness.layout(b.dataset.layout)));
+document.querySelectorAll('[data-field]').forEach(b => b.addEventListener('click', () => harness.fields({ [b.dataset.field]: b.dataset.value })));
+document.getElementById('panel').addEventListener('click', () => harness.fields({ panel: fields.panel === false }));
+let currentLayout = params.get('layout') || 'row';
+addEventListener('resize', () => harness.layout(currentLayout));
+document.querySelectorAll('[data-layout]').forEach(b => b.addEventListener('click', () => { currentLayout = b.dataset.layout; }));
+harness.layout(currentLayout);
+frame.srcdoc = SRCDOC;
+</script>
+</body>
+</html>

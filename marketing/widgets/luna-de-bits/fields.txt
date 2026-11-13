@@ -1,0 +1,23 @@
+{
+  "goalName": { "type": "text", "label": "Nombre de la meta (vacío = la primera meta de Bits)", "value": "", "group": "Meta" },
+  "title": { "type": "text", "label": "Título (vacío = el nombre de la meta)", "value": "", "group": "Meta" },
+  "unit": { "type": "text", "label": "Unidad", "value": "bits", "group": "Meta" },
+  "reachedText": { "type": "text", "label": "Texto al cumplir la meta", "value": "¡Meta cumplida!", "group": "Meta" },
+  "theme": { "type": "dropdown", "label": "Figura", "value": "luna", "options": { "luna": "Luna (crece con la meta)", "estrella": "Estrella (brilla con la meta)" }, "group": "Estilo" },
+  "panel": { "type": "checkbox", "label": "Fondo de cielo nocturno", "value": true, "group": "Estilo" },
+  "starfield": { "type": "checkbox", "label": "Estrellas en el fondo", "value": true, "group": "Estilo" },
+  "skyColor": { "type": "colorpicker", "label": "Color del cielo", "value": "#071a46", "group": "Estilo" },
+  "glowColor": { "type": "colorpicker", "label": "Azul cielo (brillo)", "value": "#38bdf8", "group": "Estilo" },
+  "lightColor": { "type": "colorpicker", "label": "Luz de luna", "value": "#c7ecff", "group": "Estilo" },
+  "textColor": { "type": "colorpicker", "label": "Texto", "value": "#f0f9ff", "group": "Estilo" },
+  "font": { "type": "googleFont", "label": "Letra", "value": "Quicksand", "group": "Estilo" },
+  "scale": { "type": "slider", "label": "Tamaño dentro de la capa (%)", "value": 100, "min": 50, "max": 100, "step": 5, "group": "Estilo" },
+  "motion": { "type": "dropdown", "label": "Animaciones", "value": "normal", "options": { "calm": "Tranquilas", "normal": "Normales", "lots": "Muchas" }, "group": "Animaciones" },
+  "shooting": { "type": "checkbox", "label": "Estrellas fugaces de fondo", "value": true, "group": "Animaciones" },
+  "celebrate": { "type": "checkbox", "label": "Estrella fugaz con cada cheer", "value": true, "group": "Animaciones" },
+  "minBits": { "type": "number", "label": "Bits mínimos para la estrella fugaz", "value": 1, "min": 1, "max": 100000, "group": "Animaciones" },
+  "showCheerer": { "type": "checkbox", "label": "Mostrar el último cheer", "value": true, "group": "Animaciones" },
+  "lastLabel": { "type": "text", "label": "Texto del último cheer", "value": "Último cheer", "group": "Animaciones" },
+  "testCheer": { "type": "button", "label": "Probar un cheer", "value": "cheer", "group": "Probar" },
+  "testGoal": { "type": "button", "label": "Probar meta cumplida", "value": "goal", "group": "Probar" }
+}

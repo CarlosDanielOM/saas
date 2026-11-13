@@ -1,0 +1,549 @@
+// Luna de Bits: a celestial Bits goal made with the Dima SDK (v1).
+// Data: Dima.state('goals') (Goals page or Twitch goals, as the layer's "Goal data" says) and Dima.on('alert') for cheers.
+// The bar and the moon follow the goal; each cheer arrives as a shooting star; a reached goal bursts into stars.
+
+const $ = id => document.getElementById(id);
+const sky = $('sky'), card = $('card'), icon = $('icon'), track = $('track'), tip = $('tip'), litPath = $('litPath');
+const cosmosCanvas = $('cosmos'), fxCanvas = $('fx');
+const cosmos = cosmosCanvas.getContext('2d'), fx = fxCanvas.getContext('2d');
+const ui = { title: $('title'), current: $('current'), target: $('target'), unit: $('unit'), percent: $('percent'), note: $('note'), marks: $('marks') };
+
+const MOTION = {
+  calm: { stars: 0.6, sparks: 4, shoot: [18000, 30000], burst: 0.6 },
+  normal: { stars: 1, sparks: 10, shoot: [8000, 15000], burst: 1 },
+  lots: { stars: 1.6, sparks: 22, shoot: [3500, 7500], burst: 1.6 }
+};
+const MILESTONES = [25, 50, 75];
+const STATUS_ORDER = { active: 0, reached: 1, scheduled: 2, ended: 3 };
+const TEST_SHOWN_MS = 20000;   // a test cheer stays on the bar this long (tests never change real data)
+const COMET_MS = 1150;
+const numbers = new Intl.NumberFormat('es-MX');
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const SPARKLE = 'M0 -48 Q 5 -5 48 0 Q 5 5 0 48 Q -5 5 -48 0 Q -5 -5 0 -48 Z';
+
+let settings = {};
+let motion = MOTION.normal;
+let mode = null;             // 'editor' (Studio) or 'live' (OBS)
+let goalSource = 'dima';
+let goals = null;            // Dima.state('goals'); null until known
+let demo = null;             // Studio only: an example while the channel has no Bits goal
+let testOffset = 0, testTimer = 0;
+let lastCheer = null;
+let shownId = null;
+let landAt = 0;              // a shooting star is on its way: the bar moves when it lands
+// floor: progress up to which milestones/completion were already seen (or are old news), so they never fire twice.
+const view = { value: 0, from: 0, to: 0, start: 0, duration: 0, target: 1, floor: Infinity, dirty: true };
+
+// ---------- Colours and fonts ----------
+const colorProbe = document.createElement('canvas').getContext('2d');
+function rgbOf(color, fallback) {
+  colorProbe.fillStyle = fallback;
+  colorProbe.fillStyle = String(color || '');   // invalid colours leave the fallback
+  const value = colorProbe.fillStyle;
+  if (value[0] === '#') return [1, 3, 5].map(i => parseInt(value.slice(i, i + 2), 16));
+  const parts = value.match(/[\d.]+/g) || [];
+  return [0, 1, 2].map(i => Math.round(Number(parts[i]) || 0));
+}
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const css = rgb => rgb.join(', ');
+let palette = { glow: [56, 189, 248], light: [199, 236, 255] };
+
+let fontName = null, fontLink = null;
+function loadFont(name) {
+  name = String(name || '').trim();
+  if (name === fontName) return;
+  fontName = name;
+  if (fontLink) fontLink.remove();
+  fontLink = null;
+  const safe = name.replace(/['"\\;{}<>]/g, '');
+  document.documentElement.style.setProperty('--font', (safe ? `'${safe}', ` : '') + "'Segoe UI', system-ui, sans-serif");
+  if (!safe) return;
+  const family = encodeURIComponent(safe).replace(/%20/g, '+');
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${family}:wght@500;600;700&display=swap`;
+  // Fonts without those weights make Google answer 400: ask for the plain family instead.
+  link.onerror = () => { if (fontLink === link && !link.dataset.plain) { link.dataset.plain = '1'; link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`; } };
+  link.onload = () => { if (document.fonts) document.fonts.ready.then(layout); };
+  document.head.append(link);
+  fontLink = link;
+}
+
+// ---------- Settings ----------
+function applySettings(next) {
+  settings = next || {};
+  motion = MOTION[settings.motion] || MOTION.normal;
+  const skyRgb = rgbOf(settings.skyColor, '#071a46');
+  const glow = rgbOf(settings.glowColor, '#38bdf8');
+  const light = rgbOf(settings.lightColor, '#c7ecff');
+  palette = { glow, light };
+  const root = document.documentElement.style;
+  root.setProperty('--sky-rgb', css(skyRgb));
+  root.setProperty('--sky2-rgb', css(mix(skyRgb, [0, 0, 8], 0.55)));
+  root.setProperty('--glow-rgb', css(glow));
+  root.setProperty('--light-rgb', css(light));
+  root.setProperty('--deep-rgb', css(mix(glow, [40, 60, 200], 0.6)));
+  root.setProperty('--text', `rgb(${css(rgbOf(settings.textColor, '#f0f9ff'))})`);
+  loadFont(settings.font);
+  sky.dataset.theme = settings.theme === 'estrella' ? 'estrella' : 'luna';
+  sky.dataset.panel = settings.panel === false ? 'off' : 'on';
+  sky.dataset.starfield = settings.starfield === false || settings.panel === false ? 'off' : 'on';
+  ui.unit.textContent = String(settings.unit ?? 'bits');
+  sprites = makeSprites();
+  layout();
+  render();
+}
+
+// ---------- Which goal ----------
+function pickGoal() {
+  if (!Array.isArray(goals)) return null;
+  const bits = goals.filter(goal => goal && goal.metric === 'bits' && Number(goal.target) > 0);
+  const wanted = String(settings.goalName || '').trim().toLowerCase();
+  const named = wanted ? bits.filter(goal => String(goal.name || '').trim().toLowerCase() === wanted) : [];
+  // Sort is stable: among goals with the same status, the first one in the streamer's list wins.
+  return (named.length ? named : bits).slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9))[0] || null;
+}
+function shownGoal() {
+  const real = pickGoal();
+  if (real) return real;
+  if (mode !== 'editor' || goals === null) return null;
+  if (!demo) demo = { id: 'demo', demo: true, name: 'Meta de Bits', metric: 'bits', current: 1240, target: 5000, status: 'active' };
+  return demo;
+}
+function goalTitle(goal) {
+  const custom = String(settings.title || '').trim();
+  if (custom) return custom;
+  // Twitch goals without a description come with an English name.
+  return !goal.name || goal.name === 'Bits goal' ? 'Meta de Bits' : goal.name;
+}
+
+// ---------- Rendering ----------
+function render() {
+  const goal = shownGoal();
+  sky.dataset.state = goal ? 'ready' : goals === null ? 'loading' : 'empty';
+  if (!goal) return;
+  const fresh = goal.id !== shownId;
+  if (fresh) {
+    // Another goal: test cheers and shooting stars of the previous one don't carry over.
+    testOffset = 0; clearTimeout(testTimer); comets = []; landAt = 0;
+  }
+  shownId = goal.id;
+  const target = Number(goal.target);
+  const value = Math.max(0, Number(goal.current) || 0) + testOffset;
+  const targetChanged = target !== view.target;
+  ui.title.textContent = goalTitle(goal);
+  ui.target.textContent = numbers.format(target);
+  if (targetChanged) { view.target = target; view.dirty = true; }
+  tweenTo(value, fresh, fresh || targetChanged);
+  updateNote(goal);
+}
+function tweenTo(value, intro, quiet) {
+  const now = performance.now();
+  if (!quiet && value === view.to) return;
+  const ratio = value / view.target;
+  // First load, another goal or a new target: nothing up to here is news. A lower total (a test ending, a goal
+  // edit) lets those stars light up again on the way back up.
+  if (quiet) view.floor = ratio; else if (value < view.to) view.floor = Math.min(view.floor, ratio);
+  const from = intro ? 0 : view.value;
+  view.from = from;
+  view.to = value;
+  view.start = Math.max(now + (intro ? 300 : 0), landAt);
+  const change = Math.abs(value - from) / view.target;
+  view.duration = intro ? 2400 : value < from ? 700 : clamp(1000 + change * 2600, 1000, 2800);
+}
+function moonPath(f) {
+  // Waxing moon lit on the right: right half disc, closed by the terminator (an ellipse of width |1 - 2f|).
+  const r = 50, rx = (Math.abs(1 - 2 * f) * r).toFixed(2);
+  return `M 0 ${-r} A ${r} ${r} 0 0 1 0 ${r} A ${rx} ${r} 0 0 ${f < 0.5 ? 0 : 1} 0 ${-r} Z`;
+}
+function stepProgress(now) {
+  const t = view.duration ? clamp((now - view.start) / view.duration, 0, 1) : 1;
+  const value = view.from + (view.to - view.from) * easeOut(t);
+  if (value === view.value && !view.dirty) return;
+  const before = view.value / view.target, after = value / view.target;
+  view.value = value;
+  view.dirty = false;
+  const p = clamp(after, 0, 1);
+  sky.style.setProperty('--p', p.toFixed(4));
+  ui.current.textContent = numbers.format(Math.round(value));
+  ui.percent.textContent = Math.floor(after * 100) + '%';
+  litPath.setAttribute('d', moonPath(0.04 + 0.96 * p));
+  for (const mark of ui.marks.children) mark.classList.toggle('on', after * 100 >= Number(mark.dataset.at));
+  const reached = after >= 1;
+  if ((sky.dataset.reached === 'true') !== reached) { sky.dataset.reached = String(reached); updateNote(shownGoal()); }
+  if (now >= view.start && after > before) {
+    for (const at of MILESTONES) if (before * 100 < at && after * 100 >= at && view.floor * 100 < at) milestone(at);
+    if (before < 1 && after >= 1 && view.floor < 1) celebrate();
+  }
+}
+function updateNote(goal) {
+  if (!goal) return;
+  const note = ui.note;
+  note.className = 'note';
+  note.textContent = '';
+  if (sky.dataset.reached === 'true') {
+    note.classList.add('reached');
+    note.append(star(), String(settings.reachedText || '¡Meta cumplida!'));
+  } else if (lastCheer && settings.showCheerer !== false) {
+    const name = document.createElement('b');
+    name.textContent = lastCheer.name;   // viewer names are text, never HTML
+    note.append(star(), `${String(settings.lastLabel || 'Último cheer')}: `, name, ` · ${numbers.format(lastCheer.amount)}`);
+  } else if (goal.demo) {
+    note.textContent = goalSource === 'twitch' ? 'Ejemplo · crea una meta de Bits en Twitch' : 'Ejemplo · crea una meta de Bits en Metas';
+  } else if (goal.status === 'scheduled') {
+    note.textContent = 'Empieza pronto';
+  } else if (goal.status === 'ended') {
+    note.textContent = 'Terminó';
+  }
+}
+function star() {
+  const span = document.createElement('span');
+  span.className = 'note__star';
+  span.textContent = '✦';
+  return span;
+}
+function pop(element, className, ms) {
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  clearTimeout(element[className + 'Timer']);
+  element[className + 'Timer'] = setTimeout(() => element.classList.remove(className), ms);
+}
+function buildMarks() {
+  ui.marks.textContent = '';
+  for (const at of MILESTONES) {
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.dataset.at = String(at);
+    mark.style.left = at + '%';
+    mark.innerHTML = `<svg viewBox="-50 -50 100 100"><path d="${SPARKLE}"/></svg>`;
+    ui.marks.append(mark);
+  }
+}
+
+// ---------- Cheers ----------
+function cheer({ name, amount, test, finale }) {
+  if (sky.dataset.state !== 'ready') return;
+  const goal = shownGoal();
+  const flies = settings.celebrate !== false && amount >= (Number(settings.minBits) || 1);
+  const landed = () => {
+    lastCheer = { name, amount };
+    floater('+' + numbers.format(amount));
+    pop(tip, 'flare', 900);
+    pop(track, 'bump', 600);
+    pop(icon, 'ping', 900);
+    pop(ui.note, 'pop', 800);
+    burst(tipPoint(), 18, 1);
+    ring(tipPoint(), 34, 700);
+    boostUntil = performance.now() + 1600;
+    updateNote(shownGoal());
+    if (finale) celebrate();
+  };
+  if (flies) launchComet(landed); else landed();
+  // Real cheers move the bar when DomDimaBot sends the new total (about a second later).
+  // Tests (Studio, "Test in OBS", the buttons) and the Studio example show the cheer for a while, never saved.
+  if (test || (goal && goal.demo)) {
+    testOffset += amount;
+    clearTimeout(testTimer);
+    testTimer = setTimeout(() => { testOffset = 0; render(); }, TEST_SHOWN_MS);
+    render();
+  }
+}
+
+// ---------- Effects (canvas) ----------
+let sprites = null;
+function sprite(rgb) {
+  const size = 64, canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.18, `rgba(${css(rgb)},0.95)`);
+  gradient.addColorStop(0.45, `rgba(${css(rgb)},0.32)`);
+  gradient.addColorStop(1, `rgba(${css(rgb)},0)`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return canvas;
+}
+function makeSprites() { return { glow: sprite(palette.glow), light: sprite(palette.light), white: sprite([255, 255, 255]) }; }
+
+let dpr = 1, frameW = 0, frameH = 0, cosmosW = 0, cosmosH = 0;
+let rects = { track: null, icon: null, card: null };
+let stars = [], shooting = [], particles = [], rings = [], comets = [];
+let nextShootAt = 0, boostUntil = 0, sparkDebt = 0;
+
+// Everything is sized in em: measure the card at 20px, then pick the size that fits the layer box.
+function layout() {
+  frameW = innerWidth; frameH = innerHeight;
+  const stack = frameW / Math.max(1, frameH) < 2.2;
+  sky.dataset.layout = stack ? 'stack' : 'row';
+  const root = document.documentElement.style, REF = 20, PAD = 1.4;   // .sky padding, both sides
+  root.fontSize = REF + 'px';
+  const height = card.offsetHeight / REF;
+  const fit = Math.min(frameH / (height + PAD), frameW / ((stack ? 23 : 30) + PAD));
+  root.fontSize = Math.max(6, fit * clamp(Number(settings.scale) || 100, 30, 100) / 100) + 'px';
+  measure();
+}
+const MAX_CANVAS_PIXELS = 4e6;   // a huge layer gets softer effects instead of a huge canvas
+function measure() {
+  dpr = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, frameW * frameH)));
+  fxCanvas.width = Math.round(frameW * dpr); fxCanvas.height = Math.round(frameH * dpr);
+  const bg = cosmosCanvas.parentElement.getBoundingClientRect();
+  const width = Math.round(bg.width), height = Math.round(bg.height);
+  if (width !== cosmosW || height !== cosmosH) {
+    cosmosW = width; cosmosH = height;
+    cosmosCanvas.width = Math.round(width * dpr); cosmosCanvas.height = Math.round(height * dpr);
+    makeStars();
+  }
+  rects = { track: track.getBoundingClientRect(), icon: icon.getBoundingClientRect(), card: card.getBoundingClientRect() };
+}
+function makeStars() {
+  const count = Math.min(220, Math.round(cosmosW * cosmosH / 1900 * motion.stars));
+  stars = Array.from({ length: count }, () => {
+    const big = Math.random() < 0.08;
+    return { x: Math.random() * cosmosW, y: Math.random() * cosmosH, r: big ? rand(1.1, 1.8) : rand(0.35, 1.05), a: big ? rand(0.75, 1) : rand(0.3, 0.85),
+      speed: rand(0.6, 2.4), phase: rand(0, Math.PI * 2), drift: rand(1.5, 5), big };
+  });
+}
+const tipPoint = () => rects.track ? { x: rects.track.left + rects.track.width * clamp(view.value / view.target, 0, 1), y: rects.track.top + rects.track.height / 2 } : { x: frameW / 2, y: frameH / 2 };
+const iconPoint = () => rects.icon ? { x: rects.icon.left + rects.icon.width / 2, y: rects.icon.top + rects.icon.height / 2 } : { x: frameW / 2, y: frameH / 2 };
+
+function particle(point, options) {
+  if (particles.length > 600) return;
+  const angle = options.angle ?? rand(0, Math.PI * 2), speed = options.speed ?? rand(40, 160);
+  particles.push({ x: point.x, y: point.y, vx: Math.cos(angle) * speed + (options.vx || 0), vy: Math.sin(angle) * speed + (options.vy || 0),
+    age: 0, life: options.life ?? rand(0.6, 1.4), size: options.size ?? rand(1.4, 3.2), drag: options.drag ?? 0.94,
+    kind: options.kind || (Math.random() < 0.35 ? 'sparkle' : 'dot'), rot: rand(0, Math.PI), spin: rand(-3, 3), tint: options.tint || (Math.random() < 0.5 ? 'light' : 'glow') });
+}
+function burst(point, count, power) {
+  const n = Math.round(count * motion.burst);
+  for (let i = 0; i < n; i++) particle(point, { speed: rand(40, 190) * power, life: rand(0.6, 1.5) });
+}
+function ring(point, radius, ms, rgb) { rings.push({ x: point.x, y: point.y, radius, born: performance.now(), ms, rgb: rgb || palette.light }); }
+function floater(text) {
+  const point = tipPoint();
+  const element = document.createElement('div');
+  element.className = 'floater';
+  element.textContent = text;
+  element.style.left = clamp(point.x, rects.card ? rects.card.left + 50 : 50, rects.card ? rects.card.right - 50 : frameW - 50) + 'px';
+  element.style.top = point.y + 'px';
+  element.addEventListener('animationend', () => element.remove());
+  sky.append(element);
+}
+function launchComet(onLand) {
+  const end = tipPoint();
+  const start = { x: clamp(end.x - rand(0.35, 0.6) * frameW, -40, frameW * 0.45), y: -frameH * 0.12 };
+  const control = { x: (start.x + end.x) / 2 + rand(-0.06, 0.06) * frameW, y: start.y + (end.y - start.y) * 0.15 };
+  const born = performance.now();
+  comets.push({ start, control, born, trail: [], onLand });
+  landAt = Math.max(landAt, born + COMET_MS);
+}
+function milestone(at) {
+  const mark = ui.marks.querySelector(`[data-at="${at}"]`);
+  if (mark) pop(mark, 'ignite', 1100);
+  const point = rects.track ? { x: rects.track.left + rects.track.width * at / 100, y: rects.track.top + rects.track.height / 2 } : tipPoint();
+  ring(point, 40, 800);
+  burst(point, 16, 0.9);
+}
+function celebrate() {
+  pop(icon, 'supernova', 1600);
+  pop(card, 'glory', 3200);
+  const center = iconPoint();
+  [0, 180, 380].forEach((delay, i) => setTimeout(() => ring(center, (rects.icon ? rects.icon.width : 80) * (1.1 + i * 0.5), 1300, i === 1 ? palette.glow : palette.light), delay));
+  burst(center, 70, 1.5);
+  burst(tipPoint(), 34, 1.2);
+  for (let i = 0; i < 4; i++) setTimeout(() => shootingStar(true), 250 + i * 420);
+  boostUntil = performance.now() + 4000;
+}
+function shootingStar(bright) {
+  if (sky.dataset.starfield !== 'on' || !cosmosW) return;
+  const angle = rand(0.38, 0.62);   // heading down-left
+  const speed = rand(260, 420) * (bright ? 1.3 : 1);
+  shooting.push({ x: rand(cosmosW * 0.25, cosmosW * 1.05), y: rand(-cosmosH * 0.25, cosmosH * 0.35), vx: -Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+    age: 0, life: rand(0.7, 1.15), length: rand(60, 120) * (bright ? 1.3 : 1) });
+}
+
+// Draws one sparkle (four-point star) path.
+function sparklePath(ctx, x, y, r, rotation) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
+  ctx.beginPath(); ctx.moveTo(0, -r);
+  ctx.quadraticCurveTo(r * 0.1, -r * 0.1, r, 0); ctx.quadraticCurveTo(r * 0.1, r * 0.1, 0, r);
+  ctx.quadraticCurveTo(-r * 0.1, r * 0.1, -r, 0); ctx.quadraticCurveTo(-r * 0.1, -r * 0.1, 0, -r);
+  ctx.fill(); ctx.restore();
+}
+function drawCosmos(time, dt) {
+  if (sky.dataset.starfield !== 'on' || !cosmosW) return;
+  const ctx = cosmos;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cosmosW, cosmosH);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of stars) {
+    s.x -= s.drift * dt;
+    if (s.x < -4) s.x += cosmosW + 8;
+    const alpha = s.a * (0.5 + 0.5 * Math.sin(time * 0.001 * s.speed + s.phase));
+    if (s.big) {
+      ctx.globalAlpha = alpha * 0.9;
+      const size = s.r * 9;
+      ctx.drawImage(sprites.light, s.x - size / 2, s.y - size / 2, size, size);
+      ctx.fillStyle = '#fff';
+      sparklePath(ctx, s.x, s.y, s.r * 3.4 * (0.7 + alpha * 0.4), 0);
+    } else {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Shooting stars in the background.
+  if (settings.shooting !== false && time > nextShootAt) {
+    if (nextShootAt) shootingStar(false);
+    nextShootAt = time + rand(motion.shoot[0], motion.shoot[1]);
+  }
+  for (const s of shooting) {
+    s.age += dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    const k = s.age / s.life, fade = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8;
+    const speed = Math.hypot(s.vx, s.vy), tx = s.x - s.vx / speed * s.length, ty = s.y - s.vy / speed * s.length;
+    const gradient = ctx.createLinearGradient(s.x, s.y, tx, ty);
+    gradient.addColorStop(0, `rgba(255,255,255,${0.95 * fade})`);
+    gradient.addColorStop(0.25, `rgba(${css(palette.light)},${0.55 * fade})`);
+    gradient.addColorStop(1, `rgba(${css(palette.glow)},0)`);
+    ctx.globalAlpha = 1; ctx.strokeStyle = gradient; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.globalAlpha = fade; ctx.drawImage(sprites.white, s.x - 7, s.y - 7, 14, 14);
+  }
+  shooting = shooting.filter(s => s.age < s.life);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+function bezier(c, end, t) {
+  const u = 1 - t;
+  return { x: u * u * c.start.x + 2 * u * t * c.control.x + t * t * end.x, y: u * u * c.start.y + 2 * u * t * c.control.y + t * t * end.y };
+}
+let fxClean = true;
+function drawFx(time, dt) {
+  const ctx = fx;
+  const emitting = sky.dataset.state === 'ready' && view.value / view.target > 0.004;
+  // Nothing moving: leave the cleared canvas alone.
+  if (!emitting && !particles.length && !comets.length && !rings.length) {
+    if (!fxClean) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); fxClean = true; }
+    return;
+  }
+  fxClean = false;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, frameW, frameH);
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Sparks trailing behind the star at the tip of the bar.
+  if (emitting) {
+    const rate = motion.sparks * (time < boostUntil ? 3.5 : 1);
+    sparkDebt += rate * dt;
+    const at = tipPoint();
+    while (sparkDebt >= 1) {
+      sparkDebt -= 1;
+      particle({ x: at.x + rand(-2, 2), y: at.y + rand(-2, 2) }, { angle: Math.PI + rand(-0.9, 0.9), speed: rand(14, 60), vy: rand(-14, 6), life: rand(0.7, 1.5), size: rand(1, 2.4), drag: 0.97 });
+    }
+  }
+
+  for (const c of comets) {
+    const k = clamp((time - c.born) / COMET_MS, 0, 1), eased = k * k * (1.6 - 0.6 * k);
+    const head = bezier(c, tipPoint(), eased);   // aims at the tip as it is now (the bar may still be moving)
+    c.trail.push(head);
+    if (c.trail.length > 22) c.trail.shift();
+    for (let i = 1; i < c.trail.length; i++) {
+      const a = c.trail[i - 1], b = c.trail[i], w = i / c.trail.length;
+      ctx.globalAlpha = w * 0.9;
+      ctx.strokeStyle = i > c.trail.length - 5 ? '#ffffff' : `rgb(${css(palette.light)})`;
+      ctx.lineWidth = 0.6 + w * 4.2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.drawImage(sprites.glow, head.x - 26, head.y - 26, 52, 52);
+    ctx.drawImage(sprites.white, head.x - 11, head.y - 11, 22, 22);
+    if (Math.random() < 0.8) particle(head, { speed: rand(10, 50), life: rand(0.4, 0.9), size: rand(1, 2.2), tint: 'light' });
+    if (k >= 1 && !c.done) { c.done = true; c.onLand(); }
+  }
+  comets = comets.filter(c => !c.done);
+
+  for (const r of rings) {
+    // rAF time can be slightly older than performance.now() at creation: start at 0, never negative.
+    const k = clamp((time - r.born) / r.ms, 0, 1);
+    if (k >= 1) continue;
+    ctx.globalAlpha = (1 - k) * 0.85;
+    ctx.strokeStyle = `rgb(${css(r.rgb)})`;
+    ctx.lineWidth = 2.6 * (1 - k) + 0.4;
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.radius * easeOut(k), 0, Math.PI * 2); ctx.stroke();
+  }
+  rings = rings.filter(r => time - r.born < r.ms);
+
+  for (const q of particles) {
+    q.age += dt;
+    q.vx *= Math.pow(q.drag, dt * 60); q.vy *= Math.pow(q.drag, dt * 60);
+    q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.spin * dt;
+    const k = q.age / q.life;
+    if (k >= 1) continue;
+    const alpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+    ctx.globalAlpha = alpha;
+    if (q.kind === 'sparkle') {
+      const size = q.size * 5;
+      ctx.drawImage(sprites[q.tint], q.x - size / 2, q.y - size / 2, size, size);
+      ctx.fillStyle = '#fff';
+      sparklePath(ctx, q.x, q.y, q.size * 2.2, q.rot);
+    } else {
+      const size = q.size * 4;
+      ctx.drawImage(sprites[q.tint], q.x - size / 2, q.y - size / 2, size, size);
+    }
+  }
+  particles = particles.filter(q => q.age < q.life);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+
+let lastTime = 0;
+function frame(time) {
+  requestAnimationFrame(frame);   // first, so one bad frame never stops the widget
+  const dt = lastTime ? clamp((time - lastTime) / 1000, 0, 0.05) : 0;
+  lastTime = time;
+  try {
+    if (sky.dataset.state === 'ready') stepProgress(time);
+  } catch (error) { Dima.log('progress', error); }
+  try {
+    if (sky.dataset.state === 'ready') drawCosmos(time, dt);
+    drawFx(time, dt);
+  } catch (error) { particles = []; rings = []; shooting = []; Dima.log('effects', error); }
+}
+
+// ---------- Wiring ----------
+buildMarks();
+applySettings(Dima.fields);
+Dima.on('fields', applySettings);   // changed in Studio: applies without a reload
+addEventListener('resize', layout);
+if (window.ResizeObserver) new ResizeObserver(() => measure()).observe(card);
+
+Dima.state('goals', value => { goals = Array.isArray(value) ? value : []; render(); });
+Dima.on('alert', alert => {
+  if (!alert || alert.type !== 'bits') return;
+  const amount = Math.max(0, Math.round(Number(alert.amount) || 0));
+  if (!amount) return;
+  cheer({ name: alert.user ? alert.user.name : 'Anónimo', amount, test: !!alert.test });
+});
+// Settings buttons (Studio only): try a cheer, or a cheer that completes the goal.
+Dima.on('button', event => {
+  const goal = shownGoal();
+  if (!goal || !event) return;
+  if (event.field === 'testCheer') cheer({ name: 'Luna', amount: [100, 250, 500, 1000][Math.floor(Math.random() * 4)], test: true });
+  if (event.field === 'testGoal') {
+    const own = view.to - testOffset;   // the goal's total without earlier tests
+    if (own >= view.target) { cheer({ name: 'Luna', amount: 100, test: true, finale: true }); return; }
+    const complete = () => cheer({ name: 'Luna', amount: Math.max(1, Math.ceil(view.target - view.to)), test: true });
+    // A goal already completed by tests drops back first, so the finale can be seen again.
+    if (testOffset > 0) { testOffset = 0; clearTimeout(testTimer); render(); setTimeout(complete, 900); } else complete();
+  }
+});
+
+Dima.ready().then(context => {
+  mode = context.mode;
+  goalSource = context.goalSource === 'twitch' ? 'twitch' : 'dima';
+  render();
+  // Studio: show the example if the goals haven't arrived (the channel may have none yet).
+  if (mode === 'editor') setTimeout(() => { if (goals === null) { goals = []; render(); } }, 1500);
+});
+requestAnimationFrame(frame);

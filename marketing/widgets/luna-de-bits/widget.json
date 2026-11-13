@@ -1,0 +1,9 @@
+{
+  "engine": "dima",
+  "api": 1,
+  "name": "Luna de Bits",
+  "author": "DomDimaBot",
+  "version": "1.0.0",
+  "description": "Meta de Bits celestial: la luna crece con la meta, cada cheer llega como estrella fugaz y la meta cumplida estalla en estrellas.",
+  "uses": ["goals", "alerts"]
+}

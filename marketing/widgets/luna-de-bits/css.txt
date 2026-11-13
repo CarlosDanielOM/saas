@@ -1,0 +1,270 @@
+/* Luna de Bits. Colours, size and progress (--p, 0..1) are set by the script, so settings apply without a reload. */
+@property --orbit { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+:root {
+  --sky-rgb: 7, 26, 70;
+  --sky2-rgb: 3, 10, 32;
+  --glow-rgb: 56, 189, 248;
+  --light-rgb: 199, 236, 255;
+  --deep-rgb: 46, 112, 219;
+  --text: #f0f9ff;
+  --font: 'Quicksand', 'Segoe UI', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font); color: var(--text); -webkit-font-smoothing: antialiased; }
+h1, p { margin: 0; }
+
+.sky {
+  --p: 0;
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0.7em;
+  transition: opacity 0.7s ease;
+}
+.sky[data-state="loading"], .sky[data-state="empty"] { opacity: 0; }
+
+/* ---------- Card ---------- */
+.card {
+  position: relative; z-index: 1; width: 100%; display: flex; align-items: center; gap: 1.05em;
+  padding: 0.8em 1.3em 0.8em 0.9em; border-radius: 1.6em;
+}
+.sky[data-layout="stack"] .card {
+  flex-direction: column; gap: 0.9em; max-width: 23em; padding: 1.4em 1.4em 1.2em; border-radius: 2em; text-align: center;
+}
+.card__bg {
+  position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+  background:
+    radial-gradient(90% 140% at 8% 50%, rgba(var(--glow-rgb), 0.20), transparent 60%),
+    radial-gradient(70% 120% at 92% 0%, rgba(129, 140, 248, 0.16), transparent 65%),
+    linear-gradient(160deg, rgba(var(--sky-rgb), 0.94), rgba(var(--sky2-rgb), 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(var(--light-rgb), 0.16),
+    0 0.7em 2.2em rgba(2, 6, 23, 0.55),
+    0 0 1.8em rgba(var(--glow-rgb), 0.16);
+}
+.sky[data-layout="stack"] .card__bg {
+  background:
+    radial-gradient(120% 70% at 50% 18%, rgba(var(--glow-rgb), 0.22), transparent 62%),
+    radial-gradient(80% 60% at 90% 100%, rgba(129, 140, 248, 0.16), transparent 65%),
+    linear-gradient(180deg, rgba(var(--sky-rgb), 0.94), rgba(var(--sky2-rgb), 0.96));
+}
+.nebula {
+  position: absolute; inset: -40%;
+  background:
+    radial-gradient(closest-side at 32% 42%, rgba(var(--glow-rgb), 0.16), transparent),
+    radial-gradient(closest-side at 68% 62%, rgba(167, 139, 250, 0.13), transparent),
+    radial-gradient(closest-side at 52% 30%, rgba(var(--light-rgb), 0.07), transparent);
+  animation: nebula 26s ease-in-out infinite alternate;
+}
+@keyframes nebula {
+  from { transform: translate3d(-7%, -4%, 0) rotate(-4deg) scale(1); }
+  to { transform: translate3d(7%, 5%, 0) rotate(8deg) scale(1.08); }
+}
+.cosmos { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Starlight travelling around the border. */
+.card::before {
+  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--orbit), transparent 0deg 240deg, rgba(var(--glow-rgb), 0.35) 290deg, rgba(255, 255, 255, 0.95) 336deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: orbit 7s linear infinite;
+}
+@keyframes orbit { to { --orbit: 360deg; } }
+.card.glory::before { animation-duration: 1.6s; }
+
+.sky[data-panel="off"] .card__bg, .sky[data-panel="off"] .card::before { display: none; }
+.sky[data-starfield="off"] .cosmos { display: none; }
+
+/* ---------- Moon / star ---------- */
+.icon { position: relative; z-index: 1; flex: none; width: 5em; height: 5em; animation: float 7s ease-in-out infinite; }
+.sky[data-layout="stack"] .icon { width: 7.2em; height: 7.2em; margin-top: 0.2em; }
+@keyframes float { 0%, 100% { transform: translateY(-0.07em); } 50% { transform: translateY(0.09em); } }
+
+.icon__halo {
+  position: absolute; inset: -42%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--light-rgb), 0.55), rgba(var(--glow-rgb), 0.38) 42%, rgba(var(--glow-rgb), 0.12) 70%, rgba(var(--glow-rgb), 0) 100%);
+  opacity: calc(0.2 + var(--p) * 0.8);
+  animation: breathe 5.5s ease-in-out infinite;
+}
+@keyframes breathe { 0%, 100% { transform: scale(0.94); } 50% { transform: scale(1.06); } }
+.icon__body { position: absolute; inset: 0; }
+.icon.supernova .icon__body { animation: supernova 1.6s cubic-bezier(0.2, 0.9, 0.25, 1); }
+.icon.supernova .icon__halo { animation: halo-flash 1.6s ease-out; }
+@keyframes supernova { 0% { transform: scale(1); } 22% { transform: scale(1.22); filter: brightness(1.7); } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes halo-flash { 0% { transform: scale(1); opacity: 1; } 30% { transform: scale(1.6); opacity: 1; } 100% { transform: scale(1); } }
+.icon.ping .icon__body { animation: ping 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes ping { 30% { transform: scale(1.08); filter: brightness(1.35); } }
+
+.moon { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.moon--lit { filter: drop-shadow(0 0 0.15em rgba(var(--light-rgb), 0.85)) drop-shadow(0 0 0.8em rgba(var(--glow-rgb), 0.6)); }
+.sky[data-reached="true"] .moon--lit { filter: drop-shadow(0 0 0.25em rgba(255, 255, 255, 0.9)) drop-shadow(0 0 1.2em rgba(var(--glow-rgb), 0.85)); }
+.stop-dark-1 { stop-color: rgb(var(--sky-rgb)); stop-opacity: 0.95; }
+.stop-dark-2 { stop-color: rgb(var(--sky2-rgb)); stop-opacity: 0.98; }
+.stop-lit-1 { stop-color: #ffffff; }
+.stop-lit-2 { stop-color: rgb(var(--light-rgb)); }
+.stop-lit-3 { stop-color: rgb(var(--light-rgb)); stop-opacity: 0.72; }
+.stop-glow { stop-color: rgb(var(--glow-rgb)); }
+.moon__rim { fill: none; stroke: rgba(var(--light-rgb), 0.28); stroke-width: 1.1; }
+.moon__ghost { fill: rgba(var(--light-rgb), 0.05); }
+.moon__maria { fill: rgba(var(--deep-rgb), 0.20); }
+.moon__craters circle { fill: rgba(var(--deep-rgb), 0.16); stroke: rgba(255, 255, 255, 0.45); stroke-width: 0.7; }
+
+.star-icon { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: none;
+  transform: scale(calc(0.55 + var(--p) * 0.45));
+  filter: drop-shadow(0 0 0.2em rgba(var(--light-rgb), 0.9)) drop-shadow(0 0 0.9em rgba(var(--glow-rgb), 0.7)); }
+.star-icon__glow { fill: url(#starGlow); }
+.star-icon__rays { stroke: rgba(var(--light-rgb), 0.55); stroke-width: 0.8; stroke-linecap: round; }
+.star-icon__front, .star-icon__back { transform-box: fill-box; transform-origin: center; }
+.star-icon__front { animation: star-pulse 4.5s ease-in-out infinite; }
+.star-icon__back { fill: rgba(var(--light-rgb), 0.8); animation: star-pulse 4.5s ease-in-out -2.2s infinite; }
+.star-icon__core { fill: #fff; }
+@keyframes star-pulse { 0%, 100% { transform: scale(0.92) rotate(-6deg); } 50% { transform: scale(1.04) rotate(6deg); } }
+.sky[data-theme="estrella"] .moon { display: none; }
+.sky[data-theme="estrella"] .star-icon { display: block; }
+
+/* Little stars that gather around the moon as the goal fills. */
+.orbit { position: absolute; inset: -16%; opacity: calc(var(--p) * 1.25 - 0.15); animation: spin 16s linear infinite; pointer-events: none; }
+.sky[data-reached="true"] .orbit { animation-duration: 7s; }
+.orbit i {
+  position: absolute; width: 0.42em; height: 0.42em; margin: -0.21em; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 22%, rgba(var(--light-rgb), 0.7) 38%, rgba(var(--glow-rgb), 0) 72%);
+  animation: twinkle-dot 2.6s ease-in-out infinite;
+}
+.orbit i:nth-child(1) { left: 50%; top: 0; }
+.orbit i:nth-child(2) { left: 100%; top: 50%; animation-delay: -0.7s; transform: scale(0.7); }
+.orbit i:nth-child(3) { left: 50%; top: 100%; animation-delay: -1.3s; }
+.orbit i:nth-child(4) { left: 0; top: 50%; animation-delay: -1.9s; transform: scale(0.6); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes twinkle-dot { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+/* ---------- Text ---------- */
+.info { position: relative; z-index: 1; flex: 1; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 0.45em; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8em; }
+.sky[data-layout="stack"] .head { flex-direction: column; align-items: center; gap: 0.25em; }
+.title {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 1em; font-weight: 700; letter-spacing: 0.02em;
+  text-shadow: 0 0 0.6em rgba(var(--glow-rgb), 0.5), 0 0.06em 0.2em rgba(0, 0, 0, 0.6);
+}
+.sky[data-layout="stack"] .title { font-size: 1.15em; max-width: 100%; }
+.count {
+  flex: none; white-space: nowrap; font-size: 0.86em; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: rgba(var(--light-rgb), 0.9); text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.6);
+}
+.count b { font-size: 1.36em; font-weight: 700; color: var(--text); text-shadow: 0 0 0.5em rgba(var(--glow-rgb), 0.75), 0 0.06em 0.2em rgba(0, 0, 0, 0.6); }
+.count__sep { margin: 0 0.2em; opacity: 0.6; }
+.unit { margin-left: 0.35em; font-size: 0.8em; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+
+.sky[data-reached="true"] .title {
+  background: linear-gradient(90deg, #fff 0%, rgb(var(--light-rgb)) 30%, #fff 45%, rgb(var(--glow-rgb)) 50%, #fff 55%, rgb(var(--light-rgb)) 70%, #fff 100%);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  filter: drop-shadow(0 0 0.35em rgba(var(--glow-rgb), 0.7));
+  animation: shimmer 3.2s linear infinite;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ---------- Bar ---------- */
+.track {
+  position: relative; height: 0.95em; margin: 0.15em 0; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.7), rgba(var(--sky-rgb), 0.6));
+  box-shadow: inset 0 0.08em 0.25em rgba(0, 0, 0, 0.65), inset 0 0 0 1px rgba(var(--light-rgb), 0.16);
+}
+.sky[data-layout="stack"] .track { height: 1.05em; }
+.track::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0.7;
+  background-image:
+    radial-gradient(circle at 7% 35%, rgba(255, 255, 255, 0.7) 0 0.06em, transparent 0.1em),
+    radial-gradient(circle at 23% 70%, rgba(255, 255, 255, 0.5) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 41% 30%, rgba(255, 255, 255, 0.6) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 58% 65%, rgba(255, 255, 255, 0.45) 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 76% 40%, rgba(255, 255, 255, 0.6) 0 0.06em, transparent 0.1em),
+    radial-gradient(circle at 92% 62%, rgba(255, 255, 255, 0.5) 0 0.05em, transparent 0.09em);
+}
+.fill, .fill-glow {
+  position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(90deg, rgb(var(--deep-rgb)) 0%, rgb(var(--glow-rgb)) 60%, rgb(var(--light-rgb)) 100%);
+}
+.fill { clip-path: inset(0 calc(100% - var(--p) * 100%) 0 0 round 999px); overflow: hidden; }
+.fill::before {
+  /* Stardust drifting inside the bar. */
+  content: ''; position: absolute; inset: 0; opacity: 0.8;
+  background-image:
+    radial-gradient(circle at 20% 30%, #fff 0 0.05em, transparent 0.09em),
+    radial-gradient(circle at 55% 72%, rgba(255, 255, 255, 0.85) 0 0.04em, transparent 0.08em),
+    radial-gradient(circle at 82% 38%, rgba(255, 255, 255, 0.9) 0 0.05em, transparent 0.09em);
+  background-size: 2.6em 100%; animation: dust 6s linear infinite;
+}
+.fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+  background-size: 260% 100%; animation: sheen 3.8s ease-in-out infinite;
+}
+@keyframes dust { to { background-position: 2.6em 0; } }
+@keyframes sheen { 0% { background-position: 130% 0; } 60%, 100% { background-position: -130% 0; } }
+.fill-glow {
+  right: auto; width: calc(var(--p) * 100%); filter: blur(0.42em); opacity: 0.75;
+}
+.sky[data-reached="true"] .fill-glow { animation: glow-pulse 2.4s ease-in-out infinite; }
+@keyframes glow-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+.track.bump { animation: bump 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+@keyframes bump { 35% { transform: scaleY(1.35); } }
+
+/* Constellation milestones on the bar. */
+.mark {
+  position: absolute; top: 50%; width: 0.95em; height: 0.95em; margin: -0.475em 0 0 -0.475em;
+  color: rgba(var(--light-rgb), 0.38); transition: color 0.5s ease, filter 0.5s ease;
+}
+.mark svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.mark.on { color: #fff; filter: drop-shadow(0 0 0.22em rgba(255, 255, 255, 0.95)) drop-shadow(0 0 0.5em rgba(var(--glow-rgb), 0.9)); }
+.mark.ignite { animation: ignite 1.1s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+@keyframes ignite { 0% { transform: scale(1) rotate(0deg); } 30% { transform: scale(2.3) rotate(45deg); } 100% { transform: scale(1) rotate(90deg); } }
+
+.tip {
+  position: absolute; z-index: 2; top: 50%; left: calc(var(--p) * 100%); width: 2em; height: 2em; margin: -1em 0 0 -1em;
+  pointer-events: none; opacity: calc(0.45 + var(--p) * 6);
+}
+.tip svg {
+  display: block; width: 100%; height: 100%; fill: #fff; animation: tip 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 0.18em rgba(var(--light-rgb), 1)) drop-shadow(0 0 0.55em rgba(var(--glow-rgb), 0.95));
+}
+@keyframes tip { 0%, 100% { transform: scale(0.82) rotate(0deg); } 50% { transform: scale(1.06) rotate(45deg); } }
+.tip.flare svg { animation: tip-flare 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes tip-flare { 0% { transform: scale(1); } 30% { transform: scale(2.1) rotate(90deg); } 100% { transform: scale(0.9) rotate(180deg); } }
+
+/* ---------- Footer ---------- */
+.foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8em; min-height: 1.3em;
+  font-size: 0.78em; font-weight: 600; color: rgba(var(--light-rgb), 0.92); text-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.6);
+}
+.sky[data-layout="stack"] .foot { justify-content: center; flex-direction: column; gap: 0.2em; }
+.pct { flex: none; font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+.note { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.note b { color: var(--text); font-weight: 700; }
+.note .note__star { margin-right: 0.35em; color: #fff; text-shadow: 0 0 0.4em rgba(var(--glow-rgb), 1); }
+.note.reached { color: var(--text); font-weight: 700; letter-spacing: 0.03em; }
+.note.pop { animation: note-pop 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+@keyframes note-pop { 0% { opacity: 0; transform: translateY(0.5em) scale(0.92); } 100% { opacity: 1; transform: none; } }
+
+/* Panel off: text floats on the stream, so it gets a stronger outline. */
+.sky[data-panel="off"] .title, .sky[data-panel="off"] .count, .sky[data-panel="off"] .foot, .sky[data-panel="off"] .count b {
+  text-shadow: 0 0.05em 0.12em rgba(0, 0, 0, 0.95), 0 0 0.45em rgba(var(--sky2-rgb), 0.95);
+}
+
+/* ---------- Effects layer ---------- */
+.fx { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; pointer-events: none; }
+/* "+500" chip that pops out of the star at the tip of the bar. */
+.floater {
+  position: absolute; z-index: 4; pointer-events: none; white-space: nowrap; padding: 0.12em 0.6em; border-radius: 999px;
+  font-size: 0.95em; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, rgba(var(--sky-rgb), 0.92), rgba(var(--sky2-rgb), 0.92));
+  box-shadow: inset 0 0 0 1px rgba(var(--light-rgb), 0.55), 0 0 0.9em rgba(var(--glow-rgb), 0.75), 0 0.2em 0.6em rgba(0, 0, 0, 0.45);
+  text-shadow: 0 0 0.4em rgba(var(--glow-rgb), 0.9);
+  transform: translate(-50%, -50%); animation: rise 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes rise {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.4); }
+  16% { opacity: 1; transform: translate(-50%, -150%) scale(1.12); }
+  26% { transform: translate(-50%, -140%) scale(1); }
+  78% { opacity: 1; transform: translate(-50%, -165%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -210%) scale(0.95); }
+}
