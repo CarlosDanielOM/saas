@@ -484,6 +484,20 @@ class OpsTests(unittest.TestCase):
         self.ops.retain("site")
         self.assertEqual([(path / "bundle").exists() for path in runs], [False, False] + [True] * 10)
 
+    def test_trimmed_runs_never_look_newer_than_the_releases_kept(self):
+        runs = [self.stored_run("site", index) for index in range(14)]
+        for age, path in enumerate(reversed(runs)):
+            os.utime(path / "previous-bundle", (10_000 - age, 10_000 - age))
+        self.assertEqual(self.ops.retain("site"), 4)
+        # Trimming rewrote the oldest receipts just now and removed their rollback copies.
+        newest = [path.name for _, path, _ in self.ops.releases("site")[:10]]
+        self.assertEqual(newest, [path.name for path in reversed(runs[4:])])
+        self.assertEqual([json.loads((path / "receipt.json").read_text())["released_at"] for path in runs[:4]], [9987, 9988, 9989, 9990])
+        # Later passes trim nothing more, however often they run.
+        for _ in range(3):
+            self.assertEqual(self.ops.retain("site"), 0)
+        self.assertTrue(all((path / "previous-bundle").is_dir() for path in runs[4:]))
+
     def test_retention_drops_stale_candidates_but_never_a_run_in_flight(self):
         old = 1_000_000
         stale = [self.stored_run("site", index, status) for index, status in enumerate(("verified", "built", "verify-failed", "build-failed", "building"))]
@@ -581,6 +595,8 @@ class OpsTests(unittest.TestCase):
         (output / "index.html").write_text("current homepage")
         self.ops.current["Mounts"] = [{"Destination": "/usr/share/nginx/html", "Source": str(output), "Type": "bind", "RW": False}]
         releases = self.site_releases(10)
+        trimmed = self.stored_run("site", 900, deployed_at=9_999, pruned=True)  # rewritten recently, outside the window
+        shutil.rmtree(trimmed / "bundle")
         old, kept = self.live_assets(output)
         (output / "chunk-R0000009.js").write_text("current release")
         current = releases[-1]

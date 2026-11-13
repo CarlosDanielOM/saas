@@ -244,15 +244,17 @@ class Ops:
             if receipt.get("run") != path.name or receipt.get("repo") != str(self.root) or receipt.get("target") != name:
                 continue
             backup = path / "previous-bundle"
-            # Receipts written before releases were timestamped: the backup is created at deploy time.
-            when = receipt.get("deployed_at") or (backup if backup.is_dir() else path / "receipt.json").stat().st_mtime
+            # Releases made before deploys were timestamped are dated by their rollback copy, made at deploy
+            # time; trimming records that date first, because the copy goes and the receipt is rewritten.
+            when = (receipt.get("deployed_at") or receipt.get("released_at")
+                    or (backup if backup.is_dir() else path / "receipt.json").stat().st_mtime)
             runs.append((when, path, receipt))
         return runs
 
     def releases(self, name, runs=None):
-        """Released runs of one target, newest first."""
+        """Released runs of one target, newest first. Trimmed runs are outside the window, so they always come last."""
         return sorted((run for run in (self.runs(name) if runs is None else runs) if run[2].get("status") in {"deployed", "rolled-back"}),
-                      key=lambda run: run[0], reverse=True)
+                      key=lambda run: (not run[2].get("pruned"), run[0]), reverse=True)
 
     def retain(self, name):
         """Remove the stored bundles and sources of old runs for one target. Returns how many runs were trimmed."""
@@ -265,7 +267,7 @@ class Ops:
             run for run in runs if run[2].get("status") in {"built", "verified", "verify-failed", "build-failed", "cleaned", "building"}
             and (run[1] / "receipt.json").stat().st_mtime < cutoff]
         trimmed = 0
-        for _, path, receipt in expired:
+        for when, path, receipt in expired:
             removed = False
             for directory in (path / entry for entry in RETAINED_DIRECTORIES):
                 if directory.is_dir() and not directory.is_symlink():
@@ -273,6 +275,7 @@ class Ops:
                     removed = True
             if removed:
                 receipt["pruned"] = True
+                receipt.setdefault("released_at" if receipt.get("status") in {"deployed", "rolled-back"} else "trimmed_at", int(when))
                 self.save(path, receipt)
                 trimmed += 1
         return trimmed
@@ -663,12 +666,13 @@ class Ops:
         """Apply the asset window to the live folder now; the current release's rollback keeps working."""
         target = TARGETS[name]
         require(bool(target.output), "prune applies to site, admin and docs")
-        releases = self.releases(name)
-        require(bool(releases) and releases[0][2].get("status") == "deployed", "This target has no current release")
-        _, path, receipt = releases[0]
-        self.intact(receipt)
         output = self.live_output(target, self.live(target))
-        require(tree_hash(output) == receipt.get("deployed_bundle"), "Live files differ from the current release; deploy through the helper first")
+        live_hash = tree_hash(output)
+        # The current release is the one whose recorded result is exactly what is served now.
+        current = [run for run in self.releases(name) if run[2].get("status") == "deployed" and run[2].get("deployed_bundle") == live_hash]
+        require(len(current) == 1, "Live files differ from the current release; deploy through the helper first")
+        _, path, receipt = current[0]
+        self.intact(receipt)
         removed = self.prune_assets(name, output, path / "bundle", receipt["run"])
         receipt["deployed_bundle"] = tree_hash(output)
         receipt["assets_pruned"] = receipt.get("assets_pruned", 0) + removed
