@@ -196,6 +196,7 @@ class Reply {
   }
   finish(reason, body, opts = {}) {
     this.chunk({}, reason);
+    if (this.native) this.items.at(-1).choices[0].native_finish_reason = this.native;
     const usage = usageFor(body, this.info, this.chars, opts);
     this.usage = usage;
     if (!opts.noUsage) this.items.push({ id: this.id, provider: 'OpenAI', model: 'openai/gpt-6-luna', object: 'chat.completion.chunk', choices: [], usage });
@@ -265,6 +266,15 @@ async function openRouterChat(body, headers, signal) {
     const message = script === 'context' ? "This model's maximum context length is 100000 tokens. However, you requested 140000 tokens." : `Fixture HTTP ${status}`;
     return json({ error: { code: status, message } }, status, status === 429 || status === 503 ? { 'retry-after': '1' } : {});
   }
+  // Safety decline on Claude only (Expert); Luna answers the same request (the fallback).
+  const claude = String(body.model ?? '').startsWith('anthropic/');
+  if (script === 'refusal403' && claude) {
+    record({ provider: 'openrouter', path: '/chat/completions', script, step: info.step, status: 403, ...requestLog(body, headers, info) });
+    return json({ error: { code: 403, message: 'Fixture: declined by the provider', metadata: { error_type: 'refusal', provider_name: 'Anthropic' } } }, 403);
+  }
+  if ((script === 'refusal' || script === 'refusal403') && !claude) script = 'fallback';
+  // Declines on every model (Standard has no fallback: the turn fails as declined).
+  if (script === 'refusal_any') script = 'refusal';
   if (script === 'flaky') {
     const key = `${body.session_id}|${info.lastUser}|${info.step}`;
     if (!flaky.has(key)) {
@@ -321,6 +331,15 @@ async function openRouterChat(body, headers, signal) {
   } else if (script === 'incomplete') {
     reply.reasoning();
     reply.text('FIXTURE_PARTIAL The stream ends without finishing', 3, delay);
+  } else if (script === 'refusal') {
+    // Claude: starts answering, then the safety filter stops it (finish_reason content_filter, native refusal).
+    reply.text('FIXTURE_PARTIAL I can help with ', 2, delay);
+    reply.chunk({ refusal: 'Fixture: declined.' });
+    finishReason = 'content_filter';
+    reply.native = 'refusal';
+  } else if (script === 'fallback') {
+    reply.reasoning();
+    reply.text(`FIXTURE_FALLBACK answered by ${body.model}`, 3, delay);
   } else if (script === 'no_usage') {
     reply.reasoning();
     reply.text(TEXT, 8, delay);

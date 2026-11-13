@@ -42,6 +42,9 @@
   </div>
 
   <div class="cp-meta" id="assistant-composer-meta">
+    @if (showLevel()) {
+      <app-assistant-level />
+    }
     @if (store.running()) {
       <button type="button" class="cp-queue" [attr.aria-pressed]="queueMode()" (click)="toggleQueue()" data-assistant-queue>
         <span class="cp-queue__box" aria-hidden="true"></span>{{ t('assistant.composer.queueToggle') }}
@@ -55,4 +58,7 @@
       <span class="cp-count" [class.cp-count--over]="tooLong()">{{ draft().length }}/{{ max }}</span>
     }
   </div>
+  @if (levelNote(); as note) {
+    <p class="cp-level-note" [class.cp-level-note--warn]="short()" [attr.role]="short() ? 'note' : null" data-assistant-level-note>{{ note }}</p>
+  }
 </div>

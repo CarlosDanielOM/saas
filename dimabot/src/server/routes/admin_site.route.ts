@@ -32,6 +32,7 @@ import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
 import { cacheCreditPackBillingContext } from '../../utils/billing.js';
 import { getAdminPetDiagnostics } from '../services/admin_pet_diagnostics.service.js';
+import { listRefusals } from '../../site_agent/refusals.js';
 import { labelModerationReview, listModerationReviews, moderationReviewCounts, MODERATION_REVIEW_KINDS, MODERATION_REVIEW_LABELS, type ModerationReviewKind, type ModerationReviewLabel } from '../services/moderation_review.service.js';
 
 interface AuthRequest extends Request {
@@ -1158,6 +1159,24 @@ router.put('/moderation-reviews', authMiddleware as any, async (req: AuthRequest
         return res.status(200).json({ error: false, message: label ? 'Verdict saved' : 'Verdict cleared', status: 200, data: { updated, label } });
     } catch {
         return res.status(500).json({ error: true, message: 'Verdict could not be saved', status: 500 });
+    }
+});
+
+// Assistant refusals: Expert answers the safety filter declined (the person got Standard's answer). What was asked
+// and the context, so the owner can see why. Owner only: it shows messages from every channel. Read only.
+router.get('/assistant-refusals', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    if (!ensureSuperAdmin(req, res)) return;
+    res.setHeader('Cache-Control', 'no-store');
+    const page = reviewInteger(req.query.page, 1, 10_000);
+    const limit = reviewInteger(req.query.limit, 20, 50);
+    const channel = req.query.channel === undefined ? undefined : String(req.query.channel);
+    if (page === null || limit === null || (channel !== undefined && !/^\d{1,20}$/.test(channel))) {
+        return res.status(400).json({ error: true, message: 'Invalid refusal filter', status: 400 });
+    }
+    try {
+        return res.status(200).json({ error: false, message: 'Assistant refusals retrieved', status: 200, data: await listRefusals(page, limit, channel) });
+    } catch {
+        return res.status(500).json({ error: true, message: 'Assistant refusals unavailable', status: 500 });
     }
 });
 

@@ -37,6 +37,9 @@ step 1 on), `[DONE]`. Each SSE event is written in two pieces so lines cross net
 | `[[nocost]]` | Usage without `cost_details` (tests the estimated-cost path). |
 | `[[crlf]]` | CRLF line endings. |
 | `[[compaction:<script>]]` | Script for compaction calls (requests without tools). Default `summary`. |
+| `[[script:refusal]]` | Claude (`anthropic/…`) starts a reply, then declines (`finish_reason: content_filter`, native `refusal`). Any other model answers `FIXTURE_FALLBACK answered by <model>`. |
+| `[[script:refusal403]]` | Claude: 403 with `metadata.error_type: refusal`. Other models: the `FIXTURE_FALLBACK` answer. |
+| `[[script:refusal_any]]` | Any model starts a reply, then declines (the `refusal` reply without the Claude-only rule). |
 
 | Script | Reply |
 |---|---|

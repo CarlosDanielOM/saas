@@ -11,15 +11,15 @@ import { error as logError } from '../../utils/logger.js';
 import { hitRateLimit } from '../../utils/rate_limit.js';
 import { permissionChecker, resolveAccess, type ChannelAccess } from '../../site_agent/access.js';
 import { ChangeError, listChanges, undoChange } from '../../site_agent/changes.js';
-import { isSiteAgentEnabled, PLAN_MODELS, SITE_AGENT_LIMITS } from '../../site_agent/config.js';
+import { isAgentLevel, isSiteAgentEnabled, levelAvailable, levelConfig, nextCosts, SITE_AGENT_LIMITS, type AgentLevel } from '../../site_agent/config.js';
 import { readLimits } from '../../site_agent/limits.js';
-import { personaAvailable, personaView, writePrefs } from '../../site_agent/prefs.js';
+import { levelView, personaAvailable, personaView, readPrefs, writePrefs } from '../../site_agent/prefs.js';
 import {
-    AgentRequestError, decideApproval, feedback, isTurnActive, retryTurn, stopTurn, submitMessage, submitUi,
+    AgentRequestError, chatAfterQueue, decideApproval, feedback, isTurnActive, retryTurn, stopTurn, submitMessage, submitUi,
 } from '../../site_agent/runner.js';
 import * as store from '../../site_agent/store.js';
 import { getUndoTool } from '../../site_agent/tools/registry.js';
-import { ToolConflictError, type InputMode, type Lang, type PageContext, type Requester } from '../../site_agent/types.js';
+import { ToolConflictError, type InputMode, type Lang, type PageContext, type PlanTier, type Requester, type SessionMeta } from '../../site_agent/types.js';
 
 export const siteAgentRoute = express.Router();
 siteAgentRoute.use(authMiddleware as express.RequestHandler);
@@ -66,7 +66,22 @@ async function ownTurn(ctx: Ctx, turnId: string) {
 }
 
 function turnSnapshot(turn: store.TurnRecord, cursor: string) {
-    return { turnId: turn.id, sessionId: turn.sessionId, status: turn.status, inputRevision: turn.inputRevision, cursor };
+    // levelCost: what a steer into this answer pays.
+    return { turnId: turn.id, sessionId: turn.sessionId, status: turn.status, inputRevision: turn.inputRevision, cursor, levelCost: turn.levelCost ?? turn.cost ?? 1 };
+}
+
+/**
+ * A chat for the panel, with what the next message costs at each level: `nextCost` for a new message, and while an
+ * answer runs `queueCost` for one queued after it (moving the chat to the other level costs more).
+ */
+async function withCosts(plan: PlanTier, session: SessionMeta) {
+    const active = session.activeTurnId ? await store.getTurn(session.activeTurnId).catch(() => null) : null;
+    const running = active && isTurnActive(active.status) ? active : null;
+    return {
+        ...session,
+        nextCost: nextCosts(plan, session),
+        ...(running ? { queueCost: nextCosts(plan, await chatAfterQueue(plan, session, running)) } : {}),
+    };
 }
 
 function parsePage(raw: unknown): PageContext | null {
@@ -103,26 +118,44 @@ siteAgentRoute.get('/:channelID/status', async (req: AuthRequest, res) => {
         const ctx = await context(req, res, false);
         if (!ctx) return;
         const enabled = isSiteAgentEnabled(ctx.access.channelId);
+        const prefs = await readPrefs(ctx.access.channelId, ctx.requester.id);
+        const level = levelView(ctx.access.plan, prefs.level);
         return ok(res, {
             enabled,
             role: ctx.requester.id === ctx.access.channelId ? 'owner' : ctx.access.role,
             limits: await readLimits(ctx.access.channelId, ctx.access.plan),
-            contextLimit: PLAN_MODELS[ctx.access.plan].contextLimit,
+            // The limit of the level the next message uses.
+            contextLimit: levelConfig(ctx.access.plan, level.current).contextLimit,
+            level,
             persona: enabled ? await personaView(ctx.access.channelId, ctx.requester.id, ctx.access.plan) : { available: false, on: false, name: null },
         });
     } catch (err) { return handleError(res, err, 'status'); }
 });
 
-/** Preferences of this person on this channel. `persona` (answer in the bot's personality) needs Premium/Pro. */
+/**
+ * Preferences of this person on this channel (send either or both): `persona` (answer in the bot's personality)
+ * and `level` ('standard' | 'expert'). Both need Premium/Pro to turn on.
+ */
 siteAgentRoute.patch('/:channelID/prefs', async (req: AuthRequest, res) => {
     try {
         const ctx = await context(req, res);
         if (!ctx) return;
         const persona = req.body?.persona;
-        if (typeof persona !== 'boolean') return fail(res, 400, 'invalid_request', 'persona must be true or false');
+        const level = req.body?.level;
+        if (persona === undefined && level === undefined) return fail(res, 400, 'invalid_request', 'persona or level is required');
+        if (persona !== undefined && typeof persona !== 'boolean') return fail(res, 400, 'invalid_request', 'persona must be true or false');
+        if (level !== undefined && !isAgentLevel(level)) return fail(res, 400, 'invalid_request', 'level must be standard or expert');
         if (persona && !personaAvailable(ctx.access.plan)) return fail(res, 403, 'plan_required', 'Answering in your bot\'s personality needs Premium or Pro');
-        await writePrefs(ctx.access.channelId, ctx.requester.id, { persona });
-        return ok(res, { persona: await personaView(ctx.access.channelId, ctx.requester.id, ctx.access.plan) });
+        if (level !== undefined && !levelAvailable(ctx.access.plan, level)) return fail(res, 403, 'plan_required', 'Expert needs Premium or Pro');
+        const saved = await writePrefs(ctx.access.channelId, ctx.requester.id, {
+            ...(typeof persona === 'boolean' ? { persona } : {}), ...(isAgentLevel(level) ? { level } : {}),
+        });
+        const view = levelView(ctx.access.plan, saved.level);
+        return ok(res, {
+            persona: await personaView(ctx.access.channelId, ctx.requester.id, ctx.access.plan),
+            level: view,
+            contextLimit: levelConfig(ctx.access.plan, view.current).contextLimit,
+        });
     } catch (err) { return handleError(res, err, 'prefs'); }
 });
 
@@ -130,7 +163,9 @@ siteAgentRoute.get('/:channelID/sessions', async (req: AuthRequest, res) => {
     try {
         const ctx = await context(req, res);
         if (!ctx) return;
-        return ok(res, { sessions: await store.listSessions(ctx.access.channelId, ctx.requester.id) });
+        // `nextCost`: what the next message costs at each level in that chat (moving it to the other level costs more).
+        const sessions = await store.listSessions(ctx.access.channelId, ctx.requester.id);
+        return ok(res, { sessions: await Promise.all(sessions.map((session) => withCosts(ctx.access.plan, session))) });
     } catch (err) { return handleError(res, err, 'sessions'); }
 });
 
@@ -143,7 +178,7 @@ siteAgentRoute.get('/:channelID/sessions/:sessionId', async (req: AuthRequest, r
         const active = session.activeTurnId ? await store.getTurn(session.activeTurnId) : null;
         const live = active && isTurnActive(active.status) ? active : null;
         const { items, cursor } = await store.snapshot(session.id, live?.id ?? null);
-        return ok(res, { session, items, activeTurn: live ? turnSnapshot(live, cursor) : null });
+        return ok(res, { session: await withCosts(ctx.access.plan, session), items, activeTurn: live ? turnSnapshot(live, cursor) : null });
     } catch (err) { return handleError(res, err, 'session'); }
 });
 
@@ -180,9 +215,11 @@ siteAgentRoute.post('/:channelID/messages', async (req: AuthRequest, res) => {
         const mode: InputMode = body.mode === 'steer' || body.mode === 'queue' ? body.mode : 'send';
         const lang: Lang = body.lang === 'es' || body.lang === 'en' ? body.lang : ctx.access.savedLang ?? 'en';
         const sessionId = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
+        if (body.level !== undefined && !isAgentLevel(body.level)) return fail(res, 400, 'invalid_request', 'level must be standard or expert');
+        const level: AgentLevel | null = isAgentLevel(body.level) ? body.level : null;
         return await idempotent(ctx, body, res, async () => ({
             status: 202,
-            data: await submitMessage({ access: ctx.access, requester: ctx.requester, sessionId, text: body.text, mode, page: parsePage(body.page), lang }),
+            data: await submitMessage({ access: ctx.access, requester: ctx.requester, sessionId, text: body.text, mode, page: parsePage(body.page), lang, level }),
         }));
     } catch (err) { return handleError(res, err, 'messages'); }
 });

@@ -1,0 +1,129 @@
+<div class="lf ar-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">Assistant refusals</h1>
+          <p class="lf-sub">Expert answers the AI safety filter declined. Standard answered instead. See what was asked to find out why.</p>
+        </div>
+        <div class="lf-head__actions">
+          <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/moderation-review"><app-icon name="shield" />Chat protection review</a>
+          <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
+            <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+          </button>
+        </div>
+      </div>
+    </header>
+
+    @if (counts(); as c) {
+      <div class="lf-status" [class.lf-status--warn]="c.week > 0" [class.lf-status--ok]="c.week === 0" role="status" data-refusal-status>
+        <app-icon [name]="c.week > 0 ? 'alert' : 'ok'" />
+        <div class="lf-status__body">
+          @if (c.week > 0) {
+            <strong class="lf-status__title">{{ c.week }} {{ c.week === 1 ? 'refusal' : 'refusals' }} in the last 7 days</strong>
+          } @else {
+            <strong class="lf-status__title">No refusals in the last 7 days</strong>
+          }
+          <span class="lf-status__text">{{ c.total }} kept in all. Each is kept 90 days and deleted with the streamer's account.</span>
+        </div>
+      </div>
+    } @else if (!failed()) {
+      <div class="lf-status" aria-busy="true"><app-skeleton width="14rem" height="1.4rem" /></div>
+    }
+
+    @if (channel(); as ch) {
+      <div class="ar-filter">
+        <span class="lf-chip lf-chip--accent">Only channel {{ rows()[0]?.channelLogin || ch }}</span>
+        <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="go({ channel: null })">Show all channels</button>
+      </div>
+    }
+
+    @if (failed()) {
+      <div class="lf-tile lf-empty" role="alert">
+        <app-icon name="alert" />
+        <strong>The refusals did not load</strong>
+        <span>Your filter is kept.</span>
+        <button type="button" class="lf-btn" (click)="load()">Retry</button>
+      </div>
+    } @else if (loading() && !rows().length) {
+      <div class="ar-list" aria-busy="true">
+        @for (i of [0, 1]; track i) {
+          <div class="lf-tile ar-card"><app-skeleton width="60%" height="1rem" /><app-skeleton width="100%" height="3.2rem" /></div>
+        }
+      </div>
+    } @else if (!rows().length) {
+      <div class="lf-tile lf-empty" data-refusal-empty>
+        <app-icon name="ok" />
+        <strong>No refusals {{ channel() ? 'on this channel' : 'yet' }}</strong>
+        <span>When the safety filter declines an Expert answer, it shows up here with what was asked.</span>
+      </div>
+    } @else {
+      <ul class="ar-list" [attr.aria-busy]="loading()">
+        @for (row of rows(); track row.id) {
+          <li class="lf-tile ar-card" data-refusal-card>
+            <p class="ar-card__meta">
+              <a class="ar-channel" [routerLink]="['/channels', row.channelId]">{{ row.channelLogin || row.channelId }}</a>
+              <span>asked by {{ row.userLogin || row.userId }}</span>
+              <span class="lf-chip" [class.lf-chip--gold]="row.plan !== 'free'">{{ row.plan }}</span>
+              <span>{{ when(row.at) }}</span>
+              @if (!channel()) {
+                <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost ar-only" (click)="go({ channel: row.channelId })">Only this channel</button>
+              }
+            </p>
+            <blockquote class="ar-message" data-refusal-message>{{ row.message }}</blockquote>
+            @if (row.steers.length) {
+              <div class="ar-steers">
+                <p class="lf-note">Added while it worked:</p>
+                <ul>
+                  @for (steer of row.steers; track $index) {
+                    <li>{{ steer }}</li>
+                  }
+                </ul>
+              </div>
+            }
+            <p class="ar-how">{{ how(row) }}</p>
+            <p class="ar-models"><span class="mono">{{ row.model }}</span><app-icon name="arrow" /><span class="mono">{{ row.fallbackModel }}</span><span class="lf-note">step {{ row.step + 1 }}</span></p>
+            @if (signals(row).length || row.refusal || row.detail?.flaggedInput) {
+              <div class="ar-signals">
+                @for (signal of signals(row); track signal) {
+                  <span class="lf-chip mono">{{ signal }}</span>
+                }
+                @if (row.refusal) {
+                  <p class="ar-refusal"><b>Refusal text</b> {{ row.refusal }}</p>
+                }
+                @if (row.detail?.flaggedInput) {
+                  <p class="ar-refusal"><b>Flagged part</b>&ngsp;<span class="mono">{{ row.detail!.flaggedInput }}</span></p>
+                }
+              </div>
+            }
+            @if (row.partial) {
+              <details class="lf-more">
+                <summary>What it had written before stopping<app-icon name="down" /></summary>
+                <div class="lf-more__body"><p class="ar-text">{{ row.partial }}</p></div>
+              </details>
+            }
+            @if (row.recent.length) {
+              <details class="lf-more ar-recent">
+                <summary>What the assistant saw before ({{ row.recent.length }} {{ row.recent.length === 1 ? 'item' : 'items' }})<app-icon name="down" /></summary>
+                <div class="lf-more__body">
+                  <ol>
+                    @for (item of row.recent; track $index) {
+                      <li><b>{{ roleName(item.role) }}@if (item.name) { · <span class="mono">{{ item.name }}</span>}</b><span class="ar-text">{{ item.text }}</span></li>
+                    }
+                  </ol>
+                </div>
+              </details>
+            }
+          </li>
+        }
+      </ul>
+      @if (totalPages() > 1) {
+        <div class="lf-tile lf-pager">
+          <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() === 1 || loading()" (click)="go({ page: page() - 1 })">Previous</button>
+          <span class="lf-pager__info">Page {{ page() }} of {{ totalPages() }}<br />{{ total() }} refusals</span>
+          <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() >= totalPages() || loading()" (click)="go({ page: page() + 1 })">Next</button>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -369,3 +369,40 @@ test('usage keeps cache writes only when there are some', () => {
     assert.equal(mapStreamUsage({ prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 8 } }).cacheWriteTokens, 8);
     assert.equal('cacheWriteTokens' in mapStreamUsage({ prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 4, cache_write_tokens: 0 } }), false);
 });
+
+test('safety declines: a content_filter reply, a 403 refusal/moderation error and a mid-stream refusal', async () => {
+    // Reply-shaped: finish_reason content_filter + native refusal (the step is not an error).
+    handler = stream([data(chunk({ content: 'I can' })), data({ id: 'gen-1', provider: 'Anthropic', choices: [{ index: 0, delta: { refusal: 'Declined.' }, finish_reason: 'content_filter', native_finish_reason: 'refusal' }] }), data(usageChunk), 'data: [DONE]\n\n']);
+    const declined = await streamChat(request({ model: 'anthropic/claude-haiku-5.5' }), {}, fast);
+    assert.equal(declined.refused, true);
+    assert.equal(declined.nativeFinishReason, 'refusal');
+    assert.equal(declined.refusal, 'Declined.');
+    assert.equal(declined.content, 'I can');
+    // A normal reply is not refused and keeps its native reason.
+    handler = stream([data(chunk({ content: 'ok' })), data({ id: 'gen-1', choices: [{ index: 0, delta: {}, finish_reason: 'stop', native_finish_reason: 'end_turn' }] }), 'data: [DONE]\n\n']);
+    const fine = await streamChat(request(), {}, fast);
+    assert.deepEqual([fine.refused, fine.nativeFinishReason, fine.refusal], [false, 'end_turn', null]);
+
+    // 403 with refusal metadata → 'refused' (with the detail); a plain 403 stays a key/config problem.
+    const body403 = (metadata: Record<string, unknown>): Handler => (_req, res) => {
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { code: 403, message: 'Your input was flagged', metadata } }));
+    };
+    handler = body403({ error_type: 'refusal', provider_name: 'Anthropic' });
+    const refusal = await streamChat(request(), {}, fast).then(() => null, (err: LlmError) => err);
+    assert.equal(refusal?.kind, 'refused');
+    assert.deepEqual(refusal?.detail, { errorType: 'refusal', providerName: 'Anthropic' });
+    handler = body403({ reasons: ['violence'], flagged_input: 'how to ...', model_slug: 'x' });
+    const moderated = await streamChat(request(), {}, fast).then(() => null, (err: LlmError) => err);
+    assert.equal(moderated?.kind, 'refused');
+    assert.deepEqual(moderated?.detail, { reasons: ['violence'], flaggedInput: 'how to ...' });
+    handler = body403({ raw: 'key not allowed' });
+    assert.equal((await streamChat(request(), {}, fast).then(() => null, (err: LlmError) => err))?.kind, 'config');
+
+    // Mid-stream error with a refusal error_type.
+    handler = stream([data(chunk({ content: 'Sure' })), data({ id: 'gen-1', error: { code: 403, message: 'Blocked', metadata: { error_type: 'content_policy_violation' } }, choices: [{ index: 0, delta: { content: '' }, finish_reason: 'error' }] })]);
+    const midStream = await streamChat(request(), {}, fast).then(() => null, (err: LlmError) => err);
+    assert.equal(midStream?.kind, 'refused');
+    assert.equal(midStream?.detail?.errorType, 'content_policy_violation');
+    assert.equal(midStream?.generationId, 'gen-1', 'still reconciled');
+});

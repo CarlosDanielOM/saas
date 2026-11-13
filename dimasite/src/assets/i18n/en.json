@@ -11097,6 +11097,23 @@
       "upgrade": "See plans",
       "failed": "Couldn't save that. Try again."
     },
+    "level": {
+      "label": "Answer mode",
+      "standard": "Standard",
+      "expert": "Expert",
+      "standardHint": "Good for most questions. Uses 1 message.",
+      "expertHint": "Stronger mode: works through bigger setups on its own. Uses 2 messages.",
+      "expertNote": "Expert works through bigger setups on its own. Each message uses {{cost}} of today's messages.",
+      "expertMemory": "Long chats get summarized sooner.",
+      "short": "This message uses {{cost}} messages and you have {{left}} left today.",
+      "shortSwitch": "Switch to Standard to send it.",
+      "shortNewChat": "A new chat on Standard uses 1.",
+      "shortSteer": "Adding to this answer uses {{cost}} messages and you have {{left}} left today.",
+      "moveExpert": "Moving this chat to Expert uses {{total}} messages for this one: {{move}} to move the chat and {{cost}} for the message. After that, {{cost}} each. A new chat doesn't pay to move.",
+      "moveStandard": "Moving this chat to Standard uses {{total}} messages for this one: {{move}} to move the chat and {{cost}} for the message. A new chat doesn't pay to move.",
+      "lockedLabel": "{{name}}, needs Premium or Pro. See plans",
+      "costLabel": "{{name}}, uses {{cost}} messages"
+    },
     "title": "Assistant",
     "experimental": {
       "badge": "Experimental",
@@ -11209,6 +11226,9 @@
       "queue_full": "You already have 5 messages waiting. Wait for them to go out first.",
       "concurrent_limit": "You already have chats working. Wait for one to finish.",
       "invalid_request": "That message couldn't be sent. Check it and try again.",
+      "not_enough_messages": "Expert uses 2 messages and you don't have enough left today. Switch to Standard to send this.",
+      "plan_required": "That needs Premium or Pro.",
+      "refused": "The AI declined to answer this. Try asking it differently.",
       "session_not_found": "This chat is gone (chats are kept for 3 days).",
       "turn_not_found": "That answer isn't available anymore. Open the chat again.",
       "turn_not_active": "That answer already finished. Send it as a new message.",
@@ -11309,6 +11329,7 @@
       "unknown": "Something unexpected happened.",
       "access_revoked": "You don't have access to this channel's assistant anymore.",
       "empty_answer": "It didn't come up with an answer. Try asking it differently.",
+      "expert_fallback": "Expert couldn't take this one, so Standard answered it. That used 2 more messages: 1 to move the chat and 1 for the answer.",
       "internal_error": "Something went wrong on our side. Try again.",
       "lease_lost": "Something went wrong on our side. Try again."
     },
@@ -11335,7 +11356,7 @@
     "limits": {
       "left": "{{left}} of {{limit}} messages left today · resets {{time}}",
       "reached": "You've used all {{limit}} messages for today. More at {{time}}.",
-      "upgradePremium": "Premium gives 80 a day",
+      "upgradePremium": "Premium gives 100 a day",
       "upgradePro": "Pro gives 400 a day"
     },
     "sessions": {

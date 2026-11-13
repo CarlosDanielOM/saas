@@ -11,8 +11,9 @@
  * system prompt, turn note); multi-step tools with reasoning echoed; steer, queue, stop, retry, 409s;
  * idempotent requests; approvals (apply/skip) with the change log + undo; UI forms; navigation; daily
  * limits (20/day free) with refunds on our own failures; provider errors; SSE reconnect + resync; Polar
- * `ai_assistant` events (no credits); session privacy. Pro: Claude Haiku 5.5 (100k) with prompt-cache
- * breakpoints, thinking echoed within a turn and dropped once the history before it changed; Premium: Luna 256k.
+ * `ai_assistant` events (no credits); session privacy. Levels: Standard (Luna) / Expert (Claude Haiku 5.5, 2
+ * messages) per plan, prompt-cache breakpoints, thinking echoed within a turn and dropped once the history before
+ * it changed, Expert refusals redone on Standard with a `site_agent_refusals` record; Free locked.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -403,15 +404,30 @@ const resync = await events('owner', first.data.turnId, { after: '1-0' });
 assert.equal(resync.at(-1).type, 'resync');
 console.log('sse resync');
 
-// 15b. "Answer in my bot's personality": refused on Free; on Pro the voice block is appended after the cached prefix.
-assert.deepEqual((await api('owner', 'GET', '/status')).data.persona, { available: false, on: false, name: null });
+// 15b. Standard/Expert and "Answer in my bot's personality": both locked on Free.
+const used = async () => (await api('owner', 'GET', '/status')).data.limits.used;
+const freeStatus = await api('owner', 'GET', '/status');
+assert.deepEqual(freeStatus.data.persona, { available: false, on: false, name: null });
+assert.deepEqual(freeStatus.data.level, { current: 'standard', options: [
+  { id: 'standard', available: true, cost: 1, contextLimit: 100_000 }, { id: 'expert', available: false, cost: 2, contextLimit: null }] });
 assert.equal((await api('owner', 'PATCH', '/prefs', { persona: true })).json.data.code, 'plan_required');
+assert.equal((await api('owner', 'PATCH', '/prefs', { level: 'expert' })).json.data.code, 'plan_required');
+assert.equal((await api('owner', 'PATCH', '/prefs', { level: 'max' })).status, 400);
+assert.equal((await send('owner', 'expert on free', { level: 'expert' })).json.data.code, 'plan_required');
 await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'pro' } });
 
-// 15a. Pro runs Claude Haiku 5.5 (100k) with two prompt-cache breakpoints; its reasoning goes back while the history is unchanged.
-assert.equal((await api('owner', 'GET', '/status')).data.contextLimit, 100_000);
+// 15a. Pro: Standard = Luna 256k, Expert = Claude Haiku 5.5 256k at 2 messages, with two prompt-cache breakpoints and
+// its reasoning sent back while the history is unchanged.
+const proStatus = await api('owner', 'GET', '/status');
+assert.equal(proStatus.data.contextLimit, 256_000);
+assert.deepEqual(proStatus.data.level.options.map((o) => [o.id, o.available, o.cost, o.contextLimit]), [['standard', true, 1, 256_000], ['expert', true, 2, 256_000]]);
+assert.equal(proStatus.data.limits.limit, 400);
+const toExpert = await api('owner', 'PATCH', '/prefs', { level: 'expert' });
+assert.deepEqual([toExpert.data.level.current, toExpert.data.contextLimit], ['expert', 256_000]);
 const beforePro = modelCalls().length;
+const usedBeforeExpert = await used();
 const proTools = await send('owner', 'Find TTS docs on Pro [[call:search_docs {"query":"text to speech"}]] [[call@1:read_docs {"id":"/tts#intro"}]]');
+assert.equal(proTools.data.limits.used, usedBeforeExpert + 2, 'Expert uses 2 messages');
 const proStream = await events('owner', proTools.data.turnId);
 assert.equal(proStream.at(-1).data.status, 'completed');
 assert.match(finalAnswer(proStream).text, /reasoning=ok/, 'thinking blocks echoed within the turn');
@@ -424,7 +440,7 @@ for (const { body } of proCalls) {
   assert.deepEqual(body.messages[0], { role: 'system', content: [{ type: 'text', text: request1.messages[0].content, cache_control: { type: 'ephemeral' } }] },
     'system prompt: same text as Luna gets, plus its own breakpoint');
 }
-console.log('pro: haiku 5.5 high, 100k, cache breakpoints, reasoning echoed');
+console.log('pro expert: haiku 5.5 high, 256k, 2 messages, cache breakpoints, reasoning echoed');
 
 await mongo.connection.db.collection('channelaipersonalities').insertOne({ channelID: CHANNEL, activeProfileId: 'p1', personality: 'Talks like a pirate.',
   profiles: [{ profileID: 'p1', name: 'Check Persona', personality: 'Talks like a pirate.' }] });
@@ -443,19 +459,131 @@ assert.equal(oldToolSteps.length, 2, 'the earlier tool steps are still in the hi
 assert.ok(voicedBody.messages.filter((m) => m.role === 'assistant').every((m) => m.reasoning_details === undefined), 'changed prefix: no thinking blocks replayed');
 assert.equal((await api('owner', 'PATCH', '/prefs', { persona: false })).data.persona.on, false);
 
-// Premium stays on Luna 256k with no cache markers. Same chat (a new one would evict the oldest of 10, used below);
-// Haiku's thinking never goes to Luna.
+// A message can name its level (the panel always does): Standard on Pro = Luna, 1 message, no cache markers. This chat
+// last ran on Expert, so moving it costs 1 more (owner decision); the chat says so before sending.
+const costsOnExpert = (await api('owner', 'GET', `/sessions/${proTools.data.sessionId}`)).data.session.nextCost;
+assert.deepEqual(costsOnExpert, { standard: { total: 2, level: 1, move: 1 }, expert: { total: 2, level: 2, move: 0 } });
+const usedBeforeStandard = await used();
+const proStandard = await send('owner', 'standard on pro [[script:text]]', { sessionId: proTools.data.sessionId, level: 'standard' });
+assert.equal(proStandard.data.limits.used, usedBeforeStandard + 2, '1 + 1 to move the chat to Standard');
+assert.equal((await events('owner', proStandard.data.turnId)).at(-1).data.status, 'completed');
+const standardBody = modelCalls().at(-1).body;
+assert.deepEqual([standardBody.model, standardBody.cache_control, typeof standardBody.messages[0].content], ['openai/gpt-6-luna', undefined, 'string']);
+assert.ok(standardBody.messages.filter((m) => m.role === 'assistant').every((m) => m.reasoning_details === undefined), 'no Claude thinking sent to Luna');
+const costsOnStandard = (await api('owner', 'GET', '/sessions')).data.sessions.find((entry) => entry.id === proTools.data.sessionId).nextCost;
+assert.deepEqual(costsOnStandard, { standard: { total: 1, level: 1, move: 0 }, expert: { total: 4, level: 2, move: 2 } }, 'back to Expert: 2 + 2');
+console.log('pro standard: luna 256k, 1 message (+1 to move an Expert chat); moving back to Expert costs 2 more');
+
+// Expert declined by the safety filter (a content_filter reply, then a 403): Standard redoes the step, the person sees a
+// short note, and the owner gets a record of what was asked. Cost (owner decision): the Expert message (2, +2 to move
+// this Standard chat) and then +2 for the switch and Standard's answer = 6.
+const refusals = mongo.connection.db.collection('site_agent_refusals');
+for (const [script, source] of [['refusal', 'reply'], ['refusal403', 'error']]) {
+  const usedBefore = await used();
+  const beforeCalls = modelCalls().length;
+  const declined = await send('owner', `please help with this [[script:${script}]]`, { sessionId: proTools.data.sessionId, level: 'expert' });
+  assert.equal(declined.data.limits.used, usedBefore + 4, `${script}: 2 + 2 to move the chat`);
+  const declinedStream = await events('owner', declined.data.turnId);
+  assert.equal(declinedStream.at(-1).data.status, 'completed', `${script}: completed on Standard`);
+  assert.match(finalAnswer(declinedStream).text, /FIXTURE_FALLBACK answered by openai\/gpt-6-luna/);
+  assert.ok(declinedStream.some((e) => e.type === 'item' && e.data.item.kind === 'notice' && e.data.item.code === 'expert_fallback'), `${script}: fallback note`);
+  assert.deepEqual(modelCalls().slice(beforeCalls).map((call) => call.body.model), ['anthropic/claude-haiku-5.5', 'openai/gpt-6-luna']);
+  assert.equal(await used(), usedBefore + 6, `${script}: +2 for the switch and Standard's answer`);
+  assert.ok(declinedStream.some((e) => e.type === 'limits' && e.data.limits.used === usedBefore + 6), `${script}: the panel hears the new count`);
+  const record = await refusals.findOne({ turnId: declined.data.turnId });
+  assert.ok(record, `${script}: refusal recorded`);
+  assert.deepEqual([record.source, record.level, record.plan, record.model, record.fallbackModel, record.channelId, record.userId],
+    [source, 'expert', 'pro', 'anthropic/claude-haiku-5.5', 'openai/gpt-6-luna', CHANNEL, CHANNEL]);
+  assert.match(record.message, /please help with this/);
+  assert.ok(record.recent.length > 0 && record.recent.length <= 8, 'recent context, clipped');
+  assert.ok(record.expiresAt > record.at, 'expires (TTL)');
+  if (source === 'reply') {
+    assert.deepEqual([record.finishReason, record.nativeFinishReason, record.refusal], ['content_filter', 'refusal', 'Fixture: declined.']);
+    assert.match(record.partial, /FIXTURE_PARTIAL/);
+  } else {
+    assert.equal(record.detail.errorType, 'refusal');
+  }
+}
+assert.ok((await mongo.connection.db.collection('site_agent_refusals').indexes()).some((index) => index.expireAfterSeconds === 0), 'TTL index');
+// The owner reads them on the admin site (Review → Assistant refusals); nobody else can.
+const adminGet = (person, query = '') => fetch(`${API}/admin-site/assistant-refusals${query}`, { headers: { Authorization: `Bearer ${people[person].token}` } })
+  .then(async (response) => ({ status: response.status, json: await response.json().catch(() => ({})) }));
+const adminList = await adminGet('owner', `?channel=${CHANNEL}&limit=10`);
+assert.equal(adminList.status, 200);
+assert.ok(adminList.json.data.rows.length >= 2 && adminList.json.data.counts.total >= 2 && adminList.json.data.counts.week >= 2);
+const newest = adminList.json.data.rows[0];
+assert.deepEqual([newest.source, newest.channelLogin, newest.level, typeof newest.at, typeof newest.id], ['error', 'cdom201', 'expert', 'string', 'string'], 'newest first');
+assert.match(newest.message, /please help with this/);
+assert.equal(newest.expiresAt, undefined);
+assert.equal((await adminGet('manager')).status, 403, 'owner only');
+assert.equal((await adminGet('owner', '?channel=abc')).status, 400);
+assert.equal((await adminGet('owner', '?channel=99004101')).json.data.rows.length, 0, 'channel filter');
+// Standard declined: no fallback left, so the turn fails as declined; nothing of the declined step enters the context.
+const standardDeclined = await send('owner', 'declined on standard [[script:refusal_any]]', { sessionId: proTools.data.sessionId, level: 'standard' });
+const standardDeclinedStream = await events('owner', standardDeclined.data.turnId);
+assert.deepEqual([standardDeclinedStream.at(-1).data.status, standardDeclinedStream.at(-1).data.errorCode], ['failed', 'model_refused']);
+assert.equal(await refusals.countDocuments({ turnId: standardDeclined.data.turnId }), 0, 'Standard refusals are not Expert refusals');
+const afterDeclined = await send('owner', 'next one [[script:text]]', { sessionId: proTools.data.sessionId, level: 'standard' });
+assert.equal((await events('owner', afterDeclined.data.turnId)).at(-1).data.status, 'completed');
+assert.doesNotMatch(JSON.stringify(modelCalls().at(-1).body.messages), /FIXTURE_PARTIAL I can help with/, 'declined text kept out of the context');
+console.log('expert refusals: standard answers, 6 messages in a Standard chat, note shown, both records saved');
+
+// Queued messages are priced against what runs right before them: behind a running Standard answer, a first queued
+// Expert pays 2 + 2 to move the chat, a second one only 2; both are checked again when they start.
+const until = async (check, label, timeoutMs = 20_000) => {
+  const start = Date.now();
+  for (;;) {
+    if (await check()) return;
+    if (Date.now() - start > timeoutMs) throw new Error(`timed out waiting for: ${label}`);
+    await pause(250);
+  }
+};
+const chatId = proTools.data.sessionId;
+const usedBeforeQueue = await used();
+const slowStandard = await send('owner', 'slow standard [[script:slow]] [[chunks:30]] [[delay:150]]', { sessionId: chatId, level: 'standard' });
+assert.equal(slowStandard.data.limits.used, usedBeforeQueue + 1);
+const queued1 = await api('owner', 'POST', '/messages', { text: 'queued expert one [[script:text]]', mode: 'queue', sessionId: chatId, level: 'expert', clientRequestId: requestId(), lang: 'en' });
+assert.equal(queued1.data.limits.used, usedBeforeQueue + 1 + 4, 'after Standard: 2 + 2 to move');
+const whileQueued = (await api('owner', 'GET', `/sessions/${chatId}`)).data;
+assert.deepEqual(whileQueued.session.queueCost.expert, { total: 2, level: 2, move: 0 }, 'the next queued Expert follows an Expert');
+assert.equal(whileQueued.activeTurn.levelCost, 1, 'a steer into the running Standard answer pays 1');
+const queued2 = await api('owner', 'POST', '/messages', { text: 'queued expert two [[script:text]]', mode: 'queue', sessionId: chatId, level: 'expert', clientRequestId: requestId(), lang: 'en' });
+assert.equal(queued2.data.limits.used, usedBeforeQueue + 1 + 4 + 2, 'after a queued Expert: 2');
+await until(async () => {
+  const snapshot = (await api('owner', 'GET', `/sessions/${chatId}`)).data;
+  return !snapshot.activeTurn && snapshot.items.filter((item) => item.kind === 'assistant' && item.final).length >= 1 && (await redis.lLen(`site_agent:s:${chatId}:queue`)) === 0;
+}, 'the queue ran', 60_000);
+assert.equal(await used(), usedBeforeQueue + 7, 'checked again at start: no change');
+assert.equal((await api('owner', 'GET', `/sessions/${chatId}`)).data.session.lastLevel, 'expert');
+console.log('queue: priced against what runs before it (4 then 2), unchanged at start');
+
+// Premium: Expert = Haiku 100k, Standard = Luna 256k; 100 a day; not enough left for Expert → Standard still works.
 await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'premium' } });
-assert.equal((await api('owner', 'GET', '/status')).data.contextLimit, 256_000);
+const premiumStatus = await api('owner', 'GET', '/status');
+assert.deepEqual([premiumStatus.data.level.current, premiumStatus.data.contextLimit, premiumStatus.data.limits.limit], ['expert', 100_000, 100]);
+const usedBeforePremiumExpert = await used();
+const premiumExpert = await send('owner', 'premium expert [[script:text]]', { sessionId: proTools.data.sessionId });
+assert.equal(premiumExpert.data.limits.used, usedBeforePremiumExpert + 2, 'saved Expert pick; the chat is already on Expert: 2');
+assert.equal((await events('owner', premiumExpert.data.turnId)).at(-1).data.status, 'completed');
+assert.equal(modelCalls().at(-1).body.model, 'anthropic/claude-haiku-5.5');
+assert.equal((await api('owner', 'PATCH', '/prefs', { level: 'standard' })).data.contextLimit, 256_000);
 const premium = await send('owner', 'premium hello [[script:text]]', { sessionId: proTools.data.sessionId });
 assert.equal((await events('owner', premium.data.turnId)).at(-1).data.status, 'completed');
 const premiumBody = modelCalls().at(-1).body;
 assert.equal(premiumBody.model, 'openai/gpt-6-luna');
 assert.equal(premiumBody.cache_control, undefined);
 assert.equal(premiumBody.messages[0].content, request1.messages[0].content);
-assert.ok(premiumBody.messages.filter((m) => m.role === 'assistant').every((m) => m.reasoning_details === undefined), 'no Claude thinking sent to Luna');
+const today = new Date().toISOString().slice(0, 10);
+const savedDaily = await redis.get(`site_agent:daily:${CHANNEL}:${today}`);
+await redis.set(`site_agent:daily:${CHANNEL}:${today}`, '99');
+const short = await send('owner', 'one left [[script:text]]', { sessionId: proTools.data.sessionId, level: 'expert' });
+assert.deepEqual([short.status, short.json.data.code, short.json.data.cost], [429, 'not_enough_messages', 4], 'Expert in a Standard chat needs 4');
+assert.equal(await redis.get(`site_agent:daily:${CHANNEL}:${today}`), '99', 'nothing taken');
+await redis.set(`site_agent:daily:${CHANNEL}:${today}`, savedDaily ?? '0');
 await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'free' } });
-console.log('persona: locked on Free, voice block on Pro, prefix unchanged, old thinking dropped; premium on Luna 256k');
+// The saved Expert pick from a paid plan does not apply on Free.
+assert.equal((await api('owner', 'GET', '/status')).data.level.current, 'standard');
+console.log('premium: expert haiku 100k / standard luna 256k, 100 a day, not enough left for expert; free falls back to standard');
 
 // 16. Daily limit (free = 20/day per channel, shared by owner and admins).
 const day = new Date().toISOString().slice(0, 10);

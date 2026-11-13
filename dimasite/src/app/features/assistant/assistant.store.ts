@@ -13,7 +13,9 @@ import { ASSISTANT_ANCHORS, ASSISTANT_ROUTES, routeKeyForPath } from './assistan
 import type { SseFrame } from './assistant-sse';
 import type {
   AgentEvent,
+  AgentLevel,
   ChangeView,
+  MessageCost,
   DisplayItem,
   InputMode,
   LimitsView,
@@ -151,6 +153,33 @@ export class AssistantStore {
     return limits ? Math.max(0, limits.limit - limits.used) : null;
   });
   readonly atLimit = computed(() => this.remaining() === 0);
+  /** Standard/Expert for the next message (null until the status loads). */
+  readonly level = computed(() => this.status()?.level ?? null);
+  /** What the next message costs at each level in the open chat (a new chat: the level's price; while an answer runs,
+   *  a queued one, as the server prices it). */
+  readonly levelCosts = computed<Record<AgentLevel, MessageCost | null>>(() => {
+    const level = this.level();
+    const session = this.currentSession();
+    const chat = this.running() ? session?.queueCost ?? session?.nextCost : session?.nextCost;
+    const price = (id: AgentLevel): MessageCost | null => {
+      const option = level?.options.find((entry) => entry.id === id);
+      if (!option) return null;
+      return chat?.[id] ?? { total: option.cost, level: option.cost, move: 0 };
+    };
+    return { standard: price('standard'), expert: price('expert') };
+  });
+  /** Daily messages the next message uses (move fee included). */
+  readonly levelCost = computed(() => {
+    const level = this.level();
+    return (level && this.levelCosts()[level.current]?.total) ?? 1;
+  });
+  /** What a steer into each answer sent from this page pays (its level's price). */
+  private readonly turnCosts = new Map<string, number>();
+  /** Cost of the running answer, when this page sent it (a reopened chat doesn't know: null). */
+  readonly activeTurnCost = computed(() => {
+    const turn = this.activeTurn();
+    return turn ? this.turnCosts.get(turn.turnId) ?? null : null;
+  });
   readonly currentSession = computed(() => this.sessions().find((session) => session.id === this.sessionId()) ?? null);
   readonly isEmpty = computed(() => !this.items().length && !this.pending().length);
   /** The last turn, when it ended in a way Retry can fix. */
@@ -418,6 +447,7 @@ export class AssistantStore {
     }
     const turn = snapshot.activeTurn;
     if (turn && isActiveStatus(turn.status)) {
+      if (typeof turn.levelCost === 'number') this.turnCosts.set(turn.turnId, turn.levelCost);
       this.activeTurn.set({ turnId: turn.turnId, status: turn.status, inputRevision: turn.inputRevision });
       this.queuedTurns = this.queuedTurns.filter((id) => id !== turn.turnId);
       // The items above are the state at `cursor`: always continue from there (even when already following
@@ -553,6 +583,7 @@ export class AssistantStore {
   applyEvent(event: AgentEvent, live: boolean): void {
     switch (event.type) {
       case 'turn': {
+        if (typeof event.levelCost === 'number') this.turnCosts.set(event.turnId, event.levelCost);
         this.activeTurn.set({ turnId: event.turnId, status: event.status, inputRevision: event.inputRevision });
         if (event.status === 'awaiting_approval' || event.status === 'awaiting_input') {
           this.statusLine.set({ phase: 'waiting', since: Date.now() });
@@ -621,6 +652,8 @@ export class AssistantStore {
         if (ok || failed) this.flashMood(ok ? 'happy' : 'error', ok ? HAPPY_MS : ERROR_MS);
         this.announce(this.t(ok ? 'assistant.announce.ready' : failed ? 'assistant.announce.failed' : 'assistant.announce.stopped'));
         if ((ok || failed) && !this.presence.open()) this.presence.unread.set(true);
+        // The chat may now be on the other level (a fallback, a move): refresh what the next message costs.
+        void this.loadSessions();
         break;
       }
     }
@@ -662,6 +695,9 @@ export class AssistantStore {
     const id = newClientRequestId();
     const gen = this.sessionGen;
     const sessionId = this.sessionId();
+    // What a steer into this answer will pay: its level's price (the move fee is paid once, by this message).
+    const level = this.level();
+    const steerCost = (level && this.levelCosts()[level.current]?.level) ?? 1;
     this.sendError.set(null);
     this.clearFlash();
     this.pending.update((list) => [...list, { id, text: clean, mode, state: 'sending' }]);
@@ -670,6 +706,7 @@ export class AssistantStore {
         ...(sessionId ? { sessionId } : {}),
         text: clean,
         mode,
+        ...(this.level() ? { level: this.level()!.current } : {}),
         page: this.pageContext(),
         clientRequestId: id,
       });
@@ -680,8 +717,11 @@ export class AssistantStore {
         this.sessionId.set(result.sessionId);
         this.remember(result.sessionId);
         this.sessionState.set('ready');
-        void this.loadSessions();
       }
+      // Prices for what comes next (the chat's level, what a queued message costs now) come from the server.
+      void this.loadSessions();
+      // Only a new message's id is its own turn (a queued one gets the running answer's id back).
+      if (mode === 'send' && result.turnId) this.turnCosts.set(result.turnId, steerCost);
       if (mode === 'send') {
         this.activeTurn.set({ turnId: result.turnId, status: 'queued', inputRevision: 0 });
         this.statusLine.set({ phase: 'thinking', since: Date.now() });
@@ -706,7 +746,7 @@ export class AssistantStore {
         this.statusLine.set(null);
         return this.sendNow(channelId, clean, 'send');
       }
-      if (failure.code === 'limit_reached' || failure.code === 'daily_limit') {
+      if (failure.code === 'limit_reached' || failure.code === 'daily_limit' || failure.code === 'not_enough_messages') {
         const limits = (failure.data as { limits?: LimitsView } | null)?.limits;
         if (limits && typeof limits.limit === 'number') this.limits.set(limits);
         else void this.refreshStatus();
@@ -816,6 +856,27 @@ export class AssistantStore {
     else void this.router.navigate(['/', streamer, ...path]).then((ok) => { if (ok) point(); });
     this.peekRequest.update((count) => count + 1);
     return true;
+  }
+
+  /** Standard or Expert for the next messages (Expert: Premium/Pro). Optimistic; reverts when the save fails. */
+  async setLevel(level: AgentLevel): Promise<boolean> {
+    const channelId = this.channelId();
+    const current = this.status();
+    const view = current?.level;
+    if (!channelId || !current || !view || !view.options.some((option) => option.id === level && option.available)) return false;
+    if (view.current === level) return true;
+    this.status.set({ ...current, level: { ...view, current: level } });
+    if (this.sendError()?.code === 'not_enough_messages') this.sendError.set(null);
+    try {
+      const saved = await this.api.setLevel(channelId, level);
+      const latest = this.status();
+      if (latest && channelId === this.channelId()) this.status.set({ ...latest, level: saved.level, contextLimit: saved.contextLimit });
+      return true;
+    } catch {
+      const latest = this.status();
+      if (latest?.level && channelId === this.channelId()) this.status.set({ ...latest, level: { ...latest.level, current: view.current } });
+      return false;
+    }
   }
 
   /** "Answer in my bot's personality" (Premium/Pro). Optimistic; reverts when the save fails. */

@@ -41,7 +41,8 @@ export class NavbarComponent {
     return (
       path === route ||
       (route === '/users' && path.startsWith('/channels/')) ||
-      (route === '/dashboard' && path === '/analytics')
+      (route === '/dashboard' && path === '/analytics') ||
+      (route === '/moderation-review' && path === '/assistant-refusals')
     );
   }
 

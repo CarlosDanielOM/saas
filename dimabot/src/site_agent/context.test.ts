@@ -3,11 +3,16 @@ import { mock, test } from 'node:test';
 import type { ContextItem, LlmRequest } from './types.js';
 
 const requests: LlmRequest[] = [];
+let refuseNext = false;
 mock.module('./llm/openrouter.js', {
     namedExports: {
         streamChat: async (req: LlmRequest) => {
             requests.push(req);
-            return { generationId: 'g', provider: 'OpenAI', content: 'SUMMARY: user wants a dice command; created !dice (change c1).', toolCalls: [], reasoning: [], finishReason: 'stop', usage: null, aborted: false, durationMs: 1 };
+            const refused = refuseNext;
+            refuseNext = false;
+            return { generationId: 'g', provider: 'OpenAI', content: refused ? 'I can help with part of' : 'SUMMARY: user wants a dice command; created !dice (change c1).',
+                toolCalls: [], reasoning: [], finishReason: refused ? 'content_filter' : 'stop', nativeFinishReason: refused ? 'refusal' : 'end_turn',
+                refused, refusal: refused ? 'Declined.' : null, usage: null, aborted: false, durationMs: 1 };
         },
     },
 });
@@ -146,4 +151,13 @@ test('Claude thinking counts at its reported size; Luna reasoning stays discount
     assert.equal(estimateItemTokens(withReasoning('anthropic/claude-haiku-5.5', 15_000)) - base, 10_000, '15k real tokens = 10k estimate units (factor 1.5)');
     assert.equal(estimateItemTokens(withReasoning('anthropic/claude-haiku-5.5')) - base, estimateTokens(JSON.stringify(details)), 'no count: full size, no discount');
     assert.ok(estimateItemTokens(withReasoning('openai/gpt-6-luna', 15_000)) - base < 100, 'Luna: unchanged');
+});
+
+test('a declined summary call is never used as the summary: the history stays as it was', async () => {
+    const items: ContextItem[] = [user('old 1'), assistant('old answer 1'), user('old 2'), assistant('old answer 2'), user('CURRENT request')];
+    refuseNext = true;
+    const result = await compact({ items, currentUserIndex: 4, limitTokens: 6000, model: 'anthropic/claude-haiku-5.5', effort: 'high', sessionKey: 's' });
+    assert.equal(result.compacted, false);
+    assert.equal(result.items, items, 'unchanged');
+    assert.equal(result.step?.refused, true, 'the caller sees the refusal (falls back to Standard)');
 });

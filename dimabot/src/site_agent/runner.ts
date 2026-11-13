@@ -11,21 +11,22 @@ import { randomUUID } from 'node:crypto';
 import { error as logError, warn } from '../utils/logger.js';
 import { permissionChecker, resolveAccess, type ChannelAccess } from './access.js';
 import { recordChange } from './changes.js';
-import { modelTraits, PLAN_MODELS, SITE_AGENT_LIMITS as L } from './config.js';
+import { effectiveLevel, LEVEL_SWITCH, levelAvailable, levelConfig, messageCost, modelTraits, SITE_AGENT_LIMITS as L, type AgentLevel, type ChatState, type MessageCost } from './config.js';
 import { channelFacts, compact, dropOldest, estimateItemTokens, estimateTokens, promptHash, repairContext, toMessages } from './context.js';
 import { getDocsPromptIndex } from './docs/index.js';
-import { refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
+import { chargeMore, refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
 import { estimateUsageCost } from './llm/cost.js';
 import { LlmError, streamChat } from './llm/openrouter.js';
 import { buildSystemPrompt, FINAL_STEP_NOTE, STEER_PREFIX, turnNote } from './prompt.js';
 import { loadPersona, personaAvailable, readPrefs } from './prefs.js';
+import { recordRefusal, type RefusalInput } from './refusals.js';
 import * as store from './store.js';
 import { warmKnowledge } from './tools/knowledge.js';
 import { getTool, toLlmTools, toolResultText, toolsFor } from './tools/registry.js';
 import {
     ToolConflictError, ToolInputError,
     type AgentEvent, type AgentTool, type ChangeProposal, type ContextItem, type DisplayItem, type InputMode, type Lang, type LimitsView,
-    type LlmStepResult, type PageContext, type Requester, type ToolContext, type ToolOutcome, type TurnStatus,
+    type LlmStepResult, type PageContext, type PlanTier, type Requester, type SessionMeta, type ToolContext, type ToolOutcome, type TurnStatus,
 } from './types.js';
 import { drainPolarRetries, drainReconcile, queueReconcile, recordFeedback as storeFeedback, recordStep, recordTurn } from './usage.js';
 
@@ -99,15 +100,17 @@ export interface SubmitInput {
     mode: InputMode;
     page: PageContext | null;
     lang: Lang;
+    /** Standard or Expert for this message; null = the person's saved pick. Steer inputs pay the running turn's. */
+    level?: AgentLevel | null;
 }
 
-function newTurn(input: { id?: string; sessionId: string; access: ChannelAccess; requester: Requester; lang: Lang; page: PageContext | null; text: string; userItemId: string; mode: InputMode; countedDay: string; retryOf?: string; userAdded?: boolean }): store.TurnRecord {
+function newTurn(input: { id?: string; sessionId: string; access: ChannelAccess; requester: Requester; lang: Lang; page: PageContext | null; text: string; userItemId: string; mode: InputMode; countedDay: string; level?: AgentLevel; cost?: number; levelCost?: number; retryOf?: string; userAdded?: boolean }): store.TurnRecord {
     return {
         id: input.id ?? randomUUID(), sessionId: input.sessionId, channelId: input.access.channelId,
         userId: input.requester.id, userLogin: input.requester.login, userDisplayName: input.requester.displayName,
         role: input.requester.id === input.access.channelId ? 'owner' : input.access.role, plan: input.access.plan, lang: input.lang, page: input.page,
         status: 'queued', revision: 1, inputRevision: 0, createdAt: Date.now(), userMessage: input.text, userItemId: input.userItemId, mode: input.mode,
-        countedDay: input.countedDay, retryOf: input.retryOf, userAdded: input.userAdded ?? false, lastPromptTokens: 0, lastPromptItems: 0,
+        countedDay: input.countedDay, level: input.level ?? 'standard', cost: input.cost ?? 1, levelCost: input.levelCost ?? input.cost ?? 1, retryOf: input.retryOf, userAdded: input.userAdded ?? false, lastPromptTokens: 0, lastPromptItems: 0,
         stopRequested: false, steps: 0, toolCallCount: 0, activeMs: 0, inputs: [], calls: [],
         usage: { promptTokens: 0, cachedTokens: 0, completionTokens: 0, reasoningTokens: 0, costUsd: 0, unknownSteps: 0 },
     };
@@ -116,7 +119,11 @@ function newTurn(input: { id?: string; sessionId: string; access: ChannelAccess;
 export async function submitMessage(input: SubmitInput): Promise<{ sessionId: string; turnId: string; limits: LimitsView; queued?: boolean }> {
     const text = cleanText(input.text, L.userMessageChars);
     const { access, requester } = input;
-    const contextLimit = PLAN_MODELS[access.plan].contextLimit;
+    if (input.level === 'expert' && !levelAvailable(access.plan, 'expert')) throw new AgentRequestError('plan_required', 403, 'Expert needs Premium or Pro');
+    const picked = input.level ?? (await readPrefs(access.channelId, requester.id).catch(() => null))?.level;
+    const level = effectiveLevel(access.plan, picked);
+    const levelCfg = levelConfig(access.plan, level);
+    let price: MessageCost = { total: levelCfg.cost, level: levelCfg.cost, move: 0 };
 
     let session = input.sessionId ? await store.getOwnSession(input.sessionId, access.channelId, requester.id) : null;
     if (input.sessionId && !session) throw new AgentRequestError('session_not_found', 404, 'Chat not found (chats are kept for 3 days)');
@@ -128,12 +135,26 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
     if (input.mode === 'steer' && activeTurn && activeTurn.inputs.length >= L.steerInputsPerTurn) throw new AgentRequestError('too_many_inputs', 429, 'Too many messages for this answer; wait for it to finish');
     if (input.mode === 'queue' && session && await store.queuedCount(session.id) >= L.queuedInputsPerSession) throw new AgentRequestError('queue_full', 429, 'Too many queued messages');
 
-    const taken = await takeMessage(access.channelId, access.plan);
-    if (!taken.allowed) throw new AgentRequestError('daily_limit', 429, 'Daily message limit reached', { limits: taken.limits });
+    // A steer joins the running turn and pays its level's price. A new message pays its level plus the fee for moving
+    // the chat when it last ran on the other level; a queued one compares with the answer it waits for.
+    if (input.mode === 'steer' && activeTurn) {
+        const steer = activeTurn.levelCost ?? activeTurn.cost ?? 1;
+        price = { total: steer, level: steer, move: 0 };
+    } else if (session) {
+        const chat = input.mode === 'queue' && activeTurn ? await chatAfterQueue(access.plan, session, activeTurn) : session;
+        price = messageCost(access.plan, level, chat);
+    }
+    const cost = price.total;
+    const taken = await takeMessage(access.channelId, access.plan, cost);
+    if (!taken.allowed) {
+        // Some left, just not enough for an Expert message: the panel offers Standard.
+        if (taken.limits.used < taken.limits.limit) throw new AgentRequestError('not_enough_messages', 429, `This message needs ${cost} messages; fewer are left today`, { limits: taken.limits, cost });
+        throw new AgentRequestError('daily_limit', 429, 'Daily message limit reached', { limits: taken.limits });
+    }
     const day = utcDay();
 
     try {
-        if (!session) session = await store.createSession(access.channelId, requester.id, titleFrom(text), contextLimit);
+        if (!session) session = await store.createSession(access.channelId, requester.id, titleFrom(text), levelCfg.contextLimit);
         const sessionId = session.id;
         const itemId = randomUUID();
 
@@ -141,14 +162,14 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
             const item: DisplayItem = { kind: 'user', id: itemId, turnId: activeTurn.id, text, mode: 'steer', at: Date.now() };
             const updated = await store.updateTurn(activeTurn.id, (turn) => {
                 if (!isActive(turn.status) || turn.stopRequested) return false;
-                turn.inputs.push({ id: randomUUID(), text, at: Date.now(), applied: false, itemId });
+                turn.inputs.push({ id: randomUUID(), text, at: Date.now(), applied: false, itemId, cost, countedDay: day });
                 turn.inputRevision++;
             });
             if (!updated || !isActive(updated.status) || updated.inputs.every((entry) => entry.itemId !== itemId)) {
                 throw new AgentRequestError('turn_not_active', 409, 'That answer already finished; send it as a new message');
             }
             await addItem(sessionId, activeTurn.id, item);
-            await emit(activeTurn.id, { type: 'turn', turnId: activeTurn.id, sessionId, status: updated.status, inputRevision: updated.inputRevision });
+            await emit(activeTurn.id, { type: 'turn', levelCost: updated.levelCost ?? updated.cost ?? 1, turnId: activeTurn.id, sessionId, status: updated.status, inputRevision: updated.inputRevision });
             await emit(activeTurn.id, { type: 'limits', limits: taken.limits });
             wakeForSteer(activeTurn.id);
             return { sessionId, turnId: activeTurn.id, limits: taken.limits };
@@ -157,7 +178,7 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
         if (input.mode === 'queue' && activeTurn) {
             const item: DisplayItem = { kind: 'user', id: itemId, turnId: '', text, mode: 'queue', at: Date.now() };
             await store.queueInput(sessionId, { id: randomUUID(), itemId, text, page: input.page, lang: input.lang, userId: requester.id,
-                userLogin: requester.login, userDisplayName: requester.displayName, countedDay: day, at: Date.now() });
+                userLogin: requester.login, userDisplayName: requester.displayName, countedDay: day, level, cost, levelCost: price.level, at: Date.now() });
             await addItem(sessionId, activeTurn.id, item);
             await emit(activeTurn.id, { type: 'limits', limits: taken.limits });
             // The answer may have finished while we queued: then nobody would pick this up, so start it here.
@@ -168,7 +189,7 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
         }
 
         // Claim the session for this turn only if nobody else did since we looked (two quick sends).
-        const turn = newTurn({ sessionId, access, requester, lang: input.lang, page: input.page, text, userItemId: itemId, mode: 'send', countedDay: day });
+        const turn = newTurn({ sessionId, access, requester, lang: input.lang, page: input.page, text, userItemId: itemId, mode: 'send', countedDay: day, level, cost, levelCost: price.level });
         // The turn exists before the session points at it, so nobody can mistake the new id for a stale one.
         const seen = session.activeTurnId;
         await store.createTurn(turn);
@@ -182,14 +203,24 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
             throw new AgentRequestError('turn_active', 409, 'The assistant is still working on this chat', { turnId: claimed?.activeTurnId ?? null });
         }
         await addItem(sessionId, turn.id, { kind: 'user', id: itemId, turnId: turn.id, text, mode: 'send', at: Date.now() });
-        await emit(turn.id, { type: 'turn', turnId: turn.id, sessionId, status: 'queued', inputRevision: 0 });
+        await emit(turn.id, { type: 'turn', levelCost: turn.levelCost ?? turn.cost ?? 1, turnId: turn.id, sessionId, status: 'queued', inputRevision: 0 });
         await emit(turn.id, { type: 'limits', limits: taken.limits });
         schedule(turn.id);
         return { sessionId, turnId: turn.id, limits: taken.limits };
     } catch (err) {
-        await refundMessage(access.channelId, day).catch(() => {});
+        await refundMessage(access.channelId, day, cost).catch(() => {});
         throw err;
     }
+}
+
+/**
+ * The chat as a newly queued message will find it: after the running answer and everything queued before it. The
+ * size stays what was last measured, with the model it was measured on. Prices are checked again when it starts.
+ */
+export async function chatAfterQueue(plan: PlanTier, session: SessionMeta, activeTurn: store.TurnRecord): Promise<ChatState> {
+    const last = await store.lastQueuedInput(session.id).catch(() => null);
+    const lastLevel: AgentLevel = last ? effectiveLevel(plan, last.level) : activeTurn.fellBack ? 'standard' : effectiveLevel(plan, activeTurn.level);
+    return { lastLevel, contextTokens: session.contextTokens, contextModel: session.contextModel };
 }
 
 export async function stopTurn(turnId: string, requesterId: string): Promise<TurnStatus> {
@@ -217,8 +248,10 @@ export async function retryTurn(turnId: string, requester: Requester, access: Ch
     const session = await store.getOwnSession(turn.sessionId, access.channelId, requester.id);
     if (!session) throw new AgentRequestError('session_not_found', 404);
     if (session.activeTurnId) throw new AgentRequestError('turn_active', 409, 'The assistant is already working on this chat');
+    // Same level as the attempt it repeats (not counted again).
     const retry = newTurn({ sessionId: session.id, access, requester, lang: turn.lang, page: turn.page, text: turn.userMessage, userItemId: turn.userItemId,
-        mode: 'send', countedDay: '', retryOf: turn.id, userAdded: turn.userAdded });
+        mode: 'send', countedDay: '', level: effectiveLevel(access.plan, turn.level), cost: levelConfig(access.plan, turn.level).cost,
+        levelCost: levelConfig(access.plan, turn.level).cost, retryOf: turn.id, userAdded: turn.userAdded });
     await store.createTurn(retry);
     const claimed = await store.updateSession(session.id, (meta) => { if (!meta.activeTurnId) meta.activeTurnId = retry.id; });
     if (claimed?.activeTurnId !== retry.id) {
@@ -226,7 +259,7 @@ export async function retryTurn(turnId: string, requester: Requester, access: Ch
         await store.finishActive(retry.id);
         throw new AgentRequestError('turn_active', 409);
     }
-    await emit(retry.id, { type: 'turn', turnId: retry.id, sessionId: session.id, status: 'queued', inputRevision: 0 });
+    await emit(retry.id, { type: 'turn', levelCost: retry.levelCost ?? retry.cost ?? 1, turnId: retry.id, sessionId: session.id, status: 'queued', inputRevision: 0 });
     schedule(retry.id);
     return { turnId: retry.id };
 }
@@ -342,7 +375,7 @@ async function runTurn(turnId: string): Promise<void> {
             turn.startedAt = Date.now();
         });
         if (!claimed || claimed.fence !== token || claimed.status !== 'running') return;
-        await emit(turnId, { type: 'turn', turnId, sessionId: claimed.sessionId, status: 'running', inputRevision: claimed.inputRevision });
+        await emit(turnId, { type: 'turn', levelCost: claimed.levelCost ?? claimed.cost ?? 1, turnId, sessionId: claimed.sessionId, status: 'running', inputRevision: claimed.inputRevision });
         await loop(claimed, state, token);
     } catch (err) {
         const turn = await store.getTurn(turnId);
@@ -388,10 +421,14 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
     let turn = initial;
     const access = await resolveAccess(turn.userId, turn.channelId);
     if (!access) { await finishTurn(turn, 'failed', 'access_revoked', { token }); return; }
-    const cfg = PLAN_MODELS[turn.plan];
-    // The plan's limit is in the model's real tokens; our estimates are converted (Claude counts ~1.4× more).
-    const traits = modelTraits(cfg.model);
-    const limitEstimate = Math.floor(cfg.contextLimit / traits.tokenFactor);
+    // Standard or Expert; after a refusal the rest of the turn runs on Standard.
+    let cfg = levelConfig(turn.plan, turn.fellBack ? 'standard' : turn.level);
+    // The level's limit is in the model's real tokens; our estimates are converted (Claude counts ~1.4× more).
+    let traits = modelTraits(cfg.model);
+    let limitEstimate = Math.floor(cfg.contextLimit / traits.tokenFactor);
+    const standard = levelConfig(turn.plan, 'standard');
+    /** The level answering now (saved on the chat after each step: moving it later costs a fee). */
+    let runningLevel: AgentLevel = turn.fellBack ? 'standard' : effectiveLevel(turn.plan, turn.level);
     const can = permissionChecker(turn.userId, turn.channelId);
     const tools = await toolsFor((permissions) => can(permissions), turn.plan, turn.role);
     const llmTools = toLlmTools(tools);
@@ -426,6 +463,33 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
     const activeNow = () => Date.now() - loopStart - ctx.waitedMs;
     let lastError: LlmError | null = null;
 
+    /** Expert declined by a safety filter: record what was asked, then redo the step on Standard. */
+    const canFallBack = () => traits.anthropic && !turn.fellBack && standard.model !== cfg.model;
+    const fallBack = async (how: Pick<RefusalInput, 'source' | 'finishReason' | 'nativeFinishReason' | 'refusal' | 'detail' | 'partial'>, partialItem: DisplayItem | null) => {
+        await recordRefusal({ channelId: turn.channelId, channelLogin: access.channelLogin, userId: turn.userId, userLogin: turn.userLogin, sessionId: turn.sessionId, turnId: turn.id,
+            step: turn.steps, plan: turn.plan, level: turn.level ?? 'expert', model: cfg.model, fallbackModel: standard.model, ...how,
+            message: turn.userMessage, steers: turn.inputs.map((input) => input.text), items });
+        // Owner decision: a declined Expert message also pays the switch and Standard's answer (never past the limit;
+        // retries are free, so nothing extra there either).
+        const planNow = (await resolveAccess(turn.userId, turn.channelId).catch(() => null))?.plan ?? turn.plan;
+        const extra = turn.countedDay ? await chargeMore(turn.channelId, planNow, LEVEL_SWITCH.fallback).catch(() => null) : null;
+        if (extra) await emit(turn.id, { type: 'limits', limits: extra.limits });
+        // Its prompt size was measured in Claude's tokens: estimate again on Standard.
+        turn = ctx.turn = await fenced(turn.id, token, (current) => {
+            current.fellBack = true;
+            current.lastPromptTokens = 0;
+            current.lastPromptItems = 0;
+            if (extra?.charged) { current.extraCharged = (current.extraCharged ?? 0) + extra.charged; current.extraDay = extra.day; }
+        });
+        cfg = standard;
+        runningLevel = 'standard';
+        traits = modelTraits(cfg.model);
+        limitEstimate = Math.floor(cfg.contextLimit / traits.tokenFactor);
+        // Text already shown stays as it was; Standard answers after a short note.
+        if (partialItem && partialItem.kind === 'assistant' && partialItem.text) await updateItem(turn.sessionId, turn.id, { ...partialItem, final: true });
+        await addItem(turn.sessionId, turn.id, { kind: 'notice', id: randomUUID(), turnId: turn.id, code: 'expert_fallback', at: Date.now() });
+    };
+
     for (;;) {
         turn = ctx.turn = (await store.getTurn(turn.id))!;
         if (turn.fence !== token || !isActive(turn.status)) throw new LeaseLost();
@@ -439,7 +503,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             turn = ctx.turn = await fenced(turn.id, token, (current) => { for (const input of current.inputs) if (pending.some((entry) => entry.id === input.id)) input.applied = true; });
         }
 
-        // 2. Compaction at 90% of the plan's limit.
+        // 2. Compaction when the prompt reaches the level's limit.
         const sinceMeasured = items.slice(turn.lastPromptItems).reduce((sum, item) => sum + estimateItemTokens(item), 0);
         const estimate = turn.lastPromptTokens ? turn.lastPromptTokens / traits.tokenFactor + sinceMeasured : systemTokens + items.reduce((sum, item) => sum + estimateItemTokens(item), 0);
         if (estimate >= limitEstimate * cfg.compactAt) {
@@ -447,9 +511,19 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             try {
                 const result = await compact({ items, currentUserIndex: currentUserIndex(), limitTokens: limitEstimate - systemTokens, model: cfg.model, effort: cfg.effort, sessionKey: turn.sessionId, signal: state.abort.signal });
                 if (result.step) await recordUsage(turn, result.step, 'compaction', cfg.model);
+                // Expert declined the summary: keep the history, switch to Standard and check its (larger) limit again.
+                if (result.step?.refused && canFallBack()) {
+                    await fallBack({ source: 'reply', finishReason: result.step.finishReason, nativeFinishReason: result.step.nativeFinishReason,
+                        refusal: result.step.refusal, detail: null, partial: null }, null);
+                    continue;
+                }
                 items = result.compacted ? result.items : dropOldest(items, currentUserIndex(), Math.floor((limitEstimate - systemTokens) * 0.6));
             } catch (err) {
                 if (state.abort.signal.aborted) continue;
+                if (err instanceof LlmError && err.kind === 'refused' && canFallBack()) {
+                    await fallBack({ source: 'error', finishReason: null, nativeFinishReason: null, refusal: err.message, detail: err.detail ?? null, partial: null }, null);
+                    continue;
+                }
                 await warn({ function: 'siteAgent.compact', turnId: turn.id, error: err instanceof Error ? err.message : String(err) }, { destination: 'console' });
                 items = dropOldest(items, currentUserIndex(), Math.floor((limitEstimate - systemTokens) * 0.6));
             }
@@ -486,7 +560,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             result = await streamChat({ model: cfg.model, effort: cfg.effort, messages, tools: llmTools, toolChoice: final ? 'none' : 'auto', sessionKey: turn.sessionId, signal: stepAbort.signal },
                 { onText: (delta) => text.push(delta) });
         } catch (err) {
-            await text.close();
+            const partialItem = await text.close();
             state.abort.signal.removeEventListener('abort', onRunAbort);
             state.step = null;
             if (err instanceof LlmError && err.kind === 'aborted') {
@@ -497,6 +571,11 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             if (err instanceof LlmError && err.generationId) {
                 await queueReconcile({ generationId: err.generationId, channelId: turn.channelId, plan: turn.plan, sessionId: turn.sessionId, turnId: turn.id,
                     step: `${turn.steps}-e${Date.now().toString(36)}`, model: cfg.model, requesterId: turn.userId, kind: 'step' }).catch(() => {});
+            }
+            if (err instanceof LlmError && err.kind === 'refused' && canFallBack()) {
+                await fallBack({ source: 'error', finishReason: null, nativeFinishReason: null, refusal: err.message, detail: err.detail ?? null,
+                    partial: partialItem?.kind === 'assistant' ? partialItem.text : null }, partialItem);
+                continue;
             }
             // One quiet retry for passing provider trouble, then fail.
             if (err instanceof LlmError && ['overloaded', 'rate_limited', 'timeout', 'incomplete', 'upstream'].includes(err.kind) && lastError === null) {
@@ -516,7 +595,11 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             current.activeMs = activeNow();
             if (result.usage) { current.lastPromptTokens = result.usage.promptTokens; current.lastPromptItems = items.length; }
         });
-        if (result.usage) await store.updateSession(turn.sessionId, (meta) => { meta.contextTokens = result.usage!.promptTokens; meta.contextLimit = cfg.contextLimit; });
+        if (result.usage) await store.updateSession(turn.sessionId, (meta) => {
+            meta.contextTokens = result.usage!.promptTokens;
+            meta.contextLimit = cfg.contextLimit;
+            meta.contextModel = cfg.model;
+        });
 
         if (result.aborted) {
             if (state.abort.signal.aborted || turn.stopRequested) {
@@ -532,6 +615,18 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             continue; // steered: drop this response (its tool calls never run) and take the new message into account
         }
 
+        // Declined by the safety filter: nothing of this step goes into the context. Expert → Standard redoes it;
+        // with no fallback left the turn ends as declined (never as a normal or "empty" answer).
+        if (result.refused) {
+            if (canFallBack()) {
+                await fallBack({ source: 'reply', finishReason: result.finishReason, nativeFinishReason: result.nativeFinishReason, refusal: result.refusal,
+                    detail: null, partial: result.content || null }, textItem);
+                continue;
+            }
+            if (textItem && textItem.kind === 'assistant' && textItem.text) await updateItem(turn.sessionId, turn.id, { ...textItem, final: true });
+            throw new LlmError('refused', 'The model declined to answer');
+        }
+
         // 4. Save the assistant step. On the forced last step, tool calls are ignored.
         const calls = final ? [] : result.toolCalls;
         items.push({ role: 'assistant', content: result.content || null, ...(calls.length ? { toolCalls: calls } : {}),
@@ -539,6 +634,9 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
             ...(result.reasoning.length && (!traits.anthropic || result.usage) ? { reasoning: { provider: 'openrouter' as const, model: cfg.model, details: result.reasoning,
                 ...(prefixHash ? { prefixHash } : {}), ...(traits.anthropic ? { tokens: result.usage!.reasoningTokens } : {}) } } : {}), at: Date.now() });
         await store.setContext(turn.sessionId, items, fence);
+        // An accepted answer: the chat is now on this level (moving it later costs a fee), and the turn answered.
+        await store.updateSession(turn.sessionId, (meta) => { if (meta.lastLevel === runningLevel) return false; meta.lastLevel = runningLevel; });
+        turn = ctx.turn = await fenced(turn.id, token, (current) => { current.answeredSteps = (current.answeredSteps ?? 0) + 1; });
 
         if (!calls.length) {
             if (textItem && textItem.kind === 'assistant') await updateItem(turn.sessionId, turn.id, { ...textItem, final: true });
@@ -760,7 +858,7 @@ async function waitFor(ctx: LoopContext, callId: string, kind: 'approval' | 'inp
     const expiresAt = Date.now() + L.waitMs;
     const status: TurnStatus = kind === 'approval' ? 'awaiting_approval' : 'awaiting_input';
     const turn = await fenced(ctx.turn.id, ctx.token, (current) => { current.status = status; current.waiting = { kind, callId, expiresAt }; });
-    await emit(turn.id, { type: 'turn', turnId: turn.id, sessionId: turn.sessionId, status, inputRevision: turn.inputRevision });
+    await emit(turn.id, { type: 'turn', levelCost: turn.levelCost ?? turn.cost ?? 1, turnId: turn.id, sessionId: turn.sessionId, status, inputRevision: turn.inputRevision });
     await emit(turn.id, { type: 'status', phase: 'waiting' });
     const waitStart = Date.now();
     const result = await new Promise<WaitResult>((resolve) => {
@@ -780,7 +878,7 @@ async function waitFor(ctx: LoopContext, callId: string, kind: 'approval' | 'inp
     });
     ctx.waitedMs += Date.now() - waitStart;
     const after = await fenced(turn.id, ctx.token, (current) => { current.status = 'running'; current.waiting = undefined; }, ctx.fence.sessionId);
-    await emit(after.id, { type: 'turn', turnId: after.id, sessionId: after.sessionId, status: 'running', inputRevision: after.inputRevision });
+    await emit(after.id, { type: 'turn', levelCost: after.levelCost ?? after.cost ?? 1, turnId: after.id, sessionId: after.sessionId, status: 'running', inputRevision: after.inputRevision });
     return result;
 }
 
@@ -923,11 +1021,16 @@ async function finishTurn(turn: store.TurnRecord, status: TurnStatus, errorCode?
         await addItem(ended.sessionId, ended.id, { kind: 'notice', id: randomUUID(), turnId: ended.id, code: status === 'cancelled' ? 'stopped' : errorCode ?? status, at: Date.now() });
     }
     // Our own failure before the model produced anything: give the message back.
-    if (status === 'failed' && ended.steps === 0 && ended.countedDay) await refundMessage(ended.channelId, ended.countedDay).catch(() => {});
+    // Our failure before any answer: the message and the steers sent into it are given back (each on its own day).
+    if (status === 'failed' && (ended.answeredSteps ?? ended.steps) === 0) {
+        if (ended.countedDay) await refundMessage(ended.channelId, ended.countedDay, ended.cost ?? 1).catch(() => {});
+        if (ended.extraCharged && ended.extraDay) await refundMessage(ended.channelId, ended.extraDay, ended.extraCharged).catch(() => {});
+        for (const input of ended.inputs) if (input.countedDay) await refundMessage(ended.channelId, input.countedDay, input.cost ?? 1).catch(() => {});
+    }
     await store.updateSession(ended.sessionId, (meta) => { if (meta.activeTurnId === ended.id) meta.activeTurnId = null; }).catch(() => null);
     await recordTurn({ channelId: ended.channelId, plan: ended.plan, status, steps: ended.steps, toolCalls: ended.toolCallCount,
         durationMs: (ended.endedAt ?? Date.now()) - (ended.startedAt ?? ended.createdAt), counted: Boolean(ended.countedDay) }).catch(() => {});
-    await emit(ended.id, { type: 'turn', turnId: ended.id, sessionId: ended.sessionId, status, inputRevision: ended.inputRevision });
+    await emit(ended.id, { type: 'turn', levelCost: ended.levelCost ?? ended.cost ?? 1, turnId: ended.id, sessionId: ended.sessionId, status, inputRevision: ended.inputRevision });
     await emit(ended.id, { type: 'limits', limits: await readLimits(ended.channelId, ended.plan) });
     // A queued message starts right away: announce its turn on this stream before `done`.
     const next = await startNextQueued(ended.sessionId, ended.id).catch(() => null);
@@ -946,7 +1049,22 @@ async function startNextQueued(sessionId: string, previousTurnId?: string): Prom
     const access = await resolveAccess(queued.userId, session.channelId);
     if (!access) return null;
     const requester: Requester = { id: queued.userId, login: queued.userLogin, displayName: queued.userDisplayName };
-    const turn = newTurn({ sessionId, access, requester, lang: queued.lang, page: queued.page, text: queued.text, userItemId: queued.itemId, mode: 'queue', countedDay: queued.countedDay });
+    // Priced again now that the answers ahead of it are done (a fallback, a plan change, the queue order): what the
+    // chat really looks like now decides; the difference is given back or charged (never past the daily limit).
+    const level = effectiveLevel(access.plan, queued.level);
+    const price = messageCost(access.plan, level, session);
+    const paid = queued.cost ?? 1;
+    const levelCost = price.level;
+    let cost = paid;
+    if (queued.countedDay && price.total < paid) {
+        await refundMessage(session.channelId, queued.countedDay, paid - price.total).catch(() => {});
+        cost = price.total;
+    } else if (queued.countedDay && price.total > paid) {
+        const more = await chargeMore(session.channelId, access.plan, price.total - paid).catch(() => null);
+        if (more?.charged) cost = paid + more.charged;
+    }
+    const turn = newTurn({ sessionId, access, requester, lang: queued.lang, page: queued.page, text: queued.text, userItemId: queued.itemId, mode: 'queue',
+        countedDay: queued.countedDay, level, cost, levelCost });
     await store.createTurn(turn);
     const claimed = await store.updateSession(sessionId, (meta) => { if (!meta.activeTurnId || meta.activeTurnId === previousTurnId) meta.activeTurnId = turn.id; });
     if (claimed?.activeTurnId !== turn.id) {
@@ -957,7 +1075,7 @@ async function startNextQueued(sessionId: string, previousTurnId?: string): Prom
     }
     const item = await store.getItem(sessionId, queued.itemId);
     if (item?.kind === 'user') await updateItem(sessionId, turn.id, { ...item, turnId: turn.id });
-    await emit(turn.id, { type: 'turn', turnId: turn.id, sessionId, status: 'queued', inputRevision: 0 });
+    await emit(turn.id, { type: 'turn', levelCost: turn.levelCost ?? turn.cost ?? 1, turnId: turn.id, sessionId, status: 'queued', inputRevision: 0 });
     schedule(turn.id);
     return turn.id;
 }

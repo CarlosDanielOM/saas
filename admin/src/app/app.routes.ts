@@ -101,6 +101,14 @@ export const routes: Routes = [
         title: 'Chat protection review | DimaBot Admin',
       },
       {
+        path: 'assistant-refusals',
+        loadComponent: () =>
+          import('./pages/assistant-refusals/assistant-refusals-page.component').then(
+            (m) => m.AssistantRefusalsPageComponent,
+          ),
+        title: 'Assistant refusals | DimaBot Admin',
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings-page.component').then((m) => m.SettingsPageComponent),

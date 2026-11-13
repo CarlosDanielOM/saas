@@ -5,13 +5,14 @@ import { UpgradeService } from '../../../services/upgrade.service';
 import { ThrottleClickDirective } from '../../../shared/directives/throttle-click.directive';
 import { AssistantStore, MAX_MESSAGE_CHARS } from '../assistant.store';
 import { clockTime } from '../assistant-view';
+import { AssistantLevelComponent } from './assistant-level.component';
 
 const MAX_HEIGHT = 168;
 
 /** Message box: Send; while a turn runs, Steer (or Queue for after) and Stop. Shows messages left today. */
 @Component({
   selector: 'app-assistant-composer',
-  imports: [ThrottleClickDirective],
+  imports: [ThrottleClickDirective, AssistantLevelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './assistant-composer.component.html',
   styleUrl: './assistant-composer.component.css',
@@ -28,7 +29,42 @@ export class AssistantComposerComponent {
 
   readonly mode = computed(() => (this.store.running() ? (this.queueMode() ? 'queue' : 'steer') : 'send'));
   readonly tooLong = computed(() => this.draft().length > MAX_MESSAGE_CHARS);
-  readonly canSend = computed(() => !!this.draft().trim() && !this.tooLong() && !this.store.atLimit() && !!this.store.channelId() && !this.store.sending());
+  /** The picker: for new and queued messages (a steer pays what the running answer pays). */
+  readonly showLevel = computed(() => !this.store.running() || this.mode() === 'queue');
+  /** Messages this message would use. */
+  readonly needed = computed(() => (this.mode() === 'steer' ? this.store.activeTurnCost() ?? this.store.levelCost() : this.store.levelCost()));
+  /** Some messages left, but fewer than this message needs. */
+  readonly short = computed(() => {
+    const remaining = this.store.remaining();
+    return remaining !== null && remaining > 0 && remaining < this.needed();
+  });
+  readonly canSend = computed(() => !!this.draft().trim() && !this.tooLong() && !this.store.atLimit() && !this.short()
+    && !!this.store.channelId() && !this.store.sending());
+  /** Under the box: what Expert does (when picked), or that this message needs more messages than are left. */
+  readonly levelNote = computed(() => {
+    if (this.store.atLimit()) return '';
+    const left = this.store.remaining() ?? 0;
+    if (this.short()) {
+      if (this.mode() === 'steer') return this.t('assistant.level.shortSteer', { cost: this.needed(), left });
+      const note = this.t('assistant.level.short', { cost: this.needed(), left });
+      // A way out only when there is one: Standard in this chat, or (for a new message) a new chat on Standard.
+      const standard = this.store.levelCosts().standard?.total ?? 1;
+      if (this.store.level()?.current !== 'standard' && standard <= left) return `${note} ${this.t('assistant.level.shortSwitch')}`;
+      return this.mode() === 'send' && this.store.sessionId() ? `${note} ${this.t('assistant.level.shortNewChat')}` : note;
+    }
+    if (!this.showLevel()) return '';
+    const level = this.store.level();
+    // Moving the open chat to the other level: say what this one costs and why, and the free way (a new chat).
+    const price = level ? this.store.levelCosts()[level.current] : null;
+    if (level && price && price.move > 0 && this.mode() === 'send') {
+      return this.t(level.current === 'expert' ? 'assistant.level.moveExpert' : 'assistant.level.moveStandard', { total: price.total, move: price.move, cost: price.level });
+    }
+    if (level?.current !== 'expert') return '';
+    // Only where it's true (Premium): Expert remembers less than Standard, so long chats are summarized sooner.
+    const limit = (id: string) => level.options.find((option) => option.id === id)?.contextLimit ?? 0;
+    const note = this.t('assistant.level.expertNote', { cost: this.store.levelCosts().expert?.level ?? 2 });
+    return limit('expert') < limit('standard') ? `${note} ${this.t('assistant.level.expertMemory')}` : note;
+  });
   readonly sendLabel = computed(() => this.t(`assistant.composer.${this.mode()}`));
   readonly locale = computed(() => (this.i18n.currentLanguage() === 'es' ? 'es-MX' : 'en'));
   readonly resetAt = computed(() => {

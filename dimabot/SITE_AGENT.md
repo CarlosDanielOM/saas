@@ -1,19 +1,46 @@
 # Site agent ("Dima assistant")
 
 An AI assistant inside dimasite's logged-in pages (`/:streamer/...`). It answers from the docs, knows the channel,
-and can change things for the streamer after they approve. Opened from the mascot. Models (both `high`, through
-OpenRouter, BYOK): GPT-6 Luna on Free and Premium (the owner's OpenAI key; `xhigh` until 2026-11-11), Claude Haiku 5.5
-on Pro since 2026-11-13 (the owner's Anthropic key). Free for now: no AI credits; usage goes to Polar as
+and can change things for the streamer after they approve. Opened from the mascot. Two levels the person picks in the
+composer (both `high`, through OpenRouter, BYOK; model names are never shown): **Standard** = GPT-6 Luna (the owner's
+OpenAI key; `xhigh` until 2026-11-11) and **Expert** = Claude Haiku 5.5 (the owner's Anthropic key; Premium/Pro, since
+2026-11-13). Free for now: no AI credits; usage goes to Polar as
 `ai_assistant` events. Contracts: `src/site_agent/types.ts`, `config.ts`, `navigation.ts`.
 
 ## Product rules (owner decisions, 2026-11-11)
 
 - Everyone with website access to the channel (owner, admins with `dashboard:view`) can use it, on every plan.
-- Daily limit per **channel** (owner + admins share it), per UTC day: free 20, premium 80, pro 400 **user messages**.
-  One message = 1 no matter how many tool calls. Steer and queued messages count; approvals, form answers, Stop and
-  retries after our own errors don't. No global spend cap for now.
-- Context limit by the channel's plan, in the model's own tokens: free 100k, premium 256k (Luna), pro 100k (Haiku,
-  since 2026-11-13; was 256k on Luna); compaction at 90%.
+- Daily limit per **channel** (owner + admins share it), per UTC day: free 20, premium 100 (80 until 2026-11-13), pro
+  400 **messages**. A Standard message uses 1 and an Expert message 2, no matter how many tool calls (Premium = 100
+  Standard or 50 Expert; Pro = 400 or 200). A steer pays what its running answer pays; queued messages pay their own
+  level, fixed when sent. Approvals, form answers, Stop and retries after our own errors don't count. No global spend
+  cap for now.
+- Levels and context limits (owner decisions 2026-11-13; `SITE_AGENT_PLANS` in config.ts), in the model's own tokens:
+
+  | Plan | Standard (Luna, 1) | Expert (Haiku, 2) |
+  |---|---|---|
+  | Free | 100k | locked (Premium chip → plans) |
+  | Premium | 256k | 100k |
+  | Pro | 256k | 256k (prompts over 100k bill at 5×; accepted) |
+
+  Compaction starts when the prompt reaches the limit itself (was 90% until 2026-11-13). The pick is saved per person
+  (`site_agent:prefs` field `level`) and sent with every message; a saved Expert on Free runs as Standard.
+- **Moving a chat** to the other level loses its prompt cache, so the message that moves it pays a move fee on top of
+  its level (owner decision 2026-11-13, `LEVEL_SWITCH` / `messageCost` in config.ts): Standard → Expert +2 (4 in all),
+  or +4 (6 in all) when the chat is over 100k in Claude's tokens (Luna tokens × 1.8); Expert → Standard +1 (2 in all).
+  Later messages pay their level only. A new chat never pays to move. The chat remembers its last answering level and
+  model (`lastLevel`, `contextModel` on the session); a queued message compares with the answer it waits for; a steer
+  pays its turn's level price (`levelCost`), never the fee. `GET /sessions[/:id]` returns `nextCost` per level and the
+  panel shows it (`×N` + a note) before sending.
+- **Expert refusals:** when Anthropic's or OpenRouter's safety filter declines an Expert step (a `content_filter` /
+  native `refusal` reply, or a 403 / mid-stream error whose `metadata` has `error_type` refusal /
+  content_policy_violation, `reasons` or `flagged_input`), the step is redone on Standard for the rest of the turn, the
+  chat shows the `expert_fallback` note, the turn pays 2 more (1 switch + 1 Standard answer, owner decision; `chargeMore`,
+  never past the daily limit, refunded with the rest on our own zero-step failure; the chat is on Standard afterwards,
+  so the next Expert message pays the move fee), and a record goes to Mongo
+  `site_agent_refusals` (what was asked, steers, the last 8 context items clipped, the partial answer, OpenRouter's
+  metadata; 90-day TTL; removed with the account) so the owner can see why. Browse it in dimadb. A refusal on Standard
+  has no fallback (`model_refused`).
 - Sessions live in Dragonfly, 72 h after the last activity, max 10 per person per channel. Private to the person.
 - Every change needs approval. The owner sees all assistant changes on the channel (who, what they asked,
   before → after) and can undo any; an admin sees and undoes their own. Change log kept 90 days (Mongo).
@@ -35,7 +62,7 @@ on Pro since 2026-11-13 (the owner's Anthropic key). Free for now: no AI credits
 - Last step with `tool_choice: 'none'` plus a system note forces a final answer.
 - Typical answer: 11–43 s, $0.001–0.005.
 
-## Claude Haiku 5.5 on Pro (OpenRouter `anthropic/claude-haiku-5.5`, checked 2026-11-13)
+## Claude Haiku 5.5 = Expert (OpenRouter `anthropic/claude-haiku-5.5`, checked 2026-11-13)
 
 - Same Chat Completions request as Luna. `reasoning.effort` works (more thinking at higher effort, no 400s);
   `reasoning_details` come back as `reasoning.text` with a `signature` and are echoed like Luna's. With no
@@ -63,8 +90,9 @@ on Pro since 2026-11-13 (the owner's Anthropic key). Free for now: no AI credits
   and the unsaved last-step note. Each assistant step stores `reasoning.prefixHash` (sha256 of tools + messages
   sent); `toMessages` sends a Claude block back only while the prefix still hashes the same. Leaving reasoning out
   is always accepted. Luna is unchanged.
-- **Refusals:** Haiku's safety classifiers can decline (no server-side fallback). It shows as an empty answer
-  (`empty_answer` notice); there is no dedicated message yet.
+- **Refusals:** Haiku's safety classifiers can decline and Anthropic has no server-side fallback for Haiku, so we do
+  it ourselves (see "Expert refusals" above). OpenRouter does not pass Anthropic's refusal category through; the
+  record keeps what it gives (finish reasons, refusal text, `error.metadata`).
 
 ## Layout
 

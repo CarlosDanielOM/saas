@@ -1,5 +1,5 @@
 // Site agent panel (dimasite assistant): chat, live turn events, steer/queue/stop/retry, approvals, UI blocks,
-// navigation, Changes tab with undo, chat list, daily limit. Desktop 1280 (side panel) and phone 375 (bottom
+// navigation, Changes tab with undo, chat list, daily limit, Standard/Expert picker. Desktop 1280 (side panel) and phone 375 (bottom
 // sheet + peek bar), dark and light, English and Spanish; axe on the panel; no horizontal overflow.
 //
 // Every API call is mocked with Playwright routes; the turn event stream (fetch + SSE) is replaced in the page by a
@@ -108,15 +108,26 @@ function sseFake() {
 
 function createAgent(o = {}) {
   const now = Date.now();
+  const plan = o.plan ?? 'free';
+  const paid = plan !== 'free';
+  // Standard / Expert like the API (2026-11-13): Expert costs 2 and is Premium/Pro; Premium's Expert remembers less.
+  const levelOptions = [
+    { id: 'standard', available: true, cost: 1, contextLimit: paid ? 256_000 : 100_000 },
+    { id: 'expert', available: paid, cost: 2, contextLimit: paid ? (plan === 'pro' ? 256_000 : 100_000) : null },
+  ];
   const agent = {
     status: {
       enabled: o.enabled ?? true,
       role: o.role ?? 'owner',
-      limits: { plan: o.plan ?? 'free', used: o.used ?? 3, limit: 20, resetsAt: nextUtcMidnight() },
-      contextLimit: 100_000,
-      persona: { available: (o.plan ?? 'free') !== 'free', on: false, name: 'Default Personality' },
+      limits: { plan, used: o.used ?? 3, limit: o.limit ?? 20, resetsAt: nextUtcMidnight() },
+      contextLimit: levelOptions[0].contextLimit,
+      level: { current: 'standard', options: levelOptions },
+      persona: { available: paid, on: false, name: 'Default Personality' },
     },
     sessions: new Map(),
+    /** Level each answer was sent on (a steer pays it), and the answers that fell back to Standard. */
+    turnLevels: {},
+    fellBack: {},
     posts: [],
     gets: [],
     deletes: [],
@@ -158,6 +169,8 @@ function applyServer(agent, sessionId, event) {
     const index = snap.items.findIndex((item) => item.id === event.item.id);
     if (index === -1) snap.items.push(event.item);
     else snap.items[index] = event.item;
+    // Like the runner: after an Expert fallback the rest of that answer (and so the chat) is on Standard.
+    if (event.item.kind === 'notice' && event.item.code === 'expert_fallback') agent.fellBack[event.item.turnId] = true;
   } else if (event.type === 'text') {
     const item = snap.items.find((entry) => entry.id === event.itemId);
     if (item) item.text += event.delta;
@@ -165,6 +178,8 @@ function applyServer(agent, sessionId, event) {
     snap.activeTurn = { turnId: event.turnId, sessionId, status: event.status, inputRevision: event.inputRevision, cursor: String(agent.seq) };
     snap.session.activeTurnId = event.turnId;
   } else if (event.type === 'done') {
+    // The chat is on the level that answered last (the API sets it with each accepted answer).
+    if (event.status === 'completed') snap.lastLevel = agent.fellBack[event.turnId] ? 'standard' : agent.turnLevels[event.turnId] ?? 'standard';
     const queued = agent.queued?.shift();
     snap.activeTurn = queued ? { turnId: queued, sessionId, status: 'queued', inputRevision: 0, cursor: '' } : null;
     snap.session.activeTurnId = queued ?? null;
@@ -267,8 +282,31 @@ function agentRoute(route, agent, method, path, body, url) {
   else agent.posts.push({ method, path, body });
 
   if (path === '/status') return ok(agent.status);
+  if (path === '/prefs' && method === 'PATCH') {
+    if (body.level !== undefined) {
+      const option = agent.status.level.options.find((entry) => entry.id === body.level);
+      if (!option?.available) return fail(403, 'plan_required');
+      agent.status.level = { ...agent.status.level, current: option.id };
+      agent.status.contextLimit = option.contextLimit;
+    }
+    if (typeof body.persona === 'boolean') agent.status.persona = { ...agent.status.persona, on: body.persona };
+    return ok({ persona: agent.status.persona, level: agent.status.level, contextLimit: agent.status.contextLimit });
+  }
+  // Like the API: what the next message costs at each level in a chat (moving it costs 2 to Expert, 1 to Standard; the
+  // fixtures stay far below the 100k tier), and while an answer runs what a queued one costs after it.
+  const costsAfter = (lastLevel) => Object.fromEntries(agent.status.level.options.map((option) => {
+    if (!option.available) return [option.id, null];
+    const move = lastLevel && lastLevel !== option.id ? (option.id === 'expert' ? 2 : 1) : 0;
+    return [option.id, { total: option.cost + move, level: option.cost, move }];
+  }));
+  const runningLevel = (snap) => (snap.activeTurn ? (agent.fellBack[snap.activeTurn.turnId] ? 'standard' : agent.turnLevels[snap.activeTurn.turnId] ?? 'standard') : null);
+  const withCosts = (snap) => ({
+    ...snap.session,
+    nextCost: costsAfter(snap.lastLevel),
+    ...(snap.activeTurn ? { queueCost: costsAfter(snap.lastQueued ?? runningLevel(snap)) } : {}),
+  });
   if (path === '/sessions' && method === 'GET') {
-    return ok({ sessions: [...agent.sessions.values()].map((snap) => snap.session).sort((a, b) => b.updatedAt - a.updatedAt) });
+    return ok({ sessions: [...agent.sessions.values()].map(withCosts).sort((a, b) => b.updatedAt - a.updatedAt) });
   }
   let match = /^\/sessions\/([^/]+)$/.exec(path);
   if (match) {
@@ -278,7 +316,8 @@ function agentRoute(route, agent, method, path, body, url) {
       agent.sessions.delete(match[1]);
       return ok({ deleted: true });
     }
-    return ok(JSON.parse(JSON.stringify(snap)));
+    const levelCost = snap.activeTurn ? (agent.turnLevels[snap.activeTurn.turnId] === 'expert' ? 2 : 1) : undefined;
+    return ok(JSON.parse(JSON.stringify({ ...snap, session: withCosts(snap), activeTurn: snap.activeTurn ? { ...snap.activeTurn, levelCost } : null })));
   }
   if (path === '/messages' && method === 'POST') {
     if (agent.failSend) {
@@ -299,8 +338,16 @@ function agentRoute(route, agent, method, path, body, url) {
       agent.queued = [...(agent.queued ?? []), turnId];
     }
     if (body.mode === 'send') snap.activeTurn = { turnId, sessionId, status: 'queued', inputRevision: 0, cursor: '' };
+    if (body.mode === 'send') agent.turnLevels[turnId] = body.level ?? 'standard';
     agent.lastTurnId = turnId;
-    agent.status.limits = agent.nextLimits ?? { ...agent.status.limits, used: agent.status.limits.used + 1 };
+    // Like the API: a steer pays its running answer's level; a new message its level plus the move fee; a queued one
+    // the same, compared with what runs before it.
+    const levelCost = (level) => (level === 'expert' ? 2 : 1);
+    const level = body.level ?? 'standard';
+    const cost = body.mode === 'steer' ? levelCost(agent.turnLevels[active])
+      : costsAfter(body.mode === 'queue' ? snap.lastQueued ?? runningLevel(snap) : snap.lastLevel)[level].total;
+    if (body.mode === 'queue') snap.lastQueued = level;
+    agent.status.limits = agent.nextLimits ?? { ...agent.status.limits, used: agent.status.limits.used + cost };
     agent.nextLimits = null;
     return ok({ sessionId, turnId, limits: agent.status.limits }, 202);
   }
@@ -807,7 +854,7 @@ async function desktopFlow(browser) {
   const T5 = agent.lastTurnId;
   assert.ok(await page.locator('#assistant-input').isDisabled(), 'composer disabled at the limit');
   assert.match(await text(page.locator('[data-assistant-limit]')), /all 20 messages/);
-  assert.match(await text(page.locator('[data-assistant-limit]')), /Premium gives 80 a day/);
+  assert.match(await text(page.locator('[data-assistant-limit]')), /Premium gives 100 a day/);
   await until(async () => (await sseRequests(page)).some((request) => request.turnId === T5), 'last stream');
   await emit(page, agent, S, T5, { type: 'item', item: item.user('u6', T5, 'One more') });
   await emit(page, agent, S, T5, { type: 'item', item: item.assistant('a6', T5, 'Sure.', true) });
@@ -1007,6 +1054,143 @@ async function phoneSpanish(browser) {
 }
 
 // ---------------------------------------------------------------------------
+// 4b. Standard / Expert: desktop dark on Premium (pick, note, 2 messages, fallback note, not enough left); phone 320
+//     light on Free (locked with Premium chip, nothing saved); Spanish labels
+// ---------------------------------------------------------------------------
+
+async function levelFlow(browser) {
+  console.log('desktop 1280 dark: standard / expert on premium');
+  const { context, page, agent, errors } = await openPage(browser, { plan: 'premium', limit: 100, used: 10 });
+  await openPanel(page);
+  const group = page.locator('[data-assistant-level]');
+  await group.waitFor();
+  assert.equal(await group.getAttribute('aria-label'), 'Answer mode');
+  const standard = group.locator('[data-level="standard"]');
+  const expert = group.locator('[data-level="expert"]');
+  assert.deepEqual([await standard.getAttribute('aria-pressed'), await expert.getAttribute('aria-pressed')], ['true', 'false'], 'Standard by default');
+  assert.match(await text(expert), /Expert\s*×2/);
+  assert.equal(await expert.getAttribute('aria-label'), 'Expert, uses 2 messages');
+  assert.equal(await page.locator('[data-assistant-level-note]').count(), 0, 'no note on Standard');
+  assert.doesNotMatch(await text(page.locator('[data-assistant-panel]')), /Luna|Haiku|Claude|GPT/, 'model names never shown');
+
+  await expert.click();
+  await until(async () => (await expert.getAttribute('aria-pressed')) === 'true', 'Expert selected');
+  const saved = agent.posts.find((entry) => entry.method === 'PATCH' && entry.path === '/prefs');
+  assert.deepEqual(saved?.body, { level: 'expert' }, 'pick saved');
+  const note = await text(page.locator('[data-assistant-level-note]'));
+  assert.match(note, /works through bigger setups on its own/);
+  assert.match(note, /uses 2 of today's messages/);
+  assert.match(note, /Long chats get summarized sooner/, 'Premium Expert remembers less: said');
+  await shot(page, 'level-expert-desktop-dark');
+  await axe(page, 'level expert desktop dark');
+
+  // Send on Expert: the body names the level; 2 messages used.
+  await page.locator('#assistant-input').fill('Make a dice command');
+  await page.locator('[data-assistant-send]').click();
+  const sent = await until(() => agent.posts.find((entry) => entry.path === '/messages'), 'message sent');
+  assert.equal(sent.body.level, 'expert');
+  await until(async () => /88 of 100 messages left/.test(await text(page.locator('[data-assistant-left]'))), '2 messages used');
+  const S = 's-new';
+  const T = agent.lastTurnId;
+  const at = Date.now();
+  await until(async () => (await sseRequests(page)).find((request) => request.turnId === T), 'stream opened');
+  await emit(page, agent, S, T, { type: 'turn', turnId: T, sessionId: S, status: 'running', inputRevision: 0 });
+  assert.equal(await group.count(), 0, 'picker hidden while steering (a steer pays the running answer)');
+  // One left while this Expert answer runs: steering it needs 2; queueing needs 2 on either level (Standard pays 1 to
+  // move the chat), so there is no way out but waiting: the note says the count, no tip.
+  await emit(page, agent, S, T, { type: 'limits', limits: { ...agent.status.limits, used: 99 } });
+  await page.locator('#assistant-input').fill('also add a cooldown');
+  await until(async () => /Adding to this answer uses 2 messages and you have 1 left today\./.test(await text(page.locator('[data-assistant-level-note]')).catch(() => '')), 'steer short note');
+  assert.equal(await page.locator('[data-assistant-send]').isDisabled(), true, 'cannot steer an Expert answer with 1 left');
+  await page.locator('[data-assistant-queue]').click();
+  await until(() => page.locator('[data-assistant-level]').isVisible(), 'picker shown for queueing');
+  await until(async () => (await text(page.locator('[data-assistant-level-note]')).catch(() => '')) === 'This message uses 2 messages and you have 1 left today.', 'queue short note, no tip');
+  assert.equal(await page.locator('[data-assistant-send]').isDisabled(), true);
+  await axe(page, 'level running queue');
+  await page.locator('[data-assistant-queue]').click();
+  await page.locator('#assistant-input').fill('');
+  await emit(page, agent, S, T, { type: 'item', item: { kind: 'assistant', id: 'a1', turnId: T, text: 'Here is !dice.', final: true, at } });
+  await emit(page, agent, S, T, { type: 'limits', limits: { ...agent.status.limits, used: 98 } });
+  await emit(page, agent, S, T, { type: 'done', turnId: T, status: 'completed' });
+
+  // The chat is on Expert now (the list reloads after the answer): Standard costs 1 + 1 to move it, and says so.
+  await until(async () => /Standard\s*×2/.test(await text(page.locator('[data-assistant-level] [data-level="standard"]'))), 'Standard ×2 in an Expert chat');
+  assert.equal(await page.locator('[data-assistant-level] [data-level="standard"]').getAttribute('aria-label'), 'Standard, uses 2 messages');
+  assert.match(await text(page.locator('[data-assistant-level] [data-level="expert"]')), /Expert\s*×2/);
+  assert.match(await text(page.locator('[data-assistant-level-note]')), /works through bigger setups/, 'Expert: its usual note');
+  await page.locator('[data-assistant-level] [data-level="standard"]').click();
+  await until(async () => /^Moving this chat to Standard uses 2 messages for this one: 1 to move the chat and 1 for the message\. A new chat doesn't pay to move\.$/
+    .test(await text(page.locator('[data-assistant-level-note]')).catch(() => '')), 'move note');
+  await page.locator('#assistant-input').fill('One more question');
+  await until(async () => !(await page.locator('[data-assistant-send]').isDisabled()), 'Standard (2) can send with 2 left');
+  await shot(page, 'level-move-desktop-dark');
+  await axe(page, 'level move desktop dark');
+  // Back on Expert in this Expert chat (2), and this time the filter declines: Standard answers, the chat ends on
+  // Standard, so the next Expert message pays 2 to move it back: ×4 with a note.
+  await page.locator('[data-assistant-level] [data-level="expert"]').click();
+  await until(async () => /works through bigger setups/.test(await text(page.locator('[data-assistant-level-note]')).catch(() => '')), 'Expert note again');
+  agent.status.limits = { ...agent.status.limits, used: 50 };
+  await page.locator('[data-assistant-send]').click();
+  await until(async () => /48 of 100 messages left/.test(await text(page.locator('[data-assistant-left]'))), 'Expert in an Expert chat: 2');
+  const T2 = agent.lastTurnId;
+  await until(async () => (await sseRequests(page)).find((request) => request.turnId === T2), 'second stream');
+  await emit(page, agent, S, T2, { type: 'turn', turnId: T2, sessionId: S, status: 'running', inputRevision: 0, levelCost: 2 });
+  await emit(page, agent, S, T2, { type: 'item', item: { kind: 'notice', id: 'nf', turnId: T2, code: 'expert_fallback', at } });
+  await until(async () => /Expert couldn't take this one, so Standard answered it\. That used 2 more messages: 1 to move the chat and 1 for the answer\./
+    .test(await text(page.locator('[data-code="expert_fallback"]'))), 'fallback note');
+  await emit(page, agent, S, T2, { type: 'limits', limits: { ...agent.status.limits, used: 54 } });
+  await emit(page, agent, S, T2, { type: 'item', item: { kind: 'assistant', id: 'a2', turnId: T2, text: 'Standard answered.', final: true, at } });
+  await emit(page, agent, S, T2, { type: 'done', turnId: T2, status: 'completed' });
+  await until(async () => /Expert\s*×4/.test(await text(page.locator('[data-assistant-level] [data-level="expert"]'))), 'Expert ×4 after a fallback');
+  assert.doesNotMatch(await text(page.locator('[data-assistant-level] [data-level="standard"]')), /×/, 'Standard: no extra');
+  assert.equal(await text(page.locator('[data-assistant-level-note]')),
+    "Moving this chat to Expert uses 4 messages for this one: 2 to move the chat and 2 for the message. After that, 2 each. A new chat doesn't pay to move.");
+  await shot(page, 'level-fallback-desktop-dark');
+  await axe(page, 'level after fallback');
+  // A new chat never pays to move.
+  await page.locator('[data-assistant-new]').click();
+  await until(async () => /Expert\s*×2/.test(await text(page.locator('[data-assistant-level] [data-level="expert"]'))), 'new chat: Expert ×2');
+  assert.match(await text(page.locator('[data-assistant-level-note]')), /works through bigger setups/);
+  assert.deepEqual(agent.posts.filter((entry) => entry.path === '/prefs').map((entry) => entry.body.level), ['expert', 'standard', 'expert']);
+  await noOverflow(page, 'level desktop');
+  assert.deepEqual(errors.filter((message) => /assistant|Assistant/.test(message)), [], 'no assistant page errors');
+  await context.close();
+
+  console.log('phone 320 light: expert locked on free');
+  const free = await openPage(browser, { theme: 'light', viewport: { width: 320, height: 700 } });
+  await openPanel(free.page);
+  const locked = free.page.locator('[data-assistant-level] [data-level="expert"]');
+  await locked.waitFor();
+  assert.match(await text(locked), /Premium/);
+  assert.equal(await locked.getAttribute('aria-label'), 'Expert, needs Premium or Pro. See plans');
+  await shot(free.page, 'level-locked-phone-light');
+  await axe(free.page, 'level locked phone light');
+  await noOverflow(free.page, 'level phone 320');
+  await locked.click();
+  await sleep(500);
+  assert.equal(free.agent.posts.filter((entry) => entry.path === '/prefs').length, 0, 'locked: nothing saved');
+  assert.equal(await free.page.locator('[data-assistant-level] [data-level="standard"]').getAttribute('aria-pressed'), 'true');
+  await free.context.close();
+
+  console.log('phone 375 dark es: level labels');
+  const es = await openPage(browser, { theme: 'dark', language: 'es', plan: 'pro', limit: 400, viewport: { width: 375, height: 740 } });
+  await openPanel(es.page);
+  const esGroup = es.page.locator('[data-assistant-level]');
+  await esGroup.waitFor();
+  assert.equal(await esGroup.getAttribute('aria-label'), 'Modo de respuesta');
+  assert.match(await text(esGroup.locator('[data-level="standard"]')), /Estándar/);
+  assert.match(await text(esGroup.locator('[data-level="expert"]')), /Experto\s*×2/);
+  await esGroup.locator('[data-level="expert"]').click();
+  const esNote = await until(async () => { const t = await text(es.page.locator('[data-assistant-level-note]')).catch(() => ''); return t || null; }, 'es note');
+  assert.match(esNote, /Experto arma configuraciones grandes por su cuenta/);
+  assert.doesNotMatch(esNote, /Resume antes/, 'Pro Expert has the same memory: no memory note');
+  await shot(es.page, 'level-expert-phone-dark-es');
+  await axe(es.page, 'level phone dark es');
+  await noOverflow(es.page, 'level phone es');
+  await es.context.close();
+}
+
+// ---------------------------------------------------------------------------
 // 5. Assistant off for the channel: nothing renders
 // ---------------------------------------------------------------------------
 
@@ -1039,6 +1223,7 @@ try {
   await phoneFlow(browser);
   await restoredChat(browser);
   await phoneSpanish(browser);
+  await levelFlow(browser);
   await disabled(browser);
   console.log('site-agent-panel: all checks passed');
 } catch (error) {

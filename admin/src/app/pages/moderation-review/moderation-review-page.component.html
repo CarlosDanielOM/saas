@@ -7,6 +7,7 @@
           <p class="lf-sub">Say where the classifier got it wrong. Your verdicts are kept so it can be tuned on real messages.</p>
         </div>
         <div class="lf-head__actions">
+          <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/assistant-refusals"><app-icon name="sparkles" />Assistant refusals</a>
           <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
             <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
           </button>

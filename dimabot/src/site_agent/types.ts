@@ -100,13 +100,20 @@ export interface LlmStepResult {
     toolCalls: ToolCallRequest[];
     reasoning: unknown[];
     finishReason: string | null;
+    /** The provider's own stop reason (Anthropic: 'end_turn', 'tool_use', 'refusal'…). */
+    nativeFinishReason: string | null;
+    /** The provider's safety filter declined (finish_reason 'content_filter' / native 'refusal' / a refusal text). */
+    refused: boolean;
+    /** Refusal text the provider sent with it, if any. */
+    refusal: string | null;
     /** null when the stream ended without a usage chunk (e.g. aborted); reconcile later. */
     usage: LlmUsage | null;
     aborted: boolean;
     durationMs: number;
 }
 
-export type LlmErrorKind = 'config' | 'aborted' | 'timeout' | 'rate_limited' | 'overloaded' | 'bad_request' | 'context_too_long' | 'upstream' | 'incomplete';
+/** 'refused' = a provider or OpenRouter safety filter declined (403 refusal/moderation, or the same mid-stream). */
+export type LlmErrorKind = 'config' | 'aborted' | 'timeout' | 'rate_limited' | 'overloaded' | 'bad_request' | 'context_too_long' | 'refused' | 'upstream' | 'incomplete';
 
 // ---------------------------------------------------------------------------
 // Tools (site_agent/tools/*)
@@ -254,7 +261,8 @@ export type DisplayItem =
 
 /** Server → browser events on GET /agent/:channelID/turns/:turnId/events (SSE). */
 export type AgentEvent =
-    | { type: 'turn'; turnId: string; sessionId: string; status: TurnStatus; inputRevision: number }
+    /** `levelCost`: what a steer into this answer pays. */
+    | { type: 'turn'; turnId: string; sessionId: string; status: TurnStatus; inputRevision: number; levelCost?: number }
     | { type: 'status'; phase: 'thinking' | 'tool' | 'compacting' | 'waiting'; label?: string }
     | { type: 'item'; item: DisplayItem }
     /**
@@ -288,4 +296,7 @@ export interface SessionMeta {
     /** Last known prompt size (tokens) for the context meter. */
     contextTokens: number;
     contextLimit: number;
+    /** Level and model of the last answered step (what moving the chat to the other level costs depends on it). */
+    lastLevel?: 'standard' | 'expert';
+    contextModel?: string;
 }

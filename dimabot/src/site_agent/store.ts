@@ -9,7 +9,7 @@
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import { SITE_AGENT_KEYS as K, SITE_AGENT_LIMITS as L } from './config.js';
+import { SITE_AGENT_KEYS as K, SITE_AGENT_LIMITS as L, type AgentLevel } from './config.js';
 import type {
     AgentEvent, ChangeProposal, ContextItem, DisplayItem, InputMode, Lang, PageContext, PlanTier, SessionMeta,
     ToolCallState, TurnStatus,
@@ -64,6 +64,19 @@ export interface TurnRecord {
     mode: InputMode;
     /** Counted toward the daily limit on this UTC day ('' = not counted, e.g. retry). */
     countedDay: string;
+    /** Standard or Expert (missing on turns from before 2026-11-13 = Standard). */
+    level?: AgentLevel;
+    /** Daily messages this turn's own message used, move fee included; missing = 1. */
+    cost?: number;
+    /** Its level's price: what a steer into it pays (missing = `cost`). */
+    levelCost?: number;
+    /** Steps whose answer went into the chat (a declined or steered-away step doesn't count): refunds need 0. */
+    answeredSteps?: number;
+    /** Charged later in the turn (Expert fallback), and on which day (refunded with the rest on our failure). */
+    extraCharged?: number;
+    extraDay?: string;
+    /** Expert was declined by Anthropic's filter; the rest of the turn runs on Standard. */
+    fellBack?: boolean;
     retryOf?: string;
     /** The user message is in the model context (set once; retries reuse it). */
     userAdded: boolean;
@@ -76,7 +89,8 @@ export interface TurnRecord {
     steps: number;
     toolCallCount: number;
     activeMs: number;
-    inputs: { id: string; text: string; at: number; applied: boolean; itemId: string }[];
+    /** Steer inputs; `cost`/`countedDay` = what each was charged (missing on older turns = not refunded). */
+    inputs: { id: string; text: string; at: number; applied: boolean; itemId: string; cost?: number; countedDay?: string }[];
     calls: CallRecord[];
     waiting?: { kind: 'approval' | 'input'; callId: string; expiresAt: number };
     errorCode?: string;
@@ -289,6 +303,11 @@ export interface QueuedInput {
     userLogin: string;
     userDisplayName: string;
     countedDay: string;
+    /** Level and messages used (move fee included), fixed when it was sent (missing = Standard, 1). */
+    level?: AgentLevel;
+    cost?: number;
+    /** Its level's price (what a steer into it pays). */
+    levelCost?: number;
     at: number;
 }
 
@@ -301,6 +320,12 @@ export async function queueInput(sessionId: string, input: QueuedInput): Promise
 
 export async function queuedCount(sessionId: string): Promise<number> {
     return (await redis()).lLen(K.sessionQueue(sessionId));
+}
+
+/** The newest queued input (it runs last), or null. */
+export async function lastQueuedInput(sessionId: string): Promise<QueuedInput | null> {
+    const json = await (await redis()).lIndex(K.sessionQueue(sessionId), -1);
+    return json ? JSON.parse(json) as QueuedInput : null;
 }
 
 export async function popQueuedInput(sessionId: string): Promise<QueuedInput | null> {

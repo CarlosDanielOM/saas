@@ -195,7 +195,8 @@ export async function compact(input: CompactionInput): Promise<CompactionOutput>
         ],
     }, {});
     const summary = step.content.trim();
-    if (!summary || step.aborted) return { items, step, compacted: false };
+    // A declined summary call is never a summary (its text may be a refusal or a cut-off answer).
+    if (!summary || step.aborted || step.refused) return { items, step, compacted: false };
     const previous = items.find((item) => item.role === 'summary') as Extract<ContextItem, { role: 'summary' }> | undefined;
     const covers = head.length + (previous?.covers ?? 0);
     return {

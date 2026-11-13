@@ -59,7 +59,8 @@ export interface LimitsView {
 }
 
 export type AgentEvent =
-  | { type: 'turn'; turnId: string; sessionId: string; status: TurnStatus; inputRevision: number }
+  /** `levelCost`: what a steer into this answer pays. */
+  | { type: 'turn'; turnId: string; sessionId: string; status: TurnStatus; inputRevision: number; levelCost?: number }
   | { type: 'status'; phase: 'thinking' | 'tool' | 'compacting' | 'waiting'; label?: string }
   | { type: 'item'; item: DisplayItem }
   /** Apply only when the item's local text length equals `offset` (replays can repeat deltas). */
@@ -78,6 +79,18 @@ export interface SessionMeta {
   activeTurnId: string | null;
   contextTokens: number;
   contextLimit: number;
+  /** What the next message costs at each level in this chat (moving it to the other level costs more). */
+  nextCost?: Partial<Record<AgentLevel, MessageCost | null>>;
+  /** While an answer runs: what a message queued after it (and anything already queued) costs at each level. */
+  queueCost?: Partial<Record<AgentLevel, MessageCost | null>>;
+}
+
+export interface MessageCost {
+  total: number;
+  /** The level's own price. */
+  level: number;
+  /** Fee for moving the chat to this level (0 = already there, or a new chat). */
+  move: number;
 }
 
 export interface TurnSnapshot {
@@ -86,6 +99,8 @@ export interface TurnSnapshot {
   status: TurnStatus;
   inputRevision: number;
   cursor: string;
+  /** What a steer into this answer pays. */
+  levelCost?: number;
 }
 
 export interface PersonaView {
@@ -97,11 +112,31 @@ export interface PersonaView {
   name: string | null;
 }
 
+/** Standard (default) or Expert: a stronger mode that uses more of the daily messages (Premium/Pro). */
+export type AgentLevel = 'standard' | 'expert';
+
+export interface LevelOption {
+  id: AgentLevel;
+  /** On this channel's plan. */
+  available: boolean;
+  /** Daily messages one message uses. */
+  cost: number;
+  contextLimit: number | null;
+}
+
+export interface LevelView {
+  /** What the next message uses. */
+  current: AgentLevel;
+  options: LevelOption[];
+}
+
 export interface StatusView {
   enabled: boolean;
   role: 'owner' | 'admin';
   limits: LimitsView;
+  /** Memory of the level the next message uses. */
   contextLimit: number;
+  level?: LevelView;
   persona?: PersonaView;
 }
 

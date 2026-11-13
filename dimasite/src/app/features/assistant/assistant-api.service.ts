@@ -6,11 +6,13 @@ import { environment } from '../../../environments/environment';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { SseParser, type SseFrame } from './assistant-sse';
 import type {
+  AgentLevel,
   ApiEnvelope,
   ApprovalState,
   ChangeView,
   DisplayItem,
   InputMode,
+  LevelView,
   LimitsView,
   PageContext,
   SessionMeta,
@@ -30,6 +32,8 @@ export interface SendMessageBody {
   sessionId?: string;
   text: string;
   mode: InputMode;
+  /** The level the person sees selected (steer inputs pay the running answer's level). */
+  level?: AgentLevel;
   page: PageContext;
   clientRequestId: string;
 }
@@ -89,6 +93,10 @@ export class AssistantApiService {
 
   status(channelId: string): Promise<StatusView> {
     return this.call(this.http.get<ApiEnvelope<StatusView>>(`${this.base(channelId)}/status`));
+  }
+
+  async setLevel(channelId: string, level: AgentLevel): Promise<{ level: LevelView; contextLimit: number }> {
+    return this.call(this.http.patch<ApiEnvelope<{ level: LevelView; contextLimit: number }>>(`${this.base(channelId)}/prefs`, { level }));
   }
 
   async setPersona(channelId: string, persona: boolean): Promise<PersonaView> {

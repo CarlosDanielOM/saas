@@ -1,6 +1,6 @@
 /**
  * Account deletion: remove everything the assistant kept for a channel (its chats, the chats this
- * person had on channels they manage, the change log, daily counters). Sessions expire after 72 h
+ * person had on channels they manage, the change log, Expert refusal records, daily counters). Sessions expire after 72 h
  * anyway; the change log would otherwise stay 90 days.
  */
 import mongoose from 'mongoose';
@@ -33,5 +33,7 @@ export async function deleteChannelSiteAgentData(channelId: string): Promise<{ s
     const prefs = [...new Set([...await scanKeys(K.prefs(channelId, '*')), ...await scanKeys(K.prefs('*', channelId))])];
     if (prefs.length) await client.del(prefs);
     const result = await mongoose.connection.collection('site_agent_changes').deleteMany({ channelId });
+    // Expert refusals record what was asked: on this channel, and by this person on channels they manage.
+    await mongoose.connection.collection('site_agent_refusals').deleteMany({ $or: [{ channelId }, { userId: channelId }] });
     return { sessionsDeleted, changesDeleted: result.deletedCount ?? 0 };
 }

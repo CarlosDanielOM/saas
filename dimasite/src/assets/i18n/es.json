@@ -11097,6 +11097,23 @@
       "upgrade": "Ver planes",
       "failed": "No se pudo guardar. Intenta otra vez."
     },
+    "level": {
+      "label": "Modo de respuesta",
+      "standard": "Estándar",
+      "expert": "Experto",
+      "standardHint": "Sirve para la mayoría de las preguntas. Usa 1 mensaje.",
+      "expertHint": "Modo más potente: arma configuraciones grandes por su cuenta. Usa 2 mensajes.",
+      "expertNote": "Experto arma configuraciones grandes por su cuenta. Cada mensaje usa {{cost}} de tus mensajes de hoy.",
+      "expertMemory": "Resume antes los chats largos.",
+      "short": "Este mensaje usa {{cost}} mensajes y hoy te quedan: {{left}}.",
+      "shortSwitch": "Cambia a Estándar para enviarlo.",
+      "shortNewChat": "Un chat nuevo en Estándar usa 1.",
+      "shortSteer": "Agregar algo a esta respuesta usa {{cost}} mensajes y hoy te quedan: {{left}}.",
+      "moveExpert": "Pasar este chat a Experto usa {{total}} mensajes en este: {{move}} para mover el chat y {{cost}} por el mensaje. Después, {{cost}} cada uno. Un chat nuevo no paga por moverse.",
+      "moveStandard": "Pasar este chat a Estándar usa {{total}} mensajes en este: {{move}} para mover el chat y {{cost}} por el mensaje. Un chat nuevo no paga por moverse.",
+      "lockedLabel": "{{name}}, necesita Premium o Pro. Ver planes",
+      "costLabel": "{{name}}, usa {{cost}} mensajes"
+    },
     "title": "Asistente",
     "experimental": {
       "badge": "Experimental",
@@ -11209,6 +11226,9 @@
       "queue_full": "Ya tienes 5 mensajes esperando. Espera a que se envíen primero.",
       "concurrent_limit": "Ya tienes chats trabajando. Espera a que uno termine.",
       "invalid_request": "No se pudo enviar ese mensaje. Revísalo e intenta de nuevo.",
+      "not_enough_messages": "Experto usa 2 mensajes y ya no te alcanzan hoy. Cambia a Estándar para enviarlo.",
+      "plan_required": "Eso necesita Premium o Pro.",
+      "refused": "La IA no quiso responder esto. Intenta preguntarlo de otra forma.",
       "session_not_found": "Este chat ya no existe (los chats se guardan 3 días).",
       "turn_not_found": "Esa respuesta ya no está disponible. Abre el chat otra vez.",
       "turn_not_active": "Esa respuesta ya terminó. Envíalo como un mensaje nuevo.",
@@ -11309,6 +11329,7 @@
       "unknown": "Pasó algo inesperado.",
       "access_revoked": "Ya no tienes acceso al asistente de este canal.",
       "empty_answer": "No encontró una respuesta. Intenta preguntarlo de otra forma.",
+      "expert_fallback": "Experto no pudo con esta, así que respondió Estándar. Eso usó 2 mensajes más: 1 para mover el chat y 1 por la respuesta.",
       "internal_error": "Algo salió mal de nuestro lado. Intenta de nuevo.",
       "lease_lost": "Algo salió mal de nuestro lado. Intenta de nuevo."
     },
@@ -11335,7 +11356,7 @@
     "limits": {
       "left": "Te quedan {{left}} de {{limit}} mensajes hoy · se reinicia a las {{time}}",
       "reached": "Ya usaste los {{limit}} mensajes de hoy. Más a las {{time}}.",
-      "upgradePremium": "Premium da 80 al día",
+      "upgradePremium": "Premium da 100 al día",
       "upgradePro": "Pro da 400 al día"
     },
     "sessions": {

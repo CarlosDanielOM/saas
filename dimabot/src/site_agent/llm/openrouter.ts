@@ -22,20 +22,31 @@ const MAX_RETRY_AFTER_MS = 10_000;
 /** When to look a generation up after it ended (ms from the first lookup). 404 = not ready yet. */
 export const RECONCILE_SCHEDULE_MS: readonly number[] = [5_000, 15_000, 45_000, 90_000];
 
+/** What OpenRouter says about a declined request (safe to log: no key, flagged text ≤100 chars). */
+export interface RefusalDetail {
+    errorType?: string;
+    reasons?: string[];
+    flaggedInput?: string;
+    providerName?: string;
+}
+
 export class LlmError extends Error {
     readonly kind: LlmErrorKind;
     readonly status?: number;
     /** Seconds the provider asked us to wait (429/503 Retry-After), when given. */
     readonly retryAfter?: number;
+    /** Kind 'refused': OpenRouter's metadata about it. */
+    readonly detail?: RefusalDetail;
     /** Set when the stream had started a generation: its usage must still be reconciled. */
     generationId?: string;
 
-    constructor(kind: LlmErrorKind, message: string, opts: { status?: number; retryAfter?: number } = {}) {
+    constructor(kind: LlmErrorKind, message: string, opts: { status?: number; retryAfter?: number; detail?: RefusalDetail } = {}) {
         super(message);
         this.name = 'LlmError';
         this.kind = kind;
         if (opts.status !== undefined) this.status = opts.status;
         if (opts.retryAfter !== undefined) this.retryAfter = opts.retryAfter;
+        if (opts.detail) this.detail = opts.detail;
     }
 }
 
@@ -119,18 +130,36 @@ function sanitize(text: string, key?: string): string {
     return out.length > 300 ? `${out.slice(0, 297)}...` : out;
 }
 
+/** OpenRouter `error.metadata.error_type` values that mean a safety filter declined (not our config). */
+const REFUSAL_TYPES = new Set(['refusal', 'content_policy_violation']);
+
+/** Refusal metadata from an OpenRouter error object, or undefined when it is some other error. */
+export function refusalDetail(error: unknown): RefusalDetail | undefined {
+    const metadata = (error && typeof error === 'object' ? (error as { metadata?: unknown }).metadata : undefined) as Record<string, unknown> | undefined;
+    if (!metadata || typeof metadata !== 'object') return undefined;
+    const errorType = typeof metadata.error_type === 'string' ? metadata.error_type : undefined;
+    const reasons = Array.isArray(metadata.reasons) ? metadata.reasons.filter((item): item is string => typeof item === 'string').slice(0, 10).map((item) => item.slice(0, 200)) : undefined;
+    const flaggedInput = typeof metadata.flagged_input === 'string' ? metadata.flagged_input.slice(0, 200) : undefined;
+    if (!(errorType && REFUSAL_TYPES.has(errorType)) && !reasons?.length && !flaggedInput) return undefined;
+    return {
+        ...(errorType ? { errorType } : {}), ...(reasons?.length ? { reasons } : {}), ...(flaggedInput ? { flaggedInput } : {}),
+        ...(typeof metadata.provider_name === 'string' ? { providerName: metadata.provider_name.slice(0, 80) } : {}),
+    };
+}
+
 /** Pulls `error.message` (and nested provider raw text) out of an OpenRouter error body. */
-function errorText(raw: string): string {
+function errorText(raw: string): { text: string; refusal?: RefusalDetail } {
     try {
         const parsed = JSON.parse(raw) as { error?: { message?: unknown; metadata?: { raw?: unknown } } };
         const message = typeof parsed.error?.message === 'string' ? parsed.error.message : '';
         const providerRaw = typeof parsed.error?.metadata?.raw === 'string' ? parsed.error.metadata.raw : '';
         const text = [message, providerRaw].filter(Boolean).join(': ');
-        if (text) return text;
+        const refusal = refusalDetail(parsed.error);
+        if (text || refusal) return { text: text || raw, ...(refusal ? { refusal } : {}) };
     } catch {
         // Not JSON: use the text as is.
     }
-    return raw;
+    return { text: raw };
 }
 
 function kindForStatus(status: number, text: string): LlmErrorKind {
@@ -144,10 +173,11 @@ function kindForStatus(status: number, text: string): LlmErrorKind {
 }
 
 function statusError(status: number, raw: string, key: string, retryAfter?: number): LlmError {
-    const text = errorText(raw);
-    const kind = kindForStatus(status, text);
+    const { text, refusal } = errorText(raw);
+    // A 403 that carries refusal/moderation metadata is a safety decline, not a key problem.
+    const kind = status === 403 && refusal ? 'refused' : kindForStatus(status, text);
     const message = sanitize(`OpenRouter ${status}${text ? `: ${text}` : ''}`, key);
-    return new LlmError(kind, message, { status, ...(retryAfter !== undefined ? { retryAfter } : {}) });
+    return new LlmError(kind, message, { status, ...(retryAfter !== undefined ? { retryAfter } : {}), ...(kind === 'refused' && refusal ? { detail: refusal } : {}) });
 }
 
 /** Error object inside a stream chunk (`error` or `choices[0].error`). */
@@ -156,9 +186,11 @@ function chunkError(error: unknown, key: string): LlmError {
     const code = typeof err.code === 'number' ? err.code : Number.parseInt(String(err.code ?? ''), 10);
     const text = [typeof err.message === 'string' ? err.message : '', typeof err.metadata?.raw === 'string' ? err.metadata.raw : '']
         .filter(Boolean).join(': ') || 'stream error';
-    const kind: LlmErrorKind = Number.isFinite(code) && code >= 400 ? kindForStatus(code, text) : CONTEXT_PATTERN.test(text) ? 'context_too_long' : 'upstream';
+    const refusal = refusalDetail(error);
+    const kind: LlmErrorKind = refusal ? 'refused'
+        : Number.isFinite(code) && code >= 400 ? kindForStatus(code, text) : CONTEXT_PATTERN.test(text) ? 'context_too_long' : 'upstream';
     return new LlmError(kind, sanitize(`OpenRouter stream error${Number.isFinite(code) ? ` ${code}` : ''}: ${text}`, key),
-        Number.isFinite(code) ? { status: code } : {});
+        { ...(Number.isFinite(code) ? { status: code } : {}), ...(refusal ? { detail: refusal } : {}) });
 }
 
 /** Retry-After in ms (seconds or an HTTP date), or undefined. */
@@ -260,7 +292,9 @@ class StepAssembler {
     generationId: string | null = null;
     provider: string | null = null;
     content = '';
+    refusal = '';
     finishReason: string | null = null;
+    nativeFinishReason: string | null = null;
     usage: LlmUsage | null = null;
     done = false;
     readonly reasoning: Json[] = [];
@@ -286,8 +320,10 @@ class StepAssembler {
             this.content += delta.content;
             this.handlers.onText?.(delta.content);
         }
+        if (typeof delta.refusal === 'string' && delta.refusal) this.refusal += delta.refusal;
         if (Array.isArray(delta.tool_calls)) for (const call of delta.tool_calls) this.toolCall(call as Json);
         if (typeof choice.finish_reason === 'string' && choice.finish_reason) this.finishReason = choice.finish_reason;
+        if (typeof choice.native_finish_reason === 'string' && choice.native_finish_reason) this.nativeFinishReason = choice.native_finish_reason;
     }
 
     private toolCall(delta: Json): void {
@@ -518,6 +554,9 @@ function result(assembler: StepAssembler, started: number, aborted: boolean): Ll
         toolCalls: aborted ? [] : assembler.toolCalls(),
         reasoning: assembler.reasoning,
         finishReason: assembler.finishReason,
+        nativeFinishReason: assembler.nativeFinishReason,
+        refused: !aborted && (assembler.finishReason === 'content_filter' || assembler.nativeFinishReason === 'refusal' || !!assembler.refusal),
+        refusal: assembler.refusal ? assembler.refusal.slice(0, 2_000) : null,
         usage: assembler.usage,
         aborted,
         durationMs: Date.now() - started,
