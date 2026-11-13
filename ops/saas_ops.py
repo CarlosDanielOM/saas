@@ -14,7 +14,6 @@ from pathlib import Path
 import re
 import shutil
 import signal
-import stat
 import subprocess
 import sys
 import tempfile
@@ -27,65 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OWNER = "io.domdimabot.saas-ops"
 RUN_RE = re.compile(r"[a-z][a-z0-9-]*-[0-9a-f]{12}\Z")
 IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
-EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular", ".astro", "data", "coverage"}
-# Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
-RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
-RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion",
-                 "ai_usage_receipts", "raid_sessions", "dashboard_activity", "cron_index")
-GIB = 1024 ** 3
-RUST_BUILD_CPUS = 6
-RUST_BUILD_MEMORY_GIB = 6
-RUST_BUILD_PIDS = 256
-RUST_MEMORY_HEADROOM = 4 * GIB
-RUST_CACHE_LIMIT = 8 * GIB
-RUST_CACHE_MARKER = ".saas-ops-cache.json"
-# Adding a future worker profile also requires reviewing the recipe's graph guard.
-RUST_FEATURES = "mongo"
-RUST_BASELINE_FEATURES = "mongo,redis"
-# Dashboard activity needs the native HTTP client and its ICU collator for
-# JS-compatible locale ties; it must stay out of the six existing worker graphs.
-RUST_DASHBOARD_FEATURES = "mongo,redis,http-client,unicode-collation"
-RUST_SUPERVISOR_FEATURES = "cron-supervisor"
-RUST_PROFILES = "dev,test,release"
-# Keep dev/test debuginfo and incremental artifacts out of the shared cache. These
-# reduce compiler/test artifact size only: release profile and optimization
-# settings are untouched, and all four profiles still run every check.
-RUST_ARTIFACT_ENV = {"CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
-                     "CARGO_INCREMENTAL": "0"}
-# Dependency name patterns that must never enter a graph; each profile names its
-# own allowed optional clients rather than relying on feature unification.
-RUST_GRAPH_FORBIDDEN = {
-    "mongo": ("sqlx", "axum", "redis", "reqwest", "icu_collator"),
-    "mongo-redis": ("sqlx", "axum", "reqwest", "icu_collator"),
-    "dashboard": ("sqlx", "axum"),
-    "cron-supervisor": ("mongodb", "sqlx", "axum", "reqwest", "icu_collator"),
-}
-# Cache hygiene is separate from the dependency recipe: remove only this
-# package's release outputs inside the same capped compiler, retaining its deps.
-RUST_CACHE_HYGIENE = '''RUSTUP_TOOLCHAIN="$(rustup default)"
-RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN%% *}"
-export RUSTUP_TOOLCHAIN
-cargo clean --locked --release --package dima-rust
-exec sh /rust-build.sh'''
-
-
-def rust_worker_profiles():
-    # Preserve the Mongo-only profile/receipt fields for these workers; the
-    # baseline, AI usage receipt, and raid sessions workers need a Redis/Dragonfly
-    # client, and dashboard activity additionally needs the native HTTP client
-    # plus the ICU collator that preserves Node localeCompare ties. Standalone
-    # supervision is a fourth independent graph without MongoDB, HTTP clients,
-    # or ICU collation; Redis retains its URL/IDNA normalization dependencies.
-    return {
-        "mongo": {"features": RUST_FEATURES, "default_features": False,
-                  "binaries": ["stream_activity", "raid_analytics", "roulette_completion"], "graph": "worker-dependencies.txt"},
-        "mongo-redis": {"features": RUST_BASELINE_FEATURES, "default_features": False,
-                        "binaries": ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"], "graph": "baseline-worker-dependencies.txt"},
-        "dashboard": {"features": RUST_DASHBOARD_FEATURES, "default_features": False,
-                      "binaries": ["dashboard_activity"], "graph": "dashboard-worker-dependencies.txt"},
-        "cron-supervisor": {"features": RUST_SUPERVISOR_FEATURES, "default_features": False,
-                            "binaries": ["cron_index"], "graph": "supervisor-dependencies.txt"},
-    }
+EXCLUDED = {"node_modules", "dist", "target", ".git", ".angular", ".astro", "data", "coverage"}
 
 
 class OpsError(Exception):
@@ -296,7 +237,7 @@ class Ops:
         require(Path(top).resolve() == source, "Source must be a worktree root")
         return source
 
-    def snapshot(self, target, destination, source_dir=None, *, rust_only=False):
+    def snapshot(self, target, destination, source_dir=None):
         source_root = self.source_root(source_dir)
         source = source_root / target.project / target.context
         relative = source.relative_to(source_root)
@@ -307,8 +248,6 @@ class Ops:
             file = source_root / name
             rel = file.relative_to(source)
             if any(part in EXCLUDED or part.startswith(".env") for part in rel.parts):
-                continue
-            if rust_only and rel.parts[0] not in {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "src", "tests", "examples"}:
                 continue
             require(not file.is_symlink() and source in file.resolve().parents, f"Unsafe build input: {name}")
             if not file.exists():  # tracked deletions are part of the candidate
@@ -323,301 +262,7 @@ class Ops:
             directory.chmod(0o755)
         require(any(destination.iterdir()), "Empty build context")
 
-    @contextlib.contextmanager
-    def rust_build_lock(self):
-        # One compiler across worktrees/checkouts, not merely one per Ops receipt.
-        lock_path = Path.home() / ".local/state/saas-ops-rust-build.lock"
-        lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        require(not lock_path.is_symlink(), "Rust compiler lock must not be a symlink")
-        with lock_path.open("a") as lock:
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise OpsError("Another capped Rust compiler is running") from exc
-            yield
-
-    @staticmethod
-    def rust_cpu_limit(cpus):
-        require(type(cpus) is int and 1 <= cpus <= RUST_BUILD_CPUS,
-                "Rust compiler CPUs must be an integer from 1 to 6")
-        return cpus
-
-    @staticmethod
-    def rust_memory_limit(memory_gib):
-        require(type(memory_gib) is int and memory_gib in (4, 6),
-                "Rust compiler memory must be 4 or 6 GiB")
-        return memory_gib
-
-    def rust_headroom(self, *, starting=False, memory_gib=RUST_BUILD_MEMORY_GIB):
-        memory_gib = self.rust_memory_limit(memory_gib)
-        available = next(int(line.split()[1]) * 1024 for line in Path("/proc/meminfo").read_text().splitlines()
-                         if line.startswith("MemAvailable:"))
-        load = os.getloadavg()[0]
-        minimum = RUST_MEMORY_HEADROOM + (memory_gib * GIB if starting else 0)
-        require(available >= minimum, "Rust build stopped: insufficient production memory headroom")
-        require(load < max(1, os.cpu_count() or 1) * 0.85, "Rust build stopped: production host load is too high")
-        require(shutil.disk_usage(self.state).free >= 5 * GIB, "Rust build stopped: less than 5 GiB disk headroom")
-        return {"mem_available_bytes": available, "load_1m": load}
-
-    def rust_cache_root(self):
-        return Path.home() / ".local/state/saas-ops-rust-cache/v1"
-
-    def rust_private_directory(self, path):
-        # Validate the lexical path before mkdir/open: symlink ancestors are not
-        # acceptable even when the final cache directory itself is a real directory.
-        require(path.is_absolute() and path.resolve() == path, "Rust cache path must not contain symlinks")
-        require(self.root != path and self.root not in path.parents, "Rust cache must be outside the checkout")
-        require(not path.exists() or path.is_dir(), "Rust cache path must be a directory")
-        path.mkdir(parents=True, exist_ok=True, mode=0o700)
-        metadata = path.lstat()
-        require(stat.S_ISDIR(metadata.st_mode) and metadata.st_uid == os.geteuid() and
-                metadata.st_mode & 0o777 == 0o700, "Rust cache directory must be private and owned by this operator")
-
-    def rust_cache_marker(self, entry, expected):
-        marker = entry / RUST_CACHE_MARKER
-        if marker.exists() or marker.is_symlink():
-            metadata = marker.lstat()
-            require(stat.S_ISREG(metadata.st_mode) and metadata.st_uid == os.geteuid() and
-                    metadata.st_mode & 0o077 == 0 and marker.stat().st_size <= 4096,
-                    "Unsafe Rust cache ownership marker")
-            require(json.loads(marker.read_text()) == expected, "Rust cache ownership marker does not match")
-        else:
-            require(not any(entry.iterdir()), "Refusing an unmarked Rust cache directory")
-            atomic_json(marker, expected)
-
-    def rust_cache_entries(self, root):
-        """Validate before either mounting or targeted eviction; never follow symlinks."""
-        entries = []
-        for entry in root.iterdir():
-            if entry.name == RUST_CACHE_MARKER:
-                continue
-            require(bool(re.fullmatch(r"[0-9a-f]{64}", entry.name)), "Unknown entry in dedicated Rust cache")
-            self.rust_private_directory(entry)
-            marker = entry / RUST_CACHE_MARKER
-            require(marker.is_file() and not marker.is_symlink() and marker.stat().st_size <= 4096,
-                    "Missing Rust cache entry marker")
-            value = json.loads(marker.read_text())
-            require(isinstance(value, dict) and value.get("owner") == OWNER + ".rust-cache" and value.get("schema") == 1 and
-                    value.get("key") == entry.name and isinstance(value.get("inputs"), dict) and
-                    digest(json.dumps(value["inputs"], sort_keys=True).encode()) == entry.name,
-                    "Invalid Rust cache entry ownership")
-            self.rust_cache_marker(entry, value)
-            size = 0
-            for current, directories, filenames in os.walk(entry, followlinks=False):
-                for name in [*directories, *filenames]:
-                    try:
-                        metadata = (Path(current) / name).lstat()
-                    except FileNotFoundError:
-                        # Cargo atomically retires temporary artifacts while the
-                        # bounded compiler is running; these consume no space.
-                        continue
-                    require(not stat.S_ISLNK(metadata.st_mode) and metadata.st_uid == os.geteuid() and
-                            (stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode)),
-                            "Unsafe file in dedicated Rust cache")
-                    size += metadata.st_blocks * 512
-            entries.append((entry, size, marker.stat().st_mtime_ns))
-        return entries
-
-    def rust_cache_usage(self, cache, *, reserve=0):
-        root, active = Path(cache["root"]), Path(cache["entry"])
-        self.rust_private_directory(root)
-        self.rust_cache_marker(root, {"owner": OWNER + ".rust-cache", "schema": 1})
-        entries = self.rust_cache_entries(root)
-        total = sum(size for _, size, _ in entries)
-        for entry, size, _ in sorted(entries, key=lambda row: row[2]):
-            if total <= RUST_CACHE_LIMIT - reserve:
-                break
-            if entry != active:
-                # Only the dedicated, fully validated, inactive cache entry.
-                shutil.rmtree(entry)
-                total -= size
-        require(total <= RUST_CACHE_LIMIT, "Active Rust cache exceeds the 8 GiB limit; build stopped without raising limits")
-        return total
-
-    def prepare_rust_cache(self, path, receipt):
-        root = self.rust_cache_root()
-        self.rust_private_directory(root)
-        self.rust_cache_marker(root, {"owner": OWNER + ".rust-cache", "schema": 1})
-        inputs = {"toolchain": receipt["rust_toolchain_image"], "features": RUST_FEATURES,
-                  "profiles": RUST_PROFILES, "worker_profiles": rust_worker_profiles(),
-                  "profile_env": RUST_ARTIFACT_ENV,
-                  "recipe": receipt["rust_recipe_digest"],
-                  "manifest": digest((path / "rust-source/Cargo.toml").read_bytes()),
-                  "lock": digest((path / "rust-source/Cargo.lock").read_bytes())}
-        key = digest(json.dumps(inputs, sort_keys=True).encode())
-        entry = root / key
-        hit = entry.exists()
-        self.rust_private_directory(entry)
-        self.rust_cache_marker(entry, {"owner": OWNER + ".rust-cache", "schema": 1, "key": key, "inputs": inputs})
-        for name in ("cargo", "target"):
-            self.rust_private_directory(entry / name)
-        cache = {"root": str(root), "entry": str(entry), "cargo": str(entry / "cargo"),
-                 "target": str(entry / "target"), "key": key, "hit": hit}
-        cache["bytes_before"] = self.rust_cache_usage(cache, reserve=GIB)
-        cache["entry_bytes_before"] = next(size for candidate, size, _ in self.rust_cache_entries(root) if candidate == entry)
-        (entry / RUST_CACHE_MARKER).touch()
-        return cache
-
-    def rust_container_args(self, path, receipt, image, cache):
-        cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
-        memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
-        require(RUST_FEATURES == "mongo", "Unsupported worker feature profile; review its dependency graph guard before enabling it")
-        require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
-        require(RUST_DASHBOARD_FEATURES == "mongo,redis,http-client,unicode-collation",
-                "Unsupported dashboard feature profile; review its dependency graph guard before enabling it")
-        require(RUST_SUPERVISOR_FEATURES == "cron-supervisor",
-                "Unsupported supervisor feature profile; review its dependency graph guard before enabling it")
-        return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
-                "--label", OWNER + ".rust-build=true",
-                f"--cpus={cpus}", f"--memory={memory_gib}g",
-                f"--memory-swap={memory_gib}g", f"--pids-limit={RUST_BUILD_PIDS}",
-                "--security-opt=no-new-privileges",
-                "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/cargo-cache", "--env=CARGO_TARGET_DIR=/target-cache",
-                *(f"--env={key}={value}" for key, value in sorted(RUST_ARTIFACT_ENV.items())),
-                "--env=SAAS_RUST_FEATURES=" + RUST_FEATURES,
-                "--env=SAAS_RUST_BASELINE_FEATURES=" + RUST_BASELINE_FEATURES,
-                "--env=SAAS_RUST_DASHBOARD_FEATURES=" + RUST_DASHBOARD_FEATURES,
-                "--env=SAAS_RUST_SUPERVISOR_FEATURES=" + RUST_SUPERVISOR_FEATURES,
-                "--env=SAAS_RUST_FEATURE_MATRIX=" + ("1" if receipt.get("rust_feature_matrix") else "0"),
-                "--mount", f"type=bind,src={path / 'rust-source'},dst=/source,readonly",
-                "--mount", f"type=bind,src={path / 'rust-work'},dst=/work",
-                "--mount", f"type=bind,src={path / 'rust-artifacts'},dst=/artifacts",
-                "--mount", f"type=bind,src={path / 'rust-build.sh'},dst=/rust-build.sh,readonly",
-                "--mount", f"type=bind,src={cache['cargo']},dst=/cargo-cache",
-                "--mount", f"type=bind,src={cache['target']},dst=/target-cache",
-                "--workdir=/source", image, "sh", "-ceu", RUST_CACHE_HYGIENE]
-
-    def verify_rust_limits(self, obj, receipt):
-        cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
-        memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
-        limits = obj["HostConfig"]
-        require(limits.get("NanoCpus") == cpus * 1_000_000_000 and
-                limits.get("Memory") == memory_gib * GIB and
-                limits.get("MemorySwap") == memory_gib * GIB and
-                limits.get("PidsLimit") == RUST_BUILD_PIDS,
-                "Rust compiler cgroup limits do not match the required policy")
-
-    def build_rust(self, path, receipt, source_dir=None, *, feature_matrix=False):
-        """Compile in a hard-capped musl container; never invoke host Cargo/BuildKit Cargo."""
-        receipt["rust_cpus"] = cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
-        receipt["rust_memory_gib"] = memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
-        with self.rust_build_lock():
-            # SIGKILL releases flock but may leave Docker work running. Never
-            # overlap that orphan; its original receipt must clean it up.
-            require(not self.docker("container", "ls", "--filter", "label=" + OWNER + ".rust-build=true", "--quiet", capture=True).strip(),
-                    "A capped Rust compiler is already running; clean up its owning run first")
-            receipt["rust_headroom_start"] = self.rust_headroom(starting=True, memory_gib=memory_gib)
-            self.snapshot(Target("dima-rust", "", ""), path / "rust-source", source_dir, rust_only=True)
-            receipt["rust_source_digest"] = tree_hash(path / "rust-source")
-            for filename in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
-                require((path / "rust-source" / filename).is_file(), "Missing Rust build manifest: " + filename)
-            recipe = Path(__file__).with_name("rust_build.sh")
-            shutil.copy2(recipe, path / "rust-build.sh")
-            receipt["rust_recipe_digest"] = digest(recipe.read_bytes())
-            for name in ("rust-work", "rust-artifacts"):
-                (path / name).mkdir(mode=0o755)
-            image = self.inspect("image", RUST_BUILD_IMAGE, missing=True)
-            if not image:
-                self.docker("pull", RUST_BUILD_IMAGE)
-                image = self.inspect("image", RUST_BUILD_IMAGE)
-            require(bool(IMAGE_RE.fullmatch(image["Id"])), "Cannot resolve immutable Rust toolchain image")
-            receipt["rust_toolchain_image"] = image["Id"]
-            receipt["rust_features"] = RUST_FEATURES
-            receipt["rust_worker_profiles"] = rust_worker_profiles()
-            receipt["rust_build_profile_env"] = dict(RUST_ARTIFACT_ENV)
-            receipt["rust_feature_matrix"] = bool(feature_matrix)
-            receipt["rust_cache"] = cache = self.prepare_rust_cache(path, receipt)
-            receipt["rust_cache_hygiene_digest"] = digest(RUST_CACHE_HYGIENE.encode())
-            cache["project_release_clean"] = False
-            print(f"Rust worker profiles: mongo={RUST_FEATURES}, mongo-redis={RUST_BASELINE_FEATURES}, "
-                  f"dashboard={RUST_DASHBOARD_FEATURES}, cron-supervisor={RUST_SUPERVISOR_FEATURES}; artifact env: "
-                  + ", ".join(f"{key}={value}" for key, value in sorted(RUST_ARTIFACT_ENV.items()))
-                  + f"; private cache {cache['key'][:12]} "
-                  f"({'existing' if cache['hit'] else 'new'}, limit 8 GiB); feature matrix: {bool(feature_matrix)}", flush=True)
-            self.rust_headroom(starting=True, memory_gib=memory_gib)
-            name = "saas-ops-" + receipt["run"] + "-rust-build"
-            self.add_resource(path, receipt, "container", name)
-            try:
-                self.docker(*self.rust_container_args(path, receipt, image["Id"], cache), capture=True)
-                obj = self.inspect("container", name)
-                self.owned(obj, receipt["run"], "container")
-                self.verify_rust_limits(obj, receipt)
-                self.docker("start", obj["Id"], capture=True)
-                started = time.monotonic()
-                next_report = started
-                while True:
-                    current = self.inspect("container", name)
-                    self.verify_rust_limits(current, receipt)
-                    if not current["State"]["Running"]:
-                        break
-                    headroom = self.rust_headroom(memory_gib=memory_gib)
-                    require(time.monotonic() - started < 7200, "Rust build exceeded the two-hour time limit")
-                    if time.monotonic() >= next_report:
-                        self.rust_cache_usage(cache)
-                        print(f"Capped Rust build running ({cpus} CPUs/{memory_gib} GiB, "
-                              f"available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
-                        next_report = time.monotonic() + 45
-                    time.sleep(3)
-                require(current["State"].get("ExitCode") == 0 and not current["State"].get("OOMKilled"),
-                        f"Rust compiler/checks failed; inspect private log {path / 'rust-build.log'} (no host fallback)")
-                cache["project_release_clean"] = True
-                cache["bytes_after"] = self.rust_cache_usage(cache)
-                receipt["rust_build_seconds"] = round(time.monotonic() - started, 3)
-                for profile, metadata in receipt["rust_worker_profiles"].items():
-                    dependencies = path / "rust-artifacts" / metadata["graph"]
-                    require(dependencies.is_file() and not dependencies.is_symlink() and dependencies.stat().st_size <= 262144,
-                            "Capped Rust build did not export its worker dependency graph: " + profile)
-                    graph = dependencies.read_bytes()
-                    forbidden = rb"^(" + b"|".join(name.encode() for name in RUST_GRAPH_FORBIDDEN[profile]) + rb")(?:-[^ ]+)? v"
-                    require(not re.search(forbidden, graph, re.MULTILINE), "Unexpected dependencies in Rust worker graph: " + profile)
-                    metadata["dependency_graph_digest"] = digest(graph)
-                receipt["rust_worker_dependencies_digest"] = receipt["rust_worker_profiles"]["mongo"]["dependency_graph_digest"]
-                artifacts = {binary: path / "rust-artifacts" / binary for binary in RUST_BINARIES}
-                # Validate every output before staging any; host artifacts are excluded
-                # from both source snapshots and cannot substitute for compiler outputs.
-                for binary, artifact in artifacts.items():
-                    require(artifact.is_file() and not artifact.is_symlink() and artifact.read_bytes()[:4] == b"\x7fELF",
-                            "Capped Rust build did not export an ELF binary: " + binary)
-                    artifact.chmod(0o755)
-                receipt["rust_toolchain_version"] = (path / "rust-artifacts/toolchain.txt").read_text().strip()
-                receipt["rust_binary_digests"] = {binary: digest(artifact.read_bytes()) for binary, artifact in artifacts.items()}
-                receipt["rust_binary_digest"] = receipt["rust_binary_digests"]["stream_activity"]
-                receipt["rust_binary_metadata"] = {
-                    binary: {"profile": profile, "features": metadata["features"], "default_features": False,
-                             "dependency_graph_digest": metadata["dependency_graph_digest"],
-                             "binary_digest": receipt["rust_binary_digests"][binary]}
-                    for profile, metadata in receipt["rust_worker_profiles"].items() for binary in metadata["binaries"]}
-                # Docker COPY includes this only for cron; other dimabot targets stay unchanged.
-                staged = path / "source/.saas-native"
-                require(not staged.exists(), "Reserved native artifact directory already exists in source")
-                staged.mkdir(mode=0o755)
-                for binary, artifact in artifacts.items():
-                    shutil.copy2(artifact, staged / binary)
-                self.save(path, receipt)
-            finally:
-                try:
-                    obj = self.inspect("container", name, missing=True)
-                    if obj:
-                        self.owned(obj, receipt["run"], "container")
-                        log = self.docker("logs", obj["Id"], capture=True, combine_stderr=True)
-                        (path / "rust-build.log").write_text(log)
-                        (path / "rust-build.log").chmod(0o600)
-                finally:
-                    self.cleanup_resources(path, receipt)
-                    shutil.rmtree(path / "rust-work")
-                    # An oversized active entry is disposable only after its
-                    # compiler has stopped and ownership has been checked.
-                    for entry, size, _ in self.rust_cache_entries(Path(cache["root"])):
-                        if entry == Path(cache["entry"]) and size > RUST_CACHE_LIMIT:
-                            shutil.rmtree(entry)
-
-    def build(self, name, source_dir=None, *, rust_feature_matrix=False, rust_memory_gib=None, rust_cpus=None):
-        require(not rust_feature_matrix or name == "cron", "--rust-feature-matrix is only supported for cron")
-        require(rust_memory_gib is None or name == "cron", "--rust-memory-gib is only supported for cron")
-        require(rust_cpus is None or name == "cron", "--rust-cpus is only supported for cron")
-        if name == "cron":
-            rust_cpus = self.rust_cpu_limit(RUST_BUILD_CPUS if rust_cpus is None else rust_cpus)
-            rust_memory_gib = self.rust_memory_limit(RUST_BUILD_MEMORY_GIB if rust_memory_gib is None else rust_memory_gib)
+    def build(self, name, source_dir=None):
         target = TARGETS[name]
         live, config, config_hash, full_hash = self.baseline(target)
         run_id = name + "-" + uuid.uuid4().hex[:12]
@@ -627,16 +272,17 @@ class Ops:
                    "baseline_container": live["Id"], "baseline_image": live["Image"],
                    "config_hash": config_hash, "config_digest": full_hash,
                    "saved_config_digest": digest(json.dumps(config).encode()), "resources": []}
-        if name == "cron":
-            receipt["rust_cpus"] = rust_cpus
-            receipt["rust_memory_gib"] = rust_memory_gib
         self.save(path, receipt)
         print(f"Run: {run_id}", flush=True)
         try:
             atomic_json(path / "compose.json", config)  # private: resolved config contains credentials
             self.snapshot(target, path / "source", source_dir)
             if name == "cron":
-                self.build_rust(path, receipt, source_dir, feature_matrix=rust_feature_matrix)
+                # Every cron worker is TypeScript and no compiler runs here. A stale branch whose
+                # image still expects staged Rust binaries would start without half its workers.
+                dockerfile = (path / "source" / target.dockerfile).read_text()
+                require(".saas-native" not in dockerfile and not (path / "source/src/workers/cron_native_bridge.ts").exists(),
+                        "This source still expects Rust worker binaries; update it to the TypeScript cron workers first")
             receipt["source_digest"] = tree_hash(path / "source")
             if target.output:
                 # Install/build only inside an unserved snapshot, never inside the live output.
@@ -844,12 +490,9 @@ class Ops:
         name = prefix + "app"
         self.add_resource(path, receipt, "container", name)
         env_args = [part for key, value in env.items() for part in ("--env", key + "=" + value)]
-        # Cron alone supervises less-privileged native children. It needs these
-        # three capabilities to drop UID/GID and subsequently signal each child.
-        child_caps = [part for cap in ("SETUID", "SETGID", "KILL") for part in ("--cap-add", cap)] if receipt["target"] == "cron" else []
         self.docker("create", "--pull=never", "--name", name, *self.labels(receipt["run"]),
                     "--network", network, "--memory", "3g", "--cpus", "2", "--pids-limit", "512",
-                    "--security-opt", "no-new-privileges", "--cap-drop", "ALL", *child_caps, *env_args,
+                    "--security-opt", "no-new-privileges", "--cap-drop", "ALL", *env_args,
                     receipt["image"], *target.command, capture=True)
         obj = self.inspect("container", name)
         self.owned(obj, receipt["run"], "container")
@@ -1018,6 +661,7 @@ class Ops:
                 self.docker("image", "rm", receipt["tag"], capture=True)  # no force; Docker protects in-use images
             receipt["status"] = "cleaned"
         if receipt["status"] not in {"building", "verifying", "deploying", "rolling-back", "rollback-failed"}:
+            # The rust-* directories only exist in runs built while cron compiled Rust workers.
             for name in ("source", "fixtures", "rust-source", "rust-work", "rust-artifacts"):
                 directory = path / name
                 require(not directory.is_symlink(), "Refusing a symlinked temporary directory")
@@ -1063,9 +707,6 @@ def main(argv=None):
         sub.add_argument("target", choices=TARGETS)
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
-            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 4 GiB production headroom and disables compiler swap")
-            sub.add_argument("--rust-cpus", type=int, choices=range(1, RUST_BUILD_CPUS + 1), help="cron only: lower compiler CPU cap (integer 1-6, default 6); does not cap helper or Docker image-build work")
-            sub.add_argument("--rust-feature-matrix", action="store_true", help="cron only: explicitly check optional Rust features inside the capped compiler; routine builds use mongo and mongo,redis worker profiles and a private cache capped at 8 GiB")
     sub = commands.add_parser("preview")
     sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
     sub.add_argument("--port", type=int, default=4201)
@@ -1083,12 +724,6 @@ def main(argv=None):
     if not args.command:
         parser.print_help()
         return 0
-    if args.command == "build" and args.rust_feature_matrix and args.target != "cron":
-        parser.error("--rust-feature-matrix is only supported for cron")
-    if args.command == "build" and args.rust_memory_gib is not None and args.target != "cron":
-        parser.error("--rust-memory-gib is only supported for cron")
-    if args.command == "build" and args.rust_cpus is not None and args.target != "cron":
-        parser.error("--rust-cpus is only supported for cron")
     ops = Ops()
     if args.command == "list":
         for name, target in TARGETS.items():
@@ -1103,14 +738,6 @@ def main(argv=None):
                           "service": target.service, "current_image": live["Image"],
                           "workflow": "build -> verify RUN --check SCRIPT -> deploy RUN",
                           "rollback": "rollback RUN", "bulk_operations": False}
-        if args.target == "cron":
-            details["rust"] = {"features": RUST_FEATURES, "worker_profiles": rust_worker_profiles(), "cache": str(ops.rust_cache_root()),
-                               "profile_env": RUST_ARTIFACT_ENV,
-                               "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2,
-                               "cpus": RUST_BUILD_CPUS, "memory_bytes": RUST_BUILD_MEMORY_GIB * GIB,
-                               "optional_lower_cpus": "build cron --rust-cpus 3",
-                               "optional_lower_memory": "build cron --rust-memory-gib 4",
-                               "optional_feature_matrix": "build cron --rust-feature-matrix"}
         print(json.dumps(details, indent=2))
         return 0
     if args.command == "preview":
@@ -1121,8 +748,7 @@ def main(argv=None):
             _, receipt, _ = ops.load(args.run)
             print(json.dumps(receipt, indent=2))
         elif args.command == "build":
-            ops.build(args.target, args.source_dir, rust_feature_matrix=args.rust_feature_matrix,
-                      rust_memory_gib=args.rust_memory_gib, rust_cpus=args.rust_cpus)
+            ops.build(args.target, args.source_dir)
         elif args.command == "verify":
             ops.verify(args.run, args.check, args.fixtures, args.seed_models, args.test_env, args.dependency)
         else:

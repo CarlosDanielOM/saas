@@ -128,10 +128,18 @@ export async function refreshDashboardInsightsOnce() {
         const truncated = sessions.length > LIMITS.sessions || snapshots.length > LIMITS.snapshots || raids.length > LIMITS.raids || follows > LIMITS.follows;
         const payload: Record<string, unknown> = {};
         for (const days of [7, 30]) for (const exclude of [false, true]) payload[`${days}:${exclude ? 'exclude' : 'include'}`] = calculateInsights(selected, intervals, raids.slice(0, LIMITS.raids).map(row => row.occurredAt), days, exclude, now, truncated);
-        await Summary.updateOne({ _id: channelID, owner }, { $set: { payload, updatedAt: now, error: false, nextRefreshAt: new Date(Date.now() + 300000) } });
+        // Publishing needs a lease that is still ours and unexpired; a slow refresh must not overwrite a newer owner's.
+        const published = await Summary.updateOne({ _id: channelID, owner, leaseUntil: { $gt: new Date() } },
+            { $set: { payload, updatedAt: now, error: false, nextRefreshAt: new Date(Date.now() + 300000) } });
+        if (!published.matchedCount) throw new Error('Dashboard insights lease lost');
     } catch (error) {
-        await Summary.updateOne({ _id: state._id, owner }, { $set: { error: true, nextRefreshAt: new Date(Date.now() + 30000) } });
+        await Summary.updateOne({ _id: state._id, owner, leaseUntil: { $gt: new Date() } }, { $set: { error: true, nextRefreshAt: new Date(Date.now() + 30000) } }).catch(() => {});
         throw error;
-    } finally { await Summary.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } }); }
+    } finally { await Summary.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } }).catch(() => {}); }
     return true;
+}
+
+/** Whether a channel's insights could be refreshed right now (due, unleased, still wanted). */
+export async function dashboardInsightsReady(now = new Date()) {
+    return !!await Summary.exists({ nextRefreshAt: { $lte: now }, leaseUntil: { $lte: now }, expiresAt: { $gt: now } }).maxTimeMS(1000);
 }

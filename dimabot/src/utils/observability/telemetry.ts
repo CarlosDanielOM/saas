@@ -184,8 +184,17 @@ async function telemetryClient() {
     await fresh.connect();
     return fresh;
 }
-export async function flushTelemetry(): Promise<void> {
-    if (flushing || !active) return;
+let lastFlush: Promise<void> = Promise.resolve();
+export function flushTelemetry(): Promise<void> {
+    if (flushing || !active) return Promise.resolve();
+    return lastFlush = sendTelemetry();
+}
+/** For process exit: let a flush in flight finish, then send what was recorded since. Each send is bounded to 1.8 s. */
+export async function drainTelemetry(): Promise<void> {
+    await lastFlush;
+    await flushTelemetry();
+}
+async function sendTelemetry(): Promise<void> {
     flushing = true;
     // Swap once: requests never wait for telemetry. A failed flush is observable loss.
     const rows = [...metrics.values()]; metrics.clear();

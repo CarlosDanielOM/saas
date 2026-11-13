@@ -3,6 +3,7 @@ import { StreamActivitySchema as Activity, StreamActivityStateSchema as State } 
 import { DashboardActivityDailySchema as Daily, DashboardActivitySummarySchema as Summary } from '../schemas/dashboard_activity.schema.js';
 
 import { getChannelEmoteCatalog, type ChannelEmoteCatalog } from './twitch_emotes.js';
+import { leaseHeartbeat } from './lease_heartbeat.js';
 
 const DAY = 86400000;
 const hash = (...values: unknown[]) => createHash('sha256').update(JSON.stringify(values)).digest('hex');
@@ -22,10 +23,11 @@ export async function projectDashboardActivityBatch(limit = 500) {
     const state = await State.findOneAndUpdate({ _id: stateID, leaseUntil: { $lte: now } },
         { $set: { owner, leaseUntil: new Date(+now + 60000) } }, { new: true }).lean();
     if (!state) return 0;
-    let lost = false;
-    const heartbeat = setInterval(() => { void State.updateOne({ _id: stateID, owner }, { $set: { leaseUntil: new Date(Date.now() + 60000) } })
-        .then(row => { if (!row.matchedCount) lost = true; }).catch(() => { lost = true; }); }, 10000);
-    heartbeat.unref();
+    const heartbeat = leaseHeartbeat(async () => (await State.updateOne({ _id: stateID, owner }, { $set: { leaseUntil: new Date(Date.now() + 60000) } })).matchedCount > 0);
+    // The heartbeat flag alone can miss a takeover: check the owner and an unexpired lease before each write.
+    const assertOwner = async () => {
+        if (heartbeat.lost || !await State.exists({ _id: stateID, owner, leaseUntil: { $gt: new Date() } }).maxTimeMS(1000) || heartbeat.lost) throw new Error('Dashboard activity lease lost');
+    };
     try {
         let active = state.active;
         if (!active?.ids?.length) {
@@ -57,7 +59,7 @@ export async function projectDashboardActivityBatch(limit = 500) {
                 if (/^twitch:[a-zA-Z0-9_-]{1,64}$/.test(emote.key || '')) add('emote', emote.key!, String(emote.label || '').slice(0, 64), emote.count || 0);
             }
         }
-        if (lost) throw new Error('Dashboard activity lease lost');
+        await assertOwner();
         const operations = [...changes].map(([id, row]) => ({ updateOne: {
             filter: { _id: id, $or: [{ lastSeq: { $lt: seq } }, { lastSeq: { $exists: false } }] },
             update: { $setOnInsert: { channelID: row.channelID, day: row.day, kind: row.kind, key: row.key, label: row.label },
@@ -68,12 +70,32 @@ export async function projectDashboardActivityBatch(limit = 500) {
             const failures = (error as { writeErrors?: { code: number }[] }).writeErrors;
             if (!failures?.length || failures.some(row => row.code !== 11000)) throw error;
         }
+        await assertOwner();
         for (const channelID of new Set(rows.map(row => row.channelID!))) await queueDashboardActivity(channelID);
+        await assertOwner();
         await Activity.updateMany({ _id: { $in: active.ids } }, { $set: { dashboardProcessed: true } });
         const completed = await State.updateOne({ _id: stateID, owner }, { $unset: { active: '' }, $set: { updatedAt: new Date() } });
         if (!completed.matchedCount) throw new Error('Dashboard activity lease lost');
         return rows.length;
-    } finally { clearInterval(heartbeat); await State.updateOne({ _id: stateID, owner }, { $set: { leaseUntil: new Date(0) } }); }
+    } finally {
+        await heartbeat.stop();
+        // A failed release must not replace the projection's own error; the lease then just expires.
+        await State.updateOne({ _id: stateID, owner }, { $set: { leaseUntil: new Date(0) } }).catch(() => {});
+    }
+}
+
+/**
+ * Whether the projection or a channel summary could run right now. Never inferred from counts:
+ * a saved batch whose events expired projects 0 rows, and summaries queue up without any projection.
+ */
+export async function dashboardActivityReady(now = new Date()) {
+    const state = await State.findOne({ _id: 'dashboard-daily-v1' }).select('leaseUntil active.ids -_id').maxTimeMS(1000).lean();
+    if (!state || (state.leaseUntil instanceof Date && state.leaseUntil <= now)) {
+        if (state?.active?.ids?.length) return true;
+        if (await Activity.exists({ dashboardProcessed: null, kind: { $in: ['command', 'message'] },
+            occurredAt: { $lte: now }, expiresAt: { $gt: now } }).maxTimeMS(1000)) return true;
+    }
+    return !!await Summary.exists({ nextRefreshAt: { $lte: now }, leaseUntil: { $lte: now } }).maxTimeMS(1000);
 }
 
 async function buildPeriod(channelID: string, days: number, now: Date, catalog: ChannelEmoteCatalog) {
@@ -102,19 +124,34 @@ async function buildPeriod(channelID: string, days: number, now: Date, catalog: 
         coverageStartedAt: data.totals.find((row: { _id: string }) => row._id === 'coverage')?.firstAt || null };
 }
 
+// The catalog is optional context. Its cache and app-token lookups have no deadline of their own, so a stalled
+// provider must not hold the summary until the worker watchdog fires: publish without streamer emotes instead.
+const CATALOG_LIMIT_MS = 10_000;
+async function boundedEmoteCatalog(channelID: string): Promise<ChannelEmoteCatalog> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unavailable: ChannelEmoteCatalog = { emotes: [], status: 'unavailable', checkedAt: null };
+    try {
+        return await Promise.race([getChannelEmoteCatalog(channelID).catch(() => unavailable),
+            new Promise<ChannelEmoteCatalog>(resolve => { timer = setTimeout(() => resolve(unavailable), CATALOG_LIMIT_MS); })]);
+    } finally { clearTimeout(timer); }
+}
+
 export async function refreshDashboardActivityOnce() {
     const now = new Date(), owner = randomUUID();
     const state = await Summary.findOneAndUpdate({ nextRefreshAt: { $lte: now }, leaseUntil: { $lte: now } },
         { $set: { owner, leaseUntil: new Date(+now + 60000) } }, { new: true, sort: { nextRefreshAt: 1 } }).lean();
     if (!state) return false;
     try {
-        const catalog = await getChannelEmoteCatalog(state._id!);
+        const catalog = await boundedEmoteCatalog(state._id!);
         const payload = { '7': await buildPeriod(state._id!, 7, now, catalog), '30': await buildPeriod(state._id!, 30, now, catalog) };
-        await Summary.updateOne({ _id: state._id, owner }, { $set: { payload, updatedAt: now, error: false } });
-        await Summary.updateOne({ _id: state._id, owner, dirtyAt: { $lte: now } }, { $set: { nextRefreshAt: new Date(+now + 60000) } });
+        // Publishing needs a lease that is still ours and unexpired; a slow refresh must not overwrite a newer owner's.
+        const owned = () => ({ _id: state._id, owner, leaseUntil: { $gt: new Date() } });
+        const published = await Summary.updateOne(owned(), { $set: { payload, updatedAt: now, error: false } });
+        if (!published.matchedCount) throw new Error('Dashboard activity summary lease lost');
+        await Summary.updateOne({ ...owned(), dirtyAt: { $lte: now } }, { $set: { nextRefreshAt: new Date(+now + 60000) } });
     } catch (error) {
-        await Summary.updateOne({ _id: state._id, owner }, { $set: { error: true, nextRefreshAt: new Date(Date.now() + 30000) } });
+        await Summary.updateOne({ _id: state._id, owner, leaseUntil: { $gt: new Date() } }, { $set: { error: true, nextRefreshAt: new Date(Date.now() + 30000) } }).catch(() => {});
         throw error;
-    } finally { await Summary.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } }); }
+    } finally { await Summary.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } }).catch(() => {}); }
     return true;
 }

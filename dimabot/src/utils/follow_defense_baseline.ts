@@ -38,28 +38,56 @@ export async function getDefenseBaseline(channelID: string): Promise<DefenseBase
     if (!value || !Number.isFinite(value.calculatedAt) || Date.now() - value.calculatedAt > 2 * DAY) return null;
     return value;
 }
-export async function refreshDefenseBaseline(channelID: string, now = Date.now()): Promise<DefenseBaseline> {
+export type BaselinePhases = Partial<Record<'queueMs' | 'claimMs' | 'ledgerMs' | 'streamsMs' | 'attacksMs' | 'publishMs' | 'rescheduleMs', number>>;
+// A phase that fails still records how long it took; one that never started stays absent.
+async function timed<T>(phases: BaselinePhases, name: keyof BaselinePhases, work: () => PromiseLike<T>): Promise<T> {
+    const started = performance.now();
+    try { return await work(); } finally { phases[name] = performance.now() - started; }
+}
+export async function refreshDefenseBaseline(channelID: string, now = Date.now(), phases: BaselinePhases = {}): Promise<DefenseBaseline> {
     const [{ FollowRelationshipLedgerSchema: Ledger }, { StreamSessionSchema: Streams }, { FollowAttackLogSchema: Attacks }] = await Promise.all([
         import('../schemas/follow_relationship_ledger.schema.js'), import('../schemas/stream_session.schema.js'), import('../schemas/follow_attack_log.schema.js')
     ]);
     const end = new Date(Math.floor(now / DAY) * DAY), start = new Date(end.getTime() - 30 * DAY);
     const date = (field: string) => ({ $dateToString: { format: '%Y-%m-%d', date: field, timezone: 'UTC' } });
     const [days, streams, attacks] = await Promise.all([
-        Ledger.aggregate([{ $match: { followed_id: channelID, followed_at: { $gte: start, $lt: end } } }, { $group: { _id: date('$followed_at'), follows: { $sum: 1 } } }]).option({ maxTimeMS: 10000 }),
-        Streams.aggregate([{ $match: { channelID, status: 'offline', started_at: { $gte: start, $lt: end }, ended_at: { $lte: end, $ne: null }, duration_minutes: { $gt: 0 } } }, { $group: { _id: date('$started_at'), follows: { $sum: '$follows' }, count: { $sum: 1 } } }]).option({ maxTimeMS: 10000 }),
-        Attacks.aggregate([{ $match: { targetChannelID: channelID, modeTriggered: 'attack', createdAt: { $gte: start, $lt: new Date(now) } } }, { $group: { _id: date('$createdAt') } }]).option({ maxTimeMS: 10000 })
+        timed(phases, 'ledgerMs', () => Ledger.aggregate([{ $match: { followed_id: channelID, followed_at: { $gte: start, $lt: end } } }, { $group: { _id: date('$followed_at'), follows: { $sum: 1 } } }]).option({ maxTimeMS: 10000 })),
+        timed(phases, 'streamsMs', () => Streams.aggregate([{ $match: { channelID, status: 'offline', started_at: { $gte: start, $lt: end }, ended_at: { $lte: end, $ne: null }, duration_minutes: { $gt: 0 } } }, { $group: { _id: date('$started_at'), follows: { $sum: '$follows' }, count: { $sum: 1 } } }]).option({ maxTimeMS: 10000 })),
+        timed(phases, 'attacksMs', () => Attacks.aggregate([{ $match: { targetChannelID: channelID, modeTriggered: 'attack', createdAt: { $gte: start, $lt: new Date(now) } } }, { $group: { _id: date('$createdAt') } }]).option({ maxTimeMS: 10000 }))
     ]);
     const baseline = calculateDefenseBaseline(days.map(d => ({ day: d._id, follows: d.follows })), streams.map(d => ({ day: d._id, follows: d.follows, count: d.count })), attacks.map(d => d._id).filter(d => d < end.toISOString().slice(0, 10)), now);
-    const cache = await getDragonflyClient('defenseBaseline.refresh');
-    await cache.set(key(channelID), JSON.stringify(baseline), { EX: 7 * 86400 });
+    await timed(phases, 'publishMs', async () => {
+        const cache = await getDragonflyClient('defenseBaseline.refresh');
+        await cache.set(key(channelID), JSON.stringify(baseline), { EX: 7 * 86400 });
+    });
     return baseline;
 }
-export async function processDefenseBaseline(): Promise<void> {
+/** Refreshes at most one due channel and returns how many it refreshed (0 or 1). */
+export async function processDefenseBaseline(phases: BaselinePhases = {}): Promise<number> {
+    const next = await timed(phases, 'queueMs', async () => {
+        const cache = await getDragonflyClient('defenseBaseline.worker');
+        return (await cache.zRangeWithScores(DUE, 0, 0))[0];
+    });
+    if (!next || next.score > Date.now()) return 0;
     const cache = await getDragonflyClient('defenseBaseline.worker');
-    const [next] = await cache.zRangeWithScores(DUE, 0, 0);
-    if (!next || next.score > Date.now()) return;
     // One supervised worker; keep a retry receipt if it crashes during the query.
-    await cache.zAdd(DUE, [{ value: next.value, score: Date.now() + 60000 }]);
-    await refreshDefenseBaseline(next.value);
-    await cache.zAdd(DUE, [{ value: next.value, score: Date.now() + 3600_000 }]);
+    await timed(phases, 'claimMs', () => cache.zAdd(DUE, [{ value: next.value, score: Date.now() + 60000 }]));
+    await refreshDefenseBaseline(next.value, Date.now(), phases);
+    await timed(phases, 'rescheduleMs', () => cache.zAdd(DUE, [{ value: next.value, score: Date.now() + 3600_000 }]));
+    return 1;
+}
+// One Redis snapshot for both numbers; channel IDs never leave the cache.
+const BACKLOG_SCRIPT = `
+local count = redis.call('ZCOUNT', KEYS[1], '-inf', ARGV[1])
+if count == 0 then return {0, ''} end
+local first = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+return {count, first[2]}
+`;
+/** Due channels and the age of the oldest one, for the admin health card. */
+export async function defenseBaselineBacklog(now = Date.now()) {
+    const cache = await getDragonflyClient('defenseBaseline.health');
+    const [count, oldest] = await cache.eval(BACKLOG_SCRIPT, { keys: [DUE], arguments: [String(now)] }) as [number, string];
+    const score = Number(oldest);
+    if (count > 0 && (oldest === '' || !Number.isFinite(score) || score > now)) throw new Error('Invalid baseline health score');
+    return { backlog_channels: Number(count), oldest_due_age_ms: count > 0 ? now - score : null };
 }

@@ -192,12 +192,12 @@ const RAID_PHASE_LABELS: Record<string, string> = {
   publishMs: 'Publish update', releaseMs: 'Release claim',
 };
 const REFRESH_WORKERS = [
-  { key: 'raid_analytics_rust', kind: 'raid' as const, healthLabel: 'Refresh health', lastSuccessLabel: 'Last successful refresh', phases: RAID_PHASE_LABELS },
-  { key: 'follow_defense_baseline_rust', kind: 'baseline' as const, healthLabel: 'Baseline health', lastSuccessLabel: 'Last successful baseline', phases: {
+  { key: 'raid_analytics', kind: 'raid' as const, healthLabel: 'Refresh health', lastSuccessLabel: 'Last successful refresh', phases: RAID_PHASE_LABELS },
+  { key: 'follow_defense_baseline', kind: 'baseline' as const, healthLabel: 'Baseline health', lastSuccessLabel: 'Last successful baseline', phases: {
     queueMs: 'Read due queue', claimMs: 'Claim work', ledgerMs: 'Read follow ledger', streamsMs: 'Read streams',
     attacksMs: 'Read attacks', publishMs: 'Publish baseline', rescheduleMs: 'Reschedule work',
   } as Record<string, string> },
-  { key: 'stream_activity_rust', kind: 'stream' as const, healthLabel: 'Activity health', lastSuccessLabel: 'Last successful projection', phases: {} as Record<string, string> },
+  { key: 'stream_activity', kind: 'stream' as const, healthLabel: 'Activity health', lastSuccessLabel: 'Last successful projection', phases: {} as Record<string, string> },
 ];
 const REFRESH_HEALTH_METRICS = ['health_query', 'health_errors', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms',
   'pending_work', 'oldest_pending_age_ms', 'checkpoint_seq', 'active_batch_events'];
@@ -600,7 +600,7 @@ export class ObservabilityPageComponent implements OnInit {
         wait,
         runs,
         phases: phaseNames.map((name) => ({ name: this.phaseLabel(name)!, merged: this.merge(of('queue_run').filter((r) => r.name === name)) })),
-        baselinePhases: key === 'follow_defense_baseline_rust',
+        baselinePhases: key === 'follow_defense_baseline',
         total,
         waiting: gauge('.waiting'),
         oldestWait: gauge('.oldest_wait_ms'),
@@ -649,9 +649,10 @@ export class ObservabilityPageComponent implements OnInit {
     for (const worker of REFRESH_WORKERS) {
       const healthRows = this.groups().filter((row) => row.service === 'cron' && row.kind === 'worker' && row.channel === ''
         && REFRESH_HEALTH_METRICS.some((metric) => row.name === `${worker.key}.${metric}`));
-      const key = `cron|${worker.key}`;
+      // A worker's process reports runtime numbers as `<file>.worker`; its health uses the bare file name.
+      const key = `cron|${worker.key}.worker`;
       if (!byKey.has(key) && !healthRows.length) continue;
-      const view: ProcessView = byKey.get(key) ?? { key, label: this.processLabel('cron', worker.key), service: 'cron', rss: null, heap: null, cpu: null, lag: null, dropped: null, at: '' };
+      const view: ProcessView = byKey.get(key) ?? { key, label: this.processLabel('cron', `${worker.key}.worker`), service: 'cron', rss: null, heap: null, cpu: null, lag: null, dropped: null, at: '' };
       const latest = (metric: string) => healthRows.filter((row) => row.name === `${worker.key}.${metric}`).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt))[0];
       const check = latest('health_query');
       const fresh = (row: Group | undefined) => !!row && Number.isFinite(Date.parse(row.lastAt))
@@ -1143,12 +1144,10 @@ export class ObservabilityPageComponent implements OnInit {
   }
   queueLabel(key: string): string {
     if (key === 'tts') return 'Text to speech';
-    if (key === 'follow_defense_baseline_rust') return 'Follow defense baseline';
     const text = key.replace(/-v\d+$/, '').replace(/[-_]+/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
   private processLabel(service: string, proc: string): string {
-    if (proc === 'follow_defense_baseline_rust') return 'Follow defense baseline worker';
     if (proc === 'index') return { api: 'API server', bot: 'Chat bot', cron: 'Workers host' }[service] ?? `${this.serviceLabel(service)} process`;
     const text = proc.replace(/\.worker$/, '').replace(/[-_.]+/g, ' ');
     return `${text.charAt(0).toUpperCase()}${text.slice(1)} worker`;

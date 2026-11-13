@@ -123,16 +123,20 @@ export async function execute(channelId: string, action: Action, requestKey?: st
   }
   return domain.fail('busy', 'Roulette is busy; retry with the same idempotency key', 409);
 }
-export async function snapshot(channelId: string) {
+async function settled(channelId: string) {
   for (let retry = 0; retry < 20; retry++) {
-    const doc = await load(channelId);
-    if (!domain.settle(doc.state, Date.now())) return { revision: doc.revision, serverTime: Date.now(), ...doc.state, actionRuns: actionRuns(doc.actions) };
+    const doc = await load(channelId), now = Date.now();
+    if (!domain.settle(doc.state, now)) return { doc, revision: doc.revision, changed: false, now };
     const saved = await RouletteChannel.updateOne({ _id: channelId, revision: doc.revision }, {
       $set: { state: doc.state, dueAt: due(doc.state) }, $inc: { revision: 1 },
     });
-    if (saved.modifiedCount) return { revision: doc.revision + 1, serverTime: Date.now(), ...doc.state, actionRuns: actionRuns(doc.actions) };
+    if (saved.modifiedCount) return { doc, revision: doc.revision + 1, changed: true, now };
   }
   return domain.fail('busy', 'Roulette is busy', 409);
+}
+export async function snapshot(channelId: string) {
+  const { doc, revision } = await settled(channelId);
+  return { revision, serverTime: Date.now(), ...doc.state, actionRuns: actionRuns(doc.actions) };
 }
 function overlayTokenStore(id: string): OverlayTokenStore {
   return {
@@ -168,8 +172,18 @@ export async function overlaySnapshot(channelId: string) {
   return { revision: s.revision, serverTime: s.serverTime, visible: s.visible, roulette, draw: s.draw, hideAt: s.hideAt };
 }
 /** Poll only indexed deadlines; snapshots also settle lazily after downtime. */
-export async function settleDue(): Promise<void> {
+export async function settleDue(): Promise<{ changed: number; fetched: number; ready: boolean }> {
   await getMongoDBConnection('roulette-completion');
-  const rows = await RouletteChannel.find({ dueAt: { $ne: null, $lte: Date.now() } }, { _id: 1 }).limit(100).lean();
-  for (const row of rows) await snapshot(row._id);
+  const dueNow = () => ({ dueAt: { $ne: null, $lte: Date.now() } });
+  const rows = await RouletteChannel.find(dueNow(), { _id: 1 }).limit(100).lean();
+  let changed = 0, blocked = false;
+  for (const row of rows) {
+    const result = await settled(row._id);
+    if (result.changed) changed++;
+    // Another writer settling it moves the deadline on; a stale deadline that cannot settle would be picked forever.
+    else if (result.doc.dueAt !== null && result.doc.dueAt <= result.now) blocked = true;
+  }
+  // Ready means more deadlines are already due, whatever this pass fetched or changed.
+  const ready = rows.length > 0 && !blocked && !!await RouletteChannel.exists(dueNow());
+  return { changed, fetched: rows.length, ready };
 }

@@ -4,23 +4,19 @@ import dotenv from 'dotenv';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error as logError, info as logInfo, warn as logWarn } from '../utils/logger.js';
-import { startTelemetry } from '../utils/observability/telemetry.js';
-import { NativeIndexBridge, type NativeBridgeDependencies } from './cron_native_bridge.js';
+import { observe, startTelemetry } from '../utils/observability/telemetry.js';
 
-export const TYPESCRIPT_SHUTDOWN_MS = 25000;
+export const SHUTDOWN_MS = 25000;
 
 interface WorkerOptions {
     enabledEnv?: string;
 }
 
-export interface TypeScriptWorkerDefinition extends WorkerOptions {
-    kind: 'typescript';
+export interface WorkerDefinition extends WorkerOptions {
     name: string;
     sourceEntry: string;
     distEntry: string;
 }
-
-export type WorkerDefinition = TypeScriptWorkerDefinition;
 
 export interface SupervisorConfig {
     runtime: 'tsx' | 'node';
@@ -37,93 +33,32 @@ export interface ManagedWorker {
 }
 
 export const WORKERS: WorkerDefinition[] = [
-    { kind: 'typescript', name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
-    { kind: 'typescript', name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
-    { kind: 'typescript', name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },
-    { kind: 'typescript', name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
-    { kind: 'typescript', name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
-    { kind: 'typescript', name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
-    {
-        kind: 'typescript',
-        name: 'follow-defense-actions',
-        sourceEntry: 'src/workers/follow_defense_actions.worker.ts',
-        distEntry: 'dist/workers/follow_defense_actions.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'follow-defense',
-        sourceEntry: 'src/workers/follow_defense.worker.ts',
-        distEntry: 'dist/workers/follow_defense.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'follow-ledger',
-        sourceEntry: 'src/workers/follow_ledger.worker.ts',
-        distEntry: 'dist/workers/follow_ledger.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'stream-analytics',
-        sourceEntry: 'src/workers/stream_analytics.worker.ts',
-        distEntry: 'dist/workers/stream_analytics.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'domain-events',
-        sourceEntry: 'src/workers/domain_events.worker.ts',
-        distEntry: 'dist/workers/domain_events.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'eventsub-reconciliation',
-        sourceEntry: 'src/workers/eventsub_reconciliation.worker.ts',
-        distEntry: 'dist/workers/eventsub_reconciliation.worker.js',
-        enabledEnv: 'EVENTSUB_RECONCILIATION_ENABLED'
-    },
-    {
-        kind: 'typescript',
-        name: 'free-credit-reset',
-        sourceEntry: 'src/workers/free_credit_reset.worker.ts',
-        distEntry: 'dist/workers/free_credit_reset.worker.js',
-        enabledEnv: 'FREE_CREDIT_RESET_ENABLED'
-    },
-    {
-        kind: 'typescript',
-        name: 'ai-usage-backfill',
-        sourceEntry: 'src/workers/ai_usage_backfill.worker.ts',
-        distEntry: 'dist/workers/ai_usage_backfill.worker.js',
-        enabledEnv: 'AI_USAGE_BACKFILL_ENABLED'
-    },
-    {
-        kind: 'typescript',
-        name: 'stream-memory',
-        sourceEntry: 'src/workers/stream_memory.worker.ts',
-        distEntry: 'dist/workers/stream_memory.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'temporary-roles',
-        sourceEntry: 'src/workers/temporary_roles.worker.ts',
-        distEntry: 'dist/workers/temporary_roles.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'timer',
-        sourceEntry: 'src/workers/timer.worker.ts',
-        distEntry: 'dist/workers/timer.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'activation-reminder',
-        sourceEntry: 'src/workers/activation-reminder.worker.ts',
-        distEntry: 'dist/workers/activation-reminder.worker.js'
-    },
-    {
-        kind: 'typescript',
-        name: 'vod-clip-recommender',
-        sourceEntry: 'src/workers/vod_clip_recommender.worker.ts',
-        distEntry: 'dist/workers/vod_clip_recommender.worker.js'
-    }
+    { name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
+    { name: 'raid-analytics', sourceEntry: 'src/workers/raid_analytics.worker.ts', distEntry: 'dist/workers/raid_analytics.worker.js' },
+    { name: 'stream-activity', sourceEntry: 'src/workers/stream_activity.worker.ts', distEntry: 'dist/workers/stream_activity.worker.js' },
+    { name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
+    { name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
+    { name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },
+    { name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
+    { name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
+    { name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
+    { name: 'roulette-completion', sourceEntry: 'src/workers/roulette_completion.worker.ts', distEntry: 'dist/workers/roulette_completion.worker.js' },
+    { name: 'follow-defense-baseline', sourceEntry: 'src/workers/follow_defense_baseline.worker.ts', distEntry: 'dist/workers/follow_defense_baseline.worker.js' },
+    { name: 'raid-sessions', sourceEntry: 'src/workers/raid_sessions.worker.ts', distEntry: 'dist/workers/raid_sessions.worker.js' },
+    { name: 'follow-defense-actions', sourceEntry: 'src/workers/follow_defense_actions.worker.ts', distEntry: 'dist/workers/follow_defense_actions.worker.js' },
+    { name: 'follow-defense', sourceEntry: 'src/workers/follow_defense.worker.ts', distEntry: 'dist/workers/follow_defense.worker.js' },
+    { name: 'follow-ledger', sourceEntry: 'src/workers/follow_ledger.worker.ts', distEntry: 'dist/workers/follow_ledger.worker.js' },
+    { name: 'stream-analytics', sourceEntry: 'src/workers/stream_analytics.worker.ts', distEntry: 'dist/workers/stream_analytics.worker.js' },
+    { name: 'domain-events', sourceEntry: 'src/workers/domain_events.worker.ts', distEntry: 'dist/workers/domain_events.worker.js' },
+    { name: 'eventsub-reconciliation', sourceEntry: 'src/workers/eventsub_reconciliation.worker.ts', distEntry: 'dist/workers/eventsub_reconciliation.worker.js', enabledEnv: 'EVENTSUB_RECONCILIATION_ENABLED' },
+    { name: 'free-credit-reset', sourceEntry: 'src/workers/free_credit_reset.worker.ts', distEntry: 'dist/workers/free_credit_reset.worker.js', enabledEnv: 'FREE_CREDIT_RESET_ENABLED' },
+    { name: 'ai-usage-receipts', sourceEntry: 'src/workers/ai_usage_receipts.worker.ts', distEntry: 'dist/workers/ai_usage_receipts.worker.js', enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED' },
+    { name: 'ai-usage-backfill', sourceEntry: 'src/workers/ai_usage_backfill.worker.ts', distEntry: 'dist/workers/ai_usage_backfill.worker.js', enabledEnv: 'AI_USAGE_BACKFILL_ENABLED' },
+    { name: 'stream-memory', sourceEntry: 'src/workers/stream_memory.worker.ts', distEntry: 'dist/workers/stream_memory.worker.js' },
+    { name: 'temporary-roles', sourceEntry: 'src/workers/temporary_roles.worker.ts', distEntry: 'dist/workers/temporary_roles.worker.js' },
+    { name: 'timer', sourceEntry: 'src/workers/timer.worker.ts', distEntry: 'dist/workers/timer.worker.js' },
+    { name: 'activation-reminder', sourceEntry: 'src/workers/activation-reminder.worker.ts', distEntry: 'dist/workers/activation-reminder.worker.js' },
+    { name: 'vod-clip-recommender', sourceEntry: 'src/workers/vod_clip_recommender.worker.ts', distEntry: 'dist/workers/vod_clip_recommender.worker.js' },
 ];
 
 export function resolveWorkerLaunch(worker: WorkerDefinition, config: SupervisorConfig,
@@ -137,8 +72,12 @@ export function resolveWorkerLaunch(worker: WorkerDefinition, config: Supervisor
         options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } } };
 }
 
+/** Metric prefix a worker also uses for its own batch and health metrics, e.g. `raid_analytics`. */
+export const workerMetricPrefix = (worker: WorkerDefinition): string => path.basename(worker.distEntry, '.worker.js');
+
 export interface SupervisorDependencies {
     spawn: typeof spawn;
+    observe: typeof observe;
     info: typeof logInfo;
     warn: typeof logWarn;
     error: typeof logError;
@@ -158,7 +97,7 @@ export class WorkerSupervisor {
 
     constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
         dependencies: Partial<SupervisorDependencies> = {}) {
-        this.dependencies = { spawn, info: logInfo, warn: logWarn, error: logError,
+        this.dependencies = { spawn, observe, info: logInfo, warn: logWarn, error: logError,
             env: process.env, setTimeout, clearTimeout, ...dependencies };
         this.workers = definitions.map(definition => ({ definition, process: null, restartCount: 0,
             exitCode: this.enabled(definition) ? null : 0 }));
@@ -181,6 +120,7 @@ export class WorkerSupervisor {
     private scheduleRestart(managed: ManagedWorker): void {
         if (this.stopping || this.config.once || this.restarts.has(managed)) return;
         managed.restartCount += 1;
+        this.dependencies.observe('worker', `${workerMetricPrefix(managed.definition)}.restarts`, 1, 'error');
         const timer = this.dependencies.setTimeout(() => {
             this.restarts.delete(managed);
             if (!this.stopping) this.startWorker(managed);
@@ -232,6 +172,7 @@ export class WorkerSupervisor {
     private workerError(managed: ManagedWorker, step: string, error?: unknown): void {
         const candidate = (error as NodeJS.ErrnoException | undefined)?.code;
         const code = typeof candidate === 'string' && /^[A-Z0-9_]{1,40}$/.test(candidate) ? candidate : 'CRON_WORKER_PROCESS';
+        this.dependencies.observe('worker', `${workerMetricPrefix(managed.definition)}.errors`, 1, 'error');
         void this.dependencies.error({ worker: 'cron_supervisor', message: 'Cron worker process failed',
             name: managed.definition.name, step, code }, { destination: 'console' });
     }
@@ -240,7 +181,7 @@ export class WorkerSupervisor {
         while (this.children.size) await Promise.all([...this.children.values()]);
     }
 
-    shutdown(signal: string, timeoutMs = TYPESCRIPT_SHUTDOWN_MS): Promise<void> {
+    shutdown(signal: string, timeoutMs = SHUTDOWN_MS): Promise<void> {
         if (this.shutdownPromise) return this.shutdownPromise;
         this.stopping = true;
         for (const timer of this.restarts.values()) this.dependencies.clearTimeout(timer);
@@ -280,83 +221,24 @@ export function resolveSupervisorConfig(env: NodeJS.ProcessEnv = process.env,
     };
 }
 
-export interface CronHostDependencies extends SupervisorDependencies {
-    signal: NativeBridgeDependencies['signal'];
-    getuid: NativeBridgeDependencies['getuid'];
-}
-
-/** PID 1 coordinates the two owners; TypeScript can retire after its last migration. */
-export class CronHost {
-    readonly typescript: WorkerSupervisor;
-    readonly native: NativeIndexBridge;
-    stopping = false;
-    private started = false;
-    private failed = false;
-    private shutdownPromise: Promise<number> | undefined;
-    private resolveCompletion!: (code: number) => void;
-    private readonly completion = new Promise<number>(resolve => { this.resolveCompletion = resolve; });
-
-    constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
-        dependencies: Partial<CronHostDependencies> = {}) {
-        this.typescript = new WorkerSupervisor(config, definitions, dependencies);
-        // Pass the same spawn binding used by TS workers for exact-candidate
-        // fixture interception. Only this one fixed index launch crosses over.
-        this.native = new NativeIndexBridge(config, {
-            spawn, ...dependencies,
-            onFailure: failure => {
-                this.failed = true;
-                void (dependencies.error ?? logError)({ worker: 'cron_supervisor',
-                    message: 'Rust cron index failed; stopping cron host', step: failure.step,
-                    code: failure.code }, { destination: 'console' });
-                void this.shutdown('native-index-failure');
-            },
-        });
-    }
-
-    start(): void {
-        if (this.started || this.stopping) return;
-        this.started = true;
-        this.native.start();
-        if (!this.stopping) this.typescript.start();
-        if (this.config.once) {
-            void Promise.all([this.typescript.wait(), this.native.wait()]).then(() => {
-                if (!this.stopping) this.resolveCompletion(this.native.exitCode === 0 &&
-                    this.typescript.workers.every(worker => worker.exitCode === 0) ? 0 : 1);
-            });
-        }
-    }
-
-    wait(): Promise<number> { return this.completion; }
-
-    shutdown(signal: string): Promise<number> {
-        if (this.shutdownPromise) return this.shutdownPromise;
-        this.stopping = true;
-        // Run both grace periods concurrently: 25 seconds for TS children and
-        // 28 for Rust coordination, within Compose's existing 30-second budget.
-        this.shutdownPromise = Promise.all([this.typescript.shutdown(signal), this.native.shutdown()]).then(() => {
-            const code = this.failed || this.native.exitCode !== 0 ||
-                (this.config.once && this.typescript.workers.some(worker => worker.exitCode !== 0)) ? 1 : 0;
-            this.resolveCompletion(code);
-            return code;
-        });
-        return this.shutdownPromise;
-    }
-}
-
 async function bootstrap(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
     dotenv.config({ path: path.resolve(process.cwd(), '.env') });
     const config = resolveSupervisorConfig();
     startTelemetry();
-    const host = new CronHost(config);
+    const supervisor = new WorkerSupervisor(config);
+    // A once run that is interrupted, or whose worker failed, reports failure.
+    const exitCode = (): number => config.once && supervisor.workers.some(worker => worker.exitCode !== 0) ? 1 : 0;
     for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        process.once(signal, () => { void host.shutdown(signal); });
+        process.once(signal, () => { void supervisor.shutdown(signal).then(() => process.exit(exitCode())); });
     }
     await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
-    host.start();
-    process.exit(await host.wait());
+    supervisor.start();
+    if (!config.once) return;
+    await supervisor.wait();
+    if (!supervisor.stopping) process.exit(exitCode());
 }
 
 // Importing the bounded supervisor helpers for tests must not load env or spawn.

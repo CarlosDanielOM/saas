@@ -104,15 +104,19 @@ export async function getAiUsageDashboard(input: {
         return { ...data, refreshedAt: now.toISOString(), cached: false };
     });
 }
-export async function refreshAiUsageDashboards(limit = 20): Promise<number> {
-    const now = new Date();
-    const docs = await Dashboards.find({ expiresAt: { $gt: now }, $or: [{ dirty: true }, { refreshedAt: { $lte: new Date(now.getTime() - 60_000) } }] })
-        .sort({ refreshedAt: 1 }).limit(limit).lean().exec();
+/** The worker stops between dashboards on shutdown and bounds each lookup/refresh with its own watchdog. */
+export async function refreshAiUsageDashboards(limit = 20, worker: { stopping?: () => boolean; bound?: <T>(work: Promise<T>) => Promise<T> } = {}): Promise<number> {
+    const now = new Date(), bound = worker.bound ?? (work => work);
+    const docs = await bound(Dashboards.find({ expiresAt: { $gt: now }, $or: [{ dirty: true }, { refreshedAt: { $lte: new Date(now.getTime() - 60_000) } }] })
+        .sort({ refreshedAt: 1 }).limit(limit).lean().exec());
+    let refreshed = 0;
     for (const doc of docs) {
-        await withAiUsageLock(doc.channelID, doc.customerId, async () => {
+        if (worker.stopping?.()) break;
+        await bound(withAiUsageLock(doc.channelID, doc.customerId, async () => {
             const data = await computeDashboard(doc.request as DashboardRequest);
             await Dashboards.updateOne({ _id: doc._id }, { $set: { data, dirty: false, refreshedAt: new Date() } });
-        });
+        }));
+        refreshed++;
     }
-    return docs.length;
+    return refreshed;
 }

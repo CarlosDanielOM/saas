@@ -157,12 +157,12 @@ export async function processRaidModerationRequests() {
     const request = await Requests.findOneAndUpdate({ status: { $in: ['pending', 'active'] }, nextAttemptAt: { $lte: now },
         lockedUntil: { $lte: now }, expiresAt: { $gt: now } }, { $set: { leaseToken: token, lockedUntil: new Date(now.getTime() + 60000) } },
     { new: true, sort: { nextAttemptAt: 1, requestedAt: 1 } }).lean();
-    if (!request) return;
+    if (!request) return 0;
     const fence = { _id: request._id, leaseToken: token };
     try {
         const settings = await Settings.findOne({ channelID: request.channelID }).lean();
         if (request.requestedAt.getTime() <= await followDefenseCancelledThrough(request.channelID) || settings?.enabled === false || settings?.attackModeEnabled === false) {
-            await Requests.updateOne(fence, { $set: { status: 'cancelled' } }); return;
+            await Requests.updateOne(fence, { $set: { status: 'cancelled' } }); return 0;
         }
         const followers = await Followers.find({ sessionID: request.sessionID, channelID: request.channelID,
             queuedRequestIDs: { $ne: request._id }, ...(request.userID ? { userID: request.userID } : {}),
@@ -175,13 +175,14 @@ export async function processRaidModerationRequests() {
         const current = await getFollowDefenseStatus(request.channelID);
         const ongoing = request.includeFuture && current?.raidRequestID === request._id && current.expiresAt > Date.now() && current.mode === 'attack';
         await Requests.updateOne(fence, { $set: { status: followers.length === 200 || ongoing ? 'active' : 'completed', nextAttemptAt: new Date(Date.now() + (followers.length === 200 ? 0 : 1000)) } });
+        return followers.length;
     } finally { await Requests.updateOne(fence, { $set: { lockedUntil: new Date(0), leaseToken: '' } }); }
 }
 
 
 export async function backfillRaidSession() {
     const session = await Sessions.findOne({ backfillDone: false, expiresAt: { $gt: new Date() } }).sort({ startedAt: 1 }).lean();
-    if (!session) return;
+    if (!session) return 0;
     const [{ DomainEventSchema }, { Types }] = await Promise.all([import('../schemas/domain_event.schema.js'), import('mongoose')]);
     const events = await DomainEventSchema.find({ channelID: session.channelID, source: 'twitch-eventsub', type: 'channel.follow.received',
         occurredAt: { $gte: session.startedAt, $lte: session.backfillUntil },
@@ -196,6 +197,7 @@ export async function backfillRaidSession() {
     await Sessions.updateOne({ _id: session._id, backfillCursor: session.backfillCursor }, { $set: {
         backfillCursor: events.length ? String(events.at(-1)!._id) : session.backfillCursor, backfillDone: events.length < 200
     } });
+    return events.length;
 }
 
 // The setting grants carryover explicitly; each new raid still owns its own request.
@@ -227,9 +229,29 @@ export async function applyRaidSessionMarker(marker: FollowDefenseRaidMarker) {
 // records cannot be restored. Update follower TTLs before advertising the longer window.
 export async function extendRaidHistoryRetention() {
     const session = await Sessions.findOne({ retentionHours: { $lt: 72 }, expiresAt: { $gt: new Date() }, startedAt: { $gt: new Date(Date.now() - 72 * 3600_000) } }).lean();
-    if (!session) return;
+    if (!session) return 0;
     const expiresAt = new Date(session.startedAt.getTime() + 72 * 3600_000);
     const purgeAt = new Date(expiresAt.getTime() + 3600_000);
     await Followers.updateMany({ sessionID: session._id }, { $max: { purgeAt } });
     await Sessions.updateOne({ _id: session._id }, { $set: { retentionHours: 72 }, $max: { expiresAt, purgeAt } });
+    return 1;
+}
+
+export const RAID_SESSION_BATCH = 200;
+/**
+ * One worker tick: widen retention, backfill, then admit. `ready` means more work can start now
+ * (a full batch, or anything the same claim filters would pick), so the worker skips its 1 s wait.
+ * Leases, future deadlines and expired requests never count, or an idle worker would spin.
+ */
+export async function runRaidSessionsTick(probe = true) {
+    const retained = await extendRaidHistoryRetention(), backfilled = await backfillRaidSession(), admitted = await processRaidModerationRequests();
+    const events = retained + backfilled + admitted;
+    if (!probe) return { events, ready: false };
+    if (backfilled === RAID_SESSION_BATCH || admitted === RAID_SESSION_BATCH) return { events, ready: true };
+    const now = new Date();
+    const ready = !!(await Sessions.exists({ retentionHours: { $lt: 72 }, expiresAt: { $gt: now }, startedAt: { $gt: new Date(+now - 72 * 3600_000) } })
+        || await Sessions.exists({ backfillDone: false, expiresAt: { $gt: now } })
+        || await Requests.exists({ status: 'authorizing', requestedAt: { $lte: new Date(+now - 10000) }, expiresAt: { $gt: now } })
+        || await Requests.exists({ status: { $in: ['pending', 'active'] }, nextAttemptAt: { $lte: now }, lockedUntil: { $lte: now }, expiresAt: { $gt: now } }));
+    return { events, ready };
 }

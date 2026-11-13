@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { StreamActivitySchema as Activity, StreamActivityAggregateSchema as Aggregate, StreamActivityStateSchema as State } from '../schemas/stream_activity.schema.js';
 import { StreamSessionSchema as Sessions } from '../schemas/stream_session.schema.js';
 import type { IChatMessage } from '../interfaces/twitch/eventsub.interface.js';
+import { leaseHeartbeat } from './lease_heartbeat.js';
 
 const RETENTION = 90 * 86_400_000;
 const hash = (...parts: unknown[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex');
@@ -53,11 +54,13 @@ export async function projectStreamActivityBatch(limit = 500) {
         $set: { owner, leaseUntil: new Date(Date.now() + 60_000) }
     }, { new: true }).lean();
     if (!state) return 0;
-    let lost = false;
-    const heartbeat = setInterval(() => { void State.updateOne({ _id: state._id, owner }, {
+    const heartbeat = leaseHeartbeat(async () => (await State.updateOne({ _id: state._id, owner }, {
         $set: { leaseUntil: new Date(Date.now() + 60_000) }
-    }).then(r => { if (!r.matchedCount) lost = true; }).catch(() => { lost = true; }); }, 10_000);
-    heartbeat.unref();
+    })).matchedCount > 0);
+    // The heartbeat flag alone can miss a takeover: check the owner and an unexpired lease before each write.
+    const assertOwner = async () => {
+        if (heartbeat.lost || !await State.exists({ _id: state._id, owner, leaseUntil: { $gt: new Date() } }) || heartbeat.lost) throw new Error('Timeline projection lease lost');
+    };
     try {
         let active = state.active;
         if (!active?.ids?.length) {
@@ -87,6 +90,7 @@ export async function projectStreamActivityBatch(limit = 500) {
             distinct.set(hash(row.channelID, String(row.session_id), 'distinct', row.actor, bucket), { row, bucket });
         }
         if (distinct.size) {
+            await assertOwner();
             await Aggregate.bulkWrite([...distinct].map(([id, { row, bucket }]) => ({ updateOne: { filter: { _id: id }, update: { $setOnInsert: {
                 channelID: row.channelID, session_id: row.session_id, scope: 'distinct', kind: 'message', actor: row.actor,
                 key: '', bucket, firstSeq: seq, expiresAt: row.expiresAt
@@ -116,7 +120,7 @@ export async function projectStreamActivityBatch(limit = 500) {
             add(row, 'chart', '', '', '', bucket, metric);
             add(row, 'summary', '', '', '', -1, metric);
         }
-        if (lost) throw new Error('Timeline projection lease lost');
+        await assertOwner();
         const operations = [...changes].map(([id, item]) => ({ updateOne: {
             filter: { _id: id, $or: [{ lastSeq: { $lt: seq } }, { lastSeq: { $exists: false } }] },
             update: { $setOnInsert: item.base, $inc: item.inc, $set: { lastSeq: seq, updatedAt: new Date() },
@@ -130,14 +134,29 @@ export async function projectStreamActivityBatch(limit = 500) {
                 // Duplicate-key here means this deterministic aggregate already has this/newer batch.
             }
         }
+        await assertOwner();
         await Activity.updateMany({ _id: { $in: ids } }, { $set: { processed: true } });
         const completed = await State.updateOne({ _id: state._id, owner }, { $unset: { active: '' }, $set: { updatedAt: new Date() } });
         if (!completed.matchedCount) throw new Error('Timeline projection lease lost');
         return rows.length;
     } finally {
-        clearInterval(heartbeat);
-        await State.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } });
+        await heartbeat.stop();
+        // A failed release must not replace the projection's own error; the lease then just expires.
+        await State.updateOne({ _id: state._id, owner }, { $set: { leaseUntil: new Date(0) } }).catch(() => {});
     }
+}
+
+/** Backlog probe for the admin health card; read-only and bounded to two short queries. */
+export async function streamActivityHealth(now = new Date()) {
+    const pending = await Activity.findOne({ processed: false, expiresAt: { $gt: now } }).sort({ occurredAt: 1, _id: 1 })
+        .select('occurredAt -_id').maxTimeMS(1000).lean();
+    const state = await State.findOne({ _id: 'projector-v1' }).select('seq active.ids -_id').maxTimeMS(1000).lean();
+    return {
+        pending_work: Boolean(pending),
+        oldest_pending_age_ms: pending ? Math.max(0, now.getTime() - pending.occurredAt!.getTime()) : null,
+        checkpoint_seq: state ? state.seq ?? null : null,
+        active_batch_events: state ? state.active?.ids?.length ?? 0 : null,
+    };
 }
 
 export async function getStreamActivity(channelID: string, sessionID: Types.ObjectId, tier: string) {

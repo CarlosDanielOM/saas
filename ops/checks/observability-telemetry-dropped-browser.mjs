@@ -29,8 +29,8 @@ function overview(state, query) {
     metric('api', 'index', 'rss_bytes', 64000000),
     metric('bot', 'index', 'rss_bytes', 32000000),
     metric('bot', 'index', 'telemetry_dropped', state.bot),
-    metric('cron', 'cron_index_rust', 'rss_bytes', 16000000),
-    metric('cron', 'cron_index_rust', 'telemetry_dropped', 0),
+    metric('cron', 'cron.index', 'rss_bytes', 16000000),
+    metric('cron', 'cron.index', 'telemetry_dropped', 0),
   ];
   // The endpoint scopes samples to the requested window. Narrowing past the
   // latest drop sample removes that metric rather than inventing a zero/delta.
