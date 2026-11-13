@@ -46,3 +46,15 @@ test('effectiveCostUsd: BYOK adds the router fee, non-BYOK uses the router price
     assert.equal(effectiveCostUsd(usage({ isByok: null, upstreamCostUsd: 0.0004, routerCostUsd: 0.0005 })), 0.0005);
     assert.equal(effectiveCostUsd(usage({ isByok: null, upstreamCostUsd: 0.0004, routerCostUsd: 0 })), 0.0004);
 });
+
+test('Claude cache writes are priced at 1.25× input in the estimate', () => {
+    const out = estimateUsageCost('anthropic/claude-haiku-5.5', usage({ promptTokens: 10_000, cachedTokens: 6_000, cacheWriteTokens: 3_000 }));
+    // 1000 × $0.10/M + 6000 × $0.01/M + 3000 × $0.125/M + 1000 × $0.50/M
+    assert.equal(out.upstreamCostUsd, 0.001035);
+});
+
+test('Haiku prompts over 100k tokens are priced on the 5× card', () => {
+    const out = estimateUsageCost('anthropic/claude-haiku-5.5', usage({ promptTokens: 110_000, cachedTokens: 0, completionTokens: 0, reasoningTokens: 0 }));
+    assert.equal(out.upstreamCostUsd, 0.055);
+    assert.equal(estimateUsageCost('anthropic/claude-haiku-5.5', usage({ promptTokens: 100_000, cachedTokens: 0, completionTokens: 0, reasoningTokens: 0 })).upstreamCostUsd, 0.01);
+});

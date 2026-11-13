@@ -23,19 +23,44 @@ export interface PlanModelConfig {
 }
 
 /**
- * The same model for every plan for now (pro may move to another model later). Effort `high` since
- * 2026-11-11: as good as `xhigh` on normal requests and ~5× faster on big setups (owner's comparison).
+ * Free and Premium: GPT-6 Luna on the owner's OpenAI key. Pro: Claude Haiku 5.5 on the owner's Anthropic key
+ * (both BYOK through OpenRouter) since 2026-11-13. Effort `high` since 2026-11-11: as good as `xhigh` on normal
+ * requests and much faster on big setups (owner's comparisons). Haiku is held to 100k because Anthropic bills
+ * a prompt over 100k tokens at 5× the price; its tokens are also ~1.8× Luna's for the same text.
  */
 export const PLAN_MODELS: Record<PlanTier, PlanModelConfig> = {
     free: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 100_000, compactAt: 0.9, dailyMessages: 20 },
     premium: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 80 },
-    pro: { model: 'openai/gpt-6-luna', effort: 'high', contextLimit: 256_000, compactAt: 0.9, dailyMessages: 400 },
+    pro: { model: 'anthropic/claude-haiku-5.5', effort: 'high', contextLimit: 100_000, compactAt: 0.9, dailyMessages: 400 },
 };
 
-/** Fallback prices (USD per token) when OpenRouter reports no upstream cost. */
-export const MODEL_PRICES: Record<string, { input: number; cachedInput: number; output: number }> = {
+/**
+ * Fallback prices (USD per token) when OpenRouter reports no upstream cost. `cacheWrite` = prompt-cache
+ * writes (Anthropic bills them at 1.25× input). `longPrompt`: every price × `factor` once the prompt is over
+ * `over` tokens (Haiku: 5× over 100k, on every rate). Luna's limits stay below its own 272k step.
+ */
+export const MODEL_PRICES: Record<string, { input: number; cachedInput: number; cacheWrite?: number; output: number; longPrompt?: { over: number; factor: number } }> = {
     'openai/gpt-6-luna': { input: 0.10 / 1e6, cachedInput: 0.01 / 1e6, output: 0.50 / 1e6 },
+    'anthropic/claude-haiku-5.5': { input: 0.10 / 1e6, cachedInput: 0.01 / 1e6, cacheWrite: 0.125 / 1e6, output: 0.50 / 1e6, longPrompt: { over: 100_000, factor: 5 } },
 };
+
+export interface ModelTraits {
+    /**
+     * Claude through OpenRouter: the prompt cache needs explicit breakpoints, and a replayed thinking block is
+     * only valid while everything sent before it is unchanged (Anthropic's history-editing check).
+     */
+    anthropic: boolean;
+    /**
+     * Real prompt tokens per `estimateTokens` token. Measured on 2026-11-13 with the real system prompt + tools:
+     * Haiku 5.5 counted 1.38× our estimate (Luna 0.75×). 1.5 keeps compaction below Haiku's 100k price step.
+     */
+    tokenFactor: number;
+}
+
+export function modelTraits(model: string): ModelTraits {
+    const anthropic = model.startsWith('anthropic/');
+    return { anthropic, tokenFactor: anthropic ? 1.5 : 1 };
+}
 
 /** Plans that can let the assistant answer in the channel's chat-bot personality (tone only). */
 export const PERSONA_PLANS: readonly PlanTier[] = ['premium', 'pro'];

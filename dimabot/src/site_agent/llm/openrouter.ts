@@ -11,6 +11,7 @@
  *   put in error messages. `OPENROUTER_BASE_URL` exists for the isolated checks (fake server).
  */
 import { OPENROUTER_APP_HEADERS } from '../../utils/ai/openrouter/app_attribution.util.js';
+import { modelTraits } from '../config.js';
 import type { LlmErrorKind, LlmRequest, LlmStepResult, LlmStreamHandlers, LlmUsage, ToolCallRequest } from '../types.js';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -67,10 +68,25 @@ function headers(key: string): Record<string, string> {
     };
 }
 
-function requestBody(req: LlmRequest): Record<string, unknown> {
+const EPHEMERAL = { type: 'ephemeral' } as const;
+
+/**
+ * Claude caches only at explicit breakpoints (Luna caches on its own). Two of them: the system prompt, so
+ * tools + system are shared by every chat with the same prompt, and OpenRouter's top-level automatic one,
+ * which moves to the last message so every step reuses the step before. Checked on OpenRouter 2026-11-13.
+ */
+function withCacheBreakpoints(messages: LlmRequest['messages']): unknown[] {
+    return messages.map((message, index) => (index === 0 && message.role === 'system'
+        ? { role: 'system', content: [{ type: 'text', text: message.content, cache_control: EPHEMERAL }] }
+        : message));
+}
+
+export function requestBody(req: LlmRequest): Record<string, unknown> {
+    const cache = modelTraits(req.model).anthropic && req.promptCache !== false;
     const body: Record<string, unknown> = {
         model: req.model,
-        messages: req.messages,
+        messages: cache ? withCacheBreakpoints(req.messages) : req.messages,
+        ...(cache ? { cache_control: EPHEMERAL } : {}),
         stream: true,
         reasoning: { effort: req.effort },
         usage: { include: true },
@@ -194,9 +210,11 @@ export function mapStreamUsage(raw: unknown): LlmUsage {
         const completions = numOrNull(costDetails.upstream_inference_completions_cost);
         if (prompt !== null || completions !== null) upstream = (prompt ?? 0) + (completions ?? 0);
     }
+    const cacheWrites = num(promptDetails.cache_write_tokens);
     return {
         promptTokens: num(usage.prompt_tokens),
         cachedTokens: num(promptDetails.cached_tokens),
+        ...(cacheWrites > 0 ? { cacheWriteTokens: cacheWrites } : {}),
         completionTokens: num(usage.completion_tokens),
         reasoningTokens: num(completionDetails.reasoning_tokens),
         upstreamCostUsd: upstream,

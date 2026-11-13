@@ -1,8 +1,9 @@
 # Site agent ("Dima assistant")
 
 An AI assistant inside dimasite's logged-in pages (`/:streamer/...`). It answers from the docs, knows the channel,
-and can change things for the streamer after they approve. Opened from the mascot. Model: GPT-6 Luna (`high`; was `xhigh` until 2026-11-11)
-through OpenRouter on the owner's OpenAI key (BYOK). Free for now: no AI credits; usage goes to Polar as
+and can change things for the streamer after they approve. Opened from the mascot. Models (both `high`, through
+OpenRouter, BYOK): GPT-6 Luna on Free and Premium (the owner's OpenAI key; `xhigh` until 2026-11-11), Claude Haiku 5.5
+on Pro since 2026-11-13 (the owner's Anthropic key). Free for now: no AI credits; usage goes to Polar as
 `ai_assistant` events. Contracts: `src/site_agent/types.ts`, `config.ts`, `navigation.ts`.
 
 ## Product rules (owner decisions, 2026-11-11)
@@ -11,7 +12,8 @@ through OpenRouter on the owner's OpenAI key (BYOK). Free for now: no AI credits
 - Daily limit per **channel** (owner + admins share it), per UTC day: free 20, premium 80, pro 400 **user messages**.
   One message = 1 no matter how many tool calls. Steer and queued messages count; approvals, form answers, Stop and
   retries after our own errors don't. No global spend cap for now.
-- Context limit by the channel's plan: free 100k, premium 256k, pro 256k tokens; compaction at 90%.
+- Context limit by the channel's plan, in the model's own tokens: free 100k, premium 256k (Luna), pro 100k (Haiku,
+  since 2026-11-13; was 256k on Luna); compaction at 90%.
 - Sessions live in Dragonfly, 72 h after the last activity, max 10 per person per channel. Private to the person.
 - Every change needs approval. The owner sees all assistant changes on the channel (who, what they asked,
   before → after) and can undo any; an admin sees and undoes their own. Change log kept 90 days (Mongo).
@@ -32,6 +34,37 @@ through OpenRouter on the owner's OpenAI key (BYOK). Free for now: no AI credits
   upstream cost (`cancelled: true`) after ~15 s.
 - Last step with `tool_choice: 'none'` plus a system note forces a final answer.
 - Typical answer: 11–43 s, $0.001–0.005.
+
+## Claude Haiku 5.5 on Pro (OpenRouter `anthropic/claude-haiku-5.5`, checked 2026-11-13)
+
+- Same Chat Completions request as Luna. `reasoning.effort` works (more thinking at higher effort, no 400s);
+  `reasoning_details` come back as `reasoning.text` with a `signature` and are echoed like Luna's. With no
+  `max_tokens`, output is not capped low (11k tokens in one reply).
+- **Price:** $0.10 / $0.50 per M up to a 100k-token prompt, then 5× ($0.50 / $2.50). Cache reads $0.01, 5-minute
+  cache writes $0.125. Hence the 100k limit. BYOK reports the real cost in `cost_details.upstream_inference_cost`;
+  cache writes are in `prompt_tokens_details.cache_write_tokens`.
+- **Tokens:** Claude counts the same text as ~1.8× Luna's tokens. The system prompt + Pro tools were 32.2k tokens
+  on Haiku and 17.6k on Luna, so Haiku's 100k holds about as much as 55k on Luna. Our `estimateTokens` undercounts
+  Haiku by ~38%, so the runner multiplies estimates by `modelTraits(model).tokenFactor` (1.5) before comparing with the
+  limit. Within a turn the real `prompt_tokens` of the last step drive it, so compaction starts near 90k real tokens
+  (about 83k at the start of a turn, when only estimates exist), below the price step. Claude's replayed thinking
+  counts at the step's reported reasoning tokens (`reasoning.tokens`; Luna's encrypted item stays discounted).
+  A Claude step whose usage never arrived keeps no thinking (it is not replayed, which is always accepted).
+  The compaction summary is capped at 16k output tokens. If compaction fails, `dropOldest` removes older
+  messages and then, if needed, the current request's own older tool rounds (a note says so; the request, every
+  steer message and the newest round stay). For Claude, if the prompt that would be sent is still over the limit,
+  the turn fails with `model_context_too_long` rather than paying the 5× rate (Luna keeps sending it).
+- **Prompt cache:** Claude only caches at breakpoints. `requestBody` adds `cache_control` on the system text
+  (shared by every chat with the same tools + prompt) and OpenRouter's top-level automatic `cache_control` (moves to
+  the last message, so each step reuses the one before). Compaction calls send none (`promptCache: false`).
+- **History-editing check:** a Claude thinking block is valid only while everything before it is unchanged
+  (enforced for Anthropic accounts created on or after 2026-08-31; the owner's key was not enforced on 2026-11-13).
+  Our history does change: compaction, a system prompt change (persona toggle, new docs index), a tool list change,
+  and the unsaved last-step note. Each assistant step stores `reasoning.prefixHash` (sha256 of tools + messages
+  sent); `toMessages` sends a Claude block back only while the prefix still hashes the same. Leaving reasoning out
+  is always accepted. Luna is unchanged.
+- **Refusals:** Haiku's safety classifiers can decline (no server-side fallback). It shows as an empty answer
+  (`empty_answer` notice); there is no dedicated message yet.
 
 ## Layout
 

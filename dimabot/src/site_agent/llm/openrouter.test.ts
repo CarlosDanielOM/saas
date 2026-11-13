@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { AddressInfo } from 'node:net';
 import { after, before, beforeEach, test } from 'node:test';
 import type { LlmRequest } from '../types.js';
-import { LlmError, mergeReasoningDetails, reconcileGeneration, streamChat } from './openrouter.js';
+import { LlmError, mapStreamUsage, mergeReasoningDetails, reconcileGeneration, requestBody, streamChat } from './openrouter.js';
 
 const KEY = 'sk-or-v1-testkey0123456789';
 type Handler = (req: IncomingMessage, res: ServerResponse, body: string) => void | Promise<void>;
@@ -349,4 +349,23 @@ test('mergeReasoningDetails keeps types and indexes apart', () => {
         { type: 'reasoning.summary', summary: 'x' },
         { type: 'reasoning.text', text: 'other', index: 1 },
     ]);
+});
+
+test('Claude requests get two cache breakpoints (system + automatic); Luna and promptCache:false get none', () => {
+    const base: LlmRequest = { model: 'anthropic/claude-haiku-5.5', effort: 'high', sessionKey: 's', messages: [{ role: 'system', content: 'SYS' }, { role: 'user', content: 'hi' }] };
+    const claude = requestBody(base);
+    assert.deepEqual(claude.cache_control, { type: 'ephemeral' });
+    assert.deepEqual((claude.messages as unknown[])[0], { role: 'system', content: [{ type: 'text', text: 'SYS', cache_control: { type: 'ephemeral' } }] });
+    assert.deepEqual((claude.messages as unknown[])[1], { role: 'user', content: 'hi' });
+    assert.deepEqual(claude.reasoning, { effort: 'high' });
+    assert.equal(base.messages[0].content, 'SYS', 'the caller\'s messages are not changed');
+    for (const body of [requestBody({ ...base, model: 'openai/gpt-6-luna' }), requestBody({ ...base, promptCache: false })]) {
+        assert.equal(body.cache_control, undefined);
+        assert.deepEqual((body.messages as unknown[])[0], { role: 'system', content: 'SYS' });
+    }
+});
+
+test('usage keeps cache writes only when there are some', () => {
+    assert.equal(mapStreamUsage({ prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 8 } }).cacheWriteTokens, 8);
+    assert.equal('cacheWriteTokens' in mapStreamUsage({ prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 4, cache_write_tokens: 0 } }), false);
 });

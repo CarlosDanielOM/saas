@@ -11,7 +11,8 @@
  * system prompt, turn note); multi-step tools with reasoning echoed; steer, queue, stop, retry, 409s;
  * idempotent requests; approvals (apply/skip) with the change log + undo; UI forms; navigation; daily
  * limits (20/day free) with refunds on our own failures; provider errors; SSE reconnect + resync; Polar
- * `ai_assistant` events (no credits); session privacy.
+ * `ai_assistant` events (no credits); session privacy. Pro: Claude Haiku 5.5 (100k) with prompt-cache
+ * breakpoints, thinking echoed within a turn and dropped once the history before it changed; Premium: Luna 256k.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -406,18 +407,55 @@ console.log('sse resync');
 assert.deepEqual((await api('owner', 'GET', '/status')).data.persona, { available: false, on: false, name: null });
 assert.equal((await api('owner', 'PATCH', '/prefs', { persona: true })).json.data.code, 'plan_required');
 await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'pro' } });
+
+// 15a. Pro runs Claude Haiku 5.5 (100k) with two prompt-cache breakpoints; its reasoning goes back while the history is unchanged.
+assert.equal((await api('owner', 'GET', '/status')).data.contextLimit, 100_000);
+const beforePro = modelCalls().length;
+const proTools = await send('owner', 'Find TTS docs on Pro [[call:search_docs {"query":"text to speech"}]] [[call@1:read_docs {"id":"/tts#intro"}]]');
+const proStream = await events('owner', proTools.data.turnId);
+assert.equal(proStream.at(-1).data.status, 'completed');
+assert.match(finalAnswer(proStream).text, /reasoning=ok/, 'thinking blocks echoed within the turn');
+const proCalls = modelCalls().slice(beforePro);
+assert.equal(proCalls.length, 3, 'tool, tool, answer');
+for (const { body } of proCalls) {
+  assert.equal(body.model, 'anthropic/claude-haiku-5.5');
+  assert.deepEqual(body.reasoning, { effort: 'high' });
+  assert.deepEqual(body.cache_control, { type: 'ephemeral' }, 'automatic breakpoint on the last message');
+  assert.deepEqual(body.messages[0], { role: 'system', content: [{ type: 'text', text: request1.messages[0].content, cache_control: { type: 'ephemeral' } }] },
+    'system prompt: same text as Luna gets, plus its own breakpoint');
+}
+console.log('pro: haiku 5.5 high, 100k, cache breakpoints, reasoning echoed');
+
 await mongo.connection.db.collection('channelaipersonalities').insertOne({ channelID: CHANNEL, activeProfileId: 'p1', personality: 'Talks like a pirate.',
   profiles: [{ profileID: 'p1', name: 'Check Persona', personality: 'Talks like a pirate.' }] });
 assert.deepEqual((await api('owner', 'PATCH', '/prefs', { persona: true })).data.persona, { available: true, on: true, name: 'Check Persona' });
-const voiced = await send('owner', 'hello in my voice [[script:text]]');
+// Same chat: the system prompt changes, so Claude must not get the old thinking blocks back (history-editing check).
+const voiced = await send('owner', 'hello in my voice [[script:text]]', { sessionId: proTools.data.sessionId });
+assert.equal(voiced.data.sessionId, proTools.data.sessionId);
 assert.equal((await events('owner', voiced.data.turnId)).at(-1).data.status, 'completed');
-const voicedSystem = modelCalls().at(-1).body.messages[0].content;
+const voicedBody = modelCalls().at(-1).body;
+const voicedSystem = voicedBody.messages[0].content[0].text;
 assert.ok(voicedSystem.startsWith(request1.messages[0].content), 'same cached prefix plus the voice block');
 assert.match(voicedSystem, /# Your voice for this channel/);
 assert.match(voicedSystem, /Talks like a pirate/);
+const oldToolSteps = voicedBody.messages.filter((m) => m.role === 'assistant' && m.tool_calls?.length);
+assert.equal(oldToolSteps.length, 2, 'the earlier tool steps are still in the history');
+assert.ok(voicedBody.messages.filter((m) => m.role === 'assistant').every((m) => m.reasoning_details === undefined), 'changed prefix: no thinking blocks replayed');
 assert.equal((await api('owner', 'PATCH', '/prefs', { persona: false })).data.persona.on, false);
+
+// Premium stays on Luna 256k with no cache markers. Same chat (a new one would evict the oldest of 10, used below);
+// Haiku's thinking never goes to Luna.
+await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'premium' } });
+assert.equal((await api('owner', 'GET', '/status')).data.contextLimit, 256_000);
+const premium = await send('owner', 'premium hello [[script:text]]', { sessionId: proTools.data.sessionId });
+assert.equal((await events('owner', premium.data.turnId)).at(-1).data.status, 'completed');
+const premiumBody = modelCalls().at(-1).body;
+assert.equal(premiumBody.model, 'openai/gpt-6-luna');
+assert.equal(premiumBody.cache_control, undefined);
+assert.equal(premiumBody.messages[0].content, request1.messages[0].content);
+assert.ok(premiumBody.messages.filter((m) => m.role === 'assistant').every((m) => m.reasoning_details === undefined), 'no Claude thinking sent to Luna');
 await mongo.connection.db.collection('users').updateOne({ 'accounts.id': CHANNEL }, { $set: { plan_tier: 'free' } });
-console.log('persona: locked on Free, voice block on Pro, prefix unchanged');
+console.log('persona: locked on Free, voice block on Pro, prefix unchanged, old thinking dropped; premium on Luna 256k');
 
 // 16. Daily limit (free = 20/day per channel, shared by owner and admins).
 const day = new Date().toISOString().slice(0, 10);

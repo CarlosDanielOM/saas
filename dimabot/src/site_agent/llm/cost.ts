@@ -29,8 +29,11 @@ export function estimateUsageCost(model: string, usage: LlmUsage): LlmUsage {
     const price = priceFor(model);
     if (!price) return copy;
     const cached = Math.min(usage.cachedTokens, usage.promptTokens);
-    // Reasoning tokens are already part of completionTokens.
-    const estimate = (usage.promptTokens - cached) * price.input + cached * price.cachedInput + usage.completionTokens * price.output;
+    const written = Math.min(usage.cacheWriteTokens ?? 0, usage.promptTokens - cached);
+    const tier = price.longPrompt && usage.promptTokens > price.longPrompt.over ? price.longPrompt.factor : 1;
+    // Reasoning tokens are already part of completionTokens. Cache writes are part of promptTokens.
+    const estimate = tier * ((usage.promptTokens - cached - written) * price.input + cached * price.cachedInput
+        + written * (price.cacheWrite ?? price.input) + usage.completionTokens * price.output);
     copy.upstreamCostUsd = Math.round(estimate * 1e12) / 1e12;
     copy.source = 'estimated';
     return copy;

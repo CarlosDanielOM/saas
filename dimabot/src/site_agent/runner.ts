@@ -11,8 +11,8 @@ import { randomUUID } from 'node:crypto';
 import { error as logError, warn } from '../utils/logger.js';
 import { permissionChecker, resolveAccess, type ChannelAccess } from './access.js';
 import { recordChange } from './changes.js';
-import { PLAN_MODELS, SITE_AGENT_LIMITS as L } from './config.js';
-import { channelFacts, compact, dropOldest, estimateItemTokens, estimateTokens, repairContext, toMessages } from './context.js';
+import { modelTraits, PLAN_MODELS, SITE_AGENT_LIMITS as L } from './config.js';
+import { channelFacts, compact, dropOldest, estimateItemTokens, estimateTokens, promptHash, repairContext, toMessages } from './context.js';
 import { getDocsPromptIndex } from './docs/index.js';
 import { refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
 import { estimateUsageCost } from './llm/cost.js';
@@ -389,6 +389,9 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
     const access = await resolveAccess(turn.userId, turn.channelId);
     if (!access) { await finishTurn(turn, 'failed', 'access_revoked', { token }); return; }
     const cfg = PLAN_MODELS[turn.plan];
+    // The plan's limit is in the model's real tokens; our estimates are converted (Claude counts ~1.4× more).
+    const traits = modelTraits(cfg.model);
+    const limitEstimate = Math.floor(cfg.contextLimit / traits.tokenFactor);
     const can = permissionChecker(turn.userId, turn.channelId);
     const tools = await toolsFor((permissions) => can(permissions), turn.plan, turn.role);
     const llmTools = toLlmTools(tools);
@@ -438,28 +441,38 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
 
         // 2. Compaction at 90% of the plan's limit.
         const sinceMeasured = items.slice(turn.lastPromptItems).reduce((sum, item) => sum + estimateItemTokens(item), 0);
-        const estimate = turn.lastPromptTokens ? turn.lastPromptTokens + sinceMeasured : systemTokens + items.reduce((sum, item) => sum + estimateItemTokens(item), 0);
-        if (estimate >= cfg.contextLimit * cfg.compactAt) {
+        const estimate = turn.lastPromptTokens ? turn.lastPromptTokens / traits.tokenFactor + sinceMeasured : systemTokens + items.reduce((sum, item) => sum + estimateItemTokens(item), 0);
+        if (estimate >= limitEstimate * cfg.compactAt) {
             await emit(turn.id, { type: 'status', phase: 'compacting', label: turn.lang === 'es' ? 'Resumiendo la conversación…' : 'Summarizing the conversation…' });
             try {
-                const result = await compact({ items, currentUserIndex: currentUserIndex(), limitTokens: cfg.contextLimit - systemTokens, model: cfg.model, effort: cfg.effort, sessionKey: turn.sessionId, signal: state.abort.signal });
+                const result = await compact({ items, currentUserIndex: currentUserIndex(), limitTokens: limitEstimate - systemTokens, model: cfg.model, effort: cfg.effort, sessionKey: turn.sessionId, signal: state.abort.signal });
                 if (result.step) await recordUsage(turn, result.step, 'compaction', cfg.model);
-                items = result.compacted ? result.items : dropOldest(items, currentUserIndex(), Math.floor((cfg.contextLimit - systemTokens) * 0.6));
+                items = result.compacted ? result.items : dropOldest(items, currentUserIndex(), Math.floor((limitEstimate - systemTokens) * 0.6));
             } catch (err) {
                 if (state.abort.signal.aborted) continue;
                 await warn({ function: 'siteAgent.compact', turnId: turn.id, error: err instanceof Error ? err.message : String(err) }, { destination: 'console' });
-                items = dropOldest(items, currentUserIndex(), Math.floor((cfg.contextLimit - systemTokens) * 0.6));
+                items = dropOldest(items, currentUserIndex(), Math.floor((limitEstimate - systemTokens) * 0.6));
             }
             ctx.items = items;
             await store.setContext(turn.sessionId, items, fence);
             turn = ctx.turn = await fenced(turn.id, token, (current) => { current.lastPromptTokens = 0; current.lastPromptItems = 0; });
+            // Claude bills a prompt over 100k tokens at 5×: if compaction could not bring it under the limit, stop
+            // instead of sending it. Counts only the thinking that will really be sent (toMessages drops the rest).
+            if (traits.anthropic) {
+                const outgoing = toMessages(system, items, cfg.model, llmTools);
+                const size = items.reduce((sum, item, index) => sum + estimateItemTokens(item.role === 'assistant' && item.reasoning
+                    && !(outgoing[index + 1] as { reasoning_details?: unknown[] }).reasoning_details ? { ...item, reasoning: undefined } : item), systemTokens);
+                if (size > limitEstimate) throw new LlmError('context_too_long', 'This chat is too long to continue. Start a new chat.');
+            }
         }
 
         // 3. One model step.
         const activeMs = activeNow();
         const final = turn.steps >= L.maxModelSteps - 1 || turn.toolCallCount >= L.maxToolCalls || activeMs >= L.activeMs;
-        const messages = toMessages(system, items, cfg.model);
+        const messages = toMessages(system, items, cfg.model, llmTools);
         if (final) messages.push({ role: 'user', content: FINAL_STEP_NOTE });
+        // What this step's reasoning is bound to (Claude): see toMessages.
+        const prefixHash = traits.anthropic ? promptHash(llmTools, messages) : undefined;
         const inputRevision = turn.inputRevision;
         await emit(turn.id, { type: 'status', phase: 'thinking' });
 
@@ -522,7 +535,9 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
         // 4. Save the assistant step. On the forced last step, tool calls are ignored.
         const calls = final ? [] : result.toolCalls;
         items.push({ role: 'assistant', content: result.content || null, ...(calls.length ? { toolCalls: calls } : {}),
-            ...(result.reasoning.length ? { reasoning: { provider: 'openrouter' as const, model: cfg.model, details: result.reasoning } } : {}), at: Date.now() });
+            // Claude thinking is kept only with its token count (its replayed size); without usage it is not replayed.
+            ...(result.reasoning.length && (!traits.anthropic || result.usage) ? { reasoning: { provider: 'openrouter' as const, model: cfg.model, details: result.reasoning,
+                ...(prefixHash ? { prefixHash } : {}), ...(traits.anthropic ? { tokens: result.usage!.reasoningTokens } : {}) } } : {}), at: Date.now() });
         await store.setContext(turn.sessionId, items, fence);
 
         if (!calls.length) {

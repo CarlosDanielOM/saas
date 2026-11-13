@@ -24,6 +24,13 @@ export interface ReasoningCarry {
     provider: 'openrouter';
     model: string;
     details: unknown[];
+    /**
+     * `promptHash` of the request that produced it (tools + messages). Claude models only get the reasoning
+     * back while the history before it still hashes the same (see `toMessages`).
+     */
+    prefixHash?: string;
+    /** Claude: the step's reasoning tokens. Replayed thinking is billed at this size, so estimates use it. */
+    tokens?: number;
 }
 
 export type ContextItem =
@@ -58,12 +65,16 @@ export interface LlmRequest {
     /** Sent as OpenRouter session_id/user for cache affinity and tracing (session id, never a login). */
     sessionKey: string;
     maxOutputTokens?: number;
+    /** Claude models: mark the prompt for caching (default true). Off for one-off calls such as compaction. */
+    promptCache?: boolean;
     signal?: AbortSignal;
 }
 
 export interface LlmUsage {
     promptTokens: number;
     cachedTokens: number;
+    /** Prompt tokens written to the cache (Claude bills them at 1.25× input). Only set when > 0. */
+    cacheWriteTokens?: number;
     completionTokens: number;
     reasoningTokens: number;
     /** What OpenAI charges the BYOK key (cost_details.upstream_inference_cost). */

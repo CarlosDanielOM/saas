@@ -14,7 +14,7 @@ mock.module('./llm/openrouter.js', {
 mock.module('../utils/siteanalytics.js', { namedExports: { getCachedLiveStatus: async () => ({ isLive: false, stream: null }) } });
 mock.module('../schemas/users.schema.js', { defaultExport: { findOne: () => ({ select: () => ({ maxTimeMS: () => ({ lean: async () => null }) }) }) } });
 
-const { compact, dropOldest, repairContext, toMessages, estimateTokens } = await import('./context.js');
+const { compact, dropOldest, estimateItemTokens, promptHash, repairContext, toMessages, estimateTokens } = await import('./context.js');
 
 const at = 1;
 const user = (content: string): ContextItem => ({ role: 'user', content, at });
@@ -49,6 +49,39 @@ test('toMessages sends reasoning back only to the model that produced it, and la
     assert.equal((other[4] as { tool_call_id: string }).tool_call_id, 'a');
 });
 
+test('Claude gets reasoning back only while the history before it is unchanged', () => {
+    const HAIKU = 'anthropic/claude-haiku-5.5';
+    const tools = [{ name: 't', description: 'd', parameters: { type: 'object', properties: {} } }];
+    const rd = (n: number) => [{ type: 'reasoning.text', text: `think ${n}`, signature: `sig${n}`, format: 'anthropic-claude-v1', index: 0 }];
+    // Replays the runner: each step's reasoning is stamped with the hash of the request that made it.
+    const items: ContextItem[] = [user('q')];
+    const step = (n: number, systemText = 'SYS', note?: string) => {
+        const sent = toMessages(systemText, items, HAIKU, tools);
+        if (note) sent.push({ role: 'user', content: note });
+        items.push({ role: 'assistant', content: null, toolCalls: [{ id: `c${n}`, name: 't', arguments: '{}' }],
+            reasoning: { provider: 'openrouter', model: HAIKU, details: rd(n), prefixHash: promptHash(tools, sent) }, at });
+        items.push(tool(`c${n}`, `result ${n}`));
+        return sent;
+    };
+    step(1);
+    step(2);
+    const carried = (messages: ReturnType<typeof toMessages>) => messages.filter((m) => m.role === 'assistant').map((m) => (m as { reasoning_details?: unknown[] }).reasoning_details !== undefined);
+    assert.deepEqual(carried(toMessages('SYS', items, HAIKU, tools)), [true, true], 'append-only history keeps every block');
+    assert.deepEqual(carried(toMessages('SYS + persona', items, HAIKU, tools)), [false, false], 'a system prompt change drops them all');
+    assert.deepEqual(carried(toMessages('SYS', items, HAIKU, [...tools, { ...tools[0], name: 'u' }])), [false, false], 'a tool change drops them all');
+    const edited = items.map((item, index) => (index === 2 ? { ...item, content: 'changed result 1' } as ContextItem : item));
+    assert.deepEqual(carried(toMessages('SYS', edited, HAIKU, tools)), [true, false], 'an edit drops the blocks after it');
+    // The unsaved last-step note: the block made after it is not sent back later.
+    step(3, 'SYS', 'FINAL NOTE');
+    assert.deepEqual(carried(toMessages('SYS', items, HAIKU, tools)), [true, true, false]);
+    // Compaction: the kept tail loses its reasoning.
+    const compacted: ContextItem[] = [{ role: 'summary', content: 'notes', covers: 2, at }, ...items.slice(3)];
+    assert.deepEqual(carried(toMessages('SYS', compacted, HAIKU, tools)), [false, false]);
+    // Luna is not bound: unchanged behavior.
+    const luna = items.map((item) => (item.role === 'assistant' && item.reasoning ? { ...item, reasoning: { ...item.reasoning, model: 'openai/gpt-6-luna' } } : item));
+    assert.deepEqual(carried(toMessages('SYS + persona', luna, 'openai/gpt-6-luna', tools)), [true, true, true]);
+});
+
 test('compact keeps the current request verbatim and whole recent rounds, summarizing the rest', async () => {
     const items: ContextItem[] = [user('old 1'), assistant('old answer 1'), user('old 2'), assistant(null, ['x']), tool('x', 'y'.repeat(4000)), assistant('old answer 2'),
         user('CURRENT request'), assistant(null, ['c1']), tool('c1', 'z'.repeat(8000)), assistant(null, ['c2']), tool('c2', 'w'.repeat(400))];
@@ -78,4 +111,39 @@ test('dropOldest removes whole rounds before the current request', () => {
     assert.equal((trimmed.at(-1) as { content: string }).content, 'current');
     assert.ok(trimmed.length < items.length);
     assert.ok(estimateTokens('abcd') >= 1);
+});
+
+test('dropOldest trims the current request\'s own older steps when older history is not enough', () => {
+    // First request of a chat: nothing before it, three big tool rounds after it.
+    const items: ContextItem[] = [user('current'), assistant(null, ['a']), tool('a', 'x'.repeat(8000)), assistant(null, ['b']), tool('b', 'y'.repeat(8000)),
+        assistant(null, ['c']), tool('c', 'z'.repeat(800))];
+    const trimmed = dropOldest(items, 0, 1500);
+    assert.equal((trimmed[0] as { content: string }).content, 'current', 'the request stays first');
+    assert.equal(trimmed[1].role, 'summary', 'a note says steps were removed');
+    assert.deepEqual(trimmed.slice(2).map((item) => item.role), ['assistant', 'tool'], 'only the newest whole round is left');
+    assert.equal((trimmed.at(-1) as { toolCallId: string }).toolCallId, 'c');
+    assert.equal((trimmed[1] as { covers: number }).covers, 4, 'two rounds = four items removed');
+    // Dropping again replaces the note instead of stacking a second one, and keeps its count.
+    const again = dropOldest([...trimmed, assistant(null, ['d']), tool('d', 'w'.repeat(8000))], 0, 1500);
+    assert.equal(again.filter((item) => item.role === 'summary').length, 1);
+    assert.equal((again[1] as { covers: number }).covers, 6);
+    // Messages the user sent while the request ran (steer) are never removed, even trailing ones.
+    const steered: ContextItem[] = [user('current'), assistant(null, ['a']), tool('a', 'x'.repeat(8000)), user('[steer] Never change timers'),
+        assistant(null, ['b']), tool('b', 'y'.repeat(8000)), assistant(null, ['c']), tool('c', 'z'.repeat(800)), user('[steer] also check commands')];
+    const kept = dropOldest(steered, 0, 1500);
+    assert.deepEqual(kept.map((item) => item.role === 'user' ? item.content : item.role),
+        ['current', 'summary', '[steer] Never change timers', 'assistant', 'tool', '[steer] also check commands']);
+    assert.equal((kept[4] as { toolCallId: string }).toolCallId, 'c', 'the newest round stays whole');
+    // Small enough already: unchanged.
+    assert.deepEqual(dropOldest(items, 0, 1_000_000), items);
+});
+
+test('Claude thinking counts at its reported size; Luna reasoning stays discounted', () => {
+    const details = [{ type: 'reasoning.text', text: 'short summary', signature: 's'.repeat(400) }];
+    const withReasoning = (model: string, tokens?: number): ContextItem => ({ role: 'assistant', content: 'ok', at,
+        reasoning: { provider: 'openrouter', model, details, ...(tokens ? { tokens } : {}) } });
+    const base = estimateItemTokens({ role: 'assistant', content: 'ok', at });
+    assert.equal(estimateItemTokens(withReasoning('anthropic/claude-haiku-5.5', 15_000)) - base, 10_000, '15k real tokens = 10k estimate units (factor 1.5)');
+    assert.equal(estimateItemTokens(withReasoning('anthropic/claude-haiku-5.5')) - base, estimateTokens(JSON.stringify(details)), 'no count: full size, no discount');
+    assert.ok(estimateItemTokens(withReasoning('openai/gpt-6-luna', 15_000)) - base < 100, 'Luna: unchanged');
 });
