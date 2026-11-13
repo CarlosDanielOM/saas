@@ -1,7 +1,7 @@
 import { getDragonflyClient } from "./databases/dragonfly.database.js";
 import { ingestPolarSHEvent } from "./polarsh.js";
 import { error } from "./logger.js";
-import type { AiUsageResourceType } from "./ai_usage_event.js";
+import type { AiUsageReceiptDetails, AiUsageResourceType } from "./ai_usage_event.js";
 
 /**
  * TTS character to credit conversion rates
@@ -42,6 +42,8 @@ export interface TtsUsageTrackOptions {
     source?: string;
     resourceType?: AiUsageResourceType;
     resourceId?: string;
+    /** Requester, voice and model for our own receipt; never sent to Polar. */
+    receipt?: AiUsageReceiptDetails;
   };
 }
 
@@ -161,6 +163,7 @@ export async function trackTtsUsage(
         unit: "characters",
         resourceType: usageContext?.resourceType,
         resourceId: usageContext?.resourceId,
+        ...(usageContext?.receipt ? { receipt: usageContext.receipt } : {}),
       },
     });
     if (options.requireDurableUsage && ingestion.error) throw new Error('TTS usage recording unavailable');

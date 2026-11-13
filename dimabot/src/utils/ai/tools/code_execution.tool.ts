@@ -6,7 +6,8 @@
  */
 
 import { getDragonflyClient } from '../../databases/dragonfly.database.js';
-import { ingestPolarSHEvent } from '../../polarsh.js';
+import { ingestPolarSHEvent, providerReportedCostUsd } from '../../polarsh.js';
+import { usageActorFromChatTags, type AiUsageActor } from '../../ai_usage_event.js';
 import { isAiCreditsExhausted } from '../../billing.js';
 import { executeAiCode, type SandboxEnv } from '../sandbox/execute_sandbox.ai.js';
 import { CODING_MODELS } from '../constants.js';
@@ -124,7 +125,8 @@ async function generateCodePlan(
     userRequest: string,
     model: string,
     streamer: IStreamerData,
-    usageRequestId: string
+    usageRequestId: string,
+    actor?: AiUsageActor
 ): Promise<ICodePlanResult> {
     const apiDocs = loadApiDocumentation();
 
@@ -210,7 +212,8 @@ Provide a structured plan with clear steps.`;
                     requestId: usageRequestId,
                     source: 'code_execution',
                     provider: 'openrouter',
-                    resourceType: 'llm_generation'
+                    resourceType: 'llm_generation',
+                    receipt: { actor, costUsd: providerReportedCostUsd(aiUsage) }
                 }
             });
         }
@@ -234,7 +237,8 @@ async function generateCode(
     model: string,
     plan: string | null = null,
     streamer: IStreamerData | null = null,
-    usageRequestId?: string
+    usageRequestId?: string,
+    actor?: AiUsageActor
 ): Promise<ICodeGenerationResult> {
     const apiDocs = loadApiDocumentation();
 
@@ -353,7 +357,8 @@ ${plan}`;
                     requestId: usageRequestId,
                     source: 'code_execution',
                     provider: 'openrouter',
-                    resourceType: 'llm_generation'
+                    resourceType: 'llm_generation',
+                    receipt: { actor, costUsd: providerReportedCostUsd(aiUsage) }
                 }
             });
         }
@@ -447,11 +452,12 @@ function isProTier(streamer: IStreamerData | null | undefined): boolean {
 
 export async function execute(
     args: { code: string; request: string },
-    context: { channelID: string; streamer: IStreamerData; username?: string }
+    context: { channelID: string; streamer: IStreamerData; username?: string; userID?: string; tags?: Record<string, any> }
 ): Promise<CodeExecutionToolResult> {
     const { code, request } = args;
     const { channelID, streamer, username = 'User' } = context;
     const usageRequestId = randomUUID();
+    const usageActor = usageActorFromChatTags({ ...context.tags, userID: context.userID, username: context.username });
 
     const cacheClient = await getDragonflyClient('CodeExecution');
     const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
@@ -467,7 +473,7 @@ export async function execute(
             debug({ message: '[Code Execution Tool] Pro tier detected - generating code plan', channelID }, { channelId: channelID, destination: 'console' });
             await sendExecutionStatusMessage(channelID, `@${username} Creando el plan`);
 
-            const planResult = await generateCodePlan(channelID, request, 'openai/gpt-oss-120b', streamer, usageRequestId);
+            const planResult = await generateCodePlan(channelID, request, 'openai/gpt-oss-120b', streamer, usageRequestId, usageActor);
 
             if (planResult.error) {
                 await error({ function: 'codeExecutionTool', error: 'Plan generation failed', err: planResult.error }, { channelId: channelID, destination: 'both' });
@@ -482,7 +488,7 @@ export async function execute(
             debug({ message: '[Code Execution Tool] Generating code', model: codingModel }, { channelId: channelID, destination: 'console' });
             await sendExecutionStatusMessage(channelID, `@${username} Generando el código`);
             
-            const codeResult = await generateCode(channelID, request, codingModel, plan, streamer, usageRequestId);
+            const codeResult = await generateCode(channelID, request, codingModel, plan, streamer, usageRequestId, usageActor);
             
             if (codeResult.error) {
                 return {

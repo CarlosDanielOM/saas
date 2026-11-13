@@ -1,9 +1,9 @@
-/** Read-only admin Pet UI check. Every external/API request is intercepted. */
+/** Read-only admin Pet UI check (channel workspace Overview). Every external/API request is intercepted; the API is
+ * mocked on api.domdimabot.com (built bundle) and localhost:3000 (dev server). Env: SAAS_PREVIEW_URL (default http://127.0.0.1:4310). */
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.SAAS_PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
-const base = process.env.SAAS_PREVIEW_URL;
-assert.ok(base);
+const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4310';
 const artifacts = process.env.SAAS_UI_ARTIFACTS || '/tmp/admin-pet-diagnostics-browser';
 await mkdir(artifacts,{recursive:true});
 const browser = await chromium.launch({headless:true,args:['--no-sandbox'],executablePath:process.env.SAAS_CHROMIUM_PATH||undefined});
@@ -14,14 +14,19 @@ const session={name:'My streaming computer with a long name',authorization:'vali
 const computer={selectedSessionId:'0123456789abcdef01234567',session,connected:false,reportedReady:false,ready:false};
 const initial={observedAt:new Date().toISOString(),configured:true,enabled:true,appearance:'vts',playbackTarget:'desktop',vts:{...computer,projection:{status:'missing',lastValidatedAt:null,expiresAt:null}},audio:{...computer},failures:[{requestId:'one',status:'cancelled',errorCode:'player_disconnected',createdAt:new Date().toISOString()}]};
 let data=structuredClone(initial), fail=false, requests=0, delayResolve;
-const json=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'*'};
+const json=(route,body,status=200)=>route.fulfill({status,headers:cors,contentType:'application/json',body:JSON.stringify(body)});
+const isApi=url=>url.hostname==='api.domdimabot.com'||(['localhost','127.0.0.1'].includes(url.hostname)&&url.port==='3000');
 await context.route('**/*',async route=>{
  const req=route.request(),url=new URL(req.url()),p=url.pathname;
  if(url.origin===new URL(base).origin)return route.continue();
  if(['fonts.googleapis.com','fonts.gstatic.com'].includes(url.hostname))return route.abort();
- if(url.hostname!=='api.domdimabot.com'){unexpected.push(`${req.method()} ${url.origin}${p}`);return route.abort();}
- assert.equal(req.method(),'GET','diagnostics never mutates');
+ if(!isApi(url)){unexpected.push(`${req.method()} ${url.origin}${p}`);return route.abort();}
+ if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:cors});
+ if(req.method()!=='GET'){unexpected.push(`${req.method()} ${p} (diagnostics never mutates)`);return route.abort();}
  if(p.endsWith('/pet-diagnostics')){requests++;if(delayResolve)await new Promise(resolve=>{delayResolve=resolve;});return json(route,fail?{error:true}: {data},fail?503:200);}
+ // The channel workspace frame's last-24-hours numbers (read once for its tab badges).
+ if(p==='/admin-site/feed/summary')return json(route,{data:{from:new Date(Date.now()-86400000).toISOString(),to:new Date().toISOString(),kinds:[],partial:[]}});
  if(p==='/admin-site/users')return json(route,{data:{rows:[row],pagination:{page:1,limit:100,total:1,totalPages:1}}});
  if(p==='/users')return json(route,{data:{profile_image_url:`${base}/favicon.png`}});
  if(p.endsWith('/commands')||p.endsWith('/eventsubs'))return json(route,{data:{rows:[],pagination:{total:0,page:1,totalPages:1}}});

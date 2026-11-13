@@ -13,6 +13,7 @@ import { MediaAssetSchema } from '../schemas/media_asset.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { LiveMedia } from './live.js';
 import { MAX_MEDIA_BYTES } from './delivery-store.js';
+import { recordActivity } from '../utils/activity_log.js';
 const run = promisify(execFile);
 interface TestFile { channel: string; path: string; mime: string; expiresAt: number; clean: () => Promise<void> }
 const files = new Map<string, TestFile>();
@@ -37,8 +38,14 @@ export async function prepareTest(channel: string, kind: string, input: unknown)
   if (kind === 'tts') {
     const language = body.language === 'es' ? 'es' : 'en';
     const text = language === 'es' ? 'Esta es una prueba de voz de tu overlay. El audio funciona.' : 'This is a voice test for your overlay. Audio playback is working.';
-    const result = await piperTtsService.synthesize({ channelID: channel, speechID: `overlay-test-${randomUUID()}`, provider: 'piper', mode: 'speak', language, text, voice: DEFAULT_TTS_SETTINGS.voices[language], outputPath: '' });
-    if (result.error || !result.outputPath) throw new OverlayError('Speech test is temporarily unavailable', 502);
+    const speechID = `overlay-test-${randomUUID()}`, voice = DEFAULT_TTS_SETTINGS.voices[language], startedAt = Date.now();
+    const result = await piperTtsService.synthesize({ channelID: channel, speechID, provider: 'piper', mode: 'speak', language, text, voice, outputPath: '' });
+    const failed = result.error || !result.outputPath;
+    // A free test voice with no usage receipt: the owner's activity log is its only trace.
+    recordActivity({ kind: 'voice', name: 'piper', channelID: channel, outcome: failed ? 'failed' : 'ok', reason: failed ? 'synthesis_failed' : null,
+      ref: speechID, durationMs: Date.now() - startedAt,
+      data: { source: 'overlay_test', chars: Array.from(text).length, voice, error: failed ? result.message : undefined } });
+    if (failed) throw new OverlayError('Speech test is temporarily unavailable', 502);
     return { text, file: result.outputPath, mime: result.mimeType || 'audio/wav', media: { type: 'audio', title: text, volume: 1 }, cleanup: () => rm(result.outputPath!, { force: true }) };
   }
   if (kind === 'clip') {

@@ -47,6 +47,7 @@ import { splitAiResponseForTwitch, removeAiReplyRecipientTag } from "../utils/tw
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
+import { chatActor, commandResultOutcome, recordCommandActivity } from '../utils/activity_command.js';
 
 const modID = '698614112';
 const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
@@ -164,8 +165,12 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         if (effectiveSubCommand === null) {
             // not a timer command — fall through
         } else {
+            const timerStartedAt = Date.now();
+            const timerAttempt = { channelID, name: `!${commandLower}`, trigger: 'chat' as const, func: 'timer', event: messageEventData };
+            const replyDelivery = { origin: 'command' as const, actor: chatActor(messageEventData) };
             if (userLevel < 7) {
-                sendTwitchChatMessage(channelID, 'You need moderator permissions to manage timers.');
+                recordCommandActivity({ ...timerAttempt, outcome: 'blocked', reason: 'permission_denied' });
+                sendTwitchChatMessage(channelID, 'You need moderator permissions to manage timers.', null, undefined, replyDelivery);
                 return;
             }
 
@@ -248,12 +253,15 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 });
             });
 
+            recordCommandActivity({ ...timerAttempt, outcome: timerResponse.error ? 'failed' : 'ok',
+                reason: timerResponse.error ? 'error' : null, durationMs: Date.now() - timerStartedAt });
+
             await captureStreamActivity({ channelID, eventID: messageEventData.message_id, kind: 'command',
                 key: commandLower, label: `!${commandLower}`, actor: messageEventData.chatter_user_id,
                 actorLabel: messageEventData.chatter_user_name, occurredAt: new Date(receivedAt),
                 outcome: timerResponse.error ? 'error' : 'ok' }).catch(error => console.error('Command tracking failed', error));
 
-            sendTwitchChatMessage(channelID, timerResponse.message);
+            sendTwitchChatMessage(channelID, timerResponse.message, null, undefined, replyDelivery);
             return;
         }
 
@@ -315,6 +323,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                         badges: messageEventData.badges,
                         username: messageEventData.chatter_user_name,
                         chatter_user_id: messageEventData.chatter_user_id,
+                        // Login as well as display name, so the usage receipt names the chatter both ways.
+                        chatter_user_login: messageEventData.chatter_user_login,
                         userLevel,
                         identity: serializeUserIdentity(identity)
                     }
@@ -327,12 +337,13 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     );
                     const aiResponseChunks = splitAiResponseForTwitch(replyText);
                     const deliveryResults = [];
+                    const aiDelivery = { origin: 'ai' as const, actor: chatActor(messageEventData) };
 
                     // Reply-thread the first chunk to the user's message so the
                     // answer is visually tied to the right chatter in busy chats.
                     for (let chunkIndex = 0; chunkIndex < aiResponseChunks.length; chunkIndex++) {
                         const replyTo = chunkIndex === 0 ? messageEventData.message_id : null;
-                        deliveryResults.push(await sendTwitchChatMessage(channelID, aiResponseChunks[chunkIndex], replyTo));
+                        deliveryResults.push(await sendTwitchChatMessage(channelID, aiResponseChunks[chunkIndex], replyTo, undefined, aiDelivery));
                     }
 
                     const delivered = deliveryResults.length > 0 && deliveryResults.every((result) => !result.error);
@@ -388,8 +399,13 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             commandTagMode = inspectExpression(commandDBData.command.permissionExpression).mode !== 'level';
         }
 
+        const commandAttempt = { channelID, name: `!${commandDBData.command?.cmd || commandLower}`, trigger: 'chat' as const,
+            func: commandFunc, event: messageEventData };
+
         // Silently skip disabled commands
         if (commandEnabled !== 'true') {
+            // A word that is no command of this channel is ordinary chat: no row for it.
+            if (!commandDBData.error && commandDBData.command) recordCommandActivity({ ...commandAttempt, outcome: 'skipped', reason: 'disabled' });
             return;
         }
 
@@ -410,6 +426,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         if(!commandAllowed(commandDBData.command, identity)) {
+            recordCommandActivity({ ...commandAttempt, outcome: 'blocked',
+                reason: permissionState.mode === 'invalid' ? 'permission_invalid' : 'permission_denied' });
             return;
         }
         
@@ -418,11 +436,19 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             on_cooldown = true;
         }
 
-        if(on_cooldown) { traceOutcome('cooldown'); return; }
+        if(on_cooldown) {
+            traceOutcome('cooldown');
+            recordCommandActivity({ ...commandAttempt, outcome: 'skipped', reason: 'cooldown', data: { cooldownStore: 'memory' } });
+            return;
+        }
         
         const shouldTrackCommandUsage = !commandDBData.error && !!commandDBData.command;
         let res = null;
         let commandFailed = false;
+        // The typed refusal from commandHandler (cooldown, permission, disabled), for the activity log.
+        let commandFailureType: string | null = null;
+        let commandThrew = false;
+        const commandStartedAt = Date.now();
         
         const commandSpan = beginSpan('command', commandDBData.command?.cmd || 'unconfigured', channelID);
         try {
@@ -444,6 +470,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 if (!commandDBData.command?.reserved) {
                     const result = await commandHandler(channelID, messageEventData, command, argument, { origin: 'chat', identity }, undefined, effectContext);
                     commandFailed = result.error;
+                    if (result.error) commandFailureType = result.type;
                     if (!result.error) res = { error: false, message: result.message, commandReferences: result.commandReferences };
                     break;
                 }
@@ -759,15 +786,20 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     identity
                 }, undefined, effectContext);
                 commandFailed = cmdResult.error;
+                if (cmdResult.error) commandFailureType = cmdResult.type;
                 if (!cmdResult.error) {
                     res = { error: false, message: cmdResult.message, commandReferences: cmdResult.commandReferences };
                 }
                 break;
             }
 
-        } catch (error) { commandFailed = true; commandSpan.end('error'); throw error; }
+        } catch (error) { commandFailed = true; commandThrew = true; commandSpan.end('error'); throw error; }
         finally {
             commandSpan.end(res?.error || commandFailed ? 'error' : 'ok');
+            const commandOutcome = commandThrew || (res?.error && !commandFailed) ? { outcome: 'failed' as const, reason: 'error' }
+                : commandResultOutcome(commandFailureType, commandFailed);
+            if (commandOutcome) recordCommandActivity({ ...commandAttempt, ...commandOutcome, durationMs: Date.now() - commandStartedAt,
+                data: commandOutcome.reason === 'cooldown' ? { cooldownStore: 'shared' } : undefined });
             if (shouldTrackCommandUsage) await captureStreamActivity({ channelID, eventID: messageEventData.message_id,
                 kind: 'command', key: String(commandDBData.command?.cmd || commandLower).toLowerCase(),
                 label: `!${commandDBData.command?.cmd || commandLower}`, actor: messageEventData.chatter_user_id,
@@ -816,7 +848,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         if (!res) return;
-        await traced('chat_stage', 'delivery', () => deliverAstMessage(channelID, { parsedText: res!.message || '', commandReferences: res!.commandReferences }));
+        await traced('chat_stage', 'delivery', () => deliverAstMessage(channelID, { parsedText: res!.message || '', commandReferences: res!.commandReferences,
+            origin: 'command', actor: chatActor(messageEventData), referencePath: 'chat' }));
     } catch (err) {
         messageHandlerFailed = true;
         await logError({

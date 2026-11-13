@@ -93,7 +93,10 @@ export async function maintainSemanticDecisions(): Promise<void> {
             customerId: decision.charge.customerID, channelID: decision.channelID,
             externalId: decision.charge.externalID, cost: charged ? decision.charge.billableCostUSD ?? 0 : decision.cost, chargeCredits: charged, reason: 'contextual_moderation', mode: 'cache',
             llm: { model: decision.model, usage: { prompt_tokens: decision.inputTokens, completion_tokens: 0, total_tokens: decision.inputTokens } },
-            usage: { requestId: decision._id, operation: 'contextual_moderation', category: 'other', source: 'moderation', provider: 'openrouter', resourceType: 'llm_generation', resourceId: decision.messageID }
+            usage: { requestId: decision._id, operation: 'contextual_moderation', category: 'other', source: 'moderation', provider: 'openrouter', resourceType: 'llm_generation', resourceId: decision.messageID,
+                // A charged review bills a price per token; the receipt keeps what the provider really charged.
+                receipt: { actor: { id: decision.userID, login: decision.userLogin, name: decision.username },
+                    costUsd: typeof decision.cost === 'number' ? decision.cost : null } }
         });
         if (!result.error) await ModerationDecision.updateOne({ _id: decision._id }, { $set: { 'charge.status': 'recorded' } });
     }

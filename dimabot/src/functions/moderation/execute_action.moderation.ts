@@ -45,7 +45,7 @@ async function sendNoticeThrottled(channelID: string, userID: string, username: 
         if (acquired === null) return;
 
         const notice = `@${username} ${reason}`.slice(0, 490);
-        await sendTwitchChatMessage(channelID, notice);
+        await sendTwitchChatMessage(channelID, notice, null, undefined, { origin: 'moderation' });
     } catch (err) {
         await logError({
             function: 'moderation.sendNoticeThrottled',

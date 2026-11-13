@@ -2,6 +2,7 @@ import { sendTwitchChatMessage, type SendMessageContext } from "../functions/cha
 import type { IEventsub } from "../schemas/eventsub.schema.js";
 import type { IAdBreakEvent } from "../interfaces/twitch/eventsub.interface.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
+import { chatSendDecision, recordAlert, type AlertDecision } from "../utils/activity_events.js";
 
 interface AdBreakHandlerResponse {
     error: boolean;
@@ -11,12 +12,18 @@ interface AdBreakHandlerResponse {
 export async function adBreakHandler(
     eventData: IAdBreakEvent,
     eventsubData: IEventsub,
-    chatEnabled: boolean
+    chatEnabled: boolean,
+    /** Twitch message id, for the activity rows. */
+    messageId?: string
 ): Promise<AdBreakHandlerResponse> {
+    // Start and end messages are two alerts of one event; `part` keeps their rows apart.
+    const noteAlert = (decision: AlertDecision, part?: 'end') => recordAlert({ type: 'channel.ad_break.begin',
+        channelID: eventData?.broadcaster_user_id, payload: eventData, ref: messageId, part }, decision);
     try {
         const { broadcaster_user_id, duration_seconds } = eventData;
 
         if (!chatEnabled) {
+            noteAlert({ outcome: 'skipped', reason: 'chat_disabled' });
             return {
                 error: false,
                 message: 'Chat is disabled'
@@ -29,7 +36,10 @@ export async function adBreakHandler(
                 eventData: eventData
             };
 
-            await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context);
+            const sent = await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context, { origin: 'alert' });
+            noteAlert(chatSendDecision(sent));
+        } else {
+            noteAlert({ outcome: 'skipped', reason: 'empty_message' });
         }
 
         if (eventsubData.endEnabled) {
@@ -40,7 +50,10 @@ export async function adBreakHandler(
                         eventData: eventData
                     };
 
-                    await sendTwitchChatMessage(broadcaster_user_id, eventsubData.endMessage, null, context);
+                    const sent = await sendTwitchChatMessage(broadcaster_user_id, eventsubData.endMessage, null, context, { origin: 'alert' });
+                    noteAlert(chatSendDecision(sent), 'end');
+                } else {
+                    noteAlert({ outcome: 'skipped', reason: 'empty_message' }, 'end');
                 }
             }, duration_seconds * 1000);
         }
@@ -57,6 +70,7 @@ export async function adBreakHandler(
             message: 'Ad break handled'
         };
     } catch (err) {
+        noteAlert({ outcome: 'failed', reason: 'handler_error', error: err });
         await logError({
             function: 'adBreakHandler',
             eventData,

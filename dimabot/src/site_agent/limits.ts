@@ -59,6 +59,21 @@ export async function chargeMore(channelId: string, plan: PlanTier, units: numbe
     return { charged: Number(charged), day, limits: { plan, used: Number(used), limit, resetsAt: nextUtcMidnight() } };
 }
 
+/** Per UTC day: channel id → messages refused for the daily limit (owner view of who hits the cap). */
+export const limitHitsKey = (day: string) => `site_agent:limit_hits:${day}`;
+const LIMIT_HITS_TTL_SECONDS = 120 * 86_400;
+
+/** Counts one message refused for the daily limit. Never throws. */
+export async function recordLimitHit(channelId: string): Promise<void> {
+    try {
+        const redis = await getDragonflyClient('site-agent-limits');
+        const key = limitHitsKey(utcDay());
+        await redis.multi().hIncrBy(key, channelId, 1).expire(key, LIMIT_HITS_TTL_SECONDS).exec();
+    } catch {
+        // A lost count must never turn the limit answer into an error.
+    }
+}
+
 /** Gives `cost` messages back when the message never reached the model because of our own failure. */
 export async function refundMessage(channelId: string, day: string, cost = 1): Promise<void> {
     const redis = await getDragonflyClient('site-agent-limits');

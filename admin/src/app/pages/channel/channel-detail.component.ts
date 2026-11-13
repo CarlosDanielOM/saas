@@ -6,22 +6,22 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { forkJoin, catchError, of } from 'rxjs';
 
 import {
   ChannelApiService,
   type AiCreditsData,
   type ChannelOverview,
-  type ChannelUser,
 } from '../../services/channel-api.service';
 import { AdminApiService } from '../../services/admin-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
 import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 import { IconComponent } from '../../shared/icon/icon.component';
-import { AvatarComponent } from '../../shared/avatar/avatar.component';
 import { PetDiagnosticsComponent } from './pet-diagnostics.component';
+import { ChannelWorkspaceService } from './channel-workspace.service';
+import { ChannelDayStatsComponent } from './channel-day-stats.component';
 
 /** The grant endpoint rejects anything above this (MAX_AI_CREDIT_GRANT). */
 const MAX_GRANT = 5_000_000;
@@ -38,18 +38,24 @@ interface HealthIssue {
   templateUrl: './channel-detail.component.html',
   styleUrls: ['./channel-page.component.css', './channel-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent, IconComponent, AvatarComponent, PetDiagnosticsComponent],
+  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent, IconComponent, PetDiagnosticsComponent, ChannelDayStatsComponent],
 })
 export class ChannelDetailComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly ws = inject(ChannelWorkspaceService);
   private readonly channelApi = inject(ChannelApiService);
   private readonly adminApi = inject(AdminApiService);
   private readonly toast = inject(ToastService);
 
-  readonly isLoading = signal(true);
+  readonly countsLoading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly overview = signal<ChannelOverview | null>(null);
+  /** Counts of what they have set up; the channel itself comes from the workspace frame. */
+  private readonly counts = signal<Omit<ChannelOverview, 'user'> | null>(null);
+  readonly overview = computed<ChannelOverview | null>(() => {
+    const user = this.ws.user();
+    const counts = this.counts();
+    return user && counts ? { user, ...counts } : null;
+  });
+  readonly isLoading = computed(() => this.countsLoading() || !this.ws.user());
 
   // AI credit usage snapshot (used / limit / balance / available) for the details card.
   // null = not yet loaded or fetch failed (render "Not available").
@@ -81,7 +87,7 @@ export class ChannelDetailComponent implements OnInit {
     return null;
   });
 
-  readonly channelID = computed(() => this.route.snapshot.paramMap.get('channelID') || '');
+  readonly channelID = this.ws.channelID;
 
   /** What's wrong with this channel, in plain words, with the consequence. */
   readonly issues = computed<HealthIssue[]>(() => {
@@ -194,41 +200,11 @@ export class ChannelDetailComponent implements OnInit {
 
   loadChannelOverview(): void {
     const channelID = this.channelID();
-    if (!channelID) {
-      this.error.set('No channel ID provided');
-      this.toast.error('No channel ID provided');
-      this.isLoading.set(false);
-      return;
-    }
+    if (!channelID) return;
 
-    this.isLoading.set(true);
+    this.countsLoading.set(true);
     this.error.set(null);
     this.aiCredits.set(null);
-
-    // Fetch user separately first to ensure we have the channel
-    this.channelApi.getChannel(channelID).subscribe({
-      next: (user) => {
-        if (!user) {
-          this.error.set('No user with this channel ID was found.');
-          this.toast.error('Channel not found');
-          this.isLoading.set(false);
-          return;
-        }
-
-        // Now fetch the other data
-        this.fetchAdditionalData(user);
-      },
-      error: (err) => {
-        this.error.set("Couldn't load this channel. Check your connection and try again.");
-        this.toast.error("Couldn't load this channel");
-        this.isLoading.set(false);
-        console.error('Error loading channel:', err);
-      },
-    });
-  }
-
-  private fetchAdditionalData(user: ChannelUser): void {
-    const channelID = this.channelID();
 
     forkJoin({
       commands: this.channelApi.getChannelCommands(channelID, 1, 1).pipe(
@@ -249,36 +225,11 @@ export class ChannelDetailComponent implements OnInit {
           });
         }),
       ),
-      rewards: this.channelApi.getChannelRewards(channelID).pipe(
-        catchError((err) => {
-          console.error('Rewards API failed:', err);
-          return of({ data: { rewards: [] } });
-        }),
-      ),
-      triggers: this.channelApi.getChannelTriggers(channelID).pipe(
-        catchError((err) => {
-          console.error('Triggers API failed:', err);
-          return of({ data: { triggers: [] } });
-        }),
-      ),
-      timers: this.channelApi.getChannelTimers(channelID).pipe(
-        catchError((err) => {
-          console.error('Timers API failed:', err);
-          return of({ data: { timers: [] } });
-        }),
-      ),
-      files: this.channelApi.getChannelFiles(channelID).pipe(
-        catchError((err) => {
-          console.error('Files API failed:', err);
-          return of({ data: { files: [] } });
-        }),
-      ),
-      memories: this.channelApi.getChannelMemories(channelID).pipe(
-        catchError((err) => {
-          console.error('Memories API failed:', err);
-          return of({ data: { memories: [] } });
-        }),
-      ),
+      rewards: this.channelApi.getChannelRewards(channelID).pipe(catchError(() => of({ data: { rewards: [] } }))),
+      triggers: this.channelApi.getChannelTriggers(channelID).pipe(catchError(() => of({ data: { triggers: [] } }))),
+      timers: this.channelApi.getChannelTimers(channelID).pipe(catchError(() => of({ data: { timers: [] } }))),
+      files: this.channelApi.getChannelFiles(channelID).pipe(catchError(() => of({ data: { files: [] } }))),
+      memories: this.channelApi.getChannelMemories(channelID).pipe(catchError(() => of({ data: { memories: [] } }))),
       aiCredits: this.channelApi.getChannelAiCredits(channelID).pipe(
         catchError((err) => {
           console.warn('AI credits API failed:', err);
@@ -287,8 +238,7 @@ export class ChannelDetailComponent implements OnInit {
       ),
     }).subscribe({
       next: (results) => {
-        const overview: ChannelOverview = {
-          user,
+        this.counts.set({
           commandsCount: results.commands.data.pagination.total,
           eventsubsCount: results.eventsubs.data.pagination.total,
           rewardsCount: results.rewards.data.rewards?.length || 0,
@@ -296,17 +246,14 @@ export class ChannelDetailComponent implements OnInit {
           timersCount: results.timers.data.timers?.length || 0,
           filesCount: results.files.data.files?.length || 0,
           memoriesCount: results.memories.data.memories?.length || 0,
-        };
-
+        });
         this.aiCredits.set(results.aiCredits);
-        this.overview.set(overview);
-        this.isLoading.set(false);
+        this.countsLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Failed to load some channel data');
-        this.toast.error('Failed to load some channel data');
-        this.isLoading.set(false);
-        console.error('Error loading additional channel data:', err);
+        this.error.set("Couldn't load this channel's details. Check your connection and try again.");
+        this.countsLoading.set(false);
+        console.error('Error loading channel details:', err);
       },
     });
   }
@@ -445,8 +392,8 @@ export class ChannelDetailComponent implements OnInit {
         this.showReminderModal.set(false);
         const msg = res?.data?.message || 'Reminder sent';
         this.toast.success(msg);
-        // Refresh overview to pick up updated reminder_sent_at if backend returns it
-        this.loadChannelOverview();
+        // Refresh the channel quietly to pick up the new reminder_sent_at (the header stays).
+        this.ws.load(true);
       },
       error: (err) => {
         this.isSendingReminder.set(false);

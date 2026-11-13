@@ -1,0 +1,100 @@
+<div class="lf ws">
+  <header class="ws-head">
+    <div class="ws-head__top">
+      <a routerLink="/users" class="lf-back"><app-icon name="back" />Users</a>
+      @if (ws.user(); as user) {
+        <a class="lf-btn lf-btn--sm lf-btn--ghost ws-twitch" [href]="'https://twitch.tv/' + user.channel" target="_blank" rel="noopener"
+          ><app-icon name="twitch" />Twitch<span class="sr-only"> (opens in new tab)</span></a
+        >
+      }
+    </div>
+    @if (ws.user(); as user) {
+      <div class="ws-id">
+        <app-avatar [name]="user.channel" [live]="user.isLive" />
+        <div class="ws-id__text">
+          <h1 class="ws-title">{{ user.channel }}</h1>
+          <p class="ws-sub">
+            @if (user.isLive) {
+              <span class="lf-dot lf-dot--live" aria-hidden="true"></span>
+            }
+            {{ subline() }}
+          </p>
+        </div>
+      </div>
+      <ul class="ws-chips" aria-label="Channel status">
+        <li>
+          <span class="lf-chip" [class.lf-chip--muted]="user.plan_tier === 'free'" [class.lf-chip--gold]="user.plan_tier === 'premium'" [class.lf-chip--pro]="user.plan_tier === 'pro'">{{ planLabel() }}</span>
+        </li>
+        <li>
+          <span class="lf-chip" [class.lf-chip--ok]="user.actived" [class.lf-chip--warn]="!user.actived">{{ user.actived ? 'Bot on' : 'Bot off' }}</span>
+        </li>
+        <li>
+          <span
+            class="lf-chip"
+            [class.lf-chip--ok]="user.has_permissions && user.up_to_date_permissions"
+            [class.lf-chip--warn]="user.has_permissions && !user.up_to_date_permissions"
+            [class.lf-chip--danger]="!user.has_permissions"
+            >{{ !user.has_permissions ? 'No Twitch access' : user.up_to_date_permissions ? 'Twitch access OK' : 'Reconnect Twitch' }}</span
+          >
+        </li>
+        <li>
+          <span class="lf-chip" [class.lf-chip--ok]="user.chat_enabled" [class.lf-chip--muted]="!user.chat_enabled">{{ user.chat_enabled ? 'Chat on' : 'Chat off' }}</span>
+        </li>
+      </ul>
+    } @else if (ws.loading()) {
+      <div class="ws-id" role="status" aria-busy="true">
+        <span class="ws-skel ws-skel--avatar"></span>
+        <div class="ws-id__text">
+          <span class="ws-skel ws-skel--title"></span>
+          <span class="ws-skel ws-skel--line"></span>
+        </div>
+        <span class="sr-only">Loading channel</span>
+      </div>
+    }
+  </header>
+
+  @if (ws.error(); as error) {
+    <div class="lf-main">
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <h1 class="lf-status__title ws-error-title">{{ error === 'missing' ? 'No channel with this ID' : "Couldn't load this channel" }}</h1>
+          <p class="lf-status__text">
+            @if (error === 'missing') {
+              Nobody with channel ID <span class="mono">{{ ws.channelID() }}</span> has signed up. Look them up by name in Users.
+            } @else {
+              Check your connection and try again.
+            }
+          </p>
+          <div class="lf-status__actions">
+            @if (error === 'failed') {
+              <button type="button" class="lf-btn lf-btn--sm" (click)="retry()"><app-icon name="refresh" />Retry</button>
+            }
+            <a routerLink="/users" class="lf-btn lf-btn--sm" [class.lf-btn--ghost]="error === 'failed'">Back to users</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="ws-bar">
+      <nav class="lf-tabs ws-tabs" #strip aria-label="Channel sections">
+        @for (tab of tabs(); track tab.path) {
+          <a
+            class="lf-tab"
+            [routerLink]="tabLink(tab.path)"
+            routerLinkActive="is-active"
+            ariaCurrentWhenActive="page"
+            [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }"
+            >{{ tab.label }}
+            @if (tab.count > 0) {
+              <span class="lf-tab__count lf-tab__count--warn"><span aria-hidden="true">{{ tab.count }}</span><span class="sr-only">, {{ tab.countLabel }}</span></span>
+            }
+          </a>
+        }
+      </nav>
+    </div>
+    @for (key of outletKey(); track key) {
+      <router-outlet />
+    }
+  }
+</div>

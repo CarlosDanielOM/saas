@@ -1,0 +1,64 @@
+/* Twitch events tab: what the bot heard per event, and subscriptions Twitch cancelled. */
+.es-heard {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.es-heard--none {
+  color: var(--muted);
+  font-style: italic;
+}
+.es-tone {
+  --es-tone: var(--muted);
+  color: var(--es-tone);
+  font-weight: 700;
+}
+.es-tone[data-tone='ok'] {
+  --es-tone: var(--ok);
+}
+.es-tone[data-tone='warn'] {
+  --es-tone: var(--warn);
+}
+.es-tone[data-tone='danger'] {
+  --es-tone: var(--danger);
+}
+.es-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 2rem;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 0.2em;
+}
+.es-link:hover {
+  color: var(--accent);
+}
+.es-link app-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.es-revoked {
+  border-color: var(--line);
+}
+.es-revoked--open {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.es-revoked__head {
+  display: grid;
+  justify-content: stretch;
+  gap: 0.3rem;
+}
+.es-revoked--open .es-revoked__head app-icon {
+  color: var(--warn);
+}
+.es-fix {
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 650;
+}

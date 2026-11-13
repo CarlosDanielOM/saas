@@ -57,32 +57,89 @@ export const routes: Routes = [
         title: 'Users | DimaBot Admin',
       },
       {
+        // One streamer: a shared header and tabs, one child page per tab.
         path: 'channels/:channelID',
         loadComponent: () =>
-          import('./pages/channel/channel-detail.component').then((m) => m.ChannelDetailComponent),
-        title: 'Channel | DimaBot Admin',
+          import('./pages/channel/channel-shell.component').then((m) => m.ChannelShellComponent),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./pages/channel/channel-detail.component').then((m) => m.ChannelDetailComponent),
+            title: 'Channel | DimaBot Admin',
+          },
+          {
+            path: 'activity',
+            loadComponent: () =>
+              import('./pages/channel/channel-activity.component').then((m) => m.ChannelActivityComponent),
+            title: 'Channel activity | DimaBot Admin',
+          },
+          {
+            path: 'commands',
+            loadComponent: () =>
+              import('./pages/channel/channel-commands.component').then((m) => m.ChannelCommandsComponent),
+            title: 'Channel commands | DimaBot Admin',
+          },
+          {
+            path: 'eventsubs',
+            loadComponent: () =>
+              import('./pages/channel/channel-eventsubs.component').then((m) => m.ChannelEventsubsComponent),
+            title: 'Channel Twitch events | DimaBot Admin',
+          },
+          {
+            path: 'protection',
+            loadComponent: () =>
+              import('./pages/channel/channel-protection.component').then((m) => m.ChannelProtectionComponent),
+            title: 'Channel chat protection | DimaBot Admin',
+          },
+          {
+            path: 'usage',
+            loadComponent: () =>
+              import('./pages/channel/channel-usage.component').then((m) => m.ChannelUsageComponent),
+            title: 'Channel AI usage | DimaBot Admin',
+          },
+          {
+            path: 'logs',
+            loadComponent: () =>
+              import('./pages/channel/channel-logs.component').then((m) => m.ChannelLogsComponent),
+            title: 'Channel bot log | DimaBot Admin',
+          },
+        ],
       },
       {
-        path: 'channels/:channelID/usage',
+        path: 'activity',
         loadComponent: () =>
-          import('./pages/channel/channel-usage.component').then((m) => m.ChannelUsageComponent),
-        title: 'AI Credit Usage | DimaBot Admin',
+          import('./pages/activity/activity-page.component').then((m) => m.ActivityPageComponent),
+        title: 'Activity | DimaBot Admin',
       },
       {
-        path: 'channels/:channelID/eventsubs',
-        loadComponent: () =>
-          import('./pages/channel/channel-eventsubs.component').then(
-            (m) => m.ChannelEventsubsComponent,
-          ),
-        title: 'Channel Eventsubs | DimaBot Admin',
+        path: 'ai',
+        loadComponent: () => import('./pages/ai/ai-hub-page.component').then((m) => m.AiHubPageComponent),
+        title: 'AI | DimaBot Admin',
       },
       {
-        path: 'channels/:channelID/commands',
+        path: 'ai/decisions',
         loadComponent: () =>
-          import('./pages/channel/channel-commands.component').then(
-            (m) => m.ChannelCommandsComponent,
-          ),
-        title: 'Channel Commands | DimaBot Admin',
+          import('./pages/decisions/decisions-page.component').then((m) => m.DecisionsPageComponent),
+        title: 'Chat protection decisions | DimaBot Admin',
+      },
+      {
+        path: 'ai/usage',
+        loadComponent: () => import('./pages/usage/usage-page.component').then((m) => m.UsagePageComponent),
+        title: 'AI usage | DimaBot Admin',
+      },
+      {
+        path: 'ai/assistant',
+        loadComponent: () =>
+          import('./pages/assistants/assistant-page.component').then((m) => m.AssistantPageComponent),
+        title: 'Dima assistant | DimaBot Admin',
+      },
+      {
+        path: 'ai/docs',
+        loadComponent: () =>
+          import('./pages/assistants/docs-ai-page.component').then((m) => m.DocsAiPageComponent),
+        title: 'Docs AI | DimaBot Admin',
       },
       {
         path: 'analytics',

@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+.uc-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.uc-sort {
+  display: flex;
+  gap: 0.4rem;
+}
+.uc-sort .lf-chip {
+  min-height: 2.75rem;
+  padding-inline: 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.uc-kinds {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  min-height: 2.75rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.uc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.uc-list > li + li {
+  border-top: 1px solid var(--line);
+}
+.uc-row > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.6rem 1rem;
+  list-style: none;
+  cursor: pointer;
+}
+.uc-row > summary::-webkit-details-marker {
+  display: none;
+}
+.uc-row > summary:hover,
+.uc-row[open] > summary {
+  background: var(--tile-2);
+}
+.uc-row__main {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.uc-row__what {
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.uc-row__meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.uc-row__end {
+  display: grid;
+  justify-items: end;
+  flex-shrink: 0;
+  max-width: 48%;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.uc-row__credits {
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+.uc-row__end small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.is-added .uc-row__credits {
+  color: var(--ok);
+}
+.uc-dl {
+  padding: 0 1rem 0.6rem;
+  background: var(--tile-2);
+}
+.uc-dl > div {
+  min-height: 2.3rem;
+}
+.uc-dl a {
+  color: var(--accent);
+  font-weight: 700;
+}
+.uc-dl dd a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+.uc-mono {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.uc-skel {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.uc-more {
+  min-height: 2.75rem;
+  min-width: 10rem;
+}
+.uc-end {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .uc-tools,
+  .uc-row > summary,
+  .uc-dl,
+  .uc-skel {
+    padding-inline: 1.25rem;
+  }
+}

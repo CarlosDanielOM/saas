@@ -1,0 +1,130 @@
+:host {
+  /* Height of the sticky tab strip (a tab's 2.75rem plus its bottom line): tab pages stick their own bars under it. */
+  --ws-bar-h: calc(2.75rem + 1px);
+}
+/* The channel workspace frame: compact header, then a tab strip that sticks under the top bar. */
+.ws-head {
+  display: grid;
+  gap: 0.45rem;
+  width: min(100%, 74rem);
+  margin: 0 auto;
+  padding: 0.6rem 0.85rem 0.5rem;
+}
+.ws-head__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+.ws-head__top .lf-back {
+  min-height: 2.75rem;
+}
+.ws-twitch {
+  margin-right: -0.4rem;
+}
+.ws-id {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+.ws-id__text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.ws-title {
+  font-size: clamp(1.3rem, 5vw, 1.85rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.ws-sub {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.ws-sub .lf-dot {
+  display: inline-block;
+  margin-right: 0.4rem;
+  vertical-align: 0.1em;
+}
+.ws-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ws-skel {
+  display: block;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+.ws-skel--avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.ws-skel--title {
+  width: 9rem;
+  height: 1.35rem;
+}
+.ws-skel--line {
+  width: 13rem;
+  max-width: 60vw;
+  height: 0.8rem;
+}
+.ws-error-title {
+  font-size: 1.05rem;
+}
+.ws-bar {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 20;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.ws-tabs {
+  /* Contains the badges' screen-reader text, which would otherwise widen the page. */
+  position: relative;
+  width: min(100%, 74rem);
+  margin: 0 auto;
+  padding: 0 0.85rem;
+  border-bottom: 0;
+}
+.ws-tabs .lf-tab {
+  margin-bottom: -1px;
+}
+.ws-tabs .lf-tab:first-child {
+  margin-left: -0.7rem;
+}
+@media (min-width: 640px) {
+  .ws-head,
+  .ws-tabs {
+    padding-inline: 1.25rem;
+  }
+}
+@media (min-width: 960px) {
+  .ws-head {
+    padding: 1.1rem 1.5rem 0.75rem;
+  }
+  .ws-tabs {
+    padding-inline: 1.5rem;
+  }
+  .ws-id {
+    gap: 0.85rem;
+  }
+}
+/* Phones and tablets: small buttons still get a 44px touch target. */
+.lf-btn--sm {
+  min-height: 2.75rem;
+}
+@media (min-width: 960px) {
+  .lf-btn--sm {
+    min-height: 2.25rem;
+  }
+}

@@ -1,0 +1,11 @@
+.dp .lf-main {
+  gap: 0.75rem;
+}
+.dp .lf-head {
+  gap: 0.35rem;
+}
+.dp__id {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}

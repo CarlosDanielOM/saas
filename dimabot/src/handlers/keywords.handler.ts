@@ -6,6 +6,7 @@ import { keywordMatches, matchKeywords, normalizeKeyword } from '../utils/keywor
 import { executeCustomCommand } from './commands.handler.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
+import { chatActor, commandResultOutcome, recordCommandActivity } from '../utils/activity_command.js';
 
 export async function handleKeywords(channelID: string, event: IChatMessage, identity: UserIdentity, effectContext?: AstEffectContext): Promise<void> {
     if (event.chatter_user_id === TWITCH_BOT_ACCOUNT_ID) return;
@@ -16,11 +17,22 @@ export async function handleKeywords(channelID: string, event: IChatMessage, ide
         if (!keyword || !keyword.enabled || !keywordMatches(event.message.text, {
             id: match.id, text: normalizeKeyword(keyword.cmd), matchMode: keyword.keywordSettings?.matchMode ?? 'start'
         })) continue;
-        // The complete message is the keyword's argument; caller/event context stays intact.
-        const result = await executeCustomCommand(channelID, event, keyword, keyword.cmd, event.message.text,
-            { origin: 'chat', identity }, undefined, effectContext);
+        const startedAt = Date.now();
+        const attempt = { channelID, name: keyword.cmd, trigger: 'keyword' as const, func: keyword.func, event, key: String(match.id) };
+        let result: Awaited<ReturnType<typeof executeCustomCommand>>;
+        try {
+            // The complete message is the keyword's argument; caller/event context stays intact.
+            result = await executeCustomCommand(channelID, event, keyword, keyword.cmd, event.message.text,
+                { origin: 'chat', identity }, undefined, effectContext);
+        } catch (error) {
+            recordCommandActivity({ ...attempt, outcome: 'failed', reason: 'error', durationMs: Date.now() - startedAt });
+            throw error;
+        }
+        const outcome = commandResultOutcome(result.type, result.error);
+        if (outcome) recordCommandActivity({ ...attempt, ...outcome, durationMs: Date.now() - startedAt });
         if (!result.error) await deliverAstMessage(channelID, {
-            parsedText: result.message, commandReferences: result.commandReferences
+            parsedText: result.message, commandReferences: result.commandReferences,
+            origin: 'command', actor: chatActor(event), referencePath: `keyword:${match.id}`
         });
     }
 }

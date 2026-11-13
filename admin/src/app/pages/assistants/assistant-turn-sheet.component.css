@@ -1,0 +1,171 @@
+:host {
+  display: contents;
+}
+.ts {
+  height: 92dvh;
+}
+.ts__head {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.ts__head h2 {
+  overflow-wrap: anywhere;
+}
+.ts__sub {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.ts .lf-dialog__body {
+  flex: 1;
+  align-content: start;
+  gap: 1.1rem;
+}
+.ts__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.45rem;
+}
+/* Tone through custom properties: scoped CSS would otherwise lose to the base rule. */
+[data-tone] {
+  --tone: var(--muted);
+  --tone-soft: var(--btn);
+}
+[data-tone='ok'] {
+  --tone: var(--ok);
+  --tone-soft: var(--ok-soft);
+}
+[data-tone='warn'] {
+  --tone: var(--warn);
+  --tone-soft: var(--warn-soft);
+}
+[data-tone='danger'] {
+  --tone: var(--danger);
+  --tone-soft: var(--danger-soft);
+}
+[data-tone='accent'] {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+}
+.ts__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.6rem;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.ts__fact {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.ts__part {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ts__h {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ts__label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.ts__steer {
+  display: grid;
+  gap: 0.25rem;
+}
+.ts__answer {
+  border-left-color: var(--ok);
+}
+.ts__tools {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.ts__tools > li + li {
+  border-top: 1px solid var(--line);
+}
+.ts__tool > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.75rem;
+  list-style: none;
+  cursor: pointer;
+}
+.ts__tool > summary::-webkit-details-marker {
+  display: none;
+}
+.ts__tool-name {
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.ts__chev {
+  width: 1rem;
+  height: 1rem;
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.ts__tool[open] .ts__chev {
+  transform: rotate(180deg);
+}
+.ts__io {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0 0.75rem 0.75rem;
+}
+.ts__pre {
+  max-height: 14rem;
+  margin: 0 0 0.35rem;
+  padding: 0.55rem 0.65rem;
+  overflow: auto;
+  border-radius: 0.5rem;
+  background: var(--tile-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ts__mono,
+.ts__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+.ts__code {
+  color: var(--muted);
+}
+.ts__error {
+  margin: 0;
+}
+.ts__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .ts {
+    height: auto;
+    width: min(42rem, calc(100% - 2rem));
+    max-height: 88dvh;
+  }
+}

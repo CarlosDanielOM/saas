@@ -1,0 +1,124 @@
+.dc-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.dc-days {
+  display: grid;
+  gap: 0.6rem;
+}
+.dc-cost {
+  font-variant-numeric: tabular-nums;
+}
+.dc-list .lf-tile__head {
+  padding-bottom: 0.5rem;
+}
+#docs-list-h {
+  scroll-margin-top: calc(var(--nav-h) + 1rem);
+}
+.dc-range span,
+.dc-sort span {
+  min-height: 2.75rem;
+  padding-inline: 0.7rem;
+}
+.dc-filters {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.dc-filters .lf-strip {
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+}
+.dc-filters .lf-chip {
+  min-height: 2.75rem;
+}
+.dc-skel__main {
+  display: grid;
+  flex: 1;
+  gap: 0.4rem;
+}
+.dc-side .lf-tile__head {
+  margin: 0;
+}
+.dc-h3 {
+  padding: 0.6rem 1rem 0.3rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dc-tight {
+  padding-block: 0.5rem;
+}
+.dc-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+.dc-numbers > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.dc-numbers > summary::-webkit-details-marker {
+  display: none;
+}
+.dc-numbers > summary app-icon {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.dc-numbers[open] > summary app-icon {
+  transform: rotate(180deg);
+}
+.dc-numbers__body {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+/* Phones: the numbers toggle sits above the list. */
+@media (max-width: 959.98px) {
+  .dc-side {
+    order: 1;
+    display: block;
+  }
+  .dc-list {
+    order: 2;
+  }
+}
+@media (min-width: 960px) {
+  .dc-numbers > summary {
+    display: none;
+  }
+  .dc-numbers__body {
+    margin-top: 0;
+  }
+}
+@media (min-width: 640px) {
+  .dc-filters {
+    padding-inline: 1.25rem;
+  }
+  .dc-filters .lf-strip {
+    margin-inline: 0;
+    padding-inline: 0;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .dc-h3 {
+    padding-inline: 1.25rem;
+  }
+}

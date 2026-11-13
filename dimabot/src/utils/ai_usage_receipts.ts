@@ -105,6 +105,14 @@ export interface AiUsageTransaction {
   resourceType: AiUsageResourceType | null;
   resourceId: string | null;
   itemized: boolean;
+  /** Who caused it. Null on receipts written before this was recorded, on ones imported from Polar, and for system work. */
+  actorId?: string | null;
+  actorLogin?: string | null;
+  actorName?: string | null;
+  /** Voice requests: the voice that spoke. */
+  voice?: string | null;
+  /** What the provider charged us, in USD. Owner-only: never part of a streamer-facing response. */
+  costUsd?: number | null;
 }
 
 export interface AiUsageSummary {

@@ -1,13 +1,13 @@
 <div class="lf ar-page">
   <div class="lf-main">
     <header class="lf-head">
+      <a class="lf-back" routerLink="/ai/assistant"><app-icon name="back" />Dima assistant</a>
       <div class="lf-head__row">
         <div>
           <h1 class="lf-title">Assistant refusals</h1>
           <p class="lf-sub">Expert answers the AI safety filter declined. Standard answered instead. See what was asked to find out why.</p>
         </div>
         <div class="lf-head__actions">
-          <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/moderation-review"><app-icon name="shield" />Chat protection review</a>
           <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
             <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
           </button>

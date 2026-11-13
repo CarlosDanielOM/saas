@@ -134,7 +134,9 @@ export function registerVoicePreview(io: Server) {
                         requestId: usageRequestID,
                         source: 'voice_preview',
                         resourceType: 'voice_preview',
-                        resourceId: speechID
+                        resourceId: speechID,
+                        // The preview ticket carries only the channel, so the dashboard user stays unknown here.
+                        receipt: { voice: voiceId }
                     }
                 });
                 ack({ error: false, data: { provider, voiceId, text, credits, mimeType: result.mimeType ?? (provider === 'piper' ? 'audio/wav' : 'audio/mpeg'), audio: audio.toString('base64') } });

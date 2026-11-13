@@ -5,7 +5,7 @@ import type { RedisClientType } from 'redis';
 import AiUsageDailySchema from '../schemas/ai_usage_daily.schema.js';
 import AiUsageLedgerStateSchema from '../schemas/ai_usage_ledger_state.schema.js';
 import AiUsageReceiptSchema, { type AiUsageRetentionTier } from '../schemas/ai_usage_receipt.schema.js';
-import type { AiUsageContext } from './ai_usage_event.js';
+import type { AiUsageActor, AiUsageContext } from './ai_usage_event.js';
 import type { AiUsageTransaction, AiUsageWindow } from './ai_usage_receipts.js';
 
 export const AI_USAGE_RECEIPT_QUEUE_KEY = 'cron:ai-usage-receipts:queue';
@@ -25,6 +25,11 @@ const VALID_CATEGORIES = new Set([
 export interface QueuedAiUsageReceipt extends AiUsageTransaction {
     channelID: string;
     customerId: string;
+    /**
+     * Set when the bot classified the usage more precisely than Polar was told (a reward is 'redemption'
+     * here, 'ast' in Polar). It is the authoritative source: it replaces what an earlier backfill stored.
+     */
+    receiptSource?: string | null;
 }
 
 export interface AiUsageLedgerStatus {
@@ -69,6 +74,37 @@ function finiteNumber(value: unknown): number | null {
     return Number.isFinite(numeric) ? numeric : null;
 }
 
+const TWITCH_ID = /^\d{1,20}$/;
+const TWITCH_LOGIN = /^[a-z0-9_]{1,25}$/;
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g;
+
+/** Receipt fields for an actor; anything that does not look like a Twitch id or login is dropped. */
+function receiptActor(actor: AiUsageActor | null | undefined): Pick<AiUsageTransaction, 'actorId' | 'actorLogin' | 'actorName'> {
+    const id = typeof actor?.id === 'string' ? actor.id.trim() : '';
+    const login = typeof actor?.login === 'string' ? actor.login.trim().toLowerCase() : '';
+    const name = typeof actor?.name === 'string' ? Array.from(actor.name.replace(CONTROL_CHARACTERS, '').trim()).slice(0, 64).join('') : '';
+    return {
+        actorId: TWITCH_ID.test(id) ? id : null,
+        actorLogin: TWITCH_LOGIN.test(login) ? login : null,
+        actorName: name || null
+    };
+}
+
+function costUsd(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * The receipt fields that are new since the owner console. Queue entries keep them only when set, so
+ * system work queues exactly what it did before, and an older reader ignores them.
+ */
+function receiptExtras(receipt: Pick<QueuedAiUsageReceipt, 'actorId' | 'actorLogin' | 'actorName' | 'voice' | 'costUsd' | 'receiptSource'>) {
+    return Object.fromEntries(Object.entries({
+        actorId: receipt.actorId ?? null, actorLogin: receipt.actorLogin ?? null, actorName: receipt.actorName ?? null,
+        voice: receipt.voice ?? null, costUsd: receipt.costUsd ?? null, receiptSource: receipt.receiptSource ?? null
+    }).filter(([, value]) => value !== null)) as Partial<QueuedAiUsageReceipt>;
+}
+
 export function getAiUsageRetentionDays(planTier: unknown): number {
     return RETENTION_DAYS[validTier(planTier)];
 }
@@ -79,6 +115,8 @@ export function buildQueuedAiUsageReceipt(input: {
     occurredAt?: Date;
     context: AiUsageContext;
     credits: number;
+    /** USD the provider charged, already normalized (see `receiptCostUsd` in polarsh.ts). */
+    costUsd?: number | null;
 }): QueuedAiUsageReceipt | null {
     const occurredAt = input.occurredAt || new Date();
     if (!input.channelID || !input.customerId || Number.isNaN(occurredAt.getTime())) return null;
@@ -94,16 +132,23 @@ export function buildQueuedAiUsageReceipt(input: {
         entryKind: input.context.entryKind,
         category: safeCategory(input.context.category),
         operation: input.context.operation,
-        source: input.context.source,
+        // Polar history has only the shared source, so a receipt imported from Polar keeps saying 'ast' for a reward.
+        source: nullableString(input.context.receipt?.source) || input.context.source,
         adjustmentType: classifyAdjustment(input.context),
         provider: input.context.provider,
-        model: input.context.model || null,
+        model: input.context.model || nullableString(input.context.receipt?.model),
         quantity: input.context.quantity ?? null,
         unit: input.context.unit ?? null,
         credits,
         resourceType: input.context.resourceType ?? null,
         resourceId: input.context.resourceId ?? null,
-        itemized: true
+        itemized: true,
+        ...receiptExtras({
+            ...receiptActor(input.context.receipt?.actor),
+            voice: nullableString(input.context.receipt?.voice),
+            costUsd: costUsd(input.costUsd),
+            receiptSource: nullableString(input.context.receipt?.source)
+        })
     };
 }
 
@@ -144,7 +189,12 @@ export function parseQueuedAiUsageReceipt(raw: string): QueuedAiUsageReceipt | n
                 || parsed.resourceType === 'llm_generation'
                 || parsed.resourceType === 'vod_analysis' ? parsed.resourceType : null,
             resourceId: nullableString(parsed.resourceId),
-            itemized: parsed.itemized === true
+            itemized: parsed.itemized === true,
+            // Entries queued by an older version have none of these: they become nulls.
+            ...receiptActor({ id: parsed.actorId, login: parsed.actorLogin, name: parsed.actorName }),
+            voice: nullableString(parsed.voice),
+            costUsd: costUsd(parsed.costUsd),
+            receiptSource: nullableString(parsed.receiptSource)
         };
     } catch {
         return null;
@@ -171,10 +221,38 @@ function receiptDocument(receipt: QueuedAiUsageReceipt, planTier: AiUsageRetenti
         credits: receipt.credits,
         resourceType: receipt.resourceType,
         resourceId: receipt.resourceId,
+        actorId: receipt.actorId ?? null,
+        actorLogin: receipt.actorLogin ?? null,
+        actorName: receipt.actorName ?? null,
+        costUsd: receipt.costUsd ?? null,
+        voice: receipt.voice ?? null,
         itemized: receipt.itemized,
         retentionTier: planTier,
         expiresAt: expiryFor(occurredAt, planTier)
     };
+}
+
+const ENRICHMENT_FIELDS = ['actorId', 'actorLogin', 'actorName', 'voice', 'model', 'costUsd'] as const;
+
+/**
+ * The Polar backfill can store a receipt before the receipts worker reaches the live entry for it, and
+ * Polar history carries no chatter, voice or provider cost. Fill in only what the stored receipt still
+ * lacks, and take the bot's own source when it has one (a reward that Polar knows as 'ast'): it is the
+ * authoritative classification. Credits, category, time and retention stay as stored, so the daily
+ * rollup (by category) does not change.
+ */
+async function fillReceiptEnrichment(
+    filter: { channelID: string; customerId: string; entryId: string },
+    document: ReturnType<typeof receiptDocument>,
+    receiptSource: string | null | undefined
+): Promise<void> {
+    // $literal: every value is data, never an expression or a field path.
+    const fill: Record<string, unknown> = receiptSource ? { source: { $literal: receiptSource } } : {};
+    for (const field of ENRICHMENT_FIELDS) {
+        const value = document[field];
+        if (value !== null && value !== undefined) fill[field] = { $ifNull: ['$' + field, { $literal: value }] };
+    }
+    if (Object.keys(fill).length > 0) await AiUsageReceiptSchema.updateOne(filter, [{ $set: fill }]);
 }
 
 export async function persistAiUsageReceipt(
@@ -186,11 +264,9 @@ export async function persistAiUsageReceipt(
     await Dashboards.updateMany({ channelID: receipt.channelID, customerId: receipt.customerId }, { $set: { dirty: true } });
     const document = receiptDocument(receipt, planTier);
     if (document.expiresAt.getTime() <= Date.now()) return 'expired';
-    const result = await AiUsageReceiptSchema.updateOne(
-        { channelID: receipt.channelID, customerId: receipt.customerId, entryId: receipt.id },
-        { $setOnInsert: document },
-        { upsert: true }
-    );
+    const filter = { channelID: receipt.channelID, customerId: receipt.customerId, entryId: receipt.id };
+    const result = await AiUsageReceiptSchema.updateOne(filter, { $setOnInsert: document }, { upsert: true });
+    if (result.upsertedCount !== 1) await fillReceiptEnrichment(filter, document, receipt.receiptSource);
     // Rebuild on duplicate as well: a prior crash may have saved only the receipt.
     const dayStart = new Date(receipt.occurredAt.slice(0, 10) + 'T00:00:00.000Z');
     await rebuildUtcDailyAggregates(receipt.channelID, receipt.customerId, planTier, dayStart, new Date(dayStart.getTime() + 86_400_000 - 1));
@@ -219,16 +295,18 @@ export async function backfillAiUsageLedger(input: {
     for (let offset = 0; offset < receipts.length; offset += 500) {
         const batch = receipts.slice(offset, offset + 500);
         if (batch.length === 0) continue;
-        await AiUsageReceiptSchema.bulkWrite(batch.map((receipt) => ({
-            updateOne: {
-                filter: { channelID: receipt.channelID, customerId: receipt.customerId, entryId: receipt.id },
-                update: { $setOnInsert: (() => {
-                    const { source, adjustmentType, ...document } = receiptDocument(receipt, planTier);
-                    return document;
-                })(), $set: { source: receipt.source || null, adjustmentType: receipt.adjustmentType || classifyAdjustment(receipt) } },
-                upsert: true
-            }
-        })), { ordered: false });
+        await AiUsageReceiptSchema.bulkWrite(batch.flatMap((receipt) => {
+            const filter = { channelID: receipt.channelID, customerId: receipt.customerId, entryId: receipt.id };
+            const { adjustmentType, ...document } = receiptDocument(receipt, planTier);
+            return [
+                // What a live receipt recorded (chatter, voice, provider cost) is never overwritten.
+                { updateOne: { filter, update: { $setOnInsert: document, $set: { adjustmentType } }, upsert: true } },
+                // Receipts stored before sources were recorded get Polar's. A live receipt's own source wins:
+                // a channel-point reward is 'redemption' there and 'ast' in Polar. The two writes touch
+                // different documents or different fields, so their order in the batch does not matter.
+                ...(document.source ? [{ updateOne: { filter: { ...filter, source: null }, update: { $set: { source: document.source } } } }] : [])
+            ];
+        }), { ordered: false });
     }
 
     await rebuildUtcDailyAggregates(
@@ -387,6 +465,8 @@ export async function loadAiUsageLedgerTransactions(input: {
     channelID: string;
     customerId: string;
     window: AiUsageWindow;
+    /** Owner-only reads; streamer-facing responses must leave it off. */
+    includeCostUsd?: boolean;
 }): Promise<AiUsageTransaction[]> {
     const docs = await AiUsageReceiptSchema.find({
         channelID: input.channelID,
@@ -410,7 +490,12 @@ export async function loadAiUsageLedgerTransactions(input: {
         credits: doc.credits,
         resourceType: doc.resourceType as AiUsageTransaction['resourceType'],
         resourceId: doc.resourceId,
-        itemized: doc.itemized
+        itemized: doc.itemized,
+        actorId: doc.actorId ?? null,
+        actorLogin: doc.actorLogin ?? null,
+        actorName: doc.actorName ?? null,
+        voice: doc.voice ?? null,
+        ...(input.includeCostUsd ? { costUsd: doc.costUsd ?? null } : {})
     }));
 }
 

@@ -90,6 +90,7 @@ async function main(): Promise<void> {
         getTimerIntervalMinutes
     } = await import('../utils/timer_policy.js');
     const { renderTimerMessage } = await import('../utils/timer_runtime.js');
+    const { recordCommandActivity } = await import('../utils/activity_command.js');
 
     async function acquireWorkerLock(lockOwnerId: string): Promise<boolean> {
         const cache = await getDragonflyClient('TimerWorker');
@@ -139,6 +140,8 @@ async function main(): Promise<void> {
         }
 
         if (newHeartbeat >= intervalMinutes) {
+            const firedAt = Date.now();
+            const firing = { channelID, name: String(timer.name || timerID), trigger: 'timer' as const, func: 'timer', key: timerID };
             try {
                 const parsedMessage = await renderTimerMessage({
                     channelID,
@@ -149,11 +152,15 @@ async function main(): Promise<void> {
                     parse: parseSpecialCommands
                 });
 
-                await deliverAstMessage(channelID, parsedMessage);
+                const delivered = await deliverAstMessage(channelID, { ...parsedMessage, origin: 'timer' });
+                // The bot_message row says why a send failed; this row says the timer fired.
+                recordCommandActivity({ ...firing, outcome: delivered.error ? 'failed' : 'ok',
+                    reason: delivered.error ? 'send_failed' : null, durationMs: Date.now() - firedAt });
 
                 await cache.set(heartbeatKey, '0');
                 await cache.set(heartbeatUnitKey, TIMER_FREQUENCY_UNIT);
             } catch (err) {
+                recordCommandActivity({ ...firing, outcome: 'failed', reason: 'error', durationMs: Date.now() - firedAt });
                 await logError({
                     worker: 'timer',
                     message: 'Error processing timer',

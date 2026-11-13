@@ -67,3 +67,24 @@ test('legacy reasons map to receipt categories without storing prompts or text',
   assert.equal('prompt' in metadata, false);
   assert.equal('message' in metadata, false);
 });
+
+test('receipt details stay off the Polar metadata', async () => {
+  const { toPolarUsageMetadata } = await import('./ai_usage_event.js');
+  const input = { entryId: 'entry-1', channelID: 'channel-1', quantity: 10, unit: 'characters' as const };
+  const plain = toPolarUsageMetadata(createAiUsageContext('tts_fish', input));
+  const detailed = createAiUsageContext('tts_fish', {
+    ...input, receipt: { actor: { id: '42', login: 'viewer', name: 'Viewer' }, voice: 'voice-1', model: 'model-1', costUsd: 1 },
+  });
+  assert.deepEqual(toPolarUsageMetadata(detailed), plain);
+  assert.equal(detailed.receipt?.voice, 'voice-1');
+});
+
+test('the chatter is read from AI chat tags', async () => {
+  const { usageActorFromChatTags } = await import('./ai_usage_event.js');
+  assert.deepEqual(usageActorFromChatTags({ chatter_user_id: '42', chatter_user_login: 'viewer', username: 'Viewer' }),
+    { id: '42', login: 'viewer', name: 'Viewer' });
+  // Desktop turns name the streamer through `userID` and `username`.
+  assert.deepEqual(usageActorFromChatTags({ userID: '7', username: 'Streamer' }), { id: '7', login: null, name: 'Streamer' });
+  assert.equal(usageActorFromChatTags({}), undefined);
+  assert.equal(usageActorFromChatTags(null), undefined);
+});

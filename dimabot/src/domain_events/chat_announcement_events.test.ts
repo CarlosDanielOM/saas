@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import { Types } from 'mongoose';
 import type { DomainEventEnvelope } from './domain_event.types.js';
 import { WATCH_STREAK_MESSAGES } from '../utils/chat_notification_defaults.js';
@@ -8,6 +8,11 @@ import {
     applyChatAnnouncementDomainEvent,
     type ChatAnnouncementDependencies
 } from './chat_announcement_events.js';
+import { pendingActivityRowsForTests, setActivityLogSinkForTests } from '../utils/activity_log.js';
+
+beforeEach(() => setActivityLogSinkForTests(async () => undefined));
+const alertRows = () => pendingActivityRowsForTests().filter(row => row.kind === 'alert')
+    .map(row => ({ name: row.name, outcome: row.outcome, reason: row.reason, text: row.text, ref: row.ref, actor: row.actorLogin }));
 
 function createEvent(
     type: string,
@@ -72,7 +77,7 @@ function createDependencies(calls: string[]): ChatAnnouncementDependencies {
         },
         async sendMessage(channelID, message, context) {
             calls.push(`send:${channelID}:${message}:${String(context?.variables || '')}`);
-            return { error: false, message: 'sent' };
+            return { error: false, message: 'Message sent', type: 'success', data: { is_sent: true, message_id: 'tw-1' } };
         },
         async hasCommands(channelID) {
             calls.push(`commands:${channelID}`);
@@ -461,4 +466,105 @@ test('local durable notification origins still announce independently of source 
         }), createDependencies(calls));
         assert.ok(calls.some(call => call.startsWith('send:channel-1:')));
     }
+});
+
+test('every announcement outcome leaves one alert row and the consumer result is unchanged', async () => {
+    const follow = () => createEvent('channel.follow.received', 'channel.follow', { user_id: '42', user_login: 'viewer', user_name: 'Viewer' });
+    const expectRow = async (event: DomainEventEnvelope, dependencies: ChatAnnouncementDependencies,
+        expected: { outcome: string; reason?: string; text?: string; name?: string }) => {
+        setActivityLogSinkForTests(async () => undefined);
+        assert.equal(await applyChatAnnouncementDomainEvent(event, dependencies), undefined);
+        const rows = alertRows();
+        assert.equal(rows.length, 1, JSON.stringify(rows));
+        assert.equal(rows[0]!.outcome, expected.outcome);
+        assert.equal(rows[0]!.reason, expected.reason || '');
+        assert.equal(rows[0]!.text, expected.text || '');
+        assert.equal(rows[0]!.name, expected.name || 'channel.follow');
+        assert.equal(rows[0]!.ref, event.eventKey);
+    };
+    const calls: string[] = [];
+
+    await expectRow(follow(), createDependencies(calls), { outcome: 'ok' });
+    assert.equal(alertRows()[0]!.actor, 'viewer');
+
+    const disabled = createDependencies(calls);
+    disabled.getEventsubConfig = async () => ({ enabled: false, message: 'x', type: 'channel.follow', cheerTiers: [] });
+    await expectRow(follow(), disabled, { outcome: 'skipped', reason: 'alert_disabled' });
+
+    const chatOff = createDependencies(calls);
+    chatOff.getStreamer = async () => ({ chat_enabled: 'false' });
+    await expectRow(follow(), chatOff, { outcome: 'skipped', reason: 'chat_disabled' });
+    const sentBefore = calls.filter(call => call.startsWith('send:')).length;
+    setActivityLogSinkForTests(async () => undefined);
+    // A deleted (or never existing) account gets no row at all, even from a late retry.
+    chatOff.getStreamer = async () => null;
+    assert.equal(await applyChatAnnouncementDomainEvent(follow(), chatOff), undefined);
+    assert.deepEqual(alertRows(), []);
+    assert.equal(calls.filter(call => call.startsWith('send:')).length, sentBefore);
+
+    // A template that renders to nothing returns error: false without sending.
+    const renderedEmpty = createDependencies(calls);
+    renderedEmpty.getEventsubConfig = async () => ({ enabled: true, message: '#(missing)', type: 'channel.follow', cheerTiers: [] });
+    renderedEmpty.sendMessage = async () => ({ error: false, message: 'AST message delivered', type: 'success', data: undefined });
+    await expectRow(follow(), renderedEmpty, { outcome: 'skipped', reason: 'empty_message' });
+
+    const defense = createDependencies(calls);
+    defense.shouldSuppressFollowAlerts = async () => true;
+    await expectRow(follow(), defense, { outcome: 'skipped', reason: 'follow_defense' });
+
+    const empty = createDependencies(calls);
+    empty.getEventsubConfig = async () => ({ enabled: true, message: '  ', type: 'channel.follow', cheerTiers: [] });
+    await expectRow(follow(), empty, { outcome: 'skipped', reason: 'empty_message' });
+
+    const stale = createDependencies(calls);
+    stale.hasNewerLifecycleEvent = async () => true;
+    await expectRow(createEvent('stream.started', 'stream.online'), stale, { outcome: 'skipped', reason: 'stale', name: 'stream.online' });
+
+
+    // Not alerts that were due, so no row: a superseded legacy bits event, a notice this consumer never
+    // announces, and another channel's shared-chat event.
+    const expectNoRow = async (event: DomainEventEnvelope, dependencies: ChatAnnouncementDependencies) => {
+        setActivityLogSinkForTests(async () => undefined);
+        assert.equal(await applyChatAnnouncementDomainEvent(event, dependencies), undefined);
+        assert.deepEqual(alertRows(), []);
+    };
+    const legacy = createDependencies(calls);
+    legacy.shouldSkipLegacyBits = async () => true;
+    await expectNoRow(createEvent('channel.bits.received', 'channel.cheer', { bits: 5 }), legacy);
+    await expectNoRow(createEvent('channel.chat.notification', 'channel.chat.notification', { notice_type: 'resub' }), createDependencies(calls));
+    await expectNoRow(createEvent('channel.chat.notification', 'channel.chat.notification', {
+        notice_type: 'watch_streak', source_broadcaster_user_id: 'other-channel'
+    }), createDependencies(calls));
+});
+
+test('failed sends record send_failed and still reject the same way', async () => {
+    const event = createEvent('channel.follow.received', 'channel.follow', { user_id: '42', user_login: 'viewer' });
+    const refused = createDependencies([]);
+    refused.sendMessage = async () => ({ error: true, message: 'provider unavailable' });
+    await assert.rejects(applyChatAnnouncementDomainEvent(event, refused), /Sending channel.follow chat announcement failed: provider unavailable/);
+    assert.deepEqual(alertRows().map(row => [row.outcome, row.reason]), [['failed', 'send_failed']]);
+    assert.equal(pendingActivityRowsForTests()[0]!.data.error, 'provider unavailable');
+
+    setActivityLogSinkForTests(async () => undefined);
+    const thrown = new Error('socket hang up');
+    const throwing = createDependencies([]);
+    throwing.sendMessage = async () => { throw thrown; };
+    await assert.rejects(applyChatAnnouncementDomainEvent(event, throwing), (error) => error === thrown);
+    assert.deepEqual(alertRows().map(row => [row.outcome, row.reason]), [['failed', 'send_failed']]);
+
+    setActivityLogSinkForTests(async () => undefined);
+    const held = createDependencies([]);
+    held.sendMessage = async () => ({ error: true, message: 'Message held for moderation review by Twitch', type: 'held_for_moderation' });
+    await assert.rejects(applyChatAnnouncementDomainEvent(event, held), /Message held for moderation review by Twitch/);
+    assert.deepEqual(alertRows().map(row => [row.outcome, row.reason]), [['blocked', 'held_for_moderation']]);
+});
+
+test('events the consumer does not own write no alert rows', async () => {
+    const dependencies = createDependencies([]);
+    await applyChatAnnouncementDomainEvent(createEvent('channel.follow.received', 'channel.follow', {}, 'twitch-eventsub-test'), dependencies);
+    const immediate = createEvent('channel.follow.received', 'channel.follow');
+    immediate.metadata = { originalEventType: 'channel.follow' };
+    await applyChatAnnouncementDomainEvent(immediate, dependencies);
+    await applyChatAnnouncementDomainEvent(createEvent('channel.raid.received', 'channel.raid'), dependencies);
+    assert.deepEqual(alertRows(), []);
 });

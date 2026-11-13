@@ -133,6 +133,7 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     }))].sort((a, b) => a.timestamp - b.timestamp) : recent;
     let decision = await createModerationDecision({
         channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
+        userLogin: (message.chatter_user_login || '').toLowerCase(),
         messageID: message.message_id, messageText: message.message.text || '',
         ruleID: spamRule.id, rule: spamRuleForContext(context, { spamProtection: { ...protection, thresholdPercent: paidModeration(tier) ? protection.thresholdPercent : DEFAULT_SPAM_THRESHOLD } }, message.broadcaster_user_login || ''), settingsVersion: settings.settingsVersion,
         matches: [], context, mode: 'semantic', reviewSource, ...(included ? { messageOrdinal: included } : {}),
@@ -277,7 +278,7 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
                     }));
             }
             let decision = await createModerationDecision({
-                channelID, userID: chatterID, username: messageEventData.chatter_user_name || chatterLogin,
+                channelID, userID: chatterID, username: messageEventData.chatter_user_name || chatterLogin, userLogin: chatterLogin,
                 messageID: messageEventData.message_id, messageText: input.text,
                 ruleID: rule.id, rule, settingsVersion: settings.settingsVersion, matches, context,
                 mode: rule.semantic?.enabled ? 'semantic' : rulePatterns(rule).length ? 'regex' : 'literal',

@@ -302,7 +302,9 @@ pre,
 }
 .lf-tile--flush {
   padding: 0;
+  /* clip keeps the rounded corners without becoming a scroll container, so sticky headings inside still stick to the page. */
   overflow: hidden;
+  overflow: clip;
 }
 .lf-tile__head {
   display: flex;
@@ -834,10 +836,10 @@ input[type='search']::-webkit-search-cancel-button {
   font-weight: 700;
   cursor: pointer;
 }
+/* A solid fill: a lighter card on the grey track is nearly invisible in dark mode. */
 .lf-seg input:checked + span {
-  background: var(--tile);
-  color: var(--fg);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  background: var(--accent-solid);
+  color: #fff;
 }
 .lf-seg input:focus-visible + span {
   outline: 2px solid var(--accent);
@@ -1101,6 +1103,231 @@ input[type='search']::-webkit-search-cancel-button {
   text-align: center;
 }
 
+/* ---------- Console pieces (activity, AI, channel workspace) ---------- */
+/* Tab strip under a page header: scrolls sideways on phones, never wraps. Links or buttons. */
+.lf-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 -0.85rem;
+  padding: 0 0.85rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.lf-tabs::-webkit-scrollbar {
+  display: none;
+}
+.lf-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lf-tab:hover {
+  color: var(--fg);
+}
+.lf-tab.is-active,
+.lf-tab[aria-current='page'],
+.lf-tab[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+.lf-tab__count {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.lf-tab__count--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* One row of filter chips that scrolls sideways on phones and wraps from tablet up. */
+.lf-strip {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -0.85rem;
+  padding: 0.1rem 0.85rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.lf-strip::-webkit-scrollbar {
+  display: none;
+}
+.lf-strip > * {
+  flex-shrink: 0;
+}
+.lf-chip__count {
+  color: var(--muted);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.lf-chip[aria-pressed='true'] .lf-chip__count {
+  color: inherit;
+}
+
+/* Filter bar that stays under the top bar while a long list scrolls. */
+.lf-sticky {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 5;
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 -0.85rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+.lf-sticky .lf-strip {
+  margin: 0 -0.85rem;
+}
+
+/* Compact numbers that are also shortcuts: two per row on phones. */
+.lf-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.lf-stat {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  min-height: 4.25rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+  color: inherit;
+  text-align: left;
+}
+a.lf-stat:hover,
+button.lf-stat:hover {
+  border-color: var(--accent-line);
+}
+.lf-stat__label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.lf-stat__label app-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.lf-stat__value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.lf-stat__note {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.lf-stat__note--warn {
+  color: var(--warn);
+  font-weight: 700;
+}
+.lf-stat__note--danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Breakdown rows: name, share bar, value. Use instead of a table or a pie. */
+.lf-bars {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lf-bars__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.75rem;
+  align-items: baseline;
+  min-width: 0;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--line);
+  color: inherit;
+}
+.lf-bars > :first-child > .lf-bars__row,
+.lf-bars > .lf-bars__row:first-child {
+  border-top: 0;
+}
+a.lf-bars__row:hover {
+  background: var(--tile-2);
+}
+.lf-bars__name {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.lf-bars__name small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+.lf-bars__value {
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.lf-bars__value small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+.lf-bars__row > .lf-bar {
+  grid-column: 1 / -1;
+  height: 0.3rem;
+}
+
+/* A message someone wrote, shown as written. */
+.lf-quote {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-left: 3px solid var(--accent-line);
+  border-radius: 0 0.6rem 0.6rem 0;
+  background: var(--tile-2);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* "Load more" under a list. */
+.lf-more-row {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--line);
+}
+
 /* ---------- Dialogs (native <dialog>: bottom sheet on phones) ---------- */
 dialog.lf-dialog {
   width: 100%;
@@ -1211,6 +1438,24 @@ dialog.lf-dialog::backdrop {
   .lf-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+  .lf-tabs,
+  .lf-strip,
+  .lf-sticky {
+    margin-inline: -1.25rem;
+    padding-inline: 1.25rem;
+  }
+  .lf-sticky .lf-strip {
+    margin-inline: 0;
+    padding-inline: 0;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .lf-stats {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+  .lf-bars__row {
+    padding-inline: 1.25rem;
+  }
   dialog.lf-dialog {
     width: min(34rem, calc(100% - 2rem));
     margin: auto;
@@ -1234,6 +1479,20 @@ dialog.lf-dialog::backdrop {
   }
   .lf-panels {
     grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  }
+  .lf-tabs,
+  .lf-strip,
+  .lf-sticky {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .lf-sticky {
+    padding-block: 0.75rem;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  }
+  .lf-strip {
+    flex-wrap: wrap;
+    overflow: visible;
   }
   .lf-col {
     display: grid;

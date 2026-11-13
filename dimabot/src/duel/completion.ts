@@ -77,7 +77,7 @@ export async function settleDuels(): Promise<void> {
           // Claim before the external call; a response loss must not replay chatter.
           run.phraseIndex++;
           await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id }, { $set: { 'run.phraseIndex': run.phraseIndex, dueAt: nextDeadline(run) }, $inc: { revision: 1 } });
-          const response = await sendTwitchChatMessage(doc._id, phrase.text);
+          const response = await sendTwitchChatMessage(doc._id, phrase.text, null, undefined, { origin: 'system' });
           if (response.error) await report(doc._id, run, 'announcementError', response.message);
         }
         continue;
@@ -85,7 +85,7 @@ export async function settleDuels(): Promise<void> {
       if (!run.announcementAttempted) {
         const claimed = await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id, 'run.announcementAttempted': false }, { $set: { 'run.announcementAttempted': true }, $inc: { revision: 1 } });
         if (claimed.modifiedCount) {
-          const response = await sendTwitchChatMessage(doc._id, winnerMessage(run));
+          const response = await sendTwitchChatMessage(doc._id, winnerMessage(run), null, undefined, { origin: 'system' });
           if (response.error) await report(doc._id, run, 'announcementError', response.message);
         }
       }

@@ -1,0 +1,141 @@
+:host {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-width: 0;
+}
+.ab .lf-tile__head {
+  margin: 0;
+}
+.ab__h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.7rem 1rem 0.35rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ab__h3 app-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.ab__tight {
+  padding-block: 0.5rem;
+}
+.ab__mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+.ab__bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+.ab__ch {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+.lf-rows > .ab__ch:first-child {
+  border-top: 0;
+}
+.ab__pick {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.25rem 0.55rem 1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ab__pick:hover,
+.ab__pick:focus-visible {
+  background: var(--tile-2);
+}
+.ab__pick[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.ab__main {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.ab__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.ab__name .lf-chip {
+  min-height: 1.35rem;
+  padding-block: 0;
+  font-size: 0.7rem;
+}
+.ab__meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.ab__value {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+.ab__go {
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+  color: var(--muted);
+}
+.ab__quiet {
+  padding: 0.65rem 1rem 0.8rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.ab--ratings {
+  display: grid;
+  gap: 0.5rem;
+}
+.ab__ratehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ab__rate {
+  display: flex;
+  gap: 1.25rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.ab__rate b {
+  color: var(--fg);
+  font-size: 1.1rem;
+}
+.ab__ratebar {
+  height: 0.4rem;
+  background: var(--danger-soft);
+}
+.ab__ratebar > span {
+  background: var(--ok);
+}
+@media (min-width: 640px) {
+  .ab__h3,
+  .ab__quiet {
+    padding-inline: 1.25rem;
+  }
+  .ab__pick {
+    padding-left: 1.25rem;
+  }
+}

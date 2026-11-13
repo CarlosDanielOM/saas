@@ -1,0 +1,183 @@
+<div class="dx" [class.dx--fixed]="fixed()">
+  <section class="dx-answer" aria-label="Summary">
+    @if (answer(); as a) {
+      <div class="lf-status" [class.lf-status--ok]="a.tone === 'ok'" [class.lf-status--warn]="a.tone === 'warn'" [attr.aria-busy]="summaryLoading()" data-decisions-answer [attr.data-tone]="a.tone">
+        <app-icon [name]="a.tone === 'warn' ? 'alert' : 'shield'" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title" aria-live="polite">{{ a.title }}</strong>
+          @for (w of a.warnings; track w.show) {
+            <span class="dx-warn">{{ w.text }}</span>
+          }
+          @if (a.facts.length) {
+            <span class="lf-status__text dx-facts" data-decisions-facts>{{ a.facts.join(' · ') }}.</span>
+          }
+          @if (a.warnings.length || fixed()) {
+            <div class="lf-status__actions">
+              @for (w of a.warnings; track w.show) {
+                <button type="button" class="lf-btn lf-btn--sm" (click)="go({ show: w.show, kind: null })" [attr.aria-pressed]="view().show === w.show">{{ w.button }}</button>
+              }
+              @if (fixed()) {
+                <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="refresh()" [disabled]="loading()">
+                  <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    } @else if (summaryError()) {
+      <div class="lf-notice" role="alert" data-decisions-summary-error>
+        <span>The totals for this range did not load. The list below may still work.</span>
+        <button type="button" class="lf-btn lf-btn--sm" (click)="loadSummary()">Retry</button>
+      </div>
+    } @else {
+      <div class="lf-status" aria-busy="true" aria-label="Loading the summary">
+        <div class="lf-status__body"><app-skeleton width="85%" height="1.2rem" /><app-skeleton width="60%" height="0.9rem" /></div>
+      </div>
+    }
+  </section>
+
+  @if (summary(); as s) {
+    <app-decisions-numbers class="dx-numbers" [summary]="s" [fixed]="fixed()" (channel)="pickChannel($event)" />
+  }
+
+  <div class="lf-sticky dx-bar" role="search" aria-label="Filter decisions">
+    <div class="dx-bar__top">
+      <div class="lf-seg dx-range" role="radiogroup" aria-label="Time range">
+        @for (key of ranges; track key) {
+          <label>
+            <input type="radio" name="dx-range" [checked]="view().range === key" (change)="setRange(key)" [attr.data-range]="key" />
+            <span>{{ key }}</span>
+          </label>
+        }
+      </div>
+      <button type="button" class="lf-btn dx-filters-btn" (click)="filtersOpen.set(true)" aria-haspopup="dialog" data-decisions-filters>
+        <app-icon name="filter" />Filters
+        @if (sheetCount()) {
+          <span class="dx-badge" [attr.aria-label]="sheetCount() + ' active'">{{ sheetCount() }}</span>
+        }
+      </button>
+    </div>
+    <div class="lf-strip dx-chips" role="group" aria-label="What to show">
+      @for (chip of showChips; track chip.key) {
+        <button type="button" class="lf-chip" [attr.aria-pressed]="chipPressed(chip)" (click)="setChip(chip)" [attr.data-chip]="chip.key">
+          {{ chip.label }}
+          @if (countFor(chip.key); as count) {
+            <span class="lf-chip__count">{{ count }}</span>
+          }
+        </button>
+      }
+      <span class="dx-sep" aria-hidden="true"></span>
+      <button type="button" class="lf-chip" [attr.aria-pressed]="view().feedback === 'none'" (click)="setFeedback('none')" data-chip="feedback-none">No verdict yet</button>
+      <button type="button" class="lf-chip" [attr.aria-pressed]="view().feedback === 'any'" (click)="setFeedback('any')" data-chip="feedback-any">My verdicts</button>
+    </div>
+    @if (active().length) {
+      <div class="dx-active" role="group" aria-label="Active filters">
+        @for (item of active(); track item.key + item.label) {
+          <button type="button" class="lf-chip lf-chip--accent dx-active__chip" (click)="go(item.clear)" [attr.aria-label]="'Remove filter: ' + item.label" data-active-filter>
+            {{ item.label }}<app-icon name="x" />
+          </button>
+        }
+        @if (active().length > 1) {
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="clearAll()">Clear all</button>
+        }
+      </div>
+    }
+  </div>
+
+  <section class="dx-list" aria-labelledby="dx-list-h">
+    <h2 id="dx-list-h" class="sr-only">Decisions</h2>
+    @if (listError()) {
+      <div class="lf-tile lf-empty" role="alert" data-decisions-error>
+        <app-icon name="alert" />
+        <strong>The decisions did not load</strong>
+        <span>{{ listError() }} Your filters are kept.</span>
+        <button type="button" class="lf-btn" (click)="loadList()">Retry</button>
+      </div>
+    } @else if (listLoading() && !rows().length) {
+      <div class="lf-tile lf-tile--flush" aria-busy="true" aria-label="Loading decisions">
+        @for (i of [0, 1, 2, 3, 4]; track i) {
+          <div class="dx-skel"><app-skeleton width="5.5rem" height="1.35rem" /><app-skeleton width="92%" /><app-skeleton width="60%" height="0.8rem" /></div>
+        }
+      </div>
+    } @else if (!rows().length) {
+      <div class="lf-tile lf-empty" data-decisions-empty>
+        <app-icon name="shield" />
+        @if (anyFilter()) {
+          <strong>Nothing matches these filters {{ view().range === '24h' ? 'in the last 24 hours' : view().range === '7d' ? 'in the last 7 days' : 'in the last 30 days' }}</strong>
+          <span>Widen the range or clear the filters.</span>
+          <button type="button" class="lf-btn" (click)="clearAll()">Clear filters</button>
+        } @else {
+          <strong>Chat protection made no decisions {{ view().range === '24h' ? 'in the last 24 hours' : view().range === '7d' ? 'in the last 7 days' : 'in the last 30 days' }}</strong>
+          <span>Try a longer range. Decisions are kept for 180 days.</span>
+        }
+      </div>
+    } @else {
+      <p class="dx-count" aria-live="polite" data-decisions-count>
+        {{ total() === 1 ? '1 decision' : total() + ' decisions' }}@if (anyFilter()) { match}
+      </p>
+      <div class="lf-tile lf-tile--flush">
+        <ul class="lf-rows dx-rows" [attr.aria-busy]="listLoading()">
+          @for (row of rows(); track row.id) {
+            @let l = line(row);
+            <li>
+              <button type="button" class="dx-row" (click)="open(row)" [attr.aria-current]="openId() === row.id ? 'true' : null" data-decision-row [attr.data-id]="row.id">
+                <span class="dx-row__top">
+                  <span class="dx-tone" [attr.data-tone]="l.outcome.tone"><app-icon [name]="l.outcome.icon" />{{ l.outcome.label }}</span>
+                  @if (l.verdict; as v) {
+                    <span class="dx-mark" [attr.data-tone]="v.agree ? 'ok' : 'warn'" data-row-verdict>
+                      <app-icon [name]="v.agree ? 'thumb-up' : 'thumb-down'" />{{ v.agree ? 'You agreed' : "You didn't agree" }}
+                    </span>
+                  }
+                  <span class="dx-row__when">{{ relativeTime(row.at) }}</span>
+                </span>
+                <span class="dx-row__msg">{{ row.messageText }}</span>
+                <span class="dx-row__meta">
+                  <b>{{ row.chatter.name || 'Unknown viewer' }}</b>
+                  @if (!fixed()) {
+                    <span>{{ row.channel || 'unnamed channel' }}</span>
+                  }
+                  @for (item of l.meta; track $index) {
+                    <span>{{ item }}</span>
+                  }
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (totalPages() > 1) {
+          <nav class="lf-pager" aria-label="Pages">
+            <button type="button" class="lf-btn" [disabled]="view().page <= 1 || listLoading()" (click)="go({ page: view().page - 1 })" data-page-prev>Previous</button>
+            <span class="lf-pager__info">Page {{ view().page }} of {{ totalPages() }}</span>
+            <button type="button" class="lf-btn" [disabled]="view().page >= totalPages() || listLoading()" (click)="go({ page: view().page + 1 })" data-page-next>Next</button>
+          </nav>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+<app-decisions-filters
+  [open]="filtersOpen()"
+  [view]="view()"
+  [fixed]="fixed()"
+  [models]="models()"
+  [channelLabel]="active()[0]?.key === 'channel' ? active()[0].label : null"
+  (closed)="filtersOpen.set(false)"
+  (changed)="applyFilters($event)"
+  (cleared)="clearAll()"
+/>
+
+<app-decision-detail
+  [id]="openId()"
+  [row]="openRow()"
+  [fixedChannel]="fixed()"
+  [position]="openPosition()"
+  [hasPrev]="hasPrev()"
+  [hasNext]="hasNext()"
+  (closed)="closeSheet()"
+  (step)="step($event)"
+  (openId)="go({ open: $event }, true)"
+  (saved)="onSaved($event)"
+  (onlyViewer)="onlyViewer($event)"
+/>

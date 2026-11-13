@@ -176,7 +176,7 @@ async function executeAction(action: FollowDefenseAction): Promise<BanResponse> 
         return ban(action.channelID, action.followerID, TWITCH_BOT_ACCOUNT_ID, null, action.reason, AbortSignal.timeout(10_000));
     }
     const { sendTwitchChatMessage } = await import('../functions/chats/send_message.chat.js');
-    return sendTwitchChatMessage(action.channelID, action.message, null, { channelID: action.channelID });
+    return sendTwitchChatMessage(action.channelID, action.message, null, { channelID: action.channelID }, { origin: 'follow_defense' });
 }
 
 // A durable audit receipt lets a restart repair attack logs without repeating the Twitch request.

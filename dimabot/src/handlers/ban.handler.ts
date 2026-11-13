@@ -2,6 +2,7 @@ import { sendTwitchChatMessage, type SendMessageContext } from "../functions/cha
 import type { IEventsub } from "../schemas/eventsub.schema.js";
 import type { IBanEvent } from "../interfaces/twitch/eventsub.interface.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
+import { chatSendDecision, recordAlert, type AlertDecision } from "../utils/activity_events.js";
 
 interface BanHandlerResponse {
     error: boolean;
@@ -11,12 +12,17 @@ interface BanHandlerResponse {
 export async function banHandler(
     eventData: IBanEvent,
     eventsubData: IEventsub,
-    chatEnabled: boolean
+    chatEnabled: boolean,
+    /** Twitch message id, for the activity row. */
+    messageId?: string
 ): Promise<BanHandlerResponse> {
+    const noteAlert = (decision: AlertDecision) => recordAlert({ type: 'channel.ban', channelID: eventData?.broadcaster_user_id,
+        payload: eventData, ref: messageId, data: { permanent: eventData?.is_permanent === true } }, decision);
     try {
         const { broadcaster_user_id, is_permanent } = eventData;
 
         if (!chatEnabled) {
+            noteAlert({ outcome: 'skipped', reason: 'chat_disabled' });
             return {
                 error: false,
                 message: 'Chat is disabled'
@@ -32,6 +38,7 @@ export async function banHandler(
         }
 
         if (!messageToSend || messageToSend.trim() === '') {
+            noteAlert({ outcome: 'skipped', reason: 'empty_message' });
             return {
                 error: false,
                 message: 'No message to send'
@@ -43,7 +50,8 @@ export async function banHandler(
             eventData: eventData
         };
 
-        await sendTwitchChatMessage(broadcaster_user_id, messageToSend, null, context);
+        const sent = await sendTwitchChatMessage(broadcaster_user_id, messageToSend, null, context, { origin: 'alert' });
+        noteAlert(chatSendDecision(sent));
 
         await logInfo({
             message: 'Ban handled',
@@ -56,6 +64,7 @@ export async function banHandler(
             message: 'Ban handled'
         };
     } catch (err) {
+        noteAlert({ outcome: 'failed', reason: 'handler_error', error: err });
         await logError({
             function: 'banHandler',
             eventData,

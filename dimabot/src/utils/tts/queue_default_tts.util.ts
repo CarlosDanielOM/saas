@@ -12,6 +12,11 @@ interface QueueDefaultTtsInput {
     channelID: string;
     rawMessage: string;
     source: 'chat-command' | 'ast' | 'redemption';
+    /**
+     * A channel-point reward ran this AST. It is spoken like any AST voice; the request says 'redemption'
+     * and the speech route keeps reporting it as 'ast' to Polar and analytics (see `ttsRequestSources`).
+     */
+    redemption?: boolean;
     preferredMode?: 'default' | 'speak' | 'clone' | 'kokoro';
     cloneName?: string;
     userID?: string;
@@ -119,7 +124,7 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
             userLevel: input.userLevel
         },
         meta: {
-            source: input.source,
+            source: input.redemption ? 'redemption' : input.source,
             originalText: rawMessage,
             skipEmotes: settings.filters.skipEmotes,
             stripLinks: settings.filters.stripLinks

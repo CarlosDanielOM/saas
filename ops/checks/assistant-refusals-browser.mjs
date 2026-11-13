@@ -70,14 +70,13 @@ try {
     const until = async (fn, label) => { for (let i = 0; i < 100; i++) { if (await fn()) return; await page.waitForTimeout(100); } throw new Error(`Timeout: ${label}`); };
     const cards = page.locator('[data-refusal-card]');
 
-    // From the chat-protection review to the refusals: the status line answers "anything new?" first.
-    await page.goto(`${base}/moderation-review`);
-    await page.getByRole('link', { name: 'Assistant refusals' }).click();
+    // The status line answers "anything new?" first. (The page is reached from the Dima assistant page.)
+    await page.goto(`${base}/assistant-refusals`);
     await cards.first().waitFor({ timeout: 60000 });
     assert.match(page.url(), /\/assistant-refusals$/);
     assert.match(await page.locator('[data-refusal-status]').innerText(), /2 refusals in the last 7 days[\s\S]*21 kept in all\. Each is kept 90 days/);
     assert.equal(await cards.count(), 2);
-    assert.equal(await page.locator('.bottom-nav').getByRole('link', { name: 'Review', exact: true }).getAttribute('aria-current'), 'page', 'Review tab stays active');
+    assert.equal(await page.locator('.bottom-nav').getByRole('link', { name: 'AI', exact: true }).getAttribute('aria-current'), 'page', 'the AI tab stays lit: refusals live under AI');
 
     // A reply refusal: who, where, the question, what was added, how it was declined, models, partial answer, context.
     const first = cards.first();
@@ -118,9 +117,8 @@ try {
     await until(async () => (await cards.count()) === 1, 'retry');
     assert.ok(requests.filter((query) => /channel=533538623/.test(query)).length >= 2, 'retry keeps the filter');
 
-    // Back to the chat-protection review from here.
-    await page.getByRole('link', { name: 'Chat protection review' }).click();
-    await until(async () => /\/moderation-review$/.test(page.url()), 'back to the review');
+    // The way back is the Dima assistant page, where refusals are linked from.
+    assert.equal(await page.locator('a.lf-back').getAttribute('href'), '/ai/assistant');
 
     // Layout and accessibility, dark first.
     for (const mode of ['dark', 'light']) {

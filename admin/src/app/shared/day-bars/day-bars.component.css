@@ -1,0 +1,73 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.days {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+}
+.days__read {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.days__read b {
+  color: var(--fg);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.days__part {
+  color: var(--warn);
+  font-weight: 700;
+}
+.days__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 4.5rem;
+}
+.days__bar {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.3rem;
+  background: none;
+  cursor: pointer;
+}
+.days__bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.days__fill {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.3rem 0.3rem 0.12rem 0.12rem;
+  background: var(--accent-line);
+}
+.days__bar:hover .days__fill,
+.days__bar.is-picked .days__fill {
+  background: var(--accent-solid);
+}
+.days__warn {
+  width: 100%;
+  background: var(--warn);
+  opacity: 0.85;
+}
+.days__axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.7rem;
+}

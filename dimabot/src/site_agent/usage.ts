@@ -16,6 +16,7 @@ import { ingestPolarNamedEvents, type PolarNamedEvent } from '../utils/polarsh.j
 import { SITE_AGENT_KEYS } from './config.js';
 import { effectiveCostUsd, estimateUsageCost } from './llm/cost.js';
 import { RECONCILE_SCHEDULE_MS, reconcileGeneration } from './llm/openrouter.js';
+import { addReconciledStep, feedbackKey, setTurnLogFeedback } from './turn_log.js';
 import type { LlmUsage, PlanTier, TurnStatus } from './types.js';
 
 export const POLAR_EVENT_NAME = 'ai_assistant';
@@ -31,7 +32,6 @@ const RECONCILE_MAX = 5_000;
 
 const day = (at = new Date()) => at.toISOString().slice(0, 10);
 const statsKey = () => SITE_AGENT_KEYS.stats(day());
-const feedbackKey = (turnId: string) => `site_agent:feedback:${turnId}`;
 
 export type StepKind = 'step' | 'compaction';
 export type CostSource = LlmUsage['source'];
@@ -242,15 +242,17 @@ export async function recordFeedback(turnId: string, helpful: boolean): Promise<
     if (typeof turnId !== 'string' || !turnId || typeof helpful !== 'boolean') return false;
     const redis = await getDragonflyClient('site-agent-usage');
     const key = feedbackKey(turnId);
-    const first = await redis.hSetNX(key, 'rating', helpful ? 'helpful' : 'unhelpful');
+    const rating = helpful ? 'helpful' : 'unhelpful';
+    const first = await redis.hSetNX(key, 'rating', rating);
     if (!first) return false;
     const stats = statsKey();
     await redis.multi()
         .hSet(key, 'at', new Date().toISOString())
         .expire(key, FEEDBACK_TTL_SECONDS)
-        .hIncrBy(stats, helpful ? 'helpful' : 'unhelpful', 1)
+        .hIncrBy(stats, rating, 1)
         .expire(stats, STATS_TTL_SECONDS)
         .exec();
+    await setTurnLogFeedback(turnId, rating);
     return true;
 }
 
@@ -310,7 +312,8 @@ export async function drainReconcile(limit = 20): Promise<DrainReconcileResult> 
         }
         const { generationId: _generationId, queuedAt: _queuedAt, attempt, ...record } = item;
         if (usage) {
-            await recordStep({ ...record, usage });
+            const recorded = await recordStep({ ...record, usage });
+            await addReconciledStep(record.turnId, polarExternalId(record.turnId, record.step, record.kind), usage, recorded.costUsd, record.model);
             out.reconciled++;
         } else if (attempt + 1 < RECONCILE_SCHEDULE_MS.length) {
             later.push({ ...item, attempt: attempt + 1 });

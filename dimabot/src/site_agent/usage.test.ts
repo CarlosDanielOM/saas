@@ -78,11 +78,17 @@ const ingest = mock.fn(async (_events: unknown[]) => ({ inserted: 1, duplicates:
 const accounts = new Map<string, { polar_sh_customer_id: string }>();
 const reconcile = mock.fn(async (_id: string, _opts?: unknown): Promise<LlmUsage | null> => null);
 const logged: unknown[] = [];
+const turnLog = { feedback: [] as unknown[][], reconciled: [] as unknown[][] };
 
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => redis } });
 mock.module('../utils/polarsh.js', { namedExports: { ingestPolarNamedEvents: ingest } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: async (id: string) => accounts.get(id) ?? null } });
 mock.module('../utils/logger.js', { namedExports: { warn: async (data: unknown) => { logged.push(data); }, error: async (data: unknown) => { logged.push(data); } } });
+mock.module('./turn_log.js', { namedExports: {
+    feedbackKey: (turnId: string) => `site_agent:feedback:${turnId}`,
+    setTurnLogFeedback: async (...args: unknown[]) => { turnLog.feedback.push(args); },
+    addReconciledStep: async (...args: unknown[]) => { turnLog.reconciled.push(args); },
+} });
 mock.module('./llm/openrouter.js', { namedExports: { reconcileGeneration: reconcile, RECONCILE_SCHEDULE_MS: [5_000, 15_000, 45_000, 90_000] } });
 
 const usageModule = await import('./usage.js');
@@ -99,6 +105,8 @@ beforeEach(() => {
     accounts.clear();
     accounts.set('533538623', { polar_sh_customer_id: 'cust_1' });
     logged.length = 0;
+    turnLog.feedback.length = 0;
+    turnLog.reconciled.length = 0;
 });
 
 test('recordStep writes daily stats and one ai_assistant event (no credits)', async () => {
@@ -213,6 +221,7 @@ test('recordFeedback: first rating wins', async () => {
     const stats = redis.stats();
     assert.equal(stats.helpful, '1');
     assert.equal(stats.unhelpful, '1');
+    assert.deepEqual(turnLog.feedback, [['t1', 'helpful'], ['t2', 'unhelpful']], 'the first rating also goes on the turn log row');
 });
 
 test('reconcile queue: waits until due, records found usage, gives up as unknown', async (t) => {
@@ -234,6 +243,11 @@ test('reconcile queue: waits until due, records found usage, gives up as unknown
     const event = (ingest.mock.calls[0].arguments[0] as { metadata: Record<string, unknown> }[])[0];
     assert.equal(event.metadata.cost_source, 'reconciled');
     assert.equal(event.metadata.cost_usd, 0.0001611);
+    assert.equal(turnLog.reconciled.length, 1, 'the reconciled cost goes to the turn log');
+    assert.equal(turnLog.reconciled[0][0], 't1');
+    assert.equal(turnLog.reconciled[0][1], 'site_agent:t1:2', 'keyed by the step (its Polar external id)');
+    assert.equal(turnLog.reconciled[0][3], 0.0001611);
+    assert.equal(turnLog.reconciled[0][4], 'openai/gpt-6-luna', 'with the model that ran the step');
 
     for (const at of [15_000, 45_000]) {
         t.mock.timers.setTime(1_000_000 + at);
@@ -246,6 +260,7 @@ test('reconcile queue: waits until due, records found usage, gives up as unknown
     assert.equal(stats.steps, '2');
     assert.equal(stats.cost_unknown_steps, '1');
     assert.equal(reconcile.mock.callCount(), 5);
+    assert.equal(turnLog.reconciled.length, 1, 'given up as unknown: the turn log keeps it as unknown');
 });
 
 test('queueReconcile falls back to an unknown-cost step when Dragonfly fails', async () => {

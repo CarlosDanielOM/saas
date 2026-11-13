@@ -3,7 +3,8 @@ import { ChannelAIPersonalitySchema, type IChannelAIPersonality } from '../../..
 import { formatBadges, type IBadge } from '../../badges.js';
 import { getDragonflyClient } from '../../databases/dragonfly.database.js';
 import { isAiCreditsExhausted } from '../../billing.js';
-import { ingestPolarSHEvent } from '../../polarsh.js';
+import { ingestPolarSHEvent, providerReportedCostUsd } from '../../polarsh.js';
+import { usageActorFromChatTags } from '../../ai_usage_event.js';
 import { constructChatSystemMessages } from '../prompts.ai.js';
 import { MODELS, TOKEN_LIMITS, selectChatModel } from '../constants.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
@@ -401,7 +402,8 @@ export async function AiResponse(
                     requestId: usageRequestId,
                     source: 'chat',
                     provider: 'openrouter',
-                    resourceType: 'llm_generation'
+                    resourceType: 'llm_generation',
+                    receipt: { actor: usageActorFromChatTags(tags), costUsd: providerReportedCostUsd(usageData) }
                 }
             });
         }

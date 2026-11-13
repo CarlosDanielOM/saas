@@ -2,7 +2,7 @@ import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { ChannelAIPersonalitySchema } from '../../../schemas/channel_ai_personality.schema.js';
 import { BACKGROUND_MODEL_FALLBACK, getBackgroundSummaryModel, getProviderRestriction } from '../constants.js';
 import { createFetchWithRetry, type RetryOptions } from '../fetch.utils.js';
-import { ingestPolarSHEvent } from '../../polarsh.js';
+import { ingestPolarSHEvent, providerReportedCostUsd } from '../../polarsh.js';
 import { warn as logWarn, error as logError, debug as logDebug } from '../../logger.js';
 import {
     STREAM_SUMMARY_JSON_SCHEMA,
@@ -593,7 +593,8 @@ export async function generateStreamSummaryDecision(
                             source: mode,
                             provider: 'openrouter',
                             resourceType: 'llm_generation',
-                            resourceId: context.session.streamID || context.session.id
+                            resourceId: context.session.streamID || context.session.id,
+                            receipt: { costUsd: providerReportedCostUsd(usageData) }
                         }
                     });
                 } catch (err) {

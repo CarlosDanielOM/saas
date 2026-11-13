@@ -1,0 +1,153 @@
+:host {
+  display: block;
+}
+.da {
+  border-top: 1px solid var(--line);
+}
+:host-context(li:first-child) .da {
+  border-top: 0;
+}
+.da__sum {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.7rem 1rem;
+  list-style: none;
+  cursor: pointer;
+}
+.da__sum::-webkit-details-marker {
+  display: none;
+}
+.da__sum:hover,
+.da__sum:focus-visible {
+  background: var(--tile-2);
+}
+.da__main {
+  display: grid;
+  flex: 1;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.da__q {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.da[open] .da__q {
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+.da__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.da__tag {
+  padding: 0.05rem 0.45rem;
+  border-radius: 0.6rem;
+  background: var(--btn);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.da__tag--bad {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.da__rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+.da__rate app-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.da__rate--ok {
+  color: var(--ok);
+}
+.da__rate--bad {
+  color: var(--danger);
+}
+.da__end {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.da__cost {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+.da__chev {
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.da[open] .da__chev {
+  transform: rotate(180deg);
+}
+.da__body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 1rem 1rem;
+}
+.da__h {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.da__answer {
+  border-left-color: var(--ok);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+.da__why {
+  margin: 0;
+}
+.da__sources {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.da__sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.75rem;
+  color: var(--accent);
+  font-size: 0.86rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.da__sources app-icon {
+  flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.da__mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+@media (min-width: 640px) {
+  .da__sum,
+  .da__body {
+    padding-inline: 1.25rem;
+  }
+}

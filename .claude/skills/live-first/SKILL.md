@@ -295,28 +295,53 @@ The viewer extension uses the same language, adapted to Twitch:
 
 ## Admin site (`admin/`)
 
-Same language, same tokens, same two non-negotiables. The admin is internal and English-only, but it is used from a phone as much as from a desk.
+The admin uses the same language and tokens. It is internal and English-only. Design for the owner's phone first, then give desktop a deliberate layout. Put the answer to the operator's question first in a plain-language status line, with the next action beside it. On phones put the useful list before supporting numbers.
 
-- **Tokens + shared pieces live in `admin/src/styles.css`** (the admin is small and every page shares them): `.lf-main`, `.lf-head`, `.lf-tile`, `.lf-status` (plain-language answer with tone `--ok/--warn/--live/--muted`), `.lf-chip`, `.lf-btn`, `.lf-row(s)`, `.lf-switch`, `.lf-input`, `.lf-seg`, `.lf-choice`, `.lf-step`, `.lf-more`, `.lf-dl`, `.lf-bar`, `.lf-metrics`, `dialog.lf-dialog`. Page-only layout goes in the page's component CSS.
-- **Theme:** `ThemeService` (`admin/src/app/services/theme.service.ts`) — mode `system|light|dark` (default dark) + accent `violet|green|blue|cyan` on `html.dark` / `data-accent`. Accent tokens are AA-checked per mode; live/warn/plan colours never follow the accent.
-- **Shell:** sticky top bar (brand pulse, pill links ≥960px, sun/moon toggle, account menu) + phone bottom tab bar (`.bottom-nav`). Content has no outer padding; pages own their gutters via `.lf-main`.
-- **Answer the operator's question first:** Overview = "does anyone need me?" (attention rows link to Users pre-sorted), Users = find + status chips that double as sort shortcuts, Channel = health line listing what's wrong and the fix, Twitch events = "is the bot hearing everything?" with problems grouped first, Usage = "will they run out, and when?".
-- **Real side effects always confirm:** reminder emails, AI credit grants (amount → reason → "balance goes from X to Y" → confirm), EventSub test events (warn that alerts can really appear on stream). Validation inline; toasts only for server results.
-- **Raw ids are secondary:** show the plain name first ("Follows") and the raw value small/monospace (`channel.follow v2`, channel ID with a copy button).
-- **State in the URL:** list pages keep search/sort/page in query params so links and Back restore the view.
-- `app-avatar` (`shared/avatar`) shows real Twitch images (cached `GET /users?username=`) with letter fallback; pass `[fetch]="false"` in long lists.
-- Admin is zoneless; checks must poll after clicks. Behaviour check: `ops/checks/admin-ui.mjs` (all APIs mocked, axe + overflow at 320/390/768/1280 in dark and light). Preview/build/deploy with `scripts/saas-ops preview|build admin`.
+- **Navigation:** the five tabs are Overview (`/dashboard`), Activity (`/activity`), AI (`/ai`), Users (`/users`) and System (`/observability`). AI links to usage, chat protection, the Dima assistant, Docs AI, the review queue and assistant refusals. The account menu contains “Test an email” and “Read a server file”.
+- **Channel workspace:** one shared header and tab strip contain Overview, Activity, Commands, Twitch events, Protection, AI & credits and Bot log. Reuse the frame instead of making separate channel headers.
+- **Shared styles:** tokens and primitives live in `admin/src/styles.css`; page-only layout belongs in component CSS. Existing primitives include `.lf-main`, `.lf-head`, `.lf-tile`, `.lf-status`, `.lf-chip`, `.lf-btn`, `.lf-row`, `.lf-rows`, `.lf-switch`, `.lf-input`, `.lf-seg`, `.lf-choice`, `.lf-step`, `.lf-more`, `.lf-dl`, `.lf-bar`, `.lf-metrics` and `dialog.lf-dialog`.
+- **Feed rows:** reuse `admin/src/app/shared/feed/`: a compact icon and plain sentence, optional quote and detail, channel, time and cost; expand a row for facts and links. All feed wording belongs in `feed-format.ts`, so every page uses the same language.
+- **Filters and navigation state:** use chip strips for common filters and a bottom sheet for rare filters. Keep search, filters, sort and page state in URL query parameters so links and Back restore the view.
+- **Money:** show credits and their dollar value together at 100,000 credits per USD. Show provider cost separately, only where recorded; do not estimate it.
+- **Theme:** `ThemeService` (`admin/src/app/services/theme.service.ts`) uses `system|light|dark` (default dark) and `violet|green|blue|cyan` accents on `html.dark` / `data-accent`. Live, warning and plan colours do not follow the accent.
+- **Shell:** sticky top bar with brand pulse, desktop links, theme toggle and account menu; phone bottom tab bar (`.bottom-nav`). Content has no outer padding; pages own gutters via `.lf-main`.
+- **Side effects:** confirm reminder emails, AI credit grants and EventSub test events with their consequences. Validate inline and use toasts for server results.
+- **Raw IDs are secondary:** show the plain name first and the raw value small or monospace. `app-avatar` (`shared/avatar`) shows Twitch images with a letter fallback; use `[fetch]="false"` in long lists.
+- Admin is zoneless; checks must poll after clicks. Use `ops/checks/admin-ui.mjs` and the relevant `ops/checks/admin-console-*-browser.mjs` check. Preview, build and deploy through `scripts/saas-ops` as described in `admin/AGENTS.md`.
+
+The “Console pieces” block in `admin/src/styles.css` provides these shared classes:
+
+| Class | Purpose |
+|-------|---------|
+| `.lf-tabs` | Horizontally scrolling tab strip on phones. |
+| `.lf-tab` | A link or button within the tab strip, with an active state. |
+| `.lf-tab__count`, `.lf-tab__count--warn` | Tab count and its warning treatment. |
+| `.lf-strip` | Filter-chip strip that scrolls on phones and wraps at wider sizes. |
+| `.lf-chip__count` | Numeric count within a chip. |
+| `.lf-sticky` | Filter bar that stays below the top navigation while scrolling. |
+| `.lf-stats` | Responsive grid of compact number shortcuts. |
+| `.lf-stat` | Compact number or shortcut tile. |
+| `.lf-stat__label`, `.lf-stat__value`, `.lf-stat__note` | Label, number and supporting note in a stat. |
+| `.lf-stat__note--warn`, `.lf-stat__note--danger` | Warning and danger treatments for a stat note. |
+| `.lf-bars` | List of breakdown rows. |
+| `.lf-bars__row` | Breakdown row with name, share bar and value. |
+| `.lf-bars__name`, `.lf-bars__value` | Name and right-aligned value in a breakdown row. |
+| `.lf-quote` | Preserved text displayed as a quote. |
+| `.lf-more-row` | Centered load-more control below a list. |
 
 | Admin surface | Path |
 |---------------|------|
 | Tokens + shared primitives | `admin/src/styles.css` |
-| Shell | `admin/src/app/shared/navbar/*`, `features/layout/*` |
-| Overview (status + attention + live) | `admin/src/app/pages/dashboard/*` |
-| Directory with chip shortcuts + URL state | `admin/src/app/pages/users/*` |
-| Detail page: health line, credits, confirmed grant dialog | `admin/src/app/pages/channel/channel-detail.component.*` |
-| Grouped toggles + test dialog | `admin/src/app/pages/channel/channel-eventsubs.component.*`, `shared/test-event-modal/*` |
-| Forecast + chart + ledger | `admin/src/app/pages/channel/channel-usage.component.*` |
-| Stepped form with choice cards | `admin/src/app/pages/email-test/*` |
+| Shell and navigation | `admin/src/app/shared/navbar/`, `admin/src/app/features/layout/` |
+| Overview | `admin/src/app/pages/dashboard/` |
+| Activity and shared feed | `admin/src/app/pages/activity/`, `admin/src/app/shared/feed/` |
+| AI hub and usage | `admin/src/app/pages/ai/`, `admin/src/app/pages/usage/` |
+| Chat protection decisions and review | `admin/src/app/pages/decisions/`, `admin/src/app/pages/moderation-review/` |
+| Dima assistant, Docs AI and refusals | `admin/src/app/pages/assistants/`, `admin/src/app/pages/assistant-refusals/` |
+| Users and channel workspace | `admin/src/app/pages/users/`, `admin/src/app/pages/channel/` |
+| System analytics | `admin/src/app/pages/observability/` |
+| Email test and server-file reader | `admin/src/app/pages/email-test/`, `admin/src/app/pages/read-tool/` |
+| Shared formatting, day bars, channel picker and decisions | `admin/src/app/shared/format.ts`, `admin/src/app/shared/day-bars/`, `admin/src/app/shared/channel-picker/`, `admin/src/app/shared/decisions/` |
 
 ---
 

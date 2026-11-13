@@ -33,6 +33,12 @@ import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usag
 import { cacheCreditPackBillingContext } from '../../utils/billing.js';
 import { getAdminPetDiagnostics } from '../services/admin_pet_diagnostics.service.js';
 import { listRefusals } from '../../site_agent/refusals.js';
+import { adminFeedRouter } from './admin_site/feed.route.js';
+import { adminOverviewRouter } from './admin_site/overview.route.js';
+import { adminDecisionsRouter } from './admin_site/decisions.route.js';
+import { adminUsageRouter } from './admin_site/usage.route.js';
+import { adminAssistantsRouter } from './admin_site/assistants.route.js';
+import { adminChannelDebugRouter } from './admin_site/channel_debug.route.js';
 import { labelModerationReview, listModerationReviews, moderationReviewCounts, MODERATION_REVIEW_KINDS, MODERATION_REVIEW_LABELS, type ModerationReviewKind, type ModerationReviewLabel } from '../services/moderation_review.service.js';
 
 interface AuthRequest extends Request {
@@ -968,7 +974,7 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
                 const message = user.language === 'es'
                     ? `🎁 Un administrador añadió ${amount} créditos de IA a este canal. ¡Ya están disponibles!`
                     : `🎁 An admin added ${amount} AI credits to this channel. The credits are ready to use!`;
-                const result = await sendTwitchChatMessage(channelIdStr, message);
+                const result = await sendTwitchChatMessage(channelIdStr, message, null, undefined, { origin: 'system' });
                 if (!result.error && result.data?.is_sent === true) chatAnnouncement = 'sent';
             } catch {
                 console.warn('Admin credits applied, but chat announcement failed', { channelID: channelIdStr });
@@ -1179,5 +1185,13 @@ router.get('/assistant-refusals', authMiddleware as any, async (req: AuthRequest
         return res.status(500).json({ error: true, message: 'Assistant refusals unavailable', status: 500 });
     }
 });
+
+// The admin console: one router per area, each owner only (see `admin_site/shared.ts`).
+router.use(adminOverviewRouter);
+router.use(adminFeedRouter);
+router.use(adminDecisionsRouter);
+router.use(adminUsageRouter);
+router.use(adminAssistantsRouter);
+router.use(adminChannelDebugRouter);
 
 export const adminSiteRoute = router;

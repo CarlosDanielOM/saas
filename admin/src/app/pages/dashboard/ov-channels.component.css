@@ -1,0 +1,31 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.ovc-problems {
+  color: var(--warn);
+  font-weight: 700;
+}
+.ovc-credits {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ovc-skel {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.25rem 1rem 1rem;
+}
+.ovc-empty {
+  padding: 1.25rem 1rem;
+}
+@media (min-width: 640px) {
+  .ovc-skel {
+    padding-inline: 1.25rem;
+  }
+}
+.ovc-problems {
+  white-space: nowrap;
+}

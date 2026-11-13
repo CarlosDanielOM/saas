@@ -15,6 +15,32 @@ export type AiUsageCategory =
 export type AiUsageUnit = 'characters' | 'tokens' | 'minutes';
 export type AiUsageResourceType = 'speech' | 'voice_preview' | 'llm_generation' | 'vod_analysis';
 
+/** The chatter, viewer or dashboard user whose request caused the usage. */
+export interface AiUsageActor {
+    id?: string | null;
+    login?: string | null;
+    name?: string | null;
+}
+
+/**
+ * Facts that only our own usage receipt keeps. They never reach the Polar event or analytics, so
+ * adding them changes nothing that is billed or reported elsewhere.
+ */
+export interface AiUsageReceiptDetails {
+    actor?: AiUsageActor | null;
+    /** What the provider charged us in USD, when the caller knows it better than the Polar accounting does. */
+    costUsd?: number | null;
+    /** Voice requests: the voice that spoke. */
+    voice?: string | null;
+    /** Voice requests: the model, kept off the Polar event so voice events stay as they are there. */
+    model?: string | null;
+    /**
+     * A more specific source than the one Polar and analytics get ('redemption' for a channel-point
+     * reward that ran AST, which those events keep reporting as 'ast').
+     */
+    source?: string | null;
+}
+
 export interface AiUsageContextInput {
     entryId?: string;
     requestId?: string;
@@ -30,6 +56,7 @@ export interface AiUsageContextInput {
     unit?: AiUsageUnit;
     resourceType?: AiUsageResourceType;
     resourceId?: string;
+    receipt?: AiUsageReceiptDetails;
 }
 
 export interface AiUsageContext {
@@ -49,6 +76,7 @@ export interface AiUsageContext {
     unit?: AiUsageUnit;
     resourceType?: AiUsageResourceType;
     resourceId?: string;
+    receipt?: AiUsageReceiptDetails;
 }
 
 export interface PolarUsageMetadataShape {
@@ -138,8 +166,23 @@ export function createAiUsageContext(reason: string, input: AiUsageContextInput 
         ...(optionalFinite(input.quantity) !== undefined ? { quantity: optionalFinite(input.quantity) } : {}),
         ...(input.unit ? { unit: input.unit } : {}),
         ...(input.resourceType ? { resourceType: input.resourceType } : {}),
-        ...(optionalText(input.resourceId) ? { resourceId: optionalText(input.resourceId) } : {})
+        ...(optionalText(input.resourceId) ? { resourceId: optionalText(input.resourceId) } : {}),
+        ...(input.receipt ? { receipt: input.receipt } : {})
     };
+}
+
+/** The chatter on AI chat tags as the message handler, pets and desktop turns build them. */
+export function usageActorFromChatTags(tags: {
+    chatter_user_id?: unknown; userID?: unknown; chatter_user_login?: unknown; chatter_user_name?: unknown; username?: unknown;
+} | null | undefined): AiUsageActor | undefined {
+    if (!tags) return undefined;
+    const text = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+    const actor = {
+        id: text(tags.chatter_user_id) || text(tags.userID),
+        login: text(tags.chatter_user_login),
+        name: text(tags.username) || text(tags.chatter_user_name)
+    };
+    return actor.id || actor.login || actor.name ? actor : undefined;
 }
 
 export function toPolarUsageMetadata(context: AiUsageContext): PolarUsageMetadataShape {

@@ -4,6 +4,7 @@ import type { IFollowEvent } from "../interfaces/twitch/eventsub.interface.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { enqueueFollowDefenseFollow, shouldSuppressFollowAlerts } from "../utils/follow_defense_queue.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
+import { chatSendDecision, recordAlert, type AlertDecision } from "../utils/activity_events.js";
 
 interface FollowHandlerResponse {
     error: boolean;
@@ -14,14 +15,19 @@ export async function followHandler(
     eventData: IFollowEvent,
     eventsubData: IEventsub,
     chatEnabled: boolean,
-    options: { durableDefenseHandled?: boolean } = {}
+    options: { durableDefenseHandled?: boolean; durableChatHandled?: boolean; messageId?: string } = {}
 ): Promise<FollowHandlerResponse> {
+    // A journaled follow is announced by the chat-announcements consumer, which records its own alert row.
+    const noteAlert = (decision: AlertDecision) => {
+        if (!options.durableChatHandled) recordAlert({ type: 'channel.follow', channelID: eventData?.broadcaster_user_id, payload: eventData, ref: options.messageId }, decision);
+    };
     try {
         const { broadcaster_user_id, user_name, user_login } = eventData;
 
         if (!options.durableDefenseHandled) void enqueueFollowDefenseFollow(eventData);
 
         if (!chatEnabled) {
+            noteAlert({ outcome: 'skipped', reason: 'chat_disabled' });
             return {
                 error: false,
                 message: 'Chat is disabled'
@@ -46,6 +52,7 @@ export async function followHandler(
         }
 
         if (!messageToSend || messageToSend.trim() === '') {
+            noteAlert({ outcome: 'skipped', reason: 'empty_message' });
             return {
                 error: false,
                 message: 'No message to send'
@@ -54,6 +61,7 @@ export async function followHandler(
 
         const eventID = JSON.stringify(['legacy-follow', broadcaster_user_id, eventData.user_id, eventData.followed_at]);
         if (await shouldSuppressFollowAlerts(broadcaster_user_id, eventID)) {
+            noteAlert({ outcome: 'skipped', reason: 'follow_defense' });
             return { error: false, message: 'Follow alert suppressed by defense mode' };
         }
 
@@ -67,7 +75,8 @@ export async function followHandler(
             }
         };
 
-        await sendTwitchChatMessage(broadcaster_user_id, messageToSend, null, context);
+        const sent = await sendTwitchChatMessage(broadcaster_user_id, messageToSend, null, context, { origin: 'alert' });
+        noteAlert(chatSendDecision(sent));
 
         await logInfo({
             message: 'Follow received',
@@ -82,6 +91,7 @@ export async function followHandler(
             message: 'Follow handled'
         };
     } catch (err) {
+        noteAlert({ outcome: 'failed', reason: 'handler_error', error: err });
         await logError({
             function: 'followHandler',
             eventData,

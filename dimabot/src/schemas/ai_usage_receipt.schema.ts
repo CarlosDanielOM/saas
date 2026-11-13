@@ -20,6 +20,14 @@ export interface IAiUsageReceipt {
     credits: number;
     resourceType: string | null;
     resourceId: string | null;
+    /** The chatter, viewer or dashboard user whose request caused the usage. Null on receipts from before this was recorded, and for system work. */
+    actorId?: string | null;
+    actorLogin?: string | null;
+    actorName?: string | null;
+    /** What the provider charged us for this call, in USD, when the provider reported it. Credits are the price the channel paid. */
+    costUsd?: number | null;
+    /** Voice requests: the voice that spoke (id or name). */
+    voice?: string | null;
     itemized: boolean;
     retentionTier: AiUsageRetentionTier;
     expiresAt: Date;
@@ -45,6 +53,11 @@ const aiUsageReceiptSchema = new Schema<IAiUsageReceipt>({
     credits: { type: Number, required: true },
     resourceType: { type: String, default: null },
     resourceId: { type: String, default: null },
+    actorId: { type: String, default: null },
+    actorLogin: { type: String, default: null },
+    actorName: { type: String, default: null },
+    costUsd: { type: Number, default: null },
+    voice: { type: String, default: null },
     itemized: { type: Boolean, required: true },
     retentionTier: { type: String, enum: ['free', 'premium', 'pro'], required: true },
     expiresAt: { type: Date, required: true }
@@ -57,6 +70,10 @@ for (const field of ['source', 'resourceId', 'requestId', 'entryKind', 'adjustme
     aiUsageReceiptSchema.index({ channelID: 1, customerId: 1, [field]: 1, occurredAt: -1, entryId: -1 });
 }
 aiUsageReceiptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// The owner's console reads across channels: newest first, one category, one chatter.
+aiUsageReceiptSchema.index({ occurredAt: -1, entryId: -1 });
+aiUsageReceiptSchema.index({ category: 1, occurredAt: -1, entryId: -1 });
+aiUsageReceiptSchema.index({ actorId: 1, occurredAt: -1, entryId: -1 }, { partialFilterExpression: { actorId: { $type: 'string' } } });
 
 const AiUsageReceiptSchema = model<IAiUsageReceipt>('ai_usage_receipts', aiUsageReceiptSchema);
 

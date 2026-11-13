@@ -7,7 +7,10 @@ export interface IModerationDecision {
     _id: string;
     channelID: string;
     userID: string;
+    /** Chatter's display name. */
     username: string;
+    /** Chatter's Twitch login, lower case. Missing on decisions stored before 2026-11-13. */
+    userLogin?: string;
     messageID: string;
     messageText: string;
     ruleID: string;
@@ -32,14 +35,14 @@ export interface IModerationDecision {
     latencyMs: number;
     charge: { status: 'none' | 'pending' | 'recorded'; credits: number; billableCostUSD?: number; pricingVersion?: string; usdPerMillionInputTokens?: number; externalID: string; customerID: string };
     consequence: { status: string; action?: string; offenseNumber?: number; success?: boolean; errorMessage?: string | null };
-    feedback: { label: 'allow' | 'violation' | 'uncertain'; reviewerID: string; reviewedAt: Date } | null;
+    feedback: { label: 'allow' | 'violation' | 'uncertain'; note?: string | null; reviewerID: string; reviewedAt: Date } | null;
     deadline: Date;
     createdAt: Date;
     expiresAt: Date;
 }
 
 const schema = new Schema<IModerationDecision>({
-    _id: String, channelID: { type: String, required: true }, userID: String, username: String,
+    _id: String, channelID: { type: String, required: true }, userID: String, username: String, userLogin: String,
     messageID: String, messageText: String, ruleID: String, rule: Schema.Types.Mixed,
     settingsVersion: Number, matches: [Schema.Types.Mixed], context: [Schema.Types.Mixed],
     mode: String, messageOrdinal: Number, reviewSource: { type: String, enum: ['rule', 'first_message', 'spam_continuous'], default: 'rule' }, state: { type: String, default: 'pending' }, verdict: { type: String, default: 'uncertain' },
@@ -56,4 +59,8 @@ schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 schema.index({ channelID: 1, createdAt: -1 });
 schema.index({ state: 1, deadline: 1, createdAt: 1 });
 schema.index({ 'charge.status': 1, createdAt: 1 });
+// The owner's decisions ledger: every channel by time, and one chatter's decisions anywhere. `_id` is the
+// ledger's tiebreak, so its pages come straight off the index instead of a sort in memory.
+schema.index({ createdAt: -1, _id: -1 });
+schema.index({ userID: 1, createdAt: -1, _id: -1 });
 export const ModerationDecision = model<IModerationDecision>('moderation_decision', schema);

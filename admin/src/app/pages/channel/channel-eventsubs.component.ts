@@ -1,14 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   computed,
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
 import { forkJoin, catchError, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
   ChannelApiService,
@@ -16,6 +18,15 @@ import {
   type MergedEventsub,
   type StandardEventsub,
 } from '../../services/channel-api.service';
+import {
+  ChannelDebugApiService,
+  type EventTypeActivity,
+  type EventsubActivity,
+} from '../../services/channel-debug-api.service';
+import { apiErrorMessage } from '../../services/api-util';
+import { reasonText } from '../../shared/feed/feed-format';
+import { formatNumber, plural, relativeTime } from '../../shared/format';
+import { ChannelWorkspaceService } from './channel-workspace.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -55,19 +66,43 @@ const EVENT_NAMES: Record<string, { name: string; what: string }> = {
 @Component({
   selector: 'app-channel-eventsubs',
   templateUrl: './channel-eventsubs.component.html',
-  styleUrl: './channel-page.component.css',
+  styleUrls: ['./channel-page.component.css', './channel-eventsubs.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, TestEventModalComponent, IconComponent],
 })
 export class ChannelEventsubsComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
   private readonly channelApi = inject(ChannelApiService);
+  private readonly debugApi = inject(ChannelDebugApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly ws = inject(ChannelWorkspaceService);
 
   readonly isLoading = signal(true);
   readonly error = signal<string | null>(null);
   readonly eventsubs = signal<MergedEventsub[]>([]);
-  readonly channelName = signal<string | null>(null);
+  readonly channelName = this.ws.name;
+
+  /** What the bot heard per event type (last heard, alerts, failed deliveries) and Twitch revocations. */
+  readonly activity = signal<EventsubActivity | null>(null);
+  readonly activityError = signal<string | null>(null);
+  private readonly activityByType = computed(
+    () => new Map((this.activity()?.types ?? []).map((row) => [row.type, row])),
+  );
+  /** Revoked subscriptions, each marked when that event is connected and on again now. */
+  readonly revoked = computed(() => {
+    const healthyTypes = new Set(this.healthy().map((es) => es.type));
+    return (this.activity()?.revoked ?? []).map((row) => {
+      const signIn = row.reason === 'authorization_revoked' || row.reason === 'user_removed';
+      return {
+        ...row,
+        name: this.eventName(row.type),
+        why: reasonText(row.reason) ?? 'Twitch did not say why',
+        fixed: healthyTypes.has(row.type),
+        fix: signIn ? 'The streamer needs to sign in again on domdimabot.com.' : 'Connect it again in the list below.',
+      };
+    });
+  });
+  readonly revokedOpen = computed(() => this.revoked().filter((row) => !row.fixed).length);
 
   /** type:version keys of eventsubs currently being changed */
   readonly loadingIds = signal<Set<string>>(new Set());
@@ -78,7 +113,7 @@ export class ChannelEventsubsComponent implements OnInit {
   readonly testEventType = signal<string>('');
   readonly isSendingTest = signal(false);
 
-  readonly channelID = computed(() => this.route.snapshot.paramMap.get('channelID') || '');
+  readonly channelID = this.ws.channelID;
 
   readonly attention = computed(() => this.eventsubs().filter((es) => !this.isHealthy(es)));
   readonly healthy = computed(() => this.eventsubs().filter((es) => this.isHealthy(es)));
@@ -109,10 +144,54 @@ export class ChannelEventsubsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEventsubs();
-    this.channelApi.getChannel(this.channelID()).subscribe({
-      next: (user) => this.channelName.set(user?.channel ?? null),
-      error: () => this.channelName.set(null),
-    });
+    this.loadActivity();
+  }
+
+  loadActivity(): void {
+    this.activityError.set(null);
+    this.debugApi
+      .eventsubActivity(this.channelID())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.activity.set(response.data),
+        error: (err) => this.activityError.set(apiErrorMessage(err, "Couldn't load when each event was last heard")),
+      });
+  }
+
+  activityFor(es: MergedEventsub): EventTypeActivity | null {
+    return this.activityByType().get(es.type) ?? null;
+  }
+
+  /** "Last heard 2 h ago · 14 in 7 days", or the quiet "nothing received in 30 days". */
+  heardLine(row: EventTypeActivity): string {
+    if (!row.lastReceivedAt) return 'Nothing received in 30 days';
+    return `Last heard ${relativeTime(row.lastReceivedAt)} · ${formatNumber(row.received7d)} in 7 days`;
+  }
+
+  /** How the last chat alert for this event went; null when it has no chat alert or none ran. */
+  alertLine(row: EventTypeActivity): { text: string; tone: 'ok' | 'warn' | 'danger' } | null {
+    const alert = row.lastAlert;
+    if (!alert) return null;
+    const why = reasonText(alert.reason);
+    const when = relativeTime(alert.at);
+    if (alert.outcome === 'ok') return { text: `Alert sent ${when}`, tone: 'ok' };
+    if (alert.outcome === 'failed') return { text: `Alert failed ${when}${why ? `: ${why}` : ''}`, tone: 'danger' };
+    return { text: `Alert not sent ${when}${why ? `: ${why}` : ''}`, tone: 'warn' };
+  }
+
+  gaveUp(count: number): string {
+    return `${formatNumber(count)} the bot gave up on`;
+  }
+
+  revokedTitle(): string {
+    const open = this.revokedOpen();
+    const total = this.revoked().length;
+    if (!open) return `Twitch stopped sending ${plural(total, 'event')} in the last 30 days; ${total === 1 ? 'it is' : 'they are'} connected again`;
+    return `Twitch stopped sending ${plural(open, 'event')}`;
+  }
+
+  relative(at: string): string {
+    return relativeTime(at);
   }
 
   eventName(type: string): string {

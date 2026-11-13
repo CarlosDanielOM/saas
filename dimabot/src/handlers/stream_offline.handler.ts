@@ -34,7 +34,7 @@ export async function streamOfflineHandler(
                 eventData: eventData
             };
 
-            await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context);
+            await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context, { origin: 'alert' });
         }
 
         await logInfo({

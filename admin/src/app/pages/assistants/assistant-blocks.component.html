@@ -1,0 +1,109 @@
+@if (levels().length || models().length) {
+  <section class="lf-tile lf-tile--flush ab" aria-labelledby="ab-levels" data-block="levels">
+    <div class="lf-tile__head"><h2 class="lf-h2" id="ab-levels"><app-icon name="sparkles" />Levels and models</h2></div>
+    <ul class="lf-bars">
+      @for (row of levels(); track row.level) {
+        <li class="lf-bars__row">
+          <span class="lf-bars__name">{{ row.name }}<small>{{ plural(row.turns, 'message') }}@if (row.failed) { · <span class="ab__bad">{{ formatNumber(row.failed) }} failed</span>} · {{ formatDuration(row.avgDurationMs) }} on average</small></span>
+          <span class="lf-bars__value">{{ formatUSD(row.providerUSD) }}</span>
+          <span class="lf-bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+        </li>
+      }
+    </ul>
+    @if (models().length) {
+      <h3 class="ab__h3">Models</h3>
+      <ul class="lf-bars">
+        @for (row of models(); track row.model) {
+          <li class="lf-bars__row ab__tight">
+            <span class="lf-bars__name ab__mono">{{ row.name }}<small>{{ plural(row.turns, 'message') }}</small></span>
+            <span class="lf-bars__value">{{ formatUSD(row.providerUSD) }}</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}
+
+@if (channels().length || limits().length) {
+  <section class="lf-tile lf-tile--flush ab" aria-labelledby="ab-channels" data-block="channels">
+    <div class="lf-tile__head">
+      <h2 class="lf-h2" id="ab-channels"><app-icon name="users" />Channels</h2>
+      @if (channels().length > 1 || channel()) {
+        <span class="lf-note">Tap one to filter</span>
+      }
+    </div>
+    @if (channels().length) {
+      <ul class="lf-rows">
+        @for (row of shown('channels', channels()); track row.channelID) {
+          <li class="ab__ch">
+            <button type="button" class="ab__pick" [attr.aria-pressed]="channel() === row.channelID" (click)="pick.emit(row.channelID)" data-channel-row [attr.data-channel-id]="row.channelID">
+              <span class="ab__main">
+                <span class="ab__name">
+                  {{ row.channel || 'Unknown channel' }}
+                  <span class="lf-chip" [class.lf-chip--pro]="row.plan === 'pro'" [class.lf-chip--gold]="row.plan === 'premium'" [class.lf-chip--muted]="row.plan === 'free'">{{ planLabel(row.plan) }}</span>
+                </span>
+                <span class="ab__meta">
+                  {{ plural(row.turns, 'message') }}@if (row.failed) { · <span class="ab__bad">{{ formatNumber(row.failed) }} failed</span>} · {{ plural(row.units, 'daily message') }} · {{ relativeTime(row.lastAt) }}
+                </span>
+              </span>
+              <b class="ab__value">{{ formatUSD(row.providerUSD) }}</b>
+            </button>
+            <a class="lf-btn lf-btn--icon lf-btn--ghost ab__go" [routerLink]="['/channels', row.channelID]" [attr.aria-label]="'Open ' + (row.channel || 'channel') + ' workspace'"><app-icon name="chevron" /></a>
+          </li>
+        }
+      </ul>
+      @if (channels().length > fold && !unfolded().has('channels')) {
+        <div class="lf-more-row"><button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="unfold('channels')">Show all {{ channels().length }} channels</button></div>
+      }
+    }
+    @if (!nearLimit().length && busiest(); as top) {
+      <p class="ab__quiet" data-limits-quiet>No channel is near today's daily limit. Busiest: {{ top.channel || 'a channel' }}, {{ formatNumber(top.used) }} of {{ formatNumber(top.limit) }}.</p>
+    }
+  </section>
+}
+
+@if (tools().length) {
+  <section class="lf-tile lf-tile--flush ab" aria-labelledby="ab-tools" data-block="tools">
+    <div class="lf-tile__head"><h2 class="lf-h2" id="ab-tools"><app-icon name="command" />Tools it used</h2></div>
+    <ul class="lf-bars">
+      @for (row of shown('tools', tools()); track row.name) {
+        <li class="lf-bars__row ab__tight">
+          <span class="lf-bars__name">{{ row.label }}@if (row.failed) {<small class="ab__bad">{{ formatNumber(row.failed) }} failed</small>}</span>
+          <span class="lf-bars__value">{{ plural(row.calls, 'call') }}</span>
+          <span class="lf-bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+        </li>
+      }
+    </ul>
+    @if (tools().length > fold && !unfolded().has('tools')) {
+      <div class="lf-more-row"><button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="unfold('tools')">Show all {{ tools().length }} tools</button></div>
+    }
+  </section>
+}
+
+@if (errors().length) {
+  <section class="lf-tile lf-tile--flush ab" aria-labelledby="ab-errors" data-block="errors">
+    <div class="lf-tile__head"><h2 class="lf-h2" id="ab-errors"><app-icon name="alert" />Errors</h2></div>
+    <ul class="lf-bars">
+      @for (row of shown('errors', errors()); track row.code) {
+        <li class="lf-bars__row ab__tight" data-error-row>
+          <span class="lf-bars__name">{{ row.label }}<small>last {{ relativeTime(row.lastAt) }}</small></span>
+          <span class="lf-bars__value">{{ plural(row.count, 'time') }}</span>
+        </li>
+      }
+    </ul>
+    @if (errors().length > fold && !unfolded().has('errors')) {
+      <div class="lf-more-row"><button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="unfold('errors')">Show all {{ errors().length }} errors</button></div>
+    }
+  </section>
+}
+
+@if (ratings(); as r) {
+  <section class="lf-tile ab ab--ratings" aria-labelledby="ab-ratings" data-block="ratings">
+    <div class="ab__ratehead"><h2 class="lf-h2" id="ab-ratings"><app-icon name="thumb-up" />Ratings</h2>@if (channel()) {<span class="lf-note">All channels</span>}</div>
+    <p class="ab__rate">
+      <span><b>{{ formatNumber(r.helpful) }}</b> helpful</span>
+      <span><b [class.ab__bad]="r.unhelpful > 0">{{ formatNumber(r.unhelpful) }}</b> not helpful</span>
+    </p>
+    <span class="lf-bar ab__ratebar" aria-hidden="true"><span [style.width.%]="(r.helpful / r.total) * 100"></span></span>
+  </section>
+}

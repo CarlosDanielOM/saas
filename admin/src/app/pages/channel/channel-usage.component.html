@@ -1,23 +1,39 @@
 <div class="lf usage-page">
   <div class="lf-main">
-    <header class="lf-head">
-      <a class="lf-back" [routerLink]="['/channels', channelID]"><app-icon name="back" />{{ channelName() || 'Channel' }}</a>
-      <div class="lf-head__row">
-        <div class="us-intro">
-          <h1 class="lf-title">AI credit usage</h1>
-          <p class="lf-sub">{{ channelName() ? channelName() + "'s" : 'This channel’s' }} balance, what it's spent on, and every charge and grant.</p>
-        </div>
-        <div class="lf-head__actions">
-          <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
-            <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
-          </button>
+    <h2 class="sr-only">AI credit usage</h2>
+    @if (loading() && !summary()) {
+      <div class="lf-status" role="status" aria-label="Loading usage">
+        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+        <div class="lf-status__body"><app-skeleton width="45%" height="1.1rem" /><app-skeleton width="70%" height="0.9rem" /></div>
+      </div>
+    } @else if (error()) {
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ error() }}</p>
+          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="load()">Retry</button></div>
         </div>
       </div>
+    } @else if (summary(); as data) {
+      @if (forecast(); as f) {
+        <div class="lf-status us-forecast" [class]="'lf-status--' + f.tone" role="status">
+          <app-icon [name]="f.tone === 'ok' ? 'ok' : f.tone === 'muted' ? 'info' : 'alert'" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">{{ f.title }}</p>
+            <p class="lf-status__text">{{ f.text }}</p>
+            @if ((f.tone === 'live' || f.tone === 'warn') && data.credits.available) {
+              <div class="lf-status__actions">
+                <a class="lf-btn lf-btn--sm" [routerLink]="['/channels', channelID]"><app-icon name="plus" />Add credits on Overview</a>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <div class="us-bar">
       @if (summary(); as data) {
-        <div class="lf-head__chips usage-period">
-          <span class="lf-chip" [class.lf-chip--muted]="data.planTier === 'free'" [class.lf-chip--gold]="data.planTier === 'premium'" [class.lf-chip--pro]="data.planTier === 'pro'">{{
-            data.planTier === 'pro' ? 'Pro' : data.planTier === 'premium' ? 'Premium' : 'Free'
-          }}</span>
+        <div class="us-bar__chips usage-period">
           <span class="lf-chip"><app-icon name="calendar" />{{ shortDate(data.billingPeriod.from) }} – {{ shortDate(data.billingPeriod.to) }}</span>
           @if (customRange()) {
             <span class="lf-chip lf-chip--accent">Custom range</span>
@@ -27,7 +43,10 @@
           }
         </div>
       }
-    </header>
+      <button type="button" class="lf-btn lf-btn--sm us-bar__refresh" (click)="load()" [disabled]="loading()">
+        <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+      </button>
+    </div>
 
     <details class="lf-tile lf-tile--flush us-range" [open]="customRange()">
       <summary class="us-range__summary"><span class="lf-h2"><app-icon name="calendar" />Look at different dates</span><app-icon name="down" /></summary>
@@ -48,39 +67,12 @@
     }
 
     @if (loading() && !summary()) {
-      <div class="lf-status" role="status" aria-label="Loading usage">
-        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
-        <div class="lf-status__body"><app-skeleton width="45%" height="1.1rem" /><app-skeleton width="70%" height="0.9rem" /></div>
-      </div>
       <div class="lf-metrics">
         @for (i of [1, 2, 3, 4]; track i) {
           <div class="lf-metric"><app-skeleton width="60%" height="0.8rem" /><app-skeleton width="80%" height="1.6rem" /></div>
         }
       </div>
-    } @else if (error()) {
-      <div class="lf-status lf-status--live" role="alert">
-        <app-icon name="alert" />
-        <div class="lf-status__body">
-          <p class="lf-status__title">{{ error() }}</p>
-          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="load()">Retry</button></div>
-        </div>
-      </div>
-    } @else if (summary(); as data) {
-      @if (forecast(); as f) {
-        <div class="lf-status us-forecast" [class]="'lf-status--' + f.tone" role="status">
-          <app-icon [name]="f.tone === 'ok' ? 'ok' : f.tone === 'muted' ? 'info' : 'alert'" />
-          <div class="lf-status__body">
-            <p class="lf-status__title">{{ f.title }}</p>
-            <p class="lf-status__text">{{ f.text }}</p>
-            @if ((f.tone === 'live' || f.tone === 'warn') && data.credits.available) {
-              <div class="lf-status__actions">
-                <a class="lf-btn lf-btn--sm" [routerLink]="['/channels', channelID]"><app-icon name="plus" />Add credits on the channel page</a>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
+    } @else if (!error() && summary(); as data) {
       @if (data.ledger?.status === 'pending') {
         <p class="lf-notice us-sync usage-sync" role="status">
           <span>
@@ -134,6 +126,15 @@
           <span class="lf-metric__note">{{ net(data.analytics.netConsumedCredits) }}</span>
         </article>
       </section>
+
+      <a class="lf-tile us-explore" [routerLink]="['/ai/usage']" [queryParams]="{ channel: channelID }">
+        <span class="us-explore__icon"><app-icon name="users" /></span>
+        <span class="us-explore__text">
+          <strong>See who used it, by viewer and by model</strong>
+          <small>The AI usage explorer, filtered to this channel</small>
+        </span>
+        <app-icon class="us-explore__chev" name="chevron" />
+      </a>
 
       <div class="lf-panels">
         <section class="lf-tile us-daily" aria-labelledby="daily-heading">

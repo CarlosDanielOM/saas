@@ -38,22 +38,28 @@ export class NavbarComponent {
   );
   isActive(route: string): boolean {
     const path = this.currentPath();
-    return (
-      path === route ||
-      (route === '/users' && path.startsWith('/channels/')) ||
-      (route === '/dashboard' && path === '/analytics') ||
-      (route === '/moderation-review' && path === '/assistant-refusals')
-    );
+    switch (route) {
+      case '/dashboard':
+        return path === '/dashboard' || path === '/analytics';
+      case '/activity':
+        return path === '/activity';
+      case '/ai':
+        return path === '/ai' || path.startsWith('/ai/') || path === '/moderation-review' || path === '/assistant-refusals';
+      case '/users':
+        return path === '/users' || path.startsWith('/channels/');
+      default:
+        return path === route;
+    }
   }
 
+  // Five tabs fit a 320px phone with readable labels. Rarely used tools live in the account menu.
   readonly navItems = computed(() => this.admin() ? [
     { label: 'Overview', route: '/dashboard', icon: 'overview' },
-    { label: 'Analytics', route: '/observability', icon: 'overview' },
+    { label: 'Activity', route: '/activity', icon: 'pulse' },
+    { label: 'AI', route: '/ai', icon: 'sparkles' },
     { label: 'Users', route: '/users', icon: 'users' },
-    { label: 'Review', route: '/moderation-review', icon: 'shield' },
-    { label: 'Files', route: '/read-tool', icon: 'files' },
-    { label: 'Email', route: '/email-test', icon: 'mail' },
-  ] : [{ label: 'Analytics', route: '/observability', icon: 'overview' }]);
+    { label: 'System', route: '/observability', icon: 'chart' },
+  ] : [{ label: 'Analytics', route: '/observability', icon: 'chart' }]);
   @HostListener('document:keydown.escape') closeAccount(): void {
     this.accountOpen.set(false);
   }

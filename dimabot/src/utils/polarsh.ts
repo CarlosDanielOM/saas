@@ -130,6 +130,38 @@ function trackAcceptedUsage(eventData: EventData, context: AiUsageContext): void
   }
 }
 
+/**
+ * What the provider reported it charged for one OpenRouter call, in USD, for the usage receipt: the
+ * prompt and completion split, else the single upstream figure, else `usage.cost`. Null when it reported
+ * none, so a missing cost never reads as free. Credits are still computed by each caller as before.
+ */
+export function providerReportedCostUsd(usage: unknown): number | null {
+  const record = (value: unknown) => value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+  const reported = record(usage), details = record(reported.cost_details);
+  const prompt = amount(details.upstream_inference_prompt_cost);
+  const completion = amount(details.upstream_inference_completions_cost);
+  if (prompt !== null || completion !== null) return Math.round(((prompt ?? 0) + (completion ?? 0)) * 1e12) / 1e12;
+  return amount(details.upstream_inference_cost) ?? amount(reported.cost);
+}
+
+/**
+ * The provider cost stored on the usage receipt, in USD. Callers that hold the provider's usage pass it
+ * as `explicit` (see `providerReportedCostUsd`); null there means unknown. Otherwise this is the only
+ * place that reads the units of the Polar `cost` field: LLM events carry cents (a provider cost), voice
+ * events carry USD but only the credit price (credits / 100,000), and the generic branch a price in
+ * cents. A zero LLM cost there is how a missing provider figure looks, so it is stored as unknown.
+ */
+export function receiptCostUsd(metadata: Pick<AccountingMetadata, "cost" | "_llm">, explicit?: number | null): number | null {
+  if (explicit !== undefined) {
+    return typeof explicit === "number" && Number.isFinite(explicit) && explicit >= 0 ? explicit : null;
+  }
+  if (!metadata._llm) return null;
+  const cents = Number(metadata.cost);
+  // The cents value is rounded to 1e-8 before it is stored, so this keeps every digit Polar has.
+  return Number.isFinite(cents) && cents > 0 ? Math.round(cents * 1e8) / 1e10 : null;
+}
+
 async function projectAcceptedUsage(
   cache: DragonflyClient,
   eventData: EventData,
@@ -144,6 +176,7 @@ async function projectAcceptedUsage(
         customerId: eventData.customerId,
         context,
         credits: eventData.metadata.credits,
+        costUsd: receiptCostUsd(eventData.metadata, context.receipt?.costUsd),
       }));
     } catch (err) {
       await error({

@@ -189,7 +189,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
                 username: request.actor.displayName, message: text, planTier }).catch(() => []) : [];
             signal.throwIfAborted();
             const result = await chat({ channelID: request.channelId, invocation: 'pet', streamer, message: text, history, threadHistory,
-                disableTools: !trusted, tags: { badges, username: request.actor.displayName, chatter_user_id: request.actor.userId,
+                disableTools: !trusted, tags: { badges, username: request.actor.displayName, chatter_user_id: request.actor.userId, chatter_user_login: request.actor.chat?.login,
                     ...(identity ? { userLevel: identity.level, identity: serializeUserIdentity(identity), message: provenance!.message } : {}) },
                 pet: { name: configuration.settings.name, language: configuration.settings.tts.language,
                     maxReplyLength: configuration.settings.behavior.maxReplyLength, persona, signal, usageRequestId: `${request._id}:llm`,
@@ -247,7 +247,8 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         if (result.error || result.outputPath !== audioPath || !result.mimeType) throw new PetError('synthesis_failed');
         // Usage is recorded even when cancellation arrives after a known successful provider result.
         await trackTtsUsage({ channelID: request.channelId, streamer, requireDurableUsage: true, provider: tts.provider, text: tts.text, characters: tts.text.length,
-            usage: { entryId: `${request._id}:tts`, requestId: `${request._id}:tts`, source: 'pet', resourceType: 'speech', resourceId: request._id } });
+            usage: { entryId: `${request._id}:tts`, requestId: `${request._id}:tts`, source: 'pet', resourceType: 'speech', resourceId: request._id,
+                receipt: { actor: { id: request.actor.userId, login: request.actor.chat?.login, name: request.actor.displayName }, voice: tts.voice } } });
         signal.throwIfAborted();
         if ((await stat(audioPath)).size > MAX_PET_AUDIO_BYTES) throw new PetError('audio_too_large');
         const { stdout } = await promisify(execFile)('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file', '-show_entries', 'format=duration', '-of', 'json', audioPath], { timeout: 5000, maxBuffer: 4096 });

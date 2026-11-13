@@ -16,7 +16,8 @@ import {
 import { formatBadges, type IBadge } from "../../badges.js";
 import { getDragonflyClient } from "../../databases/dragonfly.database.js";
 import { getAiCredits, isAiCreditsExhausted } from "../../billing.js";
-import { ingestPolarSHEvent } from "../../polarsh.js";
+import { ingestPolarSHEvent, providerReportedCostUsd } from "../../polarsh.js";
+import { usageActorFromChatTags, type AiUsageActor } from "../../ai_usage_event.js";
 import { constructChatSystemMessages } from "../prompts.ai.js";
 import { mergeChatHistories, type ChatContextMessage } from "../chat_context.js";
 import { MODELS, TOKEN_LIMITS, selectChatModel } from "../constants.js";
@@ -646,7 +647,7 @@ async function trackUsage(
   reason: string,
   requestId: string,
   parentRequestId: string,
-  policy: { source?: string; awaitIngest?: boolean } = {},
+  policy: { source?: string; awaitIngest?: boolean; actor?: AiUsageActor } = {},
 ): Promise<void> {
   if (!usageData || !channelID) return;
 
@@ -705,6 +706,7 @@ async function trackUsage(
         source: policy.source ?? "chat",
         provider: "openrouter",
         resourceType: "llm_generation",
+        receipt: { actor: policy.actor, costUsd: providerReportedCostUsd(usageData) },
       },
       ...(policy.awaitIngest ? { externalId: requestId } : {}),
     });
@@ -825,6 +827,8 @@ export async function chat(
     userID: String(tags?.chatter_user_id || tags?.userID || tags?.id || ""),
     badges: formattedBadges,
   };
+  // The chatter who asked (the streamer on desktop turns), for the usage receipts of every round.
+  const usageActor = usageActorFromChatTags(tags);
 
   // Build chat history context (live/recent messages from Redis)
   const liveHistory: ISemanticChatHistoryItem[] = history.map((msg) => ({
@@ -1079,7 +1083,7 @@ export async function chat(
         // Account the known provider result before completing its receipt. This
         // survives turn cancellation or owner-fence loss after the paid result.
         await operation(`billing:${roundId}`, 'billing', () => trackUsage(channelID, streamer, response.usage!, selectedModel,
-          reason, roundId, usageId ?? sessionId, { source: 'oauth_desktop', awaitIngest: true }));
+          reason, roundId, usageId ?? sessionId, { source: 'oauth_desktop', awaitIngest: true, actor: usageActor }));
       }
       return response;
     });
@@ -1156,7 +1160,7 @@ export async function chat(
     // Track usage with appropriate reason based on whether AI called tools
     if (data.usage && !desktop) {
       const reason = hasToolCalls ? "harness_tools" : "harness_end";
-      await operation(`billing:${roundId}`, 'billing', () => trackUsage(channelID, streamer, data.usage!, selectedModel, reason, roundId, usageId ?? sessionId, usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {}));
+      await operation(`billing:${roundId}`, 'billing', () => trackUsage(channelID, streamer, data.usage!, selectedModel, reason, roundId, usageId ?? sessionId, { ...(usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {}), actor: usageActor }));
     }
 
     // No tool calls - return the response
@@ -1326,7 +1330,7 @@ export async function chat(
     );
     if (desktop && response.usage) await operation(`billing:${finalRoundId}`, 'billing', () => trackUsage(
       channelID, streamer, response.usage!, selectedModel, 'harness_end', finalRoundId, usageId ?? sessionId,
-      { source: 'oauth_desktop', awaitIngest: true }));
+      { source: 'oauth_desktop', awaitIngest: true, actor: usageActor }));
     return response;
   });
 
@@ -1367,7 +1371,7 @@ export async function chat(
       "harness_end",
       finalRoundId,
       usageId ?? sessionId,
-      usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {},
+      { ...(usageId ? { source: desktop ? "oauth_desktop" : "pet", awaitIngest: true } : {}), actor: usageActor },
     ));
   }
 

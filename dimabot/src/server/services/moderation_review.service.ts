@@ -65,10 +65,33 @@ export async function moderationReviewCounts(): Promise<Record<ModerationReviewK
             { $match: { ...moderationReviewFilter(kind), ...labelledFilter(false) } },
             { $group: { _id: { text: '$messageText', invited: { $eq: ['$rule.semantic.broadcasterInvitation', true] } } } },
             { $count: 'n' }
-        ]);
+        ]).option({ maxTimeMS: REVIEW_COUNTS_MAX_MS });
         return [kind, Number(row?.n) || 0] as const;
     }));
     return Object.fromEntries(counts) as Record<ModerationReviewKind, number>;
+}
+
+const REVIEW_COUNTS_MAX_MS = 5000;
+const REVIEW_COUNTS_FRESH_MS = 30_000;
+let cachedCounts: { at: number; value: Promise<Record<ModerationReviewKind, number>> } | null = null;
+
+/**
+ * The same counts for pages that only show "N waiting" and refresh on a timer (the overview, the
+ * decisions summary): three aggregations over every retained decision are too much to repeat on each
+ * refresh, so the answer is kept for half a minute and shared by requests that arrive together.
+ * A saved verdict clears it, so the number never lags behind the owner's own action.
+ */
+export function moderationReviewCountsCached(now = Date.now()): Promise<Record<ModerationReviewKind, number>> {
+    if (cachedCounts && now - cachedCounts.at < REVIEW_COUNTS_FRESH_MS) return cachedCounts.value;
+    const entry = { at: now, value: moderationReviewCounts() };
+    // A failed read is not kept: the next caller tries again.
+    entry.value.catch(() => { if (cachedCounts === entry) cachedCounts = null; });
+    cachedCounts = entry;
+    return entry.value;
+}
+
+export function invalidateModerationReviewCounts(): void {
+    cachedCounts = null;
 }
 
 type Line = { username: string; message: string; isBroadcaster: boolean };
@@ -124,7 +147,10 @@ export async function listModerationReviews(kind: ModerationReviewKind, state: '
  * A copy that arrived after the card was loaded is not touched: nobody looked at it.
  */
 export async function labelModerationReview(kind: ModerationReviewKind, ids: string[], label: ModerationReviewLabel | null, reviewerID: string): Promise<number> {
-    const update = label ? [{ $set: { feedback: { label, reviewerID, reviewedAt: '$$NOW' } } }] : [{ $set: { feedback: null } }];
+    // A note written with the same verdict (from the decisions ledger) is kept; a changed verdict drops it, since it explained the old one.
+    const note = { $cond: [{ $eq: ['$feedback.label', { $literal: label }] }, { $ifNull: ['$feedback.note', null] }, null] };
+    const update = label ? [{ $set: { feedback: { label: { $literal: label }, note, reviewerID: { $literal: reviewerID }, reviewedAt: '$$NOW' } } }] : [{ $set: { feedback: null } }];
     const result = await ModerationDecision.updateMany({ ...moderationReviewFilter(kind), _id: { $in: ids } }, update);
+    invalidateModerationReviewCounts();
     return result.matchedCount;
 }

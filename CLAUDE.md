@@ -134,6 +134,8 @@ How to work with it:
 
 **Admin Site**:
 - Pages/services: `admin/src/app/**`
+- Owner-only API routes: `dimabot/src/server/routes/admin_site/*.route.ts`
+- Activity logging: `dimabot/src/utils/activity_log.ts`; see `dimabot/ADMIN_CONSOLE.md` for the console design and rules.
 - Internal-only tooling and moderation interfaces
 - **Design system: Live First** — read the `live-first` skill (section "Admin site") before any admin UI work; tokens + shared primitives in `admin/src/styles.css`
 

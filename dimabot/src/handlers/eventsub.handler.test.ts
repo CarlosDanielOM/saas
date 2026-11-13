@@ -7,17 +7,26 @@ let effects: string[];
 let lookups = 0;
 let enabled = true;
 let minViewers = 0;
+let chat = 'true';
+let configMissing = false;
+// What sendTwitchChatMessage really returns: Twitch's message when sent, no data when the text rendered to nothing.
+const SENT = { error: false, message: 'Message sent', status: 200, type: 'success', data: { is_sent: true, message_id: 'tw-1' } };
+const RENDERED_EMPTY = { error: false, message: 'AST message delivered', status: 200, type: 'success', data: undefined };
+const HELD = { error: true, message: 'Message held for moderation review by Twitch', status: 200, type: 'held_for_moderation' };
+const REFUSED = { error: true, message: 'Failed to get Twitch app token', status: 500, type: 'error' };
+let sendResult: unknown = SENT;
 mock.module('../classes/chat_history.js', { defaultExport: {} });
 mock.module('../utils/keyword_cache.js', { namedExports: { keywordIndexCache: {
     get: async () => { effects.push('keyword-preload'); },
     invalidate: () => { effects.push('keyword-release'); }
 } } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
-    getTwitchAccountById: async (id: string) => { lookups++; return { id, chat_enabled: 'true' }; }
+    getTwitchAccountById: async (id: string) => { lookups++; return { id, chat_enabled: chat }; }
 } });
-mock.module('../schemas/eventsub.schema.js', { defaultExport: { findOne: async () => ({
-    enabled, minViewers, message: 'configured', clipEnabled: false, type: 'test', cheerTiers: []
-}) } });
+mock.module('../schemas/eventsub.schema.js', { defaultExport: { findOne: () => {
+    const found = Promise.resolve(configMissing ? null : { enabled, minViewers, message: 'configured', clipEnabled: false, type: 'test', cheerTiers: [] });
+    return Object.assign(found, { lean: () => found });
+} } });
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => ({
     get: async () => '0', set: async () => { effects.push('follow-count'); }
 }) } });
@@ -26,7 +35,7 @@ mock.module('../utils/follow_defense_queue.js', { namedExports: {
     setFollowDefenseRaidMarker: async () => { effects.push('legacy-raid'); },
     shouldSuppressFollowAlerts: async () => false
 } });
-mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwitchChatMessage: async () => { effects.push('chat'); } } });
+mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwitchChatMessage: async () => { effects.push('chat'); return sendResult; } } });
 mock.module('../commands/shoutout.command.js', { namedExports: { handleShoutoutCommand: async () => {
     effects.push('shoutout'); return { error: false };
 } } });
@@ -45,6 +54,7 @@ for (const [path, name] of [
 ]) mock.module(path, { namedExports: { [name]: async () => { effects.push(name); } } });
 
 const { eventsubHandler } = await import('./eventsub.handler.js');
+const { pendingActivityRowsForTests, setActivityLogSinkForTests } = await import('../utils/activity_log.js');
 const { followHandler } = await import('./follow.handler.js');
 const { raidHandler } = await import('./raid.handler.js');
 const follow: IFollowEvent = {
@@ -56,7 +66,8 @@ const raid = {
     from_broadcaster_user_id: 'raider', from_broadcaster_user_login: 'raider', from_broadcaster_user_name: 'Raider', viewers: 10
 } as IRaidEventData;
 const config = { enabled: true, minViewers: 0, message: 'configured', clipEnabled: false } as IEventsub;
-beforeEach(() => { effects = []; lookups = 0; enabled = true; minViewers = 0; });
+beforeEach(() => { effects = []; lookups = 0; enabled = true; minViewers = 0; chat = 'true'; configMissing = false; sendResult = SENT; setActivityLogSinkForTests(async () => undefined); });
+const rows = () => pendingActivityRowsForTests().map(row => [row.kind, row.name, row.outcome, row.reason, row.ref, row.text]);
 
 test('stream keyword cache lifecycle runs even when announcements are disabled or durably handled', async () => {
     enabled = false;
@@ -136,4 +147,98 @@ test('source metadata does not suppress receiver-targeted moderation events', as
         broadcaster_user_id: 'channel', source_broadcaster_user_id: 'other-channel'
     } as unknown as ITwitchEventData);
     assert.deepEqual(effects, ['banHandler']);
+});
+
+test('immediate alerts record sent, disabled, chat-off, empty and late outcomes; consumer-owned alerts record nothing here', async () => {
+    const update = { broadcaster_user_id: 'channel', title: 'New title' } as unknown as ITwitchEventData;
+    await eventsubHandler({ type: 'channel.update' } as ITwitchSubscriptionData, update, { messageId: 'm-1' });
+    enabled = false;
+    await eventsubHandler({ type: 'channel.update' } as ITwitchSubscriptionData, update, { messageId: 'm-2' });
+    await eventsubHandler({ type: 'channel.follow' } as ITwitchSubscriptionData, follow);
+    await eventsubHandler({ type: 'channel.follow' } as ITwitchSubscriptionData, follow, { durableChatHandled: true, messageId: 'm-3' });
+    enabled = true; chat = 'false';
+    await eventsubHandler({ type: 'channel.shoutout.receive' } as ITwitchSubscriptionData, update, { messageId: 'm-4' });
+    chat = 'true';
+    await eventsubHandler({ type: 'channel.hype_train.begin' } as ITwitchSubscriptionData, update, { durableChatHandled: true, staleRetry: true, messageId: 'm-5' });
+    await eventsubHandler({ type: 'channel.chat.message' } as ITwitchSubscriptionData, update, { messageId: 'm-6' });
+    assert.deepEqual(rows(), [
+        ['alert', 'channel.update', 'ok', '', 'm-1', ''],
+        ['alert', 'channel.update', 'skipped', 'alert_disabled', 'm-2', ''],
+        ['alert', 'channel.follow', 'skipped', 'alert_disabled', '', ''],
+        ['alert', 'channel.shoutout.receive', 'skipped', 'chat_disabled', 'm-4', ''],
+        ['alert', 'channel.hype_train.begin', 'skipped', 'stale', 'm-5', '']
+    ]);
+});
+
+test('the immediate follow path records its own outcome only when no consumer owns it', async () => {
+    await followHandler(follow, config, true, { messageId: 'm-1' });
+    await followHandler(follow, { ...config, message: ' ' } as IEventsub, true);
+    await followHandler(follow, config, false);
+    await followHandler(follow, config, false, { durableChatHandled: true, durableDefenseHandled: true });
+    assert.deepEqual(rows(), [
+        ['alert', 'channel.follow', 'ok', '', 'm-1', ''],
+        ['alert', 'channel.follow', 'skipped', 'empty_message', '', ''],
+        ['alert', 'channel.follow', 'skipped', 'chat_disabled', '', '']
+    ]);
+    assert.equal(pendingActivityRowsForTests()[0]!.actorLogin, 'viewer');
+});
+
+test('a redemption on a disabled subscription is recorded as skipped and the message id reaches the handler', async () => {
+    const redemption = { id: 'red-1', broadcaster_user_id: 'channel', user_id: 'viewer', user_login: 'viewer',
+        reward: { id: 'rw', title: 'Hydrate', cost: 100 } } as unknown as ITwitchEventData;
+    enabled = false;
+    await eventsubHandler({ type: 'channel.channel_points_custom_reward_redemption.add' } as ITwitchSubscriptionData, redemption, { messageId: 'm-r' });
+    assert.deepEqual(rows(), [['twitch_event', 'channel.channel_points_custom_reward_redemption.add', 'skipped', 'subscription_disabled', 'm-r', '']]);
+    assert.deepEqual(effects, []);
+});
+
+test('an alert is ok only when Twitch got a message: rendered-empty, held and refused sends say so', async () => {
+    const update = { broadcaster_user_id: 'channel', title: 'New title' } as unknown as ITwitchEventData;
+    for (const [result, id] of [[RENDERED_EMPTY, 'm-1'], [HELD, 'm-2'], [REFUSED, 'm-3']] as const) {
+        sendResult = result;
+        await eventsubHandler({ type: 'channel.update' } as ITwitchSubscriptionData, update, { messageId: id });
+        await followHandler(follow, config, true, { messageId: `f-${id}` });
+    }
+    assert.deepEqual(rows().map(row => row.slice(1, 5)), [
+        ['channel.update', 'skipped', 'empty_message', 'm-1'], ['channel.follow', 'skipped', 'empty_message', 'f-m-1'],
+        ['channel.update', 'blocked', 'held_for_moderation', 'm-2'], ['channel.follow', 'blocked', 'held_for_moderation', 'f-m-2'],
+        ['channel.update', 'failed', 'send_failed', 'm-3'], ['channel.follow', 'failed', 'send_failed', 'f-m-3']
+    ]);
+    assert.equal(pendingActivityRowsForTests()[4]!.data.error, 'Failed to get Twitch app token');
+});
+
+test('outgoing raid alerts are recorded, about the raided channel; no config means no row', async () => {
+    const outgoing = { type: 'channel.raid', condition: { from_broadcaster_user_id: 'channel' } } as unknown as ITwitchSubscriptionData;
+    const raidOut = { from_broadcaster_user_id: 'channel', from_broadcaster_user_login: 'channel', from_broadcaster_user_name: 'Channel',
+        to_broadcaster_user_id: 'target', to_broadcaster_user_login: 'target', to_broadcaster_user_name: 'Target', viewers: 3 } as unknown as ITwitchEventData;
+    await eventsubHandler(outgoing, raidOut, { messageId: 'r-1' });
+    sendResult = REFUSED;
+    await eventsubHandler(outgoing, raidOut, { messageId: 'r-2' });
+    chat = 'false';
+    await eventsubHandler(outgoing, raidOut, { messageId: 'r-3' });
+    chat = 'true'; enabled = false;
+    await eventsubHandler(outgoing, raidOut, { messageId: 'r-4' });
+    configMissing = true;
+    await eventsubHandler(outgoing, raidOut, { messageId: 'r-5' });
+    assert.deepEqual(rows().map(row => row.slice(1, 5)), [
+        ['channel.raid', 'ok', '', 'r-1'], ['channel.raid', 'failed', 'send_failed', 'r-2'],
+        ['channel.raid', 'skipped', 'chat_disabled', 'r-3'], ['channel.raid', 'skipped', 'alert_disabled', 'r-4']
+    ]);
+    assert.equal(pendingActivityRowsForTests()[0]!.actorLogin, 'target');
+    assert.equal(pendingActivityRowsForTests()[0]!.data.direction, 'outgoing');
+});
+
+test('ban and ad-break alerts are disabled-gated here and late ad breaks are skipped as stale', async () => {
+    const ban = { broadcaster_user_id: 'channel', user_id: 'troll', user_login: 'troll', is_permanent: true } as unknown as ITwitchEventData;
+    const ad = { broadcaster_user_id: 'channel', duration_seconds: 30 } as unknown as ITwitchEventData;
+    enabled = false;
+    await eventsubHandler({ type: 'channel.ban' } as ITwitchSubscriptionData, ban, { messageId: 'b-1' });
+    await eventsubHandler({ type: 'channel.ad_break.begin' } as ITwitchSubscriptionData, ad, { messageId: 'a-1' });
+    enabled = true;
+    await eventsubHandler({ type: 'channel.ad_break.begin' } as ITwitchSubscriptionData, ad, { durableChatHandled: true, staleRetry: true, messageId: 'a-2' });
+    assert.deepEqual(rows().map(row => row.slice(1, 5)), [
+        ['channel.ban', 'skipped', 'alert_disabled', 'b-1'], ['channel.ad_break.begin', 'skipped', 'alert_disabled', 'a-1'],
+        ['channel.ad_break.begin', 'skipped', 'stale', 'a-2']
+    ]);
+    assert.deepEqual(effects, []);
 });

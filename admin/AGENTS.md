@@ -19,6 +19,20 @@
 - All API calls go through the shared backend (`dimabot`).
 - Keep sensitive operations behind proper admin role checks.
 
+## Console navigation and shared pieces
+
+The owner console has five main tabs:
+
+- **Overview** (`/dashboard`): cross-channel activity, attention items, and AI spend.
+- **Activity** (`/activity`): the merged activity feed and its filters.
+- **AI** (`/ai`): AI usage, chat protection decisions, the Dima assistant, and Docs AI. The review queue (`/moderation-review`) and assistant refusals (`/assistant-refusals`) are reached from this area.
+- **Users** (`/users`): user search and access to a channel workspace.
+- **System** (`/observability`): system analytics, with its separate access guard.
+
+The account menu contains Settings, Test an email, and Read a server file. A channel workspace at `/channels/:channelID` uses one shared frame and these tabs: Overview, Activity, Commands, Twitch events, Protection, AI & credits, and Bot log. `ChannelWorkspaceService` shares the channel data with its tab pages.
+
+Reuse `src/app/shared/format.ts` for formatting, `src/app/shared/feed/` for feed rows, `src/app/shared/day-bars/` for daily bars, `src/app/shared/channel-picker/` for channel selection, and `src/app/shared/decisions/` for decision views. Feed row wording belongs only in `src/app/shared/feed/feed-format.ts`; do not duplicate it in pages. The API contract services are `src/app/services/feed-api.service.ts`, `src/app/services/overview-api.service.ts`, `src/app/services/decisions-api.service.ts`, `src/app/services/usage-api.service.ts`, `src/app/services/assistants-api.service.ts`, and `src/app/services/channel-debug-api.service.ts`; reuse `src/app/services/api-util.ts` for shared API utilities. The backend mirrors these interfaces. See `../dimabot/ADMIN_CONSOLE.md` for the backend and data rules.
+
 ## Design system & UX
 
 - **Read the `live-first` skill before any admin UI work** (`.claude/skills/live-first/SKILL.md`, section "Admin site"). The admin uses the same Live First language as dimasite: light/dark + accent via `ThemeService`, tokens and shared `.lf-*` primitives in `src/styles.css`, page layout in component CSS.
@@ -27,7 +41,7 @@
 
 ## Styling
 
-Follow the hybrid styling policy defined in root `AGENTS.md`: shared admin primitives in `src/styles.css`, page-level layouts in component-scoped `.css` files.
+Follow the hybrid styling policy defined in root `AGENTS.md`: shared admin primitives in `src/styles.css`, page-level layouts in component-scoped `.css` files. The production `anyComponentStyle` budget in `angular.json` warns at 8 kB and errors at 16 kB per component stylesheet.
 
 ## Responsive Design Priority
 
@@ -46,6 +60,7 @@ Follow the hybrid styling policy defined in root `AGENTS.md`: shared admin primi
 
 - Use `scripts/saas-ops` target `admin` and [`../ops/README.md`](../ops/README.md). `scripts/dima-update` is the human operator's tool; agents must not invoke or modify it.
 - Preview with `scripts/saas-ops preview admin --port 4202` from the repository root. Inspect API/environment targets before interacting; test moderation and other mutations with mocks or designated test data. Check mobile/desktop layouts and changed flows, then Ctrl-C to stop the isolated preview.
+- For an admin change, run `ops/checks/admin-ui.mjs` and the relevant page-specific `ops/checks/admin-console-*-browser.mjs` against the isolated preview or candidate. The general check covers new console pages at smoke level; the page checks exercise their behavior. Mock mutations and external requests.
 - Run `scripts/saas-ops build admin`, then `verify admin-<run-id> --check <behavior-script>`, `deploy admin-<run-id>`, and `cleanup admin-<run-id>` through the same helper. Use the exact generated run ID. Builds occur outside the live directory; publication backs up and updates `admin/dist/admin/browser/` without restarting nginx.
 - The helper verifies served entrypoints and restores the prior bundle on failure. Add relevant production smoke checks; use `rollback admin-<run-id>` for a regression discovered afterward.
 - `admin/docker-compose.yaml` owns `dima-admin`. Nginx config changes require isolated validation, then a production `nginx -t` and targeted reload.

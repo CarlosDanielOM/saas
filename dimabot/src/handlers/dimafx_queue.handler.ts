@@ -13,6 +13,7 @@ import { buildMediaPlaybackUrl } from "../server/services/media_library.service.
 import { piperTtsService } from "../server/services/tts/piper_tts.service.js";
 import { getAudioFileDurationMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
+import { recordActivity } from "../utils/activity_log.js";
 
 const LEASE_MS = 15_000;
 const MAX_QUEUE_ITEMS = 25;
@@ -211,20 +212,37 @@ export class DimafxQueueHandler {
     let waitMs = this.playbackWaitMs(queueItem);
 
     if (queueItem.tts) {
-      const synthesis = await promiseWithTimeout(
-        piperTtsService.synthesize({
-          channelID,
-          speechID: queueItem.triggerID,
-          mode: "speak",
-          provider: "piper",
-          text: queueItem.tts.text,
-          language: queueItem.tts.language,
-          voice: queueItem.tts.voice,
-          outputPath: "",
-        }),
-        TTS_SYNTHESIS_TIMEOUT_MS,
-        "DimaFX TTS synthesis timed out",
-      );
+      const startedAt = Date.now();
+      let synthesis: Awaited<ReturnType<typeof piperTtsService.synthesize>>;
+      try {
+        synthesis = await promiseWithTimeout(
+          piperTtsService.synthesize({
+            channelID,
+            speechID: queueItem.triggerID,
+            mode: "speak",
+            provider: "piper",
+            text: queueItem.tts.text,
+            language: queueItem.tts.language,
+            voice: queueItem.tts.voice,
+            outputPath: "",
+          }),
+          TTS_SYNTHESIS_TIMEOUT_MS,
+          "DimaFX TTS synthesis timed out",
+        );
+      } catch (error) {
+        synthesis = { error: true, message: error instanceof Error ? error.message : String(error) };
+      }
+      const failed = synthesis.error || !synthesis.outputPath || !synthesis.publicPath;
+      // Extension voice is free and has no usage receipt; the owner's activity log is its only trace.
+      recordActivity({
+        kind: "voice", name: "piper", channelID, outcome: failed ? "failed" : "ok", reason: failed ? "synthesis_failed" : null,
+        actor: queueItem.widget?.buyerId ? { id: queueItem.widget.buyerId } : null, ref: queueItem.triggerID,
+        durationMs: Date.now() - startedAt,
+        // A retried playback job synthesizes again; it is still one request.
+        dedupeKey: `${queueItem.triggerID}:${failed ? "failed" : "ok"}`,
+        data: { source: "dimafx", chars: Array.from(String(queueItem.tts.text ?? "")).length, voice: queueItem.tts.voice,
+          error: failed ? synthesis.message : undefined },
+      });
 
       if (synthesis.error || !synthesis.outputPath || !synthesis.publicPath) {
         throw new Error(synthesis.message || "DimaFX TTS synthesis failed");

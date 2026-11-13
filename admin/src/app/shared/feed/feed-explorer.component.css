@@ -1,0 +1,196 @@
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  min-width: 0;
+}
+.fx-titles {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+}
+.fx-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.fx-top:empty {
+  display: none;
+}
+button.fx-live,
+.fx-bar button.lf-chip,
+.fx-remove,
+.fx-active a.lf-chip {
+  min-height: 2.75rem;
+}
+.fx-live {
+  flex-shrink: 0;
+  gap: 0.45rem;
+}
+.fx-remove app-icon:last-of-type {
+  margin-left: 0.1rem;
+}
+.fx-status-skel {
+  align-items: center;
+}
+
+/* Filter bar: range + Filters on one row, kind chips under it. */
+.fx-bar {
+  top: var(--fx-sticky-top, var(--nav-h));
+  z-index: 6;
+}
+.fx-bar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fx-range {
+  flex-wrap: nowrap;
+  gap: 0.15rem;
+  padding: 0.15rem;
+}
+.fx-range span {
+  min-width: 2.85rem;
+  min-height: 2.75rem;
+  padding-inline: 0.6rem;
+}
+/* The picked range is a solid fill: a lighter card on the track is nearly invisible in dark mode. */
+.fx-range input:checked + span {
+  background: var(--accent-solid);
+  color: #fff;
+}
+.fx-filters {
+  position: relative;
+  flex-shrink: 0;
+  min-height: 2.75rem;
+}
+.fx-filters__label {
+  display: none;
+}
+.fx-badge {
+  display: grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent-solid);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.fx-chips .lf-chip__count.fx-warn {
+  color: var(--warn);
+}
+
+/* Rows */
+.fx-list {
+  position: relative;
+}
+.fx-pending {
+  position: sticky;
+  top: calc(var(--feed-sticky-top, var(--nav-h)) + 0.5rem);
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  height: 0;
+  overflow: visible;
+}
+.fx-pending .lf-btn {
+  margin-top: 0.5rem;
+  box-shadow: var(--shadow-pop);
+}
+.fx-pending app-icon {
+  transform: rotate(-90deg);
+}
+.fx-skel__row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.25rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.fx-skel__row:first-child {
+  border-top: 0;
+}
+.fx-skel__lines {
+  display: grid;
+  flex: 1;
+  gap: 0.4rem;
+}
+.fx-recorded {
+  max-width: 44ch;
+  font-size: 0.85rem;
+}
+.fx-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.fx-empty__actions:empty {
+  display: none;
+}
+.lf-more-row {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fx-more-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.fx-end {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+.lf-notice app-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.2rem;
+  color: var(--warn);
+  vertical-align: -0.15rem;
+}
+
+/* Filters sheet */
+.fx-field {
+  display: grid;
+  gap: 0.4rem;
+}
+.fx-picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fx-sheet .lf-input {
+  font-size: 1rem;
+}
+.fx-sheet .lf-choice {
+  min-height: 2.75rem;
+  padding-block: 0.65rem;
+}
+.fx-sheet legend {
+  margin-bottom: 0.4rem;
+}
+
+@media (min-width: 360px) {
+  .fx-filters__label {
+    display: inline;
+  }
+}
+@media (min-width: 640px) {
+  .fx-skel__row,
+  .fx-end {
+    padding-inline: 1.25rem;
+  }
+}

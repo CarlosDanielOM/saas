@@ -1,0 +1,29 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.ovd {
+  display: grid;
+  gap: 0.6rem;
+}
+.ovd-line {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.ovd-stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ovd-stats > li {
+  display: grid;
+  min-width: 0;
+}
+.ovd-stats .lf-stat {
+  align-content: start;
+}
+@media (min-width: 640px) {
+  .ovd-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

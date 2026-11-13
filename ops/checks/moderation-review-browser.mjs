@@ -99,7 +99,7 @@ try {
     assert.match(await cards.first().innerText(), /Ads \/ sales scored 99%, over the 85% bar, but the overall check was only 4% \(it needs 30%\)\. Not banned\./);
     assert.match(await cards.first().innerText(), /some_streamer[\s\S]*StreamlootsBot[\s\S]*first message/);
     assert.equal(await page.locator('.rv-kinds input:checked + span').innerText().then(text => text.replace(/\s+/g, ' ').trim()), 'Contradictions 1');
-    assert.equal(await page.locator('.bottom-nav').getByRole('link', { name: 'Review', exact: true }).getAttribute('aria-current'), 'page');
+    assert.equal(await page.locator('.bottom-nav').getByRole('link', { name: 'AI', exact: true }).getAttribute('aria-current'), 'page');
 
     // Near misses: one card for the copies of one line, with every chat that preceded them; the queue is kept in the URL.
     await queue('Near misses').click();
@@ -200,7 +200,7 @@ try {
             await page.screenshot({ path: `${artifacts}/${mode}-${width}.png`, fullPage: false });
         }
     }
-    assert.equal(await page.locator('.nav__links').getByRole('link', { name: 'Review', exact: true }).getAttribute('aria-current'), 'page');
+    assert.equal(await page.locator('.nav__links').getByRole('link', { name: 'AI', exact: true }).getAttribute('aria-current'), 'page');
     assert.deepEqual(unexpected, []);
     assert.deepEqual([...new Set(otherCalls)].filter(call => !/^GET \/(users|auth\/|config\/)/.test(call)), [], 'the page makes no other API calls than the shell\'s known read-only ones');
     console.log('PASS admin chat protection review: status line, three queues with counts and URL state, grouped copies with every preceding chat, invitation flag, plain reasons on stored scores, save/change/remove verdict on the listed copies, failed save, slow queue switch, error and retry, keyboard, 320/390/1280 px in dark and light, accessibility');

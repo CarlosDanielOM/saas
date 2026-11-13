@@ -113,3 +113,23 @@ test('Kokoro AST accepts a preset voice and text, respects filters and never cha
     assert.equal(String((await evaluate(parse('$(tts.piper Hello)').ast, context)).value), '');
     assert.equal(requests.at(-1)!.provider, 'piper');
 });
+
+test('a channel-point redemption is labeled for usage and spoken exactly like any AST voice', async () => {
+    settings = createDefaultChannelTtsSettings('fixture');
+    requests.length = 0;
+    const speak = async (eventData: Record<string, unknown>) => {
+        const ast = parse('$(tts Hello there)');
+        const context = createExecutionContext({ broadcasterId: 'fixture', userId: '42', userLogin: 'viewer', userDisplayName: 'Viewer', eventData });
+        await evaluate(ast.ast, context);
+        return requests.at(-1)!;
+    };
+    const redeemed = await speak({ id: 'r1', user_id: '42', user_login: 'viewer', user_name: 'Viewer', user_input: 'Hello there',
+        reward: { id: 'reward-1', title: 'Speak', cost: 100, prompt: '' }, status: 'fulfilled', redeemed_at: '2026-11-13T12:00:00Z' });
+    const chatted = await speak({ message: { text: 'Hello there', fragments: [] } });
+    assert.equal(redeemed.meta.source, 'redemption');
+    assert.equal(chatted.meta.source, 'ast');
+    assert.equal(redeemed.text, chatted.text);
+    assert.deepEqual(redeemed.requestedBy, chatted.requestedBy);
+    // A reward-shaped value without a redemption time is not a redemption.
+    assert.equal((await speak({ reward: { id: 'x' } })).meta.source, 'ast');
+});

@@ -1,0 +1,102 @@
+<div class="uc-tools">
+  <div class="uc-sort" role="group" aria-label="Order">
+    <button type="button" class="lf-chip" [attr.aria-pressed]="sort() === 'newest'" (click)="sortChange.emit('newest')">Newest</button>
+    <button type="button" class="lf-chip" [attr.aria-pressed]="sort() === 'credits'" (click)="sortChange.emit('credits')">Most expensive</button>
+  </div>
+  <label class="uc-kinds">
+    <span class="lf-switch">
+      <input type="checkbox" [checked]="kinds() === 'all'" (change)="kindsChange.emit($any($event.target).checked ? 'all' : 'usage')" data-usage-kinds />
+      <span class="lf-switch__track" aria-hidden="true"></span>
+    </span>
+    <span>Include credit changes</span>
+  </label>
+</div>
+
+@if (failed()) {
+  <div class="lf-empty" role="alert" data-usage-calls-error>
+    <app-icon name="alert" />
+    <strong>The calls didn't load</strong>
+    <span>Your filters are kept.</span>
+    <button type="button" class="lf-btn lf-btn--sm" (click)="retry()"><app-icon name="refresh" />Retry</button>
+  </div>
+} @else if (loading() && !rows().length) {
+  <ul class="lf-rows" aria-busy="true" aria-label="Loading calls">
+    @for (n of [1, 2, 3, 4, 5]; track n) {
+      <li class="uc-skel"><app-skeleton width="62%" height="0.95rem" /><app-skeleton width="38%" height="0.75rem" /></li>
+    }
+  </ul>
+} @else if (!rows().length) {
+  <div class="lf-empty" data-usage-calls-empty>
+    <app-icon name="search" />
+    <strong>No {{ kinds() === 'all' ? 'calls or credit changes' : 'charged calls' }} match</strong>
+    <span>Widen the range or clear the filters.</span>
+    <button type="button" class="lf-btn lf-btn--sm" (click)="clear.emit()">Clear filters</button>
+  </div>
+} @else {
+  <ul class="uc-list" [attr.aria-busy]="loading()" aria-label="Calls" aria-live="polite">
+    @for (tx of rows(); track tx.id) {
+      <li>
+        <details class="uc-row" [class.is-added]="tx.credits < 0" data-usage-call [attr.data-id]="tx.id">
+          <summary>
+            <span class="uc-row__main">
+              <span class="uc-row__what">{{ line(tx) }}</span>
+              <span class="uc-row__meta">
+                {{ tx.channel || 'Unknown channel' }}@if (tx.actor) {<span> · {{ tx.actor.name || tx.actor.login || 'a viewer' }}</span>} · {{ when(tx.at) }}
+              </span>
+            </span>
+            <span class="uc-row__end">
+              <b class="uc-row__credits">{{ credits(tx) }}</b>
+              <small>{{ value(tx.credits < 0 ? -tx.credits : tx.credits) }}@if (tx.providerUSD !== null) {<span> · {{ usd(tx.providerUSD) }} provider</span>}</small>
+            </span>
+          </summary>
+          <dl class="lf-dl uc-dl">
+            <div><dt>When</dt><dd>{{ fullTime(tx.at) }}</dd></div>
+            <div><dt>Channel</dt><dd><a [routerLink]="['/channels', tx.channelID]">{{ tx.channel || tx.channelID }}</a></dd></div>
+            @if (tx.entryKind === 'usage') {
+              <div>
+                <dt>Viewer</dt>
+                <dd>
+                  @if (tx.actor?.id) {
+                    <a routerLink="/activity" [queryParams]="{ actor: tx.actor!.id }">{{ tx.actor!.name || tx.actor!.login || tx.actor!.id }}</a>
+                  } @else {
+                    Not recorded
+                  }
+                </dd>
+              </div>
+              <div><dt>Feature</dt><dd>{{ categoryLabel(tx) }}</dd></div>
+              <div><dt>What it did</dt><dd>{{ operation(tx) }}</dd></div>
+              <div><dt>Where it came from</dt><dd>{{ source(tx.source) }}</dd></div>
+              <div><dt>Provider</dt><dd>{{ tx.provider }}</dd></div>
+              <div><dt>Model</dt><dd class="uc-mono">{{ tx.model || 'Not recorded' }}</dd></div>
+              @if (tx.voice) {
+                <div><dt>Voice</dt><dd>{{ tx.voice }}</dd></div>
+              }
+              <div><dt>Amount</dt><dd>{{ quantity(tx) || 'Not recorded' }}</dd></div>
+              <div><dt>Credits charged</dt><dd>{{ credits(tx) }} {{ value(tx.credits) }}</dd></div>
+              <div><dt>Provider cost</dt><dd data-usage-provider>{{ tx.providerUSD === null ? 'not recorded' : usd(tx.providerUSD) }}</dd></div>
+            } @else {
+              <div><dt>Change</dt><dd>{{ adjustment(tx.adjustmentType ?? tx.operation) }}</dd></div>
+              <div><dt>Where it came from</dt><dd>{{ source(tx.source) }}</dd></div>
+              <div><dt>Credits</dt><dd>{{ tx.credits < 0 ? 'added' : 'removed' }}: {{ credits(tx) }} {{ value(tx.credits < 0 ? -tx.credits : tx.credits) }}</dd></div>
+            }
+            <div><dt>Receipt</dt><dd class="uc-mono">{{ tx.id }}</dd></div>
+          </dl>
+        </details>
+      </li>
+    }
+  </ul>
+  @if (moreFailed()) {
+    <div class="lf-more-row" role="alert">
+      <span class="lf-note">More calls didn't load.</span>
+      <button type="button" class="lf-btn lf-btn--sm" (click)="more()">Retry</button>
+    </div>
+  } @else if (cursor()) {
+    <div class="lf-more-row">
+      <button type="button" class="lf-btn uc-more" (click)="more()" [disabled]="loading()" data-usage-more>
+        @if (loading()) {<app-icon name="refresh" class="lf-spinning" />}Load more
+      </button>
+    </div>
+  } @else {
+    <p class="uc-end">{{ deepEnd() ? 'Most expensive shows the top 500. Switch to Newest to go further.' : 'That is every call that matches.' }}</p>
+  }
+}

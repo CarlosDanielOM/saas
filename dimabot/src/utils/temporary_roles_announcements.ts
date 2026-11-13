@@ -66,7 +66,10 @@ async function sendRoleRemovalBatch(
     if (users.length > COMPRESSION_THRESHOLD) {
         const response = await sendTwitchChatMessage(
             channelID,
-            buildCompressedRemovalMessage(role, users.length)
+            buildCompressedRemovalMessage(role, users.length),
+            null,
+            undefined,
+            { origin: 'system' }
         );
         if (response.error) {
             throw new Error(response.message || 'Failed sending compressed role removal message');
@@ -77,7 +80,10 @@ async function sendRoleRemovalBatch(
     for (const user of users) {
         const response = await sendTwitchChatMessage(
             channelID,
-            buildSingleRemovalMessage(role, user)
+            buildSingleRemovalMessage(role, user),
+            null,
+            undefined,
+            { origin: 'system' }
         );
         if (response.error) {
             throw new Error(response.message || 'Failed sending role removal message');

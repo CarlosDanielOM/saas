@@ -17,7 +17,7 @@ mock.module('../../../classes/twitch_streamers.class.js', { defaultExport: { get
 mock.module('../../../schemas/channel_ai_personality.schema.js', { namedExports: { ChannelAIPersonalitySchema: {} } });
 mock.module('../../badges.js', { namedExports: { formatBadges: async () => ({ formattedBadges: '' }) } });
 mock.module('../../billing.js', { namedExports: { isAiCreditsExhausted, getAiCredits } });
-mock.module('../../polarsh.js', { namedExports: { ingestPolarSHEvent } });
+mock.module('../../polarsh.js', { namedExports: { ingestPolarSHEvent, providerReportedCostUsd: (usage: { cost?: number } | undefined) => usage?.cost ?? null } });
 mock.module('../prompts.ai.js', { namedExports: { constructChatSystemMessages } });
 mock.module('../chat_context.js', { namedExports: { mergeChatHistories: () => [] } });
 mock.module('../../logger.js', { namedExports: { error: async () => {}, debug: async () => {} } });

@@ -1,0 +1,284 @@
+<ng-template #liveToggle>
+  <button type="button" class="lf-chip fx-live" [attr.aria-pressed]="live()" (click)="toggleLive()" data-feed-live>
+    @if (live()) {
+      <span class="lf-dot lf-dot--live" aria-hidden="true"></span>
+    } @else {
+      <app-icon name="refresh" />
+    }
+    Live
+  </button>
+</ng-template>
+
+<ng-template #activeFilters>
+  @if ((filters().channel && !channelID()) || hasViewer()) {
+    <div class="lf-head__chips fx-active" aria-label="Active filters" role="group">
+      @if (filters().channel && !channelID()) {
+        <button type="button" class="lf-chip lf-chip--accent fx-remove" (click)="go({ channel: null })" data-feed-active="channel">
+          <app-icon name="user" />{{ channelName() ?? 'One streamer' }}<app-icon name="x" /><span class="sr-only">Remove the streamer filter</span>
+        </button>
+      }
+      @if (hasViewer()) {
+        <button type="button" class="lf-chip lf-chip--accent fx-remove" (click)="go({ actor: null, actorLogin: null })" data-feed-active="viewer">
+          <app-icon name="history" />{{ viewerName() ?? 'This viewer' }}<app-icon name="x" /><span class="sr-only">Remove the viewer filter</span>
+        </button>
+      }
+      @if (filters().channel && !channelID()) {
+        <a class="lf-chip" [routerLink]="['/channels', filters().channel, 'activity']">Open the channel<app-icon name="chevron" /></a>
+      }
+    </div>
+  }
+</ng-template>
+
+@if (pageHeader()) {
+  <header class="lf-head">
+    <div class="lf-head__row">
+      <div class="fx-titles">
+        @if (heading().kicker; as kicker) {
+          <p class="lf-kicker">{{ kicker }}</p>
+        }
+        <h1 class="lf-title" data-feed-title>{{ heading().title }}</h1>
+        <p class="lf-sub">{{ heading().sub }}</p>
+      </div>
+      <ng-container [ngTemplateOutlet]="liveToggle" />
+    </div>
+    <ng-container [ngTemplateOutlet]="activeFilters" />
+  </header>
+} @else {
+  <div class="fx-top">
+    <ng-content select="[feedTools]" />
+    <ng-container [ngTemplateOutlet]="liveToggle" />
+  </div>
+  <ng-container [ngTemplateOutlet]="activeFilters" />
+}
+
+<!-- The answer -->
+@if (answer(); as answer) {
+  <div class="lf-status lf-status--{{ answer.tone }}" data-feed-answer aria-live="polite">
+    <app-icon [name]="answer.icon" />
+    <div class="lf-status__body">
+      <p class="lf-status__title">{{ answer.title }}</p>
+      @if (answer.note) {
+        <p class="lf-status__text">{{ answer.note }}</p>
+      }
+      <div class="lf-status__actions">
+        @if (filters().outcome) {
+          <button type="button" class="lf-btn lf-btn--sm" (click)="go({ outcome: null })">Show everything</button>
+        } @else if (answer.problems) {
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--primary" (click)="go({ outcome: 'problems' })" data-feed-only-problems>Show only those</button>
+        }
+        @if (answer.tone === 'muted' && widerRange(); as wider) {
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--primary" (click)="setRange(wider.key)" data-feed-wider>Show {{ wider.span }}</button>
+        }
+      </div>
+    </div>
+  </div>
+} @else if (summaryFailed()) {
+  <div class="lf-status lf-status--muted" data-feed-answer>
+    <app-icon name="info" />
+    <div class="lf-status__body">
+      <p class="lf-status__title">Couldn't count what happened in {{ span() }}.</p>
+      <p class="lf-status__text">The rows below are still up to date.</p>
+      <div class="lf-status__actions">
+        <button type="button" class="lf-btn lf-btn--sm" (click)="loadSummary()"><app-icon name="refresh" />Count again</button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="lf-status fx-status-skel" aria-hidden="true">
+    <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+    <div class="lf-status__body"><app-skeleton width="85%" height="1.1rem" /><app-skeleton width="45%" height="0.9rem" /></div>
+  </div>
+}
+
+<!-- Filters -->
+<div class="lf-sticky fx-bar" #bar data-feed-bar>
+  <div class="fx-bar__top">
+    <div class="lf-seg fx-range" role="radiogroup" aria-label="Time range">
+      @for (range of ranges; track range.key) {
+        <label>
+          <input type="radio" [name]="'fx-range-' + (channelID() ?? 'all')" [value]="range.key" [checked]="filters().range === range.key" (change)="setRange(range.key)" [attr.aria-label]="range.label" />
+          <span>{{ range.short }}</span>
+        </label>
+      }
+    </div>
+    <button
+      type="button"
+      class="lf-btn lf-btn--sm fx-filters"
+      (click)="openSheet()"
+      aria-haspopup="dialog"
+      [attr.aria-label]="sheetCount() ? 'Filters, ' + sheetCount() + ' on' : 'Filters'"
+      data-feed-filters
+    >
+      <app-icon name="filter" /><span class="fx-filters__label" aria-hidden="true">Filters</span>
+      @if (sheetCount()) {
+        <span class="fx-badge" aria-hidden="true" data-feed-badge>{{ sheetCount() }}</span>
+      }
+    </button>
+  </div>
+  <div class="lf-strip fx-chips" role="group" aria-label="What to show">
+    <button type="button" class="lf-chip" [attr.aria-pressed]="!filters().kinds.length" (click)="go({ kinds: [] })" data-feed-kind="all">All</button>
+    <button type="button" class="lf-chip fx-problems" [attr.aria-pressed]="!!filters().outcome" (click)="toggleProblems()" data-feed-problems>
+      <app-icon name="alert" />{{ filters().outcome === 'failed' ? 'Failed only' : 'Problems' }}
+      @if (problemCount() !== null) {
+        <span class="lf-chip__count" [class.fx-warn]="problemCount() !== '0' && !filters().outcome">{{ problemCount() }}</span>
+      }
+    </button>
+    @for (chip of kindChips(); track chip.kind) {
+      <button type="button" class="lf-chip" [attr.aria-pressed]="chip.pressed" (click)="toggleKind(chip.kind)" [attr.data-feed-kind]="chip.kind">
+        {{ chip.label }}
+        @if (chip.count !== null) {
+          <span class="lf-chip__count">{{ chip.count }}</span>
+        }
+      </button>
+    }
+  </div>
+</div>
+
+@if (partialText(); as partial) {
+  <p class="lf-notice" role="status" data-feed-partial><span><app-icon name="info" /> {{ partial }}</span></p>
+}
+
+<!-- The rows -->
+@if (error(); as message) {
+  <div class="lf-tile lf-empty" role="alert" data-feed-error>
+    <app-icon name="alert" />
+    <strong>The activity didn't load.</strong>
+    <p>{{ message }}</p>
+    <button type="button" class="lf-btn" (click)="retry()"><app-icon name="refresh" />Retry</button>
+  </div>
+} @else if (loading() && !items().length) {
+  <section class="lf-tile lf-tile--flush fx-skel" aria-busy="true" aria-label="Loading activity">
+    @for (row of [1, 2, 3, 4, 5, 6]; track row) {
+      <div class="fx-skel__row">
+        <app-skeleton width="2rem" height="2rem" />
+        <div class="fx-skel__lines"><app-skeleton [width]="row % 2 ? '70%' : '55%'" height="0.95rem" /><app-skeleton width="35%" height="0.75rem" /></div>
+      </div>
+    }
+  </section>
+} @else if (!items().length) {
+  <div class="lf-tile lf-empty" data-feed-empty>
+    <app-icon name="history" />
+    <strong>{{ emptyText().title }}</strong>
+    @if (emptyText().text; as text) {
+      <p>{{ text }}</p>
+    }
+    @if (emptyText().note; as note) {
+      <p class="fx-recorded" data-feed-recorded>{{ note }}</p>
+    }
+    <div class="fx-empty__actions">
+      @if (widerRange(); as wider) {
+        @if (answer()?.tone !== 'muted') {
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--primary" (click)="setRange(wider.key)">Show {{ wider.span }}</button>
+        }
+      }
+      @if (narrowed()) {
+        <button type="button" class="lf-btn lf-btn--sm" (click)="clearAll()">Clear filters</button>
+      }
+    </div>
+  </div>
+} @else {
+  <section class="lf-tile lf-tile--flush fx-list" #listTile [attr.aria-busy]="loading()" aria-label="Activity rows" data-feed-list>
+    @if (pending().length) {
+      <div class="fx-pending">
+        <button type="button" class="lf-btn lf-btn--sm lf-btn--primary" (click)="showPending()" data-feed-pending>
+          <app-icon name="chevron" />{{ pendingLabel() }}
+        </button>
+      </div>
+    }
+    <app-feed-list [items]="items()" [showChannel]="!channelID()" />
+    @if (nextCursor()) {
+      <div class="lf-more-row">
+        @if (moreFailed()) {
+          <span class="fx-more-error" role="alert">Older rows didn't load.</span>
+        }
+        <button type="button" class="lf-btn" (click)="loadMore()" [disabled]="loadingMore()" data-feed-more>
+          @if (loadingMore()) {
+            <app-icon name="refresh" class="lf-spin" />Loading…
+          } @else {
+            {{ moreFailed() ? 'Try again' : 'Load more' }}
+          }
+        </button>
+      </div>
+    } @else if (endNote(); as note) {
+      <p class="fx-end" data-feed-end>{{ note }}</p>
+    }
+  </section>
+}
+<p class="sr-only" aria-live="polite">{{ announce() }}</p>
+
+<!-- Filters sheet -->
+<dialog #sheet class="lf-dialog fx-sheet" aria-labelledby="fx-sheet-title" (cancel)="$event.preventDefault(); closeSheet()" (click)="onSheetBackdrop($event)" data-feed-sheet>
+  @if (sheetOpen()) {
+    <header class="lf-dialog__head">
+      <h2 id="fx-sheet-title">Filters</h2>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="closeSheet()"><app-icon name="x" /></button>
+    </header>
+    <div class="lf-dialog__body">
+      @if (!channelID()) {
+        <div class="fx-field">
+          @if (draft().channel; as picked) {
+            <div class="fx-picked">
+              <span class="lf-label">Streamer</span>
+              <button type="button" class="lf-chip lf-chip--accent fx-remove" (click)="patchDraft({ channel: null })" data-feed-draft-channel>
+                {{ picked.channel }}<app-icon name="x" /><span class="sr-only">Remove</span>
+              </button>
+            </div>
+          }
+          <app-channel-picker [label]="draft().channel ? 'Pick another streamer' : 'Streamer'" (picked)="patchDraft({ channel: $event })" />
+        </div>
+      }
+      <div class="lf-field fx-field">
+        @if (draftActorName(); as name) {
+          <div class="fx-picked">
+            <span class="lf-label">Viewer</span>
+            <button type="button" class="lf-chip lf-chip--accent fx-remove" (click)="patchDraft({ actor: null })">
+              {{ name }}<app-icon name="x" /><span class="sr-only">Remove</span>
+            </button>
+          </div>
+        }
+        <label class="lf-label" for="fx-viewer">{{ draftActorName() ? 'Or another viewer' : 'Viewer' }}</label>
+        <input
+          id="fx-viewer"
+          class="lf-input"
+          type="text"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          placeholder="Twitch name, like mossy_fern"
+          [value]="draft().viewer"
+          (input)="patchDraft({ viewer: $any($event.target).value })"
+          (keydown.enter)="applySheet()"
+          [attr.aria-invalid]="draftTried() && !!draftViewerError()"
+          aria-describedby="fx-viewer-hint"
+          data-feed-viewer
+        />
+        @if (draftTried() && draftViewerError(); as message) {
+          <p class="lf-error" id="fx-viewer-hint">{{ message }}</p>
+        } @else {
+          <p class="lf-hint" id="fx-viewer-hint">Everything this viewer did or caused, in {{ channelID() ? 'this channel' : 'every channel' }}.</p>
+        }
+      </div>
+      <fieldset class="lf-choices">
+        <legend class="lf-label">Show</legend>
+        @for (option of outcomeOptions; track option.title) {
+          <label class="lf-choice">
+            <input type="radio" name="fx-outcome" [checked]="draft().outcome === option.value" (change)="patchDraft({ outcome: $any(option.value) })" [attr.data-feed-outcome]="option.value ?? 'all'" />
+            <span class="lf-choice__body">
+              <span class="lf-choice__title">{{ option.title }}</span>
+              <span class="lf-choice__copy">{{ option.copy }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+    </div>
+    <footer class="lf-dialog__foot">
+      <button type="button" class="lf-btn lf-btn--ghost" (click)="clearSheet()">Clear</button>
+      <button type="button" class="lf-btn lf-btn--primary" (click)="applySheet()" data-feed-apply>Show results</button>
+    </footer>
+  }
+</dialog>
+
+@if (eventKey(); as key) {
+  <app-event-detail [eventKey]="key" (closed)="closeEvent()" />
+}

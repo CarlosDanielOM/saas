@@ -77,6 +77,10 @@ Producer/consumer contracts, account ownership, recovery, Polar behavior, and ex
 
 Overlay Studio's portable widget contract, frontend module registry, state source adapters, compatibility envelope, and extension recipe are documented in [`OVERLAY_WIDGET_MODULES.md`](./OVERLAY_WIDGET_MODULES.md).
 
+## Owner Admin Console
+
+See [ADMIN_CONSOLE.md](./ADMIN_CONSOLE.md) for the owner console, activity trail and checks. Record activity through `recordActivity` and its guarded wrappers only; row construction and recording must never throw into the caller. Register new owner-only routes with the wrappers in `src/server/routes/admin_site/shared.ts`. Usage receipt enrichment is receipt-only: keep Polar and PostHog billing events unchanged.
+
 ## API Contracts
 
 All contracts are defined in the `.route.ts` files. Read the source for the latest shapes. The common envelope is `{ error, message, status, data }`.

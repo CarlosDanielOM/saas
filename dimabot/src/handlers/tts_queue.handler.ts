@@ -38,15 +38,28 @@ import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util
 import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { getTtsPlaybackTimeoutMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
+import { recordActivity } from "../utils/activity_log.js";
 import { enqueueTtsSession, popTtsSession } from '../utils/tts/tts_session.util.js';
 import { petLaneItem, startPetLaneTurn, endPetLaneTurn, type PetLaneItem } from '../pets/tts_lane.js';
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
 const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
 
+/**
+ * The source a request is reported under, and the receipt's own label. A channel-point reward that runs
+ * AST arrives as 'redemption': Polar and analytics keep reporting it as 'ast', as they always have, and
+ * only the usage receipt says 'redemption'.
+ */
+export function ttsRequestSources(wireSource: unknown): Pick<TtsRequestPayload, 'source' | 'receiptSource'> {
+  if (wireSource === 'redemption') return { source: 'ast', receiptSource: 'redemption' };
+  return { source: wireSource === 'ast' ? 'ast' : 'chat-command' };
+}
+
 export interface TtsRequestPayload {
   channelID: string;
   source: "chat-command" | "ast" | "redemption";
+  /** Receipt-only source; see `ttsRequestSources`. Absent on requests queued by an older version. */
+  receiptSource?: "redemption";
   mode: TtsMode;
   provider: RuntimeTtsProvider;
   model?: string;
@@ -76,6 +89,38 @@ export interface TtsQueueItem extends TtsRequestPayload {
   usageRequestID?: string;
   usageEntryID?: string;
   queueSession?: string | null;
+}
+
+const ttsCharacters = (item: TtsQueueItem) => {
+  const text = String(item.text ?? '');
+  // Kokoro and Piper count Unicode characters, including surrogate pairs once.
+  return item.provider === 'fish' ? text.length : Array.from(text).length;
+};
+
+const requester = (item: TtsQueueItem) => item.requestedBy
+  ? { id: item.requestedBy.userID, login: item.requestedBy.userLogin, name: item.requestedBy.userName }
+  : null;
+
+/**
+ * Owner activity row for a provider that did not speak a request: it failed, or was skipped for credits.
+ * Failures are not usage, so they never become receipts; the provider that did speak has its receipt.
+ */
+function recordVoiceProblem(channelID: string, item: TtsQueueItem, row: {
+  outcome: 'failed' | 'skipped'; reason: string; fallback?: string; requested?: string; error?: string;
+}): void {
+  // Building the row must not throw into the queue either.
+  try {
+    recordActivity({
+      kind: 'voice', name: item.provider, channelID, outcome: row.outcome, reason: row.reason,
+      actor: requester(item), ref: item.speechID,
+      // Recovery can run a popped request again; one row per provider and reason is enough.
+      dedupeKey: `${item.speechID}:${item.provider}:${row.reason}`,
+      data: { chars: ttsCharacters(item), source: item.receiptSource || item.source, voice: item.voice, latencyMs: Date.now() - item.timestamp,
+        fallback: row.fallback, requested: row.requested, error: row.error }
+    });
+  } catch {
+    // The activity log is a debugging aid; the request carries on without it.
+  }
 }
 
 export interface QueueTtsResponse {
@@ -435,9 +480,12 @@ class TtsQueueHandler {
             });
           }
 
+          const beforeCredits = queueItem;
           queueItem = resolveTtsForCreditStatus(queueItem, creditStatus, streamer?.plan_tier);
           if (queueItem.provider !== requestedProvider) {
             fallbackReason = creditStatus;
+            recordVoiceProblem(channelID, beforeCredits, { outcome: 'skipped',
+              reason: creditStatus === 'exhausted' ? 'no_credits' : 'credit_check_failed', fallback: queueItem.provider });
           }
         }
 
@@ -461,6 +509,8 @@ class TtsQueueHandler {
           } catch {
             // Analytics must never interrupt queue processing.
           }
+          recordVoiceProblem(channelID, queueItem, { outcome: 'skipped', reason: 'empty_text_after_fallback',
+            requested: queueItem.provider !== requestedProvider ? requestedProvider : undefined });
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
@@ -498,14 +548,19 @@ class TtsQueueHandler {
         }, channelID));
 
         let synthesisResult = await synthesize();
+        let fallbackSkipped = false;
         if ((synthesisResult.error || !synthesisResult.outputPath || !synthesisResult.publicPath)
           && queueItem.provider !== "piper") {
+          const failedItem = queueItem;
           const failedProvider = queueItem.provider;
           const providerError = synthesisResult.message;
           queueItem = resolveTtsForCreditStatus(queueItem, "unavailable");
           fallbackReason = `${failedProvider}_synthesis_failed`;
+          recordVoiceProblem(channelID, failedItem, { outcome: 'failed', reason: 'synthesis_failed', fallback: queueItem.provider, error: providerError });
           if (queueItem.text.trim()) {
             synthesisResult = await synthesize();
+          } else {
+            fallbackSkipped = true;
           }
           console.warn(`${failedProvider} TTS unavailable; used Piper fallback`, {
             channelID,
@@ -526,6 +581,10 @@ class TtsQueueHandler {
             error: synthesisResult.message,
             timestamp: new Date().toISOString(),
           });
+          const requested = queueItem.provider !== requestedProvider ? requestedProvider : undefined;
+          recordVoiceProblem(channelID, queueItem, fallbackSkipped
+            ? { outcome: 'skipped', reason: 'empty_text_after_fallback', requested }
+            : { outcome: 'failed', reason: 'synthesis_failed', requested, error: synthesisResult.message });
 
           try {
             trackAiOperation({
@@ -560,8 +619,7 @@ class TtsQueueHandler {
               plan_tier: streamer?.plan_tier,
             },
             provider: queueItem.provider,
-            // Kokoro and Piper count Unicode characters, including surrogate pairs once.
-            characters: queueItem.provider === 'fish' ? queueItem.text.length : Array.from(queueItem.text).length,
+            characters: ttsCharacters(queueItem),
             text: queueItem.text,
             usage: {
               entryId: usageEntryID,
@@ -569,6 +627,7 @@ class TtsQueueHandler {
               source: queueItem.source,
               resourceType: "speech",
               resourceId: speechID,
+              receipt: { actor: requester(queueItem), voice: queueItem.voice, model: queueItem.model, source: queueItem.receiptSource },
             },
           });
         } catch (trackingError) {

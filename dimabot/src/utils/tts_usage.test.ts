@@ -76,3 +76,17 @@ test('Kokoro charges one credit per 15 characters, always rounding up', async ()
   assert.equal(event.cost, 0.00002);
   assert.equal(event.externalId, 'kokoro-entry');
 });
+
+test('the requester and voice go to the receipt details without changing the charge', async () => {
+  ingest.mock.resetCalls();
+  const receipt = { actor: { id: '42', login: 'viewer', name: 'Viewer' }, voice: 'fish-id', model: 's2.1-pro' };
+  const usage = await trackTtsUsage({
+    channelID: 'test', streamer: { polar_sh_customer_id: 'customer' },
+    provider: 'fish', characters: 100, text: 'Hello', usage: { entryId: 'entry-r', receipt },
+  });
+  assert.equal(usage.creditsConsumed, 150);
+  const event = ingest.mock.calls[0].arguments[0] as { cost: number; _cost: number; usage: { receipt?: unknown } };
+  assert.equal(event.cost, 0.0015);
+  assert.equal(event._cost, 0.15);
+  assert.deepEqual(event.usage.receipt, receipt);
+});

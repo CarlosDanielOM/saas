@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
-import { ttsQueueHandler, type TtsRequestPayload } from '../../handlers/tts_queue.handler.js';
+import { ttsQueueHandler, ttsRequestSources, type TtsRequestPayload } from '../../handlers/tts_queue.handler.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
@@ -479,7 +479,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
 
         const requestPayload: TtsRequestPayload = {
             channelID,
-            source: body.meta?.source || 'chat-command',
+            // The source labels usage receipts and analytics, so only the known ones are kept.
+            ...ttsRequestSources(body.meta?.source),
             mode,
             provider,
             text: normalizedText.text,

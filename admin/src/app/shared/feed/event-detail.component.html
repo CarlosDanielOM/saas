@@ -1,0 +1,147 @@
+<dialog
+  #dialog
+  class="lf-dialog ed"
+  aria-labelledby="ed-title"
+  [attr.aria-busy]="loading()"
+  (cancel)="$event.preventDefault(); close()"
+  (click)="onBackdrop($event)"
+  data-event-detail
+>
+  <header class="lf-dialog__head">
+    <div class="ed-head">
+      <p class="lf-kicker">Twitch event</p>
+      <h2 id="ed-title" tabindex="-1" autofocus>{{ title() }}</h2>
+      @if (detail(); as event) {
+        <p class="ed-sub">
+          @if (event.channel && event.channelID) {
+            <a [routerLink]="['/channels', event.channelID, 'activity']">{{ event.channel }}</a> ·
+          }
+          @if (when(); as when) {
+            <time [attr.datetime]="event.occurredAt">{{ when.at }}</time> ({{ when.ago }})
+          }
+        </p>
+        @if (event.test) {
+          <span class="lf-chip lf-chip--warn" data-event-test><app-icon name="alert" />Test event</span>
+        }
+      }
+    </div>
+    <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="close()">
+      <app-icon name="x" />
+    </button>
+  </header>
+
+  <div class="lf-dialog__body">
+    @if (loading()) {
+      <div class="ed-skel" aria-label="Loading the event">
+        <app-skeleton width="80%" height="1.1rem" />
+        @for (row of [1, 2, 3]; track row) {
+          <app-skeleton height="2.75rem" />
+        }
+      </div>
+    } @else if (error(); as message) {
+      <div class="lf-empty" role="alert">
+        <app-icon name="alert" />
+        <strong>{{ message }}</strong>
+        <button type="button" class="lf-btn" (click)="load()"><app-icon name="refresh" />Retry</button>
+      </div>
+    } @else if (detail(); as event) {
+      @if (event.actor; as actor) {
+        <div class="ed-who">
+          <span class="ed-who__name"
+            ><app-icon name="user" />{{ actor.name || actor.login || 'Someone' }}
+            @if (actor.login && actor.name && actor.login !== actor.name.toLowerCase()) {
+              <span class="mono">{{ actor.login }}</span>
+            }
+          </span>
+          @if (actorQuery(); as query) {
+            <a class="lf-chip" routerLink="/activity" [queryParams]="query"
+              ><app-icon name="history" />Everything from {{ actor.name || actor.login }}</a
+            >
+          }
+        </div>
+      }
+      @if (when()?.late; as late) {
+        <p class="lf-note">Twitch delivered it {{ late }} after it happened.</p>
+      }
+
+      <section class="ed-section" aria-labelledby="ed-did">
+        <h3 id="ed-did" class="ed-h3">What the bot did with it</h3>
+        <p class="ed-verdict" [attr.data-tone]="verdict().tone" data-event-verdict><app-icon [name]="verdict().icon" />{{ verdict().text }}</p>
+        @if (deliveries().length) {
+          <ul class="ed-list" data-event-deliveries>
+            @for (row of deliveries(); track row.consumer) {
+              <li class="ed-row" [attr.data-tone]="row.status.tone" data-event-delivery>
+                <span class="ed-row__main">
+                  <span class="ed-row__name">{{ row.name }}</span>
+                  @if (row.why) {
+                    <span class="ed-row__why">{{ row.why }}</span>
+                  }
+                  @if (row.meta) {
+                    <span class="ed-row__meta">{{ row.meta }}</span>
+                  }
+                </span>
+                <span class="ed-tag">{{ row.status.label }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      @if (steps().length) {
+        <section class="ed-section" aria-labelledby="ed-steps">
+          <h3 id="ed-steps" class="ed-h3">Stream start/end steps</h3>
+          <ul class="ed-list" data-event-steps>
+            @for (step of steps(); track step.step) {
+              <li class="ed-row ed-row--step" [attr.data-tone]="step.state.tone">
+                <span class="ed-step__icon" [attr.aria-label]="step.state.label" role="img"><app-icon [name]="step.state.icon" /></span>
+                <span class="ed-row__main">
+                  <span class="ed-row__name">{{ step.name }}</span>
+                  @if (step.why) {
+                    <span class="ed-row__why">{{ step.why }}</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (event.traceId) {
+        <a
+          class="lf-btn lf-btn--sm ed-trace"
+          routerLink="/observability"
+          [queryParams]="{ tab: 'traces', trace: event.traceId }"
+          data-event-trace
+          ><app-icon name="pulse" />Open the trace<app-icon name="chevron"
+        /></a>
+      }
+
+      <details class="lf-more ed-raw" data-event-raw>
+        <summary>Raw event from Twitch<app-icon name="down" /></summary>
+        <div class="ed-raw__body">
+          <dl class="ed-ids">
+            <div>
+              <dt>Type</dt>
+              <dd class="mono">{{ event.twitchType || event.type }}</dd>
+            </div>
+            <div>
+              <dt>Event</dt>
+              <dd class="mono">{{ event.eventKey }}</dd>
+            </div>
+            @if (event.channelID) {
+              <div>
+                <dt>Channel ID</dt>
+                <dd class="mono">{{ event.channelID }}</dd>
+              </div>
+            }
+          </dl>
+          <div class="ed-raw__tools">
+            <button type="button" class="lf-btn lf-btn--sm" (click)="copy()"><app-icon [name]="copied() ? 'check' : 'copy'" />{{ copied() ? 'Copied' : 'Copy' }}</button>
+            <span class="sr-only" aria-live="polite">{{ copied() ? 'Raw event copied' : '' }}</span>
+          </div>
+          <pre class="ed-json" tabindex="0" aria-label="Raw event as JSON">{{ payload() }}</pre>
+        </div>
+      </details>
+    }
+  </div>
+</dialog>

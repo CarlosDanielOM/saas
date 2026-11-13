@@ -1,0 +1,22 @@
+<div class="lf dp">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" routerLink="/ai"><app-icon name="back" />AI</a>
+      <div class="lf-head__row">
+        <div class="dp__id">
+          <h1 class="lf-title">Chat protection decisions</h1>
+          <p class="lf-sub">Every message it judged, what it did, what it cost, and your verdicts.</p>
+        </div>
+        <div class="lf-head__actions">
+          @if (waiting() > 0) {
+            <a class="lf-btn lf-btn--sm" routerLink="/moderation-review" data-review-link><app-icon name="list" />Review queue ({{ waiting() }})</a>
+          }
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="explorer().refresh()" [disabled]="loading()" data-decisions-refresh>
+            <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+          </button>
+        </div>
+      </div>
+    </header>
+    <app-decisions-explorer />
+  </div>
+</div>

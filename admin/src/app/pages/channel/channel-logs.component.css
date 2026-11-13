@@ -1,0 +1,175 @@
+/* Bot log tab: one dense row per log line, opening to its fields. */
+.log-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.65rem 1rem;
+  color: inherit;
+}
+.log-link:hover {
+  border-color: var(--accent-line);
+}
+.log-link__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.log-link__text {
+  display: grid;
+  flex: 1;
+  gap: 0.05rem;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.log-link__text small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.log-link__chev {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.log-levels .lf-chip {
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.log-levels .lf-chip[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.log-dot {
+  --log-dot: var(--muted);
+  flex-shrink: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--log-dot);
+}
+.log-dot[data-level='fatal'],
+.log-dot[data-level='error'] {
+  --log-dot: var(--danger);
+}
+.log-dot[data-level='warn'] {
+  --log-dot: var(--warn);
+}
+.log-dot[data-level='info'] {
+  --log-dot: var(--accent);
+}
+.log-dot[data-level='fatal'] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.log-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.log-item + .log-item {
+  border-top: 1px solid var(--line);
+}
+.log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.log-row::-webkit-details-marker {
+  display: none;
+}
+.log-row:hover {
+  background: var(--tile-2);
+}
+.log-row > .log-dot {
+  margin-top: 0.4rem;
+}
+.log-row__main {
+  display: grid;
+  flex: 1;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.log-row__where {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.log-row__msg {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.log-row__time {
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+details[open] > .log-row {
+  background: var(--tile-2);
+}
+.log-body {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  padding: 0.25rem 1rem 1rem 2.3rem;
+  background: var(--tile-2);
+}
+.log-body__msg {
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.log-facts {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.log-facts > div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 30%) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--line);
+}
+.log-facts dt {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.log-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.log-facts .mono {
+  font-size: 0.78rem;
+}
+.log-more {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  text-align: center;
+}
+@media (min-width: 640px) {
+  .log-row {
+    padding-inline: 1.25rem;
+  }
+  .log-body {
+    padding-inline: 2.55rem 1.25rem;
+  }
+}

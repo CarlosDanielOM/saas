@@ -1,0 +1,106 @@
+<ol class="feed" [class.feed--preview]="preview()">
+  @for (group of groups(); track group.key) {
+    @if (groupByDay()) {
+      <li class="feed__day"><span>{{ group.label }}</span></li>
+    }
+    @for (row of group.rows; track row.item.id) {
+      <li class="feed__item" [attr.data-tone]="row.line.tone" [attr.data-kind]="row.item.kind" [attr.data-outcome]="row.item.outcome" data-feed-row>
+        @if (preview()) {
+          <div class="feed-row">
+            <span class="feed-row__icon"><app-icon [name]="row.line.icon" /></span>
+            <span class="feed-row__main">
+              <span class="feed-row__title">{{ row.line.title }}</span>
+              @if (row.line.quote) {
+                <span class="feed-row__quote">{{ row.line.quote }}</span>
+              }
+              @if (row.line.detail) {
+                <span class="feed-row__detail">{{ row.line.detail }}</span>
+              }
+              <span class="feed-row__meta">
+                @if (showChannel() && row.item.channel) {
+                  <b>{{ row.item.channel }}</b>
+                }
+                <time [attr.datetime]="row.item.at" [title]="row.fullTime">{{ row.time }}</time>
+                @if (row.line.cost) {
+                  <span class="feed-row__cost">{{ row.line.cost }}</span>
+                }
+              </span>
+            </span>
+          </div>
+        } @else {
+          <details class="feed-details" (toggle)="onToggle(row.item.id, $event)">
+            <summary class="feed-row">
+              <span class="feed-row__icon"><app-icon [name]="row.line.icon" /></span>
+              <span class="feed-row__main">
+                <span class="feed-row__title">{{ row.line.title }}</span>
+                @if (row.line.quote) {
+                  <span class="feed-row__quote">{{ row.line.quote }}</span>
+                }
+                @if (row.line.detail) {
+                  <span class="feed-row__detail">{{ row.line.detail }}</span>
+                }
+                <span class="feed-row__meta">
+                  @if (showChannel() && row.item.channel) {
+                    <b>{{ row.item.channel }}</b>
+                  }
+                  <time [attr.datetime]="row.item.at" [title]="row.fullTime">{{ row.time }}</time>
+                  @if (row.line.cost) {
+                    <span class="feed-row__cost">{{ row.line.cost }}</span>
+                  }
+                </span>
+              </span>
+              <app-icon class="feed-row__chev" name="down" />
+            </summary>
+            @if (isOpen(row.item.id)) {
+              <div class="feed-body" data-feed-body>
+                @if (row.item.text) {
+                  <blockquote class="feed-body__quote">{{ row.item.text }}</blockquote>
+                }
+                <dl class="feed-body__facts">
+                  <div>
+                    <dt>{{ row.kind }}</dt>
+                    <dd>{{ row.fullTime }}</dd>
+                  </div>
+                  @if (row.item.actor; as actor) {
+                    <div>
+                      <dt>Who</dt>
+                      <dd>
+                        {{ actor.name || actor.login || 'Unknown' }}
+                        @if (actor.login && actor.name && actor.login !== actor.name.toLowerCase()) {
+                          <span class="mono">{{ actor.login }}</span>
+                        }
+                      </dd>
+                    </div>
+                  }
+                  @for (fact of facts(row.item); track fact.label) {
+                    <div>
+                      <dt>{{ fact.label }}</dt>
+                      <dd [class.mono]="fact.mono">{{ fact.value }}</dd>
+                    </div>
+                  }
+                </dl>
+                <div class="feed-body__links">
+                  @if (showChannel() && row.item.channelID) {
+                    <a class="lf-chip" [routerLink]="['/channels', row.item.channelID, 'activity']"
+                      ><app-icon name="user" />{{ row.item.channel || 'Channel' }}'s activity</a
+                    >
+                  }
+                  @if (actorQuery(row.item); as query) {
+                    <a class="lf-chip" routerLink="/activity" [queryParams]="query"
+                      ><app-icon name="history" />Everything from {{ row.item.actor?.name || row.item.actor?.login }}</a
+                    >
+                  }
+                  @if (refLink(row.item); as link) {
+                    <a class="lf-chip lf-chip--accent" [routerLink]="link.commands" [queryParams]="link.query" [queryParamsHandling]="link.merge ? 'merge' : null"
+                      >{{ link.label }}<app-icon name="chevron"
+                    /></a>
+                  }
+                </div>
+              </div>
+            }
+          </details>
+        }
+      </li>
+    }
+  }
+</ol>

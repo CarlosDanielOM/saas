@@ -9,7 +9,7 @@
  * credit-history sync notice, no inferred gift buyer, axe + no overflow at
  * 320/390/1280 in dark and light.
  *
- * Env: SAAS_PREVIEW_URL (required), SAAS_PLAYWRIGHT_MODULE / PLAYWRIGHT_MODULE,
+ * Env: SAAS_PREVIEW_URL (default http://127.0.0.1:4310), SAAS_PLAYWRIGHT_MODULE / PLAYWRIGHT_MODULE,
  * AXE_PATH, SAAS_CHROMIUM_PATH, SAAS_UI_ARTIFACTS (screenshots).
  */
 import assert from "node:assert/strict";
@@ -22,8 +22,7 @@ const { chromium } = await import(
 const axePath =
   process.env.AXE_PATH ||
   "/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js";
-const base = process.env.SAAS_PREVIEW_URL;
-assert.ok(base, "SAAS_PREVIEW_URL is required");
+const base = process.env.SAAS_PREVIEW_URL || "http://127.0.0.1:4310";
 const artifacts = process.env.SAAS_UI_ARTIFACTS || "/tmp/admin-native-credit-check";
 await mkdir(artifacts, { recursive: true });
 
@@ -41,8 +40,9 @@ const context = await browser.newContext({
 });
 const failures = [];
 const requests = [];
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" };
 const json = (route, data, status = 200) =>
-  route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
+  route.fulfill({ status, headers: cors, contentType: "application/json", body: JSON.stringify(data) });
 
 let mode = "pending";
 const summary = () => ({
@@ -172,6 +172,8 @@ await context.route("**/*", async (route) => {
     return route.abort();
   }
   const p = url.pathname;
+  // The dev server's API is another origin: answer the CORS preflight.
+  if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
   requests.push({ method: req.method(), path: p, query: url.searchParams.toString() });
   if (req.method() !== "GET") {
     failures.push(`Unexpected ${req.method()} ${p}`);
@@ -185,6 +187,9 @@ await context.route("**/*", async (route) => {
       },
     });
   if (p === "/users") return json(route, { data: {} });
+  // The channel workspace frame reads the channel's last 24 hours once for its tab badges.
+  if (p === "/admin-site/feed/summary")
+    return json(route, { data: { from: new Date(Date.now() - 86400000).toISOString(), to: new Date().toISOString(), kinds: [], partial: [] } });
   if (p === "/admin-site/users/9001/ai-usage/summary")
     return json(route, { error: false, message: "ok", status: 200, data: summary() });
   if (p === "/admin-site/users/9001/ai-usage/transactions") {

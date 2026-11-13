@@ -10,6 +10,8 @@ import { randomUUID } from 'node:crypto';
 import type Anthropic from '@anthropic-ai/sdk';
 import { getDragonflyClient } from '../../databases/dragonfly.database.js';
 import { warn } from '../../logger.js';
+import { scrubSensitive } from '../../scrub_text.js';
+import { docsPagePath } from './docs_page.js';
 import { minimaxChatStream, type MiniMaxChatResult, type MiniMaxEffort, type MiniMaxStreamHandlers } from '../minimax/minimax_client.js';
 import { getDocsCorpus, toPageUrl, type DocsCorpus, type DocsLanguage, type DocsPage } from './docs_source.js';
 import { DOCS_ASSISTANT_INSTRUCTIONS, docsBlockHeader } from './docs_assistant.prompt.js';
@@ -140,8 +142,31 @@ export async function answerDocsQuestion(
 // ---------------------------------------------------------------------------
 
 const day = (at = new Date()) => at.toISOString().slice(0, 10);
-const statsKey = (at?: Date) => `docs_assistant:stats:${day(at)}`;
-const answerKey = (id: string) => `docs_assistant:answer:${id}`;
+
+/** Keys shared with the owner's admin reader (`server/services/admin_assistants.service.ts`). */
+export const DOCS_ASSISTANT_KEYS = {
+    stats: (dayKey: string) => `docs_assistant:stats:${dayKey}`,
+    answer: (id: string) => `docs_assistant:answer:${id}`,
+    /** Answer ids, newest first, at most RECENT_KEEP; ids outlive their 30-day hashes. */
+    recent: 'docs_assistant:recent',
+} as const;
+export const DOCS_ASSISTANT_RECENT_KEEP = RECENT_KEEP;
+const statsKey = (at?: Date) => DOCS_ASSISTANT_KEYS.stats(day(at));
+const answerKey = DOCS_ASSISTANT_KEYS.answer;
+
+/**
+ * What the visitor asked and where: kept for answers and failures alike (nothing about the visitor). The question
+ * is scrubbed of credentials and addresses, and the page kept as a path only.
+ */
+function questionFields(request: DocsAssistantRequest) {
+    return {
+        at: new Date().toISOString(),
+        lang: request.page.lang,
+        page: docsPagePath(request.page.url) ?? '',
+        turn: String(Math.ceil(request.messages.length / 2)),
+        question: scrubSensitive(request.messages.at(-1)!.content),
+    };
+}
 
 async function safely(task: string, run: () => Promise<unknown>): Promise<void> {
     try {
@@ -173,11 +198,7 @@ export async function recordAnswer(request: DocsAssistantRequest, answer: DocsAn
             .hIncrBy(key, 'cost_micro_usd', Math.round(usage.cost * 1_000_000))
             .expire(key, STATS_TTL_SECONDS)
             .hSet(answerKey(answer.id), {
-                at: new Date().toISOString(),
-                lang: request.page.lang,
-                page: request.page.url ?? '',
-                turn: String(Math.ceil(request.messages.length / 2)),
-                question: request.messages.at(-1)!.content,
+                ...questionFields(request),
                 answer: answer.content,
                 sources: JSON.stringify(answer.sources.map((source) => source.url)),
                 duration_ms: String(usage.durationMs),
@@ -189,17 +210,40 @@ export async function recordAnswer(request: DocsAssistantRequest, answer: DocsAn
                 tool_calls: JSON.stringify(usage.toolCalls),
             })
             .expire(answerKey(answer.id), ANSWER_TTL_SECONDS)
-            .lPush('docs_assistant:recent', answer.id)
-            .lTrim('docs_assistant:recent', 0, RECENT_KEEP - 1)
+            .lPush(DOCS_ASSISTANT_KEYS.recent, answer.id)
+            .lTrim(DOCS_ASSISTANT_KEYS.recent, 0, RECENT_KEEP - 1)
             .exec();
     });
 }
 
-export async function recordFailure(kind: string): Promise<void> {
+/**
+ * A question that failed (timeout, busy, unavailable): counted, and kept like an answer with an empty answer and
+ * `failed` = the reason, so the owner sees what could not be answered. Questions the visitor abandoned are not kept.
+ */
+export async function recordFailure(request: DocsAssistantRequest, kind: string, details: { id: string | null; durationMs: number }): Promise<void> {
     await safely('failure', async () => {
         const redis = await getDragonflyClient('docs-assistant');
         const key = statsKey();
-        await redis.multi().hIncrBy(key, 'failed', 1).hIncrBy(key, `failed_${kind}`, 1).expire(key, STATS_TTL_SECONDS).exec();
+        const id = details.id ?? randomUUID();
+        await redis.multi()
+            .hIncrBy(key, 'failed', 1)
+            .hIncrBy(key, `failed_${kind}`, 1)
+            .expire(key, STATS_TTL_SECONDS)
+            .hSet(answerKey(id), {
+                ...questionFields(request),
+                answer: '',
+                sources: '[]',
+                duration_ms: String(Math.max(0, Math.round(details.durationMs))),
+                input_tokens: '0',
+                output_tokens: '0',
+                cost_usd: '0.000000',
+                stop_reason: kind,
+                failed: kind,
+            })
+            .expire(answerKey(id), ANSWER_TTL_SECONDS)
+            .lPush(DOCS_ASSISTANT_KEYS.recent, id)
+            .lTrim(DOCS_ASSISTANT_KEYS.recent, 0, RECENT_KEEP - 1)
+            .exec();
     });
 }
 
@@ -210,8 +254,9 @@ export async function recordFeedback(id: unknown, helpful: unknown): Promise<boo
     }
     const redis = await getDragonflyClient('docs-assistant');
     const key = answerKey(id);
-    const at = await redis.hGet(key, 'at');
-    if (!at) return false;
+    const [at, failed] = await redis.hmGet(key, ['at', 'failed']);
+    // Failed questions have no answer to rate.
+    if (!at || failed) return false;
     // HSETNX: first rating wins, so repeated clicks can't skew the totals.
     const first = await redis.hSetNX(key, 'feedback', helpful ? 'helpful' : 'unhelpful');
     if (!first) return false;

@@ -199,7 +199,7 @@
   z-index: 90;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  /* Six tabs share a 320px phone: edge to edge with smaller labels there, roomier from 380px. */
+  /* Five tabs share a 320px phone: edge to edge there, roomier from 380px. */
   padding: 0.35rem 0.15rem calc(0.35rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--tile) 92%, transparent);
@@ -214,7 +214,7 @@
   min-height: 3.25rem;
   border-radius: 0.9rem;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 @media (min-width: 380px) {

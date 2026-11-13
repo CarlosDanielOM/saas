@@ -59,3 +59,18 @@
     padding-inline: 1.25rem;
   }
 }
+/* Single-list tabs keep a readable width, aligned with the workspace header. */
+@media (min-width: 960px) {
+  .ws-narrow > * {
+    max-width: 56rem;
+  }
+}
+/* Phones and tablets: small buttons still get a 44px touch target. */
+.lf-btn--sm {
+  min-height: 2.75rem;
+}
+@media (min-width: 960px) {
+  .lf-btn--sm {
+    min-height: 2.25rem;
+  }
+}

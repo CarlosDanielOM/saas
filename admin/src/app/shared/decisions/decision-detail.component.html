@@ -1,0 +1,295 @@
+<dialog #sheet class="lf-dialog dec-sheet" aria-labelledby="dec-sheet-title" (close)="onDialogClose()" (click)="onDialogClick($event)" data-decision-sheet>
+  @if (id()) {
+    <div class="lf-dialog__head dec-sheet__head">
+      <div class="dec-sheet__title">
+        <h2 id="dec-sheet-title">
+          @if (outcome(); as o) {
+            <span class="dec-tone" [attr.data-tone]="o.tone"><app-icon [name]="o.icon" />{{ o.label }}</span>
+          } @else {
+            Decision
+          }
+        </h2>
+        @if (position(); as p) {
+          <span class="dec-sheet__pos">{{ p.index + 1 }} of {{ p.total }}</span>
+        }
+      </div>
+      <div class="dec-sheet__nav">
+        <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Previous decision" [disabled]="!hasPrev()" (click)="step.emit(-1)" data-decision-prev>
+          <app-icon name="chevron" class="dec-flip" />
+        </button>
+        <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Next decision" [disabled]="!hasNext()" (click)="step.emit(1)" data-decision-next>
+          <app-icon name="chevron" />
+        </button>
+        <button type="button" class="lf-btn lf-btn--icon" aria-label="Close" (click)="close()"><app-icon name="x" /></button>
+      </div>
+    </div>
+
+    <div class="lf-dialog__body dec-sheet__body" #body [attr.aria-busy]="loading()">
+      @if (shown(); as row) {
+        <p class="dec-what" [attr.data-tone]="outcome()?.tone" data-decision-what>{{ sentence() }}</p>
+
+        @if (row.outcome === 'action_failed') {
+          <div class="lf-warning" data-decision-twitch><app-icon name="alert" /><span>{{ twitchSaid(row.actionError) }}</span></div>
+        }
+
+        <blockquote class="lf-quote dec-quote">{{ row.messageText }}</blockquote>
+
+        @if (scores().length) {
+          <section class="dec-scores" aria-labelledby="dec-scores-h" data-decision-scores>
+            <div class="dec-sec-head">
+              <h3 id="dec-scores-h">Scores</h3>
+              @if (row.thresholdPercent !== null) {
+                <span class="dec-barnote" data-decision-bar>Ban bar: {{ row.thresholdPercent }}%</span>
+              }
+            </div>
+            <dl class="dec-bars">
+              @for (item of scores(); track item.name) {
+                <div>
+                  <dt>{{ item.name }}</dt>
+                  <dd>
+                    <span class="lf-bar dec-bar" [class.is-over]="row.thresholdPercent !== null && item.percent >= row.thresholdPercent" aria-hidden="true">
+                      <span [style.width.%]="item.percent"></span>
+                      @if (row.thresholdPercent !== null) {
+                        <i class="dec-bar__mark" [style.left.%]="row.thresholdPercent"></i>
+                      }
+                    </span>
+                    <b>{{ item.percent }}%</b>
+                  </dd>
+                </div>
+              }
+              @if (safe() !== null) {
+                <div>
+                  <dt>Safe</dt>
+                  <dd><span class="lf-bar dec-bar dec-bar--safe" aria-hidden="true"><span [style.width.%]="safe()"></span></span><b>{{ safe() }}%</b></dd>
+                </div>
+              }
+            </dl>
+          </section>
+        } @else if (row.kind === 'ai' && row.outcome === 'not_reviewed') {
+          <p class="lf-note dec-none">No scores: the model never answered.</p>
+        }
+
+        <dl class="lf-dl dec-facts">
+          <div>
+            <dt>Viewer</dt>
+            <dd class="dec-who">
+              <span>
+                {{ row.chatter.name }}
+                @if (row.chatter.login && row.chatter.login !== row.chatter.name.toLowerCase()) {
+                  <small>{{ row.chatter.login }}</small>
+                }
+              </span>
+            </dd>
+          </div>
+          @if (!fixedChannel()) {
+            <div>
+              <dt>Streamer</dt>
+              <dd><a class="dec-link" [routerLink]="['/channels', row.channelID, 'protection']">{{ row.channel || 'Unnamed channel' }}</a></dd>
+            </div>
+          }
+          <div>
+            <dt>When</dt>
+            <dd>{{ dateTime(row.at) }}</dd>
+          </div>
+          <div>
+            <dt>Why it was checked</dt>
+            <dd>
+              @if (row.kind === 'rule') {
+                The {{ ruleName(row.ruleType) }} rule
+              } @else if (row.source === 'first_message' && row.messageOrdinal) {
+                Their {{ ordinal(row.messageOrdinal) }} message here
+              } @else {
+                {{ sourceLabel[row.source] }}
+              }
+            </dd>
+          </div>
+          @if (row.kind === 'rule' && row.ruleReason) {
+            <div>
+              <dt>Streamer's reason</dt>
+              <dd>{{ row.ruleReason }}</dd>
+            </div>
+          }
+        </dl>
+        <div class="dec-links">
+          @if (row.chatter.id) {
+            <a class="lf-btn lf-btn--sm" [routerLink]="['/activity']" [queryParams]="{ actor: row.chatter.id }"><app-icon name="user" />All their activity</a>
+            <button type="button" class="lf-btn lf-btn--sm" (click)="onlyViewer.emit({ id: row.chatter.id, name: row.chatter.name })" data-decision-only-viewer>
+              <app-icon name="filter" />Only this viewer
+            </button>
+          }
+        </div>
+
+        @if (detail(); as d) {
+          @if (d.history.length) {
+            <section aria-labelledby="dec-history-h" data-decision-history>
+              <h3 id="dec-history-h" class="dec-h3">Their other decisions here</h3>
+              <ul class="dec-history">
+                @for (item of d.history; track item.id) {
+                  <li>
+                    <button type="button" class="dec-history__row" (click)="openId.emit(item.id)">
+                      <span class="dec-tone dec-tone--sm" [attr.data-tone]="historyLabel(item).tone">{{ historyLabel(item).label }}</span>
+                      <span class="dec-history__text">{{ item.messageText }}</span>
+                      <span class="dec-history__when">{{ relativeTime(item.at) }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (d.context.length || d.invited) {
+            <details class="lf-more dec-context" data-decision-context>
+              <summary>
+                <span>Chat before it <span class="dec-count">({{ d.context.length === 1 ? '1 line' : d.context.length + ' lines' }})</span></span>
+                <app-icon name="down" />
+              </summary>
+              <div class="lf-more__body">
+                @if (d.invited) {
+                  <p><span class="lf-chip lf-chip--gold" data-decision-invited>The streamer had invited links</span></p>
+                }
+                <ol>
+                  @for (line of d.context; track $index) {
+                    <li [class.is-streamer]="line.isBroadcaster">
+                      <b>{{ line.username }}</b>
+                      @if (line.isBroadcaster) {
+                        <span class="lf-chip lf-chip--accent">streamer</span>
+                      }
+                      <span>{{ line.message }}</span>
+                    </li>
+                  }
+                </ol>
+              </div>
+            </details>
+          } @else if (row.kind === 'ai') {
+            <p class="lf-note dec-none">No chat in the minute before it.</p>
+          }
+        } @else if (loading()) {
+          <div class="dec-loading" aria-label="Loading the chat and history"><app-skeleton width="70%" /><app-skeleton width="45%" /></div>
+        }
+
+        @if (loadError()) {
+          <div class="lf-notice" role="alert" data-decision-load-error>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="lf-btn lf-btn--sm" (click)="load()">Retry</button>
+          </div>
+        }
+
+        @if (row.kind === 'ai') {
+          <section aria-labelledby="dec-cost-h" data-decision-cost>
+            <h3 id="dec-cost-h" class="dec-h3">Cost and speed</h3>
+            <dl class="lf-dl">
+              <div><dt>Model</dt><dd>{{ modelName(row.model) }}</dd></div>
+              <div><dt>Provider cost</dt><dd>{{ row.providerUSD > 0 ? formatUSD(row.providerUSD) : row.outcome === 'not_reviewed' ? 'None' : '$0' }}</dd></div>
+              <div>
+                <dt>Charged to the channel</dt>
+                <dd>{{ row.included ? 'None: included review' : row.credits > 0 ? formatCredits(row.credits) + ' ' + formatCreditValue(row.credits) : 'None' }}</dd>
+              </div>
+              <div><dt>Tokens read</dt><dd>{{ formatNumber(row.inputTokens) }}</dd></div>
+              <div><dt>Time taken</dt><dd>{{ row.latencyMs > 0 ? formatDuration(row.latencyMs) : 'Not recorded' }}</dd></div>
+            </dl>
+          </section>
+        }
+
+        <details class="lf-more dec-ids">
+          <summary><span>Ids</span><app-icon name="down" /></summary>
+          <div class="lf-more__body">
+            <dl class="lf-dl">
+              @for (item of [{ k: 'Decision', v: row.id }, { k: 'Viewer', v: row.chatter.id }, { k: 'Channel', v: row.channelID }]; track item.k) {
+                @if (item.v) {
+                  <div>
+                    <dt>{{ item.k }}</dt>
+                    <dd>
+                      <code>{{ item.v }}</code>
+                      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" [attr.aria-label]="'Copy ' + item.k.toLowerCase() + ' id'" (click)="copy(item.v, item.k)">
+                        <app-icon [name]="copied() === item.k ? 'check' : 'copy'" />
+                      </button>
+                    </dd>
+                  </div>
+                }
+              }
+            </dl>
+            <p class="sr-only" aria-live="polite">{{ copied() ? copied() + ' id copied' : '' }}</p>
+          </div>
+        </details>
+      } @else if (loadError()) {
+        <div class="lf-empty" role="alert" data-decision-load-error>
+          <app-icon name="alert" />
+          <strong>{{ loadError() }}</strong>
+          <button type="button" class="lf-btn" (click)="load()">Retry</button>
+        </div>
+      } @else {
+        <div class="dec-loading" aria-label="Loading the decision">
+          <app-skeleton width="80%" height="1.2rem" /><app-skeleton height="3.5rem" /><app-skeleton width="60%" /><app-skeleton width="70%" />
+        </div>
+      }
+    </div>
+
+    @if (shown(); as row) {
+      <div class="lf-dialog__foot dec-verdict" data-decision-verdict>
+        <p class="dec-verdict__line"><app-icon name="info" />Your verdict is saved for tuning. It changes nothing for the viewer.</p>
+        @if (!choosing() && feedback(); as fb) {
+          <div class="dec-verdict__said" data-decision-said>
+            <span class="dec-tone" [attr.data-tone]="fb.label === 'violation' ? 'danger' : 'ok'"><app-icon name="check" />You said: {{ labelText[fb.label].toLowerCase() }}</span>
+            <span class="dec-verdict__meta">
+              {{ fb.reviewedAt ? dateTime(fb.reviewedAt) + ' · ' : '' }}{{ agrees() ? 'agrees with the bot' : 'disagrees with the bot' }}
+            </span>
+            @if (fb.note) {
+              <q class="dec-verdict__note">{{ fb.note }}</q>
+            }
+          </div>
+          <div class="dec-verdict__row">
+            <button type="button" class="lf-btn" [disabled]="!!saving()" (click)="startChange()" data-decision-change>Change</button>
+            <button type="button" class="lf-btn lf-btn--ghost" [disabled]="!!saving()" (click)="save(null)" data-decision-remove>
+              @if (saving() === 'remove') {<span class="lf-spin" aria-hidden="true"></span>}Remove verdict
+            </button>
+          </div>
+        } @else {
+          <div class="lf-field dec-note">
+            <label class="lf-label" for="dec-note">Why? (optional, kept with the verdict)</label>
+            <textarea
+              id="dec-note"
+              class="lf-input"
+              rows="1"
+              [maxLength]="noteMax"
+              [value]="note()"
+              (input)="onNote($any($event.target))"
+              [attr.aria-describedby]="showCounter() ? 'dec-note-count' : null"
+              data-decision-note
+            ></textarea>
+            @if (showCounter()) {
+              <span id="dec-note-count" class="lf-hint dec-note__count" [class.is-full]="note().length >= noteMax" aria-live="polite" data-decision-note-count>{{ note().length }} / {{ noteMax }}</span>
+            }
+          </div>
+          <div class="dec-verdict__row">
+            <button
+              type="button"
+              class="lf-btn dec-vbtn dec-vbtn--ban"
+              [attr.aria-pressed]="feedback()?.label === 'violation'"
+              [disabled]="!!saving()"
+              (click)="save('violation')"
+              data-decision-ban
+            >
+              @if (saving() === 'violation') {<span class="lf-spin" aria-hidden="true"></span>} @else {<app-icon name="shield" />}Should be a ban
+            </button>
+            <button
+              type="button"
+              class="lf-btn dec-vbtn dec-vbtn--keep"
+              [attr.aria-pressed]="feedback()?.label === 'allow'"
+              [disabled]="!!saving()"
+              (click)="save('allow')"
+              data-decision-allow
+            >
+              @if (saving() === 'allow') {<span class="lf-spin" aria-hidden="true"></span>} @else {<app-icon name="check" />}Should not be a ban
+            </button>
+          </div>
+          @if (changing()) {
+            <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost dec-verdict__cancel" [disabled]="!!saving()" (click)="cancelChange()">Keep my verdict</button>
+          }
+        }
+        @if (saveError()) {
+          <p class="lf-error dec-verdict__error" role="alert" data-decision-save-error>{{ saveError() }}</p>
+        }
+      </div>
+    }
+  }
+</dialog>

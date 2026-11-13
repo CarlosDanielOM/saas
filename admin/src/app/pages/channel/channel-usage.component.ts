@@ -8,7 +8,6 @@ import {
   UsageSummary,
   UsageTransaction,
 } from '../../services/ai-usage-api.service';
-import { ChannelApiService } from '../../services/channel-api.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { buildUsageDisplay } from './usage-display';
@@ -50,11 +49,9 @@ const ADJUSTMENTS: Record<string, { group: string; row: string }> = {
 export class ChannelUsageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(AiUsageApiService);
-  private readonly channelApi = inject(ChannelApiService);
   private requestVersion = 0;
   private transactionVersion = 0;
   readonly channelID = this.route.snapshot.paramMap.get('channelID') || '';
-  readonly channelName = signal<string | null>(null);
   readonly summary = signal<UsageSummary | null>(null);
   private readonly cycleSummary = signal<UsageSummary | null>(null);
   readonly display = computed(() => {
@@ -143,10 +140,6 @@ export class ChannelUsageComponent {
 
   constructor() {
     void this.load();
-    this.channelApi.getChannel(this.channelID).subscribe({
-      next: (user) => this.channelName.set(user?.channel ?? null),
-      error: () => this.channelName.set(null),
-    });
   }
 
   format(value: number): string {

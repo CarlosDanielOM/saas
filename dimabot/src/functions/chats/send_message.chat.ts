@@ -8,6 +8,7 @@ import type { ITwitchEventData } from "../../interfaces/twitch/eventsub.interfac
 import type { IEventsub } from "../../schemas/eventsub.schema.js";
 import type { AstEffectContext } from '../../utils/ast_parser/effects.js';
 import { RequiredGoalContributionError } from '../../utils/ast_parser/required_goal_contribution_error.js';
+import { recordBotMessage, type ActivityActor, type ChatDelivery, type ChatMessageOrigin } from '../../utils/activity_command.js';
 
 const MODERATOR_ID = '698614112';
 
@@ -22,16 +23,26 @@ export interface SendMessageContext {
     userPlan?: 'free' | 'premium' | 'pro';
     userLevel?: number;
     extraContext?: Record<string, unknown>;
+    /** For the activity log only: where the message came from and who it is for. */
+    origin?: ChatMessageOrigin;
+    actor?: ActivityActor | null;
 }
 
 export const sendTwitchChatMessage = async (
     channelID: string,
     message: string,
     replyToMessageId: string | null = null,
-    context?: SendMessageContext
+    context?: SendMessageContext,
+    /** Origin and recipient for callers that send plain text (a context makes the text be parsed). */
+    delivery?: ChatDelivery
 ) => {
+    const activity: ChatDelivery = {
+        origin: delivery?.origin ?? context?.origin,
+        actor: delivery?.actor ?? context?.actor ?? null
+    };
+    let finalMessage = message;
+    let recorded = false;
     try {
-        let finalMessage = message;
         let commandReferences: CommandReferenceRequest[] | undefined;
 
         if (context) {
@@ -57,6 +68,8 @@ export const sendTwitchChatMessage = async (
         const twitchAppToken = await getAppToken('twitch');
 
         if(!twitchAppToken) {
+            recorded = true;
+            recordBotMessage({ channelID, text: finalMessage, replyTo: replyToMessageId, delivery: activity, result: { status: 'no_token' } });
             await logError({
                 function: 'sendTwitchChatMessage.getAppToken',
                 channelID,
@@ -87,6 +100,7 @@ export const sendTwitchChatMessage = async (
             (body as any).reply_parent_message_id = replyToMessageId;
         }
 
+        const sendStartedAt = Date.now();
         const response = await fetch(getTwitchHelixUrl('chat/messages'), {
             method: 'POST',
             headers: {
@@ -97,8 +111,12 @@ export const sendTwitchChatMessage = async (
             body: JSON.stringify(body),
         });
         const data = await response.json();
+        const sendMs = Date.now() - sendStartedAt;
 
         if(response.status < 200 || response.status > 299) {
+            recorded = true;
+            recordBotMessage({ channelID, text: finalMessage, replyTo: replyToMessageId, delivery: activity, durationMs: sendMs,
+                result: { status: 'rejected', httpStatus: response.status, twitchMessage: typeof data?.message === 'string' ? data.message : null } });
             await logError({
                 function: 'sendTwitchChatMessage.twitchRejected',
                 channelID,
@@ -123,6 +141,9 @@ export const sendTwitchChatMessage = async (
         const messageId = data?.data?.[0]?.message_id;
 
         if (isSent === false) {
+            recorded = true;
+            recordBotMessage({ channelID, text: finalMessage, replyTo: replyToMessageId, delivery: activity, durationMs: sendMs,
+                result: { status: 'held', messageId, twitchMessage: typeof data?.data?.[0]?.drop_reason?.message === 'string' ? data.data[0].drop_reason.message : null } });
             await logError({
                 function: 'sendTwitchChatMessage.heldForModeration',
                 channelID,
@@ -146,6 +167,9 @@ export const sendTwitchChatMessage = async (
             }
         }
 
+        recorded = true;
+        recordBotMessage({ channelID, text: finalMessage, replyTo: replyToMessageId, delivery: activity, durationMs: sendMs, result: { status: 'sent', messageId } });
+
         await deliverAstMessage(channelID, { parsedText: '', commandReferences });
 
         return {
@@ -158,6 +182,7 @@ export const sendTwitchChatMessage = async (
 
     } catch (err) {
         if (err instanceof RequiredGoalContributionError) throw err;
+        if (!recorded) recordBotMessage({ channelID, text: finalMessage, replyTo: replyToMessageId, delivery: activity, result: { status: 'exception' } });
         await logError({
             function: 'sendTwitchChatMessage',
             channelID,

@@ -21,6 +21,8 @@ export interface TransactionFilters {
 }
 export async function queryAiUsageTransactions(input: TransactionFilters & {
     channelID: string; customerId: string; window: AiUsageWindow;
+    /** Our provider cost is owner-only: the streamer's own usage route leaves this off. */
+    includeCostUsd?: boolean;
 }) {
     const limit = input.limit ?? 25;
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new AiUsageReceiptValidationError('limit must be between 1 and 100');
@@ -60,7 +62,10 @@ export async function queryAiUsageTransactions(input: TransactionFilters & {
         entryKind: doc.entryKind, category: doc.category, operation: doc.operation,
         source: doc.source || null, adjustmentType: doc.adjustmentType || classifyAdjustment(doc),
         provider: doc.provider, model: doc.model, quantity: doc.quantity, unit: doc.unit, credits: doc.credits,
-        resourceType: doc.resourceType, resourceId: doc.resourceId, itemized: doc.itemized
+        resourceType: doc.resourceType, resourceId: doc.resourceId, itemized: doc.itemized,
+        actorId: doc.actorId ?? null, actorLogin: doc.actorLogin ?? null, actorName: doc.actorName ?? null,
+        voice: doc.voice ?? null,
+        ...(input.includeCostUsd ? { costUsd: doc.costUsd ?? null } : {})
     }));
     const last = items.at(-1);
     return {

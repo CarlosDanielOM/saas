@@ -56,6 +56,11 @@ function parseCloneArgument(args: unknown[], fallback?: string): { cloneName: st
     };
 }
 
+/** Channel-point redemptions (custom and automatic rewards) carry the reward and when it was redeemed. */
+function isRedemptionEvent(eventData: Record<string, unknown> | undefined): boolean {
+    return !!eventData && typeof eventData.reward === 'object' && eventData.reward !== null && typeof eventData.redeemed_at === 'string';
+}
+
 async function queueTts(
     mode: 'default' | 'speak' | 'clone' | 'kokoro',
     message: string,
@@ -66,6 +71,7 @@ async function queueTts(
         channelID: ctx.broadcasterId,
         rawMessage: message,
         source: 'ast',
+        redemption: isRedemptionEvent(ctx.eventData),
         preferredMode: mode,
         cloneName,
         userID: ctx.userId,

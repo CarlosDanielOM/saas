@@ -29,6 +29,7 @@ import { raidDirection } from '../utils/raid_direction.js';
 import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 import { publishWidgetChatEvent } from '../widget_feed/publisher.js';
+import { REDEMPTION_EVENT_TYPE, chatSendDecision, recordAlert, recordRedemption, type AlertDecision } from '../utils/activity_events.js';
 //* TODO Redeem handler
 //* TODO Functions
 
@@ -38,7 +39,20 @@ interface EventsubHandlerOptions {
     durableDefenseHandled?: boolean;
     /** A signed Twitch retry older than the normal window (accepted only because the event is journaled). */
     staleRetry?: boolean;
+    /** Twitch message id; absent for manual event tests. */
+    messageId?: string;
 }
+
+// Alerts sent here rather than by the durable chat-announcements consumer.
+const IMMEDIATE_ALERT_TYPES = new Set([
+    'channel.hype_train.begin', 'channel.hype_train.progress', 'channel.hype_train.end', 'channel.shoutout.receive',
+    'channel.poll.progress', 'channel.prediction.progress', 'channel.update', 'user.update', 'automod.message.hold',
+    'channel.ban', 'channel.ad_break.begin'
+]);
+// Announced by the consumer in production; here only for manual event tests.
+const CONSUMER_ALERT_TYPES = new Set([
+    'channel.follow', 'channel.subscribe', 'channel.subscription.gift', 'channel.subscription.message', 'channel.subscription.end'
+]);
 
 export const eventsubHandler = async (
     subscriptionData: ITwitchSubscriptionData,
@@ -78,15 +92,23 @@ export const eventsubHandler = async (
         const config = await EventsubSchema.findOne({ channelID: raid.from_broadcaster_user_id, type: 'channel.raid',
             'condition.from_broadcaster_user_id': raid.from_broadcaster_user_id,
             ...(subscriptionData.id ? { id: subscriptionData.id } : {}) }).lean();
-        if (!config?.enabled || !config.message.trim()) return;
+        // The alert is about the channel that was raided. No config means nothing to announce (or a deleted account): no row.
+        const noteRaid = (decision: AlertDecision) => recordAlert({ type: 'channel.raid', channelID: raid.from_broadcaster_user_id,
+            payload: raid, ref: options.messageId, data: { direction: 'outgoing' },
+            actor: { id: raid.to_broadcaster_user_id, login: raid.to_broadcaster_user_login, name: raid.to_broadcaster_user_name } }, decision);
+        if (!config) return;
+        if (!config.enabled) return noteRaid({ outcome: 'skipped', reason: 'alert_disabled' });
+        if (!config.message.trim()) return noteRaid({ outcome: 'skipped', reason: 'empty_message' });
         const streamer = await TwitchStreamers.getTwitchAccountById(raid.from_broadcaster_user_id);
-        if (!streamer || streamer.chat_enabled === 'false') return;
-        await sendTwitchChatMessage(raid.from_broadcaster_user_id, config.message, null, {
+        if (!streamer) return;
+        if (streamer.chat_enabled === 'false') return noteRaid({ outcome: 'skipped', reason: 'chat_disabled' });
+        const sent = await sendTwitchChatMessage(raid.from_broadcaster_user_id, config.message, null, {
             channelID: raid.from_broadcaster_user_id, eventsubData: config,
             eventData: { ...raid, raid_direction: 'outgoing', broadcaster_user_id: raid.from_broadcaster_user_id,
                 broadcaster_user_name: raid.from_broadcaster_user_name, broadcaster_user_login: raid.from_broadcaster_user_login,
                 user_id: raid.to_broadcaster_user_id, user_name: raid.to_broadcaster_user_name, user_login: raid.to_broadcaster_user_login }
-        });
+        }, { origin: 'alert' });
+        noteRaid(chatSendDecision(sent));
         return;
     }
 
@@ -196,10 +218,19 @@ export const eventsubHandler = async (
         console.log({error: 'No data found', type, condition: subscriptionData.condition});
     }
 
-    if(!eventsubData.enabled) return;
+    const alertHere = IMMEDIATE_ALERT_TYPES.has(type) || (CONSUMER_ALERT_TYPES.has(type) && !options.durableChatHandled);
+    const noteAlert = (decision: AlertDecision) => recordAlert({ type, channelID: STREAMER.id, payload: eventData, ref: options.messageId }, decision);
+
+    if(!eventsubData.enabled) {
+        if (alertHere) noteAlert({ outcome: 'skipped', reason: 'alert_disabled' });
+        if (type === REDEMPTION_EVENT_TYPE) {
+            recordRedemption(eventData, options.messageId, { outcome: 'skipped', reason: 'subscription_disabled', managed: true, action: 'none' });
+        }
+        return;
+    }
 
     const handleMessageOnlyEvent = async () => {
-        if (!chatEnabled) return;
+        if (!chatEnabled) return noteAlert({ outcome: 'skipped', reason: 'chat_disabled' });
 
         const event = eventData as unknown as Record<string, unknown>;
         const channelID = String(
@@ -208,13 +239,14 @@ export const eventsubHandler = async (
             STREAMER.id
         );
 
-        if (!channelID || !eventsubData?.message) return;
+        if (!channelID || !eventsubData?.message) return noteAlert({ outcome: 'skipped', reason: 'empty_message' });
 
-        await sendTwitchChatMessage(channelID, eventsubData.message, null, {
+        const result = await sendTwitchChatMessage(channelID, eventsubData.message, null, {
             channelID,
             eventData,
             eventsubData
-        });
+        }, { origin: 'alert' });
+        noteAlert(chatSendDecision(result));
     };
 
     switch(type) {
@@ -227,7 +259,7 @@ export const eventsubHandler = async (
             if (!message) break;
             await sendTwitchChatMessage(STREAMER.id, message, null, {
                 channelID: STREAMER.id, eventData, eventsubData
-            });
+            }, { origin: 'alert' });
             break;
         }
         case 'channel.chat.message':
@@ -242,7 +274,7 @@ export const eventsubHandler = async (
             await cheerHandler(eventData as IBitUseEvent, eventsubData, immediateChatEnabled);
             break;
         case 'channel.channel_points_custom_reward_redemption.add':
-            await redemptionHandler(eventData as IRedemptionEvent, chatEnabled);
+            await redemptionHandler(eventData as IRedemptionEvent, chatEnabled, options.messageId);
             break;
         case 'channel.follow':
             await followHandler(eventData as IFollowEvent, eventsubData, immediateChatEnabled, options);
@@ -259,10 +291,11 @@ export const eventsubHandler = async (
             break;
         case 'channel.ad_break.begin':
             // Late retries still update widget state (journal) but never announce an old ad break.
-            if (!options.staleRetry) adBreakHandler(eventData as IAdBreakEvent, eventsubData, chatEnabled);
+            if (!options.staleRetry) adBreakHandler(eventData as IAdBreakEvent, eventsubData, chatEnabled, options.messageId);
+            else noteAlert({ outcome: 'skipped', reason: 'stale' });
             break;
         case 'channel.ban':
-            banHandler(eventData as IBanEvent, eventsubData, chatEnabled);
+            banHandler(eventData as IBanEvent, eventsubData, chatEnabled, options.messageId);
             break;
         case 'channel.subscribe':
         case 'channel.subscription.gift':
@@ -276,6 +309,7 @@ export const eventsubHandler = async (
         case 'channel.hype_train.progress':
         case 'channel.hype_train.end':
             if (!options.staleRetry) await handleMessageOnlyEvent();
+            else noteAlert({ outcome: 'skipped', reason: 'stale' });
             break;
         case 'channel.shoutout.receive':
         case 'channel.poll.progress':

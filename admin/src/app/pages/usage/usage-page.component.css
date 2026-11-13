@@ -1,0 +1,172 @@
+/* AI usage explorer: answer, sticky filters, one breakdown at a time. */
+.ux-granted {
+  margin: -0.4rem 0 0;
+  padding: 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.ux-bar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ux-range {
+  flex-wrap: nowrap;
+}
+.ux-range span {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0.55rem;
+}
+.ux-filters {
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
+}
+@media (min-width: 400px) {
+  .ux-range span {
+    min-width: 3.1rem;
+    padding-inline: 0.9rem;
+  }
+}
+.ux-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent-solid);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.ux-chips .lf-chip,
+.ux-remove {
+  min-height: 2.75rem;
+  padding-inline: 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.ux-active {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.ux-remove {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.ux-remove__label {
+  font-weight: 800;
+}
+.ux-remove app-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.ux-tabs {
+  margin: 0;
+  padding: 0 0.35rem;
+}
+.ux-tabs .lf-tab {
+  padding-inline: 0.55rem;
+}
+.ux-honest {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--tile-2);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.ux-honest app-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+.ux-foot {
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.ux-days {
+  padding: 1rem 1rem 0.5rem;
+}
+.ux-daylist {
+  border-top: 1px solid var(--line);
+}
+.ux-day {
+  padding-block: 0.55rem;
+}
+.ux-day__end {
+  display: grid;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+}
+.ux-day__end b {
+  font-size: 0.88rem;
+}
+.ux-day__end small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.ux-skel {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.ux-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.ux-empty-actions .lf-btn {
+  min-height: 2.75rem;
+}
+.ux-about > summary {
+  padding-inline: 1rem;
+}
+.ux-about__list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.ux-about__list b {
+  color: var(--fg);
+}
+
+@media (min-width: 640px) {
+  .ux-honest,
+  .ux-foot,
+  .ux-skel {
+    padding-inline: 1.25rem;
+  }
+  .ux-days {
+    padding-inline: 1.25rem;
+  }
+  .ux-tabs {
+    padding-inline: 0.75rem;
+  }
+  .ux-about > summary {
+    padding-inline: 1.25rem;
+  }
+}
+@media (min-width: 960px) {
+  .ux-chips {
+    gap: 0.4rem;
+  }
+}

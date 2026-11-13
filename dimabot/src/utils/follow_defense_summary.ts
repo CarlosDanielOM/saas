@@ -72,7 +72,7 @@ const defaults: FollowSummaryDependencies = {
     },
     async send(channelID, message) {
         const { sendTwitchChatMessage } = await import('../functions/chats/send_message.chat.js');
-        return sendTwitchChatMessage(channelID, message, null, { channelID });
+        return sendTwitchChatMessage(channelID, message, null, { channelID }, { origin: 'follow_defense' });
     }
 };
 

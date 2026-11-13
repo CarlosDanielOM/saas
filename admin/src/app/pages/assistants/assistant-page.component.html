@@ -1,0 +1,226 @@
+<div class="lf as-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" routerLink="/ai"><app-icon name="back" />AI</a>
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">Dima assistant</h1>
+          <p class="lf-sub" data-privacy>Only you can see these chats here. Other people on the channel can't.</p>
+        </div>
+        <div class="lf-head__actions">
+          @if (summary(); as s) {
+            @if (s.refusals.week > 0) {
+              <a class="lf-btn lf-btn--sm" routerLink="/assistant-refusals" data-refusals>
+                <app-icon name="shield" />Refusals ({{ s.refusals.week }} this week)
+              </a>
+            } @else {
+              <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/assistant-refusals" data-refusals>Refusals</a>
+            }
+          }
+        </div>
+      </div>
+    </header>
+
+    @if (summaryFailed()) {
+      <div class="lf-tile lf-empty" role="alert" data-summary-error>
+        <app-icon name="alert" />
+        <strong>The assistant's numbers did not load</strong>
+        <span>Your range and filters are kept.</span>
+        <button type="button" class="lf-btn" (click)="load(true)">Retry</button>
+      </div>
+    } @else if (answer(); as a) {
+      <div class="lf-status lf-status--{{ a.tone }}" role="status" data-answer [attr.data-tone]="a.tone" [attr.aria-busy]="summaryLoading()">
+        <app-icon [name]="a.tone === 'warn' ? 'alert' : a.tone === 'ok' ? 'ok' : 'info'" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">{{ a.title }}</strong>
+          <span class="lf-status__text">{{ a.text }}</span>
+          @if (a.problems > 0 && status() !== 'problems') {
+            <div class="lf-status__actions">
+              <button type="button" class="lf-btn lf-btn--sm" (click)="go({ status: 'problems' })" data-see-problems>
+                See the {{ a.problems === 1 ? 'failed message' : a.problems + ' failed messages' }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="lf-status" aria-busy="true"><app-skeleton width="16rem" height="1.4rem" /></div>
+    }
+
+    <div class="as-scope">
+      <div class="lf-seg" role="radiogroup" aria-label="Time range">
+        @for (item of ranges; track item.key) {
+          <label>
+            <input type="radio" name="as-range" [value]="item.key" [checked]="range() === item.key" (change)="go({ range: item.key })" [attr.aria-label]="item.label" />
+            <span>{{ item.short }}</span>
+          </label>
+        }
+      </div>
+      @if (channel()) {
+        <button type="button" class="lf-chip" aria-pressed="true" (click)="go({ channel: null })" data-channel-chip>
+          Only {{ channelName() }}<app-icon name="x" /><span class="sr-only">, remove</span>
+        </button>
+      }
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost as-refresh" aria-label="Refresh" (click)="load(true)" [disabled]="summaryLoading() || turnsLoading()">
+        <app-icon name="refresh" [class.lf-spinning]="summaryLoading() || turnsLoading()" />
+      </button>
+    </div>
+
+    @if (nearLimit().length) {
+      <ul class="lf-tile lf-tile--flush lf-bars as-limits" aria-label="Near today's daily limit" data-limits>
+        @for (row of nearLimit(); track row.channelID) {
+          <li class="lf-bars__row" data-limit-row>
+            <span class="lf-bars__name"><app-icon name="alert" />{{ row.channel || 'A channel' }} used {{ formatCount(row.used) }} of {{ formatCount(row.limit) }} today</span>
+            <span class="lf-bars__value">{{ formatShare(row.used, row.limit) }}</span>
+            <span class="lf-bar as-limits__bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="lf-panels as-panels">
+      <div class="lf-col as-main">
+
+        <section class="lf-tile lf-tile--flush as-list" aria-labelledby="as-list-h" data-turns>
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="as-list-h"><app-icon name="list" />Every message</h2>
+            <div class="lf-seg as-sort" role="radiogroup" aria-label="Sort messages">
+              @for (item of sorts; track item.key) {
+                <label>
+                  <input type="radio" name="as-sort" [value]="item.key" [checked]="sort() === item.key" (change)="go({ sort: item.key })" />
+                  <span>{{ item.label }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="as-filters">
+            <div class="lf-strip" role="group" aria-label="Show">
+              <button type="button" class="lf-chip" [attr.aria-pressed]="!status() && !level()" (click)="go({ status: null, level: null })">All</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="status() === 'problems'" (click)="toggleStatus('problems')" data-chip="problems">
+                Problems@if (counts(); as c) { <span class="lf-chip__count">{{ c.problems }}</span>}
+              </button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="status() === 'cancelled'" (click)="toggleStatus('cancelled')" data-chip="cancelled">Stopped by the person</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="level() === 'expert'" (click)="toggleLevel('expert')" data-chip="expert">
+                Expert@if (counts(); as c) { <span class="lf-chip__count">{{ c.expert }}</span>}
+              </button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="level() === 'standard'" (click)="toggleLevel('standard')" data-chip="standard">
+                Standard@if (counts(); as c) { <span class="lf-chip__count">{{ c.standard }}</span>}
+              </button>
+              <button type="button" class="lf-chip" (click)="openSheet()" aria-haspopup="dialog" data-open-filters>
+                <app-icon name="filter" />Filters@if (activeFilters()) { <span class="lf-chip__count">{{ activeFilters() }}</span>}
+              </button>
+            </div>
+            @if (user() || status() === 'completed') {
+              <div class="as-active">
+                @if (user()) {
+                  <button type="button" class="lf-chip" aria-pressed="true" (click)="go({ user: null })" data-user-chip>
+                    Only {{ userName() }}<app-icon name="x" /><span class="sr-only">, remove</span>
+                  </button>
+                }
+                @if (status() === 'completed') {
+                  <button type="button" class="lf-chip" aria-pressed="true" (click)="go({ status: null })">Answered only<app-icon name="x" /><span class="sr-only">, remove</span></button>
+                }
+              </div>
+            }
+            @if (recordsNote()) {
+              <p class="lf-note" data-records-note>Per-message details start {{ recordsNote() }}. Daily totals go back further.</p>
+            }
+          </div>
+
+          @if (turnsFailed()) {
+            <div class="lf-empty" role="alert" data-turns-error>
+              <app-icon name="alert" />
+              <strong>The messages did not load</strong>
+              <span>Your filters are kept.</span>
+              <button type="button" class="lf-btn" (click)="load(true)">Retry</button>
+            </div>
+          } @else if (turnsLoading() && !rows().length) {
+            <ul class="lf-rows" aria-busy="true" aria-label="Loading messages">
+              @for (i of [0, 1, 2, 3]; track i) {
+                <li class="lf-row as-skel"><span class="as-skel__main"><app-skeleton width="45%" /><app-skeleton width="80%" height="0.8rem" /></span><app-skeleton width="3rem" /></li>
+              }
+            </ul>
+          } @else if (!rows().length) {
+            <div class="lf-empty" data-turns-empty>
+              <app-icon name="sparkles" />
+              @if (summary() && !summary()!.recordsSince) {
+                <strong>No assistant messages recorded yet</strong>
+                <span>Each message a streamer or editor sends will appear here: who sent it, the level and model, the tools it used, how long it took, what it cost and how it ended.</span>
+              } @else {
+                <strong>No messages match</strong>
+                <span>Nothing in the last {{ rangeLabel() }} with these filters. Widen the range or clear the filters.</span>
+              }
+            </div>
+          } @else {
+            <ul class="lf-rows" [attr.aria-busy]="turnsLoading()" aria-live="polite" aria-label="Assistant messages">
+              @for (turn of rows(); track turn.id) {
+                <li><app-assistant-turn [turn]="turn" [showChannel]="!channel()" (opened)="openTurn($event)" /></li>
+              }
+            </ul>
+            @if (totalPages() > 1) {
+              <div class="lf-pager">
+                <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() === 1 || turnsLoading()" (click)="go({ page: page() - 1 })">Previous</button>
+                <span class="lf-pager__info">Page {{ page() }} of {{ totalPages() }}<br />{{ total() }} messages</span>
+                <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() >= totalPages() || turnsLoading()" (click)="go({ page: page() + 1 })">Next</button>
+              </div>
+            }
+          }
+        </section>
+      </div>
+
+      <div class="lf-col as-side">
+        <details class="as-numbers" [open]="wide()" data-numbers>
+          <summary class="as-numbers__toggle"><span>Numbers for this range</span><app-icon name="down" /></summary>
+          <div class="as-numbers__body">
+            <section class="lf-tile as-days" aria-labelledby="as-days-h">
+              <div class="lf-tile__head">
+                <h2 class="lf-h2" id="as-days-h"><app-icon name="chart" />Per day</h2>
+                @if (channel()) {
+                  <span class="lf-note">All channels</span>
+                }
+              </div>
+              @if (summary(); as s) {
+                <app-day-bars [days]="days()" label="Assistant messages per day" [format]="formatCount" partLabel="failed" />
+                <p class="lf-note as-days__cost" data-cost-line>Cost: {{ costLine() }}</p>
+                @if (channel()) {
+                  <p class="lf-note">Daily totals are kept for all channels together, not per channel.</p>
+                }
+              } @else if (!summaryFailed()) {
+                <app-skeleton height="4.5rem" />
+              }
+            </section>
+            @if (summary(); as s) {
+              <app-assistant-blocks [summary]="s" [channel]="channel()" (pick)="pickChannel($event)" />
+            } @else if (!summaryFailed()) {
+              <div class="lf-tile"><app-skeleton width="40%" /><app-skeleton height="5rem" /></div>
+            }
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <app-assistant-turn-sheet [turnId]="open()" [preview]="openRow()" (closed)="closeTurn()" (onlyPerson)="pickUser($event)" />
+
+  <dialog #sheet class="lf-dialog" aria-labelledby="as-sheet-h" (click)="backdrop($event)" data-filter-sheet>
+    <div class="lf-dialog__head">
+      <h2 id="as-sheet-h">Filters</h2>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="closeSheet()"><app-icon name="x" /></button>
+    </div>
+    <div class="lf-dialog__body">
+      @if (channel()) {
+        <p class="as-sheet__now">Showing only <b>{{ channelName() }}</b>. <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="go({ channel: null }); closeSheet()">Every channel</button></p>
+      }
+      <app-channel-picker label="Only one streamer" (picked)="picked($event)" />
+      @if (user()) {
+        <p class="as-sheet__now">Showing only <b>{{ userName() }}</b>. <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="go({ user: null }); closeSheet()">Everyone</button></p>
+      } @else {
+        <p class="lf-note">To see one person's messages, open one of their messages and choose "Only this person".</p>
+      }
+    </div>
+    <div class="lf-dialog__foot">
+      <button type="button" class="lf-btn" (click)="closeSheet()">Done</button>
+    </div>
+  </dialog>
+</div>

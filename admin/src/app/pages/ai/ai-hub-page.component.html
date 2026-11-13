@@ -1,0 +1,345 @@
+<div class="lf hub">
+  <div class="lf-main">
+    <header class="lf-head hub-head">
+      <h1 class="lf-title">AI</h1>
+      <p class="lf-sub hub-sub">What AI costs, whether it works, and what needs your judgment.</p>
+      <div class="lf-seg hub-range" role="radiogroup" aria-label="Time range">
+        @for (item of ranges; track item.key) {
+          <label>
+            <input type="radio" name="hub-range" [checked]="range() === item.key" (change)="setRange(item.key)" [attr.aria-label]="'Last ' + item.label" />
+            <span>{{ item.short }}</span>
+          </label>
+        }
+      </div>
+    </header>
+
+    <!-- The answer -->
+    @if (usage.data(); as u) {
+      <div class="lf-status" [class.lf-status--warn]="(waiting() ?? 0) > 0" role="status" data-hub-answer [attr.aria-busy]="usage.loading()">
+        <app-icon [name]="(waiting() ?? 0) > 0 ? 'alert' : 'credits'" />
+        <div class="lf-status__body">
+          @if (u.totals.credits > 0) {
+            <strong class="lf-status__title">Streamers paid {{ credits(u.totals.credits) }} <span class="hub-nowrap">({{ value(u.totals.credits) }})</span> for AI in {{ labelOf(usage.range()) }}</strong>
+          } @else {
+            <strong class="lf-status__title">No AI credits were charged in {{ labelOf(usage.range()) }}</strong>
+          }
+          <span class="lf-status__text">
+            @if (u.totals.channels > 0) {
+              Across {{ plural(u.totals.channels, 'channel') }}.
+            }
+            @if (provider().pending) {
+              Adding up what providers charged us…
+            } @else {
+              Providers charged us {{ usd(provider().usd) }} where recorded@if (provider().missing.length) {<span>, not counting {{ provider().missing.join(' and ') }} (didn't load)</span>}.
+            }
+          </span>
+          @if ((waiting() ?? 0) > 0) {
+            <div class="lf-status__actions">
+              <a class="lf-btn lf-btn--sm lf-btn--primary" routerLink="/moderation-review" data-hub-review>
+                <app-icon name="shield" />Review {{ plural(waiting()!, 'waiting message') }}
+              </a>
+            </div>
+          }
+        </div>
+      </div>
+    } @else if (usage.failed()) {
+      <div class="lf-status lf-status--warn" role="alert" data-hub-answer>
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">AI spend didn't load</strong>
+          <span class="lf-status__text">The other blocks below load on their own.</span>
+          <div class="lf-status__actions">
+            <button type="button" class="lf-btn lf-btn--sm" (click)="usage.load(range())"><app-icon name="refresh" />Retry</button>
+            @if ((waiting() ?? 0) > 0) {
+              <a class="lf-btn lf-btn--sm lf-btn--primary" routerLink="/moderation-review" data-hub-review>
+                <app-icon name="shield" />Review {{ plural(waiting()!, 'waiting message') }}
+              </a>
+            }
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="lf-status" aria-busy="true">
+        <app-skeleton width="1.35rem" height="1.35rem" variant="circle" />
+        <div class="lf-status__body"><app-skeleton width="80%" height="1.2rem" /><app-skeleton width="55%" height="0.9rem" /></div>
+      </div>
+    }
+
+    <div class="lf-panels">
+      <div class="lf-col">
+        <!-- The five areas -->
+        <section class="lf-tile lf-tile--flush" aria-labelledby="hub-areas">
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="hub-areas"><app-icon name="sparkles" />By area</h2>
+            <span class="lf-note">{{ rangeText() }}</span>
+          </div>
+          <ul class="lf-rows hub-areas">
+            <!-- Chat protection -->
+            <li class="hub-area" data-area="protection" [attr.aria-busy]="decisions.loading()">
+              <a class="lf-row hub-area__link" routerLink="/ai/decisions" [queryParams]="link()">
+                <span class="hub-icon"><app-icon name="shield" /></span>
+                <span class="lf-row__main">
+                  <span class="lf-row__title">Chat protection</span>
+                  @if (decisions.data(); as d) {
+                    <span class="lf-row__meta">{{ plural(d.aiReviews, 'review') }} · {{ plural(d.bans, 'ban') }}</span>
+                  } @else if (decisions.failed()) {
+                    <span class="hub-warn hub-warn--danger">Didn't load</span>
+                  } @else {
+                    <app-skeleton width="9rem" height="0.8rem" />
+                  }
+                </span>
+                @if (decisions.data(); as d) {
+                  <span class="hub-end"><b>{{ usd(d.providerUSD) }}</b><small>provider cost</small></span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+                @if (decisions.data(); as d) {
+                  @if (d.notReviewed > 0 || d.bansFailed > 0) {
+                    <span class="hub-warns">
+                      @if (d.notReviewed > 0) {<span class="hub-warn"><app-icon name="alert" />{{ num(d.notReviewed) }} couldn't be reviewed</span>}
+                      @if (d.bansFailed > 0) {<span class="hub-warn"><app-icon name="alert" />{{ plural(d.bansFailed, 'ban') }} Twitch refused</span>}
+                    </span>
+                  }
+                }
+              </a>
+              @if (decisions.failed()) {
+                <button type="button" class="lf-btn lf-btn--sm hub-retry" (click)="decisions.load(range())" aria-label="Retry chat protection">Retry</button>
+              }
+            </li>
+
+            <!-- Voice -->
+            <li class="hub-area" data-area="voice" [attr.aria-busy]="usage.loading()">
+              <a class="lf-row hub-area__link" routerLink="/ai/usage" [queryParams]="link({ category: 'tts' })">
+                <span class="hub-icon"><app-icon name="mic" /></span>
+                <span class="lf-row__main">
+                  <span class="lf-row__title">Voice</span>
+                  @if (voice(); as v) {
+                    <span class="lf-row__meta">{{ plural(v.count, 'request') }}</span>
+                  } @else if (usage.failed()) {
+                    <span class="hub-warn hub-warn--danger">Didn't load</span>
+                  } @else {
+                    <app-skeleton width="7rem" height="0.8rem" />
+                  }
+                </span>
+                @if (voice(); as v) {
+                  <span class="hub-end"><b>{{ credits(v.credits, true) }}</b><small>{{ value(v.credits) }}</small></span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+                @if (failed7d().voice > 0) {
+                  <span class="hub-warns"><span class="hub-warn"><app-icon name="alert" />{{ num(failed7d().voice) }} failed in 7 days</span></span>
+                }
+              </a>
+              @if (usage.failed()) {
+                <button type="button" class="lf-btn lf-btn--sm hub-retry" (click)="usage.load(range())" aria-label="Retry voice and chat AI">Retry</button>
+              }
+            </li>
+
+            <!-- Chat AI and memory -->
+            <li class="hub-area" data-area="chat" [attr.aria-busy]="usage.loading()">
+              <a class="lf-row hub-area__link" routerLink="/ai/usage" [queryParams]="link()">
+                <span class="hub-icon"><app-icon name="message" /></span>
+                <span class="lf-row__main">
+                  <span class="lf-row__title">Chat AI and memory</span>
+                  @if (chatAI(); as c) {
+                    <span class="lf-row__meta">{{ plural(c.count, 'call') }}</span>
+                  } @else if (usage.failed()) {
+                    <span class="hub-warn hub-warn--danger">Didn't load</span>
+                  } @else {
+                    <app-skeleton width="7rem" height="0.8rem" />
+                  }
+                </span>
+                @if (chatAI(); as c) {
+                  <span class="hub-end"><b>{{ credits(c.credits, true) }}</b><small>{{ value(c.credits) }}</small></span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+                @if (failed7d().chatAI > 0) {
+                  <span class="hub-warns"><span class="hub-warn"><app-icon name="alert" />{{ num(failed7d().chatAI) }} failed in 7 days</span></span>
+                }
+              </a>
+            </li>
+
+            <!-- Dima assistant -->
+            <li class="hub-area" data-area="assistant" [attr.aria-busy]="assistant.loading()">
+              <a class="lf-row hub-area__link" routerLink="/ai/assistant" [queryParams]="link()">
+                <span class="hub-icon"><app-icon name="bot" /></span>
+                <span class="lf-row__main">
+                  <span class="lf-row__title">Dima assistant</span>
+                  @if (assistant.data(); as a) {
+                    <span class="lf-row__meta">{{ plural(a.totals.turns, 'message') }} · {{ plural(a.totals.people, 'person', 'people') }}</span>
+                  } @else if (assistant.failed()) {
+                    <span class="hub-warn hub-warn--danger">Didn't load</span>
+                  } @else {
+                    <app-skeleton width="8rem" height="0.8rem" />
+                  }
+                </span>
+                @if (assistant.data(); as a) {
+                  <span class="hub-end"><b>{{ usd(a.totals.providerUSD) }}</b><small>provider cost</small></span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+                @if ((assistant.data()?.totals?.failed ?? 0) > 0) {
+                  <span class="hub-warns"><span class="hub-warn"><app-icon name="alert" />{{ num(assistant.data()!.totals.failed) }} failed</span></span>
+                }
+              </a>
+              @if (assistant.failed()) {
+                <button type="button" class="lf-btn lf-btn--sm hub-retry" (click)="assistant.load(range())" aria-label="Retry Dima assistant">Retry</button>
+              }
+            </li>
+
+            <!-- Docs AI -->
+            <li class="hub-area" data-area="docs" [attr.aria-busy]="docs.loading()">
+              <a class="lf-row hub-area__link" routerLink="/ai/docs" [queryParams]="link()">
+                <span class="hub-icon"><app-icon name="book" /></span>
+                <span class="lf-row__main">
+                  <span class="lf-row__title">Docs AI</span>
+                  @if (docs.data(); as d) {
+                    <span class="lf-row__meta">
+                      {{ plural(d.totals.asked, 'question') }} · <span class="hub-thumb"><app-icon name="thumb-up" />{{ num(d.totals.helpful) }}<span class="sr-only"> helpful</span></span>
+                      <span class="hub-thumb"><app-icon name="thumb-down" />{{ num(d.totals.unhelpful) }}<span class="sr-only"> unhelpful</span></span>
+                    </span>
+                  } @else if (docs.failed()) {
+                    <span class="hub-warn hub-warn--danger">Didn't load</span>
+                  } @else {
+                    <app-skeleton width="8rem" height="0.8rem" />
+                  }
+                </span>
+                @if (docs.data(); as d) {
+                  <span class="hub-end"><b>{{ usd(d.totals.providerUSD) }}</b><small>provider cost</small></span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+                @if ((docs.data()?.totals?.failed ?? 0) > 0) {
+                  <span class="hub-warns"><span class="hub-warn"><app-icon name="alert" />{{ plural(docs.data()!.totals.failed, 'question') }} not answered</span></span>
+                }
+              </a>
+              @if (docs.failed()) {
+                <button type="button" class="lf-btn lf-btn--sm hub-retry" (click)="docs.load(range())" aria-label="Retry Docs AI">Retry</button>
+              }
+            </li>
+          </ul>
+
+          <!-- Needs your judgment -->
+          <ul class="lf-rows hub-small">
+            <li data-area="review">
+              <a class="lf-row hub-small__row" routerLink="/moderation-review">
+                <app-icon name="list" />
+                <span class="lf-row__main"><span class="lf-row__title">Review queue</span></span>
+                @if (waiting() !== null) {
+                  <span class="hub-small__count" [class.is-warn]="waiting()! > 0">{{ waiting() === 0 ? 'Nothing waiting' : num(waiting()) + ' waiting' }}</span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+              </a>
+            </li>
+            <li data-area="refusals">
+              <a class="lf-row hub-small__row" routerLink="/assistant-refusals">
+                <app-icon name="sparkles" />
+                <span class="lf-row__main"><span class="lf-row__title">Assistant refusals</span></span>
+                @if (assistant.data(); as a) {
+                  <span class="hub-small__count">{{ num(a.refusals.week) }} this week</span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+              </a>
+            </li>
+            @if (outOfCredits() > 0) {
+              <li data-area="credits">
+                <a class="lf-row hub-small__row" routerLink="/users">
+                  <app-icon name="credits" />
+                  <span class="lf-row__main"><span class="lf-row__title">Out of AI credits</span></span>
+                  <span class="hub-small__count is-warn">{{ plural(outOfCredits(), 'channel') }}</span>
+                  <app-icon class="lf-row__chev" name="chevron" />
+                </a>
+              </li>
+            }
+          </ul>
+          @if (overview.failed()) {
+            <p class="hub-foot" role="alert">
+              Failure counts didn't load.
+              <button type="button" class="lf-btn lf-btn--sm" (click)="overview.load('7d')">Retry</button>
+            </p>
+          }
+        </section>
+
+        <!-- Spend per day -->
+        <section class="lf-tile" aria-labelledby="hub-days" [attr.aria-busy]="usage.loading()">
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="hub-days"><app-icon name="chart" />Credits charged per day</h2>
+          </div>
+          @if (usage.data()) {
+            <app-day-bars [days]="days()" label="AI credits charged per day" [format]="dayFormat" />
+          } @else if (usage.failed()) {
+            <p class="lf-note">Didn't load. Use Retry above.</p>
+          } @else {
+            <app-skeleton height="7rem" />
+          }
+        </section>
+      </div>
+
+      <div class="lf-col">
+        <!-- Who spends the most -->
+        <section class="lf-tile lf-tile--flush" aria-labelledby="hub-top" [attr.aria-busy]="usage.loading()">
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="hub-top"><app-icon name="users" />Who spends the most</h2>
+            <a class="hub-see" routerLink="/ai/usage" [queryParams]="link({ view: 'channels' })" data-hub-see-all>See all<app-icon name="chevron" /></a>
+          </div>
+          @if (usage.data()) {
+            @if (topChannels().length) {
+              <ul class="lf-bars" data-hub-top>
+                @for (row of topChannels(); track row.channelID) {
+                  <li>
+                    <a class="lf-bars__row" routerLink="/ai/usage" [queryParams]="link({ channel: row.channelID })">
+                      <span class="lf-bars__name">
+                        {{ row.channel || 'Unknown channel' }}
+                        @if (row.plan) {<span [class]="row.planClass + ' hub-plan'">{{ row.plan }}</span>}
+                        <small>{{ plural(row.count, 'call') }}</small>
+                      </span>
+                      <span class="lf-bars__value">{{ credits(row.credits, true) }}<small>{{ value(row.credits) }}</small></span>
+                      <span class="lf-bar" aria-hidden="true"><span [style.width.%]="row.width"></span></span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="lf-note hub-pad">No channel was charged for AI in {{ rangeText() }}.</p>
+            }
+          } @else if (usage.failed()) {
+            <p class="lf-note hub-pad">Didn't load. Use Retry above.</p>
+          } @else {
+            <div class="hub-pad hub-skel"><app-skeleton height="2.4rem" /><app-skeleton height="2.4rem" /><app-skeleton height="2.4rem" /></div>
+          }
+        </section>
+
+        <!-- Which models -->
+        <section class="lf-tile lf-tile--flush" aria-labelledby="hub-models">
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="hub-models"><app-icon name="bot" />Which models</h2>
+            <span class="lf-note">most calls first</span>
+          </div>
+          @if (models().length) {
+            <ul class="lf-rows" data-hub-models>
+              @for (model of models(); track model.key) {
+                <li class="lf-row hub-model">
+                  <span class="lf-row__main">
+                    <span class="lf-row__title hub-model__name">{{ model.name }}</span>
+                    <span class="lf-row__meta">
+                      {{ model.use }} · {{ plural(model.calls, 'call') }}@if (model.credits !== null) {<span> · {{ model.providerUSD !== null ? usd(model.providerUSD) + ' provider cost' : 'provider cost not recorded' }}</span>}
+                    </span>
+                  </span>
+                  <span class="hub-end">
+                    @if (model.credits !== null) {
+                      <b>{{ credits(model.credits, true) }}</b><small>{{ value(model.credits) }}</small>
+                    } @else {
+                      <b>{{ usd(model.providerUSD) }}</b><small>provider cost</small>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          } @else if (usage.loading() || decisions.loading()) {
+            <div class="hub-pad hub-skel"><app-skeleton height="2.4rem" /><app-skeleton height="2.4rem" /></div>
+          } @else if (usage.failed() && decisions.failed()) {
+            <p class="lf-note hub-pad">Didn't load. Use Retry above.</p>
+          } @else {
+            <p class="lf-note hub-pad">No model ran in {{ rangeText() }}.</p>
+          }
+        </section>
+      </div>
+    </div>
+  </div>
+</div>

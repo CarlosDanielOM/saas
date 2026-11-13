@@ -1,0 +1,144 @@
+.as-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.as-refresh {
+  margin-left: auto;
+}
+.as-scope .lf-chip app-icon,
+.as-active .lf-chip app-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+.as-days {
+  display: grid;
+  gap: 0.6rem;
+}
+.as-days .lf-tile__head {
+  margin: 0;
+}
+.as-days__cost {
+  font-variant-numeric: tabular-nums;
+}
+.as-list .lf-tile__head {
+  padding-bottom: 0.5rem;
+}
+.as-scope .lf-seg span,
+.as-sort span {
+  min-height: 2.75rem;
+  padding-inline: 0.7rem;
+}
+.as-filters {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.as-filters .lf-strip {
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+}
+.as-filters .lf-chip {
+  min-height: 2.75rem;
+}
+.as-active {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.as-skel {
+  gap: 1rem;
+}
+.as-skel__main {
+  display: grid;
+  flex: 1;
+  gap: 0.4rem;
+}
+.as-sheet__now {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+}
+/* Numbers for this range: folded above the list on phones, open beside it on desktop. */
+.as-numbers > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.as-numbers > summary::-webkit-details-marker {
+  display: none;
+}
+.as-numbers > summary app-icon {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.as-numbers[open] > summary app-icon {
+  transform: rotate(180deg);
+}
+.as-numbers__body {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.as-limits {
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+  background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--tile);
+}
+.as-limits .lf-bars__name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.as-limits app-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--warn);
+}
+.as-limits__bar > span {
+  background: var(--warn);
+}
+/* Phones: the numbers toggle sits above the list. */
+@media (max-width: 959.98px) {
+  .as-side {
+    order: 1;
+    display: block;
+  }
+  .as-list {
+    order: 2;
+  }
+}
+@media (min-width: 960px) {
+  .as-numbers > summary {
+    display: none;
+  }
+  .as-numbers__body {
+    margin-top: 0;
+  }
+}
+@media (min-width: 640px) {
+  .as-filters {
+    padding-inline: 1.25rem;
+  }
+  .as-filters .lf-strip {
+    margin-inline: 0;
+    padding-inline: 0;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

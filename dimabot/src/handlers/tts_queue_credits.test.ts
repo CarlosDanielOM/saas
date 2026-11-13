@@ -8,6 +8,7 @@ let planTier = 'free';
 let pending = true;
 let rawText = '[happy] Hello';
 let scriptedQueue: Array<{ value: string }> | null = null;
+let itemExtras: Record<string, unknown> = {};
 const synthesis: Array<{ provider: string; text: string; voice: string }> = [];
 const synthesizeImpls: Record<string, (request: { text: string; voice: string }) => Promise<{ error: boolean; message: string }>> = {};
 const emitted: Array<{ event: string; payload: { mode: string; audioUrl: string } }> = [];
@@ -29,7 +30,7 @@ const cache = {
   },
   get: async (key: string): Promise<string | null> => key.includes(':queue:data:')
     ? JSON.stringify({ channelID: 'test', speechID: 'speech-test', provider: queuedProvider,
-      mode: 'clone', language: 'en', voice: 'fish-id', piperFallbackVoice: 'piper-en', text: rawText })
+      mode: 'clone', language: 'en', voice: 'fish-id', piperFallbackVoice: 'piper-en', text: rawText, ...itemExtras })
     : 'pending',
   set: async () => {},
   del: async (_key?: string | string[]) => {},
@@ -55,7 +56,8 @@ mock.module('../utils/billing.js', { namedExports: {
   isAiCreditsExhausted: async () => creditStatus === 'exhausted',
   getAiCredits: async () => ({ status: creditStatus }),
 } });
-mock.module('../utils/tts_usage.js', { namedExports: { trackTtsUsage: async () => {} } });
+const usageCalls: Array<Record<string, any>> = [];
+mock.module('../utils/tts_usage.js', { namedExports: { trackTtsUsage: async (options: Record<string, any>) => { usageCalls.push(options); } } });
 for (const provider of ['fish', 'piper', 'kokoro']) {
   synthesizeImpls[provider] = async (request: { text: string; voice: string }) => {
     synthesis.push({ provider, text: request.text, voice: request.voice });
@@ -68,8 +70,14 @@ for (const provider of ['fish', 'piper', 'kokoro']) {
     ...(provider === 'piper' ? { PIPER_PUBLIC_SPEECH_DIR: '/tmp/tts-test' } : {}),
   } });
 }
-mock.module('../utils/posthog_events.js', { namedExports: { trackAiOperation: () => {} } });
-const { ttsQueueHandler } = await import('./tts_queue.handler.js');
+const operations: Array<Record<string, any>> = [];
+mock.module('../utils/posthog_events.js', { namedExports: { trackAiOperation: (event: Record<string, any>) => { operations.push(event); } } });
+const { ttsQueueHandler, ttsRequestSources } = await import('./tts_queue.handler.js');
+const { setActivityLogSinkForTests, pendingActivityRowsForTests } = await import('../utils/activity_log.js');
+const flushedRows: Array<Record<string, any>> = [];
+setActivityLogSinkForTests(async rows => { flushedRows.push(...rows); });
+// A timed flush moves rows from the buffer to the sink in order, so together they are every row so far.
+const allActivityRows = (): Array<Record<string, any>> => [...flushedRows, ...pendingActivityRowsForTests()];
 
 test('queued Fish requests recheck credits and use Piper when exhausted or unavailable', async () => {
   for (const status of ['exhausted', 'unavailable', 'available']) {
@@ -407,4 +415,94 @@ test('queued paid requests recheck the current tier and try Kokoro only after co
     queuedProvider = 'fish';
     lookupFails = false;
   }
+});
+
+test('voice requests that fall back or fail leave one activity row per provider that did not speak', async () => {
+  const originalPiper = synthesizeImpls.piper;
+  const requestedBy = { userID: '42', userLogin: 'Viewer', userName: 'Viewer', userLevel: 1 };
+  // A reward's request: reported as 'ast' (as before), labeled 'redemption' on its receipt only.
+  itemExtras = { requestedBy, ...ttsRequestSources('redemption'), timestamp: Date.now() - 50 };
+  queuedProvider = 'fish';
+  lookupFails = false;
+  planTier = 'free';
+  playbackAvailable = true;
+  let activityRows: Array<Record<string, any>> = [];
+  const run = async (channel: string) => {
+    const start = allActivityRows().length;
+    pending = true;
+    await ttsQueueHandler.processNext(channel);
+    activityRows = allActivityRows().slice(start);
+    await ttsQueueHandler.cleanupChannel(channel);
+    return activityRows.map(row => ({ name: row.name, outcome: row.outcome, reason: row.reason, fallback: row.data.fallback, requested: row.data.requested }));
+  };
+  try {
+    // No credits: Fish is skipped, then Piper fails too.
+    creditStatus = 'exhausted';
+    rawText = 'Hello';
+    assert.deepEqual(await run('activity-a'), [
+      { name: 'fish', outcome: 'skipped', reason: 'no_credits', fallback: 'piper', requested: undefined },
+      { name: 'piper', outcome: 'failed', reason: 'synthesis_failed', fallback: undefined, requested: 'fish' },
+    ]);
+    const [skipped] = activityRows;
+    assert.equal(skipped.kind, 'voice');
+    assert.equal(skipped.channelID, 'activity-a');
+    assert.equal(skipped.ref, 'speech-test');
+    assert.deepEqual([skipped.actorID, skipped.actorLogin, skipped.actorName], ['42', 'viewer', 'Viewer']);
+    assert.equal(skipped.data.source, 'redemption');
+    assert.equal(skipped.data.voice, 'fish-id');
+    assert.equal(skipped.data.chars, 5);
+    assert.ok(skipped.data.latencyMs >= 50);
+    assert.equal(activityRows[1].data.voice, 'piper-en');
+    assert.equal(activityRows[1].data.error, 'test stops before playback');
+
+    // The credit check could not confirm a balance.
+    creditStatus = 'unavailable';
+    assert.equal((await run('activity-b'))[0].reason, 'credit_check_failed');
+
+    // Fish fails, Piper speaks: only Fish gets a row; Piper's receipt names the requester and its voice.
+    synthesizeImpls.piper = async (request) => {
+      synthesis.push({ provider: 'piper', text: request.text, voice: request.voice });
+      return { error: false, message: 'ok', outputPath: '/tmp/tts-test/audio.wav', publicPath: '/test/audio' } as any;
+    };
+    creditStatus = 'available';
+    usageCalls.length = 0;
+    operations.length = 0;
+    assert.deepEqual(await run('activity-c'), [
+      { name: 'fish', outcome: 'failed', reason: 'synthesis_failed', fallback: 'piper', requested: undefined },
+    ]);
+    assert.equal(usageCalls.length, 1);
+    assert.equal(usageCalls[0].provider, 'piper');
+    assert.equal(usageCalls[0].characters, 5);
+    assert.equal(usageCalls[0].usage.source, 'ast');
+    assert.deepEqual(usageCalls[0].usage.receipt, { actor: { id: '42', login: 'Viewer', name: 'Viewer' }, voice: 'piper-en', model: undefined, source: 'redemption' });
+    assert.ok(operations.length > 0 && operations.every(event => event.source === 'ast'), 'PostHog keeps reporting a reward as ast');
+    synthesizeImpls.piper = originalPiper;
+
+    // Nothing is left to say once the Fish-only cue is removed.
+    creditStatus = 'exhausted';
+    rawText = '[happy]';
+    assert.deepEqual(await run('activity-d'), [
+      { name: 'fish', outcome: 'skipped', reason: 'no_credits', fallback: 'piper', requested: undefined },
+      { name: 'piper', outcome: 'skipped', reason: 'empty_text_after_fallback', fallback: undefined, requested: 'fish' },
+    ]);
+
+    // An older queue entry without a requester still records the row, without an actor.
+    itemExtras = {};
+    rawText = 'Hello';
+    await run('activity-e');
+    assert.equal(activityRows[0].actorID, '');
+  } finally {
+    synthesizeImpls.piper = originalPiper;
+    itemExtras = {};
+    rawText = '[happy] Hello';
+    playbackAvailable = false;
+  }
+});
+
+test('a reward arrives as redemption and is reported as ast; unknown sources become chat commands', () => {
+  assert.deepEqual(ttsRequestSources('redemption'), { source: 'ast', receiptSource: 'redemption' });
+  assert.deepEqual(ttsRequestSources('ast'), { source: 'ast' });
+  assert.deepEqual(ttsRequestSources('chat-command'), { source: 'chat-command' });
+  assert.deepEqual(ttsRequestSources({ $ne: 1 }), { source: 'chat-command' });
+  assert.deepEqual(ttsRequestSources(undefined), { source: 'chat-command' });
 });

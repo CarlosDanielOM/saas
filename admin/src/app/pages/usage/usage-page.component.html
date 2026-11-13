@@ -1,0 +1,215 @@
+<div class="lf ux">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" routerLink="/ai" [queryParams]="state().range === '7d' ? {} : { range: state().range }"><app-icon name="back" />AI</a>
+      <h1 class="lf-title">AI usage</h1>
+      <p class="lf-sub">Who and what uses AI, and what it costs.</p>
+    </header>
+
+    <!-- The answer -->
+    @if (summary(); as s) {
+      <div class="lf-status" role="status" aria-live="polite" [attr.aria-busy]="loading()" data-usage-answer>
+        <app-icon name="credits" />
+        <div class="lf-status__body">
+          @if (s.totals.count > 0) {
+            <strong class="lf-status__title">
+              {{ plural(s.totals.count, 'charged call') }} in {{ rangeText() }} across {{ plural(s.totals.channels, 'channel') }}: {{ credits(s.totals.credits) }} ({{ value(s.totals.credits) }}).
+            </strong>
+          } @else {
+            <strong class="lf-status__title">No charged AI calls in {{ rangeText() }}.</strong>
+          }
+          @if (limitedTo() || s.totals.count > 0) {
+            <span class="lf-status__text">
+              @if (limitedTo()) {<span data-usage-limited>{{ limitedTo() }} </span>}
+              @if (s.totals.providerKnown > 0) {
+                Providers charged us {{ usd(s.totals.providerUSD) }} for the {{ num(s.totals.providerKnown) }} of these calls where it is recorded.
+              } @else if (s.totals.count > 0) {
+                Provider cost is not recorded for these calls.
+              }
+            </span>
+          }
+        </div>
+      </div>
+      @if (s.granted > 0) {
+        <p class="ux-granted" data-usage-granted>{{ credits(s.granted, true) }} {{ value(s.granted) }} were added in this range (plan credits, packs, grants).</p>
+      }
+    } @else if (!failed()) {
+      <div class="lf-status" aria-busy="true">
+        <app-skeleton width="1.35rem" height="1.35rem" variant="circle" />
+        <div class="lf-status__body"><app-skeleton width="85%" height="1.2rem" /><app-skeleton width="50%" height="0.9rem" /></div>
+      </div>
+    }
+
+    <!-- Filters -->
+    <section class="lf-sticky ux-bar" aria-label="Filters">
+      <div class="ux-bar__top">
+        <div class="lf-seg ux-range" role="radiogroup" aria-label="Time range">
+          @for (item of ranges; track item.key) {
+            <label>
+              <input type="radio" name="usage-range" [checked]="state().range === item.key" (change)="go({ range: item.key })" [attr.aria-label]="'Last ' + item.label" />
+              <span>{{ item.short }}</span>
+            </label>
+          }
+        </div>
+        <button type="button" class="lf-btn ux-filters" (click)="sheetOpen.set(true)" aria-haspopup="dialog" data-usage-open-sheet>
+          <app-icon name="filter" />Filters
+          @if (sheetCount()) {<span class="ux-badge">{{ sheetCount() }}<span class="sr-only"> on</span></span>}
+        </button>
+      </div>
+      <div class="lf-strip ux-chips" role="group" aria-label="Feature">
+        @for (chip of chips(); track chip.label) {
+          <button type="button" class="lf-chip" [attr.aria-pressed]="state().category === chip.key" (click)="go({ category: chip.key })" [attr.data-usage-chip]="chip.key ?? 'all'">
+            {{ chip.label }}@if (chip.count !== null) {<span class="lf-chip__count">{{ compact(chip.count) }}</span>}
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (activeFilters().length) {
+      <div class="ux-active" role="group" aria-label="Active filters">
+        @for (filter of activeFilters(); track filter.key) {
+          <button type="button" class="lf-chip lf-chip--accent ux-remove" (click)="removeFilter(filter.key)" [attr.aria-label]="'Remove ' + filter.label.toLowerCase() + ' filter: ' + filter.value" [attr.data-usage-active]="filter.key">
+            <span class="ux-remove__label">{{ filter.label }}:</span> {{ filter.value }}<app-icon name="x" />
+          </button>
+        }
+        @if (state().channel) {
+          <a class="lf-chip ux-remove" [routerLink]="['/channels', state().channel, 'usage']" data-usage-open-channel><app-icon name="external" />Open channel</a>
+        }
+        @if (state().actor) {
+          <a class="lf-chip ux-remove" routerLink="/activity" [queryParams]="{ actor: state().actor }" data-usage-viewer-activity><app-icon name="history" />Everything from this viewer</a>
+        }
+      </div>
+    }
+
+    <!-- Views -->
+    <section class="lf-tile lf-tile--flush" aria-label="Breakdown">
+      <div class="lf-tabs ux-tabs" role="tablist" aria-label="View">
+        @for (item of views; track item.key; let i = $index) {
+          <button
+            type="button"
+            role="tab"
+            class="lf-tab"
+            [id]="'usage-tab-' + item.key"
+            [attr.aria-selected]="state().view === item.key"
+            [attr.tabindex]="state().view === item.key ? 0 : -1"
+            aria-controls="usage-panel"
+            (click)="go({ view: item.key })"
+            (keydown)="tabKey($event, i)"
+          >{{ item.label }}</button>
+        }
+      </div>
+
+      <div id="usage-panel" role="tabpanel" [attr.aria-labelledby]="'usage-tab-' + state().view" data-usage-panel>
+        @if (state().view === 'calls') {
+          <app-usage-calls [filters]="filters()" [sort]="state().sort" [kinds]="state().kinds" (sortChange)="go({ sort: $event })" (kindsChange)="go({ kinds: $event })" (clear)="clearFilters()" />
+        } @else if (failed()) {
+          <div class="lf-empty" role="alert" data-usage-error>
+            <app-icon name="alert" />
+            <strong>AI usage didn't load</strong>
+            <span>Your filters are kept.</span>
+            <button type="button" class="lf-btn lf-btn--sm" (click)="load()"><app-icon name="refresh" />Retry</button>
+          </div>
+        } @else if (summary(); as s) {
+          @if (s.totals.count === 0) {
+            <div class="lf-empty" data-usage-empty>
+              <app-icon name="search" />
+              <strong>Nothing was charged{{ limitedTo() ? ' with these filters' : '' }}</strong>
+              <span>No AI call was charged in {{ rangeText() }}. Widen the range or clear the filters.</span>
+              <div class="ux-empty-actions">
+                @if (state().range !== '30d') {
+                  <button type="button" class="lf-btn lf-btn--sm" (click)="go({ range: '30d' })">Show 30 days</button>
+                }
+                @if (limitedTo()) {
+                  <button type="button" class="lf-btn lf-btn--sm" (click)="clearFilters()">Clear filters</button>
+                }
+              </div>
+            </div>
+          } @else {
+            <div [attr.aria-busy]="loading()">
+              @switch (state().view) {
+                @case ('channels') {
+                  <app-usage-breakdown
+                    [rows]="channelRows()"
+                    [totalCredits]="s.totals.credits"
+                    label="Channels, biggest spend first"
+                    [activeLink]="state().channel ? { label: 'Open channel', icon: 'external', link: '/channels/' + state().channel + '/usage' } : null"
+                    (pick)="pickChannel($event)"
+                  />
+                  @if (s.totals.channels > channelRows().length) {
+                    <p class="ux-foot">The {{ channelRows().length }} biggest of {{ num(s.totals.channels) }} channels.</p>
+                  }
+                }
+                @case ('viewers') {
+                  @if (viewerCoverage(); as c) {
+                    <p class="ux-honest" data-usage-coverage>
+                      <app-icon name="info" />
+                      <span>
+                        Viewer known for {{ num(c.known) }} of {{ num(c.total) }} calls.
+                        Usage only names the viewer since this console shipped; older receipts and automatic work (stream memory) have none.
+                      </span>
+                    </p>
+                  }
+                  @if (viewerRows().length) {
+                    <app-usage-breakdown
+                      [rows]="viewerRows()"
+                      [totalCredits]="s.totals.credits"
+                      label="Viewers, biggest spend first"
+                      [activeLink]="state().actor ? { label: 'Everything from this viewer', icon: 'history', link: '/activity', query: { actor: state().actor! } } : null"
+                      (pick)="pickViewer($event)"
+                    />
+                    @if (viewerCoverage()!.viewers > viewerRows().length) {
+                      <p class="ux-foot">The {{ viewerRows().length }} biggest of {{ num(viewerCoverage()!.viewers) }} viewers.</p>
+                    }
+                  } @else {
+                    <p class="ux-foot">No call in this range names a viewer.</p>
+                  }
+                }
+                @case ('models') {
+                  <app-usage-breakdown [rows]="modelRows()" [totalCredits]="s.totals.credits" label="Models, biggest spend first" (pick)="pickModel($event)" />
+                }
+                @case ('days') {
+                  <div class="ux-days">
+                    <app-day-bars [days]="days()" label="Credits charged per day" [format]="dayFormat" />
+                  </div>
+                  <ul class="lf-rows ux-daylist" aria-label="Per day, newest first">
+                    @for (d of dayRows(); track d.date) {
+                      <li class="lf-row ux-day" data-usage-day>
+                        <span class="lf-row__main"><span class="lf-row__title">{{ day(d.date) }}</span><span class="lf-row__meta">{{ plural(d.count, 'call') }}</span></span>
+                        <span class="ux-day__end"><b>{{ credits(d.credits) }}</b><small>{{ value(d.credits) }}</small></span>
+                      </li>
+                    }
+                  </ul>
+                }
+              }
+            </div>
+          }
+        } @else {
+          <ul class="lf-rows" aria-busy="true" aria-label="Loading">
+            @for (n of [1, 2, 3, 4]; track n) {
+              <li class="ux-skel"><app-skeleton width="55%" height="0.95rem" /><app-skeleton width="100%" height="0.3rem" /></li>
+            }
+          </ul>
+        }
+      </div>
+    </section>
+
+    <details class="lf-tile lf-tile--flush lf-more ux-about">
+      <summary>About these numbers<app-icon name="down" /></summary>
+      <ul class="lf-more__body ux-about__list">
+        <li><b>Credits</b> are what a channel was charged: 100,000 credits = $1.</li>
+        <li><b>Provider cost</b> is what the provider charged us. It is only recorded for some features and newer calls; elsewhere it reads "not recorded", never $0.</li>
+        <li>Free channels keep 30 days of receipts, Premium 60, Pro 90, so every range here is complete for every plan.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<app-usage-filter-sheet
+  [open]="sheetOpen()"
+  [state]="state()"
+  [summary]="summary()"
+  [channelName]="channelName()"
+  [actorName]="actorName()"
+  (filtersChange)="onSheet($event)"
+  (closed)="sheetOpen.set(false)"
+/>

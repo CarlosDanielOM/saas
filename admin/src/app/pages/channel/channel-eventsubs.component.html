@@ -1,24 +1,6 @@
 <div class="lf channel-page">
-  <div class="lf-main lf-main--narrow">
-    <header class="lf-head">
-      <a [routerLink]="['/channels', channelID()]" class="lf-back"><app-icon name="back" />{{ channelName() || 'Channel' }}</a>
-      <div class="sub-intro">
-        <h1 class="lf-title">Twitch events</h1>
-        <p class="lf-sub">The Twitch notifications the bot listens to for {{ channelName() || 'this channel' }}. Connect missing ones, turn them on or off, or send a test.</p>
-      </div>
-      @if (!isLoading() && !error() && eventsubs().length) {
-        <div class="lf-head__chips">
-          <span class="lf-chip" [class.lf-chip--ok]="!attention().length">{{ healthy().length }} of {{ eventsubs().length }} on</span>
-          @if (missingCount()) {
-            <span class="lf-chip lf-chip--warn">{{ missingCount() }} missing</span>
-          }
-          @if (offCount()) {
-            <span class="lf-chip lf-chip--muted">{{ offCount() }} off</span>
-          }
-        </div>
-      }
-    </header>
-
+  <div class="lf-main ws-narrow">
+    <h2 class="sr-only">Twitch events</h2>
     @if (isLoading()) {
       <section class="lf-tile lf-tile--flush">
         <div class="sub-skel" role="status" aria-busy="true" aria-label="Loading Twitch events">
@@ -44,9 +26,45 @@
         </div>
       </div>
 
+      @if (activityError()) {
+        <div class="lf-notice" role="alert">
+          <span>{{ activityError() }}. The list below still works.</span>
+          <button type="button" class="lf-btn lf-btn--sm" (click)="loadActivity()"><app-icon name="refresh" />Retry</button>
+        </div>
+      }
+
+      @if (revoked().length) {
+        <section class="lf-tile lf-tile--flush es-revoked" [class.es-revoked--open]="revokedOpen() > 0" aria-labelledby="revoked-title">
+          <div class="lf-tile__head es-revoked__head">
+            <h3 class="lf-h2" id="revoked-title"><app-icon [name]="revokedOpen() ? 'alert' : 'ok'" />{{ revokedTitle() }}</h3>
+            @if (revokedOpen()) {
+              <p class="lf-note">Twitch cancelled these subscriptions, so the bot no longer hears them. Each row says how to get it back.</p>
+            }
+          </div>
+          <ul class="lf-rows">
+            @for (row of revoked(); track row.at + row.type) {
+              <li class="lf-row es-revoked__row">
+                <div class="lf-row__main">
+                  <span class="lf-row__title">
+                    {{ row.name }}
+                    @if (row.fixed) {
+                      <span class="lf-chip lf-chip--ok">Connected again</span>
+                    }
+                  </span>
+                  <span class="lf-row__meta">Stopped {{ relative(row.at) }}: {{ row.why }}.</span>
+                  @if (!row.fixed) {
+                    <span class="es-fix">{{ row.fix }}</span>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       <section class="lf-tile lf-tile--flush" aria-label="Twitch events">
         @if (attention().length) {
-          <h2 class="sub-group">Needs attention</h2>
+          <h3 class="sub-group">Needs attention</h3>
           <ul class="lf-rows">
             @for (es of attention(); track key(es)) {
               <ng-container *ngTemplateOutlet="row; context: { $implicit: es }" />
@@ -54,7 +72,7 @@
           </ul>
         }
         @if (healthy().length) {
-          <h2 class="sub-group">Connected</h2>
+          <h3 class="sub-group">Connected</h3>
           <ul class="lf-rows">
             @for (es of healthy(); track key(es)) {
               <ng-container *ngTemplateOutlet="row; context: { $implicit: es }" />
@@ -86,6 +104,27 @@
         }
         <span class="es-type">{{ es.type }} v{{ es.version }}</span>
       </span>
+      @if (!es.isMissing) {
+        @if (activityFor(es); as act) {
+          <span class="es-heard">
+            @if (act.lastReceivedAt || act.lastAlert || act.failedDeliveries) {
+              <a class="es-link" [routerLink]="['/channels', channelID(), 'activity']" [queryParams]="{ kinds: 'twitch_event,alert', range: '7d' }"
+                >{{ heardLine(act) }}<span class="sr-only">: see {{ eventName(es.type) }} events</span><app-icon name="chevron"
+              /></a>
+            } @else {
+              <span class="es-heard--none">{{ heardLine(act) }}</span>
+            }
+            @if (alertLine(act); as alert) {
+              <span class="es-tone" [attr.data-tone]="alert.tone">{{ alert.text }}</span>
+            }
+            @if (act.failedDeliveries > 0) {
+              <span class="es-tone" data-tone="danger">{{ gaveUp(act.failedDeliveries) }}</span>
+            }
+          </span>
+        } @else if (activity()) {
+          <span class="es-heard"><span class="es-heard--none">Nothing received in 30 days</span></span>
+        }
+      }
     </div>
     <div class="lf-row__end">
       @if (es.isMissing) {

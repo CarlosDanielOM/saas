@@ -14,8 +14,8 @@ import { recordChange } from './changes.js';
 import { effectiveLevel, LEVEL_SWITCH, levelAvailable, levelConfig, messageCost, modelTraits, SITE_AGENT_LIMITS as L, type AgentLevel, type ChatState, type MessageCost } from './config.js';
 import { channelFacts, compact, dropOldest, estimateItemTokens, estimateTokens, promptHash, repairContext, toMessages } from './context.js';
 import { getDocsPromptIndex } from './docs/index.js';
-import { chargeMore, refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
-import { estimateUsageCost } from './llm/cost.js';
+import { chargeMore, recordLimitHit, refundMessage, readLimits, takeMessage, utcDay } from './limits.js';
+import { effectiveCostUsd, estimateUsageCost } from './llm/cost.js';
 import { LlmError, streamChat } from './llm/openrouter.js';
 import { buildSystemPrompt, FINAL_STEP_NOTE, STEER_PREFIX, turnNote } from './prompt.js';
 import { loadPersona, personaAvailable, readPrefs } from './prefs.js';
@@ -23,6 +23,7 @@ import { recordRefusal, type RefusalInput } from './refusals.js';
 import * as store from './store.js';
 import { warmKnowledge } from './tools/knowledge.js';
 import { getTool, toLlmTools, toolResultText, toolsFor } from './tools/registry.js';
+import { clearExpiredTurnText, retryLateSteps, writeTurnLog, type ModelCost } from './turn_log.js';
 import {
     ToolConflictError, ToolInputError,
     type AgentEvent, type AgentTool, type ChangeProposal, type ContextItem, type DisplayItem, type InputMode, type Lang, type LimitsView,
@@ -48,6 +49,23 @@ interface RunState {
 
 const running = new Map<string, RunState>();
 const scheduled = new Set<string>();
+/** What this process saw of a running turn that the turn record does not keep, for its turn log row. */
+const traces = new Map<string, { models: string[]; costs: ModelCost[]; channelLogin?: string }>();
+
+function trace(turnId: string) {
+    let entry = traces.get(turnId);
+    if (!entry) traces.set(turnId, entry = { models: [], costs: [] });
+    return entry;
+}
+const noteModel = (turnId: string, model: string) => { const entry = trace(turnId); if (!entry.models.includes(model)) entry.models.push(model); };
+/** Per-model steps and cost. A model is listed as soon as it may cost something, so a later reconciled cost finds it. */
+function noteCost(turnId: string, model: string, steps: number, costUsd: number): void {
+    const { costs } = trace(turnId);
+    let entry = costs.find((item) => item.model === model);
+    if (!entry) costs.push(entry = { model, steps: 0, costUsd: 0 });
+    entry.steps += steps;
+    entry.costUsd += costUsd;
+}
 const ACTIVE_STATUSES: TurnStatus[] = ['queued', 'running', 'awaiting_approval', 'awaiting_input'];
 const TOOL_TIMEOUT_MS = 90_000;
 /** Docs/read lookups per message before results start nudging the model to act. */
@@ -147,6 +165,7 @@ export async function submitMessage(input: SubmitInput): Promise<{ sessionId: st
     const cost = price.total;
     const taken = await takeMessage(access.channelId, access.plan, cost);
     if (!taken.allowed) {
+        void recordLimitHit(access.channelId);
         // Some left, just not enough for an Expert message: the panel offers Standard.
         if (taken.limits.used < taken.limits.limit) throw new AgentRequestError('not_enough_messages', 429, `This message needs ${cost} messages; fewer are left today`, { limits: taken.limits, cost });
         throw new AgentRequestError('daily_limit', 429, 'Daily message limit reached', { limits: taken.limits });
@@ -387,6 +406,7 @@ async function runTurn(turnId: string): Promise<void> {
     } finally {
         clearInterval(heartbeat);
         running.delete(turnId);
+        traces.delete(turnId);
         await store.releaseLease(queued.sessionId, token).catch(() => {});
         await startNextQueued(queued.sessionId).catch(() => {});
     }
@@ -458,6 +478,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
         }
         return -1;
     };
+    trace(turn.id).channelLogin = access.channelLogin;
     const ctx: LoopContext = { turn, token, fence, waitedMs: 0, state, access, can, tools, items };
     const loopStart = Date.now();
     const activeNow = () => Date.now() - loopStart - ctx.waitedMs;
@@ -469,6 +490,7 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
         await recordRefusal({ channelId: turn.channelId, channelLogin: access.channelLogin, userId: turn.userId, userLogin: turn.userLogin, sessionId: turn.sessionId, turnId: turn.id,
             step: turn.steps, plan: turn.plan, level: turn.level ?? 'expert', model: cfg.model, fallbackModel: standard.model, ...how,
             message: turn.userMessage, steers: turn.inputs.map((input) => input.text), items });
+        noteModel(turn.id, cfg.model);
         // Owner decision: a declined Expert message also pays the switch and Standard's answer (never past the limit;
         // retries are free, so nothing extra there either).
         const planNow = (await resolveAccess(turn.userId, turn.channelId).catch(() => null))?.plan ?? turn.plan;
@@ -567,10 +589,12 @@ async function loop(initial: store.TurnRecord, state: RunState, token: string): 
                 if (state.abort.signal.aborted) { await finishTurn((await store.getTurn(turn.id))!, 'cancelled', undefined, ctx.fence); return; }
                 continue; // steered before the stream started
             }
-            // A started generation is billed even when the stream failed.
+            // A started generation is billed even when the stream failed: unknown on the turn until it is reconciled.
             if (err instanceof LlmError && err.generationId) {
                 await queueReconcile({ generationId: err.generationId, channelId: turn.channelId, plan: turn.plan, sessionId: turn.sessionId, turnId: turn.id,
                     step: `${turn.steps}-e${Date.now().toString(36)}`, model: cfg.model, requesterId: turn.userId, kind: 'step' }).catch(() => {});
+                await store.updateTurn(turn.id, (current) => { current.usage.unknownSteps++; }).catch(() => null);
+                noteCost(turn.id, cfg.model, 0, 0);
             }
             if (err instanceof LlmError && err.kind === 'refused' && canFallBack()) {
                 await fallBack({ source: 'error', finishReason: null, nativeFinishReason: null, refusal: err.message, detail: err.detail ?? null,
@@ -711,8 +735,12 @@ function textStream(sessionId: string, turnId: string) {
 }
 
 async function recordUsage(turn: store.TurnRecord, step: LlmStepResult, kind: 'step' | 'compaction', model: string): Promise<void> {
+    if (kind === 'step') noteModel(turn.id, model);
     let usage = step.usage;
     if (usage && usage.upstreamCostUsd === null) usage = estimateUsageCost(model, usage);
+    // The same cost the day stats count (provider + OpenRouter fee), so a turn's cost and the day totals agree.
+    const costUsd = effectiveCostUsd(usage);
+    noteCost(turn.id, model, kind === 'step' ? 1 : 0, costUsd ?? 0);
     const stepIndex = kind === 'compaction' ? `c${turn.steps}-${Date.now()}` : String(turn.steps);
     if (!usage && step.generationId) {
         await queueReconcile({ generationId: step.generationId, channelId: turn.channelId, plan: turn.plan, sessionId: turn.sessionId, turnId: turn.id, step: stepIndex, model, requesterId: turn.userId, kind }).catch(() => {});
@@ -725,7 +753,8 @@ async function recordUsage(turn: store.TurnRecord, step: LlmStepResult, kind: 's
         current.usage.cachedTokens += usage.cachedTokens;
         current.usage.completionTokens += usage.completionTokens;
         current.usage.reasoningTokens += usage.reasoningTokens;
-        current.usage.costUsd += usage.upstreamCostUsd ?? 0;
+        if (costUsd === null) current.usage.unknownSteps++;
+        else current.usage.costUsd += costUsd;
     }).catch(() => null);
 }
 
@@ -1030,6 +1059,10 @@ async function finishTurn(turn: store.TurnRecord, status: TurnStatus, errorCode?
     await store.updateSession(ended.sessionId, (meta) => { if (meta.activeTurnId === ended.id) meta.activeTurnId = null; }).catch(() => null);
     await recordTurn({ channelId: ended.channelId, plan: ended.plan, status, steps: ended.steps, toolCalls: ended.toolCallCount,
         durationMs: (ended.endedAt ?? Date.now()) - (ended.startedAt ?? ended.createdAt), counted: Boolean(ended.countedDay) }).catch(() => {});
+    // Not awaited: the owner's log must never hold up the person's answer.
+    const seen = traces.get(ended.id);
+    traces.delete(ended.id);
+    void writeTurnLog(ended, { models: seen?.models, modelCosts: seen?.costs, channelLogin: seen?.channelLogin, knownTool: (name) => getTool(name) !== undefined });
     await emit(ended.id, { type: 'turn', levelCost: ended.levelCost ?? ended.cost ?? 1, turnId: ended.id, sessionId: ended.sessionId, status, inputRevision: ended.inputRevision });
     await emit(ended.id, { type: 'limits', limits: await readLimits(ended.channelId, ended.plan) });
     // A queued message starts right away: announce its turn on this stream before `done`.
@@ -1106,6 +1139,8 @@ export function startSiteAgentRuntime(): void {
     const maintenance = setInterval(() => {
         void drainReconcile(20).catch(() => {});
         void drainPolarRetries(50).catch(() => {});
+        void retryLateSteps(50);
+        void clearExpiredTurnText();
     }, 30_000);
     maintenance.unref();
     void recover().catch(() => {});

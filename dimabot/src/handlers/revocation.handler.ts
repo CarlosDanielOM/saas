@@ -4,6 +4,7 @@ import type { IEventsub } from "../schemas/eventsub.schema.js";
 import { info as logInfo, warn as logWarn, error as logError } from "../utils/logger.js";
 import UsersSchema from "../schemas/users.schema.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
+import { recordRevocation } from "../utils/activity_events.js";
 
 /**
  * Twitch revoked the bot's chat subscription (app access removed, account changes, failing
@@ -55,6 +56,8 @@ export async function revocationHandler(
         const chatChannelID = type === 'channel.chat.message'
             ? String((condition as { broadcaster_user_id?: string } | undefined)?.broadcaster_user_id || '')
             : '';
+        // The subscription record is deleted below; this row keeps why an alert or the chat stopped.
+        recordRevocation(subscriptionData, subscription?.channelID);
 
         if (!subscription) {
             // A replay after a failed flag update: the record is gone, repair the flag.

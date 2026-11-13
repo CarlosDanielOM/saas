@@ -63,7 +63,7 @@ export async function streamOnlineHandler(
                 eventData: eventData
             };
 
-            await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context);
+            await sendTwitchChatMessage(broadcaster_user_id, eventsubData.message, null, context, { origin: 'alert' });
         }
 
         // Account health notification (only for channels that have custom commands).
@@ -104,7 +104,7 @@ export async function streamOnlineHandler(
             }
 
             if (healthMessage) {
-                await sendTwitchChatMessage(broadcaster_user_id, healthMessage);
+                await sendTwitchChatMessage(broadcaster_user_id, healthMessage, null, undefined, { origin: 'system' });
 
                 await logInfo({
                     message: 'Account health warning sent',

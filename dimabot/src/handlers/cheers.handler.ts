@@ -13,7 +13,7 @@ export const cheersHandler = async (channelID: string, eventData: ITwitchEventDa
         const cache = await getDragonflyClient('Eventsub');
 
         if((eventData as IBitUseEvent).is_anonymous) {
-            sendTwitchChatMessage(channelID, `Gracias por los ${(eventData as IBitUseEvent).bits} bits Anonimo!`);
+            sendTwitchChatMessage(channelID, `Gracias por los ${(eventData as IBitUseEvent).bits} bits Anonimo!`, null, undefined, { origin: 'alert' });
             return;
         }
 

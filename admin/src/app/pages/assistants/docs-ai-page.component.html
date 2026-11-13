@@ -1,0 +1,180 @@
+<div class="lf dc-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" routerLink="/ai"><app-icon name="back" />AI</a>
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">Docs AI</h1>
+          <p class="lf-sub">The public "Ask the docs" helper on the documentation site. Visitors are anonymous.</p>
+        </div>
+      </div>
+    </header>
+
+    @if (summaryFailed()) {
+      <div class="lf-tile lf-empty" role="alert" data-summary-error>
+        <app-icon name="alert" />
+        <strong>The Docs AI numbers did not load</strong>
+        <span>Your range and filters are kept.</span>
+        <button type="button" class="lf-btn" (click)="load(true)">Retry</button>
+      </div>
+    } @else if (answer(); as a) {
+      <div class="lf-status lf-status--{{ a.tone }}" role="status" data-answer [attr.data-tone]="a.tone" [attr.aria-busy]="summaryLoading()">
+        <app-icon [name]="a.tone === 'warn' ? 'alert' : a.tone === 'ok' ? 'ok' : 'info'" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">{{ a.title }}</strong>
+          <span class="lf-status__text">{{ a.text }}</span>
+          @if (a.unhelpful > 0 && feedback() !== 'unhelpful') {
+            <div class="lf-status__actions">
+              <button type="button" class="lf-btn lf-btn--sm" (click)="seeUnhelpful()" data-see-unhelpful>
+                <app-icon name="thumb-down" />See the {{ a.unhelpful === 1 ? 'one' : a.unhelpful }} not helpful
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="lf-status" aria-busy="true"><app-skeleton width="16rem" height="1.4rem" /></div>
+    }
+
+    <div class="dc-scope">
+    <div class="lf-seg dc-range" role="radiogroup" aria-label="Time range">
+      @for (item of ranges; track item.key) {
+        <label>
+          <input type="radio" name="dc-range" [value]="item.key" [checked]="range() === item.key" (change)="go({ range: item.key })" [attr.aria-label]="item.label" />
+          <span>{{ item.short }}</span>
+        </label>
+      }
+    </div>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost dc-refresh" aria-label="Refresh" (click)="load(true)" [disabled]="summaryLoading() || answersLoading()">
+        <app-icon name="refresh" [class.lf-spinning]="summaryLoading() || answersLoading()" />
+      </button>
+    </div>
+
+    <div class="lf-panels dc-panels">
+      <div class="lf-col dc-main">
+
+        <section class="lf-tile lf-tile--flush dc-list" aria-labelledby="docs-list-h" data-answers>
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="docs-list-h"><app-icon name="book" />Questions and answers</h2>
+            <div class="lf-seg dc-sort" role="radiogroup" aria-label="Sort questions">
+              @for (item of sorts; track item.key) {
+                <label>
+                  <input type="radio" name="dc-sort" [value]="item.key" [checked]="sort() === item.key" (change)="go({ sort: item.key })" />
+                  <span>{{ item.label }}</span>
+                </label>
+              }
+            </div>
+          </div>
+          <div class="dc-filters">
+            <div class="lf-strip" role="group" aria-label="Show">
+              <button type="button" class="lf-chip" [attr.aria-pressed]="!lang() && !feedback()" (click)="go({ lang: null, feedback: null })">All</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="lang() === 'en'" (click)="toggleLang('en')" data-chip="en">English</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="lang() === 'es'" (click)="toggleLang('es')" data-chip="es">Spanish</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="feedback() === 'helpful'" (click)="toggleFeedback('helpful')" data-chip="helpful">Rated helpful</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="feedback() === 'unhelpful'" (click)="toggleFeedback('unhelpful')" data-chip="unhelpful">Rated not helpful</button>
+              <button type="button" class="lf-chip" [attr.aria-pressed]="feedback() === 'none'" (click)="toggleFeedback('none')" data-chip="none">Not rated</button>
+            </div>
+            <p class="lf-note">Questions are kept 30 days, so this list covers the last 30 days whatever the range.</p>
+          </div>
+
+          @if (answersFailed()) {
+            <div class="lf-empty" role="alert" data-answers-error>
+              <app-icon name="alert" />
+              <strong>The questions did not load</strong>
+              <span>Your filters are kept.</span>
+              <button type="button" class="lf-btn" (click)="load(true)">Retry</button>
+            </div>
+          } @else if (answersLoading() && !rows().length) {
+            <ul class="lf-rows" aria-busy="true" aria-label="Loading questions">
+              @for (i of [0, 1, 2, 3]; track i) {
+                <li class="lf-row dc-skel"><span class="dc-skel__main"><app-skeleton width="85%" /><app-skeleton width="50%" height="0.8rem" /></span></li>
+              }
+            </ul>
+          } @else if (!rows().length) {
+            <div class="lf-empty" data-answers-empty>
+              <app-icon name="book" />
+              @if (lang() || feedback()) {
+                <strong>No questions match</strong>
+                <span>Nothing in the last 30 days with these filters. Clear the filters to see every question.</span>
+              } @else {
+                <strong>No questions in the last 30 days</strong>
+                <span>When visitors use "Ask the docs", each question and its answer shows up here.</span>
+              }
+            </div>
+          } @else {
+            <ul class="lf-rows" [attr.aria-busy]="answersLoading()" aria-live="polite" aria-label="Docs questions">
+              @for (row of rows(); track row.id) {
+                <li><app-docs-answer [row]="row" /></li>
+              }
+            </ul>
+            @if (totalPages() > 1) {
+              <div class="lf-pager">
+                <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() === 1 || answersLoading()" (click)="go({ page: page() - 1 })">Previous</button>
+                <span class="lf-pager__info">Page {{ page() }} of {{ totalPages() }}<br />{{ total() }} questions</span>
+                <button type="button" class="lf-btn lf-btn--sm" [disabled]="page() >= totalPages() || answersLoading()" (click)="go({ page: page() + 1 })">Next</button>
+              </div>
+            }
+          }
+        </section>
+      </div>
+
+      <div class="lf-col dc-side">
+        <details class="dc-numbers" [open]="wide()" data-numbers>
+          <summary><span>Numbers for this range</span><app-icon name="down" /></summary>
+          <div class="dc-numbers__body">
+            <section class="lf-tile dc-days" aria-labelledby="dc-days-h">
+              <h2 class="lf-h2" id="dc-days-h"><app-icon name="chart" />Per day</h2>
+              @if (summary()) {
+                <app-day-bars [days]="days()" label="Docs questions per day" [format]="formatCount" partLabel="failed" />
+                <p class="lf-note dc-cost" data-cost-line>Cost: {{ costLine() }}</p>
+              } @else if (!summaryFailed()) {
+                <app-skeleton height="4.5rem" />
+              }
+            </section>
+            @if (langs().length || pages().length) {
+              <section class="lf-tile lf-tile--flush" aria-labelledby="dc-where-h" data-block="where">
+                <div class="lf-tile__head"><h2 class="lf-h2" id="dc-where-h"><app-icon name="search" />Where questions came from</h2></div>
+                @if (langs().length) {
+                  <h3 class="dc-h3">Languages</h3>
+                  <ul class="lf-bars">
+                    @for (row of langs(); track row.lang) {
+                      <li class="lf-bars__row dc-tight">
+                        <span class="lf-bars__name">{{ row.name }}</span>
+                        <span class="lf-bars__value">{{ plural(row.answers, 'answer') }}</span>
+                        <span class="lf-bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+                      </li>
+                    }
+                  </ul>
+                }
+                @if (pages().length) {
+                  <h3 class="dc-h3">Pages they asked from</h3>
+                  <ul class="lf-bars">
+                    @for (row of pages(); track row.page) {
+                      <li class="lf-bars__row dc-tight">
+                        <span class="lf-bars__name dc-mono">{{ row.page }}</span>
+                        <span class="lf-bars__value">{{ formatNumber(row.answers) }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+              </section>
+            }
+            @if (failures().length) {
+              <section class="lf-tile lf-tile--flush" aria-labelledby="dc-fail-h" data-block="failures">
+                <div class="lf-tile__head"><h2 class="lf-h2" id="dc-fail-h"><app-icon name="alert" />Why questions failed</h2></div>
+                <ul class="lf-bars">
+                  @for (row of failures(); track row.reason) {
+                    <li class="lf-bars__row dc-tight" data-failure-row>
+                      <span class="lf-bars__name">{{ row.label }}</span>
+                      <span class="lf-bars__value">{{ plural(row.count, 'time') }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>

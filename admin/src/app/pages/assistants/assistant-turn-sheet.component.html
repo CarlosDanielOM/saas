@@ -1,0 +1,151 @@
+<dialog #dialog class="lf-dialog ts" aria-labelledby="ts-h" (close)="onClose()" (click)="backdrop($event)" data-turn-sheet>
+  @let b = base();
+  <div class="lf-dialog__head">
+    <div class="ts__head">
+      <h2 id="ts-h">{{ b ? 'Message from ' + (b.user.name || b.user.login || 'someone') : 'Assistant message' }}</h2>
+      @if (b) {
+        <p class="ts__sub">{{ b.user.role === 'admin' ? 'Editor' : 'Owner' }} of {{ b.channel || 'a channel' }} · {{ dateTime(b.at) }}</p>
+      }
+    </div>
+    <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="close()"><app-icon name="x" /></button>
+  </div>
+
+  <div class="lf-dialog__body" [attr.aria-busy]="loading()">
+    @if (b && status(); as s) {
+      <p class="ts__tags">
+        <span class="ts__tag" [attr.data-tone]="s.tone" data-sheet-status>{{ s.label }}</span>
+        <span class="ts__tag" [attr.data-tone]="b.level === 'expert' ? 'accent' : 'muted'">{{ b.level === 'expert' ? 'Expert' : 'Standard' }}</span>
+        @if (b.fellBack) {
+          <span class="ts__tag" data-tone="warn">fell back to Standard</span>
+        }
+        <span class="ts__fact">{{ formatDuration(b.durationMs) }} · {{ formatUSD(b.providerUSD) }}</span>
+      </p>
+    }
+
+    @if (error()) {
+      <div class="lf-notice ts__error" role="alert" data-sheet-error>
+        <span>{{ error() }}</span>
+        <button type="button" class="lf-btn lf-btn--sm" (click)="retry()">Retry</button>
+      </div>
+    }
+
+    @let d = detail();
+    <section class="ts__part" aria-labelledby="ts-asked">
+      <h3 class="ts__h" id="ts-asked">They wrote</h3>
+      @if (d) {
+        @if (d.message) {
+          <p class="lf-quote" data-sheet-message>{{ d.message }}</p>
+        } @else {
+          <p class="lf-note" data-sheet-no-text>{{ d.textKept === false ? "The text of this chat is no longer kept: chats are kept for 3 days, like the streamer is told. The numbers below stay for 90 days." : 'No text recorded for this message.' }}</p>
+        }
+        @for (steer of d.steers; track $index) {
+          <div class="ts__steer" data-sheet-steer>
+            <span class="ts__label">Added while it worked</span>
+            <p class="lf-quote">{{ steer }}</p>
+          </div>
+        }
+      } @else if (loading()) {
+        @if (preview()?.question) {
+          <p class="lf-quote">{{ preview()!.question }}</p>
+        }
+        <app-skeleton width="70%" />
+      } @else if (preview()?.question) {
+        <p class="lf-quote">{{ preview()!.question }}</p>
+      }
+    </section>
+
+    <section class="ts__part" aria-labelledby="ts-tools">
+      <h3 class="ts__h" id="ts-tools">Tools, in order</h3>
+      @if (d) {
+        @if (d.tools.length) {
+          <ol class="ts__tools" data-sheet-tools>
+            @for (tool of d.tools; track $index) {
+              <li>
+                <details class="ts__tool" [attr.data-tone]="toolState(tool.state).tone" data-sheet-tool>
+                  <summary>
+                    <span class="ts__tool-name">{{ $index + 1 }}. {{ toolLabel(tool.name) }}</span>
+                    <span class="ts__tag" [attr.data-tone]="toolState(tool.state).tone">{{ toolState(tool.state).label }}</span>
+                    @if (approvalLabel(tool.approval); as approval) {
+                      <span class="ts__tag" data-tone="muted">{{ approval }}</span>
+                    }
+                    @if (tool.ms !== null) {
+                      <span class="ts__fact">{{ formatDuration(tool.ms) }}</span>
+                    }
+                    <app-icon name="down" class="ts__chev" />
+                  </summary>
+                  <div class="ts__io">
+                    <span class="ts__label">Arguments</span>
+                    <pre class="ts__pre" data-tool-args>{{ tool.args ?? 'none' }}</pre>
+                    <span class="ts__label">Result</span>
+                    <pre class="ts__pre" data-tool-result>{{ tool.result ?? 'none' }}</pre>
+                  </div>
+                </details>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="lf-note">It answered without using any tools.</p>
+        }
+      } @else if (preview(); as p) {
+        @if (p.tools.length) {
+          <p class="lf-note">{{ p.tools.length }} tool {{ p.tools.length === 1 ? 'call' : 'calls' }}, loading what each one did…</p>
+        } @else {
+          <p class="lf-note">It answered without using any tools.</p>
+        }
+      } @else {
+        <app-skeleton width="50%" />
+      }
+    </section>
+
+    <section class="ts__part" aria-labelledby="ts-answer">
+      <h3 class="ts__h" id="ts-answer">The assistant answered</h3>
+      @if (d) {
+        @if (d.answer) {
+          <p class="lf-quote ts__answer" data-sheet-answer>{{ d.answer }}</p>
+        } @else if (b?.errorCode) {
+          <p class="lf-note">No answer: {{ errorLabel(b!.errorCode) }}.</p>
+        } @else {
+          <p class="lf-note">It wrote nothing back.</p>
+        }
+      } @else if (loading()) {
+        <app-skeleton height="3rem" />
+      } @else {
+        <p class="lf-note">Not loaded.</p>
+      }
+    </section>
+
+    @if (b) {
+      <dl class="lf-dl ts__dl">
+        @if (b.errorCode) {
+          <div><dt>Error</dt><dd>{{ errorLabel(b.errorCode) }} <code class="ts__code">{{ b.errorCode }}</code></dd></div>
+        }
+        <div><dt>Models</dt><dd>{{ models() }}</dd></div>
+        <div><dt>Time</dt><dd>{{ formatDuration(b.durationMs) }}@if (b.activeMs && b.activeMs < b.durationMs - 500) { ({{ formatDuration(b.activeMs) }} working)}</dd></div>
+        <div><dt>Steps</dt><dd>{{ formatNumber(b.steps) }}</dd></div>
+        <div><dt>Tokens</dt><dd>{{ formatNumber(b.promptTokens) }} in ({{ formatNumber(b.cachedTokens) }} cached) · {{ formatNumber(b.completionTokens) }} out</dd></div>
+        <div><dt>Cost to us</dt><dd>{{ formatUSD(b.providerUSD) }}</dd></div>
+        <div><dt>Daily messages used</dt><dd>{{ formatNumber(b.units) }}</dd></div>
+        <div><dt>Dashboard page</dt><dd class="ts__mono">{{ b.pageRoute || 'not recorded' }}</dd></div>
+        <div><dt>Plan</dt><dd>{{ b.plan === 'pro' ? 'Pro' : b.plan === 'premium' ? 'Premium' : 'Free' }}</dd></div>
+        <div>
+          <dt>Rating</dt>
+          <dd data-sheet-rating>
+            @if (b.feedback === 'helpful') {
+              <app-icon name="thumb-up" />Helpful
+            } @else if (b.feedback === 'unhelpful') {
+              <app-icon name="thumb-down" />Not helpful
+            } @else {
+              Not rated
+            }
+          </dd>
+        </div>
+      </dl>
+      <div class="ts__links">
+      <a class="lf-btn" [routerLink]="['/channels', b.channelID]">{{ b.channel || 'Channel' }}</a>
+      <a class="lf-btn" routerLink="/activity" [queryParams]="{ actor: b.user.id }">Everything from this person</a>
+      <button type="button" class="lf-btn" (click)="onlyPerson.emit(b.user.id)" data-only-person>Only this person</button>
+    </div>
+    }
+  </div>
+
+</dialog>

@@ -1,0 +1,124 @@
+:host {
+  display: block;
+}
+.tn {
+  --tone: var(--muted);
+  --tone-soft: var(--btn);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:host-context(li:first-child) .tn {
+  border-top: 0;
+}
+.tn:hover,
+.tn:focus-visible {
+  background: var(--tile-2);
+}
+.tn[data-tone='ok'] {
+  --tone: var(--ok);
+  --tone-soft: var(--ok-soft);
+}
+.tn[data-tone='danger'] {
+  --tone: var(--danger);
+  --tone-soft: var(--danger-soft);
+}
+.tn[data-tone='accent'] {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+}
+.tn__main {
+  display: grid;
+  flex: 1;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.tn__q {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.tn__q--none {
+  color: var(--muted);
+  font-weight: 500;
+  font-style: italic;
+}
+.tn__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.tn__who-line {
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.tn__who {
+  color: var(--fg);
+  font-weight: 700;
+}
+.tn__tag {
+  display: inline-flex;
+  padding: 0.05rem 0.45rem;
+  border-radius: 0.6rem;
+  background: var(--btn);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.tn__tag--status {
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+.tn__tag--expert {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tn__tag--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.tn__end {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 0.1rem;
+}
+.tn__cost {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+.tn__chev {
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+}
+@media (min-width: 640px) {
+  .tn {
+    padding-inline: 1.25rem;
+  }
+}

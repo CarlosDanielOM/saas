@@ -83,7 +83,7 @@ export async function cheerHandler(
             }
         };
 
-        const result = await sendTwitchChatMessage(channelID, messageToSend, null, context);
+        const result = await sendTwitchChatMessage(channelID, messageToSend, null, context, { origin: 'alert' });
 
         if (result.error) {
             await logError({

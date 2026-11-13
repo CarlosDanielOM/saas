@@ -1,13 +1,14 @@
 <div class="lf rv-page">
   <div class="lf-main">
     <header class="lf-head">
+      <a class="lf-back" routerLink="/ai"><app-icon name="back" />AI</a>
       <div class="lf-head__row">
         <div>
           <h1 class="lf-title">Chat protection review</h1>
           <p class="lf-sub">Say where the classifier got it wrong. Your verdicts are kept so it can be tuned on real messages.</p>
         </div>
         <div class="lf-head__actions">
-          <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/assistant-refusals"><app-icon name="sparkles" />Assistant refusals</a>
+          <a class="lf-btn lf-btn--sm lf-btn--ghost" routerLink="/ai/decisions"><app-icon name="list" />Every decision</a>
           <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
             <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
           </button>

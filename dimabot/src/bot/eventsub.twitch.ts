@@ -12,6 +12,7 @@ import { journalDomainEvent } from '../utils/domain_events.js';
 import { DOMAIN_EVENT_PRODUCERS, ingestDomainEvent } from '../domain_events/domain_event_producers.js';
 import type { DomainEventOwnerResolver } from '../domain_events/domain_event.types.js';
 import { createTwitchEffectContext } from '../utils/ast_parser/effects.js';
+import { eventChannelID, recordHandlerError, recordTwitchEvent } from '../utils/activity_events.js';
 
 const EVENTSUB_MESSAGE_DEDUPE_TTL_SECONDS = Math.max(300, Number(process.env.TWITCH_EVENTSUB_MESSAGE_TTL_SECONDS || 600));
 const EVENTSUB_MESSAGE_MAX_AGE_MS = Math.max(60_000, Number(process.env.TWITCH_EVENTSUB_MESSAGE_MAX_AGE_MS || 10 * 60 * 1000));
@@ -186,6 +187,7 @@ export function createTwitchEventsubApp({
                     durableDefenseHandled: true
                 };
                 let durableEvent;
+                let durableEventKey = '';
                 try {
                     durableEvent = normalizeTwitchEventsubDomainEvent(producerInput);
                 } catch (normalizationError) {
@@ -206,6 +208,7 @@ export function createTwitchEventsubApp({
                             resolveOwner
                         });
                         if (!journalResult) throw new Error('Durable Twitch producer returned no event');
+                        durableEventKey = journalResult.event?.eventKey || '';
                         if (!journalResult.inserted) {
                             res.sendStatus(204);
                             return;
@@ -227,6 +230,7 @@ export function createTwitchEventsubApp({
                         res.sendStatus(204);
                         return;
                     }
+                    recordTwitchEvent(eventType, messageId, notification.event, notification.subscription.condition);
                 }
 
                 const tracker = startEventsubHandlerMetric(eventType);
@@ -243,6 +247,7 @@ export function createTwitchEventsubApp({
                     notification.event as ITwitchEventData,
                     {
                         durableChatHandled: Boolean(durableEvent),
+                        messageId,
                         ...(timestampDecision.staleRetry ? { staleRetry: true } : {}),
                         ...(chatEffectContext ? { chatEffectContext } : {}),
                         ...(durableEvent?.metadata?.durableDefenseHandled === true
@@ -261,6 +266,9 @@ export function createTwitchEventsubApp({
                             stack: handlerError instanceof Error ? handlerError.stack : undefined,
                             timestamp: new Date().toISOString()
                         });
+                        recordHandlerError(eventType,
+                            eventChannelID(eventType, notification.event, notification.subscription.condition),
+                            durableEventKey || messageId, handlerError);
                     });
             } else {
                 res.sendStatus(204);

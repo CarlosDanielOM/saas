@@ -107,9 +107,11 @@ docsAssistantRoute.post('/ask', async (req: Request, res: Response) => {
     const ping = setInterval(() => { if (!res.writableEnded) res.write(': ping\n\n'); }, PING_MS);
 
     let thinking = false;
+    let answerId: string | null = null;
+    const startedAt = Date.now();
     try {
         const answer = await answerDocsQuestion(request, {
-            onStart: (id) => send('start', { id }),
+            onStart: (id) => { answerId = id; send('start', { id }); },
             onThinking: () => { if (!thinking) { thinking = true; send('status', { phase: 'thinking' }); } },
             onText: (delta) => send('text', { delta }),
             onToolCall: (name, input) => send('status', name === 'test_command'
@@ -124,7 +126,7 @@ docsAssistantRoute.post('/ask', async (req: Request, res: Response) => {
         if (!aborted) {
             const code = errorCode(err);
             send('error', { code });
-            await recordFailure(code);
+            await recordFailure(request, code, { id: answerId, durationMs: Date.now() - startedAt });
             if (!(err instanceof MiniMaxError)) {
                 await logError({ function: 'docsAssistant.ask', message: 'Answer failed', error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
             }

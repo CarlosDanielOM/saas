@@ -18,8 +18,15 @@ import {
   type AdminUserRow,
   type AdminUsersSummary,
 } from '../../services/admin-api.service';
+import { OverviewApiService, type AdminOverview, type AttentionKey } from '../../services/overview-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { AvatarComponent } from '../../shared/avatar/avatar.component';
+import { FeedListComponent } from '../../shared/feed/feed-list.component';
+import { clockTime, formatCompact, formatNumber, plural } from '../../shared/format';
+import { OvDayComponent } from './ov-day.component';
+import { OvSpendComponent } from './ov-spend.component';
+import { OvTrendComponent } from './ov-trend.component';
+import { OvChannelsComponent } from './ov-channels.component';
 
 interface SiteAnalyticsSnapshot {
   registeredUsers: number;
@@ -30,21 +37,141 @@ interface SiteAnalyticsSnapshot {
   totalLiveViewers: number;
 }
 
+type AttentionId = AttentionKey | 'bots' | 'permissions';
+
+interface AttentionRow {
+  key: AttentionId;
+  count: number;
+  icon: string;
+  title: string;
+  why: string;
+  /** Where the tap goes; null when there is no page for it yet. */
+  link: string | null;
+  query: Record<string, string> | null;
+  where: string;
+}
+
+/**
+ * Everything that can need the owner, worst first: money someone paid for and did not get, then things
+ * that broke, then billing and data that fell behind, then streamers who could use a hand.
+ */
+const ATTENTION: Record<AttentionId, Omit<AttentionRow, 'key' | 'count' | 'title'> & { title: (count: number) => string }> = {
+  gifts_need_support: {
+    icon: 'gift',
+    title: (n) => `${plural(n, 'gifted credit purchase')} could not be delivered`,
+    why: 'Someone paid and the credits never arrived.',
+    link: null,
+    query: null,
+    where: 'No page for this yet',
+  },
+  failed_24h: {
+    icon: 'alert',
+    title: (n) => `${plural(n, 'thing')} failed in the last 24 hours`,
+    why: "They should have worked and didn't.",
+    link: '/activity',
+    query: { outcome: 'failed', range: '24h' },
+    where: 'Activity',
+  },
+  dead_deliveries: {
+    icon: 'twitch',
+    title: (n) => `${plural(n, 'Twitch event')} a part of the bot gave up on`,
+    why: 'An alert or reward never ran for them.',
+    link: '/observability',
+    query: { tab: 'queues' },
+    where: 'Queues',
+  },
+  polar_unsent: {
+    icon: 'dollar',
+    title: (n) => `${plural(n, 'channel')} ${n === 1 ? 'has' : 'have'} usage not yet sent to billing`,
+    why: "That usage isn't charged yet.",
+    link: '/observability',
+    query: { tab: 'queues' },
+    where: 'Queues',
+  },
+  usage_import_stuck: {
+    icon: 'history',
+    title: (n) => `${plural(n, 'usage history import')} ${n === 1 ? 'is' : 'are'} stuck`,
+    why: 'Usage history has gaps until they run.',
+    link: '/observability',
+    query: { tab: 'queues' },
+    where: 'Queues',
+  },
+  credits_exhausted: {
+    icon: 'credits',
+    title: (n) => `${plural(n, 'channel')} ${n === 1 ? 'is' : 'are'} out of AI credits`,
+    why: 'Their paid AI features have stopped.',
+    link: '/users',
+    query: null,
+    where: 'Users',
+  },
+  verdicts_waiting: {
+    icon: 'shield',
+    title: (n) => `${plural(n, 'chat protection message')} ${n === 1 ? 'waits' : 'wait'} for your verdict`,
+    why: 'Your verdicts keep its judgement in check.',
+    link: '/moderation-review',
+    query: null,
+    where: 'Review',
+  },
+  permissions: {
+    icon: 'key',
+    title: (n) => `${plural(n, 'channel')} ${n === 1 ? 'needs' : 'need'} to reconnect Twitch`,
+    why: 'Some bot features stop until they sign in.',
+    link: '/users',
+    query: { sort: 'has_permissions', order: 'asc' },
+    where: 'Users',
+  },
+  bots: {
+    icon: 'power',
+    title: (n) => (n === 1 ? "1 bot isn't active" : `${formatNumber(n)} bots aren't active`),
+    why: 'Signed up, bot never turned on. A reminder can help.',
+    link: '/users',
+    query: { sort: 'actived', order: 'asc' },
+    where: 'Users',
+  },
+};
+const ATTENTION_ORDER = Object.keys(ATTENTION) as AttentionId[];
+
+/** Plain names for the parts the overview API can fail to load. */
+const PART_NAME: Record<string, string> = {
+  feed: 'activity numbers',
+  usage: 'usage numbers',
+  decisions: 'chat protection numbers',
+  assistant: 'assistant numbers',
+  docs: 'docs AI numbers',
+  attention: 'some of the "needs you" checks',
+};
+
+const REFRESH_MS = 30_000;
+
+/** How many attention rows a phone shows before "Show more". */
+const ATTENTION_FIRST = 4;
+
 @Component({
   selector: 'app-dashboard-page',
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SkeletonComponent, RouterLink, IconComponent, AvatarComponent],
+  imports: [
+    SkeletonComponent,
+    RouterLink,
+    IconComponent,
+    AvatarComponent,
+    FeedListComponent,
+    OvDayComponent,
+    OvSpendComponent,
+    OvTrendComponent,
+    OvChannelsComponent,
+  ],
 })
 export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly adminApi = inject(AdminApiService);
+  private readonly overviewApi = inject(OverviewApiService);
 
   readonly user = computed(() => this.sessionAuth.getSessionSnapshot()?.twitchUser);
   readonly appUser = computed(() => this.sessionAuth.getSessionSnapshot()?.appUser);
 
-  // Analytics state
+  // Public live counters (SSE + snapshot)
   readonly analytics = signal<SiteAnalyticsSnapshot>({
     registeredUsers: 0,
     liveUsers: 0,
@@ -59,12 +186,26 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   readonly isInitialLoading = signal(true);
   readonly hasSnapshot = signal(false);
   readonly snapshotError = signal(false);
+
   // Channel health comes from the admin directory (top live channels + totals).
   readonly health = signal<AdminUsersSummary | null>(null);
   readonly liveRows = signal<AdminUserRow[]>([]);
   readonly healthLoading = signal(true);
   readonly healthError = signal(false);
   private healthRequest?: Subscription;
+
+  // The owner's overview: one call, refreshed every 30 s while the tab is visible.
+  readonly overview = signal<AdminOverview | null>(null);
+  readonly overviewLoading = signal(true);
+  /** The last attempt failed (with data: we show the previous numbers; without: an error block). */
+  readonly overviewFailed = signal(false);
+  readonly overviewAt = signal<number | null>(null);
+  private overviewRequest?: Subscription;
+  private lastOverviewAttempt = 0;
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly onVisibility = () => {
+    if (document.visibilityState === 'visible' && Date.now() - this.lastOverviewAttempt >= REFRESH_MS) this.loadOverview();
+  };
 
   readonly tools = [
     {
@@ -90,32 +231,98 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     { label: 'Messages processed', value: this.analytics().totalMessages, note: 'All time' },
     { label: 'Commands executed', value: this.analytics().totalCommands, note: 'All time' },
   ]);
-  /** Problems an admin can act on, with where to go to fix them. */
-  readonly attention = computed(() => {
-    const s = this.health();
-    if (!s) return [];
-    return [
-      {
-        key: 'bots',
-        count: s.inactiveBots,
-        label: s.inactiveBots === 1 ? 'Bot not active' : 'Bots not active',
-        meta: "They signed up but the bot isn't on in their channel. A reminder email can help.",
-        icon: 'power',
-        query: { sort: 'actived', order: 'asc' },
-      },
-      {
-        key: 'permissions',
-        count: s.permissionsNeedUpdate,
-        label: 'Twitch access out of date',
-        meta: 'They need to sign in again so the bot gets the Twitch permissions it needs.',
-        icon: 'key',
-        query: { sort: 'has_permissions', order: 'asc' },
-      },
-    ];
+
+  /**
+   * On a phone a long list of things to look at pushes the rest of the page far down: the worst few are
+   * shown and the rest are one tap away. A wide screen has the room, so it starts open.
+   */
+  readonly attentionOpen = signal(typeof matchMedia === 'function' && matchMedia('(min-width: 960px)').matches);
+  readonly attentionShown = computed(() => (this.attentionOpen() ? this.attention() : this.attention().slice(0, ATTENTION_FIRST)));
+  readonly attentionHidden = computed(() => this.attention().length - this.attentionShown().length);
+
+  /** Everything that needs the owner, from the overview and the users summary, worst first. */
+  readonly attention = computed<AttentionRow[]>(() => {
+    const counts = new Map<AttentionId, number>();
+    for (const item of this.overview()?.attention ?? []) counts.set(item.key, (counts.get(item.key) ?? 0) + item.count);
+    const health = this.health();
+    if (health) {
+      counts.set('bots', health.inactiveBots);
+      counts.set('permissions', health.permissionsNeedUpdate);
+    }
+    return ATTENTION_ORDER.filter((key) => (counts.get(key) ?? 0) > 0).map((key) => {
+      const count = counts.get(key)!;
+      const { title, ...rest } = ATTENTION[key];
+      return { key, count, ...rest, title: title(count) };
+    });
   });
-  readonly attentionTotal = computed(() =>
-    this.attention().reduce((sum, item) => sum + item.count, 0),
+
+  /** First load: wait for both sources before answering, so the answer doesn't flip a second later. */
+  readonly answerLoading = computed(
+    () =>
+      (this.overviewLoading() && !this.overview() && !this.overviewFailed()) ||
+      (this.healthLoading() && !this.health() && !this.healthError()),
   );
+
+  /** What could not be checked, in plain words; empty when every check ran. */
+  readonly unchecked = computed(() => {
+    const missing: string[] = [];
+    const overview = this.overview();
+    if (!overview) missing.push('failures, queues and billing');
+    else if (overview.partial.includes('attention')) missing.push('some queues and billing');
+    if (!this.health()) missing.push('bots and Twitch access');
+    return missing;
+  });
+
+  /** "Dima did 6,571 things in the last 24 hours; 170 didn't go as planned." */
+  readonly handledLine = computed(() => {
+    const kinds = this.overview()?.day.kinds;
+    if (!kinds) return "Today's numbers couldn't be loaded yet.";
+    const total = kinds.reduce((sum, kind) => sum + kind.total, 0);
+    const problems = kinds.reduce((sum, kind) => sum + kind.problems, 0);
+    if (!total) return 'Nothing recorded in the last 24 hours yet.';
+    return `Dima did ${plural(total, 'thing')} in the last 24 hours${problems ? `; ${formatNumber(problems)} didn't go as planned.` : ', all as planned.'}`;
+  });
+
+  readonly answer = computed(() => {
+    const items = this.attention();
+    if (items.length) {
+      return {
+        tone: 'warn' as const,
+        icon: 'alert',
+        title: `${plural(items.length, 'thing')} ${items.length === 1 ? 'needs' : 'need'} you`,
+        text: this.handledLine(),
+      };
+    }
+    const unchecked = this.unchecked();
+    if (unchecked.length) {
+      return {
+        tone: 'muted' as const,
+        icon: 'info',
+        title: 'Nothing flagged so far',
+        text: `Couldn't check ${unchecked.join(' or ')} right now. Try Refresh in a moment.`,
+      };
+    }
+    return {
+      tone: 'ok' as const,
+      icon: 'ok',
+      title: 'Everything looks good',
+      text: `Checked failures, Twitch deliveries, billing, usage imports, gifted credits, AI credits, the review queue, ${plural(this.health()?.totalChannels ?? 0, 'bot')} and Twitch access.`,
+    };
+  });
+
+  readonly partialNotice = computed(() => {
+    const parts = [...new Set((this.overview()?.partial ?? []).map((part) => PART_NAME[part] ?? `${part} numbers`))];
+    if (!parts.length) return null;
+    const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+    return `${list.charAt(0).toUpperCase()}${list.slice(1)} couldn't be loaded. The rest is up to date.`;
+  });
+
+  readonly updatedAt = computed(() => {
+    const at = this.overviewAt();
+    return at ? clockTime(at) : null;
+  });
+
+  readonly anyLoading = computed(() => this.healthLoading() || this.overviewLoading());
   readonly firstName = computed(() => this.user()?.display_name || 'there');
 
   refreshAnalytics(): void {
@@ -125,6 +332,26 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   refreshAll(): void {
     this.refreshAnalytics();
     this.loadHealth();
+    this.loadOverview();
+  }
+
+  loadOverview(): void {
+    // Never stack requests: a tick or a tap while one is on its way waits for that one.
+    if (this.overviewRequest && !this.overviewRequest.closed) return;
+    this.lastOverviewAttempt = Date.now();
+    this.overviewLoading.set(true);
+    this.overviewRequest = this.overviewApi.get().subscribe({
+      next: (response) => {
+        this.overview.set(response.data);
+        this.overviewAt.set(Date.now());
+        this.overviewFailed.set(false);
+        this.overviewLoading.set(false);
+      },
+      error: () => {
+        this.overviewFailed.set(true);
+        this.overviewLoading.set(false);
+      },
+    });
   }
 
   loadHealth(): void {
@@ -154,10 +381,18 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     this.fetchAnalyticsSnapshot();
     this.connectAnalyticsStream();
     this.loadHealth();
+    this.loadOverview();
+    this.refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') this.loadOverview();
+    }, REFRESH_MS);
+    document.addEventListener('visibilitychange', this.onVisibility);
   }
 
   ngOnDestroy(): void {
     this.healthRequest?.unsubscribe();
+    this.overviewRequest?.unsubscribe();
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.eventSource?.close();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -254,13 +489,8 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     return Math.max(0, Math.floor(parsed));
   }
 
+  /** Compact for the big live figures and totals ("5.1M"); whole numbers under 1,000. */
   formatNumber(value: number): string {
-    if (value >= 1000000) {
-      return (value / 1000000).toFixed(1) + 'M';
-    }
-    if (value >= 1000) {
-      return (value / 1000).toFixed(1) + 'K';
-    }
-    return value.toLocaleString();
+    return formatCompact(value);
   }
 }

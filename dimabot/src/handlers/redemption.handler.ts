@@ -12,6 +12,7 @@ import type { IRedemptionEvent } from "../interfaces/twitch/eventsub.interface.j
 import { getApiUrl } from "../utils/dev.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
 import { parseSpecialCommands } from "./special_parser.handler.js";
+import { deliveryOutcome, recordRedemption, type RedemptionOutcome } from "../utils/activity_events.js";
 
 interface RedemptionHandlerResponse {
     error: boolean;
@@ -67,8 +68,13 @@ async function runRedemptionSpecialFunctions(
 
 export async function redemptionHandler(
     eventData: IRedemptionEvent,
-    chatEnabled: boolean
+    chatEnabled: boolean,
+    messageId?: string
 ): Promise<RedemptionHandlerResponse> {
+    const note = (result: RedemptionOutcome) => recordRedemption(eventData, messageId, { ...result, chatEnabled });
+    let managed = false;
+    // The awaited reward-message delivery: only its error decides the row, never the reply.
+    let delivered: unknown;
     void recordTimelineRedemption(eventData).catch(error => console.error('Timeline redemption recording failed', error));
     // Custom widgets (`uses: rewards`) see every redemption: what Twitch shows in chat (reward, viewer, their text).
     publishToWidgets(eventData.broadcaster_user_id, 'reward', { id: eventData.id, reward: { id: eventData.reward?.id, title: eventData.reward?.title, cost: eventData.reward?.cost },
@@ -81,7 +87,10 @@ export async function redemptionHandler(
             rewardID: reward.id
         });
 
+        // Twitch delivers this reward but Dima keeps no record of it (a reward made on Twitch, or one whose
+        // record is gone while its subscription remains): nothing for Dima to do.
         if (!rewardData) {
+            note({ outcome: 'ok', managed: false, action: 'none' });
             await logError({
                 function: 'redemptionHandler',
                 channelID: broadcaster_user_id,
@@ -94,6 +103,7 @@ export async function redemptionHandler(
                 message: 'Reward not found'
             };
         }
+        managed = true;
 
         const isVipReward = reward.title.toLowerCase().includes('vip');
 
@@ -101,6 +111,7 @@ export async function redemptionHandler(
             const vipResult = await vipRedemptionFun(eventData, reward);
 
             if (vipResult.error) {
+                note({ outcome: 'failed', reason: 'vip_failed', managed: true, action: 'vip', error: vipResult.message });
                 if (chatEnabled) {
                     const context: SendMessageContext = {
                         channelID: broadcaster_user_id,
@@ -110,7 +121,7 @@ export async function redemptionHandler(
                             userLogin: user_login
                         }
                     };
-                    await sendTwitchChatMessage(broadcaster_user_id, vipResult.message, null, context);
+                    await sendTwitchChatMessage(broadcaster_user_id, vipResult.message, null, context, { origin: 'redemption' });
                 }
                 return {
                     error: true,
@@ -125,7 +136,7 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
+                delivered = await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
             } else if (vipResult.rewardMessage) {
                 const parsed = await runRedemptionSpecialFunctions(
                     vipResult.rewardMessage,
@@ -133,9 +144,10 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                await deliverAstMessage(broadcaster_user_id, parsed, false);
+                delivered = await deliverAstMessage(broadcaster_user_id, parsed, false);
             }
 
+            note({ ...deliveryOutcome(delivered), managed: true, action: 'vip' });
             return {
                 error: false,
                 message: 'VIP redeemed'
@@ -143,6 +155,7 @@ export async function redemptionHandler(
         }
 
         if (rewardData.type === 'song') {
+            note({ outcome: 'skipped', reason: 'song_unsupported', managed: true, action: 'none' });
             await logError({
                 function: 'redemptionHandler',
                 channelID: broadcaster_user_id,
@@ -169,6 +182,7 @@ export async function redemptionHandler(
             const customResult = await customRedemptionReward(eventData, reward);
 
             if (customResult.error) {
+                note({ outcome: 'failed', reason: 'reward_failed', managed: true, action: 'none', error: customResult.type || customResult.message });
                 if (chatEnabled) {
                     const context: SendMessageContext = {
                         channelID: broadcaster_user_id,
@@ -178,7 +192,7 @@ export async function redemptionHandler(
                             userLogin: user_login
                         }
                     };
-                    await sendTwitchChatMessage(broadcaster_user_id, customResult.message, null, context);
+                    await sendTwitchChatMessage(broadcaster_user_id, customResult.message, null, context, { origin: 'redemption' });
                 }
                 return {
                     error: true,
@@ -193,7 +207,7 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
+                delivered = await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
             } else if (customResult.rewardMessage) {
                 const parsed = await runRedemptionSpecialFunctions(
                     customResult.rewardMessage,
@@ -201,9 +215,10 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                await deliverAstMessage(broadcaster_user_id, parsed, false);
+                delivered = await deliverAstMessage(broadcaster_user_id, parsed, false);
             }
 
+            note({ ...deliveryOutcome(delivered), managed: true, action: customResult.rewardMessage ? 'message' : 'none' });
             return {
                 error: false,
                 message: 'Reward redeemed'
@@ -271,13 +286,15 @@ export async function redemptionHandler(
             parsedRewardMessage: parsedRewardMessage.parsedText
         }, { channelId: broadcaster_user_id, destination: 'both' });
 
-        await deliverAstMessage(broadcaster_user_id, parsedRewardMessage, chatEnabled);
+        delivered = await deliverAstMessage(broadcaster_user_id, parsedRewardMessage, chatEnabled);
+        note({ ...deliveryOutcome(delivered), managed: true, action: 'trigger', trigger: trigger.name });
 
         return {
             error: false,
             message: 'Redemption processed'
         };
     } catch (err) {
+        note({ outcome: 'failed', reason: 'handler_error', managed, action: 'none', error: err });
         await logError({
             function: 'redemptionHandler',
             eventData,

@@ -46,6 +46,19 @@ domainEventSchema.index({ source: 1, sourceEventId: 1, type: 1 }, { unique: true
 domainEventSchema.index({ topic: 1, _id: 1 });
 domainEventSchema.index({ topic: 1, source: 1, _id: 1 });
 domainEventSchema.index({ channelID: 1, source: 1, type: 1, occurredAt: 1, _id: 1 });
+// The admin activity feed across every channel: newest first by when it happened (`{topic, _id}` follows journal order).
+domainEventSchema.index({ topic: 1, occurredAt: -1, _id: -1 });
+/**
+ * Where a Twitch event names the viewer who caused it: follows, subs, gifts and bits (`user_id`), chat
+ * notifications (`chatter_user_id`), raids (`from_broadcaster_user_id`), ad breaks (`requester_user_id`).
+ * One small partial index each, so the admin feed finds one viewer's events across every channel.
+ */
+export const DOMAIN_EVENT_VIEWER_FIELDS = ['user_id', 'chatter_user_id', 'from_broadcaster_user_id', 'requester_user_id'] as const;
+for (const field of DOMAIN_EVENT_VIEWER_FIELDS) {
+    domainEventSchema.index({ [`payload.event.${field}`]: 1, occurredAt: -1, _id: -1 }, {
+        partialFilterExpression: { topic: 'channel', [`payload.event.${field}`]: { $type: 'string' } }
+    });
+}
 domainEventSchema.index({ dispatchPending: 1, _id: 1 }, { partialFilterExpression: { dispatchPending: true } });
 domainEventSchema.index({ topic: 1, 'metadata.durableChatHandled': 1, _id: 1 }, {
     partialFilterExpression: { 'metadata.durableChatHandled': true }

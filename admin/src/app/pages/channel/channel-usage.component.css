@@ -1,6 +1,51 @@
-.us-intro {
+/* Period chips, the explorer link and Refresh: one wrapping row under the forecast. */
+.us-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.us-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-right: auto;
+}
+.us-explore {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.65rem 1rem;
+  color: inherit;
+}
+.us-explore:hover {
+  border-color: var(--accent-line);
+}
+.us-explore__icon {
   display: grid;
-  gap: 0.3rem;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.us-explore__text {
+  display: grid;
+  flex: 1;
+  gap: 0.05rem;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.us-explore__text small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.us-explore__chev {
+  flex-shrink: 0;
+  color: var(--muted);
 }
 .us-forecast .lf-status__actions {
   margin-top: 0.3rem;
@@ -211,5 +256,13 @@
 @media (min-width: 960px) {
   .us-chart {
     height: 11rem;
+  }
+}
+.lf-btn--sm {
+  min-height: 2.75rem;
+}
+@media (min-width: 960px) {
+  .lf-btn--sm {
+    min-height: 2.25rem;
   }
 }

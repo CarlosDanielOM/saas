@@ -1,0 +1,133 @@
+<div class="lf">
+  <div class="lf-main ws-narrow">
+    <h2 class="sr-only">Bot log</h2>
+
+    @if (error() && !page()) {
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">Couldn't load the bot log</p>
+          <p class="lf-status__text">{{ error() }}</p>
+          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="reload()"><app-icon name="refresh" />Retry</button></div>
+        </div>
+      </div>
+    } @else if (!page()) {
+      <div class="lf-status" role="status" aria-busy="true" aria-label="Loading the bot log">
+        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+        <div class="lf-status__body"><app-skeleton width="65%" height="1.1rem" /><app-skeleton width="40%" height="0.9rem" /></div>
+      </div>
+    } @else {
+      <div class="lf-status" [class]="'lf-status--' + answer().tone" role="status" aria-live="polite">
+        <app-icon [name]="answer().tone === 'ok' ? 'ok' : 'alert'" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ answer().title }}</p>
+          @if (answer().text) {
+            <p class="lf-status__text">{{ answer().text }}</p>
+          }
+          <div class="lf-status__actions">
+            <button type="button" class="lf-btn lf-btn--sm" (click)="reload()" [disabled]="loading()">
+              <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <a class="lf-tile log-link" [routerLink]="['/observability']" [queryParams]="{ channel: channelID(), tab: 'logs' }">
+      <span class="log-link__icon"><app-icon name="chart" /></span>
+      <span class="log-link__text">
+        <strong>Errors, slow calls and traces for this channel</strong>
+        <small>System analytics, filtered to {{ ws.name() || 'this channel' }}</small>
+      </span>
+      <app-icon class="log-link__chev" name="chevron" />
+    </a>
+
+    <div class="lf-strip log-levels" role="group" aria-label="Show log levels">
+      @for (chip of chips(); track chip.key) {
+        <button type="button" class="lf-chip" [attr.aria-pressed]="level() === chip.key" (click)="setLevel(chip.key)">
+          @if (chip.dot) {
+            <span class="log-dot" [attr.data-level]="chip.dot" aria-hidden="true"></span>
+          }
+          {{ chip.label }}
+          @if (chip.count !== null) {
+            <span class="lf-chip__count">{{ formatNumber(chip.count) }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <section class="lf-tile lf-tile--flush" aria-label="Log lines" [attr.aria-busy]="loading()">
+      @if (error() && page()) {
+        <div class="lf-empty" role="alert">
+          <app-icon name="alert" />
+          <strong>Couldn't load these log lines</strong>
+          <p>{{ error() }}</p>
+          <button type="button" class="lf-btn lf-btn--sm" (click)="reload()"><app-icon name="refresh" />Retry</button>
+        </div>
+      } @else if (!page()) {
+        @if (!error()) {
+          <div class="sub-skel" role="status" aria-busy="true" aria-label="Loading log lines">
+            @for (item of [1, 2, 3, 4, 5]; track item) {
+              <app-skeleton height="3rem" />
+            }
+          </div>
+        }
+      } @else if (!entries().length) {
+        <div class="lf-empty">
+          <app-icon name="ok" />
+          <strong>{{ emptyTitle() }}</strong>
+          <p>{{ emptyText() }}</p>
+        </div>
+      } @else {
+        <ol class="log-list" aria-live="polite">
+          @for (entry of entries(); track entry.id) {
+            <li class="log-item" [attr.data-level]="entry.level" data-log-row>
+              <details (toggle)="onToggle(entry.id, $event)">
+                <summary class="log-row">
+                  <span class="log-dot" [attr.data-level]="entry.level"><span class="sr-only">{{ levelName(entry.level) }}</span></span>
+                  <span class="log-row__main">
+                    @if (where(entry); as place) {
+                      <span class="log-row__where">{{ place }}</span>
+                    }
+                    <span class="log-row__msg">{{ entry.message || 'No message' }}</span>
+                  </span>
+                  <time class="log-row__time" [attr.datetime]="entry.at" [title]="fullTime(entry.at)">{{ relative(entry.at) }}</time>
+                </summary>
+                @if (openIds().has(entry.id)) {
+                  <div class="log-body" data-log-body>
+                    @if (entry.message) {
+                      <p class="log-body__msg">{{ entry.message }}</p>
+                    }
+                    <dl class="log-facts">
+                      <div><dt>Level</dt><dd>{{ levelName(entry.level) }}</dd></div>
+                      <div><dt>When</dt><dd>{{ fullTime(entry.at) }}</dd></div>
+                      @if (entry.function) {
+                        <div><dt>Where</dt><dd class="mono">{{ entry.function }}</dd></div>
+                      }
+                      @for (field of fields(entry); track field.key) {
+                        <div><dt>{{ field.key }}</dt><dd class="mono">{{ field.value }}</dd></div>
+                      }
+                    </dl>
+                    <button type="button" class="lf-btn lf-btn--sm log-copy" (click)="copy(entry)">
+                      <app-icon [name]="copiedId() === entry.id ? 'check' : 'copy'" />{{ copiedId() === entry.id ? 'Copied' : 'Copy as JSON' }}
+                    </button>
+                  </div>
+                }
+              </details>
+            </li>
+          }
+        </ol>
+        @if (page()?.truncated) {
+          <div class="lf-more-row log-more">
+            @if (limit() < maxLimit) {
+              <p class="lf-note">Showing the newest {{ formatNumber(entries().length) }}; narrow by level to see more.</p>
+              <button type="button" class="lf-btn lf-btn--sm" (click)="showMore()" [disabled]="loading()">Show more</button>
+            } @else {
+              <p class="lf-note">Showing the newest {{ formatNumber(entries().length) }}, the most the log returns at once. Narrow by level to see the rest.</p>
+            }
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>

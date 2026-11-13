@@ -41,7 +41,7 @@ OpenAI key; `xhigh` until 2026-11-11) and **Expert** = Claude Haiku 5.5 (the own
   `site_agent_refusals` (what was asked, steers, the last 8 context items clipped, the partial answer, OpenRouter's
   metadata; 90-day TTL; removed with the account) so the owner can see why. Browse it in dimadb. A refusal on Standard
   has no fallback (`model_refused`).
-- Sessions live in Dragonfly, 72 h after the last activity, max 10 per person per channel. Private to the person.
+- Sessions live in Dragonfly, 72 h after the last activity, max 10 per person per channel. Private between the person and DomDimaBot's operators: nobody else on the channel (not even the owner for an admin's chat) can read them; the operator can, in the admin site (owner only), to help and to debug.
 - Every change needs approval. The owner sees all assistant changes on the channel (who, what they asked,
   before → after) and can undo any; an admin sees and undoes their own. Change log kept 90 days (Mongo).
 - Never: ban/timeout/raid/mod/vip, editors, billing, account deletion (only navigate there), bot on/off.
@@ -126,6 +126,27 @@ src/server/routes/site-agent.route.ts    HTTP + SSE
   2 h TTL) for SSE replay. `site_agent:lease:<sid>` = fencing token (PX 60 s, renewed every 15 s).
 - `site_agent:active` set of turn ids that are queued/running/waiting (boot recovery).
 - Mongo `site_agent_changes` (90-day TTL): change log.
+- Mongo `site_agent_turn_logs` (90-day TTL, `turn_log.ts`): one row per finished turn for the operator (admin site,
+  owner only): who, when, plan, level, models, status, error code, steps, daily messages used, tokens, cost, duration,
+  rating, cost per model (`modelCosts`: a fell-back turn has two), **and, for 3 days, the exchange as text** (the
+  dashboard tells people "Chats are kept for 3 days", so `clearExpiredTurnText` blanks the text 3 days after the
+  message and sets `textCleared`; the numbers stay the full 90 days): the message (4,000),
+  the last 10 steers (2,000 each), the answer (the turn's assistant items joined with blank lines, 12,000; empty
+  when the chat was already deleted), and each tool's name, end state, arguments and result (2,000 each). Every text
+  is scrubbed over a wider window, then clipped by code points: message, steers and answer with `scrubSensitive`,
+  tool arguments and results with `scrubMaybeJson` (JSON values under secret key names too) on the whole text
+  (`utils/scrub_text.ts`: tokens, keys, JWTs, webhook paths, URL credentials, e-mail addresses). Never proposal
+  payloads, undo data or page titles (only the route key); a `show_ui` form's submitted values are not kept (its
+  result is stored as `[form submitted]`). Inserted once after the turn ends, without waiting (a failure is logged,
+  never retried), and only while the channel's account and, for a manager, the requester's account exist; a rating
+  given before the insert is read from `site_agent:feedback:<turn>`. A cost reconciled later is keyed by its step
+  (Polar external id) and recorded in `reconciledSteps`, so a step is added once; until it is on the row it waits in
+  the hash `site_agent:turnlog:late:<turn>` (1 day; retry index `site_agent:turnlog:late`, a sorted set, oldest
+  attempt first, 50 a tick, one pass at a time). A waiting step is removed only once the row lists its key, and is
+  retried every 30 s until then. Account deletion stops the person's queued or running turns (like Stop), then
+  removes the channel's rows and the person's rows on other channels, with a second pass 15 s later. Its cost is the day
+  stats' cost (`effectiveCostUsd`: provider + OpenRouter fee), and so is the turn's own `usage.costUsd`.
+- `site_agent:limit_hits:<day>` hash channel → messages refused for the daily limit (120-day TTL).
 
 ## HTTP API (`/agent/:channelID`, `authMiddleware`, envelope `{error, message, status, data}`)
 

@@ -1,9 +1,10 @@
-// All API calls are mocked; grants and announcements never reach production.
+// Admin AI credit grants with the chat announcement opt-out, on the channel workspace's Overview tab.
+// All API calls are mocked on api.domdimabot.com (built bundle) and localhost:3000 (dev server); grants and
+// announcements never reach production. Env: SAAS_PREVIEW_URL (default http://127.0.0.1:4310).
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.SAAS_PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
-const base = process.env.SAAS_PREVIEW_URL;
-assert.ok(base);
+const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4310';
 const artifacts = process.env.SAAS_UI_ARTIFACTS || '/tmp/admin-credit-chat-browser';
 await mkdir(artifacts, { recursive: true });
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'],
@@ -15,12 +16,14 @@ const user = { channelID: '9001', channel: 'creditfixture', email: 'fixture@exam
     plan_tier: 'pro', actived: true, chat_enabled: true, has_permissions: true,
     up_to_date_permissions: true, isLive: false, liveViewers: 0, commandsCount: 0,
     eventsubsActiveCount: 0, eventsubsDisabledCount: 0 };
-const json = (route, body, status = 200) => route.fulfill({ status,
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
+const json = (route, body, status = 200) => route.fulfill({ status, headers: cors,
     contentType: 'application/json', body: JSON.stringify(body) });
 await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url()), path = url.pathname;
     if (url.origin === new URL(base).origin) return route.continue();
     if (!['https://api.domdimabot.com', 'http://localhost:3000'].includes(url.origin)) return route.abort();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     if (path.endsWith('/ai-credits/grant')) {
         const body = JSON.parse(req.postData()); grants.push(body);
         if (grantFails) return json(route, { error: true, message: 'Mock grant failed' }, 502);
@@ -36,6 +39,14 @@ await context.route('**/*', route => {
     if (path === '/users') return json(route, { data: { profile_image_url: `${base}/favicon.png` } });
     if (/\/(commands|eventsubs)$/.test(path)) return json(route, { data: { rows: [],
         pagination: { page: 1, total: 0, totalPages: 1 } } });
+    // The channel workspace frame's last-24-hours numbers, and the Overview's pet tile (both read-only).
+    if (path === '/admin-site/feed/summary') return json(route, { data: { from: new Date(Date.now() - 86400000).toISOString(),
+        to: new Date().toISOString(), kinds: [], partial: [] } });
+    if (path.endsWith('/pet-diagnostics')) return json(route, { data: { observedAt: new Date().toISOString(), configured: false,
+        enabled: false, appearance: null, playbackTarget: null, failures: [],
+        vts: { selectedSessionId: null, session: null, connected: false, reportedReady: false, ready: false,
+            projection: { status: 'missing', lastValidatedAt: null, expiresAt: null } },
+        audio: { selectedSessionId: null, session: null, connected: false, reportedReady: false, ready: false } } });
     for (const key of ['files', 'rewards', 'triggers', 'timers', 'memories']) {
         if (path.includes(`/${key}/`)) return json(route, { data: { [key]: [] } });
     }
@@ -59,7 +70,8 @@ const closed = () => page.locator('dialog[open]').waitFor({ state: 'hidden' });
 try {
     for (const theme of ['dark', 'light']) for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        await page.goto(base);
+        // Set the theme on the page under test (opening the site root would load the Overview and its API).
+        await page.goto(`${base}/channels/9001`);
         await page.evaluate(mode => localStorage.setItem('dima-admin.mode.v1', mode), theme);
         await page.goto(`${base}/channels/9001`);
         await open();

@@ -1,11 +1,14 @@
 // Admin System analytics: health answer, every tab, chart interaction, trace dialog,
 // access grants (mutations mocked and counted), scoped viewer, failure + session guard.
-// All APIs are mocked; set SAAS_SCREENSHOT_DIR to keep screenshots.
+// All APIs are mocked on api.domdimabot.com (built bundle) and localhost:3000 (dev server); set SAAS_SCREENSHOT_DIR
+// to keep screenshots. The owner reaches it from the "System" tab (non-owners with a grant see "Analytics").
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const tools = process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser';
 const { chromium } = createRequire(`${tools}/package.json`)('playwright');
-const base = process.env.SAAS_PREVIEW_URL; assert(base, 'SAAS_PREVIEW_URL is required');
+const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4310';
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
+const isApi = url => url.hostname === 'api.domdimabot.com' || (['localhost', '127.0.0.1'].includes(url.hostname) && url.port === '3000');
 const origin = new URL(base).origin;
 const shots = process.env.SAAS_SCREENSHOT_DIR || '';
 const now = Date.now(), iso = (ms = 0) => new Date(now - ms).toISOString(), date = iso();
@@ -98,13 +101,14 @@ try {
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.origin === origin) return route.continue();
-      if (url.hostname !== 'api.domdimabot.com') return route.abort();
+      if (!isApi(url)) return route.abort();
+      if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
       let json = { error: false, status: 200, data: {} };
       if (url.pathname.includes('/observability/api/')) {
         assert.equal(request.headers().authorization, 'Bearer test-only');
         const name = url.pathname.split('/api/')[1];
-        if (state.failure) return route.fulfill({ status: 503, json: { message: 'unavailable' } });
-        if (request.method() !== 'GET') { state.mutations.push({ method: request.method(), name, body: request.postDataJSON?.() ?? null }); return route.fulfill({ status: 200, json: { saved: true } }); }
+        if (state.failure) return route.fulfill({ status: 503, headers: cors, json: { message: 'unavailable' } });
+        if (request.method() !== 'GET') { state.mutations.push({ method: request.method(), name, body: request.postDataJSON?.() ?? null }); return route.fulfill({ status: 200, headers: cors, json: { saved: true } }); }
         if (name === 'resources') state.resourceCalls++;
         json = name === 'session' ? { grant: { role: state.role, channels: state.channels, services: [] }, channelNames: state.channels.length ? { '123': 'pixelpilot' } : {} }
           : name === 'overview' ? overview(state.healthy)
@@ -116,20 +120,21 @@ try {
       } else if (url.pathname === '/users') {
         const login = url.searchParams.get('username');
         if (login === 'pixelpilot') json = { error: false, status: 200, data: { id: '123', username: 'pixelpilot', display_name: 'PixelPilot' } };
-        else if (login === 'nobody_here') return route.fulfill({ status: 404, json: { error: true, status: 404, message: 'User not found' } });
+        else if (login === 'nobody_here') return route.fulfill({ status: 404, headers: cors, json: { error: true, status: 404, message: 'User not found' } });
       } else if (url.pathname === '/auth/session') json = { error: false, status: 200, data: { twitch: { id: '533538623', login: 'tester', display_name: 'Tester' }, app: { name: 'Tester', language: 'en', actived: true, twitch_user_id: '533538623', administrating: [] } } };
-      return route.fulfill({ status: 200, json });
+      return route.fulfill({ status: 200, headers: cors, json });
     });
     const page = await context.newPage(); page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     const tab = name => page.getByRole('button', { name, exact: true });
     const openTab = async name => { await tab(name).click(); await until(async () => (await tab(name).getAttribute('aria-pressed')) === 'true', `tab ${name}`); await page.waitForTimeout(120); };
 
-    // Navigation from the shell and the health answer.
+    // Navigation from the shell (the owner's "System" tab) and the health answer.
     await page.goto(base + '/settings');
-    await page.getByRole('link', { name: 'Analytics', exact: true }).filter({ visible: true }).click();
+    await page.getByRole('link', { name: 'System', exact: true }).filter({ visible: true }).click();
     await page.waitForURL(/\/observability$/);
     await page.getByRole('heading', { name: 'System analytics', exact: true }).waitFor();
+    assert.equal((await page.locator(width >= 960 ? '.nav__links a[aria-current="page"]' : '.bottom-nav a[aria-current="page"]').innerText()).trim(), 'System', 'System tab is lit');
     assert.equal(await page.locator('iframe').count(), 0);
     await page.getByRole('heading', { name: /things need a look/ }).waitFor();
     const attention = await page.locator('.obs-attention__row').allInnerTexts();

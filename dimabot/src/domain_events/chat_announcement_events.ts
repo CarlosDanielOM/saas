@@ -5,6 +5,7 @@ import { getBitsMessageText } from '../utils/bits_message.js';
 import { createTwitchEffectContext, scopeAstEffectContext } from '../utils/ast_parser/effects.js';
 import type { SendMessageContext } from '../functions/chats/send_message.chat.js';
 import { bitsChatMessage, rulesFromLegacyTiers, type BitsRule } from '../bits_rules/model.js';
+import { chatSendDecision, recordAlert, type AlertDecision } from '../utils/activity_events.js';
 
 interface ChatEventsubConfig {
     enabled: boolean;
@@ -32,6 +33,8 @@ interface SendResult {
     error: boolean;
     message?: string;
     type?: string;
+    /** Twitch's reply when a message really went out; absent when the text rendered to nothing. */
+    data?: { is_sent?: boolean; message_id?: string } | null;
 }
 
 export interface ChatAnnouncementDependencies {
@@ -130,7 +133,7 @@ async function getDependencies(): Promise<ChatAnnouncementDependencies> {
             return count;
         },
         shouldSuppressFollowAlerts,
-        sendMessage: (channelID, message, context) => sendTwitchChatMessage(channelID, message, null, context),
+        sendMessage: (channelID, message, context) => sendTwitchChatMessage(channelID, message, null, context, { origin: 'alert' }),
         hasCommands: async (channelID) => Boolean(await CommandsSchema.exists({ channelID })),
         async getLanguage(channelID) {
             const user = await UsersSchema.findOne(
@@ -199,23 +202,32 @@ export async function applyChatAnnouncementDomainEvent(
         || !SUPPORTED_EVENT_TYPES.has(event.type)) return;
     if (!event.channelID) throw new Error('Chat announcements require a channel identity');
     const rawEvent = payloadEvent(event);
+    const originalType = originalEventType(event);
+    // Every outcome leaves a row: the delivery itself says "succeeded" whether or not anything was sent.
+    const note = (decision: AlertDecision) => recordAlert({
+        type: originalType, channelID: event.channelID || '', payload: rawEvent, ref: event.eventKey,
+        data: event.type === 'channel.chat.notification' ? { notice: String(rawEvent.notice_type || '') } : undefined
+    }, decision);
+    const skip = (reason: Extract<AlertDecision, { outcome: 'skipped' }>['reason']) => note({ outcome: 'skipped', reason });
     // Retained deliveries and admin replay can predate the ingress origin filter.
+    // Not alerts that were due: another channel's shared-chat event, and notices this consumer never announces.
     if (isForeignSharedChatEvent(event.type, rawEvent, event.channelID)) return;
     if (event.type === 'channel.chat.notification' && !isSupportedChatNotice(rawEvent.notice_type)) return;
 
     const dependencies = injectedDependencies || await getDependencies();
     if ((event.type === 'stream.started' || event.type === 'stream.ended')
-        && await dependencies.hasNewerLifecycleEvent(event)) return;
+        && await dependencies.hasNewerLifecycleEvent(event)) return skip('stale');
     const streamer = await dependencies.getStreamer(event.channelID);
-    if (!streamer || streamer.chat_enabled === 'false') return;
+    // No account (deleted, or never one): no row, so a late retry never recreates data for it.
+    if (!streamer) return;
+    if (streamer.chat_enabled === 'false') return skip('chat_disabled');
 
-    const originalType = originalEventType(event);
     if (event.type === 'channel.bits.received'
         && await dependencies.shouldSkipLegacyBits(event, originalType)) return;
 
     const config = await dependencies.getEventsubConfig(event.channelID, originalType)
         || defaultConfig(originalType);
-    if (!config.enabled) return;
+    if (!config.enabled) return skip('alert_disabled');
 
     let message = config.message || '';
     let variables: Record<string, string> | undefined;
@@ -237,7 +249,7 @@ export async function applyChatAnnouncementDomainEvent(
     } else if (event.type === 'channel.follow.received') {
         const count = await dependencies.incrementFollowCount(event.channelID, event.eventKey);
         if (config.todayFollows) message = `${config.message} (Follow #${count})`;
-        if (message.trim() && await dependencies.shouldSuppressFollowAlerts(event.channelID, event.eventKey)) return;
+        if (message.trim() && await dependencies.shouldSuppressFollowAlerts(event.channelID, event.eventKey)) return skip('follow_defense');
         variables = {
             user: String(rawEvent.user_name || ''),
             userLogin: String(rawEvent.user_login || ''),
@@ -245,7 +257,7 @@ export async function applyChatAnnouncementDomainEvent(
         };
     }
 
-    if (!message.trim()) return;
+    if (!message.trim()) return skip('empty_message');
     // Only the production durable consumer mints event authority, after all owner/config gates.
     // Anonymous/system events are attributed to the channel, never synthetic badge authority.
     const effectContext = event.source === 'twitch-eventsub' ? scopeAstEffectContext(createTwitchEffectContext({
@@ -256,14 +268,22 @@ export async function applyChatAnnouncementDomainEvent(
             displayName: String(rawEvent.chatter_user_name || rawEvent.user_name || rawEvent.from_broadcaster_user_name || '')
         }
     }), event.channelID, `eventsub:${String(config._id || config.type)}:${originalType}`) : undefined;
-    const result = await dependencies.sendMessage(event.channelID, message, {
-        channelID: event.channelID,
-        effectContext,
-        eventData: rawEvent,
-        eventsubData: config,
-        ...(argument !== undefined ? { argument, literalArguments: true } : {}),
-        variables
-    });
+    let result: SendResult;
+    try {
+        result = await dependencies.sendMessage(event.channelID, message, {
+            channelID: event.channelID,
+            effectContext,
+            eventData: rawEvent,
+            eventsubData: config,
+            ...(argument !== undefined ? { argument, literalArguments: true } : {}),
+            variables
+        });
+    } catch (error) {
+        note({ outcome: 'failed', reason: 'send_failed', error });
+        throw error;
+    }
+    // Sent, rendered to nothing, held or refused: the result says which. The rendered line is on the bot_message row.
+    note(chatSendDecision(result));
     if (result.error) {
         throw new Error(`Sending ${originalType} chat announcement failed: ${result.message || result.type || 'unknown error'}`);
     }

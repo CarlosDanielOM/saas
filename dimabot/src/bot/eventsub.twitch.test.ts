@@ -4,6 +4,10 @@ import type { AddressInfo } from 'node:net';
 import test, { mock } from 'node:test';
 import { Types } from 'mongoose';
 import type { JournalDomainEventInput } from '../domain_events/domain_event.types.js';
+import { flushActivityLog, setActivityLogSinkForTests } from '../utils/activity_log.js';
+import type { IActivityLog } from '../schemas/activity_log.schema.js';
+
+setActivityLogSinkForTests(async () => undefined);
 
 const SECRET = 'eventsub-test-secret';
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: {
@@ -183,7 +187,7 @@ test('production webhook persists durable chat ownership before suppressing imme
     await context.test('suppresses immediate chat only after successful journaling, even without a wakeup', async () => {
         assert.equal((await send()).status, 204);
         assert.equal(journaled.length, 1);
-        assert.deepEqual(handled, [{ durableChatHandled: true }]);
+        assert.deepEqual(handled, [{ durableChatHandled: true, messageId: 'message-1' }]);
     });
 
     await context.test('duplicate notifications do not call the immediate handler again', async () => {
@@ -246,7 +250,7 @@ for (const type of ['channel.follow', 'channel.raid']) {
         assert.deepEqual(handled, []);
         fail = false;
         assert.equal((await send()).status, 204);
-        assert.deepEqual(handled, [{ durableChatHandled: true, durableDefenseHandled: true }]);
+        assert.deepEqual(handled, [{ durableChatHandled: true, messageId: 'message-1', durableDefenseHandled: true }]);
         inserted = false;
         assert.equal((await send()).status, 204);
         assert.equal(handled.length, 1);
@@ -269,7 +273,7 @@ test('unjournaled redemption/chat/ad/ban notifications keep immediate unflagged 
         assert.equal((await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`, {
             method: 'POST', headers: signedHeaders(body, { messageId: type }), body
         })).status, 204);
-        assert.deepEqual(handled.at(-1), { type, options: { durableChatHandled: false } });
+        assert.deepEqual(handled.at(-1), { type, options: { durableChatHandled: false, messageId: type } });
     }
     assert.equal(handled.length, 3);
 });
@@ -361,4 +365,50 @@ test('only signed genuine chat ingress supplies opaque effects using Twitch mess
     }), body })).status, 204);
     assert.equal(effects.length, 2);
     assert.deepEqual(effects[1], effects[0], 'canonical timestamp and full identity are stable across signed retry');
+});
+
+test('unjournaled notifications and handler crashes leave activity rows; chat messages and replies do not change', async (context) => {
+    process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+    process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const rows: IActivityLog[] = [];
+    setActivityLogSinkForTests(async (batch) => { rows.push(...batch); });
+        let crash = false;
+    const server = createTwitchEventsubApp({
+        async resolveOwner() { return '000000000000000000000001'; },
+        async journalEvent(input) {
+            return { inserted: true, event: { ...input, _id: new Types.ObjectId(), eventKey: 'journal-key', schemaVersion: 1,
+                occurredAt: new Date(input.occurredAt!), journaledAt: new Date(), metadata: input.metadata || {},
+                expiresAt: new Date(Date.now() + 86_400_000) } } as never;
+        },
+        async handleEvent() { if (crash) throw new Error('handler exploded'); }
+    }).listen(0);
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
+    const send = (payload: unknown, messageId: string) => {
+        const body = JSON.stringify(payload);
+        return fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`, {
+            method: 'POST', headers: signedHeaders(body, { messageId }), body
+        });
+    };
+
+    assert.equal((await send({ subscription: { type: 'channel.update' }, event: { broadcaster_user_id: 'c1', title: 'Speedrun', category_name: 'Celeste' } }, 'm-update')).status, 204);
+    assert.equal((await send({ subscription: { type: 'channel.chat.message' }, event: { broadcaster_user_id: 'c1', message: { text: 'hi' } } }, 'm-chat')).status, 204);
+    crash = true;
+    assert.equal((await send({ subscription: { type: 'channel.ban' }, event: { broadcaster_user_id: 'c1', user_id: '9', user_login: 'troll' } }, 'm-ban')).status, 204);
+    assert.equal((await send({ subscription: { type: 'stream.online', version: '1' },
+        event: { broadcaster_user_id: 'c1', id: 'stream-1', started_at: new Date().toISOString() } }, 'm-online')).status, 204);
+    await new Promise((resolve) => setImmediate(resolve));
+    await flushActivityLog();
+
+    const summary = rows.map(row => [row.kind, row.name, row.outcome, row.reason, row.ref]);
+    assert.deepEqual(summary, [
+        ['twitch_event', 'channel.update', 'ok', '', 'm-update'],
+        ['twitch_event', 'channel.ban', 'ok', '', 'm-ban'],
+        ['twitch_event', 'channel.ban', 'failed', 'handler_error', 'm-ban'],
+        ['twitch_event', 'stream.online', 'failed', 'handler_error', 'journal-key']
+    ]);
+    assert.deepEqual(rows[0]!.data, { title: 'Speedrun', category: 'Celeste' });
+    assert.equal(rows[2]!.data.error, 'handler exploded');
+    assert.equal(rows[3]!.channelID, 'c1');
 });
