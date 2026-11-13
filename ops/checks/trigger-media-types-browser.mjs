@@ -116,6 +116,13 @@ async function checkLayout(page, selector, label) {
   assert.deepEqual(result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target).join(', ')}`), [], `axe ${label}`);
 }
 async function shot(page, name) { if (shots) await page.screenshot({ path: `${shots}/${name}.png` }); }
+function dropFile(el, file) {
+  const dt = new DataTransfer();
+  dt.items.add(new File([Uint8Array.from(atob(file.bytes), c => c.charCodeAt(0))], file.name, { type: file.type }));
+  el.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+}
+const IPHONE_MESSAGE = /HEIC photos and MOV videos \(the iPhone’s default formats\) can’t be used in triggers\. Convert the file to JPG, PNG or MP4/;
+const UNSUPPORTED_MESSAGE = /This file type can’t be used in triggers\. Use a PNG, JPG, GIF or WebP image, an MP4 or WebM video, or MP3, WAV or OGG audio\./;
 
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 try {
@@ -174,6 +181,49 @@ try {
     await page.getByText('Storage quota exceeded', { exact: true }).waitFor();
     assert.equal(await page.getByRole('dialog').isVisible(), true);
     await closeDialog(page);
+    // iPhone formats, SVG and types OBS can't play are refused before anything uploads.
+    state.rejectUpload = false;
+    const uploadsBefore = state.uploads.length;
+    await root.locator('.lf-head__actions').getByRole('button', { name: 'Upload media', exact: true }).click();
+    const picker = page.getByRole('dialog');
+    const refused = [
+      { name: 'IMG_0001.HEIC', type: 'image/heic', message: IPHONE_MESSAGE },
+      { name: 'IMG_0002.heic', type: '', message: IPHONE_MESSAGE, drop: true }, // Windows/Android: no type
+      { name: 'IMG_0003.MOV', type: 'video/quicktime', message: IPHONE_MESSAGE },
+      { name: 'IMG_0004.HEIF', type: 'image/heif', message: IPHONE_MESSAGE, drop: true },
+      { name: 'logo.svg', type: 'image/svg+xml', message: UNSUPPORTED_MESSAGE, drop: true },
+      { name: 'logo2.svg', type: 'image/svg+xml', message: UNSUPPORTED_MESSAGE },
+      { name: 'scan.tiff', type: 'image/tiff', message: UNSUPPORTED_MESSAGE },
+      { name: 'clip.avi', type: 'video/x-msvideo', message: UNSUPPORTED_MESSAGE }
+    ];
+    for (const file of refused) {
+      if (file.drop) await picker.locator('.lf-drop').evaluate(dropFile, { name: file.name, type: file.type, bytes: png.toString('base64') });
+      else await picker.locator('input[type=file]').setInputFiles({ name: file.name, mimeType: file.type, buffer: png });
+      await picker.getByRole('alert').filter({ hasText: file.message }).waitFor();
+      assert.equal(await picker.getByRole('alert').count(), 1, `${file.name}: one message`);
+      assert.equal(await picker.locator('.lf-drop strong').innerText(), 'Choose or drop a file', `${file.name} is not kept`);
+      assert.equal(await picker.locator('input[type=file]').getAttribute('aria-describedby'), 'upload-file-issue');
+      assert.match(await picker.locator('.lf-drop').getAttribute('class'), /lf-drop--error/);
+      assert.equal(await picker.locator('.lf-modal__footer .lf-btn--primary').isDisabled(), true, `${file.name}: upload stays disabled`);
+    }
+    assert.equal(state.uploads.length, uploadsBefore, 'refused files never reach the API');
+    // A supported file clears the message and uploads normally.
+    await picker.locator('input[type=file]').setInputFiles({ name: 'After_refusal.png', mimeType: 'image/png', buffer: png });
+    await picker.getByRole('alert').waitFor({ state: 'detached' });
+    assert.doesNotMatch(await picker.locator('.lf-drop').getAttribute('class'), /lf-drop--error/);
+    assert.equal(await picker.locator('input[type=file]').getAttribute('aria-describedby'), null);
+    await picker.locator('.lf-modal__footer .lf-btn--primary').click();
+    await picker.waitFor({ state: 'detached' });
+    assert.equal(state.uploads.length, uploadsBefore + 1);
+    // Reopening starts clean.
+    await root.locator('.lf-head__actions').getByRole('button', { name: 'Upload media', exact: true }).click();
+    await picker.locator('input[type=file]').setInputFiles({ name: 'IMG_0005.HEIC', mimeType: 'image/heic', buffer: png });
+    await picker.getByRole('alert').filter({ hasText: IPHONE_MESSAGE }).waitFor();
+    await closeDialog(page);
+    await root.locator('.lf-head__actions').getByRole('button', { name: 'Upload media', exact: true }).click();
+    assert.equal(await page.getByRole('dialog').getByRole('alert').count(), 0, 'message cleared on reopen');
+    await closeDialog(page);
+    console.log('PASS iPhone HEIC/HEIF/MOV, SVG, TIFF and AVI files refused with clear messages before upload.');
     assert.deepEqual(errors, []);
     await context.close();
     console.log('PASS uploads and trigger playback for all four media types, plus upload failure handling.');
@@ -198,6 +248,11 @@ try {
     await root.locator('.lf-head__actions').getByRole('button', { name: 'Upload media', exact: true }).click();
     assert.match(await page.getByRole('dialog').innerText(), /Image, GIF, audio or video/);
     await checkLayout(page, '.lf-modal--narrow', `${theme} ${width} upload`);
+    // The refusal message must stay readable (axe contrast) and fit on phones.
+    await page.getByRole('dialog').locator('input[type=file]').setInputFiles({ name: 'IMG_0006.HEIC', mimeType: 'image/heic', buffer: png });
+    await page.getByRole('dialog').getByRole('alert').filter({ hasText: IPHONE_MESSAGE }).waitFor();
+    await checkLayout(page, '.lf-modal--narrow', `${theme} ${width} upload refusal`);
+    await shot(page, `trigger-media-refused-${theme}-${width}`);
     await shot(page, `trigger-media-upload-${theme}-${width}`);
     await closeDialog(page);
     await root.getByRole('button', { name: 'Browse public library', exact: true }).click();
@@ -217,6 +272,10 @@ try {
     const { page, context } = await open(browser, { lang: 'es' });
     await page.locator('.lf-head__actions .lf-btn').first().click();
     assert.match(await page.getByRole('dialog').innerText(), /Imagen, GIF, audio o video/);
+    await page.getByRole('dialog').locator('input[type=file]').setInputFiles({ name: 'IMG_0007.MOV', mimeType: 'video/quicktime', buffer: png });
+    await page.getByRole('dialog').getByRole('alert').filter({ hasText: /Las fotos HEIC y los videos MOV \(los formatos predeterminados del iPhone\) no se pueden usar en triggers/ }).waitFor();
+    await page.getByRole('dialog').locator('input[type=file]').setInputFiles({ name: 'logo.svg', mimeType: 'image/svg+xml', buffer: png });
+    await page.getByRole('dialog').getByRole('alert').filter({ hasText: /Este tipo de archivo no se puede usar en triggers\. Usa una imagen PNG, JPG, GIF o WebP/ }).waitFor();
     await context.close();
   }
   {
@@ -224,5 +283,5 @@ try {
     assert.equal(await root.locator('.lf-head__actions button').count(), 0, 'upload/create remain permission gated');
     await context.close();
   }
-  console.log('PASS trigger media: PNG/GIF/WAV/WebM chooser/drop multipart uploads, all-type picker/save/test, image/GIF decoding, public-library creation, quota rejection, permissions, English/Spanish, 320/390/1280px dark/light layout and axe.');
+  console.log('PASS trigger media: PNG/GIF/WAV/WebM chooser/drop multipart uploads, all-type picker/save/test, image/GIF decoding, iPhone/SVG/unsupported refusals, public-library creation, quota rejection, permissions, English/Spanish, 320/390/1280px dark/light layout and axe.');
 } finally { await browser.close(); }

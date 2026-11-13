@@ -2,6 +2,26 @@ export type PlanTier = 'free' | 'premium' | 'pro';
 export type MediaScope = 'public' | 'private';
 export type MediaType = 'video' | 'audio' | 'image' | 'gif';
 export const SUPPORTED_TRIGGER_MEDIA_TYPES: ReadonlySet<MediaType> = new Set(['video', 'audio', 'image', 'gif']);
+
+// File types browsers report that both pass the API upload filter
+// (dimabot trigger.route.ts `acceptableMimeTypes`) and play in OBS.
+// iPhone HEIC/MOV and SVG are refused on purpose. Keep in sync with the API list.
+export const TRIGGER_UPLOAD_MIME_TYPES: ReadonlySet<string> = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp',
+  'video/mp4', 'video/webm',
+  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac'
+]);
+const IPHONE_UPLOAD_MIME_TYPES = new Set(['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence', 'video/quicktime']);
+// Windows and Android often report HEIC files with an empty type, so the extension counts too.
+const IPHONE_UPLOAD_EXTENSION = /\.(heic|heif|mov)$/i;
+
+export type TriggerUploadIssue = 'iphone' | 'unsupported';
+
+export function getTriggerUploadIssue(file: Pick<File, 'name' | 'type'>): TriggerUploadIssue | null {
+  const type = file.type.toLowerCase();
+  if (IPHONE_UPLOAD_MIME_TYPES.has(type) || IPHONE_UPLOAD_EXTENSION.test(file.name)) return 'iphone';
+  return TRIGGER_UPLOAD_MIME_TYPES.has(type) ? null : 'unsupported';
+}
 export type TriggersTab = 'library' | 'marketplace';
 
 export interface ApiEnvelope<T> {

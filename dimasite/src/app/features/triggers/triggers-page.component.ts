@@ -62,7 +62,9 @@ import {
   SUPPORTED_TRIGGER_MEDIA_TYPES,
   TriggerRecord,
   TriggerTestPayload,
-  UpdateTriggerRequest
+  TriggerUploadIssue,
+  UpdateTriggerRequest,
+  getTriggerUploadIssue
 } from './triggers.model';
 import { TriggersService } from './triggers.service';
 
@@ -202,6 +204,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
   readonly isUploadModalOpen = signal(false);
   readonly isDraggingUpload = signal(false);
+  readonly uploadFileIssue = signal<TriggerUploadIssue | null>(null);
   readonly uploadForm = signal<UploadFormState>({
     name: '',
     scope: 'private',
@@ -849,6 +852,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   openUploadModal(): void {
     if (!this.canUpload()) return;
     this.isDraggingUpload.set(false);
+    this.uploadFileIssue.set(null);
     this.uploadForm.set({
       name: '',
       scope: this.planTier() === 'free' ? 'public' : 'private',
@@ -865,6 +869,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
     this.isUploadModalOpen.set(false);
     this.isDraggingUpload.set(false);
+    this.uploadFileIssue.set(null);
     this.uploadForm.set({
       name: '',
       scope: this.planTier() === 'free' ? 'public' : 'private',
@@ -909,6 +914,15 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   private applyUploadFile(file: File | null): void {
+    // Refuse iPhone formats, SVG and other types OBS can't play before uploading anything.
+    const issue = file ? getTriggerUploadIssue(file) : null;
+    this.uploadFileIssue.set(issue);
+    if (issue) {
+      this.resetFileInput();
+      this.uploadForm.update((state) => ({ ...state, file: null }));
+      return;
+    }
+
     this.uploadForm.update((state) => ({
       ...state,
       file,

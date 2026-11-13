@@ -5697,6 +5697,8 @@
       "pickFile": "Choose or drop a file",
       "dropNow": "Drop the file here",
       "fileHint": "Image, GIF, audio or video · up to {{size}}",
+      "iphoneFormat": "HEIC photos and MOV videos (the iPhone’s default formats) can’t be used in triggers. Convert the file to JPG, PNG or MP4, then upload it.",
+      "unsupportedFormat": "This file type can’t be used in triggers. Use a PNG, JPG, GIF or WebP image, an MP4 or WebM video, or MP3, WAV or OGG audio.",
       "submit": "Upload",
       "uploading": "Uploading...",
       "successTitle": "Media uploaded",

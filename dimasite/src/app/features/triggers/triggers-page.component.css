@@ -1261,6 +1261,7 @@ button.lf-thumb:not(:disabled):hover {
 
 .lf-drop--dragging { border-style: solid; box-shadow: 0 0 0 3px var(--accent-soft); }
 .lf-drop--filled { border-style: solid; }
+.lf-drop--error { border-style: solid; border-color: var(--danger); }
 .lf-drop__input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .lf-drop__icon { font-size: 1.5rem; }
 .lf-drop strong { color: var(--fg); font-size: 0.95rem; overflow-wrap: anywhere; }

@@ -497,11 +497,13 @@
           class="lf-drop"
           [class.lf-drop--dragging]="isDraggingUpload()"
           [class.lf-drop--filled]="!!uploadForm().file"
+          [class.lf-drop--error]="!!uploadFileIssue()"
           (dragover)="handleUploadDragOver($event)"
           (dragleave)="handleUploadDragLeave($event)"
           (drop)="handleUploadDrop($event)"
         >
-          <input #uploadFileInput type="file" class="lf-drop__input" accept="image/*,video/*,audio/*" (change)="onUploadFileChange($event)" />
+          <input #uploadFileInput type="file" class="lf-drop__input" accept="image/*,video/*,audio/*"
+            [attr.aria-describedby]="uploadFileIssue() ? 'upload-file-issue' : null" (change)="onUploadFileChange($event)" />
           <lucide-icon class="lf-icon lf-drop__icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
           <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
           <span>
@@ -514,6 +516,11 @@
             }
           </span>
         </label>
+        @if (uploadFileIssue(); as issue) {
+          <p class="lf-error" id="upload-file-issue" role="alert">
+            {{ t(issue === 'iphone' ? 'triggers.upload.iphoneFormat' : 'triggers.upload.unsupportedFormat') }}
+          </p>
+        }
 
         <label class="lf-field">
           <span class="lf-label">{{ t('triggers.upload.nameLabel') }}</span>
