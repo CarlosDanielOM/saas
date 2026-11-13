@@ -79,8 +79,8 @@ loaded on demand). The arenas live in `dimasite/.../widgets/duel/quality-*` and 
 real alpha so OBS composites glows over the stream; without WebGL (OBS hardware acceleration off)
 it falls back to `high`. `configure` validates the value and keeps it when an older page omits it.
 
-Loser timeouts default to enabled for 60 seconds, preserving existing behavior.
-The widget allows disabling them or choosing 1–1,209,600 seconds. Disabling takes
+Loser timeouts are off by default (since 2026-11-13; channels created earlier keep their
+stored switch). Turned on, they last 60 seconds unless the widget sets 1–1,209,600 seconds. Disabling takes
 effect for an accepted battle too. No moderation/provider lookups occur when
 it is off. Streamers, editors, and the bot account are never timed out (editors
 duel with normal odds; the streamer fights enraged). A losing

@@ -82,7 +82,8 @@ export interface DuelRun {
   /** Whether the result feeds the leaderboard/rivalries (unset on older runs: overlay runs counted). */
   tracked?: boolean;
 }
-export const defaultSettings = (): DuelSettings => ({ enabled: true, timeoutEnabled: true, timeoutSeconds: 60, language: 'en', leaderboard: true, rivalries: true, rules: { ...DEFAULT_RULES }, quality: 'low' });
+/** Loser timeouts start off; a streamer turns them on in Widgets → Duel. */
+export const defaultSettings = (): DuelSettings => ({ enabled: true, timeoutEnabled: false, timeoutSeconds: 60, language: 'en', leaderboard: true, rivalries: true, rules: { ...DEFAULT_RULES }, quality: 'low' });
 /** Channels saved before tracking switches, rules and quality existed get the defaults. */
 export const normalizeSettings = (stored: Partial<DuelSettings>): DuelSettings => ({ ...defaultSettings(), ...stored, rules: { ...DEFAULT_RULES, ...(stored.rules ?? {}) } });
 /** Fields an older page doesn't send keep their current value instead of resetting. */
