@@ -8,6 +8,17 @@
 
 **A request to implement a change authorizes the complete delivery workflow: edit, validate in isolation, clean up temporary resources, deploy the affected services, and verify production.** Proceed without asking again for routine builds or targeted deployment after validation passes. Respect narrower requests such as review-only, plan-only, or do-not-deploy. Destructive data changes or infrastructure changes outside the requested scope require separate authorization.
 
+### Host resource safety (do not overload production)
+
+This checkout is on the live production server: 16 CPU cores, about 31 GB RAM, and no swap. Overload crashed live services on 2026-11-07 and 2026-11-13; the host runs the bot, API, overlay websockets, cron workers, databases, and embeddings server.
+
+1. Run only one heavy job at a time across the task. Heavy jobs include Angular/Astro builds and dev servers (`ng build`, `ng serve`, `saas-ops build`, `saas-ops preview`), Docker image builds, `saas-ops verify`, Playwright/Chromium, ffmpeg batches, and large test suites. Never start one while your own preview, watch build, or browser is running; stop the preview before `saas-ops build`.
+2. Before each heavy job, check `uptime`, `free -m`, and `ps -eo pid,etime,pcpu,rss,args --sort=-pcpu | head`. If load average is above about 8, available memory is below about 8 GB, or another agent's build, preview, or browser is running, wait or finish with what you have; do not stack jobs. Cron builds still require at least 12 GiB free memory. `/tmp` is RAM-backed tmpfs; large scratch files consume memory.
+3. Cap browser checks, local builds, and `saas-ops build|verify|preview site|admin|docs` with `systemd-run --scope --quiet -p MemoryMax=<N>G -p CPUQuota=<P>% nice -n 10 <command>`. Default to 2G and 200% for browser checks, and 6G and 400% for local Angular builds and site/admin/docs build, verify, and preview commands (a capped `saas-ops build site` finishes in about 80 seconds). Children inherit the cap; exceeding it kills the capped command. `saas-ops` caps only test containers, not these host processes. Use one browser instance and no parallel Chromium workers.
+4. Never use watch mode such as `ng build --watch`. Stop dev servers, browsers, watchers, and background jobs before finishing, handing off, or on interruption. When taking over or resuming a task, first find and stop that task's leftover preview, build, or browser by PID with SIGTERM. A background `saas-ops preview` ignores SIGINT: find it with `ss -ltnp | grep :<port>` or `ps -eo pid,args | grep 'saas_ops.py preview'`, then run `kill -TERM <pid>` on the `saas_ops.py preview` process so its normal cleanup removes the copy. Do not use `pkill -f`, which can kill your shell.
+5. Delegated agents and reviewers are read-only unless their brief explicitly assigns a build or check. Only one agent in a task may run heavy jobs at a time.
+6. If load exceeds 16, available memory falls below 4 GB, or cron workers log `Cron worker process exited`, immediately stop your own heavy processes and report the overload. Never kill another agent's or a production process.
+
 ### Read-only production diagnostics
 
 Agents may freely use **read-only** inspection commands against live services when investigating issues — no deployment workflow or extra authorization is required. This includes:
@@ -29,7 +40,7 @@ The helper snapshots current project files, tests a candidate, promotes the exac
 ### Backend and container services
 
 1. Identify affected services from the implementation and its consumers, then inspect their Dockerfiles, commands, mounts, and dependencies.
-2. Build a candidate image with a unique temporary tag and run a disposable container using the intended runtime command. Use a separate test configuration, private test network, disposable data, and mocks or test dependencies as needed. Bind any preview ports to `127.0.0.1` on unused ports. Limit CPU/memory appropriately for the host's available capacity.
+2. Build a candidate image with a unique temporary tag and run a disposable container using the intended runtime command. Use a separate test configuration, private test network, disposable data, and mocks or test dependencies as needed. Bind any preview ports to `127.0.0.1` on unused ports. Limit CPU/memory as described in Host resource safety above.
 3. Do not blindly reuse production Compose configuration for testing: it contains fixed container names, production networks, credentials, and volumes. A different Compose project name alone does not isolate those resources. Test containers must not consume live queues, run duplicate bots/workers, mutate production databases, send real messages, or trigger billing/webhooks. Inspect initialization side effects before starting them.
 4. Check startup/readiness and exercise the changed behavior, including relevant failure cases. A successful image build or a container that stays running is not sufficient functional verification. For example, a TTS custom-ID change should exercise synthesis with supported custom IDs and invalid/missing IDs using disposable fixtures. If runtime verification is blocked, report the specific gap; do not label a build-only check as a passed runtime test or deploy an unverified change.
 5. Stop and remove task-owned test containers, networks, and disposable volumes after testing, including after failures. Remove temporary images when no longer needed. Never use broad Docker prune commands or remove unrelated resources.
@@ -41,9 +52,9 @@ Fully verify each new or changed worker against the exact candidate image. Retes
 
 ### Frontend and static content
 
-- Use a development preview before deployment: Angular `ng serve` with the project's development configuration, or Astro's development server. Bind previews to loopback on an unused port. Inspect mobile and desktop layouts and exercise changed interactions. A preview may still call production APIs: inspect its environment/proxy configuration and use mocks or test accounts/data for mutating flows.
+- Use a development preview before deployment: Angular `ng serve` with the project's development configuration, or Astro's development server. Bind previews to loopback on an unused port. Inspect mobile and desktop layouts and exercise changed interactions. A preview may still call production APIs: inspect its environment/proxy configuration and use mocks or test accounts/data for mutating flows. Stop the preview before `saas-ops build`; run the preview, build, and checks one at a time under the caps above.
 - Use `scripts/saas-ops build site|admin|docs` to create the production bundle outside the live mount, then verify that candidate with a behavior check.
-- Once validation passes, use `deploy <run-id>` to back up and publish the tested bundle, verify the live page/assets, and stop the preview. The helper replaces individual files with HTML last, preserves the mount directory, and restores the previous bundle on failure. This is not a whole-site atomic switch.
+- Once validation passes, use `deploy <run-id>` to back up and publish the tested bundle and verify the live page/assets. The helper replaces individual files with HTML last, preserves the mount directory, and restores the previous bundle on failure. This is not a whole-site atomic switch.
 - `dimafx` client files are served directly from the checkout. Prepare and preview those edits in an isolated copy/worktree outside the served directory, then apply the validated files as the deployment step.
 
 ### Live deployment map
