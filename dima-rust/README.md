@@ -1,8 +1,6 @@
 # dima-rust
 
-**Migration status:** The Rust migration is paused until further notice; deployed Rust workers remain accepted and running, and Rust remains a long-term goal. See the root [Rust migration status](../AGENTS.md#rust-migration-status) for runtime selection and scope.
-
-`dima-rust` is a Rust library for incremental migrations of selected worker and server components. The current dual-supervisor cron release is `cron-be76d96c7a39` / image `sha256:f5ccef5ad569484a318da211718d5b903c061913944a9ac8345082fd0ef24c05`; Node PID 1 owns TypeScript workers and starts one Rust index for seven native workers in the same `dima-cron` container. Its build, eight exact-image supervisor checks, four production topology samples, telemetry readbacks, and cleanup passed. Rollback with `scripts/saas-ops rollback cron-be76d96c7a39` restores `cron-ea507552f33d` / image `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`. See [telemetry-counter-release.md](../migration-notes/telemetry-counter-release.md) for current release evidence and [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md) for lifecycle details.
+**Status:** Since 2026-11-13 this project is not built, tested, or deployed by the cron workflow. Production workers are TypeScript. The directory is retained as reference pending the owner's decision; its library utilities were never used in production. See the [return record](../migration-notes/typescript-workers-return.md).
 
 ## Opt-in plan-cache fence
 
@@ -167,7 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Replace the example paths with the files the executable is configured to load. The library itself does not load environment files.
 
-Seven scheduled responsibilities have accepted Rust implementations. Former TypeScript selectors are retired where they existed; dashboard API/request-time behavior, queue producers, and shared TypeScript helpers remain active. Failed native children restart without runtime fallback.
+Seven scheduled responsibilities have historical Rust implementations; their production entrypoints are now TypeScript.
 
 Check the library from this directory using the commands below. On the production VPS, every Cargo command listed is subject to the [production-host Rust build and test policy](AGENTS.md#production-host-rust-build-and-test-policy); do not run these commands directly on the host:
 
@@ -179,9 +177,7 @@ cargo build --locked
 cargo test --locked
 ```
 
-Build checks and default Rust tests do not require database or cache services; MongoDB and Redis integration tests use external fixtures and are ignored by default. The stream, raid, baseline, roulette, AI receipts, raid-sessions, and dashboard checks are documented in the migration notes and [`ops/README.md`](../ops/README.md). Run service-backed checks only against isolated disposable data. Production artifacts are built and staged through `scripts/saas-ops`; `Cargo.lock` is tracked and `--locked` ensures the checked graph matches it. The dashboard binary declares `--help`, `--dry-run`, `--once`, `--telemetry-json`, `--database NAME`, and repeatable `--env-file PATH`; this interface was verified in prior accepted releases.
-
-The helper keeps Cargo registry and dependency artifacts in a private persistent cache outside the checkout. The deployed candidate adds the Rust index as an eighth binary under the existing capped build policy; see [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md) for accepted release evidence and [worker-shared-utils.md](../migration-notes/worker-shared-utils.md) for the prior accepted build. The stream fixture remains a manual parity/benchmark tool and is not staged in routine cron candidates. Cache reuse reduces compile work only and does not establish Rust worker RAM or CPU savings.
+These commands describe historical library checks, not a current cron release requirement. Use isolated disposable data for any separately authorized service-backed checks; `Cargo.lock` is tracked. The dashboard binary's interface is retained as historical reference.
 
 ## Opt-in shared logger
 
@@ -219,4 +215,4 @@ The logger preserves the TypeScript logger's UTC timestamp formatting, `logger:<
 
 ## Raid change-driven release notice
 
-Raid change-driven release `cron-2ddd455fdd1f` remains accepted historical evidence: its then-current four worker suites and 124.802-second production watch passed. The historical five-worker image was `cron-7b8a6c88303d`; see [migration-notes/raid-change-driven.md](../migration-notes/raid-change-driven.md) and [migration-notes/ai-usage-receipts.md](../migration-notes/ai-usage-receipts.md) for those releases. The [scheduling release record](../migration-notes/worker-backlog-scheduling.md) documents its historical image and rollback pointer; current cron status is in [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md).
+Raid change-driven release `cron-2ddd455fdd1f` remains accepted historical evidence: its then-current four worker suites and 124.802-second production watch passed. The historical five-worker image was `cron-7b8a6c88303d`; see [migration-notes/raid-change-driven.md](../migration-notes/raid-change-driven.md) and [migration-notes/ai-usage-receipts.md](../migration-notes/ai-usage-receipts.md) for those releases. The [scheduling release record](../migration-notes/worker-backlog-scheduling.md) documents its historical image and rollback pointer; current cron status is in [the return record](../migration-notes/typescript-workers-return.md).

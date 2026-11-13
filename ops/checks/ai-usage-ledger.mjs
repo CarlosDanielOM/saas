@@ -98,6 +98,7 @@ listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean
 assert.equal(listCalls.length, 1, 'Mongo coverage should avoid a second Polar history download');
 
 const tiers = [['free', 30], ['premium', 60], ['pro', 90]];
+const queuedAt = new Date().toISOString();
 for (const [tier, days] of tiers) {
   const channelID = `queue-${tier}`;
   const customerId = `${days}`.padStart(8, '0') + '-1111-4111-8111-111111111111';
@@ -105,35 +106,22 @@ for (const [tier, days] of tiers) {
     polar_sh_customer_id: customerId, accounts: account(channelID) });
   await redis.rPush('cron:ai-usage-receipts:queue', JSON.stringify({
     channelID, customerId, id: `queued-${tier}`, requestId: `request-${tier}`,
-    occurredAt: '2026-09-19T12:00:00.000Z', entryKind: 'usage', category: 'tts',
+    occurredAt: queuedAt, entryKind: 'usage', category: 'tts',
     operation: 'synthesize', provider: 'fish', model: null, quantity: 100,
     unit: 'characters', credits: 150, resourceType: 'speech', resourceId: null, itemized: true,
   }));
 }
-// The TypeScript receipt consumer entrypoint was retired on 2026-10-21. This
-// pre-migration API check consumes through the same shared queue and ledger
-// utilities, keeping its retention/aggregate assertions meaningful. Native
-// consumer runtime coverage lives in ops/checks/ai-usage-receipts-rust.mjs.
-const { USAGE_QUEUES, claimUsageJob, completeUsageJob } = await import('/app/dist/utils/ai_usage_queue_health.js');
-const { parseQueuedAiUsageReceipt, persistAiUsageReceipt: persistQueuedReceipt } =
-  await import('/app/dist/utils/ai_usage_ledger.js');
-for (let raw = await claimUsageJob(redis, USAGE_QUEUES[0]); typeof raw === 'string' && raw;
-  raw = await claimUsageJob(redis, USAGE_QUEUES[0])) {
-  const receipt = parseQueuedAiUsageReceipt(raw);
-  assert(receipt, 'queued receipt must match the shared ledger contract');
-  const owner = await UsersSchema.findOne({
-    accounts: { $elemMatch: { type: 'twitch', id: receipt.channelID } }
-  }).select('plan_tier').lean().exec();
-  const tier = owner?.plan_tier === 'pro' ? 'pro' : owner?.plan_tier === 'premium' ? 'premium' : 'free';
-  await persistQueuedReceipt(receipt, tier);
-  await completeUsageJob(redis, USAGE_QUEUES[0], raw);
-}
+// Consume queued receipts through the packaged worker, including its lock,
+// plan lookup, ledger persistence and queue acknowledgement.
+const receiptWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+const receiptOutput = await runWorker(receiptWorkerEntry);
+assert.match(receiptOutput, /AI usage receipt batch completed/);
 for (const [tier, days] of tiers) {
   const receipt = await AiUsageReceiptSchema.findOne({ entryId: `queued-${tier}` }).lean();
   assert.equal(receipt.retentionTier, tier);
   assert.equal(
     receipt.expiresAt.toISOString(),
-    new Date(new Date('2026-09-19T12:00:00.000Z').getTime() + Number(days) * 86400000).toISOString(),
+    new Date(new Date(queuedAt).getTime() + Number(days) * 86400000).toISOString(),
   );
 }
 assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 0);

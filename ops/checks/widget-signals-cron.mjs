@@ -1,4 +1,7 @@
-// saas-ops only (cron target), with the cron-supervisors fixtures (see ops/README.md).
+// saas-ops only (cron target), with shoutout-ast-fixtures keeping unrelated workers inert.
+// scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis \
+//   --test-env ops/checks/shoutout-ast-fixtures/test-env.json \
+//   --fixtures ops/checks/shoutout-ast-fixtures --check ops/checks/widget-signals-cron.mjs
 // Timers run in dima-cron. A timer body with $(widget.signal) must answer `Error: widget_signal_context_required`
 // (timers have no live Twitch authority) and never publish anything on the Dragonfly `widget-feed` channel.
 import assert from 'node:assert/strict';

@@ -43,9 +43,9 @@ scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis \
 
 ## Bot and cron admission consumers
 
-`admission.ts` is imported by `utils/ast_parser/functions/pet.functions.ts`. Bot authored command evaluation reaches it through `handlers/commands.handler.ts`; cron event actions reach it through `domain_events/chat_announcement_events.ts` and `workers/domain_events.worker.ts`. These producer targets must receive the schema/settings/reservation gate. The runtime queue, private-audio adapter and Studio executor remain API-owned; no native worker implementation, dependency or scheduling behavior changed.
+`admission.ts` is imported by `utils/ast_parser/functions/pet.functions.ts`. Bot authored command evaluation reaches it through `handlers/commands.handler.ts`; cron event actions reach it through `domain_events/chat_announcement_events.ts` and `workers/domain_events.worker.ts`. These producer targets must receive the schema/settings/reservation gate. The runtime queue, private-audio adapter and Studio executor remain API-owned.
 
-Use the established pet producer startup mocks for bot/cron, including the narrowly scoped cron boot hook which keeps unrelated workers inert in isolation (the native workers are unchanged). Stage their extra files, retain their original test environment, and select the DIMA-032 behavior check:
+Use the established pet producer startup mocks for bot/cron, including the narrowly scoped cron boot hook which keeps unrelated workers inert in isolation. Stage their extra files, retain their original test environment, and select the DIMA-032 behavior check:
 
 ```bash
 cp ops/checks/pet-producer-fixtures/providers.mjs "$DIMA032_FIXTURES/providers.mjs"
@@ -57,7 +57,7 @@ scripts/saas-ops verify bot-<run-id> --dependency mongo --dependency redis \
   --test-env ops/checks/pet-producer-fixtures/bot-env.json --fixtures "$DIMA032_FIXTURES" \
   --check ops/checks/dima032-consumers.mjs
 scripts/saas-ops plan cron
-scripts/saas-ops build cron --rust-cpus 3 --rust-memory-gib 4
+scripts/saas-ops build cron
 scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis \
   --test-env ops/checks/pet-producer-fixtures/cron-env.json --fixtures "$DIMA032_FIXTURES" \
   --check ops/checks/dima032-consumers.mjs
@@ -65,7 +65,7 @@ scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis \
 
 Do not reuse this directory for the API after replacing its preload; create a fresh staged copy if returning to API verification. `dima032-consumers.mjs` runs real packaged AST→admission in separate Node producer processes using an empty local peer map and actual disposable Mongo. Both chat-command and Twitch-event authorities are blocked by the pending normal-TTS reservation. Concurrent independent producers race the real Mongo CAS after release; exactly one wins. Disabling the independent source returns `pet_source_disabled`. The same check now invokes the separate compiled `stream.ended` consumer with real `clearSpeechFiles`, actual enqueue/pop/reset Lua, and old/new files in one random fixture-owned numeric channel under the candidate's actual per-channel speech directory. A delayed post-cleanup hint lets it prove old queue/payload/processing/files are gone and a new enqueue/file survives that boundary. It removes only that channel's Redis namespace and directory. No provider is invoked; compiled AST mocks supplement these actual paths.
 
-The parent owns candidate execution, release and production startup/readiness for API/bot/cron. Cron replacement restarts its complete process tree: check all existing worker health after deployment, without expanding isolated behavior retesting to unchanged Rust workers. Preserve each run's rollback artifacts and use helper cleanup on every candidate. Remove only this task's staged directory when no longer needed. No push or deployment was performed by the API worker.
+The parent owns candidate execution, release and production startup/readiness for API/bot/cron. Cron replacement restarts its complete process tree: check all existing worker health after deployment, without expanding isolated behavior retesting to unchanged workers. Preserve each run's rollback artifacts and use helper cleanup on every candidate. Remove only this task's staged directory when no longer needed. No push or deployment was performed by the API worker.
 
 
 ## Independent review regression extensions

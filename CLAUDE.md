@@ -155,7 +155,7 @@ dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
 
 ### How It Works
 
-- `cron.index.ts` is a lightweight supervisor.
+- `cron.index.ts` is a lightweight Node supervisor with 26 TypeScript worker definitions.
 - It starts all registered workers, monitors them, and **self-heals** by restarting only the failed worker (not the entire process).
 - Workers run in the **background**, outside the main Twitch message loop.
 
@@ -179,10 +179,9 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 
 ### How to Add a New Worker
 
-1. Create `dimabot/src/workers/your-feature.worker.ts`
-2. Export a worker object with `name`, `schedule` (cron expression), and `run()` function.
-3. Register it in the `WORKERS` array inside `dimabot/src/workers/cron.index.ts`.
-4. The supervisor will automatically start, monitor, and heal it.
+1. Create `dimabot/src/workers/your-feature.worker.ts` and call `runWorker` from `worker_loop.ts` with its setup, bounded pass, pacing, failure policy, and any needed health probe or watchdog.
+2. Register its name, source entry, and compiled entry in `WORKERS` in `dimabot/src/workers/cron.index.ts`.
+3. Verify the worker's behavior against the exact candidate image.
 
 **Do not** split cron work into separate containers unless resource isolation is explicitly required.
 

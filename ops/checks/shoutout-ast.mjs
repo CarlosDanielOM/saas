@@ -1,5 +1,5 @@
-// Exact-image behavior check. Stage shoutout-ast-fixtures/*, native-cron-fixture.mjs
-// and shoutout-ast-production.mjs (as production-smoke.mjs). Use disposable
+// Exact-image behavior check. Stage shoutout-ast-fixtures/* and
+// shoutout-ast-production.mjs (as production-smoke.mjs). Use disposable
 // Mongo/Redis; all provider traffic is intercepted by the preload.
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
@@ -32,11 +32,11 @@ if (process.env.SAAS_TARGET !== 'cron') {
   let rows = [];
   for (let i = 0; i < 60; i++) {
     try { rows = readFileSync(`${root}/cron.jsonl`, 'utf8').trim().split('\n').map(JSON.parse); } catch {}
-    if (rows.some(row => row.worker === 'timer' && row.actualTypescript) && rows.some(row => row.native && row.worker === 'roulette-completion')) break;
+    if (rows.some(row => row.worker === 'timer' && row.actualTypescript) && rows.some(row => row.actualTypescript && row.worker === 'roulette-completion')) break;
     await delay(100);
   }
   assert.ok(rows.some(row => row.worker === 'timer' && row.actualTypescript), 'normal cron starts real timer consumer');
-  assert.ok(rows.some(row => row.native && row.worker === 'roulette-completion'), 'normal cron starts native owner/child');
+  assert.ok(rows.some(row => row.actualTypescript && row.worker === 'roulette-completion'), 'normal cron starts real roulette completion worker');
 }
 
 await getMongoDBConnection('shoutout-ast-check');

@@ -46,7 +46,7 @@ if (supervisor || dispatcher) {
       && options?.env?.CRON_WORKER_NAME === 'domain-events');
     const child = real ? original.spawn(command, args, options)
       : original.spawn(process.execPath, ['-e', inert], { ...options, env: { ...options?.env, NODE_OPTIONS: '' } });
-    record({ type: 'spawn', real, pid: child.pid, ppid: process.pid, command, args, worker: options?.env?.CRON_WORKER_NAME || 'native-index' });
+    record({ type: 'spawn', real, pid: child.pid, ppid: process.pid, command, args, worker: options?.env?.CRON_WORKER_NAME });
     return child;
   };
   boundary.fork = (modulePath, args, options) => {

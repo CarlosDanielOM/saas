@@ -1,22 +1,21 @@
 # Rust worker migration notes
 
-This directory indexes Rust worker migrations, their source reuse, remaining TypeScript ownership, validation evidence, and rollback limits. The current deployment status is summarized in the table; detailed release evidence lives in each migration record.
-
-**Migration status:** The ongoing Rust migration is paused until further notice; accepted deployed Rust workers continue running. Rust remains a long-term goal, while new work chooses TypeScript or Rust case by case based on cost, scope, and delivery needs. See the root [Rust migration status](../AGENTS.md#rust-migration-status).
+This directory records historical Rust migrations and related library work. The seven cron responsibilities returned to TypeScript on 2026-11-13; see [typescript-workers-return.md](typescript-workers-return.md). The per-worker Rust records below are historical, not current deployment instructions.
 
 | Migration | Status | Canonical record | Technical reference |
 | --- | --- | --- | --- |
-| Stream activity | Accepted in pre-retirement run `cron-7b8a6c88303d`; its six-group exact-image suite and combined production watch passed. | [stream-activity.md](stream-activity.md) | [Projector, fixtures, and benchmarks](../dima-rust/STREAM_ACTIVITY.md) |
-| Raid analytics | Current change-driven refresh is active and accepted; its 20-group suite and 124.802-second change-driven watch passed on `cron-2ddd455fdd1f`. The five-worker follow-up run also passed the change-driven raid suite and combined watch. | [raid-change-driven.md](raid-change-driven.md) | [Build, verification, and release evidence](../ops/README.md#current-raid-analytics-behavior-check-and-release) |
-| Follow-defense baseline | Accepted in pre-retirement run `cron-7b8a6c88303d`; its 11-group exact-image suite and combined production watch passed. | [follow-defense-baseline.md](follow-defense-baseline.md) | [Build, verification, and rollout](../ops/README.md#follow-defense-baseline-rust-worker) |
-| Roulette completion | Scheduling update accepted in `cron-9ff771d91cda`; the earlier 13-group behavior and production acceptance remain in pre-retirement run `cron-7b8a6c88303d`. | [roulette-completion.md](roulette-completion.md) | [Build and candidate verification](../ops/README.md#roulette-completion-rust-worker) |
-| AI usage receipts | Scheduling update accepted in `cron-9ff771d91cda`; the earlier 18-group worker acceptance remains in `cron-7b8a6c88303d`. | [ai-usage-receipts.md](ai-usage-receipts.md) | [Build and candidate verification](../ops/README.md#ai-usage-receipts-rust-worker) |
-| TypeScript worker entrypoint retirement | Accepted on run `cron-d02bf5a387d5` after all six exact-image checks (74 groups), production watch, analytics readback, container comparison, and cleanup passed. | [typescript-worker-retirement.md](typescript-worker-retirement.md) | [Archive and restore boundary](../archives/typescript-workers/2026-10-21/README.md) |
-| Raid sessions | Candidate `cron-7a8ca7924412` passed eight exact-image checks (102 groups) and production acceptance. | [raid-sessions.md](raid-sessions.md) | [Native behavior check and release workflow](../ops/README.md#raid-sessions-rust-worker) |
-| AI receipts and roulette backlog scheduling | Accepted in `cron-9ff771d91cda`; both focused suites, six other worker/retirement suites, and the coordinated email check passed (120 groups across nine checks), followed by deployment, production acceptance, readbacks, and cleanup. | [worker-backlog-scheduling.md](worker-backlog-scheduling.md) | [Scheduling and pacing review policy](../AGENTS.md#scheduling-and-pacing-review-for-worker-migrations) |
-| Dashboard activity and insights | Accepted historical release `cron-bf400acbc441`; current rollback baseline is `cron-2056ce9d790c`. | [dashboard-activity.md](dashboard-activity.md) | [Fixture scope and invocation](../ops/checks/dashboard-activity-rust-fixtures/README.md) |
-| Shared Rust worker utilities | Accepted in prior run `cron-2056ce9d790c`; this remains the rollback target for the current release. | [worker-shared-utils.md](worker-shared-utils.md) | [Prior accepted build and release](../ops/README.md#rust-worker-binaries-in-the-cron-target) |
-| Dual cron supervisors | Accepted run `cron-7629f95f5dfd`; the 32-sample production watch, final readbacks, and cleanup passed. Rollback target: `cron-2056ce9d790c`. | [dual-cron-supervisors.md](dual-cron-supervisors.md) | [Accepted release and fixture commands](../ops/README.md#dual-cron-supervisors-accepted-release) |
+| TypeScript workers returned | Current source | [typescript-workers-return.md](typescript-workers-return.md) | [Cron workflow](../ops/README.md#cron-workers) |
+| Stream activity | Historical | [stream-activity.md](stream-activity.md) | [Projector](../dima-rust/STREAM_ACTIVITY.md) |
+| Raid analytics | Historical | [raid-change-driven.md](raid-change-driven.md) | [Original migration](raid-analytics.md) |
+| Follow-defense baseline | Historical | [follow-defense-baseline.md](follow-defense-baseline.md) | |
+| Roulette completion | Historical | [roulette-completion.md](roulette-completion.md) | |
+| AI usage receipts | Historical | [ai-usage-receipts.md](ai-usage-receipts.md) | |
+| TypeScript entrypoint retirement | Historical | [typescript-worker-retirement.md](typescript-worker-retirement.md) | [Archive](../archives/typescript-workers/2026-10-21/README.md) |
+| Raid sessions | Historical | [raid-sessions.md](raid-sessions.md) | |
+| Backlog scheduling | Historical | [worker-backlog-scheduling.md](worker-backlog-scheduling.md) | |
+| Dashboard activity | Historical | [dashboard-activity.md](dashboard-activity.md) | |
+| Shared Rust worker utilities | Historical | [worker-shared-utils.md](worker-shared-utils.md) | |
+| Dual cron supervisors | Historical | [dual-cron-supervisors.md](dual-cron-supervisors.md) | |
 | Permission core | Opt-in Rust library compile and parity verification passed; no live callers or production release. | [permission-core.md](permission-core.md) | 3,681 source-backed parity cases |
 | AST syntax core | Pure `ast-syntax` contract finalized; 1,200-case corpus and 109 test executions passed. Compilation-only microbenchmark is mixed and does not establish production latency. No TypeScript caller wiring or deployment. | [ast-syntax-core.md](ast-syntax-core.md) | [Benchmark artifact](../dima-rust/benchmarks/ast-syntax-2026-10-25.json) |
 | AST evaluator | Accepted utility-only scope: quality, benchmark, bounded R2 review, and cleanup receipts complete; 14/15 prepared medians were lower for Rust. No callers or evaluator deployment. | [ast-evaluator.md](ast-evaluator.md) | [Full 15-workload medians and receipts](../dima-rust/benchmarks/ast-evaluator-2026-10-25.json) |
@@ -29,12 +28,3 @@ This directory indexes Rust worker migrations, their source reuse, remaining Typ
 | Plan-cache fence utility | Accepted opt-in library scope: capped quality and source parity plus 135 disposable Dragonfly scenarios. No caller adoption, worker-profile change, or deployment; mutation deadline expiry was not fault-injected. | [plan-cache-fence.md](plan-cache-fence.md) | [Rust API](../dima-rust/src/utils/plan_cache_fence.rs) |
 
 TypeScript util foundations (library only, not deployed) are tracked separately in [ts-util-foundations.md](ts-util-foundations.md): approved crates, parity evidence, known differences, and the wrappers still to build.
-
-The stream fixture benchmarks measure that worker only. They do not predict raid analytics performance. The shared-query experiment was deferred after its controlled trials showed no consistent CPU improvement. Run `cron-2ddd455fdd1f` deployed and accepted the raid change-driven refresh; run `cron-7b8a6c88303d` then deployed all five workers after their exact-image suites passed. Its 190.624-second production watch, analytics readback, and cleanup also passed. Keep runtime comparisons separate from production observations, and do not claim a general runtime gain from the short controlled fixtures.
-
-The follow-defense baseline record describes the TypeScript source contract and the scheduler/health upgrade deployed in `cron-240af282cb85`. All three same-candidate runtime suites passed; the bounded production acceptance watch passed. The baseline-only candidate `cron-d33c17d71dd8` passed 11 baseline behavior groups but was cleaned up without deployment after stream health joined scope. The combined candidate passed Rust compilation at a 4 GiB cap. Its 24-channel baseline fixture drain took 4,022 ms, but those synthetic channels had no matching Mongo history; this is not representative full production load. The prior source-imposed 23-second wait is not a measured TypeScript throughput result. The earlier RSS observations were short and unmatched; no CPU or throughput gain is claimed. The raid and stream release evidence above is historical and does not establish the status of this worker.
-
-
-## Raid change-driven release notice
-
-Raid analytics release `cron-2ddd455fdd1f` is deployed and accepted. All four exact-image worker suites passed, as did the 124.802-second production acceptance watch. The rollback target is `cron-99f8d5165ff2` (image `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`). See [raid-change-driven.md](raid-change-driven.md).

@@ -9,7 +9,7 @@
 - Twitch EventSub and stream activity handling
 - AI personality, memory, moderation, and other model-backed features using the providers configured for each feature
 - Text-to-speech and media services
-- Scheduled TypeScript workers and accepted native Rust workers supervised within the existing cron service
+- Scheduled TypeScript workers supervised within the existing cron service
 - Dragonfly-compatible caching, MongoDB persistence, and S3-compatible media storage
 
 The backend uses Node.js 24 in its Docker image. Twitch chat messages and other subscribed events enter through EventSub. Model and provider choices depend on the feature and its runtime configuration; the public docs assistant, for example, uses MiniMax.
@@ -32,7 +32,7 @@ npm run test-bot
 
 ## Cron workers
 
-The existing `dima-cron` service has a TypeScript supervisor and a Rust index in the same container. Each supervisor owns and restarts its own worker children. Scheduled TypeScript worker definitions are registered in `src/workers/cron.index.ts`; native workers are registered in `../dima-rust/src/supervisor/registry.rs`. Do not add a second cron service. See the cron architecture and current accepted release details in the root [`AGENTS.md`](../AGENTS.md#cron-workers-architecture-important).
+The `dima-cron` service runs one Node supervisor, `src/workers/cron.index.ts`, which registers 26 TypeScript worker definitions and restarts failed children. See the [cron architecture](../AGENTS.md#cron-workers-architecture-important) and [TypeScript return record](../migration-notes/typescript-workers-return.md).
 
 ## Further backend guidance
 

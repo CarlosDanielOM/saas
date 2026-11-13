@@ -16,15 +16,15 @@ const iso = (age = 0) => new Date(Date.now() - age).toISOString();
 
 function fixture(state, query) {
   const at = iso(), previous = iso(10000), stale = iso(180000);
-  const g = (kind, name, value, extra = {}) => ({ service: 'cron', kind, name: `stream_activity_rust.${name}`, channel: '', count: 1,
+  const g = (kind, name, value, extra = {}) => ({ service: 'cron', kind, name: `stream_activity.${kind === 'runtime' ? 'worker.' : ''}${name}`, channel: '', count: 1,
     average: value, p50: value, p95: value, p99: value, errors: 0, max: value, lastAt: at, lastValue: value, ...extra });
   const rows = [g('runtime', 'rss_bytes', 24e6), g('runtime', 'cpu_cores', .05),
     g('queue_run', 'project_batch', 100, { count: 2, errors: 1 }),
     { ...g('runtime', 'rss_bytes', 48e6), service: 'api', name: 'index.rss_bytes' },
-    { ...g('worker', 'health_query', 1), name: 'raid_analytics_rust.health_query' },
-    { ...g('worker', 'backlog_channels', 0), name: 'raid_analytics_rust.backlog_channels' },
-    { ...g('worker', 'health_query', 1), name: 'follow_defense_baseline_rust.health_query' },
-    { ...g('worker', 'backlog_channels', 6), name: 'follow_defense_baseline_rust.backlog_channels' }];
+    { ...g('worker', 'health_query', 1), name: 'raid_analytics.health_query' },
+    { ...g('worker', 'backlog_channels', 0), name: 'raid_analytics.backlog_channels' },
+    { ...g('worker', 'health_query', 1), name: 'follow_defense_baseline.health_query' },
+    { ...g('worker', 'backlog_channels', 6), name: 'follow_defense_baseline.backlog_channels' }];
   const scenario = state.scenario;
   if (scenario !== 'legacy') {
     rows.push(g('worker', 'health_query', scenario === 'failed' || scenario === 'failed-no-success' ? 0 : scenario === 'mixed' ? .5 : 1,
@@ -42,7 +42,7 @@ function fixture(state, query) {
     if (['failed', 'failed-no-success'].includes(scenario)) rows.push(g('worker', 'health_errors', 1, { errors: 1 }));
   }
   if (scenario === 'health-only') {
-    for (let i = rows.length - 1; i >= 0; i--) if (rows[i].kind === 'runtime' && rows[i].name.startsWith('stream_activity_rust.')) rows.splice(i, 1);
+    for (let i = rows.length - 1; i >= 0; i--) if (rows[i].kind === 'runtime' && rows[i].name.startsWith('stream_activity.')) rows.splice(i, 1);
   }
   const service = query.get('service');
   return { minutes: 60, generatedAt: at, lastAt: at, http: summary, chat: summary, timeline: [], groups: rows.filter(r => !service || r.service === service) };
@@ -230,7 +230,7 @@ try {
     }
     await change('failed', 'activity check failed');
     await page.getByRole('button', { name: 'Queues', exact: true }).click();
-    const queue = page.locator('.obs-queue').filter({ hasText: 'Stream activity rust' });
+    const queue = page.locator('.obs-queue').filter({ hasText: 'Stream activity' });
     await queue.waitFor();
     assert.equal(await queue.locator('.obs-queue__jobs').innerText(), '2 jobs', 'health probes cannot multiply job totals');
     assert.equal(await queue.locator('.obs-queue__top .lf-chip').innerText(), '1 failed', 'health errors cannot multiply failed jobs');

@@ -86,7 +86,7 @@ try {
         const fresh=await popTtsSession(redis,streamChannel);assert.equal(fresh.value,'new-after-boundary');assert.equal(fresh.session,nextSession);
     } finally {await redis.del('dima032:test:hold:session-publish');await ending;}
     assert.equal(await redis.lLen('pet:test:provider-calls'), 0, 'producer path starts no runtime or providers');
-    console.log(`PASS DIMA032 ${process.env.SAAS_TARGET}: real packaged AST sources/chat+event, Mongo pending reservation/concurrent CAS/source disable and real stream consumer atomic Lua/file cleanup with post-boundary work preserved; no provider calls or native worker behavior changed.`);
+    console.log(`PASS DIMA032 ${process.env.SAAS_TARGET}: real packaged AST sources/chat+event, Mongo pending reservation/concurrent CAS/source disable and real stream consumer atomic Lua/file cleanup with post-boundary work preserved; no provider calls.`);
 } finally {
     await redis.del('dima032:test:hold:session-publish','dima032:test:entered:session-publish');
     const ownedKeys=await redis.keys(streamPrefix+'*');if(ownedKeys.length)await redis.del(ownedKeys);

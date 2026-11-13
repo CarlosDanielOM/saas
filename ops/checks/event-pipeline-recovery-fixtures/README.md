@@ -1,6 +1,6 @@
 # Event pipeline recovery candidate checks
 
-These fixtures replace external Twitch/Qdrant/PostHog boundaries and unrelated cron launches. The real runtime entrypoint, lifecycle and analytics consumers, Mongo writes, Redis scripts, token refresh manager, OAuth callback, and repair script run from the exact candidate. The cron fixture runs the actual domain-event supervisor and the changed stream-analytics worker; unrelated native/TypeScript workers are excluded from this functional check and must still have production startup checked after deployment.
+These fixtures replace external Twitch/Qdrant/PostHog boundaries and unrelated cron launches. The real runtime entrypoint, lifecycle and analytics consumers, Mongo writes, Redis scripts, token refresh manager, OAuth callback, and repair script run from the exact candidate. The cron fixture runs the actual domain-event supervisor and the changed stream-analytics worker; unrelated workers are excluded from this functional check and must still have production startup checked after deployment.
 
 Run from the repository root, replacing the run ID and target with the corresponding helper result:
 

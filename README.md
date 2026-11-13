@@ -14,7 +14,7 @@ This repository contains the DomDimaBot SaaS applications and supporting service
 | [`dimadb/`](dimadb/) | Internal Redis and MongoDB console | Angular, Node.js |
 | [`dima-analytics/`](dima-analytics/) | Private application and infrastructure observability | Node.js, PostgreSQL |
 | [`dima-hoststats/`](dima-hoststats/) | Read-only host and container statistics sidecar | Node.js |
-| [`dima-rust/`](dima-rust/) | Rust library and accepted native cron workers | Rust |
+| [`dima-rust/`](dima-rust/) | Historical Rust library and worker sources | Rust |
 
 This is a single Git repository. Application dependencies and lockfiles are managed within their project directories; the Rust project uses its tracked `Cargo.lock`.
 
@@ -22,4 +22,4 @@ This is a single Git repository. Application dependencies and lockfiles are mana
 
 This checkout is the production host. Read the root and owning project `AGENTS.md` before making changes. Repository-only documentation updates need a reviewed diff and `git diff --check`; application releases use the scoped `scripts/saas-ops` workflow described in [`ops/README.md`](ops/README.md). Do not use the human operator's `scripts/dima-update` tool.
 
-The Rust worker migration is paused. Existing deployed native workers remain active; see the root guide for the accepted release and rollback details.
+All cron workers are TypeScript under one Node supervisor. Rust sources remain as historical reference pending the owner’s decision; see the [return record](migration-notes/typescript-workers-return.md).

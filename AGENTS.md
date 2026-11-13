@@ -37,7 +37,7 @@ The helper snapshots current project files, tests a candidate, promotes the exac
 
 ### Cron worker verification scope
 
-Prior user approval of unchanged workers carries forward across cron releases. Fully verify each new or changed worker against the exact candidate image. Retest an existing worker only when its code, a relevant dependency, or shared runtime behavior actually changes in a way that can affect it; a new Cargo feature, registry entry, or shared image by itself does not establish that impact. Scope regression checks to the identified impact and explain the connection before expanding coverage; this is not a user-approval gate. After replacing the cron container, check startup and health for every existing worker. Preserve isolated exact-candidate checks for changed behavior, deployment readiness and rollback safeguards, and the hard build limits in the Rust guide and ops workflow.
+Fully verify each new or changed worker against the exact candidate image. Retest existing workers only when their code, a relevant dependency, or shared runtime behavior can affect them; a shared image alone does not establish impact. Scope regression checks to the identified impact and explain the connection before expanding coverage; this is not an approval gate. After replacement, check startup and health for every existing worker. Preserve isolated behavior checks, deployment readiness, and rollback safeguards.
 
 ### Frontend and static content
 
@@ -54,7 +54,7 @@ Prior user approval of unchanged workers carries forward across cron releases. F
 | `admin` | Helper target `admin` publishes to `admin/dist/admin/browser/`, served by `dima-admin` |
 | `dimadocs` | Helper target `docs` publishes to `dimadocs/dist/`, served by `dimadocs` |
 | `dimafx` client | `dimafx/` is mounted directly into `dimafx`; client file edits are immediately live |
-| `dimabot` | Helper targets `api`, `bot`, `cron`, `piper`, `embeddings` use `dimabot/docker-compose.yaml` |
+| `dimabot` | Helper targets `api`, `bot`, `cron`, `piper`, `embeddings` use `dimabot/docker-compose.yaml`; `cron` builds the TypeScript worker image |
 | `dimafx` server | Helper target `dimafx-server` uses `dimafx/docker-compose.yml` |
 | `dimadb` | Helper target `dimadb` uses `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
 | `dima-analytics` | First install uses `ops/bootstrap_analytics.py`; later releases use helper target `analytics` and `dima-analytics/docker-compose.yaml` |
@@ -82,16 +82,11 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library and seven deployed native cron workers; telemetry release accepted; prior pet release retained as rollback target | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
+| `dima-rust/` | Historical Rust library and worker sources | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
 
 ### Rust migration status
 
-As of 2026-10-31, the ongoing Rust migration is paused until further notice because of insufficient capital. Migration progress is saved on a separate branch for later resumption. The Rust workers already deployed are accepted and should continue running; Rust remains a long-term goal. Choose TypeScript or Rust case by case for new workers and other functionality, based on cost, scope, and delivery needs. Existing maintenance and fixes remain possible without restarting the migration. Do not resume the migration or merge the saved migration work until the user directs its resumption. Preserve historical release records and the existing build/deploy policies.
-
-`dima-rust/` contains shared library utilities and seven native workers. Current deployed run `cron-be76d96c7a39` / image `sha256:f5ccef5ad569484a318da211718d5b903c061913944a9ac8345082fd0ef24c05` keeps Node PID 1 as TypeScript owner and one Rust index as native-worker owner in the existing `dima-cron` container. Rollback with `scripts/saas-ops rollback cron-be76d96c7a39` restores the prior accepted pet release `cron-ea507552f33d` / image `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`. See [`migration-notes/telemetry-counter-release.md`](migration-notes/telemetry-counter-release.md) for current release evidence. The earlier dual-supervisor acceptance and its original shared-utility rollback history remain in [`migration-notes/dual-cron-supervisors.md`](migration-notes/dual-cron-supervisors.md). Cron builds add binaries to the existing image and add no service or Compose container.
-
-Seven scheduled TypeScript worker entrypoints are retired from the application source tree and preserved in [`archives/typescript-workers/2026-10-21`](archives/typescript-workers/2026-10-21/README.md). Their accepted native replacements remain active; the prior shared-utility run `cron-2056ce9d790c` is the accepted rollback baseline for the dual-supervisor release. Other TypeScript workers, producers, APIs, action execution, and shared helpers remain active. Former TypeScript runtime selectors are retired where they existed; no `RAID_SESSIONS_RUNTIME` selector existed. Native child failures restart that Rust child without a TypeScript fallback. See [`migration-notes/worker-shared-utils.md`](migration-notes/worker-shared-utils.md) and [`migration-notes/typescript-worker-retirement.md`](migration-notes/typescript-worker-retirement.md).
-
+The Rust cron workers were retired on 2026-11-13 because compiling them slowed every cron build. All 26 worker definitions now use TypeScript under the Node supervisor. `dima-rust/` remains as historical reference pending the owner's decision; its worker, supervisor, and binary sources are not built or deployed by cron, and its library utilities were not used in production. Do not resume the paused migration without user direction. See [the TypeScript return record](migration-notes/typescript-workers-return.md).
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -149,20 +144,9 @@ Before implementing data-dependent features or functions that may duplicate exis
 
 ## Cron Workers Architecture (Important)
 
-`dimabot` runs one cron host in the existing `dima-cron` container. The host entrypoint is:
+`dimabot/src/workers/cron.index.ts` is the single Node supervisor in `dima-cron`. Its `WORKERS` registry contains 26 TypeScript worker definitions; enabled workers run as child processes outside the Twitch message loop. A failed child is restarted independently.
 
-```
-dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
-```
-
-In the current deployed dual-supervisor run, Node PID 1 owns the TypeScript registry (19 definitions, 18 enabled in the reported production configuration) and starts one detached Rust index. Rust's independent registry in `dima-rust/src/supervisor/registry.rs` owns seven native workers. Both registries and owners run in the same container; do not add another cron service for this split.
-
-- The TypeScript index supervises only TypeScript workers and restarts only a failed TypeScript child.
-- The Rust index supervises only Rust workers and restarts only a failed Rust child.
-- If the Rust index exits unexpectedly, the Node bridge kills its owned process group and stops the host nonzero so container recovery cannot overlap orphaned native workers.
-- Workers run in the background, outside the main Twitch message loop.
-
-Redeploying the `cron` target replaces the `dima-cron` container and restarts its entire process tree once, including all worker children. Worker-level recovery still restarts only the failed child. A cron release does not replace unrelated Compose services or containers; do not promise that unrelated cron worker PIDs survive a release.
+Redeploying `cron` replaces the container and restarts its entire process tree once. A release does not replace unrelated Compose services; worker PIDs do not survive a cron replacement.
 
 ### When to Create a Worker
 
@@ -184,16 +168,11 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 
 ### How to Add a New Worker
 
-Choose the runtime owner first; keep the existing same-container boundary.
-
-- **TypeScript worker:** create `dimabot/src/workers/your-feature.worker.ts`, export its worker definition, and register it in the `WORKERS` array in `dimabot/src/workers/cron.index.ts`. The TypeScript supervisor starts, monitors, and restarts that TypeScript child.
-- **Rust worker:** add the implementation and executable under `dima-rust/src/`, declare its binary in `dima-rust/Cargo.toml` and register its launch/environment/telemetry metadata in `dima-rust/src/supervisor/registry.rs`, then add it to the appropriate worker profile in `ops/saas_ops.py` (`RUST_BINARIES` and profile metadata), `ops/rust_build.sh`, and `dimabot/dockerfile`. Keep the `cron-supervisor` profile isolated from worker executables. The Rust index starts, monitors, and restarts its registered native children. Follow `dima-rust/AGENTS.md` and exact-candidate behavior checks in `ops/README.md`.
-
-Do not register a native worker in the TypeScript worker list or add a second cron container. Worker pacing changes require the scheduling review described below.
+Create `dimabot/src/workers/your-feature.worker.ts` and call `runWorker` from `worker_loop.ts` with the worker's setup, bounded pass, pacing, failure policy, and any needed health probe or watchdog. Register its name, source entry, and compiled entry in `WORKERS` in `cron.index.ts`. Verify behavior against the exact candidate. Do not add a second cron container.
 
 ### Scheduling and pacing review for worker migrations
 
-Before freezing a TypeScript-to-Rust or other worker migration, inventory every loop sleep, per-item delay, batch cooldown, polling interval, retry backoff, and lease wait in the source and candidate. Discuss each pause with the user in the context of the requested migration: state what it protects, whether work is ready or future-due, and decide to keep, remove, or change it before source freeze. This is part of the migration review, not a new approval gate or reconfirmation requirement for changes the user has already authorized.
+Before freezing a worker migration, inventory every loop sleep, per-item delay, batch cooldown, polling interval, retry backoff, and lease wait in the source and candidate. Discuss each pause with the user in the context of the requested migration: state what it protects, whether work is ready or future-due, and decide to keep, remove, or change it before source freeze. This is part of the migration review, not a new approval gate or reconfirmation requirement for changes the user has already authorized.
 
 Document the reason for each retained wait. Keep batches bounded and scheduling fair; yield between units or batches where needed. Preserve waits for genuinely future-due work, real external rate limits, retry/backoff after errors, lease coordination, watchdog recovery, and orderly signal/shutdown behavior. Do not sleep while ready work remains merely to create an artificial cadence. Prove both idle/future-work waiting and continued progress with a normal-mode backlog test that checks readiness and per-pass counts, so an empty or full count is not mistaken for ready work. Record these decisions and the backlog evidence in the migration note.
 
@@ -272,7 +251,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 - `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
-- `dima-rust/AGENTS.md` – Rust library and native cron worker boundaries, capped build policy, dependency usage, and verification commands.
+- `dima-rust/AGENTS.md` – historical Rust library and worker reference, and resource limits for any separately authorized Rust work.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 

@@ -40,7 +40,7 @@ const modules = new Map([
 globalThis.__pipelineSpawn = (...args) => /\/(stream_memory|vod_clip_recommender)\.worker\.js$/.test(String(args[1][0])) ? spawn(...args) : null;
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (specifier === 'node:child_process' && (context.parentURL?.endsWith('/workers/cron.index.js') || context.parentURL?.endsWith('/workers/cron_native_bridge.js'))) {
+    if (specifier === 'node:child_process' && context.parentURL?.endsWith('/workers/cron.index.js')) {
       const source = `import {EventEmitter} from 'node:events'; export const spawn=(...args)=>{const actual=globalThis.__pipelineSpawn(...args);if(actual)return actual;const child=new EventEmitter();child.pid=0;child.kill=()=>true;return child;};`;
       return { url: `data:text/javascript,${encodeURIComponent(source)}`, shortCircuit: true };
     }

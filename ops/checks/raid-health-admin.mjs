@@ -12,7 +12,7 @@ const screenshots = process.env.SAAS_SCREENSHOT_DIR;
 if (screenshots) await mkdir(screenshots, { recursive: true });
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'], executablePath: process.env.SAAS_CHROMIUM_PATH || undefined });
 const iso = (age = 0) => new Date(Date.now() - age).toISOString();
-const metric = (kind, name, value, extra = {}) => ({ service: 'cron', kind, name: `raid_analytics_rust.${name}`, channel: '', count: 1,
+const metric = (kind, name, value, extra = {}) => ({ service: 'cron', kind, name: `raid_analytics.${kind === 'runtime' ? 'worker.' : ''}${name}`, channel: '', count: 1,
   average: value, p50: value, p95: value, p99: value, errors: 0, max: value, lastAt: iso(), lastValue: value, ...extra });
 const summary = { count: 0, average: null, p50: null, p95: null, p99: null, errors: 0, max: 0 };
 
@@ -25,7 +25,7 @@ function fixture(state, query) {
     g('queue_run', 'phase.claimMs', 10, { count: 2, errors: 1 }),
     g('queue_run', 'phase.followQueriesMs', 50, { count: 2, errors: 1 }),
     g('queue_run', 'phase.publishMs', 5),
-    { ...g('runtime', 'rss_bytes', 32e6), name: 'stream_activity_rust.rss_bytes' },
+    { ...g('runtime', 'rss_bytes', 32e6), name: 'stream_activity.worker.rss_bytes' },
     { ...g('runtime', 'rss_bytes', 48e6), service: 'api', name: 'index.rss_bytes' }];
   if (state.scenario !== 'legacy') {
     rows.push(g('worker', 'health_query', state.scenario === 'failed' ? 0 : state.scenario === 'mixed' ? .5 : 1,
@@ -39,7 +39,7 @@ function fixture(state, query) {
     if (state.scenario === 'failed') rows.push(g('worker', 'health_errors', 1, { errors: 1 }));
   }
   if (state.scenario === 'health-only') {
-    for (let i = rows.length - 1; i >= 0; i--) if (rows[i].kind === 'runtime' && rows[i].name.startsWith('raid_analytics_rust.')) rows.splice(i, 1);
+    for (let i = rows.length - 1; i >= 0; i--) if (rows[i].kind === 'runtime' && rows[i].name.startsWith('raid_analytics.')) rows.splice(i, 1);
   }
   const service = query.get('service');
   return { minutes: 60, generatedAt: at, lastAt: at, http: summary, chat: summary, timeline: [], groups: rows.filter(r => !service || r.service === service) };
@@ -159,7 +159,7 @@ try {
       assert.equal(await fact('Pending channels').innerText(), '≈ 6');
       assert.equal(await fact('Oldest overdue').innerText(), '2.0 min');
       assert.equal(await fact('Last successful refresh').innerText(), '45 s ago at sample');
-      assert.equal(await page.locator('.obs-proc').filter({ hasText: 'Stream activity rust worker' }).locator('.obs-raid-health').count(), 0, 'stream unchanged');
+      assert.equal(await page.locator('.obs-proc').filter({ hasText: 'Stream activity worker' }).locator('.obs-raid-health').count(), 0, 'stream unchanged');
       await audit(theme, 'expanded');
 
       await change('empty');
@@ -203,7 +203,7 @@ try {
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `state overflow ${width}/${theme}`);
     }
     await page.getByRole('button', { name: 'Queues', exact: true }).click();
-    const queue = page.locator('.obs-queue').filter({ hasText: 'Raid analytics rust' });
+    const queue = page.locator('.obs-queue').filter({ hasText: 'Raid analytics' });
     await queue.waitFor();
     assert.equal(await queue.locator('.obs-queue__jobs').innerText(), '2 jobs', 'phase calls cannot multiply jobs');
     assert.match(await queue.innerText(), /1 failed/);
