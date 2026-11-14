@@ -8,16 +8,18 @@
  * are checked again, every command text it makes run must pass the safe-body guard, then it applies through the
  * runner's own apply step (`changes.applyProposal`, 120 s → outcome unknown) and is logged with source mcp, so it can
  * be undone here (undo_change) or on the website. Credits are charged only for a billable success (a read that
- * returned data, a write that applied); everything else, unknown outcomes included, releases the hold.
+ * returned data, a write that applied); everything else releases the hold. A write that has started is never
+ * abandoned (a client abort waits for it); one still running after 120 s is reported as unknown and keeps its hold,
+ * which is settled once if it lands and released if it fails.
  */
 import { Types } from 'mongoose';
 import UsersSchema from '../../schemas/users.schema.js';
 import { error as logError, warn } from '../../utils/logger.js';
 import { permissionChecker, resolveAccess, roleFor, type ChannelAccess } from '../access.js';
-import { applyProposal, changeFromApply, recordChange, type RecordChangeInput } from '../changes.js';
+import { applyProposal, changeFromApply, recordChange, type LateApply, type RecordChangeInput } from '../changes.js';
 import { CreditError, releaseToolCredits, reserveToolCredits, settleToolCredits, toolPrice, type CreditReservation } from '../credits.js';
-import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ChangeRecordInput, type JsonSchema, type Requester, type ToolContext, type ToolOutcome } from '../types.js';
-import { MCP_ALLOWLIST, requiredScope, ToolDeniedError } from './mcp.js';
+import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ChangeRecordInput, type ExecutableCheck, type JsonSchema, type Requester, type ToolContext, type ToolOutcome } from '../types.js';
+import { MCP_ALLOWLIST, MCP_NOTES, requiredScope, ToolDeniedError } from './mcp.js';
 import { mcpOnlyTools } from './mcp_changes.js';
 import { getTool, planAllows, toolsFor } from './registry.js';
 import { checkSafeBody } from './safe_body.js';
@@ -40,7 +42,8 @@ export type ExecuteOutcome =
         message: string; requiredScopes?: string[] };
 
 type Failure = Extract<ExecuteOutcome, { ok: false }>;
-type Done = { outcome: Omit<Extract<ExecuteOutcome, { ok: true }>, 'charged'> | Failure; billable: boolean };
+/** `late`: a write still running after the timeout; it decides the hold (settle if it lands, release if not). */
+type Done = { outcome: Omit<Extract<ExecuteOutcome, { ok: true }>, 'charged'> | Failure; billable: boolean; late?: Promise<boolean> };
 
 /** Same as the runner's tool timeout. */
 const RUN_TIMEOUT_MS = 90_000;
@@ -118,12 +121,12 @@ const planName = (tool: AgentTool) => tool.minPlan === 'pro' ? 'Pro' : 'Premium'
 // ---------------------------------------------------------------------------
 
 const WRITE_NOTE = ' Through MCP the change applies right away (there is no approval card); it is logged and can be undone with undo_change or from the website\'s Changes list.';
-const BODY_NOTE = ' Command text here may only use reply functions (names, arguments, random numbers, counters, math, text helpers, event values, Twitch reads); anything else, #(other commands) and blocks are set up on the website.';
+const BODY_NOTE = ' Command text it writes or makes reachable (stored text included) may only use reply functions (names, arguments, random numbers, counters, math, text helpers, event values, Twitch reads); anything else, #(other commands) and blocks are set up on the website.';
 
 function listing(tool: AgentTool): McpToolListing {
     const credits = toolPrice(tool, 'mcp');
     const siteWrite = tool.kind === 'write' && !MCP_ONLY.has(tool.name);
-    const description = tool.description + (siteWrite ? WRITE_NOTE : '') + (tool.executableFields ? BODY_NOTE : '')
+    const description = tool.description + (siteWrite ? WRITE_NOTE : '') + (Object.hasOwn(MCP_NOTES, tool.name) ? MCP_NOTES[tool.name] : tool.executableFields ? BODY_NOTE : '')
         + (credits > 0 ? ` Costs ${credits} AI credit${credits === 1 ? '' : 's'} from the channel.` : '');
     return {
         name: tool.name,
@@ -211,14 +214,23 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     if (!tool.apply || !(await holds(fresh, tool.permissions, true)) || !(await holds(fresh, proposal.permissions))) {
         return no(fail('permission_denied', 'This account no longer has permission for this change. Nothing was changed.'));
     }
-    // Every command text this change makes run must be safe: nobody reviews it before it applies.
+    // Every command text this change makes reachable must be safe: nobody reviews it before it applies.
+    let toApply = proposal;
     if (tool.executableFields) {
-        const texts = await tool.executableFields(input as never, proposal, fresh.ctx);
-        if (texts === null) return no(fail('unsafe_content', `Not applied: this would turn on code that can't be checked here (a built-in command). It can be set up on the website instead.`));
+        const found = await tool.executableFields(input as never, proposal, fresh.ctx);
+        if (found === null) return no(fail('unsafe_content', `Not applied: this would turn on code that can't be checked here (a built-in command). It can be set up on the website instead.`));
+        const { texts, stored = [], where, pinned, blocked } = Array.isArray(found) ? { texts: found } as ExecutableCheck : found;
+        if (blocked) return no(fail('unsafe_content', `Not applied: ${blocked}. Do it on the website instead.`));
         for (const text of texts) {
             const check = checkSafeBody(text);
             if (!check.ok) return no(fail('unsafe_content', `Not applied: ${check.reason}. Through MCP, command text may only use reply functions (names, arguments, random numbers, counters, math, text helpers, event values, Twitch reads). This can be set up on the website instead.`));
         }
+        for (const text of stored) {
+            const check = checkSafeBody(text);
+            if (!check.ok) return no(fail('unsafe_content', `Not applied: some stored text ${where ?? 'that this change would let run'} can act on your stream (${check.reason}); edit it on the website.`));
+        }
+        // Apply refuses unless the stored state it checked is still there.
+        if (pinned) toApply = { ...proposal, payload: { ...proposal.payload, pinned } };
     }
     const record = (change: ChangeRecordInput) => recordWithRetry({
         ...changeFromApply(fresh.ctx, proposal, change), tool: tool.name,
@@ -226,16 +238,20 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     }, meta);
     let applied: Awaited<ReturnType<typeof applyProposal>>;
     try {
-        applied = await applyProposal(tool, proposal, fresh.ctx, record, { signal: opts.signal });
+        // No abort signal: a write that has started finishes (and is charged) even if the client goes away.
+        applied = await applyProposal(tool, toApply, fresh.ctx, record);
     } catch (err) {
         const denied = refused(err, true);
         if (denied) return no(denied);
-        const late = err instanceof Error && (err.message === 'tool_timeout' || err.message === 'tool_aborted');
-        // May still land (then it is logged); never charged.
+        const late = (err as Partial<LateApply>)?.late;
         await (late ? warn : logError)({ function: 'mcp.apply', ...meta, outcome: 'unknown', error: message(err) }, { destination: 'both' }).catch(() => undefined);
-        return no(fail('outcome_unknown', late
-            ? 'This change took too long: it may or may not have been applied. Check the current state before trying again.'
-            : 'Something went wrong while saving: this change may or may not have been applied. Check the current state before trying again.'));
+        return {
+            billable: false,
+            ...(late ? { late } : {}),
+            outcome: fail('outcome_unknown', late
+                ? 'This change took too long: it may or may not have been applied. Check the current state before trying again. It is charged only if it lands.'
+                : 'Something went wrong while saving: this change may or may not have been applied. Check the current state before trying again.'),
+        };
     }
     const logged = applied.changeId !== undefined;
     const undoable = logged && applied.change?.undo != null;
@@ -293,6 +309,7 @@ export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs:
     if (opts.signal.aborted) return fail('failed', 'Cancelled.');
     let hold: CreditReservation | null = null;
     let billable = false;
+    let late: Promise<boolean> | null = null;
     try {
         const call = await openCall(p, opts);
         if (!call) return fail('no_access', 'This account has no access to this channel on the website.');
@@ -321,12 +338,17 @@ export async function executeMcpToolCall(p: McpPrincipal, name: string, rawArgs:
         }
         const done = await perform(call, tool, input, p, opts, meta);
         billable = done.outcome.ok && done.billable;
+        late = done.late ?? null;
         return done.outcome.ok ? { ...done.outcome, charged: billable && hold ? hold.credits : 0 } : done.outcome;
     } catch (err) {
         await logError({ function: 'mcp.call', ...meta, error: message(err) }, { destination: 'both' }).catch(() => undefined);
         return fail('failed', 'Something went wrong. Try again in a moment.');
     } finally {
-        // settle never throws (it keeps or drops the hold itself); release is idempotent and never throws.
-        if (hold) await (billable ? settleToolCredits(hold, { tool: tool.name, surface: 'mcp' }) : releaseToolCredits(hold)).catch(() => undefined);
+        // settle never throws (it keeps or drops the hold itself); release is idempotent and never throws. Exactly one
+        // of them per call: now, or when a write that outlived the timeout ends.
+        const held = hold;
+        const settle = (charge: boolean) => (charge ? settleToolCredits(held!, { tool: tool.name, surface: 'mcp' }) : releaseToolCredits(held!)).catch(() => undefined);
+        if (held && late) void late.then(settle);
+        else if (held) await settle(billable);
     }
 }

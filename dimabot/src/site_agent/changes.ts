@@ -178,19 +178,23 @@ export function changeFromApply(ctx: ToolContext, proposal: ChangeProposal, chan
 /** An approved write that takes longer than this is reported as "outcome unknown" (it may still land). */
 export const APPLY_TIMEOUT_MS = 120_000;
 
+/** On the `tool_timeout` error of `applyProposal`: resolves true when the write landed later (and was logged), false when it failed. */
+export interface LateApply { late: Promise<boolean> }
+
 /**
  * The shared apply step of an approved proposal (site runner after Apply, MCP right away): runs `tool.apply`
  * (callers check permissions, plan and the approval first), then logs the change with `record` (which must not
  * throw; it returns the change id or undefined). Rethrows what apply threw: ToolConflictError = nothing changed,
- * anything else = the outcome is unknown. After `timeoutMs` (or `signal`) it throws Error('tool_timeout' /
- * 'tool_aborted') without stopping the write; if the write lands later, its change is still logged.
+ * anything else = the outcome is unknown. After `timeoutMs` it throws Error('tool_timeout') without stopping the write
+ * (a write that has started is never abandoned); if it lands later its change is still logged, and the error's
+ * `late` (LateApply) says how it ended.
  */
 export async function applyProposal(
     tool: AgentTool,
     proposal: ChangeProposal,
     ctx: ToolContext,
     record: (change: ChangeRecordInput) => Promise<string | undefined>,
-    opts: { timeoutMs?: number; signal?: AbortSignal } = {},
+    opts: { timeoutMs?: number } = {},
 ): Promise<{ result: unknown; change: ChangeRecordInput | null; changeId?: string }> {
     if (!tool.apply) throw new Error(`${tool.name} can't apply changes`);
     const applying = tool.apply(proposal, ctx);
@@ -198,16 +202,13 @@ export async function applyProposal(
     try {
         applied = await new Promise<Awaited<typeof applying>>((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error('tool_timeout')), opts.timeoutMs ?? APPLY_TIMEOUT_MS);
-            const onAbort = () => { clearTimeout(timer); reject(new Error('tool_aborted')); };
-            if (opts.signal?.aborted) onAbort();
-            opts.signal?.addEventListener('abort', onAbort, { once: true });
-            applying.then((value) => { clearTimeout(timer); opts.signal?.removeEventListener('abort', onAbort); resolve(value); },
-                (err) => { clearTimeout(timer); opts.signal?.removeEventListener('abort', onAbort); reject(err); });
+            applying.then((value) => { clearTimeout(timer); resolve(value); }, (err) => { clearTimeout(timer); reject(err); });
         });
     } catch (err) {
         // Still running: if it finishes later, the change log gets its entry then.
-        if (err instanceof Error && (err.message === 'tool_timeout' || err.message === 'tool_aborted')) {
-            void applying.then((late) => (late.change ? record(late.change) : undefined)).catch(() => {});
+        if (err instanceof Error && err.message === 'tool_timeout') {
+            const late = applying.then(async (done) => { if (done.change) await record(done.change).catch(() => undefined); return true; }, () => false);
+            Object.assign(err, { late });
         }
         throw err;
     }

@@ -192,6 +192,10 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
         };
         return { type: 'approval', proposal };
     },
+    // Turning TTS on makes every stored $(tts …), !s and TTS reward on the channel speak again: too much to list, so MCP refuses it.
+    executableFields: (_input, proposal) => (proposal.payload.after as Record<string, unknown>).enabled === true
+        ? { texts: [], blocked: 'turning Text to Speech on lets every stored $(tts …) use, !s and TTS reward on the channel speak again' }
+        : [],
     async apply(proposal, ctx) {
         const { before, after, expected } = proposal.payload as { before: Record<string, unknown>; after: Record<string, unknown>; expected: Record<string, unknown> };
         const saved = await write(ctx, expected, after);

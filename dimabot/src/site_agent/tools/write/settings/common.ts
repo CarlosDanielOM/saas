@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import TwitchStreamers from '../../../../classes/twitch_streamers.class.js';
 import UsersSchema from '../../../../schemas/users.schema.js';
 import { ToolConflictError, ToolInputError, type Lang, type PlanTier, type ToolContext } from '../../../types.js';
@@ -116,6 +117,25 @@ export async function bodyEffects(body: string | undefined, ctx: Pick<ToolContex
 /** Merges several bodyEffects results. */
 export function mergeEffects(...parts: Array<{ effects: string[]; warnings: string[] }>): { effects: string[]; warnings: string[] } {
     return { effects: [...new Set(parts.flatMap((part) => part.effects))], warnings: [...new Set(parts.flatMap((part) => part.warnings))] };
+}
+
+/** Every string in a stored value, at any depth (messages and bodies; plain values pass the MCP guard anyway). */
+export function deepStrings(value: unknown, out: string[] = []): string[] {
+    if (typeof value === 'string') { if (value.trim()) out.push(value); return out; }
+    // Plain objects and arrays only (ObjectIds, Dates and Buffers hold no text).
+    if (!value || typeof value !== 'object' || (!Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)) return out;
+    for (const item of Array.isArray(value) ? value : Object.values(value)) deepStrings(item, out);
+    return out;
+}
+
+/** Stable hash of a stored state (MCP `pinned` checks). */
+export const fingerprint = (value: unknown): string => createHash('sha256').update(stableJson(value)).digest('hex');
+
+/** MCP pin check in apply: the stored state the safe-body check read must still be there. */
+export function assertPinned(pinned: unknown, current: string, lang: Lang, what: string): void {
+    if (pinned === undefined || pinned === current) return;
+    conflict(lang, `${what} changed since this was checked. Nothing was changed; ask again for a fresh proposal.`,
+        `${what} cambió desde que se revisó. No se cambió nada; vuelve a pedirlo para preparar uno nuevo.`);
 }
 
 /** Rejects an empty change request with a model-readable message. */

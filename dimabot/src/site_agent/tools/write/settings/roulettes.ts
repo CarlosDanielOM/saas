@@ -2,10 +2,10 @@ import * as domain from '../../../../roulette/model.js';
 import type { Item, Roulette, State } from '../../../../roulette/model.js';
 import { execute, RouletteChannel, type Action } from '../../../../roulette/service.js';
 import { parse } from '../../../../utils/ast_parser/parser.js';
-import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type Lang, type ToolContext } from '../../../types.js';
+import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ExecutableCheck, type Lang, type ToolContext } from '../../../types.js';
 import { createHash } from 'node:crypto';
 import { asObject, bool, int, oneOf, stableJson, str } from '../../util.js';
-import { bodyEffects, conflict, mergeEffects, sameValue, tr } from './common.js';
+import { assertPinned, bodyEffects, conflict, mergeEffects, sameValue, tr } from './common.js';
 
 /**
  * Roulettes (Modules → Roulette). Routes: /roulettes/:channelID/... need `*` (owner or full-access
@@ -32,6 +32,23 @@ export const configView = (r: Roulette) => ({ name: r.name, alias: r.alias, desi
 export const itemView = (item: Item) => ({ label: item.label, weight: item.weight, count: item.multiplier, winnerAction: item.action ?? '' });
 /** Fingerprint of a roulette's prizes (a roulette can hold thousands, too many to keep on a proposal). */
 const itemsHash = (r: Roulette) => createHash('sha256').update(stableJson(r.items.map((item) => ({ id: item.id, ...itemView(item) })))).digest('hex');
+
+/**
+ * MCP (no approval card): every prize write checks the roulette's winner actions as they will be (an alias, odds or
+ * removal change decides which stored actions a spin runs), pinned by the prizes' fingerprint for apply.
+ */
+async function rouletteCheck(ctx: ToolContext, id: string, after: (items: Item[]) => Array<string | undefined>, texts: string[]): Promise<ExecutableCheck> {
+    const roulette = findRoulette((await readRouletteState(ctx.channelId)).state, id);
+    if (!roulette) return { texts };
+    const stored = after(structuredClone(roulette.items)).filter((text): text is string => Boolean(text?.trim()) && !texts.includes(text!));
+    return { texts, stored, where: 'in this roulette\'s winner actions', pinned: { items: itemsHash(roulette) } };
+}
+
+/** apply: an MCP check pinned the prizes; they must still be the same. */
+function assertItemsPinned(ctx: Pick<ToolContext, 'lang'>, proposal: ChangeProposal, roulette: Roulette): void {
+    const pinned = (proposal.payload.pinned as { items?: string } | undefined)?.items;
+    if (pinned !== undefined) assertPinned(pinned, itemsHash(roulette), ctx.lang, tr(ctx.lang, 'The roulette\'s prizes', 'Los premios de la ruleta'));
+}
 
 function domainCheck<T>(run: () => T): T {
     try { return run(); }
@@ -194,6 +211,7 @@ export const updateRoulette: AgentTool<RouletteUpdateInput> = {
         if (!Object.keys(config).length) throw new ToolInputError('Give at least one roulette setting to change');
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, config };
     },
+    executableFields: (_input, proposal, ctx) => rouletteCheck(ctx, String(proposal.payload.id), (items) => items.map((item) => item.action), []),
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);
         const roulette = findRoulette(state, input.roulette);
@@ -220,6 +238,7 @@ export const updateRoulette: AgentTool<RouletteUpdateInput> = {
         const roulette = findRoulette(state, id);
         if (!roulette) conflict(ctx.lang, 'This roulette was deleted in the meantime. Nothing was changed.', 'Esta ruleta se eliminó mientras tanto. No se cambió nada.');
         if (!sameValue(configView(roulette), expected)) conflict(ctx.lang, 'This roulette changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Esta ruleta cambió desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
+        assertItemsPinned(ctx, proposal, roulette);
         await run(ctx, { operation: 'configure', roulette: id, data: config }, revision);
         const saved = findRoulette((await readRouletteState(ctx.channelId)).state, id)!;
         return { result: { saved: true, id }, change: { area: 'roulettes', target: proposal.target, before: proposal.before, after: proposal.after, undo: { id, before: expected, after: configView(saved) }, summary: proposal.title } };
@@ -247,8 +266,11 @@ export const addRouletteItems: AgentTool<RouletteItemsInput> = {
         if (!Array.isArray(input.items) || !input.items.length || input.items.length > MAX_ITEMS_PER_CALL) throw new ToolInputError(`items must be a list of 1–${MAX_ITEMS_PER_CALL} prizes`);
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, items: input.items.map(itemInput) };
     },
-    // Winner actions run when the prize wins.
-    executableFields: (input) => input.items.map((item) => item.winnerAction ?? '').filter((text) => text.trim()),
+    // New winner actions, plus the stored ones (an "increase" duplicate gives a stored prize more copies).
+    executableFields: (input, proposal, ctx) => {
+        const texts = input.items.map((item) => item.winnerAction ?? '').filter((text) => text.trim());
+        return rouletteCheck(ctx, String(proposal.payload.id), (items) => items.map((item) => item.action), texts);
+    },
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);
         const roulette = findRoulette(state, input.roulette);
@@ -276,6 +298,7 @@ export const addRouletteItems: AgentTool<RouletteItemsInput> = {
         const roulette = findRoulette(state, id);
         if (!roulette) conflict(ctx.lang, 'This roulette was deleted in the meantime. Nothing was changed.', 'Esta ruleta se eliminó mientras tanto. No se cambió nada.');
         if (itemsHash(roulette) !== expectedItems) conflict(ctx.lang, 'The prizes changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Los premios cambiaron desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
+        assertItemsPinned(ctx, proposal, roulette);
         await run(ctx, { operation: 'import', roulette: id, data }, revision);
         const saved = findRoulette((await readRouletteState(ctx.channelId)).state, id)!;
         const known = new Map(roulette.items.map((item) => [item.id, itemView(item)]));
@@ -332,11 +355,10 @@ export const updateRouletteItem: AgentTool<RouletteItemUpdateInput> = {
         if (!Object.values(changes).some((value) => value !== undefined)) throw new ToolInputError('Give a label, weight, count or winnerAction to change');
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, itemId: str(input, 'itemId', { required: true, max: 100 })!, changes };
     },
-    // The winner action after the change, when it is new or the prize's odds change.
-    executableFields(_input, proposal) {
-        const { data, expected } = proposal.payload as { data: Record<string, unknown>; expected: ReturnType<typeof itemView> };
-        if (data.action === undefined && data.weight === undefined && data.multiplier === undefined) return [];
-        return [String(data.action ?? expected.winnerAction ?? '')];
+    executableFields(_input, proposal, ctx) {
+        const { id, itemId, data } = proposal.payload as { id: string; itemId: string; data: Record<string, unknown> };
+        const texts = typeof data.action === 'string' && data.action.trim() ? [data.action] : [];
+        return rouletteCheck(ctx, id, (items) => items.map((item) => item.id === itemId && data.action !== undefined ? String(data.action) : item.action), texts);
     },
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);
@@ -366,6 +388,7 @@ export const updateRouletteItem: AgentTool<RouletteItemUpdateInput> = {
         const item = findRoulette(state, id)?.items.find((candidate) => candidate.id === itemId);
         if (!item) conflict(ctx.lang, 'This prize was removed in the meantime. Nothing was changed.', 'Este premio se quitó mientras tanto. No se cambió nada.');
         if (!sameValue(itemView(item), expected)) conflict(ctx.lang, 'This prize changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Este premio cambió desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
+        assertItemsPinned(ctx, proposal, findRoulette(state, id)!);
         await run(ctx, { operation: 'update', roulette: id, itemId, data }, revision);
         const saved = findRoulette((await readRouletteState(ctx.channelId)).state, id)?.items.find((candidate) => candidate.id === itemId);
         return { result: { saved: true, itemId }, change: { area: 'roulettes', target: proposal.target, before: proposal.before, after: proposal.after, undo: saved ? { id, itemId, before: expected, after: itemView(saved) } : null, summary: proposal.title } };
@@ -392,6 +415,8 @@ export const removeRouletteItem: AgentTool<RouletteItemRemoveInput> = {
         const input = asObject(raw);
         return { roulette: str(input, 'roulette', { required: true, max: 100 })!, itemId: str(input, 'itemId', { required: true, max: 100 })! };
     },
+    // The prizes that stay get better odds.
+    executableFields: (_input, proposal, ctx) => rouletteCheck(ctx, String(proposal.payload.id), (items) => items.filter((item) => item.id !== proposal.payload.itemId).map((item) => item.action), []),
     async run(input, ctx) {
         const { state } = await readRouletteState(ctx.channelId);
         const roulette = findRoulette(state, input.roulette);
@@ -414,6 +439,7 @@ export const removeRouletteItem: AgentTool<RouletteItemRemoveInput> = {
         const item = findRoulette(state, id)?.items.find((candidate) => candidate.id === itemId);
         if (!item) conflict(ctx.lang, 'This prize was already removed.', 'Este premio ya se quitó.');
         if (!sameValue(itemView(item), expected)) conflict(ctx.lang, 'This prize changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Este premio cambió desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
+        assertItemsPinned(ctx, proposal, findRoulette(state, id)!);
         await run(ctx, { operation: 'remove', roulette: id, itemId }, revision);
         return { result: { removed: true, itemId }, change: { area: 'roulettes', target: proposal.target, before: proposal.before, after: null, undo: { id, item: expected }, summary: proposal.title } };
     },

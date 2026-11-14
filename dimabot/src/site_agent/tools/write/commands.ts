@@ -602,20 +602,24 @@ export const updateCommandTool: AgentTool<UpdateInput> = {
         }
         return parsed;
     },
+    /**
+     * The reply as it will be (new, or stored) and the repeat's message, for any change except one that only narrows it
+     * (turn off, slower cooldown, stricter access, description, stop repeating). A rename counts: `#(name)` in other
+     * bodies and the keyword phrase decide where it runs. Built-in code can't be checked (null).
+     */
     async executableFields(_input, proposal, ctx) {
         const { id, changes, repeat } = proposal.payload as { id: string; changes: UpdateChanges; repeat?: RepeatMove };
         const texts = changes.body !== undefined ? [changes.body] : [];
-        // The repeat posts by itself: a new message, or one it starts posting again.
-        if (repeat?.to && (!repeat.from || repeat.from.message !== repeat.to.message || (!repeat.from.active && repeat.to.active))) texts.push(repeat.to.message);
-        if (changes.body !== undefined || (changes.enabled !== true && changes.access === undefined)) return texts;
-        // Turning it on or opening its access makes the stored reply (or the built-in code) run for more people.
         const current = await readById(ctx.channelId, id);
-        if (!current) return texts;
-        const narrows = changes.enabled !== true && inspectExpression(current.permissionExpression).mode === 'level'
-            && levelNumber(changes.access!) >= Number(current.userLevel ?? 1);
-        if (narrows) return texts;
+        if (!current) return texts; // apply refuses: it was deleted
+        const narrows = Object.entries(changes).every(([key, value]) => (key === 'enabled' && value === false) || key === 'description'
+            || (key === 'cooldown' && Number(value) >= Number(current.cooldown ?? 0))
+            || (key === 'access' && inspectExpression(current.permissionExpression).mode === 'level' && levelNumber(value as AccessLevel) >= Number(current.userLevel ?? 1)));
+        if (narrows && !repeat?.to) return texts;
         if (runsBuiltInCode(current)) return SAFE_BUILT_IN_FUNCS.has(String(current.func ?? '')) ? texts : null;
-        return [...texts, String(current.message ?? '')];
+        const stored = [...(changes.body === undefined ? [String(current.message ?? '')] : []), ...(repeat?.to ? [repeat.to.message] : [])]
+            .filter((text) => text.trim() && !texts.includes(text));
+        return { texts, stored, where: 'in this command' };
     },
     async run(input, ctx) {
         const current = await findChannelCommand(ctx.channelId, input.name, input.kind);

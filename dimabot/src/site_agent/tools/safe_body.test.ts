@@ -62,7 +62,8 @@ test('dangerous functions are refused, also hidden in nested arguments, both bra
     assert.match(refused('$(nosuchfn)'), /not a known function/);
     assert.match(refused('$(USER)'), /\$\(USER\)/, 'names match exactly, like the evaluator');
     assert.match(refused('$(BAN x)'), /moderates chat/);
-    assert.match(refused('$(user'), /does not parse/);
+    assert.match(refused('$(user'), /never closed/);
+    assert.match(refused('$(user "x)'), /never closed|does not parse/);
 });
 
 test('unsupported syntax is refused', () => {
@@ -82,4 +83,42 @@ test('the allowlist is made of real registry functions and never of an action FU
         assert.equal(entry.destructive && Object.hasOwn(SAFE_FUNCTIONS, name), false);
     }
     for (const entry of catalog) if (entry.destructive) assert.equal(Object.hasOwn(SAFE_FUNCTIONS, entry.name), false, entry.name);
+});
+
+// Review 2026-11-14 (P1): the guard must see exactly what the renderer runs. The renderer scans top-level
+// expressions regardless of quotes (render.ts scanSourceSegments), so quotes outside an expression hide nothing.
+test('quotes, arrays and escapes outside an expression hide nothing from the guard', () => {
+    assert.match(refused('"$(add.mod attacker)"'), /\$\(add\.mod\)/);
+    assert.match(refused("'$(ban $(user))'"), /\$\(ban\)/);
+    assert.match(refused('say "hi $(ban x)" now'), /\$\(ban\)/);
+    assert.match(refused('"nested \'$(unmod x)\' quotes"'), /\$\(unmod\)/);
+    assert.match(refused('%[a, "$(ban x)"]'), /\$\(ban\)/, 'an array outside an expression is plain text around a real call');
+    assert.match(refused('\\"$(ban x)\\"'), /\$\(ban\)/, 'escaped quotes');
+    assert.match(refused('\\\\$(ban x)'), /\$\(ban\)/, 'an escaped backslash does not escape the call');
+    assert.match(refused('"#(other)"'), /#\(other\) runs another command/);
+    assert.match(refused('"ok" $(user "x") "$(tts hi)"'), /\$\(tts\)/);
+    assert.deepEqual(checkSafeBody('\\$(ban x) is how you write it'), { ok: true }, 'an escaped call is posted as text');
+});
+
+test('argument placeholders cannot join text into a new expression (timers and events render without an argument)', () => {
+    assert.match(refused('$&t(ban x)'), /\$\(ban\)/);
+    assert.match(refused('$&p1(add.vip $(user))'), /\$\(add\.vip\)/);
+    assert.match(refused('#&t(other)'), /runs another command/);
+    assert.deepEqual(checkSafeBody('$(user) hugs &p1 &t'), { ok: true });
+});
+
+test('the guard refuses every body the real engine would run an action, read or command for', async () => {
+    const { parseSimulationInput, simulateCommand } = await import('../../utils/ast_parser/simulate.js');
+    const bodies = [
+        '"$(add.mod attacker)"', "'$(ban $(user) 60)'", 'x "y $(tts hi)" z', '%[a, "$(raid foo)"]', '\\"$(clear.chat)\\"',
+        '$(upper "a $(ban x)")', '%(m "${$(ban x)}") %(m)', '*(1 == 1 ? "$(ban x)" : no)', '#(other)', '"#(other)"',
+        '$(user) "quoted" $(random 3)', '\\$(ban x)', '%(#a "$(ban x)") %(#a)',
+    ];
+    for (const body of bodies) {
+        const { runs } = await simulateCommand({ ...parseSimulationInput({ body, runs: [{ user: 'Sam', role: 'viewer' }, { user: 'Sam', role: 'mod', argument: 'Alex 60' }] }), repeat: 1 });
+        const called = runs.flatMap((run) => [...run.actions.map((call) => call.function), ...run.samples.map((call) => call.function)]);
+        const unsafe = called.filter((name) => !Object.hasOwn(SAFE_FUNCTIONS, name));
+        const references = runs.some((run) => run.commandReferences.length > 0);
+        if (unsafe.length || references) assert.equal(checkSafeBody(body).ok, false, `${body}: the engine runs ${unsafe.join(', ') || 'another command'}`);
+    }
 });

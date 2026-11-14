@@ -34,27 +34,28 @@ export const MCP_ALLOWLIST: Readonly<Record<string, string>> = {
     recent_chat: 'recent chat (moderation:view)',
     get_referral_codes: 'the owner\'s public referral codes, links and signup counts; no secrets',
     list_recent_changes: 'MCP-only: the change log the requester may see',
-    // Writes (undo data on every change; executable text checked)
-    create_command: 'undo deletes it; body checked',
-    update_command: 'undo restores it; new body, or the stored one it turns on, opens or repeats, checked',
-    delete_command: 'undo restores it with its repeat',
-    update_timer: 'undo restores it; a new message, or the stored one it turns on, checked',
-    delete_timer: 'undo re-creates it',
+    // Writes (undo data on every change). Executable text: what the change writes plus the stored text it makes
+    // reachable, checked by the safe-body guard (mcp_checks.test.ts); see each tool's executableFields.
+    create_command: 'undo deletes it; its body checked',
+    update_command: 'undo restores it; the reply and repeat as they will be checked unless it only narrows (off, slower, stricter, description, stop repeating); built-in code refused',
+    delete_command: 'undo restores it with its repeat; only removes code',
+    update_timer: 'undo restores it; the message as it will be checked unless it only pauses or slows it',
+    delete_timer: 'undo re-creates it; only removes code',
     create_goal: 'undo deletes it; AST actions checked',
-    update_goal: 'undo restores it; AST actions checked (also stored ones when the target goes down)',
-    create_roulette: 'undo deletes it while empty',
-    update_roulette: 'undo restores the setup; no executable fields',
-    add_roulette_items: 'undo removes them; winner actions checked',
-    update_roulette_item: 'undo restores it; the winner action checked',
-    remove_roulette_item: 'undo adds it back',
-    create_bits_rule: 'undo deletes it; a custom chat message checked',
-    update_bits_rule: 'undo restores it; the custom message checked',
-    delete_bits_rule: 'undo adds it back',
-    create_chat_event: 'undo removes the subscription; every text value checked',
-    update_chat_event: 'undo restores it; new text, or the stored text it turns on, checked',
-    delete_chat_event: 'undo subscribes again',
-    update_tts_settings: 'undo restores them; no executable fields',
-    undo_change: 'MCP-only: undo through the change log, with the original tool\'s scope, permissions and plan',
+    update_goal: 'undo restores it; its AST actions as they will be checked on every edit',
+    create_roulette: 'undo deletes it while empty; no prizes, no actions',
+    update_roulette: 'undo restores the setup; all winner actions checked (alias and settings decide what spins run), pinned',
+    add_roulette_items: 'undo removes them; all winner actions as they will be checked',
+    update_roulette_item: 'undo restores it; all winner actions as they will be checked (odds), pinned',
+    remove_roulette_item: 'undo adds it back; the remaining winner actions checked (better odds), pinned',
+    create_bits_rule: 'undo deletes it; every rule message and Cheers row as they will be checked, pinned',
+    update_bits_rule: 'undo restores it; every rule message and Cheers row as they will be checked, pinned',
+    delete_bits_rule: 'undo adds it back; every remaining rule message and Cheers row checked, pinned',
+    create_chat_event: 'undo removes the subscription; all text of the event as it will be checked, pinned',
+    update_chat_event: 'undo restores it; all text of the event as it will be checked whatever changed, pinned in the write',
+    delete_chat_event: 'undo subscribes again; the equivalent rows that stay checked, pinned',
+    update_tts_settings: 'undo restores them; turning TTS on is refused (it re-enables every stored TTS use), the rest holds no code',
+    undo_change: 'MCP-only: undoes changes made through MCP only (website changes are undone on the website), with the original tool\'s scope, permissions and plan',
 };
 
 /** Site tools that are not on MCP v1, and why. */
@@ -71,6 +72,11 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
     delete_goal: 'no undo (the goal and its progress are gone)',
     show_ui: 'site UI (sandboxed card in the panel)',
     navigate: 'site UI (moves the browser)',
+};
+
+/** Extra words for a tool's MCP description (replaces the generic command-text note). */
+export const MCP_NOTES: Readonly<Record<string, string>> = {
+    update_tts_settings: ' Through MCP, Text to Speech can be turned off but not on: turning it on is done on the website.',
 };
 
 /** MCP-only tools (never in the site registry). */

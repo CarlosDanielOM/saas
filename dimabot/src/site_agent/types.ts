@@ -221,6 +221,23 @@ export type ToolOutcome =
     /** Navigation card or immediate navigation in the browser. */
     | { type: 'navigate'; action: NavigateAction };
 
+/** What `AgentTool.executableFields` found. */
+export interface ExecutableCheck {
+    /** Command-language text the change writes. */
+    texts: string[];
+    /** Stored text the change makes (or keeps) reachable; refused with "edit it on the website". */
+    stored?: string[];
+    /** Where that stored text lives, for the refusal, e.g. "in this chat event". */
+    where?: string;
+    /** The change turns on stored code that can't be listed here; refused with this plain reason. */
+    blocked?: string;
+    /**
+     * Fingerprint of the stored state that was checked. The caller copies it to `proposal.payload.pinned`, and the
+     * tool's `apply` throws ToolConflictError unless it still reads the same, so an edit in between can't slip in.
+     */
+    pinned?: Record<string, unknown>;
+}
+
 export class ToolInputError extends Error {}
 /** Thrown by apply() when the target changed since the proposal (compare-and-set failed). */
 export class ToolConflictError extends Error {}
@@ -247,11 +264,11 @@ export interface AgentTool<Input = Record<string, unknown>> {
     undo?(change: { undo: Record<string, unknown> | null; after: Record<string, unknown> | null; target: ChangeRecordInput['target'] }, ctx: Omit<ToolContext, 'callId'>): Promise<void>;
     /**
      * Write tools whose changes make command-language text run. Surfaces that apply without an approval card (MCP)
-     * check each returned text with `tools/safe_body.ts` before `apply`: new bodies and messages, plus stored ones
-     * the change turns on, opens to more people or schedules. `null` = it would run code that can't be checked
-     * (a built-in command's own code), so those surfaces refuse it.
+     * check every returned text with `tools/safe_body.ts` before `apply`: the text the change writes, and stored text
+     * it makes reachable (enable flags, thresholds, access, modes, names, odds, fallbacks, deletion). `null` = it would
+     * run code that can't be checked (a built-in command's own code), so those surfaces refuse it.
      */
-    executableFields?(input: Input, proposal: ChangeProposal, ctx: ToolContext): string[] | null | Promise<string[] | null>;
+    executableFields?(input: Input, proposal: ChangeProposal, ctx: ToolContext): string[] | ExecutableCheck | null | Promise<string[] | ExecutableCheck | null>;
     /** Where the tool is offered (default both). MCP-only tools (`tools/mcp_changes.ts`) are never in the site registry. */
     surfaces?: readonly ('site' | 'mcp')[];
 }

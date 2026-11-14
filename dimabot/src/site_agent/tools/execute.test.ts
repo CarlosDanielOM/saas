@@ -62,10 +62,11 @@ mock.module('../../schemas/users.schema.js', { defaultExport: { findOne: () => c
 // ---------------------------------------------------------------------------
 
 const { ToolConflictError, ToolInputError } = await import('../types.js');
-const hooks = { run: null as null | (() => void), apply: 'ok' as 'ok' | 'conflict' | 'throw' | 'slow' | 'noUndo', undoConflict: false };
+const hooks = { run: null as null | (() => void), apply: 'ok' as 'ok' | 'conflict' | 'throw' | 'slow' | 'slowFail' | 'noUndo', undoConflict: false };
 const applied: Array<{ proposal: ChangeProposal; ctx: ToolContext }> = [];
 const undone: unknown[] = [];
 let finishSlow: (() => void) | null = null;
+let failSlow: (() => void) | null = null;
 
 function fake(partial: Partial<AgentTool> & { name: string; kind: ToolKind }): AgentTool {
     return {
@@ -87,7 +88,7 @@ const createCommand = fake({
         applied.push({ proposal, ctx });
         if (hooks.apply === 'conflict') throw new ToolConflictError('!x was created by someone else');
         if (hooks.apply === 'throw') throw new Error('cache refresh failed');
-        if (hooks.apply === 'slow') await new Promise<void>((resolve) => { finishSlow = resolve; });
+        if (hooks.apply === 'slow' || hooks.apply === 'slowFail') await new Promise<void>((resolve, reject) => { finishSlow = resolve; failSlow = () => reject(new Error('late failure')); });
         const undo = hooks.apply === 'noUndo' ? null : { id: 'c1' };
         return { result: { created: true }, change: { area: 'commands', target: { type: 'command', id: 'c1', label: '!x' }, before: null, after: proposal.after, undo, summary: 'Created !x' } };
     },
@@ -324,41 +325,66 @@ test('not charged: conflicts, errors and unknown outcomes', async () => {
     assert.equal(changesDb.store.size, 0);
 });
 
-test('a write cut off by the caller is unknown, released, and still logged when it lands', async () => {
+// Review 2026-11-14 (P2): a started write is never abandoned, and a late one is charged once if it lands.
+test('a client abort never abandons a write that started: it finishes, is logged and charged', async () => {
     hooks.apply = 'slow';
     const abort = new AbortController();
     const pending = call('create_command', { body: 'hi' }, {}, abort.signal);
     await flush();
     assert.equal(applied.length, 1);
     abort.abort();
-    const outcome = await pending;
-    assert.equal(outcome.ok === false && outcome.code, 'outcome_unknown');
-    assert.deepEqual(kinds(), ['reserve', 'release']);
-    assert.ok(state.logged.some((entry) => entry.level === 'warn' && entry.data.outcome === 'unknown'));
-    assert.equal(changesDb.store.size, 0);
-    finishSlow!();
     await flush();
-    assert.equal(changesDb.store.size, 1, 'the late write got its change-log entry');
+    assert.deepEqual(kinds(), ['reserve'], 'still waiting for the write');
+    finishSlow!();
+    const outcome = await pending;
+    assert.equal(outcome.ok, true);
+    assert.equal((outcome as { charged: number }).charged, 1);
+    assert.deepEqual(kinds(), ['reserve', 'settle']);
+    assert.equal(changesDb.store.size, 1);
     assert.equal([...changesDb.store.values()][0].source.surface, 'mcp');
 });
 
-test('a write over 120 s is unknown and not charged', async () => {
-    hooks.apply = 'slow';
-    mock.timers.enable({ apis: ['setTimeout'] });
-    try {
-        const pending = call('create_command', { body: 'hi' });
+test('a write over 120 s is unknown; its hold is settled once if it lands later, released if it fails', async () => {
+    for (const ending of ['lands', 'fails'] as const) {
+        state.credits = [];
+        changesDb.store.clear();
+        hooks.apply = ending === 'lands' ? 'slow' : 'slowFail';
+        mock.timers.enable({ apis: ['setTimeout'] });
+        let outcome;
+        try {
+            const pending = call('create_command', { body: 'hi' });
+            await flush();
+            mock.timers.tick(120_000);
+            outcome = await pending;
+        } finally {
+            mock.timers.reset();
+        }
+        assert.equal(outcome.ok === false && outcome.code, 'outcome_unknown', ending);
+        assert.match((outcome as { message: string }).message, /took too long.*charged only if it lands/);
+        assert.deepEqual(kinds(), ['reserve'], 'the hold waits for the write');
+        if (ending === 'lands') finishSlow!(); else failSlow!();
         await flush();
-        assert.equal(applied.length, 1);
-        mock.timers.tick(120_000);
-        const outcome = await pending;
-        assert.equal(outcome.ok === false && outcome.code, 'outcome_unknown');
-        assert.match((outcome as { message: string }).message, /took too long/);
-    } finally {
-        mock.timers.reset();
+        assert.deepEqual(kinds(), ['reserve', ending === 'lands' ? 'settle' : 'release'], ending);
+        assert.equal(state.credits[1][1], state.credits[0][3], 'same operation id');
+        assert.equal(changesDb.store.size, ending === 'lands' ? 1 : 0, 'a landed write is logged');
+        await flush();
+        assert.equal(state.credits.length, 2, 'exactly once');
     }
-    assert.deepEqual(kinds(), ['reserve', 'release']);
-    finishSlow!();
-    await flush();
+});
+
+test('stored text a change makes reachable is refused with its own message; a pin reaches apply', async () => {
+    const original = createCommand.executableFields;
+    try {
+        createCommand.executableFields = () => ({ texts: ['hi'], stored: ['ok', '*(1 == 1 ? x : $(ban $(user)))'], where: 'in this command' });
+        const outcome = await call('create_command', { body: 'hi' });
+        assert.deepEqual(outcome, { ok: false, code: 'unsafe_content', message: 'Not applied: some stored text in this command can act on your stream ($(ban): can ban viewers); edit it on the website.' });
+        assert.equal(applied.length, 0);
+        createCommand.executableFields = () => ({ texts: ['hi'], stored: ['ok $(user)'], pinned: { state: 'p1' } });
+        assert.equal((await call('create_command', { body: 'hi' })).ok, true);
+        assert.deepEqual(applied[0].proposal.payload.pinned, { state: 'p1' });
+    } finally {
+        createCommand.executableFields = original;
+    }
 });
 
 test('change log down: still applied and charged, but not undoable, with a note; retries reuse one id', async () => {
@@ -474,7 +500,7 @@ test('list_recent_changes: owner/admin rules, then the requester\'s current view
     const theirs = await logged({ id: OTHER, role: 'admin' }, 'create_command', 'commands');
     const personality = await logged({ id: CHANNEL, role: 'owner' }, 'update_ai_personality', 'ai_personality');
 
-    const admin = await call('list_recent_changes', {}, { scopes: ['channel:read'] }) as { ok: true; result: { changes: Array<{ id: string; via: string; canUndo: boolean; details: unknown }> }; charged: number };
+    const admin = await call('list_recent_changes', {}, { scopes: ['channel:read'] }) as { ok: true; result: { changes: Array<{ id: string; via: string; canUndo: boolean; undoOnWebsite?: boolean; details: unknown }> }; charged: number };
     assert.deepEqual(admin.result.changes.map((change) => change.id), [mine], 'own changes only, and not the tts one without tts:view');
     assert.equal(admin.result.changes[0].via, 'Cursor (MCP)');
     assert.equal(admin.result.changes[0].canUndo, true);
@@ -490,21 +516,34 @@ test('list_recent_changes: owner/admin rules, then the requester\'s current view
     assert.deepEqual(owner.result.changes.map((change) => change.id), [personality, theirs, myTts, mine]);
     assert.equal(owner.result.changes[0].canUndo, false, 'site-only tool: undo on the website');
     assert.equal(owner.result.changes[1].via, 'website assistant');
+    // A website change: listed, but undone on the website (its undo would restore text the guard never saw).
+    assert.equal(owner.result.changes[1].canUndo, false);
+    assert.equal(owner.result.changes[1].undoOnWebsite, true);
+    assert.equal(owner.result.changes[3].canUndo, true, 'the MCP change');
+    assert.equal(owner.result.changes[3].undoOnWebsite, undefined);
 });
 
-test('undo_change: own changes, the original tool\'s permissions and plan, site-only tools refused, logged as mcp', async () => {
-    const mine = await logged({ id: ADMIN, role: 'admin' }, 'create_command', 'commands');
-    const theirs = await logged({ id: OTHER, role: 'admin' }, 'create_command', 'commands');
-    const personality = await logged({ id: ADMIN, role: 'admin' }, 'update_ai_personality', 'ai_personality');
-    const tts = await logged({ id: ADMIN, role: 'admin' }, 'update_tts_settings', 'tts');
+const VIA_MCP = { source: { surface: 'mcp' as const, clientId: 'https://claude.ai/oauth/mcp-client', clientName: 'Claude' } };
+
+test('undo_change: own MCP changes only, the original tool\'s permissions and plan, logged as mcp', async () => {
+    const mine = await logged({ id: ADMIN, role: 'admin' }, 'create_command', 'commands', VIA_MCP);
+    const theirs = await logged({ id: OTHER, role: 'admin' }, 'create_command', 'commands', VIA_MCP);
+    const personality = await logged({ id: ADMIN, role: 'admin' }, 'update_ai_personality', 'ai_personality', VIA_MCP);
+    const tts = await logged({ id: ADMIN, role: 'admin' }, 'update_tts_settings', 'tts', VIA_MCP);
+    // Review 2026-11-14 (P1): a site-assistant change's undo would restore content the guard never saw.
+    const fromSite = await logged({ id: ADMIN, role: 'admin' }, 'create_command', 'commands');
     state.prices.undo_change = 0;
+
+    const site = await call('undo_change', { changeId: fromSite });
+    assert.deepEqual(site, { ok: false, code: 'permission_denied', message: 'This change was made on the website: undo this on the website (Changes list in the assistant panel).' });
+    assert.equal(undone.length, 0);
 
     assert.equal((await call('undo_change', { changeId: mine }, { scopes: ['channel:read'] }) as { code: string }).code, 'insufficient_scope');
     assert.equal((await call('undo_change', { changeId: 'nope' }) as { code: string }).code, 'invalid_input');
     assert.equal((await call('undo_change', { changeId: theirs }) as { code: string }).code, 'invalid_input', 'another admin\'s change looks missing');
-    const site = await call('undo_change', { changeId: personality });
-    assert.equal(site.ok === false && site.code, 'permission_denied');
-    assert.match((site as { message: string }).message, /website/);
+    const siteOnly = await call('undo_change', { changeId: personality });
+    assert.equal(siteOnly.ok === false && siteOnly.code, 'permission_denied');
+    assert.match((siteOnly as { message: string }).message, /website/);
     state.grants = '*';
     assert.equal((await call('undo_change', { changeId: tts }) as { code: string }).code, 'plan_required', 'update_tts_settings is Pro here');
     state.grants = new Set(['commands:view']);

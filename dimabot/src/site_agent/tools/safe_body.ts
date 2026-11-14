@@ -6,11 +6,18 @@
  * progress/roulette effects, AI, timers and delays, command or reward on/off, running other commands (`#(name)`),
  * unknown functions, syntax it can't check and text that does not parse. Static: nothing runs.
  *
+ * It checks exactly what the runtime evaluates: the renderer's own top-level segments (`render.ts`
+ * scanSourceSegments, which ignores quotes outside an expression), each parsed like the renderer parses it, and that
+ * for the text as stored and as `&t`/`&pN` placeholders turn it before rendering (bound to variables, or removed when
+ * a timer or event message renders without an argument, which can join text into a new expression).
+ *
  * The refusal reasons come from `effects.ts` (FUNCTION_EFFECTS) and the AST catalog (generated from the function
  * registry). Variables (`%(…)`, `*(…)` logic and math, `^(…)`, `%del(…)`) are allowed: they are the command's own
  * state, like counters, and never reach Twitch. The registry has no time or uptime function today.
  */
-import { parseToAst } from '../../utils/ast_parser/parser.js';
+import { parse } from '../../utils/ast_parser/parser.js';
+import { scanSourceSegments } from '../../utils/ast_parser/render.js';
+import { resolveArgumentPlaceholders } from '../../handlers/special_parser.handler.js';
 import type { ArrayAccessor, AstNode } from '../../utils/ast_parser/types.js';
 import { findAstCatalogEntry } from '../../utils/ai/ast_catalog/index.js';
 import { functionEffect } from './effects.js';
@@ -99,12 +106,27 @@ export function findUnsafe(root: AstNode): string | null {
     return null;
 }
 
+/** The first unsafe expression in text as the renderer splits and parses it, or null. */
+function unsafeRendered(text: string): string | null {
+    for (const segment of scanSourceSegments(text)) {
+        if (segment.kind === 'text') continue;
+        if (segment.kind === 'unclosed') return 'an expression is never closed';
+        const { ast, error } = parse(segment.source);
+        if (error) return `the text does not parse (${error})`;
+        const reason = findUnsafe(ast);
+        if (reason) return reason;
+    }
+    return null;
+}
+
 /** Checks one command-language text (a command reply, timer message, event message, winner or goal action). */
 export function checkSafeBody(text: string): SafeBodyResult {
     if (typeof text !== 'string') return { ok: false, reason: 'it is not text' };
     if (!text.trim()) return { ok: true };
-    const { ast, error } = parseToAst(text);
-    if (error) return { ok: false, reason: `the text does not parse (${error})` };
-    const reason = findUnsafe(ast);
-    return reason ? { ok: false, reason } : { ok: true };
+    const variants = new Set([text, resolveArgumentPlaceholders(text, '', true).text, resolveArgumentPlaceholders(text, '', false).text]);
+    for (const variant of variants) {
+        const reason = unsafeRendered(variant);
+        if (reason) return { ok: false, reason };
+    }
+    return { ok: true };
 }

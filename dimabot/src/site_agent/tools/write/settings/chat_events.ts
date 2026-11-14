@@ -8,13 +8,14 @@ import {
     RAID_EVENT_FIELDS,
     updateChannelEventsub
 } from '../../../../server/services/eventsub_config.service.js';
-import { canonicalizeEventsubType, getEquivalentEventsubTypes } from '../../../../utils/eventsub.js';
+import { loadBitsRules } from '../../../../bits_rules/store.js';
+import { CANONICAL_BITS_EVENT_TYPE, canonicalizeEventsubType, getEquivalentEventsubTypes } from '../../../../utils/eventsub.js';
 import { getBuiltinChatEvent, withBuiltinChatEvents } from '../../../../utils/chat_event_catalog.js';
 import { OUTGOING_RAID_EVENT, isRaidEvent } from '../../../../utils/raid_direction.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../../../../utils/header.js';
-import { ToolInputError, type AgentTool, type ChangeProposal, type Lang, type ToolContext } from '../../../types.js';
+import { ToolInputError, type AgentTool, type ChangeProposal, type ExecutableCheck, type Lang, type ToolContext } from '../../../types.js';
 import { asObject, bool, str } from '../../util.js';
-import { PLAN_RANK, assertUnchanged, bodyEffects, conflict, display, hasFullAccess, mergeEffects, needsFullAccessResult, pickPaths, routeMessage, sameValue, tr, type FieldLabel } from './common.js';
+import { PLAN_RANK, assertPinned, assertUnchanged, bodyEffects, conflict, deepStrings, display, fingerprint, hasFullAccess, mergeEffects, needsFullAccessResult, pickPaths, routeMessage, sameValue, tr, type FieldLabel } from './common.js';
 
 /**
  * Chat events (Modules → Chat Events): the messages the bot posts for Twitch events. Each event is
@@ -50,16 +51,53 @@ export async function catalogEvent(type: string): Promise<CatalogEvent | null> {
     return row ? { ...row, type: canonical } : null;
 }
 
-/** The channel's config for one chat event type (the one the page shows), or null. */
-export async function channelEventsub(channelId: string, type: string): Promise<Record<string, any> | null> {
+/** Every stored row of the channel for one chat event type (equivalent types included). */
+async function eventRows(channelId: string, type: string): Promise<Record<string, any>[]> {
     const canonical = canonicalizeEventsubType(type);
-    const rows = await EventsubSchema.find({
+    return await EventsubSchema.find({
         channelID: channelId,
         type: { $in: getEquivalentEventsubTypes(canonical === OUTGOING_RAID_EVENT ? 'channel.raid' : canonical) },
         ...(isRaidEvent(canonical) ? { [`condition.${canonical === OUTGOING_RAID_EVENT ? 'from' : 'to'}_broadcaster_user_id`]: channelId } : {})
-    }).lean();
-    return dedupeNormalizedEventsubs(rows as Record<string, any>[]).find((row) => row.type === canonical) ?? null;
+    }).lean() as Record<string, any>[];
 }
+
+/** The channel's config for one chat event type (the one the page shows), or null. */
+export async function channelEventsub(channelId: string, type: string): Promise<Record<string, any> | null> {
+    const canonical = canonicalizeEventsubType(type);
+    return dedupeNormalizedEventsubs(await eventRows(channelId, type)).find((row) => row.type === canonical) ?? null;
+}
+
+/**
+ * MCP (no approval card; lead decision 2026-11-14): every write checks the event's whole executable text as it will
+ * be, whatever changed: every string of every row the runtime may use (handlers pick one with findOne, so equivalent
+ * rows count too) and, for Cheers, the Bits rules' messages. `pin` is what apply checks again before it writes.
+ */
+async function eventState(channelId: string, type: string) {
+    const rows = await eventRows(channelId, type);
+    const bits = canonicalizeEventsubType(type) === CANONICAL_BITS_EVENT_TYPE ? (await loadBitsRules(channelId)).rules : [];
+    const pin = fingerprint({ rows: rows.map((row) => [String(row._id), deepStrings(row)]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))), bits });
+    return { rows, bits, pin };
+}
+
+async function eventCheck(ctx: ToolContext, type: string, after: (rows: Record<string, any>[]) => unknown[], texts: string[]): Promise<ExecutableCheck> {
+    const { rows, bits, pin } = await eventState(ctx.channelId, type);
+    const remaining = after(rows);
+    const fresh = new Set(texts);
+    const stored = [...remaining.flatMap((row) => deepStrings(row)), ...(remaining.length ? bits.map((rule) => rule.chat.message) : [])]
+        .filter((text) => text.trim() && !fresh.has(text));
+    return { texts, stored, where: 'in this chat event', pinned: { chatEvent: pin } };
+}
+
+/** apply: an MCP check pinned the event; it must still read the same. */
+async function assertEventPinned(ctx: Pick<ToolContext, 'channelId' | 'lang'>, proposal: ChangeProposal, type: string): Promise<boolean> {
+    const pinned = (proposal.payload.pinned as { chatEvent?: string } | undefined)?.chatEvent;
+    if (pinned === undefined) return false;
+    assertPinned(pinned, (await eventState(ctx.channelId, type)).pin, ctx.lang, tr(ctx.lang, 'The chat event', 'El evento de chat'));
+    return true;
+}
+
+/** Top-level stored text of a row, for the write guard of a pinned change. */
+const storedText = (row: Record<string, unknown>) => Object.fromEntries(Object.entries(row).filter(([key, value]) => key !== '_id' && typeof value === 'string'));
 
 interface FieldSpec { key: string; type: 'text' | 'number' | 'checkbox' | 'select'; label: FieldLabel; defaultValue: unknown }
 
@@ -142,8 +180,10 @@ export const createChatEvent: AgentTool<TypeInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean', description: 'Default true' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event…', 'Preparando el evento de chat…'),
     validate: (raw) => typeInput(raw, 'create'),
-    // Every text value (messages run $(...) when the event fires; other strings are plain values).
-    executableFields: (_input, proposal) => Object.values((proposal.payload.body as { config: Record<string, unknown> }).config).filter((value): value is string => typeof value === 'string'),
+    executableFields(_input, proposal, ctx) {
+        const { type, config } = proposal.payload.body as { type: string; config: Record<string, unknown> };
+        return eventCheck(ctx, type, (rows) => [...rows, config], deepStrings(config));
+    },
     async run(input, ctx) {
         const event = await catalogEvent(input.type);
         if (!event) throw new ToolInputError(`Unknown chat event type ${input.type}. Use get_settings area "chat_events".`);
@@ -177,6 +217,7 @@ export const createChatEvent: AgentTool<TypeInput> = {
     async apply(proposal, ctx) {
         const { body, after } = proposal.payload as { body: { type: string; version: string; condition: Record<string, string>; config: Record<string, unknown> }; after: Record<string, unknown> };
         if (await channelEventsub(ctx.channelId, body.type)) conflict(ctx.lang, 'This chat event was set up somewhere else in the meantime. Nothing was changed.', 'Este evento de chat se configuró en otro lugar mientras tanto. No se cambió nada.');
+        await assertEventPinned(ctx, proposal, body.type);
         const result = await createChannelEventsub(ctx.channelId, body);
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not create the chat event'));
         const created = await channelEventsub(ctx.channelId, body.type);
@@ -211,13 +252,9 @@ export const updateChatEvent: AgentTool<TypeInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter, enabled: { type: 'boolean' }, fields: fieldsParameter } },
     label: (_input, lang) => tr(lang, 'Preparing the chat event change…', 'Preparando el cambio del evento de chat…'),
     validate: (raw) => typeInput(raw, 'update'),
-    // New text values, plus the stored ones when the event is turned back on.
-    async executableFields(_input, proposal, ctx) {
-        const { id, after } = proposal.payload as { id: string; after: Record<string, unknown> };
-        const texts = Object.values(after).filter((value): value is string => typeof value === 'string');
-        if (after.enabled !== true) return texts;
-        const current = await EventsubSchema.findOne({ _id: id, channelID: ctx.channelId }).lean() as unknown as Record<string, unknown> | null;
-        return [...texts, ...Object.entries(current ?? {}).filter(([key, value]) => typeof value === 'string' && !(key in after)).map(([, value]) => value as string)];
+    executableFields(_input, proposal, ctx) {
+        const { id, type, after } = proposal.payload as { id: string; type: string; after: Record<string, unknown> };
+        return eventCheck(ctx, type, (rows) => rows.map((row) => String(row._id) === id ? { ...row, ...after } : row), deepStrings(after));
     },
     async run(input, ctx) {
         const [event, current] = await Promise.all([catalogEvent(input.type), channelEventsub(ctx.channelId, input.type)]);
@@ -250,8 +287,9 @@ export const updateChatEvent: AgentTool<TypeInput> = {
         const current = await EventsubSchema.findOne({ _id: id, channelID: ctx.channelId }).lean();
         if (!current) conflict(ctx.lang, 'This chat event was removed in the meantime. Nothing was changed.', 'Este evento de chat se eliminó mientras tanto. No se cambió nada.');
         assertUnchanged(current, expected, ctx.lang, tr(ctx.lang, 'The chat event', 'El evento de chat'));
-        // The fields this change touches must still be as just read when the write lands.
-        const result = await updateChannelEventsub(ctx.channelId, id, after, { guard: stored(current, Object.keys(expected)) });
+        // The fields this change touches must still be as just read when the write lands (MCP: its checked text too).
+        const pinned = await assertEventPinned(ctx, proposal, type);
+        const result = await updateChannelEventsub(ctx.channelId, id, after, { guard: { ...stored(current, Object.keys(expected)), ...(pinned ? storedText(current) : {}) } });
         if (result.status === 409 && result.body.code === 'changed') conflict(ctx.lang, 'This chat event changed while saving. Nothing was changed; ask again for a fresh proposal.', 'Este evento de chat cambió mientras se guardaba. No se cambió nada; vuelve a pedirlo.');
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not update the chat event'));
         return {
@@ -282,6 +320,11 @@ export const deleteChatEvent: AgentTool<TypeInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['type'], properties: { type: typeParameter } },
     label: (_input, lang) => tr(lang, 'Preparing to delete the chat event…', 'Preparando la eliminación del evento de chat…'),
     validate: (raw) => typeInput(raw, 'delete'),
+    // The rows that stay: the runtime may pick an equivalent row once this one is gone.
+    executableFields(_input, proposal, ctx) {
+        const { id, type } = proposal.payload as { id: string; type: string };
+        return eventCheck(ctx, type, (rows) => rows.filter((row) => String(row._id) !== id), []);
+    },
     async run(input, ctx) {
         const [event, current] = await Promise.all([catalogEvent(input.type), channelEventsub(ctx.channelId, input.type)]);
         if (!current) throw new ToolInputError(`${eventName(event, input.type)} is not set up on this channel.`);
@@ -307,6 +350,7 @@ export const deleteChatEvent: AgentTool<TypeInput> = {
         const current = await EventsubSchema.findOne({ _id: id, channelID: ctx.channelId }).lean();
         if (!current) conflict(ctx.lang, 'This chat event was already removed.', 'Este evento de chat ya se eliminó.');
         assertUnchanged(current, expected, ctx.lang, tr(ctx.lang, 'The chat event', 'El evento de chat'));
+        await assertEventPinned(ctx, proposal, type);
         const result = await deleteChannelEventsub(ctx.channelId, id);
         if (result.status >= 300) throw new Error(routeMessage(result.body, 'Could not delete the chat event'));
         return {

@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { BitsRuleError, MAX_BITS_AMOUNT, MAX_BITS_RULES, MAX_RULE_MESSAGE, MAX_RULE_NAME, parseRule, type BitsRule } from '../../../../bits_rules/model.js';
 import { changeBitsRules, loadBitsRules } from '../../../../bits_rules/store.js';
-import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type Lang, type ToolContext } from '../../../types.js';
+import EventsubSchema from '../../../../schemas/eventsub.schema.js';
+import { CANONICAL_BITS_EVENT_TYPE, LEGACY_BITS_EVENT_TYPES } from '../../../../utils/eventsub.js';
+import { ToolConflictError, ToolInputError, type AgentTool, type ChangeProposal, type ExecutableCheck, type Lang, type ToolContext } from '../../../types.js';
 import { asObject, bool, int, oneOf, str } from '../../util.js';
-import { bodyEffects, conflict, sameValue, tr } from './common.js';
+import { assertPinned, bodyEffects, conflict, deepStrings, fingerprint, sameValue, tr } from './common.js';
 
 /**
  * Shared Bits rules (Chat Events → Cheers card, and Overlay Studio Bits looks). Routes:
@@ -53,8 +55,47 @@ function parse(raw: Record<string, unknown>, id: string, previous?: BitsRule): B
     catch (error) { if (error instanceof BitsRuleError) throw new ToolInputError(error.message); throw error; }
 }
 
-async function mutate(ctx: Pick<ToolContext, 'channelId' | 'requester'>, change: (rules: BitsRule[]) => BitsRule[]): Promise<BitsRule[]> {
-    try { return (await changeBitsRules(ctx.channelId, ctx.requester.id, change)).rules; }
+/**
+ * MCP (no approval card; lead decision 2026-11-14): every Bits rule write checks the channel's whole Bits text as it
+ * will be: every rule's message, and every Cheers row (its default message, used for amounts no rule takes or rules
+ * in default mode, and the old editor's tiers). `pin` is what apply checks again.
+ */
+async function bitsState(channelId: string) {
+    const rows = await EventsubSchema.find({ channelID: channelId, type: { $in: [CANONICAL_BITS_EVENT_TYPE, ...LEGACY_BITS_EVENT_TYPES] } }).lean() as unknown as Record<string, unknown>[];
+    const state = await loadBitsRules(channelId);
+    const pin = fingerprint({ rows: rows.map((row) => [String(row._id), deepStrings(row)]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))), rules: state.rules });
+    return { rows, rules: state.rules, pin };
+}
+
+async function bitsCheck(ctx: ToolContext, after: (rules: BitsRule[]) => BitsRule[], texts: string[]): Promise<ExecutableCheck> {
+    const { rows, rules, pin } = await bitsState(ctx.channelId);
+    const stored = [...after(structuredClone(rules)).map((rule) => rule.chat.message), ...rows.flatMap((row) => deepStrings(row))]
+        .filter((text) => text.trim() && !texts.includes(text));
+    return { texts, stored, where: 'in the Bits rules or the default Cheers message', pinned: { bits: pin } };
+}
+
+const newMessage = (raw: Record<string, unknown>) => {
+    const chat = raw.chat as BitsRule['chat'] | undefined;
+    return chat?.mode === 'custom' && chat.message.trim() ? [chat.message] : [];
+};
+
+/**
+ * Rules write; with an MCP pin, the checked state must still be there: the Cheers rows just before, and the rules
+ * inside the write itself (its compare-and-swap reruns `change` on a newer list).
+ */
+async function mutate(ctx: Pick<ToolContext, 'channelId' | 'requester' | 'lang'>, change: (rules: BitsRule[]) => BitsRule[], proposal?: ChangeProposal): Promise<BitsRule[]> {
+    const pinned = (proposal?.payload.pinned as { bits?: string } | undefined)?.bits;
+    let checked: BitsRule[] | null = null;
+    if (pinned !== undefined) {
+        const state = await bitsState(ctx.channelId);
+        assertPinned(pinned, state.pin, ctx.lang, tr(ctx.lang, 'The Bits rules', 'Las reglas de Bits'));
+        checked = state.rules;
+    }
+    const guarded = (rules: BitsRule[]) => {
+        if (checked && !sameValue(rules, checked)) conflict(ctx.lang, 'The Bits rules changed while saving. Nothing was changed; ask again for a fresh proposal.', 'Las reglas de Bits cambiaron mientras se guardaba. No se cambió nada; vuelve a pedirlo.');
+        return change(rules);
+    };
+    try { return (await changeBitsRules(ctx.channelId, ctx.requester.id, guarded)).rules; }
     catch (error) {
         if (error instanceof ToolConflictError) throw error;
         if (error instanceof BitsRuleError) throw new Error(error.message);
@@ -85,10 +126,9 @@ export const createBitsRule: AgentTool<BitsRuleCreateInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['min'], properties: ruleParameters },
     label: (_input, lang) => tr(lang, 'Preparing the Bits rule…', 'Preparando la regla de Bits…'),
     validate: (raw) => fields(asObject(raw), true) as BitsRuleCreateInput,
-    // A custom chat message runs for every cheer in the range.
-    executableFields(_input, proposal) {
-        const chat = (proposal.payload.raw as { chat?: BitsRule['chat'] }).chat;
-        return chat?.mode === 'custom' ? [chat.message] : [];
+    executableFields(_input, proposal, ctx) {
+        const { id, raw } = proposal.payload as { id: string; raw: Record<string, unknown> };
+        return bitsCheck(ctx, (rules) => [...rules, parseRule(raw, id)], newMessage(raw));
     },
     async run(input, ctx) {
         const current = await loadBitsRules(ctx.channelId);
@@ -117,7 +157,7 @@ export const createBitsRule: AgentTool<BitsRuleCreateInput> = {
             if (list.some((rule) => rule.id === id)) throw new ToolConflictError(tr(ctx.lang, 'This rule was already added.', 'Esta regla ya se agregó.'));
             if (list.length >= MAX_BITS_RULES) throw new ToolConflictError(tr(ctx.lang, `The channel reached ${MAX_BITS_RULES} Bits rules in the meantime.`, `El canal llegó a ${MAX_BITS_RULES} reglas de Bits mientras tanto.`));
             return [...list, parseRule(raw, id)];
-        });
+        }, proposal);
         const saved = rules.find((rule) => rule.id === id)!;
         return { result: { created: true, id }, change: { area: 'bits_rules', target: proposal.target, before: null, after: proposal.after, undo: { id, after: saved }, summary: proposal.title } };
     },
@@ -145,12 +185,9 @@ export const updateBitsRule: AgentTool<BitsRuleUpdateInput> = {
         if (!Object.entries(value).some(([key, item]) => key !== 'id' && item !== undefined)) throw new ToolInputError('Give at least one rule field to change');
         return value;
     },
-    // The custom message after the change, when it is new, turned on or used for other amounts.
-    executableFields(_input, proposal) {
-        const { raw, expected } = proposal.payload as { raw: Record<string, unknown> & { chat?: BitsRule['chat'] }; expected: BitsRule };
-        const chat = raw.chat ?? expected.chat;
-        const exposes = raw.chat !== undefined || raw.enabled === true || raw.min !== undefined || 'max' in raw;
-        return exposes && chat.mode === 'custom' ? [chat.message] : [];
+    executableFields(_input, proposal, ctx) {
+        const { id, raw } = proposal.payload as { id: string; raw: Record<string, unknown> };
+        return bitsCheck(ctx, (rules) => rules.map((rule) => rule.id === id ? parseRule(raw, id, rule) : rule), newMessage(raw));
     },
     async run(input, ctx) {
         const current = await loadBitsRules(ctx.channelId);
@@ -182,7 +219,7 @@ export const updateBitsRule: AgentTool<BitsRuleUpdateInput> = {
             if (!sameValue(list[index], expected)) conflict(ctx.lang, 'This Bits rule changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Esta regla de Bits cambió desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
             list[index] = parseRule(raw, id, list[index]);
             return list;
-        });
+        }, proposal);
         const saved = rules.find((rule) => rule.id === id)!;
         return { result: { saved: true, id }, change: { area: 'bits_rules', target: proposal.target, before: proposal.before, after: proposal.after, undo: { id, before: expected, after: saved }, summary: proposal.title } };
     },
@@ -206,6 +243,11 @@ export const deleteBitsRule: AgentTool<BitsRuleDeleteInput> = {
     parameters: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string' } } },
     label: (_input, lang) => tr(lang, 'Preparing to delete the Bits rule…', 'Preparando la eliminación de la regla de Bits…'),
     validate: (raw) => ({ id: str(asObject(raw), 'id', { required: true, max: 64 })! }),
+    // Cheers in its range fall back to another rule or the default message.
+    executableFields(_input, proposal, ctx) {
+        const { id } = proposal.payload as { id: string };
+        return bitsCheck(ctx, (rules) => rules.filter((rule) => rule.id !== id), []);
+    },
     async run(input, ctx) {
         const current = await loadBitsRules(ctx.channelId);
         const rule = current.rules.find((item) => item.id === input.id);
@@ -231,7 +273,7 @@ export const deleteBitsRule: AgentTool<BitsRuleDeleteInput> = {
             if (!rule) conflict(ctx.lang, 'This Bits rule was already deleted.', 'Esta regla de Bits ya se eliminó.');
             if (!sameValue(rule, expected)) conflict(ctx.lang, 'This Bits rule changed since this was prepared. Nothing was changed; ask again for a fresh proposal.', 'Esta regla de Bits cambió desde que se preparó este cambio. No se cambió nada; vuelve a pedirlo.');
             return list.filter((item) => item.id !== id);
-        });
+        }, proposal);
         return { result: { deleted: true, id }, change: { area: 'bits_rules', target: proposal.target, before: proposal.before, after: null, undo: { rule: expected }, summary: proposal.title } };
     },
     async undo(change, ctx) {

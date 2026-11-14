@@ -119,10 +119,12 @@ export const updateTimerTool: AgentTool<UpdateInput> = {
         }
         return parsed;
     },
-    // The message runs on its own every N minutes: a new one, or the stored one when the timer is turned on.
+    // The message runs on its own: a new one, or the stored one unless the change only pauses or slows it.
     executableFields(_input, proposal) {
         const { changes, expected } = proposal.payload as { changes: UpdateChanges; expected: TimerSnapshot };
-        return changes.message !== undefined || changes.enabled === true ? [changes.message ?? expected.message] : [];
+        if (changes.message !== undefined) return [changes.message];
+        const narrows = changes.enabled === false || (changes.enabled !== true && (!expected.active || (changes.minutes ?? Infinity) >= expected.minutes));
+        return narrows ? [] : { texts: [], stored: [expected.message], where: 'in this timer' };
     },
     async run(input, ctx) {
         const current = await readTimer(ctx.channelId, input.name);

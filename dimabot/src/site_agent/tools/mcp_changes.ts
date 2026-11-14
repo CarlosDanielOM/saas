@@ -2,7 +2,9 @@
  * MCP-only tools (surface mcp, never in the site registry): the change log and undo, for apps whose writes apply
  * without an approval card. Visibility is the Changes list's (owner: every change on the channel; admin: their
  * own), narrowed to areas the requester may view now. Undo goes through `changes.undoChange`, after the original
- * tool's scope, permissions and plan are checked again.
+ * tool's scope, permissions and plan are checked again, and only for changes made through MCP: their before-state was
+ * there before an MCP write that passed the safe-body guard, so the compare-and-set undo restores only that. Undoing a
+ * website change could restore text the guard never saw (lead decision 2026-11-14), so it stays on the website.
  */
 import { SiteAgentChangeSchema } from '../changes.schema.js';
 import { ChangeError, ChangeForbiddenError, listChanges, undoChange, type ChangeView } from '../changes.js';
@@ -32,7 +34,11 @@ async function mayView(ctx: ToolContext, area: string): Promise<boolean> {
     return permission ? ctx.can([permission]) : ctx.role === 'owner';
 }
 
+/** undo_change can undo it: undoable in the log, made through MCP, by an MCP write tool. */
+const mcpCanUndo = (change: ChangeView, tool: string | undefined) => change.canUndo && change.source.surface === 'mcp' && Boolean(tool && mcpUndoable(tool));
+
 function view(change: ChangeView, tool: string | undefined) {
+    const canUndo = mcpCanUndo(change, tool);
     return {
         id: change.id,
         at: new Date(change.at).toISOString(),
@@ -40,7 +46,8 @@ function view(change: ChangeView, tool: string | undefined) {
         by: { login: change.actor.login, role: change.actor.role },
         via: change.source.surface === 'mcp' ? `${change.source.clientName ?? 'an app'} (MCP)` : 'website assistant',
         undone: change.undone ? { at: new Date(change.undone.at).toISOString(), by: change.undone.by.login } : null,
-        canUndo: change.canUndo && Boolean(tool && mcpUndoable(tool)),
+        canUndo,
+        ...(change.canUndo && !canUndo ? { undoOnWebsite: true } : {}),
         details: untrusted({ title: change.title, target: change.target.label, request: change.request, before: change.before, after: change.after, effects: change.effects }),
     };
 }
@@ -55,7 +62,8 @@ export const listRecentChangesTool: AgentTool<ListInput> = {
     description:
         'Recent changes the assistant made on this channel, from the website assistant or an MCP app like this one, newest '
         + 'first (kept 90 days): id, when, area, who asked (by), where (via), whether it was undone, canUndo (undo it with '
-        + 'undo_change), and details (title, target, request, before, after). The owner sees every change on the channel; an '
+        + 'undo_change; only changes made through MCP), undoOnWebsite (only the website\'s Changes list can undo it), and '
+        + 'details (title, target, request, before, after). The owner sees every change on the channel; an '
         + 'admin sees their own, only in areas they may still view. Pages of up to 30: pass `next` back as before.',
     parameters: {
         type: 'object',
@@ -98,10 +106,10 @@ export const undoChangeTool: AgentTool<{ changeId: string }> = {
     permissions: [],
     surfaces: ['mcp'],
     description:
-        'Undo one change from list_recent_changes by its id, like Undo in the website\'s Changes list: it puts back what was '
-        + 'there before, only if nothing changed it since (otherwise it says what changed and leaves it as it is). It needs '
-        + 'the same permission and plan as the original change. Changes to AI Personality, moderation, Follow Defense, '
-        + 'rewards and stream actions are undone on the website. An undo can\'t be undone.',
+        'Undo one change made through MCP (canUndo in list_recent_changes) by its id, like Undo in the website\'s Changes '
+        + 'list: it puts back what was there before, only if nothing changed it since (otherwise it says what changed and '
+        + 'leaves it as it is). It needs the same permission and plan as the original change. Changes made on the website '
+        + 'are undone on the website. An undo can\'t be undone.',
     parameters: {
         type: 'object',
         properties: { changeId: { type: 'string', description: 'id from list_recent_changes.' } },
@@ -116,13 +124,14 @@ export const undoChangeTool: AgentTool<{ changeId: string }> = {
     },
     async run(input, ctx) {
         const row = await SiteAgentChangeSchema.findOne({ _id: input.changeId, channelId: ctx.channelId })
-            .select('tool title area target before after actor undoneAt undoOf undoable').lean() as unknown as
-            { tool: string; title: string; area: string; target: { type: string; id: string | null; label: string }; before: Record<string, unknown> | null; after: Record<string, unknown> | null; actor?: { id?: string }; undoneAt: Date | null; undoOf: unknown; undoable: boolean } | null;
+            .select('tool title area target before after actor undoneAt undoOf undoable source').lean() as unknown as
+            { tool: string; title: string; area: string; target: { type: string; id: string | null; label: string }; before: Record<string, unknown> | null; after: Record<string, unknown> | null; actor?: { id?: string }; undoneAt: Date | null; undoOf: unknown; undoable: boolean; source?: { surface?: string } } | null;
         // Another admin's change is reported as missing, like the Changes list hides it.
         if (!row || (ctx.role !== 'owner' && row.actor?.id !== ctx.requester.id)) throw new ToolInputError(`No change ${input.changeId} that you can see on this channel. Use list_recent_changes.`);
         if (row.undoneAt) return { type: 'result', billable: false, summary: l(ctx.lang, 'Already undone', 'Ya deshecho'), result: { alreadyUndone: true, message: 'This change was already undone. Nothing was changed.' } };
         const original = getUndoTool(row.tool);
         if (row.undoOf || !row.undoable || !original?.undo) throw new ToolInputError('This change can\'t be undone (it is an undo itself, or it left nothing to restore).');
+        if (row.source?.surface !== 'mcp') throw new ToolDeniedError('permission_denied', 'This change was made on the website: undo this on the website (Changes list in the assistant panel).');
         if (!mcpUndoable(row.tool)) throw new ToolDeniedError('permission_denied', 'This kind of change can only be undone on the website (Changes list in the assistant panel).');
         const scope = requiredScope(original.kind);
         if (scope && !(ctx.mcp?.scopes ?? []).includes(scope)) throw new ToolDeniedError('insufficient_scope', `Undoing this needs the ${scope} permission for this app.`, [scope]);

@@ -192,12 +192,12 @@ export const updateGoal: AgentTool<GoalUpdateInput> = {
         if (value.name === undefined && value.target === undefined && value.completionAction === undefined && value.failureAction === undefined) throw new ToolInputError('Give a name, target or action to change');
         return value;
     },
-    // New actions, or the stored ones when a lower target makes them run sooner.
+    // The goal's AST actions as they will be, on every edit (a lower target runs them sooner).
     executableFields(_input, proposal) {
-        const { body, before } = proposal.payload as { body: { target: number; actions?: GoalActions }; before: { target: number; actions?: GoalActions } };
-        if (!body.actions && body.target >= before.target) return [];
-        const actions = body.actions ?? before.actions ?? {};
-        return [actions.completion, actions.failure].filter((item): item is GoalAction => item?.type === 'ast').map((item) => item.text);
+        const { body, before } = proposal.payload as { body: { actions?: GoalActions }; before: { actions?: GoalActions } };
+        const ast = (actions?: GoalActions) => [actions?.completion, actions?.failure].filter((item): item is GoalAction => item?.type === 'ast').map((item) => item.text);
+        const after = ast(body.actions ?? before.actions), old = ast(before.actions);
+        return { texts: after.filter((text) => !old.includes(text)), stored: after.filter((text) => old.includes(text)), where: 'in this goal\'s actions' };
     },
     async run(input, ctx) {
         const current = await state(ctx.channelId);
