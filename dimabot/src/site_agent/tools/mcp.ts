@@ -6,9 +6,9 @@
  * (`executableFields`).
  */
 import type { ToolKind } from '../types.js';
+import { MCP_TOOL_SCOPES } from '../../server/oauth/catalog.js';
 
-// TODO(lead): import from oauth/catalog.ts
-export const MCP_TOOL_SCOPES = { read: 'channel:read', write: 'channel:write', stream: 'stream:act' } as const;
+export { MCP_TOOL_SCOPES };
 
 /** The token scope a tool kind needs (knowledge needs none; `ui` is never offered on MCP). */
 export function requiredScope(kind: ToolKind): string | null {
