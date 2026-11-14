@@ -76,6 +76,11 @@ interface IngestPolarSHEventResponse {
   error: boolean;
   message?: string;
   details?: any;
+  /**
+   * Batch/cache modes: the event is in the durable queue and projected locally, so a later flush sends it
+   * even when this call reports an error (e.g. Polar was down). Absent when nothing was queued.
+   */
+  queued?: boolean;
 }
 
 interface GrantPolarAiCreditsOptions {
@@ -282,6 +287,7 @@ export async function ingestPolarSHEvent(
     };
   }
 
+  let queued = false;
   try {
     const cacheClient = await getDragonflyClient("PolarSH");
     const cacheKey = `twitch:${channelID}:ai:polarshevent`;
@@ -399,6 +405,7 @@ export async function ingestPolarSHEvent(
     if (!lockValue) {
       try {
         await queueEvent(cacheClient, cacheKey, eventData);
+        queued = true;
         await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
       } catch (queueErr) {
         await error(
@@ -409,7 +416,7 @@ export async function ingestPolarSHEvent(
           },
           { channelId: channelID, destination: "both" },
         );
-        return { error: true, message: "Failed to queue AI event" };
+        return { error: true, message: "Failed to queue AI event", ...(queued ? { queued } : {}) };
       }
       return { error: false, message: "queued (flush in progress)" };
     }
@@ -418,6 +425,7 @@ export async function ingestPolarSHEvent(
       // Durably queue the event BEFORE any network call — a failed or
       // interrupted ingest must never lose it.
       await queueEvent(cacheClient, cacheKey, eventData);
+      queued = true;
       await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
 
       if (mode === "cache") {
@@ -466,6 +474,7 @@ export async function ingestPolarSHEvent(
           error: true,
           message: "PolarSH ingest incomplete",
           details: ingestResult,
+          queued,
         };
       }
 
@@ -486,6 +495,7 @@ export async function ingestPolarSHEvent(
     return {
       error: true,
       message: err instanceof Error ? err.message : String(err),
+      ...(queued ? { queued } : {}),
     };
   }
 }
