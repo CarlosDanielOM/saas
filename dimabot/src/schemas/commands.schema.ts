@@ -23,6 +23,7 @@ export interface ICommands {
     reserved: boolean;
     description: string;
     cooldown: number;
+    cooldownOverride?: boolean;
     count: number;
     userLevelName: string;
     userLevel: number;
@@ -70,6 +71,8 @@ const commandsSchema = new Schema({
     reserved: { type: Boolean, default: false },
     description: { type: String, default: 'No description provided.' },
     cooldown: { type: Number, default: 20 },
+    /** Set when the owner console set the cooldown: chat uses it as stored, below the plan minimum too (keywords). */
+    cooldownOverride: { type: Boolean, default: false },
     count: { type: Number, default: 0 },
     userLevelName: { type: String, default: 'everyone' },
     userLevel: { type: Number, default: 0 },

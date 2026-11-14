@@ -12,7 +12,8 @@
   width: 2.75rem;
   min-height: 2.75rem;
 }
-.ed-type {
+.ed-type,
+.ed-key {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 0.76rem;
@@ -24,9 +25,30 @@
   color: var(--muted);
   font-size: 0.9rem;
 }
+.ed-stored-note {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile-2);
+  font-size: 0.88rem;
+}
 .ed-off {
   color: var(--warn);
   font-weight: 650;
+}
+.ed-fields,
+.ed-more__body {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+/* A stored setting: its plain name, then the field name as the database has it. */
+.ed-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  min-width: 0;
 }
 .ed-text {
   min-height: 5.75rem;
@@ -45,7 +67,16 @@
 }
 .ed-count {
   flex-shrink: 0;
+  margin-left: auto;
   font-variant-numeric: tabular-nums;
+}
+.ed-count--long,
+.ed-long {
+  color: var(--warn);
+  font-weight: 700;
+}
+.ed-long {
+  font-size: 0.82rem;
 }
 .ed-toggle {
   display: flex;
@@ -57,28 +88,29 @@
   font-weight: 700;
   cursor: pointer;
 }
-.ed-site {
+.ed-toggle__text {
   display: grid;
-  gap: 0.15rem;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--tile-2);
-  font-size: 0.88rem;
+  gap: 0.1rem;
+  min-width: 0;
 }
-.ed-site a {
+.ed-toggle .ed-key {
+  font-weight: 400;
+}
+/* "All stored settings": flush with the fields above (the dialog body has the gutter already). */
+.ed-more > summary,
+.ed-more__body {
+  padding-inline: 0;
+}
+.ed-more > summary {
+  color: var(--fg);
+}
+.ed-more__title {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  min-height: 2.75rem;
-  color: var(--accent);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  gap: 0.5rem;
 }
-.ed-site app-icon {
-  width: 0.95rem;
-  height: 0.95rem;
+.ed-more__changed {
+  font-size: 0.72rem;
 }
 .ed-error {
   flex: 1 1 100%;

@@ -1,0 +1,234 @@
+<section class="br" aria-labelledby="br-title" [attr.aria-busy]="busy()">
+  <div class="br-head">
+    <h3 class="br-title" id="br-title">
+      Bits rules
+      @if (state(); as view) {
+        <span class="br-count">{{ view.rules.length }}</span>
+      }
+    </h3>
+    <p class="br-note">Shared with Overlay Studio: changes apply to chat and alerts. Each change saves right away.</p>
+  </div>
+
+  @if (loadError()) {
+    <div class="br-load-error" role="alert">
+      <span>{{ loadError() }}.</span>
+      <button type="button" class="lf-btn lf-btn--sm" aria-label="Retry loading the Bits rules" (click)="load()"><app-icon name="refresh" />Retry</button>
+    </div>
+  } @else if (!state()) {
+    <p class="br-loading" role="status"><span class="lf-spin"></span>Loading Bits rules…</p>
+  } @else {
+    @if (state()?.chat?.enabled === false) {
+      <p class="br-off">The Bits event is off, so rules send nothing in chat. Overlay alerts still follow them.</p>
+    }
+    @if (rules().length) {
+      <ul class="br-list" aria-label="Bits rules, lowest amount first">
+        @for (rule of rules(); track rule.id) {
+          @if (form()?.id === rule.id) {
+            <li class="br-item br-item--form">
+              <ng-container [ngTemplateOutlet]="ruleForm" />
+            </li>
+          } @else {
+            <li class="br-item" [class.br-item--off]="!rule.enabled" [attr.data-rule]="rule.id">
+              <div class="br-main">
+                <span class="br-name">{{ title(rule) }}</span>
+                @if (rule.name) {
+                  <span class="br-range">{{ range(rule) }}</span>
+                }
+                <span class="br-chat">
+                  @switch (rule.chat.mode) {
+                    @case ('custom') {
+                      <span class="br-label">Says</span> “{{ rule.chat.message }}”
+                    }
+                    @case ('silent') {
+                      <span class="br-label">No chat message</span>
+                    }
+                    @default {
+                      <span class="br-label">Default message</span>
+                    }
+                  }
+                </span>
+                <span class="br-meta">
+                  {{ rule.alert ? 'Alert' : 'No alert' }}
+                  @if (looks(rule)) {
+                    · {{ looksText(rule) }}
+                  }
+                </span>
+              </div>
+              <div class="br-end">
+                <button
+                  type="button"
+                  class="lf-btn lf-btn--sm"
+                  [disabled]="busy() || !!form()"
+                  [attr.aria-label]="'Edit Bits rule ' + title(rule)"
+                  (click)="edit(rule)"
+                >
+                  Edit
+                </button>
+                <label class="lf-switch">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    [checked]="rule.enabled"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'Bits rule ' + title(rule) + ' on'"
+                    (change)="toggle(rule)"
+                  />
+                  <span class="lf-switch__track"></span>
+                </label>
+              </div>
+            </li>
+          }
+        }
+      </ul>
+    } @else {
+      <p class="br-empty">No Bits rules: every cheer gets the default message and alert.</p>
+    }
+
+    @if (listError()) {
+      <p class="lf-error br-error" role="alert">{{ listError() }}</p>
+    }
+
+    @if (form(); as open) {
+      @if (open.id === null) {
+        <div class="br-item br-item--form">
+          <ng-container [ngTemplateOutlet]="ruleForm" />
+        </div>
+      }
+    } @else {
+      <button type="button" class="lf-btn br-add" [disabled]="busy()" (click)="add()"><app-icon name="plus" />Add rule</button>
+    }
+  }
+  <p class="sr-only" role="status">{{ done() }}</p>
+</section>
+
+<ng-template #ruleForm>
+  @if (form(); as f) {
+    <div class="br-form" role="group" [attr.aria-label]="f.id ? 'Edit Bits rule ' + (editingRule() ? title(editingRule()!) : '') : 'New Bits rule'">
+      <p class="br-form__title">{{ f.id ? 'Edit rule' : 'New rule' }}</p>
+      <div class="lf-field">
+        <label class="lf-label" [for]="fieldId('name')">Name <span class="br-optional">(optional)</span></label>
+        <input
+          type="text"
+          class="lf-input"
+          maxlength="60"
+          autocomplete="off"
+          placeholder="e.g. Big cheer"
+          [id]="fieldId('name')"
+          [value]="f.name"
+          [disabled]="busy()"
+          (input)="setText('name', $event)"
+        />
+      </div>
+      <div class="br-amounts">
+        <div class="lf-field">
+          <label class="lf-label" [for]="fieldId('min')">From (bits)</label>
+          <input
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            class="lf-input"
+            [id]="fieldId('min')"
+            [value]="f.min"
+            [disabled]="busy()"
+            (input)="setText('min', $event)"
+          />
+        </div>
+        <div class="lf-field">
+          <label class="lf-label" [for]="fieldId('max')">To (bits)</label>
+          <input
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            class="lf-input"
+            placeholder="No limit"
+            [id]="fieldId('max')"
+            [value]="f.max"
+            [disabled]="busy()"
+            [attr.aria-describedby]="fieldId('max') + '-hint'"
+            (input)="setText('max', $event)"
+          />
+        </div>
+        <p class="lf-hint br-span" [id]="fieldId('max') + '-hint'">Same as From for an exact amount. Empty for that amount or more.</p>
+      </div>
+      <div class="lf-field">
+        <label class="lf-label" [for]="fieldId('mode')">In chat</label>
+        <select class="lf-input" [id]="fieldId('mode')" [disabled]="busy()" (change)="setText('mode', $event)">
+          <option value="default" [selected]="f.mode === 'default'">Default message</option>
+          <option value="custom" [selected]="f.mode === 'custom'">Its own message</option>
+          <option value="silent" [selected]="f.mode === 'silent'">Nothing</option>
+        </select>
+        @if (f.mode === 'default') {
+          <span class="lf-hint">
+            @if (defaultMessage()) {
+              The event's message: “{{ defaultMessage() }}”
+            } @else {
+              The event has no message, so nothing is posted.
+            }
+          </span>
+        }
+      </div>
+      @if (f.mode === 'custom') {
+        <div class="lf-field">
+          <label class="lf-label" [for]="fieldId('message')">Message</label>
+          <textarea
+            class="lf-input br-text"
+            rows="3"
+            maxlength="1000"
+            [id]="fieldId('message')"
+            [value]="f.message"
+            [disabled]="busy()"
+            (input)="setText('message', $event)"
+          ></textarea>
+        </div>
+      }
+      <label class="br-toggle">
+        <span>Play the overlay alert</span>
+        <span class="lf-switch">
+          <input type="checkbox" role="switch" [checked]="f.alert" [disabled]="busy()" (change)="setAlert($event)" />
+          <span class="lf-switch__track"></span>
+        </span>
+      </label>
+
+      @if (formError()) {
+        <p class="lf-error br-error" role="alert">{{ formError() }}</p>
+      }
+
+      @if (confirmingDelete() && editingRule(); as rule) {
+        <div class="br-confirm" role="group" aria-labelledby="br-confirm-title" aria-describedby="br-confirm-text">
+          <p class="br-confirm__title" id="br-confirm-title">Delete “{{ title(rule) }}”?</p>
+          <p class="br-confirm__text" id="br-confirm-text">
+            These cheers go back to the default message and alert.
+            @if (looks(rule)) {
+              {{ looksText(rule) }} in Overlay Studio {{ looks(rule) === 1 ? 'uses' : 'use' }} this rule and will stop playing.
+            }
+          </p>
+          <div class="br-actions">
+            <button type="button" class="lf-btn" [disabled]="busy()" (click)="keepRule()">Keep it</button>
+            <button type="button" class="lf-btn lf-btn--danger" [disabled]="busy()" (click)="remove()">
+              @if (busy()) {
+                <span class="lf-spin"></span>
+              }
+              Delete rule
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="br-actions">
+          @if (f.id) {
+            <button type="button" class="lf-btn lf-btn--ghost br-delete" [disabled]="busy()" (click)="askDelete()">Delete</button>
+          }
+          <button type="button" class="lf-btn" [disabled]="busy()" (click)="cancelForm()">Cancel</button>
+          <button type="button" class="lf-btn lf-btn--primary" [disabled]="busy()" (click)="save()">
+            @if (busy()) {
+              <span class="lf-spin"></span>Saving…
+            } @else {
+              {{ f.id ? 'Save rule' : 'Add rule' }}
+            }
+          </button>
+        </div>
+      }
+    </div>
+  }
+</ng-template>

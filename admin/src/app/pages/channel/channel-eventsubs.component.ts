@@ -212,14 +212,23 @@ export class ChannelEventsubsComponent implements OnInit {
     return { message: null, text: es.type === CHAT_NOTIFICATION_TYPE ? 'Uses the default message' : 'Posts nothing in chat' };
   }
 
-  /** Stored rows whose type has chat settings in the catalog (and an API new enough to send their values). Not unused duplicates: the bot never reads them. */
+  /**
+   * Every stored row (unused duplicates and types without chat settings too) once the catalog has loaded or
+   * failed: the editor shows the catalog's controls when there are any and every stored field either way.
+   */
   canEdit(es: EventsubRow): boolean {
-    return !es.isMissing && !es.duplicate && !!es.stored?.id && !!es.stored.settings && !!this.definitionFor(es)?.config?.length;
+    return !es.isMissing && !!es.stored?.id && !!es.stored.settings && (this.catalog() !== null || this.catalogError() !== null);
+  }
+
+  /** The row's name for its buttons: an unused duplicate says so, so two rows of one event never share a label. */
+  rowName(es: EventsubRow): string {
+    return es.duplicate ? `unused ${this.eventName(es.type)}` : this.eventName(es.type);
   }
 
   openEditor(es: EventsubRow, event: Event): void {
-    const definition = this.definitionFor(es);
-    if (!es.stored || !definition || this.editing()) return;
+    if (!es.stored || this.editing()) return;
+    // No catalog entry (or the catalog didn't load): the editor shows only the stored fields.
+    const definition = this.definitionFor(es) ?? { name: this.eventName(es.type), type: es.type, config: [] };
     this.editTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.editing.set({ row: es, stored: es.stored, definition });
   }
@@ -435,7 +444,7 @@ export class ChannelEventsubsComponent implements OnInit {
     this.loadingIds.set(next);
   }
 
-  toggleEventsub(eventsub: MergedEventsub): void {
+  toggleEventsub(eventsub: EventsubRow): void {
     const channelID = this.channelID();
     if (this.isBusy(eventsub)) return;
     const name = this.eventName(eventsub.type);
@@ -465,17 +474,19 @@ export class ChannelEventsubsComponent implements OnInit {
       });
     } else if (eventsub.id) {
       const newEnabled = !eventsub.enabled;
-      // Optimistic: flip now, roll back if the server says no.
+      // Optimistic: flip now, roll back if the server says no. The owner route has no plan gate or
+      // "can't be disabled": any stored subscription turns on and off.
       this.patchLocal(eventsub, newEnabled);
       this.setBusy(eventsub, true);
       this.channelApi
-        .patchChannelEventsub(channelID, eventsub.id, { enabled: newEnabled })
+        .ownerPatchEventsub(channelID, eventsub.id, { enabled: newEnabled })
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (response) => {
             this.setBusy(eventsub, false);
-            if (response.error) {
+            if (response?.error) {
               this.patchLocal(eventsub, !newEnabled);
-              this.toast.error(response.message);
+              this.toast.error(response.message || `Couldn't turn ${name} ${newEnabled ? 'on' : 'off'}`);
             } else {
               this.toast.success(`${name} turned ${newEnabled ? 'on' : 'off'}`);
               this.loadEventsubs();
@@ -484,7 +495,7 @@ export class ChannelEventsubsComponent implements OnInit {
           error: (err) => {
             this.setBusy(eventsub, false);
             this.patchLocal(eventsub, !newEnabled);
-            this.toast.error(err?.error?.message || `Couldn't update ${name}`);
+            this.toast.error(apiErrorMessage(err, `Couldn't turn ${name} ${newEnabled ? 'on' : 'off'}`));
           },
         });
     }

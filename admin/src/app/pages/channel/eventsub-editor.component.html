@@ -3,15 +3,16 @@
   class="lf-dialog ed-dialog"
   aria-labelledby="ed-title"
   aria-describedby="ed-lead"
+  (keydown)="onKeydown($event)"
   (cancel)="$event.preventDefault(); cancel()"
   (close)="onNativeClose()"
 >
   <header class="lf-dialog__head">
     <div class="ed-title">
       <h2 id="ed-title">{{ eventName() }} in chat</h2>
-      <span class="ed-type">{{ eventsub().type }} v{{ eventsub().version }}</span>
+      <span class="ed-type">{{ duplicate() && eventsub().rawType ? eventsub().rawType : eventsub().type }} v{{ eventsub().version }}</span>
     </div>
-    <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" aria-label="Close" (click)="cancel()" [disabled]="saving()">
+    <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" aria-label="Close" (click)="cancel()" [disabled]="busy()">
       <app-icon name="x" />
     </button>
   </header>
@@ -19,94 +20,58 @@
   <div class="lf-dialog__body">
     <p class="ed-lead" id="ed-lead">
       Changes apply to {{ login() }}'s chat right away. {{ login() }} isn't notified.
+      @if (duplicate()) {
+        <span class="ed-off">Not used: the bot reads the other {{ eventName() }} subscription, so changes here don't show in chat.</span>
+      }
       @if (!eventsub().enabled) {
         <span class="ed-off">This event is turned off, so nothing is posted until it's on.</span>
       }
     </p>
+    @if (storedOnly()) {
+      <p class="ed-stored-note">
+        {{ catalogMissing() ? "The site's chat settings didn't load, so these are its stored fields." : 'No chat settings on the site for this event. These are its stored fields.' }}
+      </p>
+    }
 
-    @for (field of fields(); track field.id) {
-      @if (isVisible(field)) {
-        @switch (field.kind) {
-          @case ('text') {
-            <div class="lf-field">
-              <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
-              <textarea
-                class="lf-input ed-text"
-                rows="3"
-                [id]="fieldId(field)"
-                [attr.maxlength]="max"
-                [value]="text(field)"
-                [disabled]="saving()"
-                [attr.aria-invalid]="submitted() && !!errors()[field.id]"
-                [attr.aria-describedby]="fieldId(field) + '-hint ' + fieldId(field) + '-count'"
-                (input)="onText(field, $event)"
-              ></textarea>
-              <div class="ed-help">
-                <span class="lf-hint" [id]="fieldId(field) + '-hint'">{{ emptyHint(field) }}</span>
-                <span class="lf-hint ed-count" [id]="fieldId(field) + '-count'">{{ text(field).length }}/{{ max }}</span>
-              </div>
-              @if (submitted() && errors()[field.id]; as message) {
-                <p class="lf-error">{{ message }}</p>
-              }
-            </div>
-          }
-          @case ('number') {
-            <div class="lf-field">
-              <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
-              <input
-                type="number"
-                inputmode="numeric"
-                min="0"
-                step="1"
-                class="lf-input ed-number"
-                [id]="fieldId(field)"
-                [value]="text(field)"
-                [disabled]="saving()"
-                [attr.aria-invalid]="submitted() && !!errors()[field.id]"
-                (input)="onText(field, $event)"
-              />
-              @if (submitted() && errors()[field.id]; as message) {
-                <p class="lf-error">{{ message }}</p>
-              }
-            </div>
-          }
-          @case ('checkbox') {
-            <label class="ed-toggle">
-              <span>{{ field.label }}</span>
-              <span class="lf-switch">
-                <input type="checkbox" role="switch" [id]="fieldId(field)" [checked]="checked(field)" [disabled]="saving()" (change)="onCheck(field, $event)" />
-                <span class="lf-switch__track"></span>
-              </span>
-            </label>
-          }
-          @case ('select') {
-            <div class="lf-field">
-              <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
-              <select class="lf-input" [id]="fieldId(field)" [disabled]="saving()" (change)="onText(field, $event)">
-                @for (option of field.options; track option.value) {
-                  <option [value]="option.value" [selected]="option.value === text(field)">{{ option.label }}</option>
-                }
-              </select>
-            </div>
-          }
-          @case ('bits') {
-            <div class="ed-site">
-              <span class="lf-label">{{ field.label }}</span>
-              <span>
-                {{ bitsRules() }} ·
-                <a [href]="siteUrl()" target="_blank" rel="noopener">edit on domdimabot.com<span class="sr-only"> (opens in a new tab)</span><app-icon name="external" /></a>
-              </span>
-            </div>
+    @if (fields().length || bitsAfterFields()) {
+    <div class="ed-fields">
+      @for (field of fields(); track field.id) {
+        @if (isVisible(field)) {
+          @if (field.kind === 'bits') {
+            @if (!duplicate()) {
+              <app-bits-rules-editor [channelID]="channelID()" />
+            }
+          } @else {
+            <ng-container [ngTemplateOutlet]="fieldTpl" [ngTemplateOutletContext]="{ $implicit: field }" />
           }
         }
       }
+      @if (bitsAfterFields()) {
+        <app-bits-rules-editor [channelID]="channelID()" />
+      }
+    </div>
     }
 
-    @if (siteOnly().length) {
-      <p class="ed-site">
-        <span>Also set on the site: {{ siteOnly().join(', ') }}.</span>
-        <a [href]="siteUrl()" target="_blank" rel="noopener">Change on domdimabot.com<span class="sr-only"> (opens in a new tab)</span><app-icon name="external" /></a>
-      </p>
+    @if (storedFields().length) {
+      <details class="lf-more ed-more" [open]="storedOnly()">
+        <summary>
+          <span class="ed-more__title">
+            All stored settings
+            @if (storedDirty()) {
+              <span class="lf-chip lf-chip--accent ed-more__changed">Changed</span>
+            }
+          </span>
+          <app-icon name="down" />
+        </summary>
+        <div class="lf-more__body ed-more__body">
+          @if (!storedOnly()) {
+            <p class="lf-hint">Everything else saved on this subscription. Some of these may do nothing for {{ eventName() }}.</p>
+          }
+          @for (field of storedFields(); track field.id) {
+            <ng-container [ngTemplateOutlet]="fieldTpl" [ngTemplateOutletContext]="{ $implicit: field }" />
+          }
+        </div>
+      </details>
     }
   </div>
 
@@ -114,8 +79,8 @@
     @if (serverError()) {
       <p class="lf-warning ed-error" role="alert"><app-icon name="alert" /><span>{{ serverError() }}</span></p>
     }
-    <button type="button" class="lf-btn" (click)="cancel()" [disabled]="saving()">Cancel</button>
-    <button type="button" class="lf-btn lf-btn--primary" (click)="save()" [disabled]="saving() || !dirty()">
+    <button type="button" class="lf-btn" (click)="cancel()" [disabled]="busy()">Cancel</button>
+    <button type="button" class="lf-btn lf-btn--primary" (click)="save()" [disabled]="busy() || !dirty()">
       @if (saving()) {
         <span class="lf-spin"></span>Saving…
       } @else {
@@ -124,3 +89,95 @@
     </button>
   </footer>
 </dialog>
+
+<ng-template #fieldTpl let-field>
+  @switch (field.kind) {
+    @case ('text') {
+      <div class="lf-field">
+        <div class="ed-label">
+          <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
+          @if (!field.control) {
+            <code class="ed-key" [id]="fieldId(field) + '-key'">{{ field.key }}</code>
+          }
+        </div>
+        <textarea
+          class="lf-input ed-text"
+          rows="3"
+          [id]="fieldId(field)"
+          [attr.maxlength]="textMax"
+          [value]="text(field)"
+          [disabled]="saving()"
+          [attr.aria-describedby]="describedBy(field)"
+          (input)="onText(field, $event)"
+        ></textarea>
+        <div class="ed-help">
+          @if (emptyHint(field); as hint) {
+            <span class="lf-hint" [id]="fieldId(field) + '-hint'">{{ hint }}</span>
+          }
+          <span class="lf-hint ed-count" [class.ed-count--long]="text(field).length > max" [id]="fieldId(field) + '-count'">{{ text(field).length }}/{{ max }}</span>
+        </div>
+        @if (text(field).length > max) {
+          <p class="ed-long" [id]="fieldId(field) + '-long'">Twitch doesn't post chat messages over {{ max }} characters.</p>
+        }
+      </div>
+    }
+    @case ('number') {
+      <div class="lf-field">
+        <div class="ed-label">
+          <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
+          @if (!field.control) {
+            <code class="ed-key" [id]="fieldId(field) + '-key'">{{ field.key }}</code>
+          }
+        </div>
+        <input
+          type="number"
+          inputmode="numeric"
+          min="0"
+          step="1"
+          class="lf-input ed-number"
+          [id]="fieldId(field)"
+          [value]="text(field)"
+          [disabled]="saving()"
+          [attr.aria-invalid]="submitted() && !!errors()[field.id]"
+          [attr.aria-describedby]="field.control ? null : fieldId(field) + '-key'"
+          (input)="onText(field, $event)"
+        />
+        @if (submitted() && errors()[field.id]; as message) {
+          <p class="lf-error">{{ message }}</p>
+        }
+      </div>
+    }
+    @case ('checkbox') {
+      <label class="ed-toggle">
+        <span class="ed-toggle__text">
+          <span class="ed-toggle__label">{{ field.label }}</span>
+          @if (!field.control) {
+            <code class="ed-key" aria-hidden="true" [id]="fieldId(field) + '-key'">{{ field.key }}</code>
+          }
+        </span>
+        <span class="lf-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            [id]="fieldId(field)"
+            [checked]="checked(field)"
+            [disabled]="saving()"
+            [attr.aria-describedby]="field.control ? null : fieldId(field) + '-key'"
+            (change)="onCheck(field, $event)"
+          />
+          <span class="lf-switch__track"></span>
+        </span>
+      </label>
+    }
+    @case ('select') {
+      <div class="lf-field">
+        <label class="lf-label" [for]="fieldId(field)">{{ field.label }}</label>
+        <select class="lf-input" [id]="fieldId(field)" [disabled]="saving()" (change)="onText(field, $event)">
+          @for (option of field.options; track option.value) {
+            <option [value]="option.value" [selected]="option.value === text(field)">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+    }
+  }
+</ng-template>

@@ -34,7 +34,7 @@
       }
       @if (catalogError()) {
         <div class="es-catalog-error" role="alert">
-          <span>{{ catalogError() }}, so what each event says in chat can't be shown or edited.</span>
+          <span>{{ catalogError() }}, so what each event says in chat can't be shown. Edit shows only the stored fields.</span>
           <button type="button" class="lf-btn lf-btn--sm" aria-label="Retry loading the chat settings" (click)="loadCatalog()"><app-icon name="refresh" />Retry</button>
         </div>
       }
@@ -173,7 +173,7 @@
           type="button"
           class="lf-btn lf-btn--sm"
           (click)="openTestModal(es)"
-          [attr.aria-label]="'Test ' + eventName(es.type)"
+          [attr.aria-label]="'Test ' + rowName(es)"
         >
           Test
         </button>
@@ -182,7 +182,7 @@
             type="button"
             class="lf-btn lf-btn--sm"
             (click)="openEditor(es, $event)"
-            [attr.aria-label]="'Edit ' + eventName(es.type) + ' chat settings'"
+            [attr.aria-label]="'Edit ' + rowName(es) + ' chat settings'"
           >
             Edit
           </button>
@@ -194,7 +194,7 @@
             [checked]="es.enabled"
             [disabled]="isBusy(es)"
             (change)="toggleEventsub(es)"
-            [attr.aria-label]="eventName(es.type) + ' on'"
+            [attr.aria-label]="rowName(es) + ' on'"
           />
           <span class="lf-switch__track"></span>
         </label>
@@ -221,6 +221,8 @@
     [eventsub]="edit.stored"
     [definition]="edit.definition"
     [eventName]="eventName(edit.row.type)"
+    [duplicate]="!!edit.row.duplicate"
+    [catalogMissing]="!catalog()"
     [channelID]="channelID()"
     [channelLogin]="channelName()"
     (saved)="onEditorSaved()"

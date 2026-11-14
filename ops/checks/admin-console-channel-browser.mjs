@@ -173,6 +173,10 @@ function makeApi(state) {
         const rows = id === '8100001' ? channelEventsubs(state) : [];
         return ok({ rows, pagination: { page: 1, limit: 100, total: rows.length, totalPages: 1 } });
       }
+      if (method === 'PATCH' && id === '8100001' && rest === 'eventsubs/es1') {
+        state.followEnabled = body.enabled;
+        return ok({ id: 'es1', type: 'channel.follow', rawType: 'channel.follow', version: '2', status: 'enabled', enabled: state.followEnabled });
+      }
       if (method === 'GET' && rest === 'ai-credits') return ok({ version: 1, ...state.credits, available: true });
       if (method === 'POST' && rest === 'ai-credits/grant') {
         const credits = body?.credits ?? 0;
@@ -317,7 +321,10 @@ try {
     copy.querySelectorAll('.lf-tab__count').forEach((badge) => badge.remove());
     return copy.textContent.trim();
   }));
-  assert.deepEqual(tabNames, ['Overview', 'Activity', 'Commands', 'Twitch events', 'Protection', 'AI & credits', 'Bot log']);
+  assert.deepEqual(tabNames, ['Overview', 'Activity', 'Commands', 'Twitch events', 'Protection', 'AI & credits', 'Referrals', 'Bot log']);
+  // The Referrals tab (covered by admin-console-referrals-browser.mjs) links to its page and has no badge.
+  assert.equal(await tab('Referrals').getAttribute('href'), '/channels/8100001/referrals');
+  assert.doesNotMatch(await tab('Referrals').innerText(), /\d/);
   assert.match(await text(current()), /^Overview/);
   // Badges: failed rows in the last 24 hours (2 + 1 + 2 + 3), protection failures, Twitch events turned off.
   assert.match(await tab('Activity').innerText(), /8/);
@@ -580,7 +587,7 @@ try {
   await page.getByText('1 of 6 events need attention').waitFor();
   assert.equal(lastRequest((r) => r.method === 'POST' && r.path === '/eventsubs/8100001').body.type, 'channel.subscribe');
   await page.getByRole('switch', { name: 'Follows on' }).click();
-  await until(async () => count((r) => r.method === 'PATCH' && r.path === '/eventsubs/8100001/es1') === 1, 'follow patch');
+  await until(async () => count((r) => r.method === 'PATCH' && r.path === '/admin-site/users/8100001/eventsubs/es1') === 1, 'follow patch');
   assert.deepEqual(lastRequest((r) => r.method === 'PATCH').body, { enabled: false });
   await page.getByText('2 of 6 events need attention').waitFor();
   // The activity lines fail on their own; the list stays usable.
@@ -712,7 +719,7 @@ try {
 
   assert.deepEqual(unexpected, [], 'no unexpected API calls');
   assert.deepEqual(pageErrors, [], 'no page errors');
-  console.log(`PASS admin channel workspace: frame (one header, seven tabs, badges, sticky strip, tab switch without reloading the channel, deep links, unknown/failed channel), Overview last 24 hours + links, confirmed credit grant and reminder (bodies asserted), Commands answer/stats/reasons/sorts/search/URL/not-recorded/error, Twitch events last heard/alerts/gave-up/revoked + test/connect/switch, AI & credits explorer link, Bot log levels/open/copy/show more/empty/error/refresh, 320/390/1280 dark+light overflow/axe/touch targets. Screenshots: ${artifacts}`);
+  console.log(`PASS admin channel workspace: frame (one header, eight tabs, badges, sticky strip, tab switch without reloading the channel, deep links, unknown/failed channel), Overview last 24 hours + links, confirmed credit grant and reminder (bodies asserted), Commands answer/stats/reasons/sorts/search/URL/not-recorded/error, Twitch events last heard/alerts/gave-up/revoked + test/connect/switch, AI & credits explorer link, Bot log levels/open/copy/show more/empty/error/refresh, 320/390/1280 dark+light overflow/axe/touch targets. Screenshots: ${artifacts}`);
 } finally {
   await browser.close();
 }

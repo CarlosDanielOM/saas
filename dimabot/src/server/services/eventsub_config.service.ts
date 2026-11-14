@@ -395,6 +395,8 @@ export interface EventsubUpdateOptions {
      * The route never sets it.
      */
     guard?: Record<string, unknown>;
+    /** The owner console: skips the raid field list, "can't be disabled", plan gates and tier limits. */
+    override?: boolean;
 }
 
 /** PATCH /eventsubs/:channelID/:id after the access check. The body is written as given. */
@@ -427,7 +429,9 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
         } };
     }
 
-    if (eventsub.type === 'channel.raid') {
+    // The owner console (`override`) edits like the database: no raid field list, no "can't be disabled",
+    // no plan gate or tier limit. Its route only ever sends the stored chat settings (see admin_site).
+    if (eventsub.type === 'channel.raid' && !options.override) {
         if (Object.keys(body).some(key => !RAID_EVENT_FIELDS.has(key)) || body.enabled !== undefined && typeof body.enabled !== 'boolean'
             || body.message !== undefined && typeof body.message !== 'string') {
             return { status: 400, body: { error: true, message: 'Invalid raid event settings' } };
@@ -435,6 +439,7 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
     }
 
     if (
+        !options.override &&
         NON_DISABLEABLE_EVENT_TYPES.has(eventsub.type) &&
         Object.prototype.hasOwnProperty.call(body, 'enabled') &&
         body.enabled === false
@@ -454,7 +459,7 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
             ? eventTemplate.plan_tier
             : 'free';
 
-    if (!hasPlanAccess(userPlan, requiredPlan)) {
+    if (!options.override && !hasPlanAccess(userPlan, requiredPlan)) {
         return { status: 403, body: {
             error: true,
             message: `This event requires ${requiredPlan} plan`,
@@ -463,7 +468,7 @@ export async function updateChannelEventsub(channelID: string, id: string, rawBo
     }
 
     const cheerTiers = extractCheerTiers(undefined, body);
-    if (cheerTiers) {
+    if (cheerTiers && !options.override) {
         const tierLimit = getTierLimitForPlan(eventTemplate?.tierLimits, userPlan);
         if (cheerTiers.length > tierLimit) {
             return { status: 403, body: {

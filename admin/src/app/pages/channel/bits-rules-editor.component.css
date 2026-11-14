@@ -1,0 +1,212 @@
+/* The channel's shared Bits rules inside the Bits chat settings dialog: a compact list + one inline form. */
+:host {
+  display: block;
+}
+.br {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+.br-head {
+  display: grid;
+  gap: 0.2rem;
+}
+.br-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.br-count {
+  min-width: 1.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--tile-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.br-note,
+.br-empty,
+.br-loading {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.br-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.br-off {
+  color: var(--warn);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.br-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+}
+.br-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  list-style: none;
+  overflow: hidden;
+}
+.br-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.65rem 0.85rem;
+}
+.br-list > .br-item + .br-item {
+  border-top: 1px solid var(--line);
+}
+.br-main {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.br-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.br-range,
+.br-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.br-chat {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.br-label {
+  color: var(--muted);
+  font-weight: 650;
+}
+.br-item--off .br-name,
+.br-item--off .br-chat {
+  color: var(--muted);
+}
+.br-end {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+/* 44px targets in the dialog (the page's small-button size doesn't apply here). */
+.br .lf-btn--sm {
+  min-height: 2.75rem;
+}
+.br-item--form {
+  display: block;
+  background: var(--tile-2);
+}
+div.br-item--form {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.br-form {
+  display: grid;
+  gap: 0.8rem;
+}
+.br-form__title {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.br-optional {
+  color: var(--muted);
+  font-weight: 600;
+}
+.br-amounts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.35rem 0.75rem;
+}
+.br-span {
+  grid-column: 1 / -1;
+}
+.br-text {
+  min-height: 5rem;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+.br-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.br-error {
+  margin: 0;
+}
+.br-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.br-actions .lf-btn {
+  flex: 1 1 auto;
+}
+.br-delete {
+  color: var(--danger);
+}
+.br-confirm {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+.br-confirm__title {
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.br-confirm__text {
+  font-size: 0.86rem;
+}
+.br-add {
+  justify-self: start;
+}
+/* From 360px the Edit button and switch sit beside the rule, so the list stays dense. */
+@media (min-width: 360px) {
+  .br-main {
+    flex: 1 1 0;
+  }
+  .br-item {
+    flex-wrap: nowrap;
+  }
+}
+@media (min-width: 480px) {
+  .br-actions .lf-btn {
+    flex: 0 0 auto;
+  }
+  .br-delete {
+    margin-right: auto;
+  }
+}

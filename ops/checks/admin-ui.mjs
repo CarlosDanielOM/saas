@@ -593,9 +593,10 @@ await context.route("**/*", async (route) => {
     eventsubState.subscribeConnected = true;
     return json(route, { error: false, message: "created" });
   }
-  if (p === "/eventsubs/9001/es1" && m === "PATCH") {
+  // The console's on/off switch saves through the owner route (edits like the database).
+  if (p === "/admin-site/users/9001/eventsubs/es1" && m === "PATCH") {
     eventsubState.followEnabled = JSON.parse(req.postData()).enabled;
-    return json(route, { error: false, message: "updated" });
+    return json(route, { error: false, message: "Saved", data: { id: "es1", type: "channel.follow", rawType: "channel.follow", version: "2", status: "enabled", enabled: eventsubState.followEnabled } });
   }
   if (p.startsWith("/rewards/")) return json(route, { data: { rewards: [] } });
   if (p.startsWith("/triggers/files/"))
@@ -965,7 +966,7 @@ try {
   await page.getByText("All 2 events are connected and on").waitFor();
   assert.equal(count("/eventsubs/9001", "POST"), 1);
   await page.getByRole("switch", { name: "Follows on" }).click();
-  await until(() => count("/eventsubs/9001/es1", "PATCH") === 1, "follow patch");
+  await until(() => count("/admin-site/users/9001/eventsubs/es1", "PATCH") === 1, "follow patch");
   assert.equal(eventsubState.followEnabled, false);
   await page.getByText("1 of 2 events need attention").waitFor();
   await page.getByRole("button", { name: "Test New subs" }).click();

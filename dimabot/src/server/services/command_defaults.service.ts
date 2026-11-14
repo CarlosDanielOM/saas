@@ -165,9 +165,10 @@ export async function ensureReservedCommands(channelID: string, channelName: str
                 throw error;
             }
 
+            // The stable _id belongs to this default. A row holding it means the default was seeded, even when
+            // the owner console later renamed it, changed what it runs or made it a keyword: keep that row.
             const concurrentSeed = await CommandsSchema.exists({
                 _id: newCommand._id,
-                func: commandData.func,
                 channelID
             });
 

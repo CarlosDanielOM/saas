@@ -53,6 +53,16 @@ export interface CommandMutationResult {
     view: Record<string, unknown>;
 }
 
+/**
+ * `override`: the owner console (admin site) edits on the owner's behalf, like editing the database directly.
+ * It skips the streamer-facing rules (plan limits on blocks and cooldowns, the one 0-second slot, built-in
+ * commands' fixed reply/description and undeletable status, fixed activation) but keeps integrity checks: a
+ * trigger used twice, invalid blocks, keyword format, invalid permission rules and levels outside 1–10.
+ */
+export interface CommandWriteOptions {
+    override?: boolean;
+}
+
 export interface CommandDeleteResult extends CommandMutationResult {
     /** JSON-safe copy of the deleted document (blocks included) for `restoreDeletedCommand`. */
     raw: Record<string, unknown>;
@@ -76,6 +86,18 @@ export function permissionModeFor(command: { permissionExpression?: unknown }): 
     return inspectExpression(command.permissionExpression).mode;
 }
 
+/** What chat can trigger after "!": letters and numbers (`commandsRegex` in handlers/message.handler.ts stops at the first symbol). */
+const CHAT_TRIGGER = /^[\p{L}\p{N}]+$/u;
+
+/** The owner console's command trigger: without "!", and one chat can actually match. */
+function ownerCommandTrigger(raw: unknown): string {
+    const trigger = String(raw ?? '').trim().replace(/^!+/, '');
+    if (!CHAT_TRIGGER.test(trigger)) {
+        throw new CommandMutationError(400, `"${trigger}" can't be typed as a chat command: use letters and numbers only (chat stops at the first space or symbol)`);
+    }
+    return trigger;
+}
+
 export function isValidUserLevel(value: unknown): value is number {
     return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10;
 }
@@ -91,10 +113,14 @@ function present(command: CommandDocument): Record<string, unknown> {
     return { ...presentCommand(command, { blocks: true }), permissionMode: permissionModeFor(command) };
 }
 
-/** POST /commands/:channelID. */
-export async function createChannelCommand(channelID: string, body: CommandWriteBody): Promise<CommandMutationResult> {
+/** POST /commands/:channelID (and the owner console with `override`). */
+export async function createChannelCommand(channelID: string, body: CommandWriteBody, options: CommandWriteOptions = {}): Promise<CommandMutationResult> {
     const usesBlocks = body.authoring === 'blocks';
-    if (!body.name || !body.cmd || !body.func || (!usesBlocks && !body.message) || !body.channel) {
+    if (options.override) {
+        // The owner only has to name the trigger; the rest has the defaults a plain text command gets.
+        if (!body.cmd || typeof body.cmd !== 'string') throw new CommandMutationError(400, 'Missing trigger');
+        body = { ...body, name: body.name || body.cmd, func: body.func || 'custom', channel: body.channel || '', message: body.message ?? '' };
+    } else if (!body.name || !body.cmd || !body.func || (!usesBlocks && !body.message) || !body.channel) {
         throw new CommandMutationError(400, 'Missing required fields');
     }
 
@@ -103,12 +129,14 @@ export async function createChannelCommand(channelID: string, body: CommandWrite
     }
     const isKeyword = body.activation === 'keyword';
     let cmd = body.cmd;
+    if (options.override && !isKeyword) cmd = ownerCommandTrigger(cmd);
     let keywordSettings;
     if (isKeyword) {
-        try { keywordSettings = validateKeyword(body.cmd, body.keywordSettings); }
+        // The owner console may leave the match out: a keyword then matches messages that start with it.
+        try { keywordSettings = validateKeyword(body.cmd, body.keywordSettings ?? (options.override ? { matchMode: 'start' } : undefined)); }
         catch (error) { throw new CommandMutationError(400, (error as Error).message); }
         cmd = normalizeKeyword(body.cmd as string);
-        await validateKeywordCooldown(channelID, body.cooldown ?? 10);
+        if (!options.override) await validateKeywordCooldown(channelID, body.cooldown ?? 10);
     } else if (body.keywordSettings !== undefined) {
         throw new CommandMutationError(400, 'Keyword settings require keyword activation');
     }
@@ -143,7 +171,7 @@ export async function createChannelCommand(channelID: string, body: CommandWrite
         throw new CommandMutationError(409, 'Command already exists', undefined, presentCommand(existingCommand));
     }
 
-    const reply = await resolveCommandBody(channelID, body, null);
+    const reply = await resolveCommandBody(channelID, body, null, { override: options.override });
 
     const newCommand = new CommandsSchema({
         name: body.name,
@@ -159,6 +187,7 @@ export async function createChannelCommand(channelID: string, body: CommandWrite
         reserved: false,
         description: body.description ?? '',
         cooldown: body.cooldown ?? 10,
+        cooldownOverride: Boolean(options.override && body.cooldown !== undefined),
         enabled: body.enabled ?? true,
         userLevelName: userLevelName,
         userLevel: userLevel,
@@ -167,7 +196,7 @@ export async function createChannelCommand(channelID: string, body: CommandWrite
         channel: body.channel,
     });
 
-    if (isKeyword) await newCommand.save();
+    if (isKeyword || options.override) await newCommand.save();
     else await writeCommandWithCooldown(channelID, newCommand.cooldown, null, () => newCommand.save());
 
     const cacheClient = await getDragonflyClient();
@@ -180,7 +209,7 @@ export async function createChannelCommand(channelID: string, body: CommandWrite
     return { command: newCommand, view: present(newCommand) };
 }
 
-export interface CommandUpdateOptions {
+export interface CommandUpdateOptions extends CommandWriteOptions {
     /** `?language=` of the request: built-in descriptions come back localized. */
     language?: string;
     /**
@@ -211,35 +240,51 @@ export async function updateChannelCommand(channelID: string, commandID: string,
         }
     }
 
-    const isKeyword = command.activation === 'keyword';
+    const wasKeyword = command.activation === 'keyword';
+    let isKeyword = wasKeyword;
     if (body.activation !== undefined && body.activation !== (command.activation ?? 'command')) {
-        throw new CommandMutationError(400, 'Activation type cannot be changed');
+        if (!options.override) throw new CommandMutationError(400, 'Activation type cannot be changed');
+        if (body.activation !== 'command' && body.activation !== 'keyword') throw new CommandMutationError(400, 'Invalid activation type');
+        // Owner console: a command becomes a keyword or back. Both caches are refreshed below.
+        isKeyword = body.activation === 'keyword';
+        updatePayload.activation = body.activation;
+        if (!isKeyword) {
+            updatePayload.$unset = { keywordSettings: 1 };
+            // A keyword phrase ("hello there") needs a new one-word trigger to work as a command.
+            updatePayload.cmd = ownerCommandTrigger(body.cmd ?? command.cmd);
+        }
     }
     if (isKeyword) {
         try {
-            updatePayload.keywordSettings = validateKeyword(body.cmd ?? command.cmd, body.keywordSettings ?? command.keywordSettings);
+            updatePayload.keywordSettings = validateKeyword(body.cmd ?? command.cmd,
+                body.keywordSettings ?? command.keywordSettings ?? (options.override ? { matchMode: 'start' } : undefined));
         } catch (error) { throw new CommandMutationError(400, (error as Error).message); }
-        if ('cmd' in body) updatePayload.cmd = normalizeKeyword(body.cmd as string);
+        if ('cmd' in body || !wasKeyword) updatePayload.cmd = normalizeKeyword(String(body.cmd ?? command.cmd));
         updatePayload.func = 'custom';
-        if (body.cooldown !== undefined) await validateKeywordCooldown(channelID, body.cooldown);
+        if (body.cooldown !== undefined && !options.override) await validateKeywordCooldown(channelID, body.cooldown);
     } else if (body.keywordSettings !== undefined) {
         throw new CommandMutationError(400, 'Keyword settings require keyword activation');
+    } else if (options.override && 'cmd' in body) {
+        updatePayload.cmd = ownerCommandTrigger(body.cmd);
     }
-    if ('cmd' in updatePayload && updatePayload.cmd !== command.cmd) {
+    // Who set the cooldown last: the owner console's value is used as stored; a site edit brings back the plan rules.
+    if ('cooldown' in body) updatePayload.cooldownOverride = Boolean(options.override);
+    if (('cmd' in updatePayload && updatePayload.cmd !== command.cmd) || isKeyword !== wasKeyword) {
         const conflict = await CommandsSchema.exists({ channelID,
             _id: { $ne: commandID }, cmd: updatePayload.cmd,
             ...activationFilter(isKeyword ? 'keyword' : 'command') });
         if (conflict) throw new CommandMutationError(409, 'Activation already exists');
     }
 
-    // Reply text or blocks (plan, size and block checks live in the service).
-    if (!command.reserved) {
-        Object.assign(updatePayload, await resolveCommandBody(channelID, body, command));
+    // Reply text or blocks (plan, size and block checks live in the service). The owner console may also
+    // change a built-in command's reply and description.
+    if (!command.reserved || options.override) {
+        Object.assign(updatePayload, await resolveCommandBody(channelID, body, command, { override: options.override }));
     } else if (body.authoring === 'blocks') {
         throw new CommandMutationError(400, 'Built-in commands can\'t use blocks', 'reserved');
     }
 
-    if (command.reserved && 'description' in updatePayload) {
+    if (command.reserved && 'description' in updatePayload && !options.override) {
         delete updatePayload.description;
     }
 
@@ -283,7 +328,7 @@ export async function updateChannelCommand(channelID: string, commandID: string,
         updatePayload,
         { new: true }
     ).select('+blocks').exec();
-    const updatedCommand = isKeyword ? await writeUpdate()
+    const updatedCommand = isKeyword || options.override ? await writeUpdate()
         : await writeCommandWithCooldown(channelID, updatePayload.cooldown, command, writeUpdate);
 
     if (!updatedCommand) {
@@ -294,8 +339,8 @@ export async function updateChannelCommand(channelID: string, commandID: string,
     // Invalidate both the previous and current command-name cache
     // keys — even when equal — so a rename can never leave the old
     // name executable through a stale one-hour cache entry.
-    if (isKeyword) await refreshKeywordIndex(channelID, commandID);
-    else {
+    if (isKeyword || wasKeyword) await refreshKeywordIndex(channelID, commandID);
+    if (!isKeyword || !wasKeyword) {
         await cacheClient.del(`${channelID}:commands:${command.cmd}`);
         await cacheClient.del(`${channelID}:commands:${updatedCommand.cmd}`);
     }
@@ -312,8 +357,8 @@ export async function updateChannelCommand(channelID: string, commandID: string,
     return { command: updatedCommand, previous: command, view };
 }
 
-/** DELETE /commands/:channelID/:commandID. Built-in commands can't be deleted. */
-export async function deleteChannelCommand(channelID: string, commandID: string, options: { guard?: Record<string, unknown> } = {}): Promise<CommandDeleteResult> {
+/** DELETE /commands/:channelID/:commandID. Built-in commands can't be deleted, except by the owner console (`override`). */
+export async function deleteChannelCommand(channelID: string, commandID: string, options: { guard?: Record<string, unknown> } & CommandWriteOptions = {}): Promise<CommandDeleteResult> {
     const cacheClient = await getDragonflyClient();
 
     const command = await CommandsSchema.findOne({
@@ -325,7 +370,7 @@ export async function deleteChannelCommand(channelID: string, commandID: string,
         throw new CommandMutationError(404, 'Command not found for this channel');
     }
 
-    if (command.reserved) {
+    if (command.reserved && !options.override) {
         throw new CommandMutationError(403, 'Cannot delete reserved command');
     }
 

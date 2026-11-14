@@ -1,0 +1,60 @@
+/* Set who invited someone: a bottom sheet on phones, a centred card from 640px (dialog.lf-dialog). */
+.re-now {
+  overflow-wrap: anywhere;
+}
+.re-now strong {
+  color: var(--fg);
+}
+.re-picked {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.45rem 0.45rem 0.45rem 0.6rem;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.re-picked__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.re-skel {
+  display: grid;
+  gap: 0.5rem;
+}
+.re-codes .lf-choice {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+}
+.re-codes .lf-choice__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+.re-codes .mono {
+  font-size: 0.92rem;
+}
+.re-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.re-consequence {
+  border-color: var(--accent-line);
+  overflow-wrap: anywhere;
+}
+.re-consequence--none {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.lf-warning span {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 640px) {
+  .re-codes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

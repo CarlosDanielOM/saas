@@ -159,9 +159,7 @@
               <button type="button" class="lf-btn lf-btn--sm" [disabled]="toggling().has(cmd.id)" (click)="toggle(cmd)" data-action="toggle">
                 <app-icon name="power" />{{ cmd.enabled ? 'Turn off' : 'Turn on' }}
               </button>
-              @if (!cmd.reserved) {
-                <button type="button" class="lf-btn lf-btn--sm lf-btn--danger" (click)="askDelete(cmd)" data-action="delete">Delete</button>
-              }
+              <button type="button" class="lf-btn lf-btn--sm lf-btn--danger" (click)="askDelete(cmd)" data-action="delete">Delete</button>
             </div>
           }
           @if (row.cmd?.message) {
@@ -213,7 +211,14 @@
 </ng-template>
 
 @if (editor(); as open) {
-  <app-command-editor [command]="open.command" [channelID]="channelID()" [login]="login()" (saved)="onEditorSaved($event)" (closed)="editor.set(null)" />
+  <app-command-editor
+    [command]="open.command"
+    [channelID]="channelID()"
+    [login]="login()"
+    [builtInActions]="builtInActions()"
+    (saved)="onEditorSaved($event)"
+    (closed)="editor.set(null)"
+  />
 }
 
 <app-confirm-modal

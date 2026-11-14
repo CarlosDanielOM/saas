@@ -100,6 +100,12 @@ export const routes: Routes = [
             title: 'Channel AI usage | DimaBot Admin',
           },
           {
+            path: 'referrals',
+            loadComponent: () =>
+              import('./pages/channel/channel-referrals.component').then((m) => m.ChannelReferralsComponent),
+            title: 'Channel referrals | DimaBot Admin',
+          },
+          {
             path: 'logs',
             loadComponent: () =>
               import('./pages/channel/channel-logs.component').then((m) => m.ChannelLogsComponent),

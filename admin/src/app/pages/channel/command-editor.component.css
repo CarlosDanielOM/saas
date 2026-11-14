@@ -38,17 +38,12 @@
 .ced-trigger--bang .lf-input {
   padding-left: 1.45rem;
 }
-
-/* Locked fields: the value as text and why it can't change here. */
-.ced-locked {
-  padding: 0.6rem 0.85rem;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-sm);
-  color: var(--accent);
-  font-weight: 700;
-  overflow-wrap: anywhere;
+.ced-match {
+  margin-top: 0.3rem;
 }
-.ced-lock {
+
+/* Notes under a field: facts about what chat does or what Save writes (never locks). */
+.ced-note {
   display: flex;
   align-items: flex-start;
   gap: 0.45rem;
@@ -56,16 +51,28 @@
   font-size: 0.84rem;
   overflow-wrap: anywhere;
 }
-.ced-lock app-icon {
+.ced-note app-icon {
   width: 1.05rem;
   height: 1.05rem;
   margin-top: 0.12rem;
   color: var(--accent);
 }
-.ced-site {
-  justify-self: start;
+.ced-note--warn {
+  color: var(--fg);
 }
-/* 44px touch targets for the dialog's small buttons (close, site link). */
+.ced-note--warn app-icon {
+  color: var(--warn);
+}
+/* Blocks and custom rule as JSON. */
+.ced-json {
+  min-height: 7.5rem;
+  resize: vertical;
+  font-family: var(--mono);
+  line-height: 1.4;
+  tab-size: 2;
+  overflow-wrap: anywhere;
+}
+/* 44px touch target for the dialog's close button. */
 .ced .lf-btn--sm {
   min-height: 2.75rem;
 }
@@ -83,6 +90,12 @@
   color: var(--muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ced-set {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 .ced-count--over {
@@ -145,4 +158,13 @@
   .ced-server {
     margin-inline: 1.35rem;
   }
+}
+
+/* Wraps the fields only to lock them while saving; no box of its own. */
+.ced-saving {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
 }

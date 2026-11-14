@@ -51,7 +51,9 @@ export class CommandBlocksRequestError extends Error {
 export async function resolveCommandBody(
     channelID: string,
     body: Record<string, unknown>,
-    current: { authoring?: string | null; reserved?: boolean } | null
+    current: { authoring?: string | null; reserved?: boolean } | null,
+    /** `override`: the owner console; blocks on any plan and on built-in commands. */
+    options: { override?: boolean } = {}
 ): Promise<Record<string, unknown>> {
     const wantsBlocks = body.authoring === 'blocks';
     const currentlyBlocks = current?.authoring === 'blocks';
@@ -60,8 +62,8 @@ export async function resolveCommandBody(
     if (wantsBlocks && currentlyBlocks && body.blocks === undefined) return {};
 
     if (wantsBlocks) {
-        if (current?.reserved) throw new CommandBlocksRequestError(400, 'reserved', 'Built-in commands can\'t use blocks');
-        if (!canEditBlocks(await channelPlanTier(channelID))) {
+        if (current?.reserved && !options.override) throw new CommandBlocksRequestError(400, 'reserved', 'Built-in commands can\'t use blocks');
+        if (!options.override && !canEditBlocks(await channelPlanTier(channelID))) {
             throw new CommandBlocksRequestError(403, 'plan_required', 'Block commands need Premium or Pro');
         }
         try {

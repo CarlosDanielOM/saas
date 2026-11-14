@@ -4,7 +4,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { COMMAND_USER_LEVELS, ChannelApiService, type ChannelCommand, type CommandWriteResponse } from '../../services/channel-api.service';
+import { COMMAND_USER_LEVELS, ChannelApiService, type ChannelCommand } from '../../services/channel-api.service';
 import { ChannelDebugApiService, type CommandStat, type CommandStats } from '../../services/channel-debug-api.service';
 import { apiErrorMessage } from '../../services/api-util';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
@@ -61,7 +61,7 @@ export interface CommandRow {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** Commands tab: their commands, how each ran in the last 7 days, and editing them (owner access). */
+/** Commands tab: their commands, how each ran in the last 7 days, and editing all of them, built-ins too (owner routes). */
 @Component({
   selector: 'app-channel-commands',
   templateUrl: './channel-commands.component.html',
@@ -84,6 +84,8 @@ export class ChannelCommandsComponent implements OnInit {
   readonly isLoading = signal(true);
   readonly error = signal<string | null>(null);
   readonly commands = signal<ChannelCommand[]>([]);
+  /** Function names whose built-in code runs instead of a reply (the editor's "Runs" choices). */
+  readonly builtInActions = signal<readonly string[]>([]);
   readonly currentPage = signal(1);
   readonly totalPages = signal(1);
   readonly totalItems = signal(0);
@@ -104,9 +106,10 @@ export class ChannelCommandsComponent implements OnInit {
   });
   readonly deleteMessage = computed(() => {
     const login = this.login();
-    return login
+    const text = login
       ? `It stops working in ${login}'s chat right away. There's no undo here, and ${login} isn't notified.`
       : "It stops working in the channel's chat right away. There's no undo here, and the streamer isn't notified.";
+    return this.deleting()?.reserved ? `${text} It's a built-in command: the bot may add it back when the channel signs in again.` : text;
   });
 
   readonly channelID = this.ws.channelID;
@@ -219,6 +222,8 @@ export class ChannelCommandsComponent implements OnInit {
       .subscribe({
         next: (response) => {
           this.commands.set(response.data.rows);
+          const actions = response.data.meta?.builtInActions;
+          if (Array.isArray(actions)) this.builtInActions.set(actions.filter((name) => typeof name === 'string'));
           this.currentPage.set(response.data.pagination.page);
           this.totalPages.set(response.data.pagination.totalPages);
           this.totalItems.set(response.data.pagination.total);
@@ -304,7 +309,7 @@ export class ChannelCommandsComponent implements OnInit {
     this.openKeys.update((keys) => new Set(keys).add(command.id));
   }
 
-  /** Turn on/off right away; put it back and say why when the API refuses. */
+  /** Turn on/off right away (owner route); put it back and say why when the API refuses. */
   toggle(cmd: ChannelCommand): void {
     if (this.toggling().has(cmd.id)) return;
     const enabled = !cmd.enabled;
@@ -316,13 +321,18 @@ export class ChannelCommandsComponent implements OnInit {
     this.patch(cmd.id, { enabled });
     this.setToggling(cmd.id, true);
     this.channelApi
-      .updateCommand(this.channelID(), cmd.id, { enabled })
+      .ownerUpdateCommand(this.channelID(), cmd.id, { enabled })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response: CommandWriteResponse) => {
+        next: (response) => {
           this.setToggling(cmd.id, false);
-          if (response?.error) failed(response.message || `Couldn't turn ${label} ${enabled ? 'on' : 'off'}.`);
-          else this.toast.success(`${capitalize(label)} turned ${enabled ? 'on' : 'off'}`);
+          if (response?.error) {
+            failed(response.message || `Couldn't turn ${label} ${enabled ? 'on' : 'off'}.`);
+            return;
+          }
+          // Only `enabled`: an edit saved meanwhile may already be newer than this answer's other fields.
+          if (response?.data?.id === cmd.id) this.patch(cmd.id, { enabled: response.data.enabled });
+          this.toast.success(`${capitalize(label)} turned ${enabled ? 'on' : 'off'}`);
         },
         error: (err) => {
           this.setToggling(cmd.id, false);
@@ -353,10 +363,10 @@ export class ChannelCommandsComponent implements OnInit {
     this.deleteBusy.set(true);
     this.deleteError.set(null);
     this.channelApi
-      .deleteCommand(this.channelID(), cmd.id)
+      .ownerDeleteCommand(this.channelID(), cmd.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response: CommandWriteResponse) => {
+        next: (response) => {
           if (response?.error) {
             failed(response.message || `Couldn't delete ${label}. Try again.`);
             return;

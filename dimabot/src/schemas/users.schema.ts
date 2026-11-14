@@ -45,6 +45,13 @@ export interface IUsers {
     updated_at: Date;
     referrerId?: Types.ObjectId;
     referralCodeUsed?: string;
+    /**
+     * How the referrer was set: `manual` = by the owner in the admin console (no 10% first-subscription
+     * discount; the referrer is still rewarded through `referralCodeUsed`). Missing/null = signed up with a code.
+     */
+    referralSource?: 'code' | 'manual' | null;
+    /** When the owner last set or changed the referrer by hand. */
+    referralSetAt?: Date | null;
     token_balance?: number;
     applied_credit_transaction_ids?: Types.ObjectId[];
     reminder_sent_at?: Date | null;
@@ -104,6 +111,8 @@ const usersSchema = new Schema<IUsers>({
     refreshed_at: { type: Date, default: Date.now },
     referrerId: { type: Schema.Types.ObjectId, ref: 'users', default: null },
     referralCodeUsed: { type: String, default: null },
+    referralSource: { type: String, enum: ['code', 'manual', null], default: null },
+    referralSetAt: { type: Date, default: null },
     token_balance: { type: Number, default: 0 },
     applied_credit_transaction_ids: { type: [Schema.Types.ObjectId], default: undefined, select: false },
     reminder_sent_at: { type: Date, default: null },

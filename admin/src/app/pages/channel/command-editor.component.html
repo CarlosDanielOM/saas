@@ -17,6 +17,8 @@
     </header>
 
     <div class="lf-dialog__body">
+      <!-- Locked while saving: what was typed after the request left would be lost when the dialog closes. -->
+      <fieldset class="ced-saving" [disabled]="saving()">
       <p class="ced-intro" [id]="id + '-intro'">
         @if (who()) {
           Changes go live in {{ who() }}'s chat right away. {{ who() }} isn't notified.
@@ -25,78 +27,86 @@
         }
       </p>
 
-      <!-- 1 · Trigger -->
+      <!-- 1 · Trigger (or keyword and how it matches) -->
       <div class="lf-step">
-        @if (isBuiltIn()) {
-          <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">1</span>Trigger</p>
-          <p class="ced-locked mono" data-locked="trigger">{{ '!' + trigger() }}</p>
-          <p class="ced-lock" data-lock="trigger"><app-icon name="info" /><span>Built-in command: its trigger can't change.</span></p>
-        } @else {
-          <label class="lf-step__label" [for]="id + '-trigger'"><span class="lf-step__num" aria-hidden="true">1</span>{{ isKeyword() ? 'Keyword' : 'Trigger' }}</label>
-          <div class="ced-trigger" [class.ced-trigger--bang]="!isKeyword()">
-            @if (!isKeyword()) {
-              <span class="ced-trigger__bang" aria-hidden="true">!</span>
-            }
-            <input
-              [id]="id + '-trigger'"
-              class="lf-input"
-              type="text"
-              autocomplete="off"
-              autocapitalize="off"
-              spellcheck="false"
-              enterkeyhint="done"
-              [attr.maxlength]="isKeyword() ? 60 : null"
-              [attr.placeholder]="isKeyword() ? 'good morning' : 'lurk'"
-              [value]="trigger()"
-              (input)="onTrigger($event)"
-              [attr.aria-invalid]="shown().trigger ? 'true' : null"
-              [attr.aria-describedby]="describedBy('trigger')"
-            />
-          </div>
-          <p class="lf-hint" [id]="id + '-trigger-hint'">
-            {{ isKeyword() ? keywordHint() : 'What viewers type after “!” in chat. One word.' }}
-          </p>
-          @if (shown().trigger) {
-            <p class="lf-error" [id]="id + '-trigger-error'" data-error="trigger">{{ shown().trigger }}</p>
+        <label class="lf-step__label" [for]="id + '-trigger'"><span class="lf-step__num" aria-hidden="true">1</span>{{ isKeyword() ? 'Keyword' : 'Trigger' }}</label>
+        <div class="ced-trigger" [class.ced-trigger--bang]="!isKeyword()">
+          @if (!isKeyword()) {
+            <span class="ced-trigger__bang" aria-hidden="true">!</span>
           }
+          <input
+            [id]="id + '-trigger'"
+            class="lf-input"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="done"
+            [attr.placeholder]="isKeyword() ? 'good morning' : 'lurk'"
+            [value]="trigger()"
+            (input)="onTrigger($event)"
+            [attr.aria-invalid]="shown().trigger ? 'true' : null"
+            [attr.aria-describedby]="describedBy('trigger')"
+          />
+        </div>
+        <p class="lf-hint" [id]="id + '-trigger-hint'">
+          {{ isKeyword() ? 'Words or a phrase chat looks for, without “!”.' : 'What viewers type after “!” in chat. One word.' }}
+        </p>
+        @if (shown().trigger) {
+          <p class="lf-error" [id]="id + '-trigger-error'" data-error="trigger">{{ shown().trigger }}</p>
+        }
+        @if (isKeyword()) {
+          <div class="lf-field ced-match">
+            <label class="lf-label" [for]="id + '-match'">Match</label>
+            <select [id]="id + '-match'" class="lf-input" (change)="onMatch($event)" [attr.aria-describedby]="id + '-match-hint'">
+              @for (mode of matchModes; track mode.value) {
+                <option [value]="mode.value" [selected]="mode.value === matchMode()">{{ mode.label }}</option>
+              }
+            </select>
+            <p class="lf-hint" [id]="id + '-match-hint'">{{ matchHint() }}</p>
+          </div>
         }
       </div>
 
       <!-- 2 · Reply -->
       <div class="lf-step">
-        @if (replyLocked()) {
-          <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">2</span>Reply</p>
-          @if (reply()) {
-            <p class="lf-quote">{{ reply() }}</p>
-          }
-          @if (isBuiltIn()) {
-            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>Built-in command: the bot writes this reply.</span></p>
-          } @else if (runsBuiltIn()) {
-            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>The bot runs its own built-in action for this command, so this reply is never posted.</span></p>
-          } @else {
-            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>Built with blocks on the site. Change the reply there.</span></p>
-            <a class="lf-btn lf-btn--sm ced-site" [href]="siteUrl()" target="_blank" rel="noopener"><app-icon name="external" />Open on domdimabot.com</a>
-          }
-        } @else {
-          <div class="ced-label-row">
-            <label class="lf-step__label" [for]="id + '-reply'"><span class="lf-step__num" aria-hidden="true">2</span>Reply</label>
-            <span class="ced-count" [class.ced-count--over]="replyLength() > replyMax" [id]="id + '-reply-hint'"
-              >{{ formatNumber(replyLength()) }} / {{ formatNumber(replyMax) }}<span class="sr-only"> characters</span></span
-            >
-          </div>
-          <textarea
-            [id]="id + '-reply'"
-            class="lf-input ced-reply"
-            rows="4"
-            placeholder="$(user) is lurking. Enjoy!"
-            [value]="reply()"
-            (input)="reply.set(value($event))"
-            [attr.aria-invalid]="shown().reply ? 'true' : null"
-            [attr.aria-describedby]="describedBy('reply')"
-          ></textarea>
-          @if (shown().reply) {
-            <p class="lf-error" [id]="id + '-reply-error'" data-error="reply">{{ shown().reply }}</p>
-          }
+        <div class="ced-label-row">
+          <label class="lf-step__label" [for]="id + '-reply'"><span class="lf-step__num" aria-hidden="true">2</span>Reply</label>
+          <span class="ced-count" [class.ced-count--over]="replyLength() > replyMax" [id]="id + '-reply-hint'"
+            >{{ formatNumber(replyLength()) }} / {{ formatNumber(replyMax) }}<span class="sr-only"> characters</span></span
+          >
+        </div>
+        @if (wasBlocks()) {
+          <p class="ced-note" [id]="id + '-reply-built'" data-note="blocks">
+            <app-icon name="info" /><span>Built with blocks: this is the text they make. Edit it to save a plain reply, or edit the blocks (JSON) in More options.</span>
+          </p>
+        }
+        <textarea
+          [id]="id + '-reply'"
+          class="lf-input ced-reply"
+          rows="4"
+          placeholder="$(user) is lurking. Enjoy!"
+          [value]="reply()"
+          (input)="onReply($event)"
+          [attr.aria-invalid]="shown().reply ? 'true' : null"
+          [attr.aria-describedby]="replyDescribedBy()"
+        ></textarea>
+        @if (shown().reply) {
+          <p class="lf-error" [id]="id + '-reply-error'" data-error="reply">{{ shown().reply }}</p>
+        }
+        @if (replyNote() === 'to-text') {
+          <p class="ced-note ced-note--warn" [id]="id + '-reply-note'" data-note="to-text">
+            <app-icon name="alert" /><span>Saving replaces the blocks with this plain reply.</span>
+          </p>
+        } @else if (replyNote() === 'blocks') {
+          <p class="ced-note" [id]="id + '-reply-note'" data-note="uses-blocks">
+            <app-icon name="info" /><span>Saving uses the blocks (JSON) from More options; the server writes the reply from them.</span>
+          </p>
+        }
+        @if (runsBuiltIn()) {
+          <p class="ced-note" [id]="id + '-reply-runs'" data-note="runs">
+            <app-icon name="info" /><span>Chat runs the built-in {{ func() }} action; this reply isn't posted. Choose 'Plain reply' to post it.</span>
+          </p>
         }
       </div>
 
@@ -105,23 +115,26 @@
         <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">3</span>Who and when</p>
         <div class="ced-grid">
           <div class="lf-field">
-            @if (levelLocked()) {
-              <p class="lf-label">Who can use it</p>
-              <p class="ced-lock" data-lock="level">
-                <app-icon name="info" />
-                <span>{{ permissionMode() === 'tags' ? 'Uses a custom rule made on the site.' : 'Its permission rule is broken; fix it on the site.' }}</span>
-              </p>
-            } @else {
-              <label class="lf-label" [for]="id + '-level'">Who can use it</label>
-              <select [id]="id + '-level'" class="lf-input" (change)="level.set(+value($event))">
-                @for (item of levels; track item.level) {
-                  <option [value]="item.level" [selected]="item.level === level()">{{ item.label }}</option>
-                }
-              </select>
+            <label class="lf-label" [for]="id + '-level'">Who can use it</label>
+            <select [id]="id + '-level'" class="lf-input" (change)="onLevel($event)" [attr.aria-describedby]="levelNote() ? id + '-level-hint' : null">
+              @if (ruleOption()) {
+                <option value="rule" [selected]="useRule()">{{ ruleBroken() ? 'Custom rule (broken)' : 'Custom rule' }}</option>
+              }
+              @for (item of levels; track item.level) {
+                <option [value]="item.level" [selected]="!useRule() && item.level === level()">{{ item.label }}</option>
+              }
+            </select>
+            @if (levelNote(); as note) {
+              <p class="lf-hint" [id]="id + '-level-hint'" data-note="level">{{ note }}</p>
             }
           </div>
           <div class="lf-field">
-            <label class="lf-label" [for]="id + '-cooldown'">Cooldown in seconds</label>
+            <div class="ced-label-row">
+              <label class="lf-label" [for]="id + '-cooldown'">Cooldown in seconds</label>
+              @if (cooldownSetHere()) {
+                <span class="ced-set" data-note="cooldown-set">Set by you</span>
+              }
+            </div>
             <input
               [id]="id + '-cooldown'"
               class="lf-input"
@@ -135,7 +148,7 @@
               [attr.aria-invalid]="shown().cooldown ? 'true' : null"
               [attr.aria-describedby]="describedBy('cooldown')"
             />
-            <p class="lf-hint" [id]="id + '-cooldown-hint'">Wait between uses. 0 = no wait.</p>
+            <p class="lf-hint" [id]="id + '-cooldown-hint'">Wait between uses. 0 = no wait. Plan limits don't apply here.</p>
             @if (shown().cooldown) {
               <p class="lf-error" [id]="id + '-cooldown-error'" data-error="cooldown">{{ shown().cooldown }}</p>
             }
@@ -182,20 +195,86 @@
               <p class="lf-error" [id]="id + '-name-error'" data-error="name">{{ shown().name }}</p>
             }
           </div>
-          @if (!isBuiltIn()) {
+          <div class="lf-field">
+            <label class="lf-label" [for]="id + '-description'">Description</label>
+            <textarea [id]="id + '-description'" class="lf-input" rows="2" [value]="description()" (input)="description.set(value($event))"></textarea>
+          </div>
+          <div class="ced-grid">
             <div class="lf-field">
-              <label class="lf-label" [for]="id + '-description'">Description</label>
-              <textarea
-                [id]="id + '-description'"
-                class="lf-input"
-                rows="2"
-                [value]="description()"
-                (input)="description.set(value($event))"
-              ></textarea>
+              <label class="lf-label" [for]="id + '-type'">Type</label>
+              <select [id]="id + '-type'" class="lf-input" (change)="onActivation($event)" [attr.aria-describedby]="id + '-type-hint'">
+                <option value="command" [selected]="!isKeyword()">Command</option>
+                <option value="keyword" [selected]="isKeyword()">Keyword</option>
+              </select>
+              <p class="lf-hint" [id]="id + '-type-hint'">
+                {{ isKeyword() ? 'Changes how chat triggers it. Keywords always post their reply.' : 'Changes how chat triggers it.' }}
+              </p>
             </div>
-          }
+            @if (!isKeyword()) {
+              <div class="lf-field">
+                <label class="lf-label" [for]="id + '-func'">Runs</label>
+                <select [id]="id + '-func'" class="lf-input" (change)="func.set(value($event))" [attr.aria-describedby]="id + '-func-hint'">
+                  <option value="custom" [selected]="func() === 'custom'">Plain reply</option>
+                  @if (extraFunc(); as extra) {
+                    <option [value]="extra" [selected]="func() === extra">{{ extra }}</option>
+                  } @else if (extraFunc() === '') {
+                    <option value="" [selected]="func() === ''">(none stored)</option>
+                  }
+                  @if (builtInActions().length) {
+                    <optgroup label="Built-in actions">
+                      @for (action of builtInActions(); track action) {
+                        <option [value]="action" [selected]="func() === action">{{ action }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+                <p class="lf-hint" [id]="id + '-func-hint'">Plain reply posts the reply. A built-in action runs the bot's own code instead.</p>
+              </div>
+            }
+          </div>
+          <div class="lf-field">
+            <label class="lf-label" [for]="id + '-blocks'">Blocks (JSON)</label>
+            <textarea
+              [id]="id + '-blocks'"
+              class="lf-input ced-json"
+              rows="6"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              placeholder='{ "type": "root", "children": [] }'
+              [value]="blocksText()"
+              (input)="onBlocks($event)"
+              [attr.aria-invalid]="shown().blocks ? 'true' : null"
+              [attr.aria-describedby]="describedBy('blocks')"
+            ></textarea>
+            <p class="lf-hint" [id]="id + '-blocks-hint'">{{ blocksHint() }}</p>
+            @if (shown().blocks) {
+              <p class="lf-error" [id]="id + '-blocks-error'" data-error="blocks">{{ shown().blocks }}</p>
+            }
+          </div>
+          <div class="lf-field">
+            <label class="lf-label" [for]="id + '-rule'">Custom rule (JSON)</label>
+            <textarea
+              [id]="id + '-rule'"
+              class="lf-input ced-json"
+              rows="4"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              placeholder='{ "role": "vip" }'
+              [value]="ruleText()"
+              (input)="onRule($event)"
+              [attr.aria-invalid]="shown().rule ? 'true' : null"
+              [attr.aria-describedby]="describedBy('rule')"
+            ></textarea>
+            <p class="lf-hint" [id]="id + '-rule-hint'">{{ ruleHint() }}</p>
+            @if (shown().rule) {
+              <p class="lf-error" [id]="id + '-rule-error'" data-error="rule">{{ shown().rule }}</p>
+            }
+          </div>
         </div>
       </details>
+      </fieldset>
     </div>
 
     @if (serverError()) {

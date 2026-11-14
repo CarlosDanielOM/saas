@@ -75,6 +75,7 @@ export class ChannelShellComponent {
       { path: 'eventsubs', label: 'Twitch events', count: eventsOff, countLabel: `${formatNumber(eventsOff)} turned off` },
       { path: 'protection', label: 'Protection', count: protectionFailed, countLabel: `${plural(protectionFailed, 'message')} not reviewed in the last 24 hours` },
       { path: 'usage', label: 'AI & credits', count: 0, countLabel: '' },
+      { path: 'referrals', label: 'Referrals', count: 0, countLabel: '' },
       { path: 'logs', label: 'Bot log', count: 0, countLabel: '' },
     ];
   });

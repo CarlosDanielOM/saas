@@ -7,7 +7,7 @@ import UsersSchema from '../../../schemas/users.schema.js';
  * Shared pieces for the owner-only admin site API (`/admin-site/*`).
  *
  * Every route here shows data from every channel, so every route is owner only. Register routes with
- * `ownerGet` / `ownerPut` / `ownerPost`: they add the sign-in check, the owner check, `no-store`, and a
+ * `ownerGet` / `ownerPut` / `ownerPost` / `ownerPatch` / `ownerDelete`: they add the sign-in check, the owner check, `no-store`, and a
  * catch-all that answers with a plain message (driver errors can carry connection details, so they are
  * never sent to the browser).
  */
@@ -22,7 +22,7 @@ export function ensureSuperAdmin(req: AuthRequest, res: Response): boolean {
 
 /** Thrown by a handler (or a parser below) to answer 400/404/409 with a message that is safe to show. */
 export class AdminRequestError extends Error {
-    constructor(message: string, readonly status: 400 | 404 | 409 | 422 = 400) { super(message); }
+    constructor(message: string, readonly status: 400 | 403 | 404 | 409 | 422 = 400) { super(message); }
 }
 
 export type OwnerHandler = (req: AuthRequest, res: Response) => Promise<unknown> | unknown;
@@ -58,6 +58,8 @@ function wrap(label: string, handler: OwnerHandler): RequestHandler[] {
 export const ownerGet = (router: Router, path: string, handler: OwnerHandler) => router.get(path, ...wrap(`GET /admin-site${path}`, handler));
 export const ownerPut = (router: Router, path: string, handler: OwnerHandler) => router.put(path, ...wrap(`PUT /admin-site${path}`, handler));
 export const ownerPost = (router: Router, path: string, handler: OwnerHandler) => router.post(path, ...wrap(`POST /admin-site${path}`, handler));
+export const ownerPatch = (router: Router, path: string, handler: OwnerHandler) => router.patch(path, ...wrap(`PATCH /admin-site${path}`, handler));
+export const ownerDelete = (router: Router, path: string, handler: OwnerHandler) => router.delete(path, ...wrap(`DELETE /admin-site${path}`, handler));
 
 // ---- Query parsing. Each returns the fallback for a missing value and throws 400 for a bad one. ----
 

@@ -375,7 +375,9 @@ assert.equal(byCmd.broken.permissionMode, 'invalid');
 assert.deepEqual([byCmd.promo.runsBuiltIn, byCmd.so.runsBuiltIn, byCmd.lurk.runsBuiltIn, byCmd['hello there'].runsBuiltIn], [true, true, false, false],
     'commands whose built-in code runs instead of the reply are flagged');
 assert.equal(byCmd.lurk.channel, 'fjord_recipient');
-assert.equal(JSON.stringify(commands).includes('permissionExpression'), false, 'the rule itself is not sent');
+// The owner console edits custom rules as JSON: sent only for rule-based commands.
+assert.deepEqual(byCmd.dice.permissionExpression, { role: 'vip' });
+assert.equal(byCmd.lurk.permissionExpression, null);
 
 const base = { status: 'enabled', version: '1', created_at: '2026-11-01T00:00:00Z', transport: { method: 'webhook', callback: 'https://example.test/eventsub' }, cost: 0, channel: 'fjord_recipient', channelID: '422' };
 await Eventsubs.create([

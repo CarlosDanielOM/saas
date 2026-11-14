@@ -5,6 +5,9 @@ import { COMPLETED_REFERRAL_REWARD_FILTER } from './referral.js';
 
 export const REFERRAL_LEDGER_PAGE_SIZE = 20;
 
+/** Invited people: signed up with a code, or added by the owner (admin console), with or without a code. */
+const INVITED = { $or: [{ referralCodeUsed: { $type: 'string' } }, { referralSource: 'manual' }] };
+
 export interface ReferralPerson {
     id: string;
     name: string;
@@ -33,7 +36,7 @@ export interface ReferralLedgerPage<T> {
 export async function getReferralPeoplePage(ownerId: Types.ObjectId, page: number): Promise<ReferralLedgerPage<ReferralPerson>> {
     const users = await UsersSchema.find({
         referrerId: ownerId,
-        referralCodeUsed: { $type: 'string' },
+        ...INVITED,
     }).select('_id name plan_tier created_at referralCodeUsed')
         .sort({ created_at: -1, _id: -1 })
         .skip(page * REFERRAL_LEDGER_PAGE_SIZE)
@@ -77,7 +80,7 @@ interface RawTimelineEvent {
 
 export async function getReferralTimelinePage(ownerId: Types.ObjectId, page: number): Promise<ReferralLedgerPage<ReferralTimelineEvent>> {
     const rows = await UsersSchema.aggregate<RawTimelineEvent>([
-        { $match: { referrerId: ownerId, referralCodeUsed: { $type: 'string' } } },
+        { $match: { referrerId: ownerId, ...INVITED } },
         { $project: {
             userId: '$_id', code: '$referralCodeUsed',
             at: { $ifNull: ['$created_at', { $toDate: '$_id' }] },

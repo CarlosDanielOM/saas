@@ -792,7 +792,8 @@ export async function getBillingContext(
     const customerId = user.polar_sh_customer_id;
 
     if (!customerId) {
-        const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed);
+        // A referrer the owner added by hand (admin console) earns its rewards but gives no discount.
+        const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && user.referralSource !== 'manual';
 
         return {
             planTier: user.plan_tier,
@@ -836,7 +837,8 @@ export async function getBillingContext(
     const hasAnySubscriptionHistory = allSubscriptions.length > 0;
     const hasPaidSubscriptionHistory = Boolean(getPaidSubscriptionFromSubscriptions(allSubscriptions));
     const hasUsedTrial = allSubscriptions.some(subscription => Boolean(subscription.trial_start || subscription.trial_end));
-    const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && !hasAnySubscriptionHistory;
+    // A referrer the owner added by hand (admin console) earns its rewards but gives no discount.
+    const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && user.referralSource !== 'manual' && !hasAnySubscriptionHistory;
     const activeProductId = activeSubscription?.product_id;
     const currentPlan = getCurrentPlanFromActiveSubscription(user.plan_tier, activeProductId);
 

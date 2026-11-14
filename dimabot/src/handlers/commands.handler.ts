@@ -158,7 +158,8 @@ export async function executeCustomCommand(
 
     // Shared by direct chat and references (including API/cron invocations).
     const configuredCooldown = Number(cmdDB.command.cooldown ?? 0);
-    const cooldown = isKeyword ? Math.max(
+    // Keywords obey the plan minimum, unless the owner console set this cooldown (`cooldownOverride`).
+    const cooldown = isKeyword && !cmdDB.command.cooldownOverride ? Math.max(
         Number.isFinite(configuredCooldown) ? configuredCooldown : 0,
         getMinimumCommandCooldown((await TwitchStreamers.getTwitchAccountById(channelID))?.plan_tier)
     ) : configuredCooldown;

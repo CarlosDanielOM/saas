@@ -1,0 +1,191 @@
+<div class="lf rf">
+  <div class="lf-main">
+    <h2 class="sr-only">Referrals</h2>
+
+    @if (loading() && !data()) {
+      <div class="lf-status" role="status" aria-label="Loading referrals">
+        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+        <div class="lf-status__body"><app-skeleton width="70%" height="1.1rem" /></div>
+      </div>
+      <div class="rf-grid" aria-hidden="true">
+        <div class="lf-tile rf-by rf-skel"><app-skeleton width="40%" height="1.1rem" /><app-skeleton height="2.75rem" /><app-skeleton width="80%" height="0.9rem" /></div>
+        <div class="lf-tile rf-people rf-skel">
+          <app-skeleton width="50%" height="1.1rem" />
+          @for (i of [1, 2, 3, 4]; track i) {
+            <app-skeleton height="2.9rem" />
+          }
+        </div>
+      </div>
+    } @else if (error(); as message) {
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ message }}</p>
+          <p class="lf-status__text">Nothing was changed. Check your connection and try again.</p>
+          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="load()"><app-icon name="refresh" />Retry</button></div>
+        </div>
+      </div>
+    } @else if (data(); as d) {
+      <div class="lf-status rf-answer" role="status">
+        <app-icon name="users" />
+        <div class="lf-status__body">
+          <p class="lf-status__title" data-answer>{{ answer() }}</p>
+        </div>
+      </div>
+
+      <div class="rf-grid">
+        <section class="lf-tile rf-by" aria-labelledby="rf-by-h" data-invited-by>
+          <div class="lf-tile__head">
+            <h3 class="lf-h2" id="rf-by-h"><app-icon name="user" />Invited by</h3>
+          </div>
+          @if (inviter(); as by) {
+            <div class="rf-who">
+              <app-avatar [name]="by.login ?? '?'" [fetch]="!!by.login" />
+              <div class="rf-who__text">
+                @if (by.link) {
+                  <a class="rf-who__name" [routerLink]="by.link">{{ by.name }}</a>
+                } @else {
+                  <span class="rf-who__name rf-who__name--gone">{{ by.name }}</span>
+                }
+                <span class="lf-note" data-how>{{ by.how }}</span>
+              </div>
+              @if (by.code) {
+                <span class="lf-chip rf-code">code <span class="mono">{{ by.code }}</span></span>
+              } @else {
+                <span class="lf-chip lf-chip--muted">No code</span>
+              }
+            </div>
+            <ul class="rf-facts">
+              <li [class.is-ok]="by.discount.ok" data-discount><app-icon [name]="by.discount.ok ? 'check' : 'x'" />{{ by.discount.text }}</li>
+              <li [class.is-ok]="by.rewards.ok" data-rewards><app-icon [name]="by.rewards.ok ? 'check' : 'x'" />{{ by.rewards.text }}</li>
+            </ul>
+            <div class="rf-actions">
+              <button type="button" class="lf-btn lf-btn--sm" (click)="openInviter()" aria-haspopup="dialog" [attr.aria-label]="'Change who invited ' + login()">Change</button>
+              <button type="button" class="lf-btn lf-btn--sm lf-btn--danger" (click)="askRemoveInviter()" aria-haspopup="dialog" [attr.aria-label]="'Remove who invited ' + login()">Remove</button>
+            </div>
+          } @else {
+            <div class="rf-none">
+              <p><strong>Nobody invited them.</strong> If someone invited them but they forgot the link, add that person here. People added by hand don't get the 10% discount.</p>
+              <button type="button" class="lf-btn lf-btn--sm" (click)="openInviter()" aria-haspopup="dialog"><app-icon name="plus" />Add who invited them</button>
+            </div>
+          }
+        </section>
+
+        <section class="lf-tile lf-tile--flush rf-people" aria-labelledby="rf-people-h" data-invited>
+          <div class="lf-tile__head">
+            <h3 class="lf-h2" id="rf-people-h">
+              <app-icon name="users" />People they invited
+              @if (d.referredTotal > 0) {
+                <span class="lf-chip lf-chip--accent rf-total" data-total>{{ formatNumber(d.referredTotal) }}</span>
+              }
+            </h3>
+            <button type="button" class="lf-btn lf-btn--primary lf-btn--sm" (click)="openInvited()" aria-haspopup="dialog" data-add-invited><app-icon name="plus" />Add someone they invited</button>
+          </div>
+          @if (rows().length) {
+            <ul class="lf-rows">
+              @for (row of rows(); track row.userId) {
+                <li class="lf-row rf-person" [attr.data-person]="row.login">
+                  <app-avatar [name]="row.login || '?'" [fetch]="false" />
+                  <div class="rf-person__main">
+                    <span class="lf-row__title">
+                      @if (row.channelID) {
+                        <a class="rf-person__name" [routerLink]="['/channels', row.channelID, 'referrals']">{{ row.login || 'No Twitch name' }}</a>
+                      } @else {
+                        <span class="rf-person__name">{{ row.login || 'No Twitch name' }}</span>
+                      }
+                      <span class="lf-chip" [class.lf-chip--muted]="row.plan === 'free'" [class.lf-chip--gold]="row.plan === 'premium'" [class.lf-chip--pro]="row.plan === 'pro'">{{ planLabel(row.plan) }}</span>
+                    </span>
+                    <span class="lf-row__meta">
+                      @if (row.code) {
+                        code <span class="mono">{{ row.code }}</span>
+                      } @else {
+                        no code
+                      } · {{ how(row.source) }}@if (row.signedUpAt) { · signed up {{ day(row.signedUpAt) }}}
+                    </span>
+                  </div>
+                  <span class="rf-person__earn" [class.is-zero]="!row.creditsEarned" data-earned>
+                    @if (row.creditsEarned > 0) {
+                      Earned {{ creditsWithValue(row.creditsEarned) }}
+                    } @else {
+                      Nothing earned yet
+                    }
+                  </span>
+                  @if (row.channelID) {
+                    <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost rf-person__act" (click)="askRemoveInvited(row)" aria-haspopup="dialog" [attr.aria-label]="'Remove ' + row.login + ' from people ' + login() + ' invited'"><app-icon name="x" /><span class="rf-person__act-label">Remove</span></button>
+                  }
+                </li>
+              }
+            </ul>
+            @if (moreError(); as message) {
+              <div class="lf-notice rf-inset" role="alert">
+                <span>{{ message }}</span>
+                <button type="button" class="lf-btn lf-btn--sm" (click)="loadMore()">Retry</button>
+              </div>
+            }
+            <div class="lf-more-row rf-more">
+              <span class="lf-note" data-showing>Showing {{ formatNumber(rows().length) }} of {{ formatNumber(d.referredTotal) }}</span>
+              @if (next()) {
+                <button type="button" class="lf-btn lf-btn--sm" (click)="loadMore()" [disabled]="moreLoading()">
+                  @if (moreLoading()) {
+                    <span class="lf-spin"></span>Loading…
+                  } @else {
+                    Load more
+                  }
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="lf-empty rf-empty"><strong>They haven't invited anyone</strong>Nobody signed up with their link yet. Add someone here if they invited them but the link was forgotten.</p>
+          }
+        </section>
+
+        <section class="lf-tile lf-tile--flush rf-codes" aria-labelledby="rf-codes-h" data-codes>
+          <div class="lf-tile__head">
+            <h3 class="lf-h2" id="rf-codes-h"><app-icon name="tag" />Their codes</h3>
+            @if (d.codes.length) {
+              <span class="lf-note">{{ formatNumber(activeCodes()) }} of {{ formatNumber(d.codes.length) }} active</span>
+            }
+          </div>
+          @if (d.codes.length) {
+            <ul class="lf-rows">
+              @for (code of d.codes; track code.code) {
+                <li class="lf-row rf-code-row" [attr.data-code-row]="code.code">
+                  <div class="lf-row__main">
+                    <span class="lf-row__title"><span class="mono">{{ code.code }}</span></span>
+                    @if (code.label) {
+                      <span class="lf-row__meta">{{ code.label }}</span>
+                    }
+                  </div>
+                  <div class="lf-row__end">
+                    <span class="lf-note" data-code-counts>{{ formatNumber(code.signups) }} signed up · {{ formatNumber(code.conversions) }} paid</span>
+                    <span class="lf-chip" [class.lf-chip--ok]="code.active" [class.lf-chip--muted]="!code.active">{{ code.active ? 'Active' : 'Off' }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="lf-empty rf-empty">They have no referral codes.</p>
+          }
+        </section>
+      </div>
+    }
+  </div>
+
+  <app-referral-editor [request]="editor()" (done)="saved($event)" (closed)="editor.set(null)" />
+
+  <app-confirm-modal
+    [open]="!!removing()"
+    [title]="removeTitle()"
+    [message]="removeMessage()"
+    confirmLabel="Remove"
+    busyLabel="Removing…"
+    [isDanger]="true"
+    [loading]="removeBusy()"
+    (confirmed)="confirmRemove()"
+    (cancelled)="cancelRemove()"
+  >
+    @if (removeError(); as message) {
+      <p class="lf-error" role="alert">{{ message }}</p>
+    }
+  </app-confirm-modal>
+</div>

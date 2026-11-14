@@ -1,0 +1,122 @@
+<dialog #dialog class="lf-dialog re" aria-labelledby="re-title" (cancel)="onCancel($event)" (close)="onClose()" (click)="backdrop($event)" data-referral-editor>
+  @if (request(); as req) {
+    <div class="lf-dialog__head">
+      <h2 id="re-title">{{ title() }}</h2>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="cancel()" [disabled]="saving()"><app-icon name="x" /></button>
+    </div>
+
+    <div class="lf-dialog__body">
+      @if (req.mode === 'inviter' && req.current; as current) {
+        <p class="lf-note re-now">
+          Now invited by <strong>{{ current.login ?? 'a deleted account' }}</strong>@if (current.code) { (code <span class="mono">{{ current.code }}</span>)}. Rewards already paid stay where they are.
+        </p>
+      } @else if (req.mode === 'invited') {
+        <p class="lf-note re-now">For someone who signed up after {{ personName() }} invited them but without the link. Rewards already paid to anyone else stay where they are.</p>
+      }
+
+      <div class="lf-step">
+        <span class="lf-step__label" id="re-who"><span class="lf-step__num">1</span>{{ req.mode === 'inviter' ? 'Who invited them?' : 'Who did they invite?' }}</span>
+        @if (picked(); as person) {
+          <div class="re-picked" aria-labelledby="re-who" role="group">
+            <app-avatar [name]="person.channel" [fetch]="false" />
+            <strong class="re-picked__name">{{ person.channel }}</strong>
+            <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="repick()" [disabled]="saving()" [attr.aria-label]="'Change ' + person.channel + ', pick someone else'">Change</button>
+          </div>
+          @if (selfPick()) {
+            <p class="lf-error" role="alert">Someone can't invite themselves. Pick another channel.</p>
+          } @else if (alreadyListed()) {
+            <p class="lf-error" role="alert">{{ person.channel }} already counts as invited by {{ personName() }}.</p>
+          } @else if (pickedInviter(); as now) {
+            <p class="lf-note re-now" data-picked-inviter>
+              Now invited by <strong>{{ now.login ?? 'a deleted account' }}</strong>@if (now.code) { (code <span class="mono">{{ now.code }}</span>)}. You'll be asked to confirm the move.
+            </p>
+          }
+        } @else {
+          <app-channel-picker label="Search channels" placeholder="Type a channel name" (picked)="pick($event)" />
+          @if (submitAttempted()) {
+            <p class="lf-error" role="alert">Pick {{ req.mode === 'inviter' ? 'who invited them' : 'who they invited' }} first.</p>
+          }
+        }
+      </div>
+
+      @if (picked() && !selfPick() && !alreadyListed()) {
+        <div class="lf-step">
+          <span class="lf-step__label" id="re-code"><span class="lf-step__num">2</span>Which of {{ inviterName() }}'s codes?</span>
+          @if (pickedLoading()) {
+            <div class="re-skel" role="status" aria-label="Loading codes">
+              <app-skeleton height="3.4rem" />
+              <app-skeleton height="3.4rem" />
+            </div>
+          } @else if (pickedError()) {
+            <div class="lf-notice" role="alert">
+              <span>{{ pickedError() }}</span>
+              <button type="button" class="lf-btn lf-btn--sm" (click)="loadPicked()">Retry</button>
+            </div>
+          } @else {
+            <div class="lf-choices re-codes" role="radiogroup" aria-labelledby="re-code">
+              <label class="lf-choice" data-code="">
+                <input type="radio" name="re-code" value="" [checked]="choice() === ''" (change)="choose('')" />
+                <span class="lf-choice__body">
+                  <span class="lf-choice__title">Their first active code</span>
+                  <span class="lf-choice__copy">
+                    @if (firstActive(); as first) {
+                      Uses <span class="mono">{{ first.code }}</span>
+                    } @else {
+                      They have no active code, so rewards won't reach {{ inviterName() }}
+                    }
+                  </span>
+                </span>
+              </label>
+              @for (code of codes(); track code.code) {
+                <label class="lf-choice" [attr.data-code]="code.code">
+                  <input type="radio" name="re-code" [value]="code.code" [checked]="choice() === code.code" (change)="choose(code.code)" />
+                  <span class="lf-choice__body">
+                    <span class="lf-choice__title"><span class="mono">{{ code.code }}</span>@if (code.label) {<span class="re-label">{{ code.label }}</span>}</span>
+                    <span class="lf-choice__copy">
+                      @if (code.active) {
+                        Active · {{ formatNumber(code.signups) }} signed up · {{ formatNumber(code.conversions) }} paid
+                      } @else {
+                        Off: rewards won't reach {{ inviterName() }}
+                      }
+                    </span>
+                  </span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (consequence(); as result) {
+        <p class="lf-summary re-consequence" [class.re-consequence--none]="!result.earns" data-consequence>{{ result.text }}</p>
+      }
+      @if (conflict(); as message) {
+        <p class="lf-warning" role="alert" data-conflict><app-icon name="alert" /><span>{{ message }}</span></p>
+      }
+      @if (error(); as message) {
+        <p class="lf-error" role="alert" data-save-error>{{ message }}</p>
+      }
+    </div>
+
+    <div class="lf-dialog__foot">
+      <button type="button" class="lf-btn" (click)="cancel()" [disabled]="saving()">Cancel</button>
+      @if (conflict()) {
+        <button type="button" class="lf-btn lf-btn--primary" (click)="save(true)" [disabled]="saving()">
+          @if (saving()) {
+            <span class="lf-spin"></span>Moving…
+          } @else {
+            Move them
+          }
+        </button>
+      } @else {
+        <button type="button" class="lf-btn lf-btn--primary" (click)="save(false)" [disabled]="saving() || (submitAttempted() && !canSave())">
+          @if (saving()) {
+            <span class="lf-spin"></span>Saving…
+          } @else {
+            Save
+          }
+        </button>
+      }
+    </div>
+  }
+</dialog>

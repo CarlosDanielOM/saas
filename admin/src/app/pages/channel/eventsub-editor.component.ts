@@ -11,27 +11,47 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
   ChannelApiService,
   EDITABLE_EVENTSUB_FIELDS,
+  EVENTSUB_SETTING_LABELS,
   chatEventFieldKey,
   type ChannelEventsub,
   type ChatEventControl,
   type ChatEventDefinition,
+  type EventsubSettings,
 } from '../../services/channel-api.service';
 import { apiErrorMessage } from '../../services/api-util';
-import { plural } from '../../shared/format';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { BitsRulesEditorComponent } from './bits-rules-editor.component';
 
 /** Watch streaks and mod anniversaries: an empty message means the default one in the streamer's language. */
 export const CHAT_NOTIFICATION_TYPE = 'channel.chat.notification';
-/** The longest chat message the editor accepts (Twitch's chat limit; the site assistant uses the same). */
+/** Twitch doesn't post chat messages longer than this: the editor warns, it doesn't stop the save. */
 export const MESSAGE_MAX = 500;
-/** Raids accept only these settings (plus enabled/delay, which the editor doesn't offer). */
-const RAID_FIELDS = new Set(['message', 'clipEnabled', 'minViewers']);
-const EDITABLE = new Set<string>(EDITABLE_EVENTSUB_FIELDS);
+/** The owner route's own limit for a stored text (`dimabot/src/server/routes/admin_site/channel_edit.route.ts`). */
+const TEXT_MAX = 10_000;
+/** The owner route's limit for a stored number. */
+const NUMBER_MAX = 1_000_000;
+const BITS_TYPE = 'channel.bits.use';
+
+/** The control type of every stored setting, for the "All stored settings" section (the owner route checks the same types). */
+const SETTING_KINDS: Record<keyof EventsubSettings, 'text' | 'number' | 'checkbox'> = {
+  message: 'text',
+  endMessage: 'text',
+  endEnabled: 'checkbox',
+  minViewers: 'number',
+  clipEnabled: 'checkbox',
+  delay: 'number',
+  modiversaryMessage: 'text',
+  modiversaryEnabled: 'checkbox',
+  watchStreakEnabled: 'checkbox',
+  temporalBanMessage: 'text',
+  todayFollows: 'checkbox',
+};
 
 /** The control whose text the bot posts for this event: the one saved as `message`, else the first text control. */
 export function messageControl(definition: ChatEventDefinition | null | undefined): ChatEventControl | null {
@@ -44,21 +64,17 @@ export function controlLabel(control: Pick<ChatEventControl, 'id' | 'label'>): s
   return control.label?.EN || control.label?.en || control.id;
 }
 
-/** The site's Chat events page for a channel, where Bits rules (and anything the console can't edit) live. */
-export function chatEventsSiteUrl(login: string | null | undefined): string {
-  return login ? `https://domdimabot.com/${encodeURIComponent(login)}/modules/chat-events` : 'https://domdimabot.com';
-}
-
-type FieldKind = 'text' | 'number' | 'checkbox' | 'select' | 'bits' | 'site';
+type FieldKind = 'text' | 'number' | 'checkbox' | 'select' | 'bits';
 
 interface EditorField {
-  /** The catalog control id (what `showIf` refers to). */
+  /** The catalog control id (what `showIf` refers to), or `stored-<key>` for a stored setting. */
   id: string;
   /** The stored field it is saved to. */
   key: string;
   kind: FieldKind;
   label: string;
-  control: ChatEventControl;
+  /** The catalog control; null for a field of "All stored settings". */
+  control: ChatEventControl | null;
   /** The stored value, typed for its kind. */
   original: unknown;
   options: { value: string; label: string }[];
@@ -68,85 +84,103 @@ interface EditorField {
   selector: 'app-eventsub-editor',
   templateUrl: './eventsub-editor.component.html',
   styleUrl: './eventsub-editor.component.css',
-  imports: [IconComponent],
+  imports: [IconComponent, NgTemplateOutlet, BitsRulesEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EventsubEditorComponent implements AfterViewInit {
   private readonly channelApi = inject(ChannelApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
+  private readonly bitsRules = viewChild(BitsRulesEditorComponent);
 
   readonly eventsub = input.required<ChannelEventsub>();
   readonly definition = input.required<ChatEventDefinition>();
   readonly eventName = input.required<string>();
   readonly channelID = input.required<string>();
   readonly channelLogin = input<string | null>(null);
+  /** A second stored row of the event that the bot doesn't read. */
+  readonly duplicate = input(false);
+  /** The chat event catalog didn't load, so only the stored fields can be shown. */
+  readonly catalogMissing = input(false);
 
   readonly saved = output<void>();
   readonly closed = output<void>();
 
   protected readonly max = MESSAGE_MAX;
+  protected readonly textMax = TEXT_MAX;
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly serverError = signal<string | null>(null);
-  /** Edited values by control id; a field without an entry still has its stored value. */
+  /** Edited values by field id; a field without an entry still has its stored value. */
   private readonly edits = signal<Record<string, unknown>>({});
 
   protected readonly login = computed(() => this.channelLogin() || this.channelID());
-  protected readonly siteUrl = computed(() => chatEventsSiteUrl(this.channelLogin()));
   private readonly isNotification = computed(() => this.eventsub().type === CHAT_NOTIFICATION_TYPE);
+  /** Saving here, or a Bits rule write on its way: the dialog waits before closing. */
+  protected readonly busy = computed(() => this.saving() || (this.bitsRules()?.busy() ?? false));
 
   /** The type's catalog controls in catalog order, each with its stored value. */
   protected readonly fields = computed<EditorField[]>(() => {
     const es = this.eventsub();
-    const settings = (es.settings ?? {}) as unknown as Record<string, unknown>;
-    const raid = es.rawType === 'channel.raid' || es.type.startsWith('channel.raid');
+    const settings = this.settings();
     const seen = new Set<string>();
     const fields: EditorField[] = [];
     for (const control of this.definition().config ?? []) {
       const key = chatEventFieldKey(control);
       if (seen.has(key)) continue;
       seen.add(key);
-      const editable = EDITABLE.has(key) && (!raid || RAID_FIELDS.has(key));
       const kind: FieldKind =
         control.type === 'message-tiers' || key === 'cheerTiers'
           ? 'bits'
-          : editable && ['text', 'number', 'checkbox', 'select'].includes(control.type)
+          : ['text', 'number', 'checkbox', 'select'].includes(control.type)
             ? (control.type as FieldKind)
-            : 'site';
+            : (SETTING_KINDS[key as keyof EventsubSettings] ?? kindOf(settings[key]));
       const stored = key in settings ? settings[key] : key === 'message' && es.message !== undefined ? es.message : control.value;
       fields.push({ id: control.id, key, kind, label: controlLabel(control), control, original: typed(kind, stored), options: selectOptions(control, stored) });
     }
     return fields;
   });
 
-  /** Settings this dialog can't change: listed with a link to the site instead of a control that would be ignored. */
-  protected readonly siteOnly = computed(() => this.fields().filter((field) => field.kind === 'site' && this.isVisible(field)).map((field) => field.label));
+  /** Every other stored setting (the ones no catalog control shows), with its plain name and stored field name. */
+  protected readonly storedFields = computed<EditorField[]>(() => {
+    const settings = this.settings();
+    const shown = new Set(this.fields().map((field) => field.key));
+    return EDITABLE_EVENTSUB_FIELDS.filter((key) => !shown.has(key)).map((key) => {
+      const kind = SETTING_KINDS[key] ?? kindOf(settings[key]);
+      return { id: `stored-${key}`, key, kind, label: EVENTSUB_SETTING_LABELS[key] ?? key, control: null, original: typed(kind, settings[key]), options: [] };
+    });
+  });
 
-  /** Only the changed, visible, editable fields: exactly what the PATCH sends. */
+  /** No catalog controls for this type: the dialog is its stored fields, open from the start. */
+  protected readonly storedOnly = computed(() => this.fields().length === 0);
+
+  /** The Bits rules sit where the catalog puts them; a Bits row without that control gets them after its settings. */
+  protected readonly bitsAfterFields = computed(
+    () => !this.duplicate() && this.eventsub().type === BITS_TYPE && !this.fields().some((field) => field.kind === 'bits'),
+  );
+
+  /** Only the changed, visible fields: exactly what the PATCH sends. */
   private readonly changes = computed(() => {
     const body: Record<string, unknown> = {};
-    for (const field of this.fields()) {
-      if (field.kind === 'bits' || field.kind === 'site' || !this.isVisible(field)) continue;
+    for (const field of [...this.fields(), ...this.storedFields()]) {
+      if (field.kind === 'bits' || !this.isVisible(field)) continue;
       const value = this.parsed(field);
       if (!Object.is(value, field.original)) body[field.key] = value;
     }
     return body;
   });
   protected readonly dirty = computed(() => Object.keys(this.changes()).length > 0);
+  /** Stored settings changed below the fold: keeps "All stored settings" open. */
+  protected readonly storedDirty = computed(() => this.storedFields().some((field) => field.key in this.changes()));
 
-  /** Inline problems of the changed fields by control id (shown after the first Save). */
+  /** Inline problems of the changed fields by field id (shown after the first Save). */
   protected readonly errors = computed(() => {
     const errors: Record<string, string> = {};
     const changes = this.changes();
-    for (const field of this.fields()) {
-      if (!(field.key in changes)) continue;
-      if (field.kind === 'number') {
-        const value = this.parsed(field) as number;
-        if (!Number.isInteger(value) || value < 0 || value > 1_000_000) errors[field.id] = 'Enter a whole number of 0 or more.';
-      } else if (field.kind === 'text' && String(this.value(field)).length > MESSAGE_MAX) {
-        errors[field.id] = `Keep it to ${MESSAGE_MAX} characters.`;
-      }
+    for (const field of [...this.fields(), ...this.storedFields()]) {
+      if (!(field.key in changes) || field.kind !== 'number') continue;
+      const value = this.parsed(field) as number;
+      if (!Number.isInteger(value) || value < 0 || value > NUMBER_MAX) errors[field.id] = 'Enter a whole number from 0 to 1,000,000.';
     }
     return errors;
   });
@@ -190,7 +224,7 @@ export class EventsubEditorComponent implements AfterViewInit {
 
   /** A dependent control (e.g. the end message) only shows while the control it depends on has the given value. */
   protected isVisible(field: EditorField): boolean {
-    const rule = field.control.showIf;
+    const rule = field.control?.showIf;
     if (!rule) return true;
     const source = this.fields().find((candidate) => candidate.id === rule.controlId);
     if (!source) return false;
@@ -202,26 +236,31 @@ export class EventsubEditorComponent implements AfterViewInit {
     return `ed-${field.id.replace(/[^\w-]/g, '-')}`;
   }
 
-  /** What an empty message means for this field. */
-  protected emptyHint(field: EditorField): string {
+  /** What an empty message means for this field (catalog messages only; a stored setting may not apply to this event). */
+  protected emptyHint(field: EditorField): string | null {
+    if (!field.control) return null;
     return this.isNotification() && ['message', 'modiversaryMessage'].includes(field.key)
       ? `Leave it empty to use the default message in ${this.login()}'s language.`
       : 'Leave it empty to post nothing in chat.';
   }
 
-  protected bitsRules(): string {
-    return plural(this.eventsub().cheerTierCount ?? 0, 'Bits rule');
+  /** The ids the text field's hints have. */
+  protected describedBy(field: EditorField): string {
+    const id = this.fieldId(field);
+    return [this.emptyHint(field) ? `${id}-hint` : '', `${id}-count`, field.control ? '' : `${id}-key`, this.text(field).length > MESSAGE_MAX ? `${id}-long` : '']
+      .filter(Boolean)
+      .join(' ');
   }
 
   protected save(): void {
-    if (this.saving() || !this.dirty()) return;
+    if (this.busy() || !this.dirty()) return;
     this.submitted.set(true);
     if (Object.keys(this.errors()).length) return;
     const name = this.eventName();
     this.saving.set(true);
     this.serverError.set(null);
     this.channelApi
-      .patchChannelEventsub(this.channelID(), this.eventsub().id, this.changes())
+      .ownerPatchEventsub(this.channelID(), this.eventsub().id, this.changes())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -240,17 +279,34 @@ export class EventsubEditorComponent implements AfterViewInit {
   }
 
   protected cancel(): void {
-    if (!this.saving()) this.closed.emit();
+    if (!this.busy()) this.closed.emit();
+  }
+
+  /**
+   * Escape closes the topmost layer first: a Bits rule's delete question, then its form, then the dialog.
+   * Handled on keydown so the dialog never sees the Escape a layer used.
+   */
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (this.bitsRules()?.closeLayer()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   /**
    * The browser can close a modal dialog itself (a second Escape without a click in between ignores
-   * `preventDefault`). While saving it opens again; otherwise the parent removes it.
+   * `preventDefault`). While saving, or when a Bits rule layer was open (that layer closes instead), it opens
+   * again; otherwise the parent removes it.
    */
   protected onNativeClose(): void {
     if (this.destroyed) return;
-    if (this.saving()) this.dialog().nativeElement.showModal();
+    if (this.busy() || this.bitsRules()?.closeLayer()) this.dialog().nativeElement.showModal();
     else this.closed.emit();
+  }
+
+  private settings(): Record<string, unknown> {
+    return (this.eventsub().settings ?? {}) as unknown as Record<string, unknown>;
   }
 
   /** The value as it would be saved (numbers parsed). */
@@ -260,6 +316,10 @@ export class EventsubEditorComponent implements AfterViewInit {
     if (field.kind === 'select' && typeof field.original === 'number') return Number(value);
     return value;
   }
+}
+
+function kindOf(value: unknown): 'text' | 'number' | 'checkbox' {
+  return typeof value === 'boolean' ? 'checkbox' : typeof value === 'number' ? 'number' : 'text';
 }
 
 function typed(kind: FieldKind, value: unknown): unknown {

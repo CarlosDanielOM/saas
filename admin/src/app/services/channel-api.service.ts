@@ -33,20 +33,26 @@ export interface ChannelCommand {
   enabled: boolean;
   /** Seconds between uses. */
   cooldown: number;
+  /** The owner set this cooldown here: chat uses it as stored, below a keyword's plan minimum too. */
+  cooldownOverride?: boolean;
   userLevelName: string;
   /** 1 everyone … 10 broadcaster (see `COMMAND_USER_LEVELS`). Ignored by the bot when `permissionMode` is `tags`. */
   userLevel: number;
   /** `keyword` = fires when a chat message contains/starts with the phrase; its activation can't be changed. */
   activation: 'command' | 'keyword';
   keywordMatch: string | null;
-  /** Built-in command: can't be deleted, its reply can't be changed and it can't use blocks. */
+  /** Built-in (default) command. The owner routes edit and delete it like any other; the site keeps it locked. */
   reserved: boolean;
-  /** `blocks` = the reply is built with AST blocks on the site; the console shows its text but can't edit it. */
+  /** `blocks` = the reply is built with AST blocks (`blocks` holds the stored tree); the owner can edit both. */
   authoring: 'text' | 'blocks';
-  /** `tags` = a custom permission rule built on the site (the level select doesn't apply); `invalid` = broken rule. */
+  /** `tags` = a custom permission rule (`permissionExpression`; picking a level replaces it); `invalid` = broken rule. */
   permissionMode: 'level' | 'tags' | 'invalid';
   /** The bot runs its own code for it (its function is a built-in action such as `promo`), so the stored reply is never posted. */
   runsBuiltIn?: boolean;
+  /** The block tree of a block command as stored (`{ v, root }`), for editing as JSON; null otherwise. The owner routes accept the root or this wrapper. */
+  blocks?: unknown;
+  /** The custom permission rule (`permissionMode` tags/invalid), for editing as JSON; null in level mode. */
+  permissionExpression?: unknown;
   description: string;
   /** The channel login stored on the command. */
   channel: string;
@@ -68,21 +74,39 @@ export const COMMAND_USER_LEVELS: ReadonlyArray<{ level: number; name: string; l
 ];
 
 /**
- * Body for creating or changing a command through the site's own commands API (`/commands/:channelID`), which
- * the owner may use on any channel. On update only the fields present are changed. See
- * `dimabot/src/server/services/command_mutations.service.ts`.
+ * Body for creating or changing a command. The console uses the owner routes (`ownerCreateCommand` …), which
+ * edit like the database: no plan limits, built-in commands fully editable and deletable, blocks on any plan,
+ * activation switchable. Integrity checks stay (a trigger used twice, invalid blocks/permission rule, keyword
+ * format). On update only the fields present change. See `dimabot/src/server/routes/admin_site/channel_edit.route.ts`.
  */
 export interface CommandWrite {
   name?: string;
   cmd?: string;
+  /** What runs: `custom` = the reply text/blocks; a built-in action name (see `builtInActions`) runs that code. */
   func?: string;
   message?: string;
   channel?: string;
   description?: string;
+  /** Whole seconds 0–86,400 (no plan minimum for the owner). */
   cooldown?: number;
   enabled?: boolean;
   userLevel?: number;
   userLevelName?: string;
+  /** `text` with `message`, or `blocks` with `blocks` (the server compiles them and stores the text). */
+  authoring?: 'text' | 'blocks';
+  blocks?: unknown;
+  activation?: 'command' | 'keyword';
+  keywordSettings?: { matchMode: 'start' | 'anywhere' | 'exact' };
+  /** null switches to level mode (send `userLevel` too); an expression object switches to a custom rule. */
+  permissionExpression?: unknown;
+}
+
+/** An owner write's answer: the saved row as the list shows it. */
+export interface OwnerWriteResponse<T> {
+  error: boolean;
+  message: string;
+  status: number;
+  data: T;
 }
 
 /** The commands API's answer: `command` on success; `code` (e.g. `reserved`, `too_long`) and `message` on failure. */
@@ -114,17 +138,20 @@ export interface ChannelEventsub {
   created_at: string;
 }
 
-/** The stored chat fields of a Twitch event subscription, by their database names. */
+/** The stored chat fields of a Twitch event subscription, by their database names (every config field). */
 export interface EventsubSettings {
   message: string;
   endMessage: string;
   endEnabled: boolean;
   minViewers: number;
   clipEnabled: boolean;
+  /** Seconds (raids). */
   delay: number;
   modiversaryMessage: string;
   modiversaryEnabled: boolean;
   watchStreakEnabled: boolean;
+  temporalBanMessage: string;
+  todayFollows: boolean;
 }
 
 /**
@@ -168,12 +195,52 @@ export function chatEventFieldKey(control: Pick<ChatEventControl, 'id' | 'dbId'>
 }
 
 /**
- * Fields the console may send in an eventsub PATCH. The site's PATCH writes whatever it receives, so the
- * console never sends anything outside this list (no type, condition, status or ids).
+ * Fields the console may send in an eventsub PATCH (`ownerPatchEventsub`): every stored chat setting, typed
+ * (string/boolean/number). Never type, condition, status or ids; the owner route refuses anything else.
  */
 export const EDITABLE_EVENTSUB_FIELDS: ReadonlyArray<keyof EventsubSettings> = [
-  'message', 'endMessage', 'endEnabled', 'minViewers', 'clipEnabled', 'modiversaryMessage', 'modiversaryEnabled', 'watchStreakEnabled',
+  'message', 'endMessage', 'endEnabled', 'minViewers', 'clipEnabled', 'delay', 'modiversaryMessage', 'modiversaryEnabled',
+  'watchStreakEnabled', 'temporalBanMessage', 'todayFollows',
 ];
+
+/** Plain names for the stored settings, for the console's "All stored settings" section. */
+export const EVENTSUB_SETTING_LABELS: Record<keyof EventsubSettings, string> = {
+  message: 'Chat message',
+  endMessage: 'End message',
+  endEnabled: 'End message on',
+  minViewers: 'Minimum viewers',
+  clipEnabled: 'Show a clip',
+  delay: 'Delay (seconds)',
+  modiversaryMessage: 'Mod anniversary message',
+  modiversaryEnabled: 'Mod anniversaries on',
+  watchStreakEnabled: 'Watch streaks on',
+  temporalBanMessage: 'Timeout message',
+  todayFollows: "Today's follows",
+};
+
+/** One shared Bits rule (cheers in chat + Overlay Studio looks): `dimabot/src/bits_rules/model.ts`. */
+export interface BitsRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  min: number;
+  /** null = no upper limit. */
+  max: number | null;
+  /** `default` = the event's default message, `custom` = `message`, `silent` = nothing in chat. */
+  chat: { mode: 'default' | 'custom' | 'silent'; message: string };
+  /** Shows the overlay alert. */
+  alert: boolean;
+}
+export interface BitsRules {
+  revision: number;
+  rules: BitsRule[];
+  maxRules: number;
+  canManage: boolean;
+  /** Overlay Studio looks per rule id. */
+  looks: Record<string, number>;
+  chat: { subscribed: boolean; enabled: boolean; defaultMessage: string };
+}
+export type BitsRuleWrite = Partial<Omit<BitsRule, 'id'>>;
 
 export interface StandardEventsub {
   type: string;
@@ -229,6 +296,8 @@ export interface ChannelTrigger {
 
 export interface PaginatedResponse<T> {
   rows: T[];
+  /** Commands list only: function names that run built-in code (for the editor's "Runs" field). */
+  meta?: { builtInActions?: string[] };
   pagination: {
     page: number;
     limit: number;
@@ -387,6 +456,50 @@ export class ChannelApiService {
   patchChannelEventsub(channelID: string, eventsubID: string, body: Record<string, unknown>): Observable<{ error: boolean; message: string }> {
     const url = `${this.linksService.getApiUrl()}/eventsubs/${channelID}/${eventsubID}`;
     return this.http.patch<{ error: boolean; message: string }>(url, body);
+  }
+
+  // ---- Owner edits (admin-site routes with `override`): edit like the database, see CommandWrite. ----
+
+  ownerCreateCommand(channelID: string, body: CommandWrite & { cmd: string }): Observable<OwnerWriteResponse<ChannelCommand>> {
+    return this.http.post<OwnerWriteResponse<ChannelCommand>>(`${this.linksService.getApiUrl()}/admin-site/users/${encodeURIComponent(channelID)}/commands`, body);
+  }
+
+  ownerUpdateCommand(channelID: string, commandID: string, body: CommandWrite): Observable<OwnerWriteResponse<ChannelCommand>> {
+    return this.http.put<OwnerWriteResponse<ChannelCommand>>(
+      `${this.linksService.getApiUrl()}/admin-site/users/${encodeURIComponent(channelID)}/commands/${encodeURIComponent(commandID)}`, body);
+  }
+
+  /** Built-in commands too. No undo. */
+  ownerDeleteCommand(channelID: string, commandID: string): Observable<OwnerWriteResponse<{ id: string; cmd: string }>> {
+    return this.http.delete<OwnerWriteResponse<{ id: string; cmd: string }>>(
+      `${this.linksService.getApiUrl()}/admin-site/users/${encodeURIComponent(channelID)}/commands/${encodeURIComponent(commandID)}`);
+  }
+
+  /** Any stored chat setting (EDITABLE_EVENTSUB_FIELDS), no plan gate, "can't be disabled" or raid field list. */
+  ownerPatchEventsub(channelID: string, eventsubID: string, body: Partial<EventsubSettings> & { enabled?: boolean }): Observable<OwnerWriteResponse<ChannelEventsub>> {
+    return this.http.patch<OwnerWriteResponse<ChannelEventsub>>(
+      `${this.linksService.getApiUrl()}/admin-site/users/${encodeURIComponent(channelID)}/eventsubs/${encodeURIComponent(eventsubID)}`, body);
+  }
+
+  // ---- Bits rules: the site's shared rules API (`/bits-rules/:channelID`), which the owner can use on any channel. ----
+
+  getBitsRules(channelID: string): Observable<OwnerWriteResponse<BitsRules>> {
+    return this.http.get<OwnerWriteResponse<BitsRules>>(`${this.linksService.getApiUrl()}/bits-rules/${encodeURIComponent(channelID)}`);
+  }
+
+  /** Answers the whole new state (+ `created`, the new rule id). Up to `maxRules` (50) rules. */
+  createBitsRule(channelID: string, rule: BitsRuleWrite & { min: number }): Observable<OwnerWriteResponse<BitsRules & { created: string }>> {
+    return this.http.post<OwnerWriteResponse<BitsRules & { created: string }>>(`${this.linksService.getApiUrl()}/bits-rules/${encodeURIComponent(channelID)}/rules`, rule);
+  }
+
+  updateBitsRule(channelID: string, ruleID: string, rule: BitsRuleWrite): Observable<OwnerWriteResponse<BitsRules>> {
+    return this.http.patch<OwnerWriteResponse<BitsRules>>(
+      `${this.linksService.getApiUrl()}/bits-rules/${encodeURIComponent(channelID)}/rules/${encodeURIComponent(ruleID)}`, rule);
+  }
+
+  deleteBitsRule(channelID: string, ruleID: string): Observable<OwnerWriteResponse<BitsRules>> {
+    return this.http.delete<OwnerWriteResponse<BitsRules>>(
+      `${this.linksService.getApiUrl()}/bits-rules/${encodeURIComponent(channelID)}/rules/${encodeURIComponent(ruleID)}`);
   }
 
   /** Create a command on any channel (owner access through the site's commands API). */
