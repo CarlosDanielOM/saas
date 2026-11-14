@@ -15,6 +15,15 @@ No arguments prints help. `list` and `plan` do not change containers or files. O
 
 The script checks the container's Compose project, service, checkout, and configuration against the selected target. It talks only to the local Unix Docker socket, ignoring Docker/Compose environment overrides. It refuses configuration/environment drift rather than guessing which live configuration to replace. This workflow delivers code/assets; Compose, nginx, networking, credentials, and database migrations need a separately reviewed procedure.
 
+## Edge proxy (NPM) notes
+
+- NPM's default `/etc/nginx/nginx.conf` uses `real_ip_header X-Real-IP`; Cloudflare sends no such header, so logs and forwarded `X-Real-IP` previously contained its edge address.
+- Since 2026-11-14, `/data/nginx/custom/server_proxy.conf` is included in each proxy host server block and uses `CF-Connecting-IP`, trusting private ranges and Cloudflare's 22 ranges only. It excludes the CloudFront ranges in `ip_ranges.conf`: another CDN could forge that header.
+- Access logs now show the visitor and apps receive matching `X-Real-IP` and `CF-Connecting-IP`. Update this NPM file and `dimabot/src/utils/client_ip.ts` together when Cloudflare ranges change; the API limiter still handles mismatched headers.
+- Custom configs must log to files under `/data/logs/`, never `/dev/stderr`. `http.conf` includes `sam-accounts-public.conf` for `sam.myhomelab.wtf`; its former `/dev/stderr` error log caused `nginx -t` to fail with `open() "/dev/stderr" failed (6: No such device or address)`, silently rolling back NPM UI saves from 2026-10-29 through 2026-11-14. It now uses `/data/logs/sam-accounts-public_error.log`.
+- `mcp.domdimabot.com` is proxy host 8 to `dima-server:3000`, with the wildcard certificate, WebSockets off, and asset caching off. `/data/nginx/proxy_host/8.conf` was written from NPM's template while UI saves failed; save the host once in the UI to regenerate an identical file and refresh its status.
+- For manual NPM configuration changes, back up first, then run `docker exec NPM nginx -t` and `docker exec NPM nginx -s reload` for a targeted reload, never a container restart.
+
 ## Analytics first install and releases
 
 `dima-analytics` has a separate first-install procedure because it needs a dedicated PostgreSQL database/role and a read-only MongoDB monitoring account. Do not use `saas-ops deploy analytics` until the service has been installed once.
