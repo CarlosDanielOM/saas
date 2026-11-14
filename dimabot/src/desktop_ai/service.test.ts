@@ -60,7 +60,7 @@ mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDra
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: { PetRequest: { findOne: (filter: any) => query(() => clone(petRows.get(filter._id) ?? null)) } } });
 mock.module('../pets/state.js', { namedExports: { cancelPetRequest: async (_owner: string, id: string) => cancelPet(id) } });
 const { submitTurn, getTurn, cancelTurn, cancelSpeech, claimSpeechPreparing, speechStillPreparing, operation, claimAudio, hashTicket, speechEvent, expireCancelledBotSpeech, armBotSpeechExpiry, clearBotSpeechExpiry } = await import('./service.js');
-const identity = { session_id: 'session-1', user_id: 'owner-1', client_id: 'dima-desktop', channel_id: '12345', scopes: ['ai:interact', 'pet:interact'] };
+const identity = { session_id: 'session-1', user_id: 'owner-1', client_id: 'dima-desktop', channel_id: '12345', requester_id: '12345', resource: 'https://api.domdimabot.com/v1', scopes: ['ai:interact', 'pet:interact'] };
 const payload = () => ({ request_id: randomUUID(), target: 'bot', text: ' Hey Dima, how are you? ', source: 'asr', silent: false });
 
 test('durable admission is idempotent, scoped, and binds the complete frozen payload', async () => {
