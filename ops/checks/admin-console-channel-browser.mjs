@@ -226,6 +226,11 @@ function makeApi(state) {
       const n = { rewards: 4, triggers: 7, timers: 3, memories: 12, files: 18 }[key] ?? 0;
       return ok({ [key]: Array.from({ length: n }, (_, i) => ({ id: `${key}${i}` })) });
     }
+    if (method === 'GET' && path === '/site/events') return { status: 200, body: { error: false, data: [
+      { name: 'Follow', type: 'channel.follow', version: '2', config: [{ id: 'followMessage', dbId: 'message', label: { EN: 'Follow message' }, type: 'text', value: 'Thanks $(user) for following!' }] },
+      { name: 'Incoming raid', type: 'channel.raid', version: '1', config: [{ id: 'message', label: { EN: 'Announcement' }, type: 'text', value: '' }, { id: 'enableClip', dbId: 'clipEnabled', label: { EN: 'Show a clip' }, type: 'checkbox', value: true }] },
+      { name: 'Bits', type: 'channel.bits.use', version: '1', config: [{ id: 'defaultCheerMessage', dbId: 'message', label: { EN: 'Default message' }, type: 'text', value: '' }, { id: 'cheerTiers', label: { EN: 'Bits rules' }, type: 'message-tiers', value: [] }] },
+    ] } };
     if (method === 'GET' && path === '/users') return { status: 200, body: { data: {} } };
     return null;
   };

@@ -35,8 +35,11 @@ On the chat path, build and record synchronously: no awaits, database lookups or
 | Usage receipts | Mongo `ai_usage_receipts`: free 30 days, premium 60 days, pro 90 days. See `src/utils/ai_usage_ledger.ts`. |
 | Protection decisions | Mongo `moderation_decisions`, 180 days. |
 | Docs assistant answers | Dragonfly `docs_assistant:answer:<id>` hashes, 30 days; the bounded `docs_assistant:recent` index has no expiry and stale IDs are skipped. |
+| Gifted credits | Mongo `creditgifts` (`CreditGift` model): permanent purchase and delivery receipts, including checkout reservations; do not TTL them. |
 
 AI chats are private from other people on a channel, not from the operator. Owner-only assistant pages can show what was asked and answered; the dashboard tells streamers “Chats are kept for 3 days”. Turn text is cleared after that period while the numbers remain. Do not include policy text, approval payloads, secrets or other excluded data in turn logs. Account deletion removes channel activity through `purgeChannelActivity`, moderation decisions and site-agent data including the channel’s turns and the deleted person’s turns on other channels; it also performs the other cleanup in `src/utils/account_deletion.ts`. Site-agent cleanup is best effort in that flow. The activity purge includes a delayed sweep, and the writer checks account existence before later batches. A row that slips through the deletion race still expires under its 30-day TTL. Turn text clearing runs on a maintenance timer, and Mongo TTL deletion is asynchronous. Do not claim this deletes other stores without tracing their deletion paths.
+
+Gift processing is in `src/utils/credit_gifts.ts` and `src/schemas/credit_gift.schema.ts`. An unpaid gift becomes `expired` with `expiredAt` when Polar's 24-hour checkout expires or a reservation has no checkout after 48 hours; the worker stops checking it. Before payment, open checkouts are checked every 30 seconds for 30 minutes, then every 5 minutes. If no order exists, `checkoutClosedUnpaid` checks the checkout status; confirmed or succeeded checkouts keep being checked while an order may be created. `needs_support` is set only after payment. The expiry write rechecks that no payment was recorded (and, for a reservation, that no checkout appeared), because the paid-order webhook records `paidAt` without the worker lease; expiry cannot overwrite a payment. `createCreditGiftCheckout` rejects an expired gift with 409 and asks the buyer to start a new gift; a paid order arriving afterward moves it to `payment_received` for delivery. The admin labels unpaid legacy `needs_support` rows or gifts with 5+ failed checks “Payment not confirmed”; “Never paid” means `expired`.
 
 ## Feed and extension
 
@@ -56,7 +59,10 @@ All paths below have the `/admin-site` prefix and use GET unless stated otherwis
 
 | Path | Purpose |
 | --- | --- |
-| `/overview` | Cross-channel overview. |
+| `/overview` | Cross-channel overview; `gifts_need_support` counts paid gifts only. |
+| `/gifts` | Gift list and counts by `needs_support`, `in_progress`, `awaiting_payment`, `delivered`, `expired` or `all`; filter by channel ID or login, with cursor and limit up to 50. Unpaid legacy `needs_support` rows count as awaiting payment. |
+| `/gifts/:id` | One gift and its delivery details. |
+| `POST /gifts/:id/retry` | Make a paid, undelivered gift due now if it is not being processed. The worker rechecks payment and does not deliver twice. |
 | `/feed` | Merged, filtered activity page. |
 | `/feed/summary` | Counts by feed kind. |
 | `/events/:eventKey` | Journal event, deliveries and steps. |
@@ -72,8 +78,12 @@ All paths below have the `/admin-site` prefix and use GET unless stated otherwis
 | `/docs-assistant/summary` | Docs assistant totals. |
 | `/docs-assistant/answers` | Docs questions, answers and feedback. |
 | `/users/:channelID/logs` | Channel bot log. |
+| `/users/:channelID/commands` | Channel commands, including `userLevel`, `activation`, `keywordMatch`, `reserved`, `runsBuiltIn`, `authoring`, `permissionMode`, `description` and `channel`. |
+| `/users/:channelID/eventsubs` | Channel subscriptions with normalized `type` (outgoing raids as `channel.raid.outgoing`, legacy cheers as `channel.bits.use`), `rawType`, editable chat `settings`, `cheerTierCount` and `remoteMissingSince`. |
 | `/users/:channelID/command-stats` | Channel command outcomes. |
 | `/users/:channelID/eventsub-activity` | Channel Twitch event and alert activity. |
+
+The commands and EventSub list endpoints send `Cache-Control: no-store`. The channel workspace creates, edits, enables, disables and deletes commands through the site's `/commands/:channelID` API, which the owner can use for any channel; new commands use `func: 'custom'` for a plain reply: the bot dispatches on `func`, so using a trigger such as `promo` there runs its built-in action instead. New or changed command triggers must contain only letters and numbers because chat stops at the first symbol. `runsBuiltIn` comes from `runsBuiltInCode` and means the bot runs built-in code instead of posting the stored reply; those replies are locked. Built-in, block-authored and custom-rule commands also lock fields the API does not change. Twitch event editing uses the chat-event catalog (`GET /site/events`) and `PATCH /eventsubs/:channelID/:id`, sending only changed fields in `EDITABLE_EVENTSUB_FIELDS`. Bits rules remain on the site; stored subscriptions outside the standard list appear under Other subscriptions. When stored rows share a type and version, the tab shows the row under the current type name (for example `channel.bits.use` before old `channel.cheer`), else the first; unused duplicates appear under Other subscriptions as “Not used” without Edit. Command and event edits take effect in chat immediately, without notifying the streamer.
 
 ## Checks and rollout
 
@@ -86,6 +96,9 @@ The following commands are for future implementation releases, not a request to 
 | decisions API | `scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis --test-env ops/checks/admin-console-fixtures/test-env.json --fixtures ops/checks/admin-console-fixtures --check ops/checks/admin-console-decisions-api.mjs` |
 | usage API | `scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis --test-env ops/checks/admin-console-fixtures/test-env.json --fixtures ops/checks/admin-console-fixtures --check ops/checks/admin-console-usage-api.mjs` |
 | assistants API | `scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis --test-env ops/checks/admin-console-fixtures/test-env.json --fixtures ops/checks/admin-console-fixtures --check ops/checks/admin-console-assistants-api.mjs` |
+| Gifts API | `scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis --test-env ops/checks/credit-gifts-fixtures/test-env.json --fixtures ops/checks/credit-gifts-fixtures --check ops/checks/admin-console-gifts-api.mjs` |
+| Gifts API on cron | `scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis --test-env ops/checks/credit-gifts-fixtures/test-env-cron.json --fixtures ops/checks/credit-gifts-fixtures --check ops/checks/admin-console-gifts-api.mjs` |
+| Gift worker on cron | `scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis --test-env ops/checks/credit-gifts-fixtures/test-env-cron.json --fixtures ops/checks/credit-gifts-fixtures --check ops/checks/credit-gifts.mjs` |
 | Bot activity | `scripts/saas-ops verify bot-<run-id> --dependency mongo --dependency redis --test-env ops/checks/admin-console-fixtures/test-env.json --fixtures ops/checks/admin-console-fixtures --check ops/checks/admin-console-bot-activity.mjs` |
 | Alert activity | `scripts/saas-ops verify cron-<run-id> --check ops/checks/admin-console-alert-activity.mjs --dependency mongo --dependency redis --test-env ops/checks/admin-console-alert-activity-fixtures/test-env.json --fixtures ops/checks/admin-console-alert-activity-fixtures` |
 | Timer activity | `scripts/saas-ops verify cron-<run-id> --check ops/checks/admin-console-timer-activity.mjs --dependency mongo --dependency redis --test-env ops/checks/admin-console-alert-activity-fixtures/test-env.json --fixtures ops/checks/admin-console-alert-activity-fixtures` |
@@ -93,10 +106,13 @@ The following commands are for future implementation releases, not a request to 
 | ai browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-ai-browser.mjs` |
 | assistants browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-assistants-browser.mjs` |
 | channel browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-channel-browser.mjs` |
+| gifts browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-gifts-browser.mjs` |
+| command editing browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-command-editing-browser.mjs` |
+| EventSub editing browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-eventsub-editing-browser.mjs` |
 | decisions browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-decisions-browser.mjs` |
 | overview browser | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-console-overview-browser.mjs` |
 | Admin regression | `scripts/saas-ops verify admin-<run-id> --check ops/checks/admin-ui.mjs` |
 
-Browser checks mock API calls and cover mobile and desktop. They require the browser dependencies described in their headers. Run the page-specific check as well as the regression check. The bot check header gives its target and fixtures but no complete command; the command above follows the helper fixture convention.
+The cron gift fixture runs only the gift worker and the `polar-gifts-v1` consumer so the candidate fits the 3 GB test container. Browser checks mock API calls and cover mobile and desktop. They require the browser dependencies described in their headers. Run the page-specific check as well as the regression check. The bot check header gives its target and fixtures but no complete command; the command above follows the helper fixture convention.
 
 For a change that touches usage recording, deploy verified candidates in order: cron, then api, then bot. The voice request classification compatibility comments in `src/handlers/tts_queue.handler.ts` and `src/utils/tts/queue_default_tts.util.ts` explain why an old API with a new bot could label reward voice requests differently in Polar and PostHog.

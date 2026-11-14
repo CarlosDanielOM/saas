@@ -12,6 +12,10 @@ import {
 
 const WRITE = { writeConcern: { w: 1 as const, j: true }, maxTimeMS: 5_000 };
 const LEASE_MS = 120_000;
+/** An unpaid gift is checked every 30 s while the buyer is likely still paying, then every 5 minutes until the checkout expires. */
+const UNPAID_FAST_MS = 30 * 60_000;
+/** A reservation that never got a checkout can't be paid; after this long it is closed as expired. */
+const NO_CHECKOUT_EXPIRY_MS = 48 * 60 * 60_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class CreditGiftRequestError extends Error {
@@ -163,6 +167,8 @@ export async function createCreditGiftCheckout(request: {
         priceAmount: gift!.priceAmount, priceCurrency: gift!.priceCurrency,
     } satisfies GiftOffer, recipient: { id: gift!.recipientId.toString(), login: gift!.recipientLogin, displayName: gift!.recipientName } });
     if (gift.paidAt) throw new CreditGiftRequestError('This gift has already been paid for', 409);
+    // The worker closed it (checkout expired unpaid, or never created); a closed gift never gets a new checkout.
+    if (gift.status === 'expired') throw new CreditGiftRequestError('This gift checkout expired. Start a new gift.', 409);
     if (gift.checkoutId && gift.checkoutUrl) return response(gift.checkoutUrl);
     // A persisted reservation precedes the external POST. Response loss cannot make another checkout.
     const claimed = await CreditGiftSchema.updateOne({ _id: id, purchaseCreateStartedAt: { $exists: false } },
@@ -214,6 +220,16 @@ export function giftAnnouncement(gift: ICreditGift, language: 'en' | 'es'): stri
         : `🎁 @${login(gift.buyerLogin)} gifted ${credits} permanent AI credits to @${login(gift.recipientLogin)}. The credits are ready to use. Thank you!`;
 }
 
+/**
+ * Polar marks an unpaid checkout `expired` after its 24 hours. A failed or still-open checkout an hour past its
+ * expiry can't be paid either. A confirmed or succeeded checkout may still be creating its order: keep checking.
+ */
+export function checkoutClosedUnpaid(checkout: Pick<GiftCheckout, 'status' | 'expires_at'>, now = Date.now()): boolean {
+    if (checkout.status === 'expired') return true;
+    const expires = Date.parse(checkout.expires_at ?? '');
+    return (checkout.status === 'open' || checkout.status === 'failed') && Number.isFinite(expires) && expires < now - 60 * 60_000;
+}
+
 async function refreshRecipientCredits(gift: ICreditGift): Promise<void> {
     const result = await UsersSchema.updateOne({ _id: gift.recipientId,
         $or: [{ polar_sh_customer_id: null }, { polar_sh_customer_id: '' }, { polar_sh_customer_id: gift.recipientCustomerId }] },
@@ -236,7 +252,8 @@ export async function processCreditGift(injected: {
     const gift = await CreditGiftSchema.findOneAndUpdate({ nextAttemptAt: { $lte: now },
         $and: [
             { $or: [{ leaseUntil: { $exists: false } }, { leaseUntil: { $lte: now } }] },
-            { $or: [{ status: { $ne: 'delivered' } }, { announcedAt: { $exists: false }, announcementStoppedAt: { $exists: false } }] },
+            // Expired gifts were never paid: nothing left to do. Delivered ones only until the chat announcement is done.
+            { $or: [{ status: { $nin: ['delivered', 'expired'] } }, { status: 'delivered', announcedAt: { $exists: false }, announcementStoppedAt: { $exists: false } }] },
         ],
     }, { $set: { leaseToken: token, leaseUntil: new Date(now.getTime() + LEASE_MS) } },
     { ...WRITE, sort: { nextAttemptAt: 1 }, new: true }).lean();
@@ -250,6 +267,48 @@ export async function processCreditGift(injected: {
     const alive = async () => { if (!await CreditGiftSchema.exists(fence())) throw new Error('Gift processing lease lost'); };
     let delay = 5_000;
     try {
+        // Before payment only the buyer and the checkout matter: a recipient problem is checked once money was received.
+        if (!gift.paidAt) {
+            const buyer = await UsersSchema.findById(gift.buyerId).lean().maxTimeMS(5_000);
+            if (!buyer) throw new Error('Gift buyer no longer exists');
+            const age = Date.now() - new Date(gift.createdAt).getTime();
+            // Never over a payment: the paid-order webhook records `paidAt` without holding the lease, so the
+            // write re-checks it (and, for a reservation, that no checkout appeared meanwhile).
+            const expire = async (guard: Record<string, unknown> = {}) => {
+                const values = { status: 'expired' as const, expiredAt: new Date(), lastError: '' };
+                const result = await CreditGiftSchema.updateOne({ ...fence(), paidAt: { $exists: false }, ...guard }, { $set: values }, WRITE);
+                if (result.matchedCount) Object.assign(gift, values);
+            };
+            if (!gift.checkoutId) {
+                const recovered = gift.purchaseCreateStartedAt
+                    ? await recoverGiftCheckout(gift._id, gift.productId, gift.buyerId.toString())
+                    : null;
+                if (!recovered) {
+                    // No checkout exists for it, so nothing can be paid; stop checking once that is certain.
+                    if (age > NO_CHECKOUT_EXPIRY_MS) await expire({ checkoutId: { $exists: false } });
+                    else delay = 60_000;
+                    return true;
+                }
+                requireCheckout(recovered, gift, buyer, false);
+                await update({ checkoutId: recovered.id, buyerCustomerId: recovered.customer_id || undefined });
+            }
+            const order = await getGiftCheckoutOrder(gift.checkoutId!);
+            if (!order) {
+                // No order yet: the checkout says whether the buyer can still pay.
+                const open = await giftPolarRequest<GiftCheckout>(`/v1/checkouts/${gift.checkoutId}`);
+                requireCheckout(open, gift, buyer, false);
+                if (checkoutClosedUnpaid(open)) {
+                    await expire();
+                    return true;
+                }
+            }
+            if (!order || !order.paid) { delay = age < UNPAID_FAST_MS ? 30_000 : 5 * 60_000; return true; }
+            const checkout = await giftPolarRequest<GiftCheckout>(`/v1/checkouts/${gift.checkoutId}`);
+            requireCheckout(checkout, gift, buyer, false);
+            validateGiftOrder(order, { ...gift, buyerCustomerId: checkout.customer_id || undefined }, buyer, false);
+            await update({ paidOrderId: order.id, buyerCustomerId: order.customer_id, paidAt: new Date(), status: 'payment_received', lastError: '' });
+            return true;
+        }
         const recipient = await UsersSchema.findById(gift.recipientId).lean().maxTimeMS(5_000);
         if (!recipient || twitchAccount(recipient)?.id !== gift.recipientChannelId) throw new Error('Gift recipient account changed or disappeared');
         if (gift.deliveredAt) {
@@ -266,24 +325,6 @@ export async function processCreditGift(injected: {
                 throw new Error('Gift chat announcement failed');
             }
             await update({ announcedAt: new Date(), announcementMessageId: result.data?.message_id, lastError: '' });
-            return true;
-        }
-        if (!gift.paidAt) {
-            const buyer = await UsersSchema.findById(gift.buyerId).lean().maxTimeMS(5_000);
-            if (!buyer) throw new Error('Gift buyer no longer exists');
-            if (!gift.checkoutId) {
-                if (!gift.purchaseCreateStartedAt) { delay = 60_000; return true; }
-                const recovered = await recoverGiftCheckout(gift._id, gift.productId, gift.buyerId.toString());
-                if (!recovered) { delay = 60_000; return true; }
-                requireCheckout(recovered, gift, buyer, false);
-                await update({ checkoutId: recovered.id, buyerCustomerId: recovered.customer_id || undefined });
-            }
-            const order = await getGiftCheckoutOrder(gift.checkoutId!);
-            if (!order || !order.paid) { delay = 30_000; return true; }
-            const checkout = await giftPolarRequest<GiftCheckout>(`/v1/checkouts/${gift.checkoutId}`);
-            requireCheckout(checkout, gift, buyer, false);
-            validateGiftOrder(order, { ...gift, buyerCustomerId: checkout.customer_id || undefined }, buyer, false);
-            await update({ paidOrderId: order.id, buyerCustomerId: order.customer_id, paidAt: new Date(), status: 'payment_received', lastError: '' });
             return true;
         }
         if (!gift.fulfillmentCheckoutId) {
@@ -347,9 +388,16 @@ export async function processCreditGift(injected: {
         const values: Partial<ICreditGift> = { attempts, lastError: message };
         if (gift.deliveredAt) {
             if (gift.announcementAttempts >= 5) values.announcementStoppedAt = new Date();
-        } else if (attempts >= 5) values.status = 'needs_support';
+        } else if (attempts >= 5 && gift.paidAt) {
+            // Only money that was received can need support. Before payment the gift keeps retrying with backoff
+            // until the checkout is paid or expires (transient provider errors used to flag unpaid gifts here).
+            values.status = 'needs_support';
+        }
         await update(values);
     } finally {
+        // The paid-order webhook can record the payment (and make the gift due now) while this pass holds the
+        // lease. Don't push that wakeup back by the unpaid polling delay (up to 5 minutes): deliver promptly.
+        if (!gift.paidAt && await CreditGiftSchema.exists({ _id: gift._id, paidAt: { $exists: true } }).catch(() => null)) delay = 1_000;
         await CreditGiftSchema.updateOne(fence(), { $set: { nextAttemptAt: new Date(Date.now() + delay) }, $unset: { leaseToken: '', leaseUntil: '' } }, WRITE);
     }
     return true;

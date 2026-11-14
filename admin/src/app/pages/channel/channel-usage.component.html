@@ -229,6 +229,14 @@
               </p>
             </section>
           }
+          <a class="lf-tile us-explore" routerLink="/gifts" [queryParams]="{ channel: channelID }" data-usage-gifts>
+            <span class="us-explore__icon"><app-icon name="gift" /></span>
+            <span class="us-explore__text">
+              <strong>Gifts sent and received</strong>
+              <small>Credit packs this channel bought for others or got as a gift</small>
+            </span>
+            <app-icon class="us-explore__chev" name="chevron" />
+          </a>
         </div>
       </div>
 

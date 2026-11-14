@@ -1,0 +1,156 @@
+<dialog #dialog class="lf-dialog gs" aria-labelledby="gs-h" (close)="onClose()" (click)="backdrop($event)" data-gift-sheet>
+  @let g = gift();
+  <div class="lf-dialog__head">
+    <div class="gs__head">
+      <h2 id="gs-h">{{ g ? 'Gift for ' + g.recipient.login : 'Gifted credits' }}</h2>
+      @if (g) {
+        <p class="gs__sub">Bought by {{ g.buyer.login }} · {{ dateTime(g.createdAt) }}</p>
+      }
+    </div>
+    <div class="gs__tools">
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Reload this gift" (click)="load()" [disabled]="loading() || !giftId()" data-gift-reload>
+        <app-icon name="refresh" [class.lf-spinning]="loading()" />
+      </button>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="close()"><app-icon name="x" /></button>
+    </div>
+  </div>
+
+  <div class="lf-dialog__body" [attr.aria-busy]="loading()">
+    @if (error()) {
+      <div class="lf-notice gs-error" role="alert" data-gift-error>
+        <span>{{ error() }}</span>
+        <button type="button" class="lf-btn" (click)="load()">Retry</button>
+      </div>
+    }
+
+    @if (g && answer(); as a) {
+      <div class="gs-answer" [attr.data-tone]="a.tone" data-gift-answer>
+        @if (chips().length) {
+          <p class="gs-answer__chips">
+            @for (chip of chips(); track chip.label) {
+              <span class="lf-chip lf-chip--{{ chip.tone }}">{{ chip.label }}</span>
+            }
+          </p>
+        }
+        <p class="gs-answer__text"><strong>{{ a.lead }}</strong>@if (a.rest) {&ngsp;<span>{{ a.rest }}</span>}</p>
+      </div>
+
+      @if (result(); as r) {
+        <p class="gs-result" [attr.data-tone]="r.tone" role="status" data-gift-result>
+          <app-icon [name]="r.tone === 'ok' ? 'ok' : 'alert'" />{{ r.text }}
+        </p>
+      }
+
+      <section class="gs-part" aria-labelledby="gs-steps-h">
+        <h3 class="gs__h" id="gs-steps-h">What happened</h3>
+        <ol class="gs-steps" data-gift-steps>
+          @for (step of steps(); track step.key) {
+            <li class="gs-step" [attr.data-state]="step.state" [attr.data-step]="step.key">
+              <span class="gs-step__mark" aria-hidden="true">
+                @switch (step.state) {
+                  @case ('done') { <app-icon name="ok" /> }
+                  @case ('stuck') { <app-icon name="alert" /> }
+                  @case ('stopped') { <app-icon name="x" /> }
+                  @case ('now') { <span class="gs-step__dot"></span> }
+                }
+              </span>
+              <span class="gs-step__label">
+                <span class="sr-only">{{ step.state === 'done' ? 'Done' : step.state === 'now' ? 'Now' : step.state === 'stuck' ? 'Stuck' : step.state === 'stopped' ? 'Stopped' : 'Not yet' }}: </span>{{ step.label }}
+              </span>
+              <span class="gs-step__time">{{ step.at ? dateTime(step.at) : step.note }}</span>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <section class="gs-part" aria-labelledby="gs-facts-h">
+        <h3 class="gs__h" id="gs-facts-h">Details</h3>
+        <dl class="lf-dl gs-dl" data-gift-facts>
+          <div>
+            <dt>Buyer</dt>
+            <dd>
+              @if (g.buyer.channelID) {
+                <a class="gs-link" [routerLink]="['/channels', g.buyer.channelID]" data-gift-buyer>{{ g.buyer.login }}</a>
+              } @else {
+                <span>{{ g.buyer.login }} <span class="gs-muted">(no Twitch channel)</span></span>
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Recipient</dt>
+            <dd><a class="gs-link" [routerLink]="['/channels', g.recipient.channelID]" data-gift-recipient>{{ g.recipient.login }}</a></dd>
+          </div>
+          <div><dt>Pack</dt><dd>{{ pack(g) }}</dd></div>
+          <div><dt>Price</dt><dd data-gift-price>{{ price(g) }} before tax{{ g.paid ? '' : g.status === 'expired' ? ', not charged' : ', no payment received yet' }}</dd></div>
+          @if (tries(); as t) {
+            <div><dt>{{ t.label }}</dt><dd data-gift-tries>{{ formatNumber(t.value) }}</dd></div>
+          }
+          @if (g.processing) {
+            <div><dt>Next check</dt><dd data-gift-next>Working on it now</dd></div>
+          } @else if (g.nextAttemptAt) {
+            <div><dt>Next check</dt><dd data-gift-next>{{ until(g.nextAttemptAt) }}</dd></div>
+          }
+          @if (g.lastError) {
+            <div class="gs-dl__stack">
+              <dt>Last error</dt>
+              <dd><p class="lf-quote gs-mono" data-gift-last-error>{{ g.lastError }}</p></dd>
+            </div>
+          }
+        </dl>
+      </section>
+
+      <section class="gs-part" aria-labelledby="gs-refs-h">
+        <h3 class="gs__h" id="gs-refs-h">Polar references</h3>
+        @if (!refs().length) {
+          <p class="lf-note">None yet: the checkout hasn't been created.</p>
+        }
+        <ul class="gs-refs" data-gift-refs>
+          @for (ref of refs(); track ref.key) {
+            <li class="gs-ref">
+              <span class="gs-ref__label">{{ ref.label }}</span>
+              <code class="gs-mono gs-ref__value">{{ ref.value }}</code>
+              <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost gs-copy" [attr.aria-label]="ref.copy" (click)="copy(ref.key, ref.value)">
+                <app-icon [name]="copied() === ref.key ? 'ok' : 'copy'" />{{ copied() === ref.key ? 'Copied' : 'Copy' }}
+              </button>
+            </li>
+          }
+          <li class="gs-ref">
+            <span class="gs-ref__label">Gift id (ours)</span>
+            <code class="gs-mono gs-ref__value" data-gift-id>{{ g.id }}</code>
+            <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost gs-copy" aria-label="Copy gift id" (click)="copy('gift', g.id)">
+              <app-icon [name]="copied() === 'gift' ? 'ok' : 'copy'" />{{ copied() === 'gift' ? 'Copied' : 'Copy' }}
+            </button>
+          </li>
+        </ul>
+        <span class="sr-only" role="status">{{ copied() ? 'Copied' : '' }}</span>
+      </section>
+    } @else if (!error()) {
+      <div class="gs-skel" aria-busy="true">
+        <span class="sr-only">Loading the gift…</span>
+        <app-skeleton height="3.5rem" />
+        <app-skeleton width="60%" />
+        <app-skeleton height="8rem" />
+      </div>
+    }
+  </div>
+
+  <div class="lf-dialog__foot">
+    <button type="button" class="lf-btn" (click)="close()">Close</button>
+    @if (canRetry()) {
+      <button type="button" class="lf-btn lf-btn--primary" (click)="askRetry()" [disabled]="retrying()" data-gift-retry>
+        <app-icon name="refresh" />Try again now
+      </button>
+    }
+  </div>
+</dialog>
+
+<app-confirm-modal
+  [open]="confirming()"
+  title="Try delivering this gift now?"
+  message="The bot runs the next delivery step right away instead of waiting for its retry timer. It re-checks the payment first and never delivers twice."
+  confirmLabel="Try again now"
+  busyLabel="Asking the bot…"
+  [loading]="retrying()"
+  (confirmed)="retry()"
+  (cancelled)="confirming.set(false)"
+/>

@@ -1,0 +1,191 @@
+<div class="lf gp">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" routerLink="/dashboard"><app-icon name="back" />Overview</a>
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">Gifted credits</h1>
+          <p class="lf-sub">Credit packs people bought for another channel: paid, delivered and announced in chat.</p>
+        </div>
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn" (click)="load(true)" [disabled]="loading()" data-gifts-refresh>
+            <app-icon name="refresh" [class.lf-spinning]="loading() && !more()" />Refresh
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- The answer: did everyone who paid get their credits? -->
+    @if (answer(); as a) {
+      <div
+        class="lf-status gp-status"
+        [class.gp-status--danger]="a.tone === 'danger'"
+        [class.gp-status--accent]="a.tone === 'accent'"
+        [class.lf-status--ok]="a.tone === 'ok'"
+        [class.lf-status--muted]="a.tone === 'muted'"
+        role="status"
+        [attr.aria-busy]="loading()"
+        [attr.data-tone]="a.tone"
+        data-gifts-answer
+      >
+        <app-icon [name]="a.icon" />
+        <div class="lf-status__body">
+          <strong class="lf-status__title">{{ a.title }}</strong>
+          @if (a.text) {
+            <span class="lf-status__text">{{ a.text }}</span>
+          }
+          @if (a.show; as show) {
+            <div class="lf-status__actions">
+              <button type="button" class="lf-btn" [class.lf-btn--primary]="a.tone === 'danger'" (click)="go({ status: show.filter })" data-gifts-show>
+                {{ show.label }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    } @else if (failed()) {
+      <div class="lf-tile lf-empty" role="alert" data-gifts-error>
+        <app-icon name="alert" />
+        <strong>The gifts didn't load</strong>
+        <span>Your filters are kept. Nothing was changed.</span>
+        <button type="button" class="lf-btn" (click)="load(true)"><app-icon name="refresh" />Retry</button>
+      </div>
+    } @else {
+      <div class="lf-status" aria-busy="true">
+        <app-skeleton width="1.35rem" height="1.35rem" variant="circle" />
+        <div class="lf-status__body"><app-skeleton width="70%" height="1.2rem" /><app-skeleton width="50%" height="0.9rem" /></div>
+      </div>
+    }
+
+    <div class="gp-filters">
+      <div class="lf-strip" role="group" aria-label="Show gifts">
+        @for (item of filters; track item.key) {
+          <button
+            type="button"
+            class="lf-chip"
+            [class.gp-chip--danger]="item.key === 'needs_support' && (count('needs_support') ?? 0) > 0"
+            [attr.aria-pressed]="status() === item.key"
+            (click)="pick(item.key)"
+            [attr.data-chip]="item.key"
+          >
+            {{ item.label }}@if (count(item.key) !== null) {&ngsp;<span class="lf-chip__count">{{ count(item.key) }}</span>}
+          </button>
+        }
+      </div>
+      <div class="gp-scope">
+        @if (channel()) {
+          <button type="button" class="lf-chip" aria-pressed="true" (click)="go({ channel: null })" data-channel-chip>
+            Only {{ channelName() }}<app-icon name="x" /><span class="sr-only">, show every channel</span>
+          </button>
+          <span class="lf-note">Gifts they sent or received</span>
+        } @else {
+          <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost gp-scope__pick" (click)="openChannels()" aria-haspopup="dialog" data-channel-open>
+            <app-icon name="search" />One channel's gifts
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Hidden while the whole page failed: the error above says it once. -->
+    @if (!failed() || counts()) {
+    <section class="lf-tile lf-tile--flush gp-list" aria-labelledby="gp-list-h" data-gifts>
+      <div class="lf-tile__head">
+        <h2 class="lf-h2" id="gp-list-h"><app-icon name="gift" />{{ heading() }}</h2>
+        <span class="lf-note">Newest first</span>
+      </div>
+
+      @if (failed() && rows().length) {
+        <div class="lf-notice gp-notice" role="alert" data-gifts-stale>
+          <span>Couldn't refresh. This is the list from before.</span>
+          <button type="button" class="lf-btn" (click)="load(true)">Retry</button>
+        </div>
+      }
+
+      @if (failed() && !rows().length) {
+        <div class="lf-empty" role="alert" data-gifts-list-error>
+          <app-icon name="alert" />
+          <strong>The list didn't load</strong>
+          <span>Your filters are kept.</span>
+          <button type="button" class="lf-btn" (click)="load(true)"><app-icon name="refresh" />Retry</button>
+        </div>
+      } @else if (loading() && !more() && !rows().length) {
+        <ul class="lf-rows" aria-busy="true" aria-label="Loading gifts">
+          @for (i of [0, 1, 2, 3]; track i) {
+            <li class="lf-row gp-skel"><app-skeleton width="55%" /><app-skeleton width="85%" height="0.8rem" /></li>
+          }
+        </ul>
+      } @else if (!rows().length) {
+        <div class="lf-empty" data-gifts-empty>
+          <app-icon [name]="status() === 'needs_support' ? 'ok' : 'gift'" />
+          @if (status() === 'needs_support') {
+            <strong>Nothing needs you</strong>
+            <span>No paid gift is stuck{{ channel() ? ' for ' + channelName() : '' }}.</span>
+          } @else if (status() === 'all' && !channel()) {
+            <strong>No gifted credits yet</strong>
+            <span>When someone buys a credit pack for another channel, it shows up here.</span>
+          } @else {
+            <strong>No gifts match</strong>
+            <span>Nothing here with these filters.</span>
+          }
+          @if (status() !== 'all' || channel()) {
+            <button type="button" class="lf-btn" (click)="go({ status: 'all', channel: null })">Show every gift</button>
+          }
+        </div>
+      } @else {
+        <ul class="lf-rows gp-rows" [class.is-stale]="loading() && !more()" [attr.aria-busy]="loading()" aria-label="Gifts">
+          @for (item of items(); track item.row.id) {
+            <li>
+              <button type="button" class="lf-row gp-row" (click)="openGift(item.row)" aria-haspopup="dialog" [attr.data-gift]="item.row.id">
+                <span class="gp-row__who">
+                  <span class="gp-row__name">{{ item.row.buyer.login }}</span>
+                  <span class="gp-row__arrow" aria-hidden="true">→</span><span class="sr-only"> to </span>
+                  <span class="gp-row__name">{{ item.row.recipient.login }}</span>
+                </span>
+                <span class="gp-row__info">
+                  <span class="gp-row__chips" data-gift-chips>
+                    @for (chip of item.chips; track chip.label) {
+                      <span class="lf-chip lf-chip--{{ chip.tone }}">{{ chip.label }}</span>
+                    }
+                  </span>
+                  <span class="gp-row__meta" data-gift-meta>{{ item.meta }}</span>
+                </span>
+                <app-icon class="lf-row__chev gp-row__chev" name="chevron" />
+              </button>
+            </li>
+          }
+        </ul>
+        @if (moreFailed()) {
+          <div class="lf-more-row" role="alert">
+            <span class="lf-note gp-more-note">More gifts didn't load.</span>
+            <button type="button" class="lf-btn" (click)="loadMore()">Retry</button>
+          </div>
+        } @else if (next()) {
+          <div class="lf-more-row">
+            <button type="button" class="lf-btn" (click)="loadMore()" [disabled]="loading()" data-gifts-more>
+              @if (more()) {<app-icon name="refresh" class="lf-spinning" />}Load more
+            </button>
+          </div>
+        } @else if (rows().length > 5) {
+          <p class="gp-end">That's every gift that matches.</p>
+        }
+      }
+    </section>
+    }
+  </div>
+
+  <app-gift-sheet [giftId]="open()" [preview]="openRow()" [listLoading]="loading() && !more()" (closed)="closeGift()" (changed)="changed($event)" />
+
+  <dialog #channelSheet class="lf-dialog gp-channels" aria-labelledby="gp-ch-h" (click)="channelBackdrop($event)" data-channel-sheet>
+    <div class="lf-dialog__head">
+      <h2 id="gp-ch-h">One channel's gifts</h2>
+      <button type="button" class="lf-btn lf-btn--icon lf-btn--ghost" aria-label="Close" (click)="closeChannels()"><app-icon name="x" /></button>
+    </div>
+    <div class="lf-dialog__body">
+      <p class="lf-note">Shows the gifts the streamer bought for others and the ones they got.</p>
+      <app-channel-picker label="Streamer" (picked)="picked($event)" />
+    </div>
+    <div class="lf-dialog__foot">
+      <button type="button" class="lf-btn" (click)="closeChannels()">Cancel</button>
+    </div>
+  </dialog>
+</div>

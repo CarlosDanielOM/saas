@@ -62,3 +62,57 @@
   font-size: 0.85rem;
   font-weight: 650;
 }
+/* What the event posts in chat: one line, the full text is in the editor. */
+.es-says {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+.es-says__label {
+  color: var(--muted);
+  font-weight: 650;
+}
+.es-says--off {
+  color: var(--muted);
+}
+.es-catalog-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+/* Phones: the buttons get their own line under the text, so names and messages keep the full width. */
+.es-row {
+  flex-wrap: wrap;
+}
+.es-row > .lf-row__main {
+  flex: 1 1 100%;
+}
+.es-row > .lf-row__end {
+  margin-left: auto;
+}
+@media (min-width: 640px) {
+  .es-row {
+    flex-wrap: nowrap;
+  }
+  .es-row > .lf-row__main {
+    flex: 1;
+  }
+}
+/* A stored duplicate the bot ignores (old cheer next to Bits): says so on its own line. */
+.es-dup {
+  display: block;
+  color: var(--warn);
+  font-weight: 600;
+}

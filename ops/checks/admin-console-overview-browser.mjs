@@ -166,8 +166,9 @@ try {
         assert.match(await row.innerText(), text, `${key} wording`);
         assert.equal(await hrefOf(row), href, `${key} destination`);
     };
-    await expectRow('gifts_need_support', /3 gifted credit purchases could not be delivered[\s\S]*No page for this yet/, null);
-    assert.equal(await page.locator('[data-attention="gifts_need_support"]').evaluate((el) => el.tagName), 'DIV', 'gifts has nowhere to go, so it is not a link');
+    await expectRow('gifts_need_support', /3 gifted credit purchases could not be delivered[\s\S]*Someone paid and the credits never arrived\.[\s\S]*Gifts/, '/gifts?status=needs_support');
+    assert.equal(await page.locator('[data-attention="gifts_need_support"]').evaluate((el) => el.tagName), 'A', 'gifts opens the Gifted credits page');
+    assert.equal((await page.locator('[data-attention="gifts_need_support"]').innerText()).includes('No page for this yet'), false);
     await expectRow('failed_24h', /18 things failed in the last 24 hours/, '/activity?outcome=failed&range=24h');
     await expectRow('dead_deliveries', /795 Twitch events a part of the bot gave up on/, '/observability?tab=queues');
     await expectRow('polar_unsent', /4 channels have usage not yet sent to billing/, '/observability?tab=queues');
@@ -388,7 +389,7 @@ try {
     assert.deepEqual(unexpected, [], 'no unexpected API calls');
     assert.deepEqual([...new Set(otherCalls)].filter((call) => !/^GET \/(users|auth\/|config\/)/.test(call)), [], "the page makes no other API calls than the shell's known read-only ones");
     assert.ok(calls.every((call) => !call.startsWith('GET /admin-site/users') || /limit=6&sortBy=liveViewers&sortOrder=desc/.test(call)), 'health keeps its users query');
-    console.log('PASS admin console overview: answer with 9 attention rows worst first (plural + singular wording, every destination, gifts without a page), all-clear and new-install zeros, 24-hour stats with problem links and hidden empty kinds, AI spend with credits, dollar value and "not recorded" provider cost, two 14-day charts, busiest channels, feed preview, live counters from the stream, partial notice, overview failing while health/live render and the reverse, refresh keeps numbers, no stacked requests, 30 s auto-refresh paused while hidden, 320/390/1280 px in dark and light with axe, overflow and 44px targets');
+    console.log('PASS admin console overview: answer with 9 attention rows worst first (plural + singular wording, every destination, gifts linking to /gifts?status=needs_support), all-clear and new-install zeros, 24-hour stats with problem links and hidden empty kinds, AI spend with credits, dollar value and "not recorded" provider cost, two 14-day charts, busiest channels, feed preview, live counters from the stream, partial notice, overview failing while health/live render and the reverse, refresh keeps numbers, no stacked requests, 30 s auto-refresh paused while hidden, 320/390/1280 px in dark and light with axe, overflow and 44px targets');
 } catch (error) {
     if (page) await page.screenshot({ path: `${artifacts}/failure.png` }).catch(() => {});
     console.error('Last calls:', calls.slice(-8));

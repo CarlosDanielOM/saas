@@ -151,7 +151,10 @@ export async function seedOverview({ db, redis, ObjectId, now = new Date() }) {
     const turns = [turn(1, 1 * HOUR, 'completed', 0.01), turn(2, 3 * DAY, 'failed', 0.02), turn(3, 10 * DAY, 'interrupted', 0.005)];
 
     const gifts = [
-        { _id: new ObjectId(), buyerLogin: 'seed_buyer', recipientLogin: OVERVIEW_CHANNELS.alpha.login, recipientChannelId: A, credits: 250_000, priceAmount: 500, priceCurrency: 'usd', status: 'needs_support', attempts: 6, createdAt: at(2 * DAY), updatedAt: at(2 * DAY), seedOverview: true },
+        // Paid and stuck: counts. The unpaid needs_support row below is an old flag from transient errors before
+        // payment (nothing is owed), so it must not count.
+        { _id: new ObjectId(), buyerLogin: 'seed_buyer', recipientLogin: OVERVIEW_CHANNELS.alpha.login, recipientChannelId: A, credits: 250_000, priceAmount: 500, priceCurrency: 'usd', status: 'needs_support', attempts: 6, paidAt: at(2 * DAY), createdAt: at(2 * DAY), updatedAt: at(2 * DAY), seedOverview: true },
+        { _id: new ObjectId(), buyerLogin: 'seed_buyer', recipientLogin: OVERVIEW_CHANNELS.alpha.login, recipientChannelId: A, credits: 40_000, priceAmount: 100, priceCurrency: 'usd', status: 'needs_support', attempts: 9, createdAt: at(3 * DAY), updatedAt: at(3 * DAY), seedOverview: true },
         { _id: new ObjectId(), buyerLogin: 'seed_buyer', recipientLogin: OVERVIEW_CHANNELS.bravo.login, recipientChannelId: B, credits: 100_000, priceAmount: 200, priceCurrency: 'usd', status: 'delivered', attempts: 1, createdAt: at(2 * DAY), updatedAt: at(2 * DAY), seedOverview: true }
     ];
     const users = [OVERVIEW_CHANNELS.alpha, OVERVIEW_CHANNELS.bravo].map(channel => ({

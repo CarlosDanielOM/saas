@@ -127,6 +127,8 @@ export class AiHubPageComponent implements OnInit, OnDestroy {
     const overview = this.overview.data();
     return overview ? (overview.attention.find((row) => row.key === 'verdicts_waiting')?.count ?? 0) : null;
   });
+  /** Paid gifts whose credits never arrived (from the overview's attention list). */
+  readonly giftsStuck = computed(() => this.overview.data()?.attention.find((row) => row.key === 'gifts_need_support')?.count ?? 0);
   readonly outOfCredits = computed(() => this.overview.data()?.attention.find((row) => row.key === 'credits_exhausted')?.count ?? 0);
 
   /** What providers charged us, from every block that loaded, and which blocks are missing from it. */

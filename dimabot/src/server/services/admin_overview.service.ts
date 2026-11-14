@@ -551,7 +551,8 @@ export async function loadAttentionFragment(w: OverviewWindows): Promise<Overvie
         moderationReviewCountsCached(),
         DomainEventDeliverySchema.countDocuments({ status: 'dead', deadLetteredAt: { $gte: new Date(w.now.getTime() - DEAD_DELIVERY_DAYS * DAY_MS) } }).maxTimeMS(QUERY_MS),
         redis.lLen(AI_USAGE_BACKFILL_DEAD_KEY),
-        CreditGiftSchema.countDocuments({ status: 'needs_support' }).maxTimeMS(QUERY_MS)
+        // Only money that was received: before payment the flag came from transient errors, and nothing is owed.
+        CreditGiftSchema.countDocuments({ status: 'needs_support', paidAt: { $exists: true, $ne: null } }).maxTimeMS(QUERY_MS)
     ]);
     return {
         attention: {

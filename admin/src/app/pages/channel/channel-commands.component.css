@@ -121,3 +121,15 @@
 .cmd-facts > div {
   min-height: 2.25rem;
 }
+/* Editing: the primary action in the tools row, and each open row's actions above its details. */
+.cmd-tools__row .cmd-new {
+  margin-left: auto;
+}
+.lf-empty .cmd-new {
+  margin-top: 0.5rem;
+}
+.cmd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

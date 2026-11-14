@@ -297,15 +297,15 @@ The viewer extension uses the same language, adapted to Twitch:
 
 The admin uses the same language and tokens. It is internal and English-only. Design for the owner's phone first, then give desktop a deliberate layout. Put the answer to the operator's question first in a plain-language status line, with the next action beside it. On phones put the useful list before supporting numbers.
 
-- **Navigation:** the five tabs are Overview (`/dashboard`), Activity (`/activity`), AI (`/ai`), Users (`/users`) and System (`/observability`). AI links to usage, chat protection, the Dima assistant, Docs AI, the review queue and assistant refusals. The account menu contains “Test an email” and “Read a server file”.
-- **Channel workspace:** one shared header and tab strip contain Overview, Activity, Commands, Twitch events, Protection, AI & credits and Bot log. Reuse the frame instead of making separate channel headers.
+- **Navigation:** the five tabs are Overview (`/dashboard`), Activity (`/activity`), AI (`/ai`), Users (`/users`) and System (`/observability`). AI links to usage, chat protection, the Dima assistant, Docs AI, the review queue, assistant refusals and Gifted credits. The account menu contains “Test an email” and “Read a server file”.
+- **Channel workspace:** one shared header and tab strip contain Overview, Activity, Commands, Twitch events, Protection, AI & credits and Bot log. Commands supports editing, and Twitch events supports editing chat settings. Reuse the frame instead of making separate channel headers.
 - **Shared styles:** tokens and primitives live in `admin/src/styles.css`; page-only layout belongs in component CSS. Existing primitives include `.lf-main`, `.lf-head`, `.lf-tile`, `.lf-status`, `.lf-chip`, `.lf-btn`, `.lf-row`, `.lf-rows`, `.lf-switch`, `.lf-input`, `.lf-seg`, `.lf-choice`, `.lf-step`, `.lf-more`, `.lf-dl`, `.lf-bar`, `.lf-metrics` and `dialog.lf-dialog`.
 - **Feed rows:** reuse `admin/src/app/shared/feed/`: a compact icon and plain sentence, optional quote and detail, channel, time and cost; expand a row for facts and links. All feed wording belongs in `feed-format.ts`, so every page uses the same language.
 - **Filters and navigation state:** use chip strips for common filters and a bottom sheet for rare filters. Keep search, filters, sort and page state in URL query parameters so links and Back restore the view.
 - **Money:** show credits and their dollar value together at 100,000 credits per USD. Show provider cost separately, only where recorded; do not estimate it.
 - **Theme:** `ThemeService` (`admin/src/app/services/theme.service.ts`) uses `system|light|dark` (default dark) and `violet|green|blue|cyan` accents on `html.dark` / `data-accent`. Live, warning and plan colours do not follow the accent.
 - **Shell:** sticky top bar with brand pulse, desktop links, theme toggle and account menu; phone bottom tab bar (`.bottom-nav`). Content has no outer padding; pages own gutters via `.lf-main`.
-- **Side effects:** confirm reminder emails, AI credit grants and EventSub test events with their consequences. Validate inline and use toasts for server results.
+- **Side effects:** confirm reminder emails, AI credit grants and EventSub test events with their consequences. Command and EventSub edit dialogs state that changes take effect in chat immediately and the streamer is not notified. Validate inline and use toasts for server results.
 - **Raw IDs are secondary:** show the plain name first and the raw value small or monospace. `app-avatar` (`shared/avatar`) shows Twitch images with a letter fallback; use `[fetch]="false"` in long lists.
 - Admin is zoneless; checks must poll after clicks. Use `ops/checks/admin-ui.mjs` and the relevant `ops/checks/admin-console-*-browser.mjs` check. Preview, build and deploy through `scripts/saas-ops` as described in `admin/AGENTS.md`.
 
@@ -336,6 +336,7 @@ The “Console pieces” block in `admin/src/styles.css` provides these shared c
 | Overview | `admin/src/app/pages/dashboard/` |
 | Activity and shared feed | `admin/src/app/pages/activity/`, `admin/src/app/shared/feed/` |
 | AI hub and usage | `admin/src/app/pages/ai/`, `admin/src/app/pages/usage/` |
+| Gifts | `admin/src/app/pages/gifts/` |
 | Chat protection decisions and review | `admin/src/app/pages/decisions/`, `admin/src/app/pages/moderation-review/` |
 | Dima assistant, Docs AI and refusals | `admin/src/app/pages/assistants/`, `admin/src/app/pages/assistant-refusals/` |
 | Users and channel workspace | `admin/src/app/pages/users/`, `admin/src/app/pages/channel/` |

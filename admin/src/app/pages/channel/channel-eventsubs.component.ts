@@ -14,7 +14,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import {
   ChannelApiService,
+  chatEventFieldKey,
   type ChannelEventsub,
+  type ChatEventDefinition,
   type MergedEventsub,
   type StandardEventsub,
 } from '../../services/channel-api.service';
@@ -34,6 +36,23 @@ import {
   TestEventModalComponent,
   type TestEventPayload,
 } from '../../shared/test-event-modal/test-event-modal.component';
+import { CHAT_NOTIFICATION_TYPE, EventsubEditorComponent, messageControl } from './eventsub-editor.component';
+
+/** A row of the list: a standard event (stored or missing), or a stored subscription outside the standard list. */
+interface EventsubRow extends MergedEventsub {
+  /** The stored subscription behind the row, when there is one. */
+  stored?: ChannelEventsub;
+  /** Not one of the bot's standard subscriptions. */
+  other?: boolean;
+  /** A second stored row of a standard event that the bot doesn't use (e.g. an old `channel.cheer` next to `channel.bits.use`). */
+  duplicate?: boolean;
+}
+
+/** One line under an event: what it posts in chat. `message` is null when it posts its default or nothing. */
+interface SaysLine {
+  message: string | null;
+  text: string;
+}
 
 /** Plain names for Twitch EventSub types; the raw type stays visible as secondary text. */
 const EVENT_NAMES: Record<string, { name: string; what: string }> = {
@@ -43,6 +62,7 @@ const EVENT_NAMES: Record<string, { name: string; what: string }> = {
   'stream.online': { name: 'Stream goes live', what: 'Go-live messages and stream tracking' },
   'stream.offline': { name: 'Stream ends', what: 'Stream summaries and wrap-up' },
   'channel.raid': { name: 'Raids', what: 'Raid alerts and shoutouts' },
+  'channel.raid.outgoing': { name: 'Outgoing raids', what: 'Tracks the channels they raid' },
   'channel.poll.progress': { name: 'Polls', what: 'Poll updates on overlays' },
   'channel.prediction.progress': { name: 'Predictions', what: 'Prediction updates on overlays' },
   'channel.hype_train.begin': { name: 'Hype train starts', what: 'Hype train alerts' },
@@ -68,7 +88,7 @@ const EVENT_NAMES: Record<string, { name: string; what: string }> = {
   templateUrl: './channel-eventsubs.component.html',
   styleUrls: ['./channel-page.component.css', './channel-eventsubs.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, TestEventModalComponent, IconComponent],
+  imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, TestEventModalComponent, IconComponent, EventsubEditorComponent],
 })
 export class ChannelEventsubsComponent implements OnInit {
   private readonly channelApi = inject(ChannelApiService);
@@ -79,8 +99,18 @@ export class ChannelEventsubsComponent implements OnInit {
 
   readonly isLoading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly eventsubs = signal<MergedEventsub[]>([]);
+  /** The bot's standard subscriptions, each matched to its stored row (or missing). */
+  readonly eventsubs = signal<EventsubRow[]>([]);
+  /** Stored subscriptions that match no standard type. */
+  readonly others = signal<EventsubRow[]>([]);
   readonly channelName = this.ws.name;
+
+  /** The chat event catalog (what each event's chat settings are), by the site's type name. */
+  readonly catalog = signal<Map<string, ChatEventDefinition> | null>(null);
+  readonly catalogError = signal<string | null>(null);
+  /** The row whose chat settings are open in the editor. */
+  readonly editing = signal<{ row: EventsubRow; stored: ChannelEventsub; definition: ChatEventDefinition } | null>(null);
+  private editTrigger: HTMLElement | null = null;
 
   /** What the bot heard per event type (last heard, alerts, failed deliveries) and Twitch revocations. */
   readonly activity = signal<EventsubActivity | null>(null);
@@ -145,6 +175,69 @@ export class ChannelEventsubsComponent implements OnInit {
   ngOnInit(): void {
     this.loadEventsubs();
     this.loadActivity();
+    this.loadCatalog();
+  }
+
+  loadCatalog(): void {
+    this.catalogError.set(null);
+    this.channelApi
+      .getChatEventCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const byType = new Map<string, ChatEventDefinition>();
+          for (const definition of response?.data ?? []) {
+            if (definition?.type && !byType.has(definition.type)) byType.set(definition.type, definition);
+          }
+          this.catalog.set(byType);
+        },
+        error: (err) => this.catalogError.set(apiErrorMessage(err, "Couldn't load the chat settings")),
+      });
+  }
+
+  definitionFor(es: EventsubRow): ChatEventDefinition | null {
+    return this.catalog()?.get(es.type) ?? null;
+  }
+
+  /** "Says “…”" under a stored event with a message; empty means its default (chat notifications) or nothing. */
+  says(es: EventsubRow): SaysLine | null {
+    if (es.isMissing || !es.stored) return null;
+    const control = messageControl(this.definitionFor(es));
+    if (!control) return null;
+    const key = chatEventFieldKey(control);
+    const settings = es.stored.settings as unknown as Record<string, unknown> | undefined;
+    const raw = settings && key in settings ? settings[key] : key === 'message' ? es.stored.message : undefined;
+    const message = typeof raw === 'string' ? raw.trim() : '';
+    if (message) return { message, text: '' };
+    return { message: null, text: es.type === CHAT_NOTIFICATION_TYPE ? 'Uses the default message' : 'Posts nothing in chat' };
+  }
+
+  /** Stored rows whose type has chat settings in the catalog (and an API new enough to send their values). Not unused duplicates: the bot never reads them. */
+  canEdit(es: EventsubRow): boolean {
+    return !es.isMissing && !es.duplicate && !!es.stored?.id && !!es.stored.settings && !!this.definitionFor(es)?.config?.length;
+  }
+
+  openEditor(es: EventsubRow, event: Event): void {
+    const definition = this.definitionFor(es);
+    if (!es.stored || !definition || this.editing()) return;
+    this.editTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    this.editing.set({ row: es, stored: es.stored, definition });
+  }
+
+  closeEditor(): void {
+    this.editing.set(null);
+    const trigger = this.editTrigger;
+    this.editTrigger = null;
+    setTimeout(() => {
+      if (trigger?.isConnected) trigger.focus();
+    });
+  }
+
+  onEditorSaved(): void {
+    const editing = this.editing();
+    if (editing) this.toast.success(`${this.eventName(editing.row.type)} saved`);
+    this.closeEditor();
+    this.loadEventsubs();
   }
 
   loadActivity(): void {
@@ -195,7 +288,7 @@ export class ChannelEventsubsComponent implements OnInit {
   }
 
   eventName(type: string): string {
-    return EVENT_NAMES[type]?.name ?? type;
+    return EVENT_NAMES[type]?.name ?? this.catalog()?.get(type)?.name ?? type;
   }
 
   eventWhat(type: string): string {
@@ -216,8 +309,9 @@ export class ChannelEventsubsComponent implements OnInit {
     return status.replaceAll('_', ' ');
   }
 
+  /** Stored rows by id (several other subscriptions can share a type); missing ones by type and version. */
   key(es: MergedEventsub): string {
-    return `${es.type}:${es.version}`;
+    return es.id ? `id:${es.id}` : `${es.type}:${es.version}`;
   }
 
   loadEventsubs(): void {
@@ -269,25 +363,38 @@ export class ChannelEventsubsComponent implements OnInit {
           return;
         }
 
+        // Stored rows carry the site's type name (an outgoing raid is `channel.raid.outgoing`, an old cheer
+        // `channel.bits.use`), the same names as the standard list. When two rows share a type and version, pick
+        // the one the bot uses: the row stored under the current type name (the bot reads `channel.bits.use`
+        // before an old `channel.cheer`), else the first.
+        const typeOf = (es: ChannelEventsub) => es.type || es.rawType || '';
+        const keyOf = (type: string, version: string) => `${type}:${version}`;
+        const current = (es: ChannelEventsub) => !es.rawType || es.rawType === typeOf(es);
         const dbEventsubMap = new Map<string, ChannelEventsub>();
         for (const es of dbEventsubs) {
-          dbEventsubMap.set(`${es.type}:${es.version}`, es);
+          const key = keyOf(typeOf(es), es.version);
+          const chosen = dbEventsubMap.get(key);
+          if (!chosen || (!current(chosen) && current(es))) dbEventsubMap.set(key, es);
         }
+        const standardKeys = new Set(standardTypes.map((std: StandardEventsub) => keyOf(std.type, std.version)));
+        const storedRow = (dbEs: ChannelEventsub, std?: StandardEventsub): EventsubRow => ({
+          id: dbEs.id,
+          type: typeOf(dbEs),
+          version: dbEs.version,
+          status: dbEs.status,
+          enabled: dbEs.enabled,
+          created_at: dbEs.created_at,
+          isMissing: false,
+          condition: std?.condition,
+          config: std?.config,
+          stored: dbEs,
+          other: !std,
+        });
 
-        const merged: MergedEventsub[] = standardTypes.map((std: StandardEventsub) => {
-          const dbEs = dbEventsubMap.get(`${std.type}:${std.version}`);
+        const merged: EventsubRow[] = standardTypes.map((std: StandardEventsub) => {
+          const dbEs = dbEventsubMap.get(keyOf(std.type, std.version));
           return dbEs
-            ? {
-                id: dbEs.id,
-                type: dbEs.type,
-                version: dbEs.version,
-                status: dbEs.status,
-                enabled: dbEs.enabled,
-                created_at: dbEs.created_at,
-                isMissing: false,
-                condition: std.condition,
-                config: std.config,
-              }
+            ? storedRow(dbEs, std)
             : {
                 type: std.type,
                 version: std.version,
@@ -301,6 +408,13 @@ export class ChannelEventsubsComponent implements OnInit {
         });
 
         this.eventsubs.set(merged);
+        // Outside the standard list, plus standard-type rows the bot doesn't use (shown so nothing stored is hidden).
+        const used = new Set([...dbEventsubMap.values()].map((es) => es.id));
+        this.others.set(
+          dbEventsubs
+            .filter((es) => !standardKeys.has(keyOf(typeOf(es), es.version)) || !used.has(es.id))
+            .map((es) => ({ ...storedRow(es), duplicate: standardKeys.has(keyOf(typeOf(es), es.version)) })),
+        );
         this.isLoading.set(false);
       },
       error: () => {
@@ -377,9 +491,9 @@ export class ChannelEventsubsComponent implements OnInit {
   }
 
   private patchLocal(eventsub: MergedEventsub, enabled: boolean): void {
-    this.eventsubs.update((list) =>
-      list.map((es) => (this.key(es) === this.key(eventsub) ? { ...es, enabled } : es)),
-    );
+    const flip = (list: EventsubRow[]) => list.map((es) => (this.key(es) === this.key(eventsub) ? { ...es, enabled } : es));
+    this.eventsubs.update(flip);
+    this.others.update(flip);
   }
 
   openTestModal(eventsub: MergedEventsub): void {
@@ -425,6 +539,31 @@ export class ChannelEventsubsComponent implements OnInit {
     const now = new Date().toISOString();
     const randomUserId = String(Math.floor(Math.random() * 900000000) + 100000000);
     const randomViewers = Math.floor(Math.random() * 500) + 10;
+
+    // An outgoing raid is a `channel.raid` subscription on the raiding side: this channel raids someone else.
+    if (eventType === 'channel.raid.outgoing') {
+      return {
+        subscription: {
+          id: `test_sub_${Date.now()}`,
+          type: 'channel.raid',
+          version: '1',
+          status: 'enabled',
+          cost: 0,
+          condition: { from_broadcaster_user_id: channelID },
+          transport: { method: 'webhook', callback: 'https://subscriptions.domdimabot.com/eventsub' },
+          created_at: now,
+        },
+        event: {
+          from_broadcaster_user_id: channelID,
+          from_broadcaster_user_login: 'teststreamer',
+          from_broadcaster_user_name: 'TestStreamer',
+          to_broadcaster_user_id: randomUserId,
+          to_broadcaster_user_login: 'raidtarget',
+          to_broadcaster_user_name: 'RaidTarget',
+          viewers: randomViewers,
+        },
+      };
+    }
 
     const baseSubscription = {
       id: `test_sub_${Date.now()}`,

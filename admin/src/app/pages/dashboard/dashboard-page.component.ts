@@ -60,9 +60,9 @@ const ATTENTION: Record<AttentionId, Omit<AttentionRow, 'key' | 'count' | 'title
     icon: 'gift',
     title: (n) => `${plural(n, 'gifted credit purchase')} could not be delivered`,
     why: 'Someone paid and the credits never arrived.',
-    link: null,
-    query: null,
-    where: 'No page for this yet',
+    link: '/gifts',
+    query: { status: 'needs_support' },
+    where: 'Gifts',
   },
   failed_24h: {
     icon: 'alert',

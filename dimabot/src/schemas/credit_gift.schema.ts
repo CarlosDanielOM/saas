@@ -1,6 +1,10 @@
 import { Schema, model, type Types } from 'mongoose';
 
-export type CreditGiftStatus = 'awaiting_payment' | 'payment_received' | 'delivering' | 'delivered' | 'needs_support';
+/**
+ * `expired`: the buyer never paid and the checkout expired (Polar keeps a checkout open for 24 hours); nothing
+ * is owed and the worker stops checking it. `needs_support` is only set once a payment was received.
+ */
+export type CreditGiftStatus = 'awaiting_payment' | 'payment_received' | 'delivering' | 'delivered' | 'needs_support' | 'expired';
 
 /** Permanent receipt: do not TTL gifts or their checkout creation reservations. */
 export interface ICreditGift {
@@ -31,6 +35,8 @@ export interface ICreditGift {
     recipientCustomerId?: string;
     grantId?: string;
     deliveredAt?: Date;
+    /** When the worker saw the unpaid checkout expired (status `expired`). */
+    expiredAt?: Date;
     announcedAt?: Date;
     announcementMessageId?: string;
     announcementStoppedAt?: Date;
@@ -58,7 +64,7 @@ const schema = new Schema<ICreditGift>({
     credits: { type: Number, required: true },
     priceAmount: { type: Number, required: true },
     priceCurrency: { type: String, required: true },
-    status: { type: String, required: true, enum: ['awaiting_payment', 'payment_received', 'delivering', 'delivered', 'needs_support'] },
+    status: { type: String, required: true, enum: ['awaiting_payment', 'payment_received', 'delivering', 'delivered', 'needs_support', 'expired'] },
     noRefundsAcknowledgedAt: { type: Date, required: true },
     purchaseCreateStartedAt: Date,
     checkoutId: String,
@@ -72,6 +78,7 @@ const schema = new Schema<ICreditGift>({
     recipientCustomerId: String,
     grantId: String,
     deliveredAt: Date,
+    expiredAt: Date,
     announcedAt: Date,
     announcementMessageId: String,
     announcementStoppedAt: Date,

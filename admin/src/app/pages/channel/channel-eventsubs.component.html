@@ -32,6 +32,12 @@
           <button type="button" class="lf-btn lf-btn--sm" (click)="loadActivity()"><app-icon name="refresh" />Retry</button>
         </div>
       }
+      @if (catalogError()) {
+        <div class="es-catalog-error" role="alert">
+          <span>{{ catalogError() }}, so what each event says in chat can't be shown or edited.</span>
+          <button type="button" class="lf-btn lf-btn--sm" aria-label="Retry loading the chat settings" (click)="loadCatalog()"><app-icon name="refresh" />Retry</button>
+        </div>
+      }
 
       @if (revoked().length) {
         <section class="lf-tile lf-tile--flush es-revoked" [class.es-revoked--open]="revokedOpen() > 0" aria-labelledby="revoked-title">
@@ -79,13 +85,21 @@
             }
           </ul>
         }
+        @if (others().length) {
+          <h3 class="sub-group">Other subscriptions</h3>
+          <ul class="lf-rows">
+            @for (es of others(); track key(es)) {
+              <ng-container *ngTemplateOutlet="row; context: { $implicit: es }" />
+            }
+          </ul>
+        }
       </section>
     }
   </div>
 </div>
 
 <ng-template #row let-es>
-  <li class="lf-row es-row" [class.lf-row--attention]="!isHealthy(es)">
+  <li class="lf-row es-row" [class.lf-row--attention]="!isHealthy(es) && !es.other">
     <div class="lf-row__main">
       <span class="lf-row__title">
         {{ eventName(es.type) }}
@@ -102,9 +116,21 @@
         @if (eventWhat(es.type)) {
           {{ eventWhat(es.type) }} ·
         }
-        <span class="es-type">{{ es.type }} v{{ es.version }}</span>
+        <span class="es-type">{{ es.duplicate && es.stored?.rawType ? es.stored?.rawType : es.type }} v{{ es.version }}</span>
+        @if (es.duplicate) {
+          <span class="es-dup" data-duplicate>Not used: the bot reads the other {{ eventName(es.type) }} subscription</span>
+        }
       </span>
       @if (!es.isMissing) {
+        @if (says(es); as line) {
+          <span class="es-says" [class.es-says--off]="!es.enabled">
+            @if (line.message !== null) {
+              <span class="es-says__label">Says</span> “{{ line.message }}”
+            } @else {
+              <span class="es-says__label">{{ line.text }}</span>
+            }
+          </span>
+        }
         @if (activityFor(es); as act) {
           <span class="es-heard">
             @if (act.lastReceivedAt || act.lastAlert || act.failedDeliveries) {
@@ -151,6 +177,16 @@
         >
           Test
         </button>
+        @if (canEdit(es)) {
+          <button
+            type="button"
+            class="lf-btn lf-btn--sm"
+            (click)="openEditor(es, $event)"
+            [attr.aria-label]="'Edit ' + eventName(es.type) + ' chat settings'"
+          >
+            Edit
+          </button>
+        }
         <label class="lf-switch">
           <input
             type="checkbox"
@@ -177,5 +213,17 @@
     [sending]="isSendingTest()"
     (sendTest)="sendTestEvent($event)"
     (closeModal)="closeTestModal()"
+  />
+}
+
+@if (editing(); as edit) {
+  <app-eventsub-editor
+    [eventsub]="edit.stored"
+    [definition]="edit.definition"
+    [eventName]="eventName(edit.row.type)"
+    [channelID]="channelID()"
+    [channelLogin]="channelName()"
+    (saved)="onEditorSaved()"
+    (closed)="closeEditor()"
   />
 }

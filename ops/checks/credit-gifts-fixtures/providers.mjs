@@ -1,10 +1,15 @@
 // All external provider calls are intercepted. State persists across the real API/cron processes.
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { registerHooks } from 'node:module';
+import { fork, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 const dir = '/tmp/saas-fixtures', statePath = `${dir}/polar.json`, callsPath = `${dir}/calls.jsonl`;
 if (!fs.existsSync(statePath)) fs.writeFileSync(statePath, JSON.stringify({ customers: {}, checkouts: {}, orders: {}, grants: [], controls: {} }));
 const read = () => JSON.parse(fs.readFileSync(statePath, 'utf8'));
-const save = state => fs.writeFileSync(statePath, JSON.stringify(state));
+// The check and the candidate's worker processes share this file: write a temp file and rename it, so a reader in
+// another process never sees a half-written state (that surfaced as "Gift provider connection interrupted").
+const save = state => { const tmp = `${statePath}.${process.pid}.tmp`; fs.writeFileSync(tmp, JSON.stringify(state)); fs.renameSync(tmp, statePath); };
 const log = call => fs.appendFileSync(callsPath, JSON.stringify(call) + '\n');
 const originalLog = console.log;
 console.log = (...args) => {
@@ -82,6 +87,9 @@ globalThis.fetch = async (input, options = {}) => {
         if (lost) throw new Error('Simulated response loss after checkout creation');
         return json(checkout, 201);
     }
+    // Race hooks for checks: run inside the provider call, i.e. while the worker holds the gift between its read and its write.
+    if (path === '/v1/checkouts' && method === 'GET' && globalThis.__giftCheckoutListHook) await globalThis.__giftCheckoutListHook();
+    if (/^\/v1\/checkouts\/[^/]+$/.test(path) && method === 'GET' && globalThis.__giftCheckoutReadHook) await globalThis.__giftCheckoutReadHook(path.split('/')[3]);
     if (path === '/v1/checkouts' && method === 'GET') return json(page(Object.values(state.checkouts).filter(c => c.product_id === url.searchParams.get('product_id') && c.customer_external_id === url.searchParams.get('external_customer_id'))));
     if (path.endsWith('/confirm') && method === 'POST') {
         const secret = decodeURIComponent(path.split('/')[4]), checkout = Object.values(state.checkouts).find(c => c.client_secret === secret);
@@ -105,8 +113,40 @@ globalThis.fetch = async (input, options = {}) => {
         return json({ id: checkout.id, status: 'confirmed' });
     }
     if (/^\/v1\/checkouts\/[^/]+$/.test(path)) return state.checkouts[path.split('/')[3]] ? json(state.checkouts[path.split('/')[3]]) : json({}, 404);
+    // `ordersDown` simulates a Polar outage on the order lookup (transient errors before payment).
+    if (path === '/v1/orders' && state.controls.ordersDown) return json({ detail: 'unavailable' }, 503);
     if (path === '/v1/orders') return json(page(Object.values(state.orders).filter(o => o.checkout_id === url.searchParams.get('checkout_id'))));
     if (/^\/v1\/orders\/[^/]+$/.test(path)) return state.orders[path.split('/')[3]] ? json(state.orders[path.split('/')[3]]) : json({}, 404);
     if (path === '/v1/benefit-grants') return json(page(state.grants.filter(g => g.customer_id === url.searchParams.get('customer_id')).map(g => ({ ...g, properties: {} }))));
     throw new Error(`Unmocked Polar request blocked: ${method} ${path}`);
 };
+
+// Cron candidate (test-env-cron.json): the real supervisor starts only the gift worker and the domain-events
+// worker with only its polar-gifts-v1 consumer. Every other worker is an inert child that never runs, so the
+// candidate stays far below the test container's 3 GB limit (all 26 workers do not fit). Modules run unchanged.
+if (process.env.GIFT_CHECK_ONLY_GIFT_WORKERS === 'true') {
+    const inert = () => {
+        const child = new EventEmitter();
+        child.pid = 0;
+        child.kill = () => { setImmediate(() => child.emit('exit', 0, null)); return true; };
+        return child;
+    };
+    globalThis.__giftCheckSpawn = (command, args, options) => {
+        const entry = String(args?.[0] ?? '');
+        if (!entry.endsWith('/credit_gifts.worker.js') && !entry.endsWith('/domain_events.worker.js')) return inert();
+        return spawn(command, args, options);
+    };
+    globalThis.__giftCheckFork = (entry, args, options) => args?.includes('--consumer=polar-gifts-v1') ? fork(entry, args, options) : inert();
+    const shim = name => `export const ${name} = (...args) => globalThis.__giftCheck${name[0].toUpperCase()}${name.slice(1)}(...args);`;
+    registerHooks({
+        resolve(specifier, context, nextResolve) {
+            if (specifier === 'node:child_process' && context.parentURL?.endsWith('/workers/cron.index.js')) {
+                return { url: `data:text/javascript,${encodeURIComponent(shim('spawn'))}`, shortCircuit: true };
+            }
+            if (specifier === 'node:child_process' && context.parentURL?.endsWith('/utils/domain_event_execution.js')) {
+                return { url: `data:text/javascript,${encodeURIComponent(shim('fork'))}`, shortCircuit: true };
+            }
+            return nextResolve(specifier, context);
+        }
+    });
+}

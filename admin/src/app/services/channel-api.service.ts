@@ -26,25 +26,154 @@ export interface ChannelUser {
 export interface ChannelCommand {
   id: string;
   name: string;
+  /** The trigger without "!" for commands; the phrase for keywords. */
   cmd: string;
   func: string;
   message: string;
   enabled: boolean;
+  /** Seconds between uses. */
   cooldown: number;
   userLevelName: string;
+  /** 1 everyone … 10 broadcaster (see `COMMAND_USER_LEVELS`). Ignored by the bot when `permissionMode` is `tags`. */
+  userLevel: number;
+  /** `keyword` = fires when a chat message contains/starts with the phrase; its activation can't be changed. */
+  activation: 'command' | 'keyword';
+  keywordMatch: string | null;
+  /** Built-in command: can't be deleted, its reply can't be changed and it can't use blocks. */
+  reserved: boolean;
+  /** `blocks` = the reply is built with AST blocks on the site; the console shows its text but can't edit it. */
+  authoring: 'text' | 'blocks';
+  /** `tags` = a custom permission rule built on the site (the level select doesn't apply); `invalid` = broken rule. */
+  permissionMode: 'level' | 'tags' | 'invalid';
+  /** The bot runs its own code for it (its function is a built-in action such as `promo`), so the stored reply is never posted. */
+  runsBuiltIn?: boolean;
+  description: string;
+  /** The channel login stored on the command. */
+  channel: string;
   createdAt?: string;
+}
+
+/** Legacy permission levels, as the site's command editor offers them (value → stored name). */
+export const COMMAND_USER_LEVELS: ReadonlyArray<{ level: number; name: string; label: string }> = [
+  { level: 1, name: 'everyone', label: 'Everyone' },
+  { level: 2, name: 'tier1', label: 'Tier 1 subs and up' },
+  { level: 3, name: 'tier2', label: 'Tier 2 subs and up' },
+  { level: 4, name: 'tier3', label: 'Tier 3 subs and up' },
+  { level: 5, name: 'vip', label: 'VIPs and up' },
+  { level: 6, name: 'founder', label: 'Founders and up' },
+  { level: 7, name: 'mod', label: 'Moderators and up' },
+  { level: 8, name: 'editor', label: 'Editors and up' },
+  { level: 9, name: 'admin', label: 'Admins and up' },
+  { level: 10, name: 'broadcaster', label: 'Broadcaster only' },
+];
+
+/**
+ * Body for creating or changing a command through the site's own commands API (`/commands/:channelID`), which
+ * the owner may use on any channel. On update only the fields present are changed. See
+ * `dimabot/src/server/services/command_mutations.service.ts`.
+ */
+export interface CommandWrite {
+  name?: string;
+  cmd?: string;
+  func?: string;
+  message?: string;
+  channel?: string;
+  description?: string;
+  cooldown?: number;
+  enabled?: boolean;
+  userLevel?: number;
+  userLevelName?: string;
+}
+
+/** The commands API's answer: `command` on success; `code` (e.g. `reserved`, `too_long`) and `message` on failure. */
+export interface CommandWriteResponse {
+  error: boolean;
+  message: string;
+  status: number;
+  code?: string;
+  command?: Record<string, unknown>;
 }
 
 export interface ChannelEventsub {
   id: string;
+  /** The site's name for it: outgoing raids are `channel.raid.outgoing`, old cheer subscriptions `channel.bits.use`. */
   type: string;
+  /** The type stored in the database (and sent by Twitch). */
+  rawType: string;
   status: string;
   version: string;
   enabled: boolean;
   message: string;
   endMessage: string;
+  /** Chat settings the console can edit; which ones apply to a type comes from the chat event catalog. */
+  settings: EventsubSettings;
+  /** Bits rules (cheer tiers) stored on it; edited on the site's Bits rules page, not here. */
+  cheerTierCount: number;
+  /** Twitch no longer lists this subscription since then (the bot reconnects it). */
+  remoteMissingSince: string | null;
   created_at: string;
 }
+
+/** The stored chat fields of a Twitch event subscription, by their database names. */
+export interface EventsubSettings {
+  message: string;
+  endMessage: string;
+  endEnabled: boolean;
+  minViewers: number;
+  clipEnabled: boolean;
+  delay: number;
+  modiversaryMessage: string;
+  modiversaryEnabled: boolean;
+  watchStreakEnabled: boolean;
+}
+
+/**
+ * One setting of a chat event, from the site's chat event catalog (`GET /site/events`), the same list the
+ * site's Chat events page renders. `dbId` (or `id`) is the field it is saved to; see `chatEventFieldKey`.
+ */
+export interface ChatEventControl {
+  id: string;
+  dbId?: string;
+  label: { EN?: string; ES?: string; en?: string; es?: string };
+  type: 'text' | 'number' | 'checkbox' | 'message-tiers' | 'select' | string;
+  /** The default for a new subscription. */
+  value: unknown;
+  placeholder?: string;
+  /** Only shown while another control has this value (e.g. the end message while "endEnabled" is on). */
+  showIf?: { controlId: string; is: unknown };
+  canDisable?: boolean;
+}
+
+export interface ChatEventDefinition {
+  name: string;
+  type: string;
+  version?: string;
+  description?: { EN?: string; ES?: string; en?: string; es?: string };
+  plan_tier?: 'free' | 'premium' | 'pro';
+  releaseStage?: string;
+  config?: ChatEventControl[];
+}
+
+/** Ids whose saved field has another name (mirrors dimasite `chat-events.contract.ts`). */
+const CHAT_EVENT_FIELD_FALLBACKS: Record<string, string> = {
+  adBeginMessage: 'message',
+  adBreakMessage: 'message',
+  beginMessage: 'message',
+  enableClip: 'clipEnabled',
+};
+
+/** The eventsub field a catalog control is saved to. */
+export function chatEventFieldKey(control: Pick<ChatEventControl, 'id' | 'dbId'>): string {
+  return control.dbId?.trim() || CHAT_EVENT_FIELD_FALLBACKS[control.id] || control.id;
+}
+
+/**
+ * Fields the console may send in an eventsub PATCH. The site's PATCH writes whatever it receives, so the
+ * console never sends anything outside this list (no type, condition, status or ids).
+ */
+export const EDITABLE_EVENTSUB_FIELDS: ReadonlyArray<keyof EventsubSettings> = [
+  'message', 'endMessage', 'endEnabled', 'minViewers', 'clipEnabled', 'modiversaryMessage', 'modiversaryEnabled', 'watchStreakEnabled',
+];
 
 export interface StandardEventsub {
   type: string;
@@ -258,6 +387,29 @@ export class ChannelApiService {
   patchChannelEventsub(channelID: string, eventsubID: string, body: Record<string, unknown>): Observable<{ error: boolean; message: string }> {
     const url = `${this.linksService.getApiUrl()}/eventsubs/${channelID}/${eventsubID}`;
     return this.http.patch<{ error: boolean; message: string }>(url, body);
+  }
+
+  /** Create a command on any channel (owner access through the site's commands API). */
+  createCommand(channelID: string, body: CommandWrite & { name: string; cmd: string; func: string; message: string; channel: string }): Observable<CommandWriteResponse> {
+    const url = `${this.linksService.getApiUrl()}/commands/${encodeURIComponent(channelID)}`;
+    return this.http.post<CommandWriteResponse>(url, body);
+  }
+
+  /** Change only the fields present in `body`. */
+  updateCommand(channelID: string, commandID: string, body: CommandWrite): Observable<CommandWriteResponse> {
+    const url = `${this.linksService.getApiUrl()}/commands/${encodeURIComponent(channelID)}/${encodeURIComponent(commandID)}`;
+    return this.http.put<CommandWriteResponse>(url, body);
+  }
+
+  /** Built-in commands answer 403. There is no undo. */
+  deleteCommand(channelID: string, commandID: string): Observable<CommandWriteResponse> {
+    const url = `${this.linksService.getApiUrl()}/commands/${encodeURIComponent(channelID)}/${encodeURIComponent(commandID)}`;
+    return this.http.delete<CommandWriteResponse>(url);
+  }
+
+  /** The chat event catalog (labels, field types, defaults) that the site's Chat events page renders. */
+  getChatEventCatalog(): Observable<{ error: boolean; data: ChatEventDefinition[] }> {
+    return this.http.get<{ error: boolean; data: ChatEventDefinition[] }>(`${this.linksService.getApiUrl()}/site/events`);
   }
 
   /**

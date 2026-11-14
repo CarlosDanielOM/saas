@@ -18,7 +18,8 @@ const redis = await getDragonflyClient('gift-check');
 await Gifts.init();
 const dir = '/tmp/saas-fixtures', statePath = `${dir}/polar.json`, callsPath = `${dir}/calls.jsonl`;
 const read = () => JSON.parse(fs.readFileSync(statePath, 'utf8'));
-const modify = fn => { const state = read(); fn(state); fs.writeFileSync(statePath, JSON.stringify(state)); };
+// Atomic (temp + rename): the candidate's worker reads this file at the same time.
+const modify = fn => { const state = read(); fn(state); const tmp = `${statePath}.${process.pid}.tmp`; fs.writeFileSync(tmp, JSON.stringify(state)); fs.renameSync(tmp, statePath); };
 const calls = () => fs.existsSync(callsPath) ? fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(fn, label) { for (let i = 0; i < 300; i++) { if (await fn()) return; await sleep(100); } throw new Error(label); }
@@ -105,6 +106,9 @@ const lostRequest = giftRequest(); modify(s => s.controls.losePurchaseResponse =
 await assert.rejects(createCreditGiftCheckout(lostRequest), /interrupted/);
 const recovered = await createCreditGiftCheckout(lostRequest);
 assert.equal(calls().filter(c => c.method === 'POST' && c.body?.metadata?.gift_id === recovered.giftId).length, 1);
+// Arm the delivery faults before the payment exists: on cron the supervised worker delivers a paid gift right
+// away, so faults armed after payment would miss this gift and hit the next one.
+modify(s => { s.controls.holdGrant = true; s.controls.loseFulfillResponse = true; });
 const paidId = pay(recovered.checkoutId);
 const stored = await Gifts.findById(recovered.giftId).lean();
 const goodOrder = read().orders[paidId];
@@ -123,7 +127,6 @@ if (process.env.SAAS_TARGET === 'cron') {
     await until(async () => (await Deliveries.findOne({ eventKey: journal.event.eventKey, consumer: 'polar-gifts-v1' }).lean())?.status === 'succeeded',
         'new gift consumer dispatches the journaled paid event');
 }
-modify(s => { s.controls.holdGrant = true; s.controls.loseFulfillResponse = true; });
 if (process.env.SAAS_TARGET === 'cron') {
     await until(() => calls().some(c => c.workerReady), 'actual supervised gift worker startup');
     await Gifts.updateOne({ _id: recovered.giftId }, { $set: { nextAttemptAt: new Date(0) } });

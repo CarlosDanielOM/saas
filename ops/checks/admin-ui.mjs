@@ -530,6 +530,19 @@ await context.route("**/*", async (route) => {
         pagination: { page: 1, totalPages: 1, total: 2 },
       },
     });
+  // The chat event catalog the Twitch events tab uses for its "Says …" lines and editor.
+  if (p === "/site/events")
+    return json(route, {
+      error: false,
+      data: [
+        {
+          name: "Follow",
+          type: "channel.follow",
+          version: "2",
+          config: [{ id: "followMessage", dbId: "message", label: { EN: "Follow message" }, type: "text", value: "" }],
+        },
+      ],
+    });
   if (p === "/eventsubs/standard")
     return json(route, {
       data: {

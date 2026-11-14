@@ -166,6 +166,11 @@ export const routes: Routes = [
         title: 'Assistant refusals | DimaBot Admin',
       },
       {
+        path: 'gifts',
+        loadComponent: () => import('./pages/gifts/gifts-page.component').then((m) => m.GiftsPageComponent),
+        title: 'Gifted credits | DimaBot Admin',
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings-page.component').then((m) => m.SettingsPageComponent),

@@ -1,0 +1,216 @@
+<dialog
+  #dialog
+  class="lf-dialog ced"
+  [attr.aria-labelledby]="id + '-title'"
+  [attr.aria-describedby]="id + '-intro'"
+  [attr.aria-busy]="saving()"
+  (cancel)="requestClose($event)"
+  (close)="onClosed()"
+  data-command-editor
+>
+  <form class="ced-form" novalidate (submit)="save($event)">
+    <header class="lf-dialog__head">
+      <h2 [id]="id + '-title'">{{ title() }}</h2>
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" aria-label="Close" [disabled]="saving()" (click)="requestClose()">
+        <app-icon name="x" />
+      </button>
+    </header>
+
+    <div class="lf-dialog__body">
+      <p class="ced-intro" [id]="id + '-intro'">
+        @if (who()) {
+          Changes go live in {{ who() }}'s chat right away. {{ who() }} isn't notified.
+        } @else {
+          Changes go live in the channel's chat right away. The streamer isn't notified.
+        }
+      </p>
+
+      <!-- 1 · Trigger -->
+      <div class="lf-step">
+        @if (isBuiltIn()) {
+          <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">1</span>Trigger</p>
+          <p class="ced-locked mono" data-locked="trigger">{{ '!' + trigger() }}</p>
+          <p class="ced-lock" data-lock="trigger"><app-icon name="info" /><span>Built-in command: its trigger can't change.</span></p>
+        } @else {
+          <label class="lf-step__label" [for]="id + '-trigger'"><span class="lf-step__num" aria-hidden="true">1</span>{{ isKeyword() ? 'Keyword' : 'Trigger' }}</label>
+          <div class="ced-trigger" [class.ced-trigger--bang]="!isKeyword()">
+            @if (!isKeyword()) {
+              <span class="ced-trigger__bang" aria-hidden="true">!</span>
+            }
+            <input
+              [id]="id + '-trigger'"
+              class="lf-input"
+              type="text"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="done"
+              [attr.maxlength]="isKeyword() ? 60 : null"
+              [attr.placeholder]="isKeyword() ? 'good morning' : 'lurk'"
+              [value]="trigger()"
+              (input)="onTrigger($event)"
+              [attr.aria-invalid]="shown().trigger ? 'true' : null"
+              [attr.aria-describedby]="describedBy('trigger')"
+            />
+          </div>
+          <p class="lf-hint" [id]="id + '-trigger-hint'">
+            {{ isKeyword() ? keywordHint() : 'What viewers type after “!” in chat. One word.' }}
+          </p>
+          @if (shown().trigger) {
+            <p class="lf-error" [id]="id + '-trigger-error'" data-error="trigger">{{ shown().trigger }}</p>
+          }
+        }
+      </div>
+
+      <!-- 2 · Reply -->
+      <div class="lf-step">
+        @if (replyLocked()) {
+          <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">2</span>Reply</p>
+          @if (reply()) {
+            <p class="lf-quote">{{ reply() }}</p>
+          }
+          @if (isBuiltIn()) {
+            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>Built-in command: the bot writes this reply.</span></p>
+          } @else if (runsBuiltIn()) {
+            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>The bot runs its own built-in action for this command, so this reply is never posted.</span></p>
+          } @else {
+            <p class="ced-lock" data-lock="reply"><app-icon name="info" /><span>Built with blocks on the site. Change the reply there.</span></p>
+            <a class="lf-btn lf-btn--sm ced-site" [href]="siteUrl()" target="_blank" rel="noopener"><app-icon name="external" />Open on domdimabot.com</a>
+          }
+        } @else {
+          <div class="ced-label-row">
+            <label class="lf-step__label" [for]="id + '-reply'"><span class="lf-step__num" aria-hidden="true">2</span>Reply</label>
+            <span class="ced-count" [class.ced-count--over]="replyLength() > replyMax" [id]="id + '-reply-hint'"
+              >{{ formatNumber(replyLength()) }} / {{ formatNumber(replyMax) }}<span class="sr-only"> characters</span></span
+            >
+          </div>
+          <textarea
+            [id]="id + '-reply'"
+            class="lf-input ced-reply"
+            rows="4"
+            placeholder="$(user) is lurking. Enjoy!"
+            [value]="reply()"
+            (input)="reply.set(value($event))"
+            [attr.aria-invalid]="shown().reply ? 'true' : null"
+            [attr.aria-describedby]="describedBy('reply')"
+          ></textarea>
+          @if (shown().reply) {
+            <p class="lf-error" [id]="id + '-reply-error'" data-error="reply">{{ shown().reply }}</p>
+          }
+        }
+      </div>
+
+      <!-- 3 · Who and when -->
+      <div class="lf-step">
+        <p class="lf-step__label"><span class="lf-step__num" aria-hidden="true">3</span>Who and when</p>
+        <div class="ced-grid">
+          <div class="lf-field">
+            @if (levelLocked()) {
+              <p class="lf-label">Who can use it</p>
+              <p class="ced-lock" data-lock="level">
+                <app-icon name="info" />
+                <span>{{ permissionMode() === 'tags' ? 'Uses a custom rule made on the site.' : 'Its permission rule is broken; fix it on the site.' }}</span>
+              </p>
+            } @else {
+              <label class="lf-label" [for]="id + '-level'">Who can use it</label>
+              <select [id]="id + '-level'" class="lf-input" (change)="level.set(+value($event))">
+                @for (item of levels; track item.level) {
+                  <option [value]="item.level" [selected]="item.level === level()">{{ item.label }}</option>
+                }
+              </select>
+            }
+          </div>
+          <div class="lf-field">
+            <label class="lf-label" [for]="id + '-cooldown'">Cooldown in seconds</label>
+            <input
+              [id]="id + '-cooldown'"
+              class="lf-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              enterkeyhint="done"
+              maxlength="6"
+              [value]="cooldown()"
+              (input)="cooldown.set(value($event))"
+              [attr.aria-invalid]="shown().cooldown ? 'true' : null"
+              [attr.aria-describedby]="describedBy('cooldown')"
+            />
+            <p class="lf-hint" [id]="id + '-cooldown-hint'">Wait between uses. 0 = no wait.</p>
+            @if (shown().cooldown) {
+              <p class="lf-error" [id]="id + '-cooldown-error'" data-error="cooldown">{{ shown().cooldown }}</p>
+            }
+          </div>
+        </div>
+        <label class="ced-switch">
+          <span class="ced-switch__text">
+            <span class="lf-label" [id]="id + '-enabled-label'">Turned on</span>
+            <span class="lf-hint" [id]="id + '-enabled-hint'">{{ enabled() ? 'It works in chat.' : 'Off: the bot ignores it in chat.' }}</span>
+          </span>
+          <span class="lf-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              [checked]="enabled()"
+              (change)="enabled.set($any($event.target).checked)"
+              [attr.aria-labelledby]="id + '-enabled-label'"
+              [attr.aria-describedby]="id + '-enabled-hint'"
+            />
+            <span class="lf-switch__track"></span>
+          </span>
+        </label>
+      </div>
+
+      <details class="lf-more ced-more" #more>
+        <summary>More options<app-icon name="down" /></summary>
+        <div class="lf-more__body ced-more__body">
+          <div class="lf-field">
+            <label class="lf-label" [for]="id + '-name'">Name</label>
+            <input
+              [id]="id + '-name'"
+              class="lf-input"
+              type="text"
+              autocomplete="off"
+              [value]="name()"
+              (input)="name.set(value($event))"
+              [attr.aria-invalid]="shown().name ? 'true' : null"
+              [attr.aria-describedby]="describedBy('name')"
+            />
+            <p class="lf-hint" [id]="id + '-name-hint'">
+              {{ isNew() ? 'Leave it empty to use the trigger.' : "Shown on the streamer's commands page." }}
+            </p>
+            @if (shown().name) {
+              <p class="lf-error" [id]="id + '-name-error'" data-error="name">{{ shown().name }}</p>
+            }
+          </div>
+          @if (!isBuiltIn()) {
+            <div class="lf-field">
+              <label class="lf-label" [for]="id + '-description'">Description</label>
+              <textarea
+                [id]="id + '-description'"
+                class="lf-input"
+                rows="2"
+                [value]="description()"
+                (input)="description.set(value($event))"
+              ></textarea>
+            </div>
+          }
+        </div>
+      </details>
+    </div>
+
+    @if (serverError()) {
+      <p class="lf-warning ced-server" role="alert" data-server-error><app-icon name="alert" /><span>{{ serverError() }}</span></p>
+    }
+
+    <footer class="lf-dialog__foot">
+      <button type="button" class="lf-btn" [disabled]="saving()" (click)="requestClose()">Cancel</button>
+      <button type="submit" class="lf-btn lf-btn--primary" [disabled]="!canSave()" data-save>
+        @if (saving()) {
+          <span class="lf-spin" aria-hidden="true"></span>Saving…
+        } @else {
+          {{ isNew() ? 'Create command' : 'Save' }}
+        }
+      </button>
+    </footer>
+  </form>
+</dialog>

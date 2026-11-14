@@ -39,6 +39,10 @@ import { adminDecisionsRouter } from './admin_site/decisions.route.js';
 import { adminUsageRouter } from './admin_site/usage.route.js';
 import { adminAssistantsRouter } from './admin_site/assistants.route.js';
 import { adminChannelDebugRouter } from './admin_site/channel_debug.route.js';
+import { adminGiftsRouter } from './admin_site/gifts.route.js';
+import { permissionModeFor } from '../services/command_mutations.service.js';
+import { runsBuiltInCode } from '../../site_agent/tools/read.js';
+import { normalizeEventsubResponseType } from '../services/eventsub_config.service.js';
 import { labelModerationReview, listModerationReviews, moderationReviewCounts, MODERATION_REVIEW_KINDS, MODERATION_REVIEW_LABELS, type ModerationReviewKind, type ModerationReviewLabel } from '../services/moderation_review.service.js';
 
 interface AuthRequest extends Request {
@@ -469,6 +473,7 @@ router.get('/users/:channelID/commands', authMiddleware as any, async (req: Auth
         if (!ensureSuperAdmin(req, res)) {
             return;
         }
+        res.setHeader('Cache-Control', 'no-store');
 
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
@@ -504,7 +509,7 @@ router.get('/users/:channelID/commands', authMiddleware as any, async (req: Auth
         const [total, rows] = await Promise.all([
             CommandsSchema.countDocuments(match),
             CommandsSchema.find(match)
-                .select('_id name cmd func message enabled cooldown userLevelName createdAt')
+                .select('_id name cmd func message enabled cooldown userLevelName userLevel createdAt activation keywordSettings reserved authoring permissionExpression description channel')
                 .sort({ [mongoSortField]: mongoSortOrder })
                 .skip(skip)
                 .limit(limit)
@@ -525,6 +530,17 @@ router.get('/users/:channelID/commands', authMiddleware as any, async (req: Auth
                     enabled: Boolean(row.enabled),
                     cooldown: Number(row.cooldown || 0),
                     userLevelName: row.userLevelName || '',
+                    userLevel: Number(row.userLevel || 1),
+                    // What the console's editor needs to know before offering a field the API would refuse or ignore.
+                    activation: row.activation === 'keyword' ? 'keyword' : 'command',
+                    keywordMatch: row.activation === 'keyword' ? (row.keywordSettings?.matchMode ?? 'start') : null,
+                    reserved: Boolean(row.reserved),
+                    authoring: row.authoring === 'blocks' ? 'blocks' : 'text',
+                    permissionMode: permissionModeFor(row),
+                    // The bot runs its own code for it (e.g. !promo), so its stored reply is never posted.
+                    runsBuiltIn: runsBuiltInCode(row),
+                    description: row.description || '',
+                    channel: row.channel || '',
                     createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : undefined
                 })),
                 pagination: {
@@ -558,6 +574,7 @@ router.get('/users/:channelID/eventsubs', authMiddleware as any, async (req: Aut
         if (!ensureSuperAdmin(req, res)) {
             return;
         }
+        res.setHeader('Cache-Control', 'no-store');
 
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
@@ -591,7 +608,7 @@ router.get('/users/:channelID/eventsubs', authMiddleware as any, async (req: Aut
         const [total, rows] = await Promise.all([
             EventsubSchema.countDocuments(match),
             EventsubSchema.find(match)
-                .select('_id type status version enabled message endMessage created_at')
+                .select('_id type status version enabled message endMessage endEnabled minViewers clipEnabled delay modiversaryMessage modiversaryEnabled watchStreakEnabled cheerTiers condition remote_missing_since created_at')
                 .sort({ [mongoSortField]: mongoSortOrder })
                 .skip(skip)
                 .limit(limit)
@@ -605,12 +622,28 @@ router.get('/users/:channelID/eventsubs', authMiddleware as any, async (req: Aut
             data: {
                 rows: rows.map((row) => ({
                     id: String(row._id),
-                    type: row.type || '',
+                    // The site's name for it: outgoing raids are `channel.raid.outgoing`, legacy cheers `channel.bits.use`.
+                    type: normalizeEventsubResponseType({ type: row.type || '', condition: row.condition }).type,
+                    rawType: row.type || '',
                     status: row.status || '',
                     version: row.version || '',
                     enabled: Boolean(row.enabled),
                     message: row.message || '',
                     endMessage: row.endMessage || '',
+                    // The chat settings the console can edit (the same fields the site's Chat events page saves).
+                    settings: {
+                        message: row.message ?? '',
+                        endMessage: row.endMessage ?? '',
+                        endEnabled: Boolean(row.endEnabled),
+                        minViewers: Number(row.minViewers ?? 2),
+                        clipEnabled: Boolean(row.clipEnabled),
+                        delay: Number(row.delay ?? 0),
+                        modiversaryMessage: row.modiversaryMessage ?? '',
+                        modiversaryEnabled: row.modiversaryEnabled !== false,
+                        watchStreakEnabled: row.watchStreakEnabled !== false
+                    },
+                    cheerTierCount: Array.isArray(row.cheerTiers) ? row.cheerTiers.length : 0,
+                    remoteMissingSince: row.remote_missing_since ? new Date(row.remote_missing_since).toISOString() : null,
                     created_at: row.created_at || ''
                 })),
                 pagination: {
@@ -1193,5 +1226,6 @@ router.use(adminDecisionsRouter);
 router.use(adminUsageRouter);
 router.use(adminAssistantsRouter);
 router.use(adminChannelDebugRouter);
+router.use(adminGiftsRouter);
 
 export const adminSiteRoute = router;

@@ -1,0 +1,177 @@
+/* Answer tones the shared status line doesn't have. */
+.gp-status--danger {
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: linear-gradient(var(--danger-soft), var(--danger-soft)), var(--tile);
+}
+.gp-status--danger > app-icon {
+  color: var(--danger);
+}
+.gp-status--accent {
+  border-color: var(--accent-line);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--tile);
+}
+.gp-status--accent > app-icon {
+  color: var(--accent);
+}
+
+/* Filters: status chips, then the channel. */
+.gp-filters {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+/* Chips are the main control on a phone: full 44px targets. */
+.gp-filters .lf-chip {
+  min-height: 2.75rem;
+}
+.gp-chip--danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+.gp-chip--danger .lf-chip__count {
+  color: inherit;
+}
+.gp-chip--danger[aria-pressed='true'] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.gp-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  min-height: 2.75rem;
+}
+.gp-scope__pick {
+  min-height: 2.75rem;
+  margin-left: -0.5rem;
+  color: var(--accent);
+}
+
+/* The list */
+.gp-notice {
+  margin: 0 1rem 0.75rem;
+}
+.gp-rows.is-stale {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.gp-skel {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 4rem;
+}
+.gp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'who chev'
+    'info chev';
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  width: 100%;
+  min-height: 4rem;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gp-row:hover,
+.gp-row:focus-visible {
+  background: var(--tile-2);
+}
+.gp-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.gp-row__who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.4rem;
+  min-width: 0;
+  font-weight: 750;
+}
+.gp-row__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gp-row__arrow {
+  color: var(--muted);
+  font-weight: 600;
+}
+/* Phones: the stage chip leads the second line, then the money and the date. */
+.gp-row__info {
+  grid-area: info;
+  min-width: 0;
+  line-height: 1.9;
+}
+.gp-row__chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+.gp-row__meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.gp-row__chev {
+  grid-area: chev;
+}
+.gp-more-note {
+  align-self: center;
+  margin-right: 0.75rem;
+}
+.gp-end {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* Desktop: one line per gift, in columns: who, what, where it is. */
+@media (min-width: 960px) {
+  .gp-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .gp-scope {
+    justify-content: flex-end;
+  }
+  .gp-row {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.7fr) minmax(9rem, 0.8fr) 1.1rem;
+    grid-template-areas: none;
+    gap: 0.75rem 1.25rem;
+    min-height: 3.5rem;
+  }
+  .gp-row__info {
+    display: contents;
+  }
+  .gp-row__who {
+    grid-area: 1 / 1;
+  }
+  .gp-row__meta {
+    grid-area: 1 / 2;
+    font-size: 0.85rem;
+  }
+  .gp-row__chips {
+    grid-area: 1 / 3;
+    justify-content: flex-end;
+    margin-right: 0;
+  }
+  .gp-row__chev {
+    grid-area: 1 / 4;
+  }
+}

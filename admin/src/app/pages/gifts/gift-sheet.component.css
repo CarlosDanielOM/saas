@@ -1,0 +1,276 @@
+:host {
+  display: contents;
+}
+.gs {
+  height: 92dvh;
+}
+.gs__head {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.gs__head h2 {
+  overflow-wrap: anywhere;
+}
+.gs__sub {
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+.gs__tools {
+  display: flex;
+  flex-shrink: 0;
+  margin: -0.35rem -0.5rem 0 0;
+}
+.gs .lf-dialog__body {
+  flex: 1;
+  align-content: start;
+  gap: 1.15rem;
+}
+.gs__h {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gs-part {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.gs-error {
+  margin: 0;
+}
+.gs-skel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Tone through custom properties so one rule styles every toned block. */
+[data-tone] {
+  --tone: var(--muted);
+  --tone-soft: var(--tile-2);
+}
+[data-tone='ok'] {
+  --tone: var(--ok);
+  --tone-soft: var(--ok-soft);
+}
+[data-tone='warn'] {
+  --tone: var(--warn);
+  --tone-soft: var(--warn-soft);
+}
+[data-tone='danger'] {
+  --tone: var(--danger);
+  --tone-soft: var(--danger-soft);
+}
+[data-tone='accent'] {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+}
+
+/* The answer: what happened to this gift, in plain words. */
+.gs-answer {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(var(--tone-soft), var(--tone-soft)), var(--tile);
+}
+.gs-answer__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.gs-answer__text {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.gs-answer__text span {
+  color: var(--fg);
+}
+.gs-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--tone-soft);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.gs-result app-icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--tone);
+}
+
+/* Timeline: one stage per line, a mark on a rail, the time on the right. */
+.gs-steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gs-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.6rem;
+}
+.gs-step + .gs-step::before {
+  content: '';
+  position: absolute;
+  left: calc(0.8rem - 1px);
+  bottom: calc(50% + 0.8rem);
+  height: calc(100% - 1.6rem);
+  border-left: 2px solid var(--line-strong);
+}
+.gs-step[data-state='done'] + .gs-step::before {
+  border-left-color: var(--ok);
+}
+.gs-step__mark {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--tile);
+  color: var(--muted);
+}
+.gs-step__mark app-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.gs-step[data-state='done'] .gs-step__mark {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.gs-step[data-state='now'] .gs-step__mark {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.gs-step[data-state='stuck'] .gs-step__mark {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.gs-step[data-state='stopped'] .gs-step__mark {
+  border-style: dashed;
+}
+.gs-step__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: currentColor;
+  animation: gs-pulse 1.6s ease-in-out infinite;
+}
+@keyframes gs-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.gs-step__label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.gs-step[data-state='todo'] .gs-step__label {
+  color: var(--muted);
+  font-weight: 600;
+}
+.gs-step[data-state='stuck'] .gs-step__label,
+.gs-step[data-state='stuck'] .gs-step__time {
+  color: var(--danger);
+}
+.gs-step__time {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Facts */
+.gs-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.gs-muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+.gs-mono {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+.gs-dl .gs-dl__stack {
+  flex-wrap: wrap;
+  padding-bottom: 0.6rem;
+}
+.gs-dl__stack dd {
+  flex: 1 1 100%;
+  display: block;
+  text-align: left;
+}
+.gs-dl__stack .lf-quote {
+  border-left-color: var(--danger);
+  font-weight: 500;
+}
+
+/* Polar references: label over the id and its Copy button. */
+.gs-refs {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.gs-ref {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'label button' 'value button';
+  align-items: center;
+  gap: 0.1rem 0.5rem;
+  padding: 0.45rem 0.4rem 0.45rem 0.75rem;
+}
+.gs-ref + .gs-ref {
+  border-top: 1px solid var(--line);
+}
+.gs-ref__label {
+  grid-area: label;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.gs-ref__value {
+  grid-area: value;
+  min-width: 0;
+}
+.gs-copy {
+  grid-area: button;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 640px) {
+  .gs {
+    height: auto;
+    width: min(40rem, calc(100% - 2rem));
+    max-height: 88dvh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gs-step__dot {
+    animation: none;
+  }
+}

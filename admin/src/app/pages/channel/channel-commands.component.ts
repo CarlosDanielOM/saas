@@ -4,14 +4,17 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { ChannelApiService, type ChannelCommand } from '../../services/channel-api.service';
+import { COMMAND_USER_LEVELS, ChannelApiService, type ChannelCommand, type CommandWriteResponse } from '../../services/channel-api.service';
 import { ChannelDebugApiService, type CommandStat, type CommandStats } from '../../services/channel-debug-api.service';
 import { apiErrorMessage } from '../../services/api-util';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
+import { ToastService } from '../../shared/toast/toast.service';
 import { reasonText } from '../../shared/feed/feed-format';
 import { formatNumber, plural, relativeTime } from '../../shared/format';
 import { ChannelWorkspaceService } from './channel-workspace.service';
+import { CommandEditorComponent, commandLabel, commandLevel, commandTrigger, type CommandSaved } from './command-editor.component';
 
 type SortKey = 'name' | 'used' | 'problems';
 const SORTS: Array<{ key: SortKey; label: string }> = [
@@ -56,13 +59,15 @@ export interface CommandRow {
   problems: number;
 }
 
-/** Commands tab: their commands, and how each ran in the last 7 days. */
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Commands tab: their commands, how each ran in the last 7 days, and editing them (owner access). */
 @Component({
   selector: 'app-channel-commands',
   templateUrl: './channel-commands.component.html',
   styleUrls: ['./channel-page.component.css', './channel-commands.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, IconComponent],
+  imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, IconComponent, ConfirmModalComponent, CommandEditorComponent],
 })
 export class ChannelCommandsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -71,6 +76,7 @@ export class ChannelCommandsComponent implements OnInit {
   private readonly channelApi = inject(ChannelApiService);
   private readonly debugApi = inject(ChannelDebugApiService);
   private readonly ws = inject(ChannelWorkspaceService);
+  private readonly toast = inject(ToastService);
   private statsSub?: Subscription;
 
   readonly sorts = SORTS;
@@ -85,7 +91,27 @@ export class ChannelCommandsComponent implements OnInit {
   readonly statsError = signal<string | null>(null);
   readonly openKeys = signal<ReadonlySet<string>>(new Set());
 
+  /** The open editor: `command` null = a new command. */
+  readonly editor = signal<{ command: ChannelCommand | null } | null>(null);
+  /** Commands whose on/off change is on its way. */
+  readonly toggling = signal<ReadonlySet<string>>(new Set());
+  readonly deleting = signal<ChannelCommand | null>(null);
+  readonly deleteBusy = signal(false);
+  readonly deleteError = signal<string | null>(null);
+  readonly deleteTitle = computed(() => {
+    const cmd = this.deleting();
+    return cmd ? `Delete ${commandLabel(cmd)}?` : 'Delete';
+  });
+  readonly deleteMessage = computed(() => {
+    const login = this.login();
+    return login
+      ? `It stops working in ${login}'s chat right away. There's no undo here, and ${login} isn't notified.`
+      : "It stops working in the channel's chat right away. There's no undo here, and the streamer isn't notified.";
+  });
+
   readonly channelID = this.ws.channelID;
+  /** The channel login: new commands store it, and the editor names it. */
+  readonly login = computed(() => this.ws.name() || this.commands().find((cmd) => cmd.channel)?.channel || '');
   private readonly query = toSignal(this.route.queryParamMap, { requireSync: true });
   readonly filter = computed(() => this.query().get('q') ?? '');
   readonly sort = computed<SortKey>(() => {
@@ -103,11 +129,12 @@ export class ChannelCommandsComponent implements OnInit {
   readonly rows = computed<CommandRow[]>(() => {
     const byName = this.statsByName();
     const rows: CommandRow[] = this.commands().map((cmd) => {
-      const stat = byName.get(cmd.cmd.toLowerCase()) ?? null;
-      return { key: cmd.id, cmd, trigger: cmd.cmd, stat, problems: stat ? stat.runs - stat.ok : 0 };
+      const trigger = commandTrigger(cmd);
+      const stat = byName.get(trigger.toLowerCase()) ?? null;
+      return { key: cmd.id, cmd, trigger, stat, problems: stat ? stat.runs - stat.ok : 0 };
     });
     if (this.totalPages() === 1) {
-      const known = new Set(this.commands().map((cmd) => cmd.cmd.toLowerCase()));
+      const known = new Set(this.commands().map((cmd) => commandTrigger(cmd).toLowerCase()));
       for (const stat of this.stats()?.commands ?? []) {
         if (!known.has(stat.name.toLowerCase())) {
           rows.push({ key: `stat:${stat.name}`, cmd: null, trigger: stat.name, stat, problems: stat.runs - stat.ok });
@@ -178,11 +205,14 @@ export class ChannelCommandsComponent implements OnInit {
     this.loadStats();
   }
 
-  loadCommands(page: number): void {
+  /** `quiet` keeps the list on screen while it refreshes (after a write). */
+  loadCommands(page: number, quiet = false): void {
     const channelID = this.channelID();
     if (!channelID) return;
-    this.isLoading.set(true);
-    this.error.set(null);
+    if (!quiet) {
+      this.isLoading.set(true);
+      this.error.set(null);
+    }
     this.channelApi
       .getChannelCommands(channelID, page, 100)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -195,7 +225,7 @@ export class ChannelCommandsComponent implements OnInit {
           this.isLoading.set(false);
         },
         error: (err) => {
-          this.error.set("Couldn't load commands");
+          if (!quiet) this.error.set("Couldn't load commands");
           this.isLoading.set(false);
           console.error('Error loading commands:', err);
         },
@@ -239,6 +269,117 @@ export class ChannelCommandsComponent implements OnInit {
     if (open) next.add(key);
     else next.delete(key);
     this.openKeys.set(next);
+  }
+
+  /** Who can use it, in the site's words. */
+  whoLabel(cmd: ChannelCommand): string {
+    if (cmd.permissionMode === 'tags') return 'Custom rule';
+    if (cmd.permissionMode === 'invalid') return 'Broken permission rule';
+    const level = Number.isInteger(cmd.userLevel) ? commandLevel(cmd) : null;
+    return (level && COMMAND_USER_LEVELS.find((item) => item.level === level)?.label) || cmd.userLevelName || 'Everyone';
+  }
+
+  openCreate(): void {
+    if (this.login()) this.editor.set({ command: null });
+  }
+
+  openEdit(cmd: ChannelCommand): void {
+    this.editor.set({ command: cmd });
+  }
+
+  onEditorSaved({ command, created }: CommandSaved): void {
+    const label = commandLabel(command);
+    if (!created) {
+      this.patch(command.id, command);
+      this.toast.success(`Saved ${label}`);
+      return;
+    }
+    this.toast.success(`${capitalize(label)} created`);
+    if (!command.id) {
+      this.loadCommands(this.currentPage(), true);
+      return;
+    }
+    this.commands.update((list) => [...list, command]);
+    this.totalItems.update((total) => total + 1);
+    this.openKeys.update((keys) => new Set(keys).add(command.id));
+  }
+
+  /** Turn on/off right away; put it back and say why when the API refuses. */
+  toggle(cmd: ChannelCommand): void {
+    if (this.toggling().has(cmd.id)) return;
+    const enabled = !cmd.enabled;
+    const label = commandLabel(cmd);
+    const failed = (message: string) => {
+      this.patch(cmd.id, { enabled: cmd.enabled });
+      this.toast.error(message);
+    };
+    this.patch(cmd.id, { enabled });
+    this.setToggling(cmd.id, true);
+    this.channelApi
+      .updateCommand(this.channelID(), cmd.id, { enabled })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response: CommandWriteResponse) => {
+          this.setToggling(cmd.id, false);
+          if (response?.error) failed(response.message || `Couldn't turn ${label} ${enabled ? 'on' : 'off'}.`);
+          else this.toast.success(`${capitalize(label)} turned ${enabled ? 'on' : 'off'}`);
+        },
+        error: (err) => {
+          this.setToggling(cmd.id, false);
+          failed(apiErrorMessage(err, `Couldn't turn ${label} ${enabled ? 'on' : 'off'}. Try again.`));
+        },
+      });
+  }
+
+  askDelete(cmd: ChannelCommand): void {
+    this.deleteError.set(null);
+    this.deleting.set(cmd);
+  }
+
+  cancelDelete(): void {
+    if (this.deleteBusy()) return;
+    this.deleting.set(null);
+    this.deleteError.set(null);
+  }
+
+  confirmDelete(): void {
+    const cmd = this.deleting();
+    if (!cmd || this.deleteBusy()) return;
+    const label = commandLabel(cmd);
+    const failed = (message: string) => {
+      this.deleteBusy.set(false);
+      this.deleteError.set(message);
+    };
+    this.deleteBusy.set(true);
+    this.deleteError.set(null);
+    this.channelApi
+      .deleteCommand(this.channelID(), cmd.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response: CommandWriteResponse) => {
+          if (response?.error) {
+            failed(response.message || `Couldn't delete ${label}. Try again.`);
+            return;
+          }
+          this.deleteBusy.set(false);
+          this.deleting.set(null);
+          this.commands.update((list) => list.filter((item) => item.id !== cmd.id));
+          this.totalItems.update((total) => Math.max(0, total - 1));
+          this.toast.success(`${capitalize(label)} deleted`);
+        },
+        error: (err) => failed(apiErrorMessage(err, `Couldn't delete ${label}. Try again.`)),
+      });
+  }
+
+  private patch(id: string, changes: Partial<ChannelCommand>): void {
+    this.commands.update((list) => list.map((item) => (item.id === id ? { ...item, ...changes } : item)));
+  }
+
+  private setToggling(id: string, busy: boolean): void {
+    const next = new Set(this.toggling());
+    if (busy) next.add(id);
+    else next.delete(id);
+    this.toggling.set(next);
   }
 
   cooldownLabel(seconds: number): string {

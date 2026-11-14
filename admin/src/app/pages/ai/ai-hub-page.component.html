@@ -237,6 +237,16 @@
                 <app-icon class="lf-row__chev" name="chevron" />
               </a>
             </li>
+            <li data-area="gifts">
+              <a class="lf-row hub-small__row" routerLink="/gifts">
+                <app-icon name="gift" />
+                <span class="lf-row__main"><span class="lf-row__title">Gifted credits</span></span>
+                @if (giftsStuck() > 0) {
+                  <span class="hub-small__count is-warn">{{ num(giftsStuck()) }} paid, not delivered</span>
+                }
+                <app-icon class="lf-row__chev" name="chevron" />
+              </a>
+            </li>
             @if (outOfCredits() > 0) {
               <li data-area="credits">
                 <a class="lf-row hub-small__row" routerLink="/users">

@@ -46,6 +46,8 @@ export interface GiftCheckout {
     total_amount: number;
     currency: string;
     metadata: Record<string, unknown>;
+    /** ISO time; Polar keeps a checkout open for 24 hours. */
+    expires_at?: string | null;
 }
 
 export interface GiftOrder {

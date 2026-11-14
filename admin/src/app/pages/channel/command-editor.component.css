@@ -1,0 +1,148 @@
+/* Command editor: bottom sheet on phones, centred card from 640px (dialog.lf-dialog). */
+/* The form only groups head, body and footer for submit; the dialog keeps its flex column. */
+.ced-form {
+  display: contents;
+}
+.ced .lf-dialog__body {
+  gap: 1.15rem;
+}
+.ced-intro {
+  color: var(--muted);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.ced .lf-step {
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+/* Trigger with a visible "!" that is never stored. */
+.ced-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.ced-trigger__bang {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.ced-trigger .lf-input {
+  font-family: var(--mono);
+}
+.ced-trigger--bang .lf-input {
+  padding-left: 1.45rem;
+}
+
+/* Locked fields: the value as text and why it can't change here. */
+.ced-locked {
+  padding: 0.6rem 0.85rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.ced-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+.ced-lock app-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.12rem;
+  color: var(--accent);
+}
+.ced-site {
+  justify-self: start;
+}
+/* 44px touch targets for the dialog's small buttons (close, site link). */
+.ced .lf-btn--sm {
+  min-height: 2.75rem;
+}
+.ced .lf-btn--sm.lf-btn--icon {
+  width: 2.75rem;
+}
+
+.ced-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ced-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ced-count--over {
+  color: var(--danger);
+  font-weight: 700;
+}
+.ced-reply {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.ced-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+.ced-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile-2);
+  cursor: pointer;
+}
+.ced-switch__text {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+/* "More options" sits flush with the fields instead of the list gutters. */
+.ced .lf-more {
+  margin-top: -0.25rem;
+}
+.ced .lf-more > summary,
+.ced .lf-more__body {
+  padding-inline: 0;
+}
+.ced-more__body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ced-server {
+  flex-shrink: 0;
+  margin: 0 1rem 0.75rem;
+}
+
+@media (min-width: 400px) {
+  .ced-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+@media (min-width: 640px) {
+  .ced-server {
+    margin-inline: 1.35rem;
+  }
+}

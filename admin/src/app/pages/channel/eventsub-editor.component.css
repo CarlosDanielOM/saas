@@ -1,0 +1,91 @@
+/* Edit a channel's chat settings for one Twitch event (bottom sheet on phones, centred card from 640px). */
+.ed-title {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.ed-title h2 {
+  overflow-wrap: anywhere;
+}
+/* The close button keeps a 44px target (the page's small-button rule doesn't reach this component). */
+.lf-dialog__head .lf-btn--icon {
+  width: 2.75rem;
+  min-height: 2.75rem;
+}
+.ed-type {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+.ed-lead {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.ed-off {
+  color: var(--warn);
+  font-weight: 650;
+}
+.ed-text {
+  min-height: 5.75rem;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+.ed-number {
+  max-width: 10rem;
+}
+.ed-help {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.ed-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ed-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ed-site {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--tile-2);
+  font-size: 0.88rem;
+}
+.ed-site a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.75rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.ed-site app-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.ed-error {
+  flex: 1 1 100%;
+  margin: 0;
+}
+@media (min-width: 640px) {
+  dialog.ed-dialog {
+    width: min(36rem, calc(100% - 2rem));
+  }
+}

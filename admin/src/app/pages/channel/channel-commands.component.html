@@ -49,6 +49,7 @@
           <app-icon name="command" />
           <strong>No commands yet</strong>
           <p>This streamer hasn't created any chat commands.</p>
+          <button type="button" class="lf-btn lf-btn--primary cmd-new" [disabled]="!login()" (click)="openCreate()"><app-icon name="plus" />New command</button>
         </div>
       } @else if (!error()) {
         <div class="cmd-tools">
@@ -77,6 +78,9 @@
             @if (offCount()) {
               <span class="cmd-tools__count">{{ offCount() }} turned off{{ totalPages() > 1 ? ' on this page' : '' }}</span>
             }
+            <button type="button" class="lf-btn lf-btn--primary lf-btn--sm cmd-new" [disabled]="!login()" (click)="openCreate()">
+              <app-icon name="plus" />New command
+            </button>
           </div>
         </div>
         @if (visibleRows().length === 0) {
@@ -113,7 +117,7 @@
 
 <ng-template #commandRow let-row>
   <li class="cmd-item" [class.row-off]="row.cmd && !row.cmd.enabled" [attr.data-command]="row.trigger">
-    <details class="cmd-details" (toggle)="onToggle(row.key, $event)">
+    <details class="cmd-details" [open]="openKeys().has(row.key)" (toggle)="onToggle(row.key, $event)">
       <summary class="lf-row cmd-row">
         <div class="lf-row__main">
           <span class="lf-row__title">
@@ -122,7 +126,12 @@
               @if (!cmd.enabled) {
                 <span class="lf-chip lf-chip--muted">Off</span>
               }
-              <span class="cmd-rules">{{ cmd.userLevelName || 'Everyone' }} · {{ cooldownLabel(cmd.cooldown) }}</span>
+              @if (cmd.activation === 'keyword') {
+                <span class="lf-chip lf-chip--muted">Keyword</span>
+              } @else if (cmd.reserved) {
+                <span class="lf-chip lf-chip--muted">Built-in</span>
+              }
+              <span class="cmd-rules">{{ whoLabel(cmd) }} · {{ cooldownLabel(cmd.cooldown) }}</span>
             }
           </span>
           @if (row.cmd?.message) {
@@ -144,13 +153,24 @@
       </summary>
       @if (openKeys().has(row.key)) {
         <div class="cmd-body" data-command-body>
+          @if (row.cmd; as cmd) {
+            <div class="cmd-actions" role="group" [attr.aria-label]="'Change ' + row.trigger">
+              <button type="button" class="lf-btn lf-btn--sm" (click)="openEdit(cmd)" data-action="edit">Edit</button>
+              <button type="button" class="lf-btn lf-btn--sm" [disabled]="toggling().has(cmd.id)" (click)="toggle(cmd)" data-action="toggle">
+                <app-icon name="power" />{{ cmd.enabled ? 'Turn off' : 'Turn on' }}
+              </button>
+              @if (!cmd.reserved) {
+                <button type="button" class="lf-btn lf-btn--sm lf-btn--danger" (click)="askDelete(cmd)" data-action="delete">Delete</button>
+              }
+            </div>
+          }
           @if (row.cmd?.message) {
             <p class="lf-quote">{{ row.cmd.message }}</p>
           }
           <dl class="lf-dl cmd-facts">
             @if (row.cmd; as cmd) {
               <div><dt>Status</dt><dd>{{ cmd.enabled ? 'On' : 'Turned off' }}</dd></div>
-              <div><dt>Who can use it</dt><dd>{{ cmd.userLevelName || 'Everyone' }}</dd></div>
+              <div><dt>Who can use it</dt><dd>{{ whoLabel(cmd) }}</dd></div>
               <div><dt>Cooldown</dt><dd>{{ cooldownLong(cmd.cooldown) }}</dd></div>
               @if (cmd.name) {
                 <div><dt>Name</dt><dd>{{ cmd.name }}</dd></div>
@@ -191,3 +211,20 @@
     </details>
   </li>
 </ng-template>
+
+@if (editor(); as open) {
+  <app-command-editor [command]="open.command" [channelID]="channelID()" [login]="login()" (saved)="onEditorSaved($event)" (closed)="editor.set(null)" />
+}
+
+<app-confirm-modal
+  [open]="!!deleting()"
+  [title]="deleteTitle()"
+  [message]="deleteMessage()"
+  [warning]="deleteError()"
+  confirmLabel="Delete"
+  busyLabel="Deleting…"
+  [isDanger]="true"
+  [loading]="deleteBusy()"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()"
+/>
