@@ -19,7 +19,7 @@ mock.module('./service.js', { namedExports: {
         if (token === limited) return { ...identity, scopes: ['profile:read'] };
         throw new OAuthError('invalid_token', 401);
     },
-    rateLimit: async () => {}, oauthWebsite: () => 'https://domdimabot.com', oauthIssuer: () => 'https://api.domdimabot.com',
+    rateLimit: async () => {}, hash: (value: string) => value, oauthWebsite: () => 'https://domdimabot.com', oauthIssuer: () => 'https://api.domdimabot.com',
     approveAuthorization: idle, exchangeCode: idle, getAuthorization: idle, getClient: idle, refreshAccess: idle,
     revokeSession: idle, revokeToken: idle, startAuthorization: idle
 } });
