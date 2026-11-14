@@ -260,9 +260,18 @@ assert.equal(result.status, 429, 'exhausted client is limited');
 assert.equal(result.headers.get('retry-after'), '60');
 assert.equal((await call('/oauth/metadata', { headers: edge('203.0.113.8') })).status, 200, 'clients behind the same edge keep their own bucket');
 assert.equal((await call('/oauth/metadata')).status, 200, 'direct callers use the socket address');
-await redis.set(rateKey('oauth:untrusted'), '600', { EX: 60 });
-assert.equal((await call('/oauth/metadata', { headers: { 'X-Real-IP': '192.0.2.9', 'CF-Connecting-IP': '203.0.113.9' } })).status, 429,
-  'conflicting proxy headers share one bucket');
+// Conflicting headers count both addresses (under conflict:), so rotating the forged one never escapes the true one,
+// and a forged value never drains the bucket of a client whose headers agree.
+await redis.set(rateKey('oauth:conflict:cf:203.0.113.9'), '600', { EX: 60 });
+for (const forged of ['192.0.2.9', '192.0.2.10']) {
+  assert.equal((await call('/oauth/metadata', { headers: { 'X-Real-IP': forged, 'CF-Connecting-IP': '203.0.113.9' } })).status, 429,
+    'rotating a forged header keeps counting the true address');
+}
+assert.equal((await call('/oauth/metadata', { headers: edge('203.0.113.9') })).status, 200, 'forged values never drain an agreeing client');
+// IPv6 clients are limited per /64.
+await redis.set(rateKey('oauth:2001:db8:1:2::/64'), '600', { EX: 60 });
+assert.equal((await call('/oauth/metadata', { headers: edge('2001:db8:1:2::abcd') })).status, 429, 'rotating inside a /64 gains nothing');
+assert.equal((await call('/oauth/metadata', { headers: edge('2001:db8:1:3::1') })).status, 200, 'the next /64 is another client');
 const cappedToken = `dima_at_${rand()}`;
 await redis.set(rateKey(`desktop-token:${digest(cappedToken)}`), '1200', { EX: 60 });
 assert.equal((await call('/v1/me', { headers: { ...edge('203.0.113.10'), Authorization: `Bearer ${cappedToken}` } })).status, 429,

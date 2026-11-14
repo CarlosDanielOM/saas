@@ -5,7 +5,7 @@ import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { getAiCredits } from '../../utils/billing.js';
 import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
-import { clientIp } from '../../utils/client_ip.js';
+import { clientIps } from '../../utils/client_ip.js';
 import { getPetConfiguration, PetSettingsError } from '../services/pet_settings.service.js';
 import { PetError, cancelPetRequest } from '../../pets/state.js';
 import { getPetRuntime } from '../../pets/runtime.js';
@@ -95,7 +95,9 @@ const errorHandler = (realm: string) => (error: unknown, req: Request, res: Resp
 
 export const oauthRoute = express.Router();
 oauthRoute.use(oauthBoundary);
-oauthRoute.use((req, _res, next) => { void rateLimit(`oauth:${clientIp(req)}`, 600).then(() => next(), next); });
+oauthRoute.use((req, _res, next) => {
+    void (async () => { for (const ip of clientIps(req)) await rateLimit(`oauth:${ip}`, 600); })().then(() => next(), next);
+});
 
 export function oauthMetadata(_req: Request, res: Response) {
     res.set('Cache-Control', 'no-store');
@@ -195,9 +197,12 @@ export const oauthApiRoute = express.Router();
 oauthApiRoute.use(oauthBoundary);
 oauthApiRoute.use((req, _res, next) => {
     // Per installation too: one token cannot drain an IP shared by many users (NAT), nor rotate IPs to escape.
+    // IP budget first, so requests it refuses create no per-token counters.
     const token = req.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
-    void Promise.all([rateLimit(`desktop:${clientIp(req)}`, 1200),
-        token && rateLimit(`desktop-token:${hash(token)}`, 1200)]).then(() => next(), next);
+    void (async () => {
+        for (const ip of clientIps(req)) await rateLimit(`desktop:${ip}`, 1200);
+        if (token) await rateLimit(`desktop-token:${hash(token)}`, 1200);
+    })().then(() => next(), next);
 });
 oauthApiRoute.get('/me', asyncRoute(async (req, res) => {
     const identity = await access(req, 'profile:read');

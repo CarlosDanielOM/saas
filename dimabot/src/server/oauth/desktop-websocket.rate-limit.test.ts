@@ -41,7 +41,7 @@ test('handshakes are limited per real client, not per proxy', async () => {
     assert.equal(await connect({ 'X-Real-IP': '162.158.10.1', 'CF-Connecting-IP': '203.0.113.7' }), 101);
     assert.equal(await connect({ 'X-Real-IP': '2606:4700::1', 'CF-Connecting-IP': '2001:db8::7' }), 101);
     assert.equal(await connect(), 101);
-    assert.deepEqual(buckets, ['ws:203.0.113.7', 'ws:2001:db8::7', 'ws:127.0.0.1']);
+    assert.deepEqual(buckets, ['ws:203.0.113.7', 'ws:2001:db8:0:0::/64', 'ws:127.0.0.1']);
 });
 
 test('a limited client is refused before token lookup; its neighbours are not', async () => {
@@ -51,7 +51,7 @@ test('a limited client is refused before token lookup; its neighbours are not', 
     assert.equal(await connect({ 'X-Real-IP': '162.158.10.1', 'CF-Connecting-IP': '203.0.113.8' }), 101);
 });
 
-test('rotating a spoofed header shares one bucket', async () => {
+test('rotating a spoofed header keeps counting the true address', async () => {
     for (const forged of ['192.0.2.1', '192.0.2.2']) await connect({ 'X-Real-IP': forged, 'CF-Connecting-IP': '203.0.113.7' });
-    assert.deepEqual(buckets, ['ws:untrusted', 'ws:untrusted']);
+    assert.deepEqual(buckets, ['ws:conflict:real:192.0.2.1', 'ws:conflict:cf:203.0.113.7', 'ws:conflict:real:192.0.2.2', 'ws:conflict:cf:203.0.113.7']);
 });

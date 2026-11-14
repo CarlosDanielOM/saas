@@ -1,7 +1,7 @@
 import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { authenticateAccess, oauthWebsite, rateLimit, hash } from './service.js';
-import { clientIp } from '../../utils/client_ip.js';
+import { clientIps } from '../../utils/client_ip.js';
 
 /** A native WebSocket protocol, deliberately separate from browser Socket.IO namespaces. */
 export function attachDesktopWebsocket(server: Server): void {
@@ -26,7 +26,7 @@ export function attachDesktopWebsocket(server: Server): void {
         void (async () => {
             if (url.search || (req.headers.origin && req.headers.origin !== oauthWebsite())) return reject(403);
             if (!req.headers['sec-websocket-protocol']?.split(',').map(value => value.trim()).includes('dima.desktop.v1')) return reject(426);
-            await rateLimit(`ws:${clientIp(req)}`, 120);
+            for (const ip of clientIps(req)) await rateLimit(`ws:${ip}`, 120);
             const token = req.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
             const identity = await authenticateAccess(token);
             if (!identity.scopes.includes('desktop:connect')) return reject(403);

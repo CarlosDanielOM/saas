@@ -99,12 +99,14 @@ test('an exhausted IP is refused for every token', async () => {
     const response = await fetch(`${base}/v1/me/ai/capabilities`, { headers: { ...viaCloudflare('203.0.113.7'), Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 429);
     assert.equal(authenticated, 0);
+    assert.deepEqual(buckets, ['desktop:203.0.113.7'], 'a request the IP limit refuses creates no per-token counter');
     assert.equal((await fetch(`${base}/v1/me/ai/capabilities`, { headers: { ...viaCloudflare('203.0.113.8'), Authorization: `Bearer ${token}` } })).status, 200);
 });
 
-test('rotating a spoofed header shares one bucket', async () => {
+test('rotating a spoofed header keeps counting the true address', async () => {
     for (const forged of ['192.0.2.1', '192.0.2.2']) {
         await fetch(`${base}/oauth/metadata`, { headers: { 'X-Real-IP': forged, 'CF-Connecting-IP': '203.0.113.7' } });
     }
-    assert.deepEqual(buckets, ['oauth:untrusted', 'oauth:untrusted']);
+    assert.deepEqual(buckets, ['oauth:conflict:real:192.0.2.1', 'oauth:conflict:cf:203.0.113.7',
+        'oauth:conflict:real:192.0.2.2', 'oauth:conflict:cf:203.0.113.7']);
 });

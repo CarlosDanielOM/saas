@@ -27,20 +27,32 @@ export function normalizeIp(value: unknown): string {
     try { return new URL(`http://[${ip}]/`).hostname.slice(1, -1); } catch { return ''; }
 }
 
+/** Limiter identity of an address: IPv4 as is, IPv6 by its /64 (one subscriber's block), so rotating inside it gains nothing. */
+export function ipBucket(ip: string): string {
+    if (isIP(ip) !== 6) return ip;
+    // normalizeIp output: canonical lowercase hex, at most one `::`, no dotted tail.
+    const [head, tail] = ip.split('::');
+    const left = head ? head.split(':') : [], right = tail ? tail.split(':') : [];
+    const groups = tail === undefined ? left : [...left, ...Array(8 - left.length - right.length).fill('0'), ...right];
+    return `${groups.slice(0, 4).join(':')}::/64`;
+}
+
 /**
- * Client address for rate limits (Express requests and raw WebSocket upgrades). NPM overwrites X-Real-IP with its
- * own peer. Cloudflare sends no X-Real-IP, so for proxied traffic that peer is a Cloudflare edge and the client is in
- * CF-Connecting-IP, which Cloudflare overwrites. Any other X-Real-IP is either a direct origin hit (true, while
- * CF-Connecting-IP is forgeable) or a client-sent X-Real-IP that NPM's real_ip accepted from Cloudflare (forged, while
- * CF-Connecting-IP is true). When they disagree neither is trusted: they share one bucket, so rotating a header never
- * buys a fresh one.
+ * Rate-limit identities for a request (Express requests and raw WebSocket upgrades); every one must have budget.
+ * NPM overwrites X-Real-IP with its own peer. Cloudflare sends no X-Real-IP, so for proxied traffic that peer is a
+ * Cloudflare edge and the client is in CF-Connecting-IP, which Cloudflare overwrites. Any other X-Real-IP is either a
+ * direct origin hit (true, while CF-Connecting-IP is forgeable) or a client-sent X-Real-IP that NPM's real_ip accepted
+ * from Cloudflare (forged, while CF-Connecting-IP is true). When they disagree we cannot tell which is true, so both
+ * count: the true one keeps limiting whoever rotates the forged one. They live under `conflict:` so a forged value can
+ * never drain the bucket of a client whose headers agree.
  */
-export function clientIp(req: IncomingMessage): string {
+export function clientIps(req: IncomingMessage): string[] {
     const peer = normalizeIp(req.socket.remoteAddress);
-    if (!peer || !within(PRIVATE, peer)) return peer || 'unknown';
+    if (!peer || !within(PRIVATE, peer)) return [peer ? ipBucket(peer) : 'unknown'];
     const proxy = normalizeIp(req.headers['x-real-ip']);
-    if (!proxy) return peer;
+    if (!proxy) return [ipBucket(peer)];
     const client = normalizeIp(req.headers['cf-connecting-ip']);
-    if (within(CLOUDFLARE, proxy)) return client || proxy;
-    return !client || client === proxy ? proxy : 'untrusted';
+    if (within(CLOUDFLARE, proxy)) return [ipBucket(client || proxy)];
+    if (!client || client === proxy) return [ipBucket(proxy)];
+    return [`conflict:real:${ipBucket(proxy)}`, `conflict:cf:${ipBucket(client)}`];
 }
