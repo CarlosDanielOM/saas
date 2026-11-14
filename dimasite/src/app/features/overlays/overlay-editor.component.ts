@@ -22,7 +22,10 @@ import { BitsRulesService } from '../bits-rules/bits-rules.service';
 import { amountText, matchBitsRule } from '../bits-rules/bits-rules.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
 import type { AlertTransport } from './overlay-sound.component';
-import type { AlertSound } from './overlay.model';
+import { MAX_ALERT_SOUNDS, layoutSounds, withDesignSoundLists, type AlertSound } from './overlay.model';
+import { OverlaySoundsComponent, type SoundEdit } from './overlay-sounds.component';
+import { OverlayVideoPlaybackComponent } from './overlay-video-playback.component';
+import { SOUND_ROW } from './overlay-timeline.component';
 import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
@@ -76,9 +79,10 @@ function withTime<T extends object>(target: T, field: string, value: number | un
   return next as T;
 }
 const tenthsUp = (n: number) => Math.ceil(n * 10 - 1e-6) / 10;
+const NO_SOUNDS: readonly AlertSound[] = [];
 const tenthsDown = (n: number) => Math.floor(n * 10 + 1e-6) / 10;
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
+  selector: 'app-overlay-editor', imports: [OverlaySceneRendererComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent,  OverlayQueueComponent, RouterLink, LucideAngularModule,  OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent,  OverlayTriggerFilterComponent, OverlayCustomWidgetImportComponent, OverlayCustomWidgetCodeComponent, OverlaySoundsComponent, OverlayVideoPlaybackComponent], providers: [OverlayTestMediaService, OverlayDraftStorage, EditorWidgetEnv, { provide: CUSTOM_WIDGET_ENV, useExisting: EditorWidgetEnv }],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -131,9 +135,9 @@ export class OverlayEditorComponent {
   readonly customCodeOpen = signal(false);
   readonly customError = signal('');
   readonly customBusy = signal('');
-  readonly soundPickerOpen = signal(false);
-  readonly soundPercent = computed(() => Math.round((this.alertSound()?.volume ?? 1) * 100));
-  readonly alertSound = computed(() => this.editingLayout()?.sound);
+  /** The audio picker is open to add a sound or to replace the file of one sound (any id is valid, so the mode is explicit). */
+  readonly soundPicker = signal<{ mode: 'add' } | { mode: 'replace'; id: string } | null>(null);
+  readonly alertSounds = computed(() => this.editingLayout()?.sounds ?? NO_SOUNDS);
   readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
   private disposed = false;
   readonly language = inject(LanguageService);
@@ -757,28 +761,22 @@ export class OverlayEditorComponent {
     return end >= duration ? undefined : end;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
+  /** A file picked for the sounds panel: a new sound (default settings), or a new file that keeps the sound's timing. */
   useSound(asset: DesignAsset): void {
-    if (asset.kind !== 'audio') return;
-    this.setSound({ assetId: asset.id, name: asset.name, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }); this.soundPickerOpen.set(false);
+    const target = this.soundPicker(); this.soundPicker.set(null);
+    if (asset.kind !== 'audio' || target === null) return;
+    if (target.mode === 'add') {
+      const sounds = this.alertSounds(); if (sounds.length >= MAX_ALERT_SOUNDS) return;
+      const ids = new Set(sounds.map(s => s.id)); let n = sounds.length + 1; while (ids.has('sound-' + n)) n++;
+      this.changeSounds(all => [...all, { id: 'sound-' + n, assetId: asset.id, name: asset.name, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }], null);
+    } else this.changeSounds(all => all.map(s => s.id === target.id ? { ...s, assetId: asset.id, name: asset.name } : s), null);
   }
-  setSound(sound: AlertSound | undefined): void {
+  /** One sound's settings from the panel; typing in one field (or dragging the volume) stays one undo step. */
+  setSound(change: SoundEdit): void { this.changeSounds(all => all.map(s => s.id === change.id ? withTime(s, change.field, change.value) : s)); }
+  removeSound(id: string): void { this.changeSounds(all => all.filter(s => s.id !== id), null); }
+  private changeSounds(update: (sounds: AlertSound[]) => AlertSound[], group?: object | string | null): void {
     this.resetSimulation();
-    this.updateLayout(layout => ({...layout, sound}));
-  }
-  soundValue(field: 'volume' | 'delay' | 'fadeIn' | 'fadeOut', event: Event): void {
-    const sound = this.alertSound(), value = Number(this.value(event)); if (!sound || !Number.isFinite(value)) return;
-    const max = field === 'volume' ? 1 : field === 'delay' ? (sound.end === undefined ? 120 : Math.max(0, tenthsDown(sound.end - .1))) : 10;
-    const next = Math.max(0, Math.min(max, field === 'volume' ? value / 100 : value));
-    this.setSound({ ...sound, [field]: next });
-    // Same as object times: a clamped number field shows what was kept (the volume slider is its own readout).
-    if (field !== 'volume') (event.target as HTMLInputElement).value = String(next);
-  }
-  /** "Stops at": same rules as an object's "Ends at". */
-  soundEnd(event: Event): void {
-    const sound = this.alertSound(); if (!sound) return;
-    const end = this.typedEnd(event, sound.delay); if (end === null) return;
-    this.setSound(withTime(sound, 'end', end));
-    (event.target as HTMLInputElement).value = end === undefined ? '' : String(end);
+    this.edit(() => this.updateLayout(layout => { const { sounds: _sounds, sound: _legacy, ...rest } = layout, sounds = update(layoutSounds(layout)); return sounds.length ? { ...rest, sounds } : rest; }), group === undefined ? this.historyGroup() : group);
   }
   useAsset(asset: DesignAsset): void {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
@@ -1160,7 +1158,7 @@ export class OverlayEditorComponent {
   }
   private async prepareAssets(layouts: AlertLayout[],valid: () => boolean = () => true): Promise<Map<string,PreparedAsset>> {
     const generation = this.playbackGeneration;
-    const ids = new Set(layouts.flatMap(layout => [...layout.widgets.filter(w => w.visible && (w.kind === 'image' || w.kind === 'video') && w.assetId).map(w => w.assetId!),...(layout.sound ? [layout.sound.assetId] : [])]));
+    const ids = new Set(layouts.flatMap(layout => [...layout.widgets.filter(w => w.visible && (w.kind === 'image' || w.kind === 'video') && w.assetId).map(w => w.assetId!),...layoutSounds(layout).flatMap(sound => sound.assetId ?? [])]));
     const assets = new Map<string,PreparedAsset>();
     const sources = await Promise.all([...ids].map(async id => {
       // Reusing a recent link keeps the bytes the cache already holds; links last 15 minutes.
@@ -1249,8 +1247,9 @@ export class OverlayEditorComponent {
   closeTimeline(): void { this.previewPreparations.get('timeline')?.abort(); if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
   editTimeline(change: TimelineEdit): void {
     this.resetSimulation();
-    this.edit(() => this.updateLayout(layout => change.id === '$sound'
-      ? { ...layout, sound: layout.sound ? withTime(layout.sound, change.field, change.value) : undefined }
+    const sound = change.id.startsWith(SOUND_ROW) ? change.id.slice(SOUND_ROW.length) : null;
+    this.edit(() => this.updateLayout(layout => sound !== null
+      ? { ...layout, sounds: layoutSounds(layout).map(s => s.id === sound ? withTime(s, change.field, change.value) : s) }
       : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: withTime(w.motion ?? defaultMotion(w.kind), change.field, change.value) } : w) }), 'timeline:' + change.id + ':' + change.field);
   }
   async testDesign(): Promise<void> {
@@ -1348,13 +1347,16 @@ export class OverlayEditorComponent {
     if (this.busy() || !this.channel) return false;
     this.stopPointer(); this.endHistoryGroup();
     this.busy.set(true); this.error.set('');
-    try { this.accept(await this.api.save(this.channel, { schemaVersion: 1, revision: this.revision, scenes: this.scenes(), designs: this.designs() })); return true; }
+    // writer 2: `sounds` is authoritative; the editor never sends the legacy `sound` key.
+    try { this.accept(await this.api.save(this.channel, { schemaVersion: 1, writer: 2, revision: this.revision, scenes: this.scenes(), designs: this.designs() })); return true; }
     catch (e) { this.report(e); return false; } finally { this.busy.set(false); }
   }
   private accept(state: StudioState, preserveRecovery = false): void {
     if (this.disposed) return;
     this.rememberServerState(state);
-    this.revision = state.revision; this.scenes.set(state.scenes); this.designs.set(state.designs.map(withoutLegacyBitsLooks));
+    this.revision = state.revision; this.scenes.set(state.scenes);
+    // The API answers with `sounds` plus a legacy mirror `sound` (for OBS pages on the old renderer); the editor keeps `sounds` only.
+    this.designs.set(state.designs.map(design => withDesignSoundLists(withoutLegacyBitsLooks(design))));
     if (!state.scenes.some(s => s.id === this.sceneId())) this.sceneId.set(state.scenes[0].id);
     this.loaded.set(true);
     this.savedDocument.set(this.documentFingerprint());
@@ -1386,7 +1388,7 @@ export class OverlayEditorComponent {
     const existingIds = new Set(this.scenes().map(s => s.id));
     this.recoveryRequestId ??= crypto.randomUUID();
     try {
-      const state = await this.api.request<StudioState>('POST', `${this.channel}/recover`, { recoveryId: this.recoveryRequestId, scenes: this.scenes(), designs });
+      const state = await this.api.request<StudioState>('POST', `${this.channel}/recover`, { recoveryId: this.recoveryRequestId, writer: 2, scenes: this.scenes(), designs });
       const copy = state.scenes.find(s => !existingIds.has(s.id) && s.id.startsWith('recovered-'));
       this.designDraft.set(null); this.accept(state); this.history.clear();
       if (copy) this.switchScene(copy.id);
@@ -1479,15 +1481,15 @@ export class OverlayEditorComponent {
     if (snapshot) this.restoreEdit(snapshot, 'redone');
   }
   private restoreEdit(snapshot: OverlayEditSnapshot, notice: string): void {
-    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false); this.soundPickerOpen.set(false);
+    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false); this.soundPicker.set(null);
     this.confirmRotate.set(false); this.confirmDelete.set(false);
     this.scenes.set(snapshot.document.scenes.map(scene => {
       const remote = this.serverScenes.get(scene.id);
       return { ...scene, publicId: remote?.publicId ?? '', revision: remote?.revision ?? 0, ...(remote?.published ? { published: remote.published } : {}) };
     }));
-    this.designs.set(snapshot.document.designs.map(design => ({ ...design, revision: this.serverDesigns.get(design.id)?.revision ?? 1 })));
+    this.designs.set(snapshot.document.designs.map(design => withDesignSoundLists({ ...design, revision: this.serverDesigns.get(design.id)?.revision ?? 1 })));
     const draft = snapshot.document.designDraft;
-    this.designDraft.set(draft ? { ...draft, revision: this.serverDesigns.get(draft.id)?.revision ?? 1 } : null);
+    this.designDraft.set(draft ? withDesignSoundLists({ ...draft, revision: this.serverDesigns.get(draft.id)?.revision ?? 1 }) : null);
     this.sceneId.set(snapshot.sceneId); this.designEvent.set(snapshot.designEvent); this.variantId.set(snapshot.variantId ?? null);
     this.selectedId.set(this.widgets().some(widget => widget.id === snapshot.selectedId) ? snapshot.selectedId : this.widgets()[0]?.id ?? null);
     this.saved.set(!this.dirty()); this.notice.set(notice); this.flushRecovery();
@@ -1499,7 +1501,7 @@ export class OverlayEditorComponent {
     if (key !== 'z' && key !== 'y') return;
     const target = event.target instanceof Element ? event.target : null;
     if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]')) return;
-    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPickerOpen()) return;
+    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPicker() !== null) return;
     event.preventDefault();
     if (key === 'y' || event.shiftKey) this.redo(); else this.undo();
   }
@@ -1514,7 +1516,7 @@ export class OverlayEditorComponent {
     return JSON.stringify(draft);
   }
   private localDraft(): LocalOverlayDraft {
-    return { schemaVersion: 1, channelID: this.channel, updatedAt: Date.now(), revision: this.revision,
+    return { schemaVersion: 1, writer: 2, channelID: this.channel, updatedAt: Date.now(), revision: this.revision,
       scenes: this.scenes().map(({ publicId: _publicId, published: _published, revision: _revision, ...draft }) => draft),
       designs: this.designs(), designDraft: this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), variantId: this.variantId(), selectedId: this.selectedId() };
   }
@@ -1559,7 +1561,7 @@ export class OverlayEditorComponent {
       const saved = this.loaded() ? remote.find(s => s.id === scene.id) : undefined;
       return { ...scene, publicId: saved?.publicId ?? '', revision: saved?.revision ?? 0, ...(saved?.published ? { published: saved.published } : {}) };
     }));
-    this.designs.set(draft.designs.map(withoutLegacyBitsLooks)); this.designDraft.set(draft.designDraft && withoutLegacyBitsLooks(draft.designDraft)); this.sceneId.set(draft.sceneId);
+    this.designs.set(draft.designs.map(design => withDesignSoundLists(withoutLegacyBitsLooks(design)))); this.designDraft.set(draft.designDraft && withDesignSoundLists(withoutLegacyBitsLooks(draft.designDraft))); this.sceneId.set(draft.sceneId);
     this.designEvent.set(draft.designEvent); this.variantId.set(draft.variantId ?? null); this.selectedId.set(draft.selectedId); this.revision = draft.revision;
     this.history.clear();
     this.loaded.set(true); this.recovered.set(true); this.saved.set(false);

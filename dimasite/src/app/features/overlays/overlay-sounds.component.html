@@ -1,0 +1,38 @@
+<section class="sounds" [attr.aria-label]="t('alertSounds')">
+  <div class="sounds__head">
+    <span class="sounds__icon" aria-hidden="true"><lucide-icon [img]="icons.Volume2" [size]="17" /></span>
+    <strong class="sounds__title">{{ t('alertSounds') }}@if (sounds().length) { <span class="sounds__count">{{ sounds().length }}/{{ max }}</span> }</strong>
+    <button type="button" class="sounds__btn sounds__add" [disabled]="disabled() || full()" [attr.aria-describedby]="full() ? 'sounds-full' : null" (click)="add.emit()"><lucide-icon [img]="icons.Plus" [size]="16" aria-hidden="true" />{{ t('addSound') }}</button>
+  </div>
+  @if (!sounds().length) { <p class="sounds__note">{{ t('soundHint') }}</p> }
+  @else {
+    <ul class="sounds__list">
+      @for (sound of sounds(); track sound.id ?? $index; let i = $index) {
+        @let open = openId() === sound.id;
+        <li class="sound" [class.sound--open]="open" [attr.data-sound-id]="sound.id">
+          <div class="sound__row">
+            <button type="button" class="sound__main" [attr.aria-expanded]="open" (click)="toggle(sound.id!)">
+              <span class="sound__text"><span class="sound__name">{{ name(sound, i) }}</span><small>{{ summary(sound) }}</small></span>
+              <lucide-icon class="sound__chev" [img]="icons.ChevronDown" [size]="16" aria-hidden="true" />
+            </button>
+            <button type="button" class="sounds__btn sound__remove" [disabled]="disabled()" [attr.aria-label]="t('removeSound') + ' · ' + name(sound, i)" [title]="t('removeSound')" (click)="removed.emit(sound.id!)"><lucide-icon [img]="icons.Trash2" [size]="16" aria-hidden="true" /></button>
+          </div>
+          @if (open) {
+            <div class="sound__settings">
+              <label class="field field--wide"><span>{{ t('soundVolume') }} · {{ percent(sound) }}%</span><input class="range" type="range" min="0" max="100" step="1" [style.--pct]="sound.volume" [value]="sound.volume * 100" [disabled]="disabled()" (input)="setValue(sound, 'volume', $event)" /></label>
+              <div class="sound__times">
+                <label class="field"><span>{{ t('soundDelay') }}</span><input type="number" inputmode="decimal" min="0" max="120" step="0.1" [value]="sound.delay" [disabled]="disabled()" (change)="setValue(sound, 'delay', $event)" /></label>
+                <label class="field"><span>{{ t('soundFadeIn') }}</span><input type="number" inputmode="decimal" min="0" max="10" step="0.1" [value]="sound.fadeIn" [disabled]="disabled()" (change)="setValue(sound, 'fadeIn', $event)" /></label>
+                <label class="field"><span>{{ t('soundFadeOut') }}</span><input type="number" inputmode="decimal" min="0" max="10" step="0.1" [value]="sound.fadeOut" [disabled]="disabled()" (change)="setValue(sound, 'fadeOut', $event)" /></label>
+                <label class="field"><span>{{ t('soundEnd') }}</span><input type="number" inputmode="decimal" min="0.1" max="120" step="0.1" [placeholder]="t('timeWithAlert')" [value]="sound.end ?? ''" [disabled]="disabled()" (change)="setEnd(sound, $event)" /></label>
+              </div>
+              <p class="sounds__note">{{ t('soundTimingHint') }}</p>
+              <button type="button" class="sounds__btn sound__replace" [disabled]="disabled()" (click)="replace.emit(sound.id!)">{{ t('changeSound') }}</button>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+  @if (full()) { <p class="sounds__note" id="sounds-full">{{ t('soundLimit', { max }) }}</p> }
+</section>

@@ -7,6 +7,8 @@ import { LinksService } from '../../services/links.service';
 import type { AlertDesign, OverlayScene, AlertEvent } from './overlay.model';
 export interface StudioState {
   schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[];
+  /** Save bodies only: 2 = this editor (layouts carry `sounds`; the legacy `sound` key is never sent). */
+  writer?: number;
   /** Server responses only: per overlay, whether OBS already plays its saved draft (publishing would change nothing). */
   live?: Record<string, boolean>;
 }

@@ -30,6 +30,9 @@ function waveResponse(route,bytes=wave,mime='audio/wav') {
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const errors = [];
 async function until(predicate, label, tries = 200) { for (let i = 0; i < tries; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error('Timed out: ' + label); }
+// Answers like the API: writer 2 = `sounds` authoritative; no writer = the old editor (its `sound` edit merges into `sounds`).
+// Stored: `sounds` (non-empty) plus the legacy mirror `sound` = sounds[0] without its id.
+function storeSounds(body){const fix=l=>{if(!l)return;let sounds;if(body.writer>=2)sounds=l.sounds??[];else if(l.sounds)sounds=l.sound?[{...l.sound,id:l.sounds[0]?.id??'sound'},...l.sounds.slice(1)]:l.sounds.slice(1);else sounds=l.sound?[{id:'sound',...l.sound}]:[];delete l.sounds;delete l.sound;if(sounds.length){l.sounds=sounds;const{id:_id,...first}=sounds[0];l.sound=first;}};for(const d of body.designs??[]){Object.values(d.events??{}).forEach(fix);Object.values(d.variants??{}).flat().forEach(v=>fix(v.layout));}const{writer:_w,...rest}=body;return rest;}
 async function fixture({ width = 1280, height = 900, dark = false, touch = false, lang = 'en' } = {}) {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, permissions: ['clipboard-read', 'clipboard-write'] });
   await context.addInitScript(({ user, app, dark, lang }) => {
@@ -65,7 +68,7 @@ async function fixture({ width = 1280, height = 900, dark = false, touch = false
     else if (url.pathname.endsWith('/connections')) data = { checkedAt: Date.now(), pollingFailed: false, scenes: ctx.state.scenes.map(s => ({ id: s.id, published: !!s.published, revision: s.revision, width: 1920, height: 1080, receives: ['tts'], sources: s.id === 'main' ? Array.from({ length: ctx.sources }, () => ({ connected: true, connectedAt: Date.now(), disconnectedAt: null, lastReportAt: Date.now(), revision: s.revision, status: 'ready', issue: null, issueAt: null, activationFailed: false, stateFailed: false })) : [] })) };
     else if (url.pathname === `/overlay-studio/${user.id}`) {
       if (req.method() === 'PUT' && ctx.conflict) return route.fulfill({ status:409, json:{error:true,message:'conflict'} });
-      if (req.method() === 'PUT') { ctx.writes++; const prev = ctx.state; ctx.state = { ...body, revision: prev.revision + 1, scenes: body.scenes.map(s => { const old = prev.scenes.find(p => p.id === s.id); return { ...s, publicId: old?.publicId || 'e'.repeat(48), revision: old?.revision ?? 0, published: old?.published }; }) }; }
+      if (req.method() === 'PUT') { ctx.writes++; assert.equal(body.writer,2,'saves are marked writer 2'); const prev = ctx.state; ctx.state = { ...storeSounds(structuredClone(body)), revision: prev.revision + 1, scenes: body.scenes.map(s => { const old = prev.scenes.find(p => p.id === s.id); return { ...s, publicId: old?.publicId || 'e'.repeat(48), revision: old?.revision ?? 0, published: old?.published }; }) }; }
       data = ctx.state;
     } else if (url.pathname.startsWith('/triggers/')) data = [];
     return route.fulfill({ json: { error: false, status: 200, data } });
@@ -112,7 +115,7 @@ try {
   await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').fill('500');await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').press('Tab');
   await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).fill('1000');await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).press('Tab');
   await page.locator('.properties textarea').fill('BIG $(user)');
-  const sound=page.locator('.alert-sound');await sound.getByRole('button',{name:es?'Elegir sonido':'Choose sound',exact:true}).click();
+  const sound=page.locator('app-overlay-sounds');await sound.getByRole('button',{name:es?'Agregar sonido':'Add sound',exact:true}).click();
   const picker=page.locator('app-asset-library-dialog');await picker.locator('.asset').first().click();await picker.locator('.use').click();
   await sound.locator('input[type=range]').fill('35');
   const timeline=page.locator('app-overlay-timeline');
@@ -123,7 +126,7 @@ try {
   await page.locator('.palette-item[data-kind=shape]').click();
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants?.raid?.[0]?.layout.widgets.length===3,'save variant');
   assert.equal(ctx.state.designs[0].events.raid.widgets.length,2,'base unaffected');
-  const variant=ctx.state.designs[0].variants.raid[0];assert.equal(variant.min,500);assert.equal(variant.max,1000);assert.equal(variant.layout.sound.volume,.35);assert.equal(variant.layout.duration,7);assert.equal(variant.layout.widgets[1].motion.delay,.7);assert.equal(ctx.state.designs[0].events.raid.sound,undefined);assert.equal(variant.layout.widgets[1].text,'BIG $(user)');
+  const variant=ctx.state.designs[0].variants.raid[0];assert.equal(variant.min,500);assert.equal(variant.max,1000);assert.equal(variant.layout.sounds.length,1,'the look adds its own sound');assert.equal(variant.layout.sounds[0].volume,.35);assert.equal(variant.layout.duration,7);assert.equal(variant.layout.widgets[1].motion.delay,.7);assert.equal(ctx.state.designs[0].events.raid.sounds,undefined);assert.equal(variant.layout.widgets[1].text,'BIG $(user)');
   await variants.getByRole('button',{name:es?'Predeterminada':'Default',exact:true}).click();
   await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='$(user)'),'default content');
   await openStudio(page,'test');

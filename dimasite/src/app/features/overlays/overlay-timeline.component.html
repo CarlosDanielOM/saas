@@ -22,15 +22,15 @@
         </div>
       </div>
     }
-    @if (layout().sound; as sound) {
-      @let row = timing('$sound');
-      <div class="row" [class.selected]="soundSelected()" data-track="$sound">
-        <span class="name">{{ t('alertSound') }}<small>{{ sound.name || t('soundSelected') }}</small></span>
-        <div class="track sound-track" [style.--s]="percent(row.start)" [style.--e]="percent(row.stop)" [class.dragging]="!!dragging() && dragging()!.id === '$sound'">
+    @for (entry of soundRows(); track entry.row) {
+      @let row = timing(entry.row);
+      <div class="row" [class.selected]="soundSelected() === entry.row" [attr.data-track]="entry.row">
+        <span class="name" [title]="entry.name"><span class="name__clamp">{{ entry.name }}</span><small>{{ t('alertSound') }}</small></span>
+        <div class="track sound-track" [style.--s]="percent(row.start)" [style.--e]="percent(row.stop)" [class.dragging]="!!dragging() && dragging()!.id === entry.row">
           <div class="bar" [style.left.%]="percent(row.start)" [style.width.%]="percent(row.stop) - percent(row.start)"></div>
           <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>
-          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="row.startMax" [attr.aria-valuenow]="within(row.start, 0, row.startMax)" [attr.aria-valuetext]="row.start + ' s'" [attr.aria-label]="t('soundDelay')" (pointerdown)="down($event, '$sound')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge('$sound', 'start')) { <span class="readout" aria-hidden="true">{{ seconds(row.start) }}</span> }</button>
-          <button type="button" class="end-handle" role="slider" [attr.aria-valuemin]="row.endMin" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="within(row.end ?? layout().duration, row.endMin, layout().duration)" [attr.aria-valuetext]="endText('$sound')" [attr.aria-label]="t('alertSound') + ' · ' + t('timelineEnd')" (pointerdown)="down($event, '$sound', 'end')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound', 'end')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge('$sound', 'end')) { <span class="readout" aria-hidden="true">{{ seconds(row.end ?? layout().duration) }}</span> }</button>
+          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="row.startMax" [attr.aria-valuenow]="within(row.start, 0, row.startMax)" [attr.aria-valuetext]="row.start + ' s'" [attr.aria-label]="entry.name + ' · ' + t('soundDelay')" (pointerdown)="down($event, entry.row)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, entry.row)" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge(entry.row, 'start')) { <span class="readout" aria-hidden="true">{{ seconds(row.start) }}</span> }</button>
+          <button type="button" class="end-handle" role="slider" [attr.aria-valuemin]="row.endMin" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="within(row.end ?? layout().duration, row.endMin, layout().duration)" [attr.aria-valuetext]="endText(entry.row)" [attr.aria-label]="entry.name + ' · ' + t('timelineEnd')" (pointerdown)="down($event, entry.row, 'end')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, entry.row, 'end')" (keyup)="editEnded.emit()"><span class="grip" aria-hidden="true"></span>@if (draggingEdge(entry.row, 'end')) { <span class="readout" aria-hidden="true">{{ seconds(row.end ?? layout().duration) }}</span> }</button>
         </div>
       </div>
     }

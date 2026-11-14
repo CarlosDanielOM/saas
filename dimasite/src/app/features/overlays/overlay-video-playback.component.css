@@ -1,0 +1,22 @@
+/* Tokens are inherited from the Studio editor (light and dark); the rows match its switch rows. */
+:host { display:block; min-width:0; color:var(--fg, #14151a) }
+.video-playback { display:grid; min-width:0; border-top:1px solid var(--line, rgba(15,17,21,.08)); border-bottom:1px solid var(--line, rgba(15,17,21,.08)) }
+.row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; min-height:48px; font-size:.88rem; font-weight:700; cursor:pointer }
+.row + .row, .volume + .row { border-top:1px solid var(--line, rgba(15,17,21,.08)) }
+.volume { display:grid; gap:.1rem; padding-bottom:.25rem; color:var(--muted, #596273); font-size:.8rem; font-weight:700 }
+p { margin:0; padding:.1rem 0 .65rem; color:var(--muted, #596273); font-size:.8rem; line-height:1.5 }
+.switch { position:relative; display:inline-flex; align-items:center; flex-shrink:0; width:3rem; height:2.75rem }
+.switch input { position:absolute; inset:0; z-index:1; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
+.switch input:focus-visible + .switch__track { outline:2px solid var(--accent, #7c3aed); outline-offset:3px }
+.switch__track { position:relative; width:100%; height:1.75rem; border:1px solid var(--line, rgba(15,17,21,.08)); border-radius:999px; background:var(--btn, #eef0f5); transition:background 160ms ease }
+.switch__track::after { content:''; position:absolute; top:.17rem; left:.17rem; width:1.25rem; height:1.25rem; border-radius:999px; background:var(--fg, #14151a); transition:transform 160ms ease }
+.switch input:checked + .switch__track { border-color:#7c3aed; background:#7c3aed }
+.switch input:checked + .switch__track::after { transform:translateX(1.2rem); background:#fff }
+.range { appearance:none; width:100%; height:44px; margin:0; border:0; padding:0; background:transparent; cursor:pointer; --pct:0 }
+.range:focus-visible { outline:2px solid var(--accent, #7c3aed); outline-offset:2px }
+.range::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:linear-gradient(to right, #7c3aed calc(var(--pct) * (100% - 20px) + 10px), var(--line, rgba(15,17,21,.08)) 0) }
+.range::-moz-range-track { height:6px; border-radius:999px; background:var(--line, rgba(15,17,21,.08)) }
+.range::-moz-range-progress { height:6px; background:#7c3aed }
+.range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; background:#7c3aed; border:2px solid var(--tile, #fff); border-radius:50% }
+.range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile, #fff); border-radius:50% }
+@media (prefers-reduced-motion: reduce) { .switch__track, .switch__track::after { transition:none } }

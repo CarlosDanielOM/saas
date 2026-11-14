@@ -2,12 +2,14 @@ import { validKeyframes } from './overlay-keyframes.model';
 import { CLIP_DESIGN_VARIANTS } from '../clips/clips.model';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
-import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
+import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, MAX_ALERT_SOUNDS, mergeOldEditorSounds, withDesignSoundLists, type AlertDesign, type AlertEvent, type AlertLayout, type OverlayScene, type OverlayWidget } from './overlay.model';
 import { validWidgetModuleConfig, type WidgetPlacement } from './overlay-widget-contract.generated';
 
 export type DraftScene = Omit<OverlayScene, 'publicId' | 'published' | 'revision'>;
 export interface LocalOverlayDraft {
   schemaVersion: 1;
+  /** 2 = written by the editor that keeps `sounds` only. Absent = the previous editor (see `mergeOldEditorSounds`). */
+  writer?: 2;
   channelID: string;
   updatedAt: number;
   revision: number;
@@ -45,11 +47,14 @@ function validWidgets(value: unknown, placement: WidgetPlacement): value is Over
     && (w['keyframes'] === undefined || validKeyframes(w['keyframes']))
     && validStyle(w) && validMotion(w['motion'])
     && (w['fontSize'] === undefined || finite(w['fontSize']))
-    && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
+    && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event)))
+    && (w['volume'] === undefined || placement === 'design' && w['kind'] === 'video' && finite(w['volume']) && w['volume'] >= 0 && w['volume'] <= 1)
+    && (w['loop'] === undefined || placement === 'design' && w['kind'] === 'video' && typeof w['loop'] === 'boolean'));
 }
 function validSound(value: unknown): boolean {
   if (value === undefined) return true;
-  if (!record(value) || typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
+  if (!record(value) || value['id'] !== undefined && (typeof value['id'] !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(value['id']))) return false;
+  if (typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
   if (value['name'] !== undefined && (typeof value['name'] !== 'string' || !value['name'].trim() || value['name'].length > 120)) return false;
   return ([['volume', 1], ['delay', 120], ['fadeIn', 10], ['fadeOut', 10]] as [string, number][]).every(([key, max]) => finite(value[key]) && value[key] >= 0 && value[key] <= max) && validEnd(value['end']);
 }
@@ -62,7 +67,20 @@ function validStyle(w: Record<string, unknown>): boolean {
   const shadow = w['shadow'];
   return shadow === undefined || record(shadow) && color(shadow['color']) && finite(shadow['blur']) && shadow['blur'] >= 0 && shadow['blur'] <= 100 && ['x','y'].every(key => finite(shadow[key]) && Math.abs(shadow[key]) <= 100);
 }
-function validLayout(layout: unknown): boolean { return record(layout) && finite(layout['duration']) && layout['duration'] >= 1 && layout['duration'] <= 120 && validWidgets(layout['widgets'], 'design') && validSound(layout['sound']); }
+function validSounds(value: unknown): boolean {
+  if (value === undefined) return true;
+  return Array.isArray(value) && value.length <= MAX_ALERT_SOUNDS && value.every(sound => record(sound) && typeof sound['id'] === 'string' && validSound(sound))
+    && new Set(value.map(sound => (sound as Record<string, unknown>)['id'])).size === value.length;
+}
+function validLayout(layout: unknown): boolean { return record(layout) && finite(layout['duration']) && layout['duration'] >= 1 && layout['duration'] <= 120 && validWidgets(layout['widgets'], 'design') && validSound(layout['sound']) && validSounds(layout['sounds']); }
+/** Drafts in the editor's form: the previous editor's `sound` edits merged into `sounds` (unmarked drafts), `sounds` only. */
+function withSoundLists(design: AlertDesign, oldEditor: boolean): AlertDesign {
+  if (!oldEditor) return withDesignSoundLists(design);
+  const merge = (layout: AlertLayout) => mergeOldEditorSounds(layout);
+  const events = Object.fromEntries(Object.entries(design.events).map(([kind, layout]) => [kind, merge(layout)])) as Record<AlertEvent, AlertLayout>;
+  const variants = design.variants && Object.fromEntries(Object.entries(design.variants).map(([kind, list]) => [kind, list?.map(v => ({ ...v, layout: merge(v.layout) }))]));
+  return withDesignSoundLists({ ...design, events, ...(variants ? { variants } : {}) });
+}
 function validDesign(value: unknown): value is AlertDesign {
   if (!record(value) || typeof value['id'] !== 'string' || typeof value['name'] !== 'string'
     || !finite(value['width']) || !finite(value['height']) || !finite(value['revision'])) return false;
@@ -96,7 +114,8 @@ function parseDraft(serialized: string, channel: string): LocalOverlayDraft | nu
       || !Array.isArray(designs) || !designs.length || designs.length > 1000 || !designs.every(validDesign)
       || !(value['designDraft'] === null || validDesign(value['designDraft']))) return null;
     if (!scenes.some(s => s.id === value['sceneId']) || scenes.some(s => s.widgets.some((w: OverlayWidget) => w.kind === 'alert' && !designs.some(d => d.id === w.designId)))) return null;
-    return value as unknown as LocalOverlayDraft;
+    const draft = value as unknown as LocalOverlayDraft, oldEditor = draft.writer !== 2;
+    return { ...draft, writer: 2, designs: draft.designs.map(design => withSoundLists(design, oldEditor)), designDraft: draft.designDraft && withSoundLists(draft.designDraft, oldEditor) };
   } catch { return null; }
 }
 

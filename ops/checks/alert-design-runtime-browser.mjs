@@ -6,7 +6,9 @@ const browser=await chromium.launch({args:['--no-sandbox']});const errors=[];
 const publicId='d'.repeat(48),shape={id:'shape',kind:'shape',x:0,y:0,width:400,height:200,visible:true,locked:false,shape:'rectangle',color:'#123456',borderColor:'#ffffff',borderWidth:4,radius:20,opacity:.6,shadow:{color:'#000000',blur:12,x:3,y:5}};
 const text={id:'text',kind:'text',x:50,y:60,width:350,height:80,visible:true,locked:false,text:'Tier 2 · Ada',fontFamily:'mono',fontWeight:700,italic:true,textAlign:'right'};
 const motion={enter:'fade',exit:'fade',loop:'float',delay:0,enterDuration:.5,exitDuration:.5,loopDuration:1};
-const layout={duration:3,widgets:[{...shape,motion},text]};
+// Two sounds plus the API's legacy mirror (`sound` = sounds[0] without its id): the new renderer plays `sounds` only.
+const sounds=[{id:'chime',assetId:'e'.repeat(24),volume:.8,delay:0,fadeIn:0,fadeOut:0},{id:'late',assetId:'f'.repeat(24),volume:.5,delay:1,fadeIn:0,fadeOut:0}];
+const layout={duration:3,widgets:[{...shape,motion},text],sounds,sound:{assetId:'e'.repeat(24),volume:.8,delay:0,fadeIn:0,fadeOut:0}};
 // The text leaves at 1.2 s while the 3 s alert and its shape keep playing.
 const ending={duration:3,widgets:[{...shape,motion:{...motion,exit:'none'}},{...text,motion:{enter:'none',exit:'fade',loop:'none',delay:0,enterDuration:.5,exitDuration:.4,loopDuration:1,end:1.2}}]};
 const snapshot={width:1280,height:720,waitFor:['sub'],widgets:[{...shape,id:'permanent',x:850,y:400},{id:'alert',kind:'alert',designId:'design',events:['sub'],x:0,y:0,width:800,height:240,visible:true,locked:false}],designs:[{id:'design',width:800,height:240,events:{sub:{duration:1,widgets:[]}},variants:{sub:[{id:'tier2',name:'Tier 2',enabled:true,tier:'2000',layout}]}}]};
@@ -19,6 +21,7 @@ try {
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/overlays/'+publicId);await page.locator('.canvas .shape').waitFor();
  assert.equal(await page.locator('.shape').evaluate(e=>getComputedStyle(e).borderRadius),'20px','permanent shape');
  send('overlay-event',{id:'variant',kind:'sub'});const playing=page.locator('[data-event=sub]');await playing.waitFor();
+ await until(()=>page.locator('app-overlay-sound').count().then(n=>n===2),'one player per sound, the mirror is not played again');
  const style=await playing.locator('span').evaluate(e=>({font:getComputedStyle(e).fontFamily,weight:getComputedStyle(e).fontWeight,italic:getComputedStyle(e).fontStyle,align:getComputedStyle(e).textAlign,text:e.textContent}));assert.deepEqual({...style,font:undefined},{font:undefined,weight:'700',italic:'italic',align:'right',text:'Tier 2 · Ada'});assert(style.font.includes('Courier New'));
  assert.equal(await playing.locator('.shape').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(18, 52, 86)');
  assert.equal(await playing.locator('.layer-content').first().evaluate(e=>getComputedStyle(e).opacity),'0.6');
@@ -34,5 +37,5 @@ try {
  assert.equal(await seen('text'),0,'text hidden after its end');assert(await seen('shape')>0,'shape still visible');assert.equal(ended.includes('ending'),false,'alert still playing');
  assert.equal(await playing.count(),1);
  await until(()=>ended.includes('ending'),'ending alert completes');
- assert.deepEqual(errors,[]);await context.close();console.log('PASS published renderer: permanent/animated shapes, text fonts/styles, shadows/opacity and selected variant lifetime; an object end hides it mid-alert while others play');
+ assert.deepEqual(errors,[]);await context.close();console.log('PASS published renderer: permanent/animated shapes, text fonts/styles, shadows/opacity and selected variant lifetime; two layout sounds get one player each (mirror ignored); an object end hides it mid-alert while others play');
 }finally{await browser.close();}

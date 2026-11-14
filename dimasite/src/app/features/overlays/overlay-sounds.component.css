@@ -1,0 +1,45 @@
+/* Tokens are inherited from the Studio editor (it defines them for light and dark); fallbacks keep the panel
+   readable in any other host. Sized by its own width (container queries): it sits in a narrow column on desktop too. */
+:host { display:block; min-width:0; container-type:inline-size; color:var(--fg, #14151a) }
+.sounds { display:grid; gap:.6rem; min-width:0; padding:.75rem; border:1px solid var(--line, rgba(15,17,21,.08)); border-radius:1rem; background:var(--btn, #eef0f5) }
+.sounds__head { display:flex; align-items:center; gap:.6rem; min-width:0 }
+.sounds__icon { display:grid; place-items:center; flex:none; width:2.25rem; height:2.25rem; border-radius:.7rem; color:var(--ok, #166534); background:var(--tile, #fff) }
+.sounds__icon lucide-icon, .sounds__btn lucide-icon, .sound__chev { display:flex }
+.sounds__title { display:flex; align-items:baseline; gap:.4rem; flex:1; min-width:0; font-size:.88rem }
+.sounds__count { color:var(--muted, #596273); font-size:.75rem; font-weight:700; font-variant-numeric:tabular-nums }
+.sounds__note { margin:0; color:var(--muted, #596273); font-size:.8rem; line-height:1.5 }
+.sounds__btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; flex:none; min-height:44px; padding:.45rem .85rem; border:1px solid var(--btn-border, rgba(15,17,21,.1)); border-radius:.8rem; color:var(--fg, #14151a); background:var(--tile, #fff); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer }
+.sounds__btn:hover:not(:disabled) { border-color:color-mix(in srgb, var(--accent, #7c3aed) 45%, transparent) }
+.sounds__btn:disabled { color:var(--muted, #596273); cursor:not-allowed }
+.sounds__btn:focus-visible, .sound__main:focus-visible, input:focus-visible { outline:2px solid var(--accent, #7c3aed); outline-offset:2px }
+.sounds__list { display:grid; gap:.4rem; margin:0; padding:0; list-style:none; min-width:0 }
+.sound { min-width:0; border:1px solid var(--line, rgba(15,17,21,.08)); border-radius:.85rem; background:var(--tile, #fff) }
+.sound--open { border-color:color-mix(in srgb, var(--accent, #7c3aed) 40%, transparent) }
+.sound__row { display:flex; align-items:center; gap:.25rem; min-width:0; padding:.15rem .25rem .15rem .15rem }
+.sound__main { display:flex; align-items:center; gap:.5rem; flex:1; min-width:0; min-height:48px; padding:.35rem .5rem; border:0; border-radius:.7rem; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer }
+.sound__text { display:grid; flex:1; min-width:0 }
+.sound__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.85rem; font-weight:800 }
+.sound__text small { color:var(--muted, #596273); font-size:.75rem; font-variant-numeric:tabular-nums }
+.sound__chev { flex:none; color:var(--muted, #596273); transition:transform 160ms ease }
+.sound--open .sound__chev { transform:rotate(180deg) }
+.sound__remove { width:44px; padding:0; color:var(--danger, #b91c1c); border-color:transparent; background:transparent }
+.sound__settings { display:grid; gap:.6rem; min-width:0; padding:.25rem .65rem .7rem }
+.sound__times { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.6rem }
+.sound__replace { justify-self:start }
+.field { display:grid; gap:.35rem; min-width:0; color:var(--muted, #596273); font-size:.8rem; font-weight:700 }
+.field input[type=number] { box-sizing:border-box; width:100%; min-width:0; min-height:44px; padding:.5rem .65rem; border:1px solid var(--line, rgba(15,17,21,.08)); border-radius:.8rem; color:var(--fg, #14151a); background:var(--input-bg, #f8f9fc); font:inherit; font-size:16px }
+.field input[type=number]::placeholder { color:var(--muted, #596273) }
+.range { appearance:none; width:100%; height:44px; margin:0; border:0; padding:0; background:transparent; cursor:pointer; --pct:0 }
+.range::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:linear-gradient(to right, #7c3aed calc(var(--pct) * (100% - 20px) + 10px), var(--line, rgba(15,17,21,.08)) 0) }
+.range::-moz-range-track { height:6px; border-radius:999px; background:var(--line, rgba(15,17,21,.08)) }
+.range::-moz-range-progress { height:6px; background:#7c3aed }
+.range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; background:#7c3aed; border:2px solid var(--tile, #fff); border-radius:50% }
+.range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile, #fff); border-radius:50% }
+@container (max-width: 17rem) {
+  .sounds__head { flex-wrap:wrap }
+  .sounds__add { flex:1 1 100% }
+}
+@container (min-width: 34rem) {
+  .sound__times { grid-template-columns:repeat(4, minmax(0, 1fr)) }
+}
+@media (prefers-reduced-motion: reduce) { .sound__chev { transition:none } }

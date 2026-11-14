@@ -587,25 +587,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 .variant-match { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem }
 .object-motion .lf-more[open] { display:grid; gap:.75rem }
 
-/* Alert sound + length sit under the timeline: everything about "when" in one place. */
+/* Alert sounds (their own component) + length sit under the timeline: everything about "when" in one place. */
 .studio__timeline { display:grid; gap:.75rem; min-width:0; padding-bottom:.25rem }
-.alert-sound { display:grid; gap:.6rem; min-width:0; padding:.75rem; border:1px solid var(--line); border-radius:1rem; background:var(--btn) }
-.alert-sound__row { display:flex; align-items:center; gap:.6rem; min-width:0 }
-.alert-sound__icon { display:grid; place-items:center; flex:none; width:2.25rem; height:2.25rem; border-radius:.7rem; color:var(--ok); background:var(--tile) }
-.alert-sound__copy { display:grid; flex:1; min-width:0 }
-.alert-sound__copy strong { font-size:.88rem }
-.alert-sound__copy .lf-note { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.alert-sound .lf-btn { flex:none }
 .lf-btn--icon { width:44px; padding:0; justify-content:center }
-.sound-timing, .motion-timing__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem }
+.motion-timing__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem }
 .alert-length { max-width:12rem }
-.alert-sound input.lf-range { appearance:none; width:100%; height:44px; border:0; padding:0; background:transparent; cursor:pointer }
-.lf-range::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:linear-gradient(to right, #7c3aed calc(var(--pct) * (100% - 20px) + 10px), var(--line) 0) }
-.lf-range::-moz-range-track { height:6px; border-radius:999px; background:var(--line) }
-.lf-range::-moz-range-progress { height:6px; background:#7c3aed }
-.lf-range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
-.lf-range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
-.lf-range:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
 
 
 .widget[data-kind="shape"] { background:transparent; box-shadow:none }

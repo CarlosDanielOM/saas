@@ -6,7 +6,7 @@ import { soundStop, type AlertSound } from './overlay.model';
 
 export interface AlertTransport { time: number; playing: boolean; seek: number }
 
-/** One instance per alert design/event, shared by preview and the OBS renderer. */
+/** One instance per sound of an alert design/event, shared by preview and the OBS renderer. */
 @Component({
   selector: 'app-overlay-sound', changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<audio #audio preload="auto" aria-hidden="true"></audio>@if (blocked()) { <button type="button" (click)="retry()">{{ language.translate('overlayStudio.enableSound') }}</button> }`,
@@ -71,8 +71,7 @@ export class OverlaySoundComponent {
       const interval = setInterval(updateVolume, 40);
       cleanup(() => { disposed = true; done = true; clearTimeout(timer); clearInterval(interval); this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.onended = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
       if (sound.volume === 0 || sound.delay >= until) return;
-      const source = prepared ? Promise.resolve(prepared) : publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
-      void source.then(url => { if (!disposed && !done) { audio.src = url; audio.load(); } }).catch(fail);
+      void this.source(sound, owner, publicId, prepared).then(url => { if (!disposed && !done) { audio.src = url; audio.load(); } }).catch(fail);
     });
     afterRenderEffect(() => { this.transport(); this.syncTimeline?.(); });
   }
@@ -104,7 +103,12 @@ export class OverlaySoundComponent {
     audio.onloadedmetadata = () => { ready = Number.isFinite(audio.duration) && audio.duration > 0; if (ready) sync(); else fail(); };
     audio.onerror = fail;
     cleanup(() => { document.removeEventListener('visibilitychange', visibility); disposed = true; attempt++; this.syncTimeline = undefined; this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
-    const source = prepared ? Promise.resolve(prepared) : publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
-    void source.then(url => { if (!disposed) { audio.src = url; audio.load(); } }).catch(fail);
+    void this.source(sound, owner, publicId, prepared).then(url => { if (!disposed) { audio.src = url; audio.load(); } }).catch(fail);
+  }
+  /** Prepared local bytes, else the Studio asset (scoped public URL on OBS, signed preview in the Studio), else a server-resolved `url`. */
+  private source(sound: AlertSound, owner: string, publicId: string, prepared: string): Promise<string> {
+    if (prepared) return Promise.resolve(prepared);
+    if (sound.assetId) return publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${encodeURIComponent(sound.assetId)}`) : this.library.preview(owner, sound.assetId);
+    return sound.url ? Promise.resolve(sound.url) : Promise.reject(new Error('Sound has no source'));
   }
 }

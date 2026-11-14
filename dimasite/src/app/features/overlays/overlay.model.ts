@@ -31,15 +31,67 @@ export interface OverlayWidget {
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
   triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
+  /** Videos in alert layouts only. Present = the video plays its own sound at this volume (0–1, 0 = silent but timed). */
+  volume?: number;
+  /** Videos in alert layouts only. Absent = loops (as before); `false` = plays once from its start time and holds its last frame. */
+  loop?: boolean;
 }
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
-/** `end`: seconds from the alert's start at which the sound has stopped (its fade-out finishes then). Omitted = plays until its file or the alert ends. */
-export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+/**
+ * `end`: seconds from the alert's start at which the sound has stopped (its fade-out finishes then). Omitted = plays until its file or the alert ends.
+ * `id` is unique inside its layout (the legacy single sound has none). `assetId` = Overlay Studio asset (alert designs),
+ * `mediaId` = trigger library item (trigger looks); `url` is a playback URL only the server produces (never stored).
+ */
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+export const MAX_ALERT_SOUNDS = 10;
 /** When the sound has stopped: `end` capped at the alert length. At or before `delay` the sound stays silent. */
 export function soundStop(sound: AlertSound, duration: number): number {
   return typeof sound.end === 'number' && Number.isFinite(sound.end) ? Math.min(duration, sound.end) : duration;
 }
-export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
+/** `sounds` is the canonical list (0–10, unique ids); `sound` is the legacy single sound / the server's mirror of `sounds[0]`. */
+export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sounds?: AlertSound[]; sound?: AlertSound }
+const legacySounds = new WeakMap<AlertSound, AlertSound[]>();
+/**
+ * The layout's sounds: `sounds` wins; a legacy-only `sound` reads as one sound with id `sound`. The same layout always
+ * gives the same objects (renderer inputs compare by identity, so a new copy would restart the sound).
+ */
+export function layoutSounds(layout: Pick<AlertLayout, 'sounds' | 'sound'>): AlertSound[] {
+  if (layout.sounds) return layout.sounds;
+  const sound = layout.sound; if (!sound) return [];
+  let list = legacySounds.get(sound);
+  if (!list) { list = [{ id: 'sound', ...sound }]; legacySounds.set(sound, list); }
+  return list;
+}
+/** In-memory form for the editor: `sounds` only (omitted when empty), every sound with a unique id, no legacy `sound` key. */
+export function withSoundList(layout: AlertLayout): AlertLayout {
+  const { sound: _legacy, sounds: _list, ...rest } = layout, seen = new Set<string>();
+  const sounds = layoutSounds(layout).map((sound, index) => {
+    let id = typeof sound.id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(sound.id) && !seen.has(sound.id) ? sound.id : '';
+    for (let n = index + 1; !id || seen.has(id); n++) id = 'sound-' + n;
+    seen.add(id); return { ...sound, id };
+  });
+  return sounds.length ? { ...rest, sounds } : rest;
+}
+/** Every layout of a design in the editor's form (see `withSoundList`). */
+export function withDesignSoundLists(design: AlertDesign): AlertDesign {
+  const events = Object.fromEntries(Object.entries(design.events).map(([kind, layout]) => [kind, withSoundList(layout)])) as Record<AlertEvent, AlertLayout>;
+  if (!design.variants) return { ...design, events };
+  const variants = Object.fromEntries(Object.entries(design.variants).map(([kind, list]) => [kind, list?.map(v => ({ ...v, layout: withSoundList(v.layout) }))]));
+  return { ...design, events, variants };
+}
+/**
+ * A layout saved by the previous editor, which kept `sounds` untouched and edited only `sound` (same rules as the API
+ * applies to a save without `writer`): `sound` replaces the fields of `sounds[0]`; no `sound` = it removed `sounds[0]`.
+ */
+export function mergeOldEditorSounds(layout: AlertLayout): AlertLayout {
+  const { sound, sounds } = layout;
+  if (!sounds) return layout;
+  const { sound: _legacy, ...rest } = layout;
+  if (sound) return { ...rest, sounds: sounds.length ? [{ ...sound, id: sounds[0].id }, ...sounds.slice(1)] : [{ id: 'sound', ...sound }] };
+  return { ...rest, sounds: sounds.slice(1) };
+}
+/** A video in an alert layout that plays on the alert's clock: it has its own sound (`volume`) or plays once (`loop: false`). */
+export const isTimedVideo = (widget: Pick<OverlayWidget, 'kind' | 'volume' | 'loop'>): boolean => widget.kind === 'video' && (typeof widget.volume === 'number' || widget.loop === false);
 /** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
 export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {

@@ -2,15 +2,18 @@ import { motionStop, motionWindows } from './overlay-motion-timing';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
 import { defaultMotion } from './overlay-object-motion';
-import { soundStop, type AlertLayout, type OverlayWidget } from './overlay.model';
+import { layoutSounds, soundStop, type AlertLayout, type OverlayWidget } from './overlay.model';
 import type { AlertTransport } from './overlay-sound.component';
-/** `end` with `value: undefined` removes the end key, so the object or sound follows the alert's length again. */
+/** `end` with `value: undefined` removes the end key, so the object or sound follows the alert's length again.
+ * `id` is the row id: an object's id, or `$sound:<sound id>`. */
 export interface TimelineEdit { id: string; field: 'delay' | 'end' | 'enterDuration' | 'exitDuration' | 'fadeIn' | 'fadeOut'; value: number | undefined }
 type Edge = 'start' | 'end';
 type Drag = { id: string; edge: Edge; value: number };
 /** One row's bar in seconds; `end` is the effective stored end (undefined = when the alert ends). */
 interface RowTiming { start: number; stop: number; end: number | undefined; startMax: number; endMin: number; enter: number; exit: number }
 const GAP = .1;
+/** Row ids of sounds: `$sound:<sound id>`. */
+export const SOUND_ROW = '$sound:';
 const tenths = (n: number) => Math.round(n * 10) / 10;
 @Component({
   selector: 'app-overlay-timeline', changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +31,6 @@ export class OverlayTimelineComponent {
   readonly toggle = output<void>();
   readonly closed = output<void>();
   private readonly language = inject(LanguageService);
-  readonly soundSelected = signal(false);
   readonly dragging = signal<Drag | null>(null);
   private pointer?: { id: string; edge: Edge; pointerId: number; x: number; value: number; width: number; element: HTMLElement };
   readonly ticks = computed(() => Array.from({ length: 5 }, (_, i) => +(this.layout().duration * i / 4).toFixed(2)));
@@ -40,11 +42,14 @@ export class OverlayTimelineComponent {
       const windows = motionWindows(motion, layout.duration, w.keyframes);
       return { stop: motionStop(motion, layout.duration), enter: windows.enter.span, exit: windows.exit.span };
     }));
-    const sound = layout.sound;
-    if (sound) map.set('$sound', this.rowTiming('$sound', sound.delay, sound.end, drag, (start, end) => ({ stop: Math.max(Math.min(start, layout.duration), soundStop({ ...sound, end }, layout.duration)), enter: 0, exit: 0 })));
+    for (const { row, sound } of this.soundRows()) map.set(row, this.rowTiming(row, sound.delay, sound.end, drag, (start, end) => ({ stop: Math.max(Math.min(start, layout.duration), soundStop({ ...sound, end }, layout.duration)), enter: 0, exit: 0 })));
     return map;
   });
-  constructor() { effect(() => { this.selectedId(); this.soundSelected.set(false); }); effect(() => { this.eventKey(); this.soundSelected.set(false); this.dragging.set(null); this.pointer = undefined; }); }
+  /** One row per sound, id `$sound:<id>`, named after its file (fallback "Sound 1", "Sound 2"…). */
+  readonly soundRows = computed(() => layoutSounds(this.layout()).map((sound, index) => ({ row: SOUND_ROW + (sound.id ?? 'sound'), sound, name: sound.name || this.language.translate('overlayStudio.soundNumber', { n: index + 1 }) })));
+  /** The sound row the user picked, or null when an object row is selected. */
+  readonly soundSelected = signal<string | null>(null);
+  constructor() { effect(() => { this.selectedId(); this.soundSelected.set(null); }); effect(() => { this.eventKey(); this.soundSelected.set(null); this.dragging.set(null); this.pointer = undefined; }); }
   private rowTiming(id: string, delay: number, stored: number | undefined, drag: Drag | null, measure: (start: number, end: number | undefined) => { stop: number; enter: number; exit: number }): RowTiming {
     const duration = this.layout().duration;
     const start = drag?.id === id && drag.edge === 'start' ? drag.value : delay;
@@ -58,7 +63,7 @@ export class OverlayTimelineComponent {
   }
   t(key: string): string { return this.language.translate('overlayStudio.' + key); }
   name(w: OverlayWidget): string { return w.name || this.t(w.kind + 'Name'); }
-  select(id: string): void { this.soundSelected.set(id === '$sound'); if (id !== '$sound') this.selected.emit(id); }
+  select(id: string): void { const sound = id.startsWith(SOUND_ROW); this.soundSelected.set(sound ? id : null); if (!sound) this.selected.emit(id); }
   timing(id: string): RowTiming { return this.timings().get(id)!; }
   /** Slider values stay inside their advertised range even for saved times the renderer has to clamp. */
   within(value: number, min: number, max: number): number { return Math.max(min, Math.min(max, value)); }
@@ -80,7 +85,7 @@ export class OverlayTimelineComponent {
   private commitEnd(id: string, value: number): boolean {
     const timing = this.timing(id), duration = this.layout().duration;
     const end = Math.max(timing.endMin, Math.min(duration, value)), next = end >= duration ? undefined : end;
-    const layout = this.layout(), raw = id === '$sound' ? layout.sound?.end : layout.widgets.find(w => w.id === id)?.motion?.end;
+    const layout = this.layout(), raw = id.startsWith(SOUND_ROW) ? this.soundRows().find(r => r.row === id)?.sound.end : layout.widgets.find(w => w.id === id)?.motion?.end;
     if (next === raw) return false;
     this.change(id, 'end', next); return true;
   }

@@ -159,5 +159,51 @@ try {
   send('overlay-control',{id:'skip-timing',action:'skip',eventIds:['follow-first','bits-next']});
   await context.close();
  }
- assert.deepEqual(errors,[],'browser errors');console.log('PASS shared editor/OBS renderer: sampled motion, geometry, text/font/image, TTS captions and mute, selection/resize, per-placement expiry and whole-event box queue');
+ // Several sounds and a timed video ("Play its sound", Loop off): the Studio timeline and OBS mount the same players and
+ // the same video setup; the Studio scrub puts the video at (time - start) like OBS plays it.
+ {
+  const rec=await browser.newPage();
+  const clipWebm=Buffer.from(await rec.evaluate(async()=>{const c=Object.assign(document.createElement('canvas'),{width:160,height:90}),g=c.getContext('2d'),r=new MediaRecorder(c.captureStream(30),{mimeType:'video/webm'}),chunks=[];r.ondataavailable=e=>chunks.push(e.data);let f=0;const t=setInterval(()=>{g.fillStyle=`hsl(${f++*15%360} 80% 50%)`;g.fillRect(0,0,160,90);},33);r.start();await new Promise(x=>setTimeout(x,1500));r.stop();await new Promise(x=>r.onstop=x);clearInterval(t);const b=new Uint8Array(await new Blob(chunks).arrayBuffer());let s='';b.forEach(v=>s+=String.fromCharCode(v));return btoa(s);}),'base64');
+  await rec.close();
+  const soundIds=['c'.repeat(24),'e'.repeat(24)],sounds=[{id:'one',assetId:soundIds[0],volume:.9,delay:0,fadeIn:0,fadeOut:0},{id:'two',assetId:soundIds[1],volume:.4,delay:.5,fadeIn:0,fadeOut:0}];
+  const clip=layer('clip','video',20,20,200,110,{mediaUrl:'https://fixture.invalid/clip.webm',volume:.6,loop:false,motion:{enter:'none',exit:'none',loop:'none',delay:1,enterDuration:.5,exitDuration:.5,loopDuration:1}});
+  const timed={duration:4,widgets:[layer('label','text',300,30,400,100,{text:'Timed parity'}),clip],sounds};
+  const timedDesign={...design,id:'timed',events:Object.fromEntries(['follow','sub','bits','raid'].map(k=>[k,timed]))};
+  const timedBox={...box,designId:'timed'},timedSnapshot={width:1280,height:720,waitFor:[],widgets:[timedBox],designs:[timedDesign]};
+  const timedState={schemaVersion:1,revision:1,designs:[timedDesign],scenes:[{...scene,...timedSnapshot,published:structuredClone(timedSnapshot)}]};
+  const context=await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark'});let socket;
+  const send=(name,value)=>socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name,value])}`);
+  await context.addInitScript(({user,app})=>{localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,token:'fixture-only',createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3600000).toISOString(),twitchUser:user,appUser:app,permissions:{}}));localStorage.setItem('dimasite.language','en');localStorage.setItem('theme','dark');},{user,app});
+  await context.routeWebSocket('**/*',ws=>{if(!ws.url().includes('/socket.io/'))return ws.close();socket=ws;ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');ws.onMessage(m=>{m=String(m);if(m.startsWith('40/overlay-studio/')){ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`);send('overlay-state',{revision:1,snapshot:timedSnapshot});}});});
+  await context.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(u.origin===new URL(base).origin)return route.continue();
+   // Seekable like real asset URLs (range requests), or the browser cannot place the video at a time.
+   if(u.hostname==='fixture.invalid'){const m=r.headers().range?.match(/bytes=(\d+)-(\d*)/),from=m?Number(m[1]):0,to=m&&m[2]?Math.min(Number(m[2]),clipWebm.length-1):clipWebm.length-1;return route.fulfill({status:m?206:200,contentType:'video/webm',headers:{'accept-ranges':'bytes','content-length':String(to-from+1),...(m?{'content-range':`bytes ${from}-${to}/${clipWebm.length}`}:{})},body:clipWebm.subarray(from,to+1)});}if(u.origin!==api)return route.abort();let data={};
+   if(u.pathname.includes('/assets/') || u.pathname.startsWith('/asset-library/content/'))return route.fulfill({body:wav,contentType:'audio/wav'});
+   if(u.pathname.startsWith('/asset-library/') && u.pathname.endsWith('/access'))data={path:'/asset-library/content/'+u.pathname.split('/').at(-2)};
+   else if(u.pathname==='/auth/session')data={twitch:user,app};else if(u.pathname.includes('/access'))data={allowed:true,role:'owner',planTier:'pro'};
+   else if(u.pathname.endsWith('/preview'))data=r.postDataJSON().texts;else if(u.pathname===`/overlay-studio/${user.id}`)data=timedState;
+   else if(u.pathname.endsWith('/connections'))data={checkedAt:Date.now(),pollingFailed:false,scenes:[]};else if(u.pathname.endsWith('/queue'))data={state:{revision:0,all:false,platforms:{}},events:[],connected:0,needsRefresh:0};
+   else if(u.pathname.includes('/events/'))data={id:u.pathname.split('/').at(-1),kind:'follow',snapshot:timedSnapshot,layouts:{timed:{...timed,sound:{assetId:soundIds[0],volume:.9,delay:0,fadeIn:0,fadeOut:0}}}};
+   else if(u.pathname.startsWith('/overlay-studio/public/'))data={revision:1,snapshot:timedSnapshot};
+   return route.fulfill({json:{error:false,status:200,data}});});
+  const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');await editor.locator('.stage').waitFor();
+  await openStudio(editor,'layer');await editor.getByRole('button',{name:'Edit design',exact:true}).click();
+  const eClip=editor.locator('.stage app-overlay-scene-renderer [data-widget-id="clip"] video');
+  await editor.getByLabel('Preview position (seconds)').fill('1.4');await eClip.waitFor({state:'attached'});
+  await until(()=>eClip.evaluate(v=>v.paused && Math.abs(v.currentTime-.4)<.1),'Studio scrub: time minus start');
+  await editor.getByRole('button',{name:'Play timeline',exact:true}).click();
+  await until(()=>editor.locator('.stage app-overlay-sound').count().then(n=>n===2),'Studio: a player per sound');
+  await until(()=>eClip.evaluate(v=>!v.paused && !v.muted),'Studio timeline plays the video with its sound');
+  const studioSetup=await eClip.evaluate(v=>({loop:v.loop,volume:Math.round(v.volume*100)/100,timed:v.closest('app-overlay-layer').hasAttribute('data-timed-video')}));
+  await editor.getByRole('button',{name:'Pause timeline',exact:true}).click();
+  const source=await context.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('app-overlay-scene-renderer').waitFor({state:'attached'});
+  await until(()=>!!socket,'OBS socket');send('overlay-event',{id:'timed-parity',kind:'follow'});
+  const oClip=source.locator('[data-event="follow"] [data-layer-id="clip"] video');await oClip.waitFor({state:'attached'});
+  await until(()=>source.locator('app-overlay-sound').count().then(n=>n===2),'OBS: a player per sound (mirror ignored)');
+  await until(()=>oClip.evaluate(v=>!v.paused && !v.muted),'OBS plays the video with its sound');
+  const obsSetup=await oClip.evaluate(v=>({loop:v.loop,volume:Math.round(v.volume*100)/100,timed:v.closest('app-overlay-layer').hasAttribute('data-timed-video')}));
+  assert.deepEqual(studioSetup,{loop:false,volume:.6,timed:true});assert.deepEqual(obsSetup,studioSetup,'timed video parity');
+  await context.close();
+ }
+ assert.deepEqual(errors,[],'browser errors');console.log('PASS shared editor/OBS renderer: sampled motion, geometry, text/font/image, TTS captions and mute, selection/resize, per-placement expiry and whole-event box queue; several sounds and a timed video mount the same way in the Studio and OBS');
 } finally {await browser.close();}

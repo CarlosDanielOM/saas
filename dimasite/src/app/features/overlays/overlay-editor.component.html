@@ -296,7 +296,7 @@
             }
             @if (!widgets().length) { <p class="stage__empty">{{ t('stageEmpty') }}</p> }
             <app-overlay-scene-renderer [scene]="renderScene()" [jobs]="renderJobs()" [owner]="channel" [streamer]="streamer" [placement]="widgetPlacement()" [preview]="true" [previewFixtures]="widgetPreviews()"
-              [texts]="renderTexts()" [staticPlaybackKey]="designPlaybackKey()" [staticDuration]="editingLayout()?.duration ?? 5" [transport]="timeline()" [designSound]="designDraft() ? editingLayout()?.sound : undefined" [staticAssets]="designPreparedAssets()"
+              [texts]="renderTexts()" [staticPlaybackKey]="designPlaybackKey()" [staticDuration]="editingLayout()?.duration ?? 5" [transport]="timeline()" [designSounds]="designDraft() ? alertSounds() : []" [designCanvas]="!!designDraft()" [staticAssets]="designPreparedAssets()"
               (started)="rendererStarted($event)" (ready)="rendererReady($event)" (ended)="rendererEnded($event)" (failed)="rendererEnded($event,true)" (issue)="notice.set($event === 'autoplay' ? 'soundBlocked' : 'testPlaybackError')" />
             @for (widget of widgets(); track widget.id; let layerIndex = $index) {
               @if (widget.visible) {
@@ -355,26 +355,8 @@
         <app-overlay-timeline [layout]="editingLayout()!" [eventKey]="draft.id + ':' + designEvent() + ':' + variantId()" [selectedId]="selectedId()" [transport]="timeline()"
           (selected)="selectedId.set($event)" (edited)="editTimeline($event)" (editEnded)="endHistoryGroup()"
           (seek)="seekTimeline($event)" (toggle)="toggleTimeline()" (closed)="closeTimeline()" />
-        <section class="alert-sound" [attr.aria-label]="t('alertSound')">
-          <div class="alert-sound__row">
-            <span class="alert-sound__icon" aria-hidden="true"><lucide-icon [name]="icons.Volume2" [size]="17" /></span>
-            <div class="alert-sound__copy"><strong>{{ t('alertSound') }}</strong><span class="lf-note">{{ alertSound()?.name || t(alertSound() ? 'soundSelected' : 'soundNone') }}</span></div>
-            <button type="button" class="lf-btn lf-btn--compact" (click)="soundPickerOpen.set(true)">{{ t(alertSound() ? 'changeSound' : 'chooseSound') }}</button>
-            @if (alertSound()) { <button type="button" class="lf-btn lf-btn--compact lf-btn--icon" (click)="setSound(undefined)" [attr.aria-label]="t('removeSound')" [title]="t('removeSound')"><lucide-icon [name]="icons.Trash2" [size]="15" aria-hidden="true" /></button> }
-          </div>
-          @if (alertSound(); as sound) {
-            <label class="lf-field"><span>{{ t('soundVolume') }} · {{ soundPercent() }}%</span><input class="lf-range" type="range" min="0" max="100" step="1" [style.--pct]="sound.volume" [value]="sound.volume * 100" (input)="soundValue('volume', $event)" /></label>
-            <details class="lf-more"><summary>{{ t('soundTiming') }}</summary>
-              <div class="sound-timing">
-                <label class="lf-field"><span>{{ t('soundDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="sound.delay" (change)="soundValue('delay', $event)" /></label>
-                <label class="lf-field"><span>{{ t('soundFadeIn') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeIn" (change)="soundValue('fadeIn', $event)" /></label>
-                <label class="lf-field"><span>{{ t('soundFadeOut') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeOut" (change)="soundValue('fadeOut', $event)" /></label>
-                <label class="lf-field"><span>{{ t('soundEnd') }}</span><input type="number" min="0.1" max="120" step="0.1" [placeholder]="t('timeWithAlert')" [value]="sound.end ?? ''" (change)="soundEnd($event)" /></label>
-              </div>
-              <p class="lf-note">{{ t('soundTimingHint') }}</p>
-            </details>
-          } @else { <p class="lf-note">{{ t('soundHint') }}</p> }
-        </section>
+        <app-overlay-sounds [sounds]="alertSounds()" [duration]="editingLayout()!.duration" [layoutKey]="draft.id + ':' + designEvent() + ':' + variantId()" [disabled]="!channel || busy()"
+          (add)="soundPicker.set({ mode: 'add' })" (replace)="soundPicker.set({ mode: 'replace', id: $event })" (changed)="setSound($event)" (removed)="removeSound($event)" />
         <label class="lf-field alert-length"><span>{{ t('duration') }}</span><input type="number" min="1" max="120" [value]="editingLayout()!.duration" (input)="updateDuration($event)" /></label>
           </div>
         </div>
@@ -567,6 +549,7 @@
             }
             <p class="lf-note">{{ designDraft() ? t('eventAssetHint') : t('permanentAssetHint') }}</p>
           </div>
+          @if (item.kind === 'video' && designDraft()) { <app-overlay-video-playback [widget]="item" (changed)="patchSelected($event)" /> }
         }
         <div class="switch-rows">
           <label class="switch-row"><span>{{ t(item.kind === 'tts' ? 'ttsEnablePlayback' : 'showOnStream') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.visible" (change)="toggleVisibility(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
@@ -727,4 +710,4 @@
 
 @if (customImportOpen() && channel) { <app-overlay-custom-widget-import (done)="addCustomWidget($event)" (closed)="customImportOpen.set(false)" /> }
 @if (customCodeOpen() && channel) { <app-overlay-custom-widget-code (created)="addCustomWidget($event)" (renamed)="customWidgetRenamed($event)" (closed)="customCodeOpen.set(false)" /> }
-@if (soundPickerOpen() && channel) { <app-asset-library-dialog [owner]="channel" kind="audio" (selected)="useSound($event)" (closed)="soundPickerOpen.set(false)" /> }
+@if (soundPicker() !== null && channel) { <app-asset-library-dialog [owner]="channel" kind="audio" (selected)="useSound($event)" (closed)="soundPicker.set(null)" /> }

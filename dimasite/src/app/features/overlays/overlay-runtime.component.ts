@@ -14,13 +14,15 @@ import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { OverlayApi, Snapshot } from './overlay-api.service';
 import type { TestMedia, OverlaySpeechPlayback } from './overlay-media.component';
-import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
+import { layoutSounds, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { placeTrigger } from './overlay-trigger-placement';
 import { LiveWidgetEnv } from './widget-runtime/live-env';
 import { CUSTOM_WIDGET_ENV } from './widget-runtime/widget-env';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
+/** Every sound of every layout; sounds without a Studio asset (server-resolved `url`) are not prepared. */
+const soundAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layoutSounds(layout).flatMap(sound => sound.assetId ?? []));
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
@@ -291,7 +293,7 @@ export class OverlayRuntimeComponent {
       const assets = new Map<string, PreparedAsset>();
       if (!full.media && !full.tts) {
         const layouts = widgets.flatMap(w => full.layouts?.[w.designId || ''] ?? []);
-        const ids = new Set([...layoutAssets(layouts), ...layouts.flatMap(layout => layout.sound?.assetId ?? [])]);
+        const ids = new Set([...layoutAssets(layouts), ...soundAssets(layouts)]);
         await Promise.all([...[...ids].map(async id => {
           const asset = await this.assetCache.prepare(this.assetUrl(id));
           if (asset) assets.set(id, asset);
@@ -328,7 +330,7 @@ export class OverlayRuntimeComponent {
         ...(design.variants?.[event] ?? []).filter(v => v.enabled).map(v => v.layout)]) : [];
     }).filter((layout): layout is AlertLayout => !!layout);
     // Pictures first: they gate an alert's start, while sounds can begin a moment later.
-    this.assetCache.warm([...new Set([...layoutAssets(layouts), ...layouts.flatMap(layout => layout.sound?.assetId ?? [])])].map(id => this.assetUrl(id)));
+    this.assetCache.warm([...new Set([...layoutAssets(layouts), ...soundAssets(layouts)])].map(id => this.assetUrl(id)));
   }
   private cancelEventRetry(id: string): void {
     clearTimeout(this.eventRetries.get(id)?.timer);

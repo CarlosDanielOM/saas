@@ -44,6 +44,8 @@ try {
         if (conflict || request.postDataJSON().revision !== state.revision) return route.fulfill({ status: 409, json: { error: true, message: 'Fixture conflict' } });
         if (saveFailure) return route.fulfill({ status: 503, json: { error: true, message: 'Fixture save failure' } });
         state = structuredClone(request.postDataJSON());
+        // Like the API: the editor marks its saves (writer 2 = layouts carry `sounds` only); the marker is not stored.
+        assert.equal(state.writer, 2, 'Studio saves carry writer 2'); delete state.writer;
         state.revision++;
       }
       data = structuredClone(state);

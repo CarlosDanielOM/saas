@@ -8,7 +8,7 @@ import { OverlaySoundComponent, type AlertTransport } from './overlay-sound.comp
 import { widgetModuleFor } from './overlay-widget-registry';
 import { stateForWidget } from './overlay-widget-state';
 import type { WidgetPlacement, WidgetStates } from './overlay-widget-contract.generated';
-import type { AlertSound, OverlayWidget } from './overlay.model';
+import { layoutSounds, type AlertSound, type OverlayWidget } from './overlay.model';
 import type { PreparedAsset } from './overlay-asset-cache';
 import { ALERT_READY_LIMIT_MS, sceneScale, waitsForPictures, type OverlayPlacementReport, type OverlayPlaybackId, type OverlayRenderJob } from './overlay-playback';
 import { waitForOverlayMedia } from './overlay-image-readiness';
@@ -22,7 +22,7 @@ import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="canvas" [style.width.px]="scene().width" [style.height.px]="scene().height" [style.transform]="'scale(' + scale() + ')'" [attr.data-scene-scale]="scale()">
     @for (epoch of [staticPlaybackKey()]; track epoch) { @for (w of scene().widgets; track w.id) { @if (w.visible && delivery(w) === 'static') {
-      <div class="placement art" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-ready-key]="staticKey()" [attr.data-waiting]="staticShown() ? null : ''" [style.visibility]="staticShown() ? null : 'hidden'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="$index"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="w" [preparedSource]="staticAssets().get(w.assetId || '')?.url || ''" [text]="texts()[w.text || ''] ?? w.text" [playbackKey]="staticShown() ? staticPlaybackKey() : 0" [duration]="staticDuration()" [seekTime]="transport()?.time ?? null" (failed)="issue.emit('media')" /></div>
+      <div class="placement art" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-ready-key]="staticKey()" [attr.data-waiting]="staticShown() ? null : ''" [style.visibility]="staticShown() ? null : 'hidden'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="$index"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="w" [preparedSource]="staticAssets().get(w.assetId || '')?.url || ''" [text]="texts()[w.text || ''] ?? w.text" [playbackKey]="staticShown() ? staticPlaybackKey() : 0" [duration]="staticDuration()" [seekTime]="transport()?.time ?? null" [transport]="transport()" [designObject]="designCanvas()" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (soundStarted)="soundStarted.emit()" /></div>
     } } }
     @for (w of scene().widgets; track w.id) { @if (w.visible && (delivery(w) === 'state' || delivery(w) === 'code')) {
       <div class="placement" [class.interaction]="delivery(w) === 'state'" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-interaction]="delivery(w) === 'state' ? w.kind : null" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="$index"><app-overlay-widget-host [widget]="w" [placement]="placement()" [state]="widgetState(w)" [clockOffset]="clockOffset()" [preview]="preview()" [previewFixture]="previewFixtures()[w.id] || ''" /></div>
@@ -40,9 +40,9 @@ import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
         </div>
       </div>
     } } }
-    @if (designSound(); as sound) { @if (staticPlaybackKey() && staticShown()) { <app-overlay-sound [sound]="sound" [duration]="staticDuration()" [playbackKey]="staticPlaybackKey()" [transport]="transport()" [preparedSource]="staticAssets().get(sound.assetId)?.url || ''" [owner]="owner()" [publicId]="publicId()" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> } }
+    @if (staticPlaybackKey() && staticShown()) { @for (sound of designSounds(); track sound.id ?? $index) { <app-overlay-sound [sound]="sound" [duration]="staticDuration()" [playbackKey]="staticPlaybackKey()" [transport]="transport()" [preparedSource]="staticAssets().get(sound.assetId || '')?.url || ''" [owner]="owner()" [publicId]="publicId()" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> } }
     @for (job of jobs(); track job.event.id) {
-      @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.playbackKey ?? job.event.id" [owner]="owner()" [publicId]="publicId()" [preparedSource]="job.assets?.get(sound.config.assetId)?.url || ''" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> }
+      @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.playbackKey ?? job.event.id" [owner]="owner()" [publicId]="publicId()" [preparedSource]="job.assets?.get(sound.config.assetId || '')?.url || ''" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (started)="soundStarted.emit()" /> }
       @for (w of renderWidgets(job); track w.id) {
         <div class="placement" [attr.data-widget-id]="w.id" [attr.data-kind]="w.kind" [attr.data-event]="job.event.kind" [attr.data-idle]="job.idle ? '' : null" [attr.data-playback-key]="job.playbackKey ?? job.event.id" [attr.data-ready-key]="readyKey(job)" [attr.data-platform]="job.event.platform ?? 'twitch'" [attr.data-waiting]="shown(job) ? null : ''" [style.visibility]="shown(job) ? null : 'hidden'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="layerIndex(job,w)">
           @if (mediaFor(job,w.id); as media) {
@@ -54,7 +54,7 @@ import { LucideAngularModule, Volume2, Zap } from 'lucide-angular';
           } @else if (!job.event.tts) {
             @if (job.event.layouts?.[w.designId || '']; as layout) {
               @for (part of layout.widgets; track part.id) { @if (part.visible) {
-                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="shown(job) ? (job.playbackKey ?? job.event.id) : 0" [duration]="layout.duration" (failed)="issue.emit('media')" /></div>
+                <div class="placement art" [attr.data-layer-id]="part.id" [attr.data-kind]="part.kind" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [owner]="owner()" [publicId]="publicId()" [layer]="part" [preparedSource]="job.assets?.get(part.assetId || '')?.url || ''" [playbackKey]="shown(job) ? (job.playbackKey ?? job.event.id) : 0" [duration]="layout.duration" [designObject]="true" [muted]="!playsVideoSound(job, w)" (failed)="issue.emit('media')" (playbackBlocked)="issue.emit('autoplay')" (soundStarted)="soundStarted.emit()" /></div>
               } }
             }
           }
@@ -77,7 +77,11 @@ export class OverlaySceneRendererComponent {
   readonly texts = input<Partial<Record<string,string>>>({});
   readonly staticAssets = input<ReadonlyMap<string,PreparedAsset>>(new Map());
   readonly staticPlaybackKey = input<string | number>(0); readonly staticDuration = input(5);
-  readonly transport = input<AlertTransport | null>(null); readonly designSound = input<AlertSound>();
+  readonly transport = input<AlertTransport | null>(null);
+  /** The design replay's sounds (Studio), each played by its own sound player. */
+  readonly designSounds = input<readonly AlertSound[]>([]);
+  /** The scene's widgets are the objects of an alert design (Studio design editing and replays). */
+  readonly designCanvas = input(false);
   readonly started = output<OverlayPlacementReport>(); readonly ended = output<OverlayPlacementReport>(); readonly failed = output<OverlayPlacementReport>();
   readonly issue = output<'media'|'autoplay'>(); readonly soundStarted = output<void>();
   readonly speechPlayback = output<OverlayPlacementReport & { report: OverlaySpeechPlayback }>();
@@ -136,7 +140,9 @@ export class OverlaySceneRendererComponent {
     this.readyKeys.update(keys => new Set([...keys].filter(item => current.has(item))).add(key));
     if (gate.id !== null) this.ready.emit({ id: gate.id });
     // Videos were held on their first frame; every layer starts together.
+    // Timed videos (own sound or played once) are started by their layer at their start time, not here.
     if (this.ownsVideos(key)) for (const root of this.roots(key)) for (const video of root.querySelectorAll('video')) {
+      if (video.closest('[data-timed-video]')) continue;
       if (video.currentTime > .25) video.currentTime = 0;
       if (video.paused) void video.play().catch(() => {});
     }
@@ -166,7 +172,17 @@ export class OverlaySceneRendererComponent {
   soundsFor(job: OverlayRenderJob) {
     if (job.idle || job.event.tts || !this.shown(job)) return [];
     return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
-      const layout = job.event.layouts?.[id]; return layout?.sound ? [{ id,config:layout.sound,duration:layout.duration }] : [];
+      const layout = job.event.layouts?.[id];
+      return layout ? layoutSounds(layout).map((config, index) => ({ id: id + ':' + (config.id ?? index), config, duration: layout.duration })) : [];
     });
+  }
+  /**
+   * Audio is emitted once per event, like the design's sounds: a video's own sound plays only in one placement per
+   * design, the job's audio placement when it shows that design, else the first placement that does.
+   */
+  playsVideoSound(job: OverlayRenderJob, widget: OverlayWidget): boolean {
+    if (job.idle || job.event.tts) return false;
+    const audio = this.audioWidget(job), same = job.widgets.filter(w => w.kind === 'alert' && w.designId === widget.designId);
+    return (same.some(w => w.id === audio) ? audio : same[0]?.id) === widget.id;
   }
 }

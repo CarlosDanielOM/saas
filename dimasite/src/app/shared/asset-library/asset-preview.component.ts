@@ -9,8 +9,9 @@ import { LanguageService } from '../../services/language.service';
   @else if (url(); as source) {
     @if (kind() === 'audio') { <audio [src]="source" controls preload="metadata" [attr.aria-label]="name()" (error)="onError()"></audio> }
     @else if (kind() === 'image') { <img [src]="source" [alt]="still() ? '' : name()" [loading]="eager() ? 'eager' : 'lazy'" referrerpolicy="no-referrer" (error)="onError()" /> }
+    @else if (managed()) { <video [src]="source" [attr.aria-label]="name()" muted playsinline preload="auto" (error)="onError()"></video> }
     @else if (still()) { <video [src]="source + '#t=0.1'" muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" (error)="onError()"></video> }
-    @else { <video [src]="source" [attr.aria-label]="name()" [controls]="controls()" [autoplay]="!controls() && seekTime() === null" (loadedmetadata)="seekVideo()" [loop]="!controls()" muted playsinline preload="metadata" (error)="onError()"></video> }
+    @else { <video [src]="source" [attr.aria-label]="name()" [controls]="controls()" [autoplay]="!controls() && seekTime() === null" (loadedmetadata)="seekVideo()" [loop]="!controls()" muted [muted]="silent()" playsinline preload="metadata" (error)="onError()"></video> }
   } @else { <span role="status">{{ language.translate(broken() ? 'assetLibrary.previewFailed' : 'assetLibrary.loading') }}</span> }`,
   styles: `:host { display:grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items:center; width:100%; height:100%; min-width:0; min-height:0 } audio { width:100%; min-width:0; max-width:100% } img, video { display:block; width:100%; height:100%; min-width:0; min-height:0; max-height:100%; object-fit:contain } span { font-size:.75rem; padding:.5rem; text-align:center; color:inherit }`
 })
@@ -27,6 +28,10 @@ export class AssetPreviewComponent {
   /** Paused first frame for gallery thumbnails, so many videos don't play at once. */
   readonly still = input(false);
   readonly seekTime = input<number | null>(null);
+  /** Really muted: the static `muted` attribute alone only sets defaultMuted on elements Angular creates. */
+  readonly silent = input(false);
+  /** The consumer plays, seeks and unmutes this video itself (no autoplay, no loop). */
+  readonly managed = input(false);
   private videoWasControlled = false;
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly failed = output<void>();
@@ -50,6 +55,7 @@ export class AssetPreviewComponent {
     });
   }
   seekVideo(): void {
+    if (this.managed()) return;
     const time = this.seekTime(), video = this.host.nativeElement.querySelector('video');
     if (time === null) { if (this.videoWasControlled && video && !this.controls() && !this.still()) void video.play().catch(() => {}); this.videoWasControlled = false; return; }
     this.videoWasControlled = true;
