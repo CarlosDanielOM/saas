@@ -55,9 +55,14 @@ export interface CommandRow {
   cmd: ChannelCommand | null;
   trigger: string;
   stat: CommandStat | null;
-  /** Runs that didn't answer. */
+  /** Runs that went wrong (failed, or refused by Twitch); turned off and cooldowns are not problems. */
   problems: number;
 }
+
+/** An older API sends no `problems`: then failures only (its blocked count mixes in viewers without the role). */
+const problemsOf = (stat: CommandStat): number => stat.problems ?? stat.failed;
+/** Runs the bot answered; usage replies answer too. An older API: ok only. */
+export const answeredOf = (stat: CommandStat): number => stat.answered ?? stat.ok;
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -81,6 +86,7 @@ export class ChannelCommandsComponent implements OnInit {
 
   readonly sorts = SORTS;
   readonly formatNumber = formatNumber;
+  readonly answeredOf = answeredOf;
   readonly isLoading = signal(true);
   readonly error = signal<string | null>(null);
   readonly commands = signal<ChannelCommand[]>([]);
@@ -134,13 +140,13 @@ export class ChannelCommandsComponent implements OnInit {
     const rows: CommandRow[] = this.commands().map((cmd) => {
       const trigger = commandTrigger(cmd);
       const stat = byName.get(trigger.toLowerCase()) ?? null;
-      return { key: cmd.id, cmd, trigger, stat, problems: stat ? stat.runs - stat.ok : 0 };
+      return { key: cmd.id, cmd, trigger, stat, problems: stat ? problemsOf(stat) : 0 };
     });
     if (this.totalPages() === 1) {
       const known = new Set(this.commands().map((cmd) => commandTrigger(cmd).toLowerCase()));
       for (const stat of this.stats()?.commands ?? []) {
         if (!known.has(stat.name.toLowerCase())) {
-          rows.push({ key: `stat:${stat.name}`, cmd: null, trigger: stat.name, stat, problems: stat.runs - stat.ok });
+          rows.push({ key: `stat:${stat.name}`, cmd: null, trigger: stat.name, stat, problems: problemsOf(stat) });
         }
       }
     }
@@ -189,7 +195,7 @@ export class ChannelCommandsComponent implements OnInit {
     }
     const runs = stats.commands.reduce((sum, stat) => sum + stat.runs, 0);
     if (!runs) return { tone: 'muted', title: `${count} None of them ran ${this.window()}.`, text: null };
-    const missed = stats.commands.reduce((sum, stat) => sum + stat.runs - stat.ok, 0);
+    const missed = stats.commands.reduce((sum, stat) => sum + stat.runs - answeredOf(stat), 0);
     const failed = stats.commands.reduce((sum, stat) => sum + stat.failed, 0);
     const title = `${count} ${this.windowTitle()} they ran ${plural(runs, 'time')}.`;
     if (!missed) return { tone: 'ok', title, text: 'Every run answered.' };
@@ -407,15 +413,19 @@ export class ChannelCommandsComponent implements OnInit {
     return SHORT_REASON[reason] ?? reasonText(reason) ?? reason;
   }
 
-  /** "Ran 120× · 4 didn't answer (on cooldown 3×) · last 2 h ago" */
-  statLine(row: CommandRow): { text: string; problems: string | null; last: string } | null {
+  /**
+   * "Ran 120× · 4 didn't answer (on cooldown 3×) · last 2 h ago". `warn` only when some of those went wrong:
+   * a command that is turned off or on cooldown is working as set.
+   */
+  statLine(row: CommandRow): { text: string; missed: string | null; warn: boolean; last: string } | null {
     const stat = row.stat;
     if (!stat || !stat.runs) return null;
     const top = stat.reasons[0];
-    const problems = row.problems
-      ? `${formatNumber(row.problems)} didn't answer${top ? ` (${this.reasonShort(top.reason)} ${formatNumber(top.count)}×)` : ''}`
+    const count = stat.runs - answeredOf(stat);
+    const missed = count
+      ? `${formatNumber(count)} didn't answer${top ? ` (${this.reasonShort(top.reason)} ${formatNumber(top.count)}×)` : ''}`
       : null;
-    return { text: `Ran ${formatNumber(stat.runs)}×`, problems, last: `last ${relativeTime(stat.lastAt)}` };
+    return { text: `Ran ${formatNumber(stat.runs)}×`, missed, warn: row.problems > 0, last: `last ${relativeTime(stat.lastAt)}` };
   }
 
   /** How the last run went, in words. */
@@ -423,6 +433,7 @@ export class ChannelCommandsComponent implements OnInit {
     const when = relativeTime(stat.lastAt);
     const why = reasonText(stat.lastReason);
     if (stat.lastOutcome === 'ok') return `${when}: answered`;
+    if (stat.lastReason === 'usage') return `${when}: answered with how to use it`;
     if (stat.lastOutcome === 'failed') return `${when}: failed${why ? `, ${why}` : ''}`;
     return `${when}: didn't answer${why ? `, ${why}` : ''}`;
   }

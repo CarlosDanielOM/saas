@@ -47,8 +47,10 @@ describe('activity source', () => {
         assert.deepEqual(activityFilter({ ...scope, channelID: '1', actorLogin: 'x', outcome: 'failed' }, ['alert']), {
             kind: 'alert', channelID: '1', actorLogin: 'x', outcome: { $in: ['skipped', 'blocked', 'failed'], $eq: 'failed' }
         });
+        // Problems: failed, or refused for a reason that is not a setting. Skipped (turned off, cooldown) never is.
         assert.deepEqual(activityFilter({ ...scope, actorID: '5', actorLogin: 'x', outcome: 'problems' }, ['command', 'voice']), {
-            kind: { $in: ['command', 'voice'] }, actorID: '5', outcome: { $in: ['skipped', 'blocked', 'failed'] }
+            kind: { $in: ['command', 'voice'] }, actorID: '5', outcome: { $in: ['skipped', 'blocked', 'failed'], $ne: 'skipped' },
+            $nor: [{ outcome: 'blocked', reason: { $in: ['permission_denied'] } }]
         });
         assert.deepEqual(activitySource.plan({ ...scope, kinds: ['voice', 'docs', 'protection'] }), ['voice']);
     });
@@ -158,6 +160,8 @@ describe('protection source', () => {
         assert.equal(filter.channelID, '1');
         assert.equal(filter.userID, '7');
         assert.ok(Array.isArray(filter.$or));
+        // A skipped review (no credits) is not a problem: "problems" and "failed" are the same filter.
+        assert.deepEqual(decisionFilter({ ...scope, outcome: 'problems' }), decisionFilter({ ...scope, outcome: 'failed' }));
         assert.deepEqual(decisionFilter({ ...scope, actorLogin: 'viewer' }), { userLogin: 'viewer' });
         assert.deepEqual(protectionSource.plan({ ...scope, kinds: ['command'] }), []);
         // Older decisions have no login: a login-only search is served but flagged; by id nothing is missing.
@@ -227,6 +231,7 @@ describe('assistant source', () => {
         assert.equal(turnItem(turn({ status: 'cancelled' })).outcome, 'skipped');
         assert.equal(turnItem(turn({ costUsd: 0, unknownCostSteps: 2 })).providerUSD, null);
         assert.deepEqual(turnFilter({ ...scope, outcome: 'failed', actorID: '5' }), { 'user.id': '5', status: { $in: ['failed', 'interrupted'] } });
+        assert.deepEqual(turnFilter({ ...scope, outcome: 'problems' }), { status: { $in: ['failed', 'interrupted'] } }, 'a stopped turn is not a problem');
         assert.deepEqual(assistantSource.plan({ ...scope, actorLogin: 'x' }), []);
         assert.deepEqual(assistantSource.gaps!({ ...scope, actorLogin: 'x' }), ['assistant']);
         assert.deepEqual(assistantSource.gaps!({ ...scope, actorLogin: 'x', channelID: '1' }), []);

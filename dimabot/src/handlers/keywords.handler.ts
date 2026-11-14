@@ -6,7 +6,7 @@ import { keywordMatches, matchKeywords, normalizeKeyword } from '../utils/keywor
 import { executeCustomCommand } from './commands.handler.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
-import { chatActor, commandResultOutcome, recordCommandActivity } from '../utils/activity_command.js';
+import { chatActor, commandResultOutcome, errorText, recordCommandActivity } from '../utils/activity_command.js';
 
 export async function handleKeywords(channelID: string, event: IChatMessage, identity: UserIdentity, effectContext?: AstEffectContext): Promise<void> {
     if (event.chatter_user_id === TWITCH_BOT_ACCOUNT_ID) return;
@@ -25,11 +25,12 @@ export async function handleKeywords(channelID: string, event: IChatMessage, ide
             result = await executeCustomCommand(channelID, event, keyword, keyword.cmd, event.message.text,
                 { origin: 'chat', identity }, undefined, effectContext);
         } catch (error) {
-            recordCommandActivity({ ...attempt, outcome: 'failed', reason: 'error', durationMs: Date.now() - startedAt });
+            recordCommandActivity({ ...attempt, outcome: 'failed', reason: 'error', error: errorText(error), durationMs: Date.now() - startedAt });
             throw error;
         }
         const outcome = commandResultOutcome(result.type, result.error);
-        if (outcome) recordCommandActivity({ ...attempt, ...outcome, durationMs: Date.now() - startedAt });
+        if (outcome) recordCommandActivity({ ...attempt, ...outcome, durationMs: Date.now() - startedAt,
+            error: outcome.outcome === 'failed' ? errorText(result.message) : null });
         if (!result.error) await deliverAstMessage(channelID, {
             parsedText: result.message, commandReferences: result.commandReferences,
             origin: 'command', actor: chatActor(event), referencePath: `keyword:${match.id}`

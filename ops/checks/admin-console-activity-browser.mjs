@@ -4,7 +4,8 @@
 // problems, streamer through the picker, viewer login, failed only), deep links, opening a row, the
 // "Everything from <viewer>" link, load more without duplicates, live refresh (inserted only when allowed,
 // a "new" pill otherwise), the partial notice, empty and error + Retry, the Twitch event sheet (?event=),
-// the fixed-channel tab, and layout + axe + touch targets at 320/390/1280 in dark then light.
+// the fixed-channel tab, rows that say what went wrong (failed built-ins, usage replies, refused voice requests,
+// voice playback), and layout + axe + touch targets at 320/390/1280 in dark then light.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -36,6 +37,25 @@ const FIRST = [
   row(9, 'command', { name: '!hug', outcome: 'skipped', reason: 'cooldown', text: '!hug tiny_anvil', data: { func: 'custom', trigger: 'chat' } }),
   row(22, 'voice', { name: 'fish', channelIndex: 1, outcome: 'failed', reason: 'synthesis_failed', data: { provider: 'fish', chars: 212 } }),
 ];
+// Refused: by Twitch (a problem) and by the command's own rule (a setting at work, not a problem). Served in section 4 only.
+const REFUSALS = [
+  row(30, 'bot_message', { name: 'command', actor: null, outcome: 'blocked', reason: 'held_for_moderation', text: 'Thanks for the raid!', data: { origin: 'command' } }),
+  row(31, 'command', { name: '!mod', outcome: 'blocked', reason: 'permission_denied', text: '!mod please', data: { func: 'custom', trigger: 'chat' } }),
+];
+// Rows that explain themselves: a failed built-in in its own words, a usage reply, a refused voice request and
+// how voice messages ended on stream (section 16).
+const DIAGNOSTICS = [
+  row(1, 'command', { name: '!game', outcome: 'failed', reason: 'error', text: '!game ikemeb big bang', data: { func: 'game', trigger: 'chat', error: 'The game does not exist' } }),
+  row(2, 'command', { name: '!dc', outcome: 'skipped', reason: 'usage', text: '!dc', data: { func: 'deleteCommand', trigger: 'chat', error: 'Usage: !dc <command name>' } }),
+  row(3, 'command', { name: '!s', outcome: 'skipped', reason: 'disabled', text: '!s hola', data: { func: 'speach', trigger: 'chat' } }),
+  row(4, 'voice', { name: 'request', outcome: 'failed', reason: 'no_speech_page', text: 'Mossy_Fern dice: hola chat',
+    data: { source: 'ast', provider: 'fish', error: 'Speech overlay is not connected. Open the speech URL first and try again.' } }),
+  row(5, 'voice', { name: 'playback', outcome: 'ok', reason: null, durationMs: 5400, ref: { type: 'activity', id: 'p1' },
+    data: { provider: 'fish', voice: 'rias', source: 'ast', chars: 42, heard: true, pages: 2, movedBecause: 'play-error' } }),
+  row(6, 'voice', { name: 'playback', outcome: 'failed', reason: 'play_error', ref: { type: 'activity', id: 'p2' },
+    data: { provider: 'piper', chars: 18, heard: false, pages: 1, endReason: 'play-error' } }),
+  row(7, 'voice', { name: 'playback', outcome: 'skipped', reason: 'tts_skipped', data: { provider: 'kokoro', heard: true, pages: 1, endReason: 'skip' } }),
+];
 const PAGE2 = [FIRST[5], ...Array.from({ length: 12 }, (_, i) => row(60 * 3 + i * 20, i % 2 ? 'command' : 'twitch_event', { name: i % 2 ? '!lurk' : 'channel.cheer', data: i % 2 ? {} : { amount: 100 } }))];
 const SUMMARY = {
   from: ago(60 * 24), to: ago(0), partial: [],
@@ -62,7 +82,7 @@ const EVENT = {
 };
 
 // ---------- Mock API ----------
-const state = { failList: 0, partial: [], empty: false, liveExtra: [], emptySummary: false };
+const state = { failList: 0, partial: [], empty: false, liveExtra: [], emptySummary: false, diagnostics: false, refusals: false };
 const feedCalls = [];
 const summaryCalls = [];
 const eventCalls = [];
@@ -74,12 +94,15 @@ function feed(url) {
   feedCalls.push(q);
   if (state.failList) { state.failList--; return { status: 500, body: { error: true, message: 'boom', status: 500 } }; }
   if (state.empty) return { body: { items: [], nextCursor: null, partial: [] } };
+  if (state.diagnostics) return { body: { items: DIAGNOSTICS, nextCursor: null, partial: [] } };
   const kinds = (q.kinds || '').split(',').filter(Boolean);
   const keep = (item) => (!kinds.length || kinds.includes(item.kind)) && (!q.channel || item.channelID === q.channel)
     && (!q.actor || item.actor?.id === q.actor) && (!q.actorLogin || item.actor?.login === q.actorLogin)
-    && (!q.outcome || (q.outcome === 'failed' ? item.outcome === 'failed' : item.outcome !== 'ok'));
+    // The API's rule: a problem is a failure or a refusal that is not a setting; skips never are.
+    && (!q.outcome || (q.outcome === 'failed' ? item.outcome === 'failed'
+      : item.outcome === 'failed' || (item.outcome === 'blocked' && item.reason !== 'permission_denied')));
   if (q.cursor === 'p2') return { body: { items: PAGE2.filter(keep), nextCursor: null, partial: [] } };
-  return { body: { items: [...state.liveExtra, ...FIRST].filter(keep), nextCursor: 'p2', partial: state.partial } };
+  return { body: { items: [...state.liveExtra, ...FIRST, ...(state.refusals ? REFUSALS : [])].filter(keep), nextCursor: 'p2', partial: state.partial } };
 }
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {
@@ -175,11 +198,16 @@ try {
   assert.equal(param('kinds'), null);
 
   // 4. Problems: the answer's button and the chip.
+  state.refusals = true;
   await page.locator('[data-feed-only-problems]').click();
   await waitFeed((q) => q.outcome === 'problems', 'outcome=problems');
   assert.equal(param('outcome'), 'problems');
   await eventually(() => page.locator('[data-feed-problems]').getAttribute('aria-pressed'), 'true', 'Problems chip on');
-  await until(async () => (await rows.count()) === 3, 'only the rows that did not go as planned');
+  await until(async () => (await rows.count()) === 2, 'only the rows that went wrong');
+  const problemTitles = await page.locator('[data-feed-row] .feed-row__title').allInnerTexts();
+  assert.deepEqual(problemTitles, ['Voice for Mossy_Fern failed: the voice couldn\'t be generated', 'Bot message not sent: Twitch held it for moderation'],
+    'cooldown, a turned-off alert and a viewer without the role are not problems');
+  state.refusals = false;
   await page.locator('[data-feed-problems]').click();
   await waitFeed((q) => !q.outcome, 'problems chip toggles off');
   assert.equal(param('outcome'), null);
@@ -350,7 +378,48 @@ try {
   await waitFeed((q) => q.channel === '700000001' && q.kinds === 'command', 'kinds keep the fixed channel');
   assert.equal(param('channel'), null, 'the fixed channel is not written to the URL');
 
-  // 16. Layout and accessibility, dark first.
+  // 16. Rows say what went wrong in plain words, not "something went wrong".
+  state.diagnostics = true;
+  await page.goto(`${base}/activity`);
+  await eventually(() => rows.count(), DIAGNOSTICS.length, 'diagnostic rows');
+  const titles = await page.locator('[data-feed-row] .feed-row__title').allInnerTexts();
+  assert.deepEqual(titles, [
+    '!game failed for Mossy_Fern: The game does not exist',
+    '!dc: Mossy_Fern left out what it needs',
+    "!s didn't answer Mossy_Fern: it is turned off",
+    'Voice request from Mossy_Fern not read: no speech page was open in OBS',
+    'Voice message from Mossy_Fern played',
+    "Voice message from Mossy_Fern didn't play: the speech page couldn't start the sound (often a hidden OBS source)",
+    'Voice message from Mossy_Fern not finished: a mod skipped it',
+  ]);
+  const details = await page.locator('[data-feed-row]').evaluateAll((els) => els.map((el) => el.querySelector('.feed-row__detail')?.textContent?.trim() ?? null));
+  assert.equal(details[1], 'The bot replied how to use it');
+  assert.equal(details[3], 'Speech overlay is not connected. Open the speech URL first and try again. · from a command');
+  assert.equal(details[4], 'fish · rias · 42 characters · moved to another speech page (couldn\'t start the sound)');
+  const open = async (index) => {
+    await rows.nth(index).locator('summary').click();
+    const body = rows.nth(index).locator('[data-feed-body]');
+    await body.waitFor();
+    return body.innerText();
+  };
+  assert.match(await open(0), /Error\s+The game does not exist/);
+  assert.match(await open(1), /Bot replied\s+Usage: !dc <command name>/);
+  const moved = await open(4);
+  assert.match(moved, /Moved because the first page\s+couldn't start the sound/);
+  assert.match(moved, /Speech pages it went to\s+2/);
+  assert.match(moved, /Someone heard it\s+Yes/);
+  assert.match(await open(5), /Ended as\s+couldn't start the sound/);
+  // Tone: a failure is red, a setting at work (turned off, usage) is muted, a played message is ok.
+  const tones = await rows.evaluateAll((els) => els.map((el) => el.dataset.tone));
+  assert.deepEqual(tones, ['danger', 'muted', 'muted', 'danger', 'ok', 'danger', 'muted']);
+  // The filter sheet explains what a problem is.
+  await openSheet();
+  assert.match(await page.locator('[data-feed-sheet]').innerText(), /Turned off, cooldowns and other skips on purpose aren't problems\./);
+  await page.keyboard.press('Escape');
+  await page.screenshot({ path: `${artifacts}/diagnostics-dark-390.png` });
+  state.diagnostics = false;
+
+  // 17. Layout and accessibility, dark first.
   for (const mode of ['dark', 'light']) {
     await page.evaluate((value) => localStorage.setItem('dima-admin.mode.v1', value), mode);
     for (const width of [320, 390, 1280]) {

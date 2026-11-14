@@ -155,12 +155,14 @@ async function main(): Promise<void> {
                 const delivered = await deliverAstMessage(channelID, { ...parsedMessage, origin: 'timer' });
                 // The bot_message row says why a send failed; this row says the timer fired.
                 recordCommandActivity({ ...firing, outcome: delivered.error ? 'failed' : 'ok',
-                    reason: delivered.error ? 'send_failed' : null, durationMs: Date.now() - firedAt });
+                    reason: delivered.error ? 'send_failed' : null, durationMs: Date.now() - firedAt,
+                    error: delivered.error ? delivered.message : null });
 
                 await cache.set(heartbeatKey, '0');
                 await cache.set(heartbeatUnitKey, TIMER_FREQUENCY_UNIT);
             } catch (err) {
-                recordCommandActivity({ ...firing, outcome: 'failed', reason: 'error', durationMs: Date.now() - firedAt });
+                recordCommandActivity({ ...firing, outcome: 'failed', reason: 'error', durationMs: Date.now() - firedAt,
+                    error: err instanceof Error ? err.message : String(err) });
                 await logError({
                     worker: 'timer',
                     message: 'Error processing timer',

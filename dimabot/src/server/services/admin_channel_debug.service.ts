@@ -1,4 +1,4 @@
-import { ActivityLog, type ActivityOutcome } from '../../schemas/activity_log.schema.js';
+import { ActivityLog, isActivityProblem, type ActivityOutcome } from '../../schemas/activity_log.schema.js';
 import { DomainEventDeliverySchema } from '../../schemas/domain_event_delivery.schema.js';
 import { DomainEventSchema } from '../../schemas/domain_event.schema.js';
 import { TWITCH_DOMAIN_EVENT_TYPES } from '../../domain_events/domain_event_contracts.js';
@@ -212,6 +212,10 @@ export interface CommandStat {
     skipped: number;
     blocked: number;
     failed: number;
+    /** Runs that went wrong (`isActivityProblem`): failed, or refused for a reason that is not a setting. */
+    problems: number;
+    /** Runs the bot answered: ok, plus usage replies ("Usage: ..."), which answer too. */
+    answered: number;
     lastAt: string;
     lastOutcome: ActivityOutcome;
     lastReason: string | null;
@@ -231,12 +235,16 @@ export function shapeCommandStats(rows: CommandGroupRow[]): CommandStat[] {
         if (!name || !OUTCOMES.includes(outcome)) continue;
         const time = new Date(row.lastAt).getTime();
         const stat = commands.get(name) || {
-            name, runs: 0, ok: 0, skipped: 0, blocked: 0, failed: 0, lastAt: '', lastOutcome: 'ok' as ActivityOutcome,
+            name, runs: 0, ok: 0, skipped: 0, blocked: 0, failed: 0, problems: 0, answered: 0, lastAt: '', lastOutcome: 'ok' as ActivityOutcome,
             lastReason: null, reasons: [], lastTime: -Infinity, reasonCounts: new Map<string, number>()
         };
         stat.runs += row.n;
         stat[outcome] += row.n;
-        if (outcome !== 'ok' && reason) stat.reasonCounts.set(reason, (stat.reasonCounts.get(reason) || 0) + row.n);
+        if (isActivityProblem(outcome, reason)) stat.problems += row.n;
+        // A usage reply answered the chatter: it is not a reason the command "didn't answer".
+        const replied = outcome === 'ok' || (outcome === 'skipped' && reason === 'usage');
+        if (replied) stat.answered += row.n;
+        else if (reason) stat.reasonCounts.set(reason, (stat.reasonCounts.get(reason) || 0) + row.n);
         if (time > stat.lastTime) {
             stat.lastTime = time;
             stat.lastAt = new Date(time).toISOString();

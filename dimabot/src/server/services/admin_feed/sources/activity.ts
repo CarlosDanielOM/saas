@@ -1,5 +1,7 @@
-import { ACTIVITY_KINDS, ActivityLog, type IActivityLog } from '../../../../schemas/activity_log.schema.js';
-import { actorOf, emptyCounts, flatData, isEventKey, mongoPage, PROBLEM_OUTCOMES, servedKinds, type FeedSource } from '../source.js';
+import {
+    ACTIVITY_KINDS, ACTIVITY_PROBLEM_EXPR, ActivityLog, activityProblemFilter, NOT_OK_OUTCOMES, type IActivityLog
+} from '../../../../schemas/activity_log.schema.js';
+import { actorOf, emptyCounts, flatData, isEventKey, mongoPage, servedKinds, type FeedSource } from '../source.js';
 import type { FeedFilters, FeedItem, FeedKind, FeedKindCount } from '../types.js';
 
 /**
@@ -8,6 +10,9 @@ import type { FeedFilters, FeedItem, FeedKind, FeedKindCount } from '../types.js
  *
  * Indexes: `{at, _id}` (everything), `{channelID, at, _id}`, `{kind, at, _id}`, the partial `problems_at`
  * for outcome filters and the partial actor indexes.
+ *
+ * "Problems" follow `isActivityProblem`: failed, or refused for a reason that is not a setting. Skipped rows
+ * (turned off, cooldown) are shown with everything else but never counted as problems.
  */
 const OWN_KINDS: readonly FeedKind[] = ACTIVITY_KINDS;
 
@@ -17,9 +22,8 @@ export function activityFilter(filters: FeedFilters, kinds: FeedKind[]): Record<
     if (filters.channelID) filter.channelID = filters.channelID;
     if (filters.actorID) filter.actorID = filters.actorID;
     else if (filters.actorLogin) filter.actorLogin = filters.actorLogin;
-    // The exact `$in` of the partial index's filter, so "only failed" still uses it.
-    if (filters.outcome === 'problems') filter.outcome = { $in: [...PROBLEM_OUTCOMES] };
-    else if (filters.outcome === 'failed') filter.outcome = { $in: [...PROBLEM_OUTCOMES], $eq: 'failed' };
+    // Both name the partial index's exact `$in`, so `problems_at` still applies.
+    if (filters.outcome) Object.assign(filter, activityProblemFilter(filters.outcome === 'failed'));
     return filter;
 }
 
@@ -61,28 +65,31 @@ export const activitySource: FeedSource = {
             // partial index, which holds only the rows that are not ok.
             const [totals, problems] = await Promise.all([
                 Promise.all(kinds.map(kind => collection.countDocuments({ kind, ...window }, { maxTimeMS }))),
-                collection.aggregate([
-                    { $match: { ...window, outcome: { $in: [...PROBLEM_OUTCOMES] } } },
-                    { $group: { _id: { kind: '$kind', outcome: '$outcome' }, n: { $sum: 1 } } }
+                collection.aggregate<OutcomeGroup>([
+                    { $match: { ...window, outcome: { $in: [...NOT_OK_OUTCOMES] } } },
+                    { $group: GROUP }
                 ], { maxTimeMS }).toArray()
             ]);
             kinds.forEach((kind, index) => { counts.get(kind)!.total = totals[index]; });
-            for (const row of problems) addOutcome(counts, row._id.kind, row._id.outcome, row.n, false);
+            for (const row of problems) addOutcome(counts, row, false);
         } else {
-            const rows = await collection.aggregate([
+            const rows = await collection.aggregate<OutcomeGroup>([
                 { $match: { ...activityFilter({ ...filters, outcome: undefined }, kinds), ...window } },
-                { $group: { _id: { kind: '$kind', outcome: '$outcome' }, n: { $sum: 1 } } }
+                { $group: GROUP }
             ], { maxTimeMS }).toArray();
-            for (const row of rows) addOutcome(counts, row._id.kind, row._id.outcome, row.n, true);
+            for (const row of rows) addOutcome(counts, row, true);
         }
         return [...counts.values()];
     }
 };
 
-function addOutcome(counts: Map<FeedKind, FeedKindCount>, kind: FeedKind, outcome: string, n: number, addTotal: boolean): void {
-    const row = counts.get(kind);
-    if (!row) return;
-    if (addTotal) row.total += n;
-    if (outcome !== 'ok') row.problems += n;
-    if (outcome === 'failed') row.failed += n;
+interface OutcomeGroup { _id: { kind: FeedKind; outcome: string }; n: number; problems: number }
+const GROUP = { _id: { kind: '$kind', outcome: '$outcome' }, n: { $sum: 1 }, problems: { $sum: { $cond: [ACTIVITY_PROBLEM_EXPR, 1, 0] } } };
+
+function addOutcome(counts: Map<FeedKind, FeedKindCount>, row: OutcomeGroup, addTotal: boolean): void {
+    const entry = counts.get(row._id.kind);
+    if (!entry) return;
+    if (addTotal) entry.total += row.n;
+    entry.problems += row.problems;
+    if (row._id.outcome === 'failed') entry.failed += row.n;
 }

@@ -3,8 +3,12 @@
 // Signed chat messages go through the real webhook and message handler, then `activity_logs` must hold:
 // a command row per attempt of a command that exists (ran, cooldown, turned off, no permission), with
 // its reason; a bot_message row per reply the bot sent; and nothing for an unknown `!word` or plain chat.
+// A built-in that fails keeps its own words (not "something went wrong"); "Usage: ..." is not a failure. A voice
+// request that is not queued leaves a `voice`/`request` row saying why (TTS off; no speech page, from a fake
+// speech service on 127.0.0.1:3000 that answers like the API).
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import http from 'node:http';
 import fs from 'node:fs';
 import mongoose from '/app/node_modules/mongoose/index.js';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
@@ -49,7 +53,10 @@ await CommandsSchema.create([
     command('hello'),
     command('slow', { cooldown: 30 }),
     command('off', { enabled: false }),
-    command('modonly', { userLevel: 7 })
+    command('modonly', { userLevel: 7 }),
+    // A built-in (its error message is the bot's reply) and the usual voice request command.
+    command('dc', { func: 'deleteCommand', message: '' }),
+    command('s', { func: 'speach', message: '$(tts $(user) dice: &t)' })
 ]);
 
 let server;
@@ -166,6 +173,49 @@ for (const row of [...messages, ...commands]) {
     assert.ok(row.expiresAt.getTime() - row.at.getTime() === 30 * 86_400_000, '30-day expiry');
 }
 console.log('PASS refused commands stay silent, every sent reply has its row, and no secret is stored');
+
+// 7. A built-in that fails says why in its own words, which are also its chat reply; a usage reply is not a failure.
+await send('!dc', 'act-dc-usage');
+await send('!dc modonly', 'act-dc-denied');
+await until(async () => (await commandRow('act-dc-usage')) && (await commandRow('act-dc-denied')), 'built-in rows');
+const usage = await commandRow('act-dc-usage');
+assert.deepEqual([usage.outcome, usage.reason, usage.data.error, usage.data.func], ['skipped', 'usage', 'Usage: !dc <command name>', 'deleteCommand']);
+const builtInFailed = await commandRow('act-dc-denied');
+assert.deepEqual([builtInFailed.outcome, builtInFailed.reason, builtInFailed.data.error],
+    ['failed', 'error', 'You do not have enough permissions to delete this command']);
+await until(() => chatSent().includes('You do not have enough permissions to delete this command') && chatSent().includes('Usage: !dc <command name>'),
+    'the same words were the chat replies');
+assert.ok(await CommandsSchema.exists({ channelID: CHANNEL, cmd: 'modonly' }), 'nothing was deleted');
+console.log('PASS a failed built-in keeps its own error text; a usage reply is recorded as used wrong, not failed');
+
+// 8. Voice requests that are not queued say why. Off in the channel's settings: skipped (a setting, not a problem).
+const ttsSettings = mongoose.connection.db.collection('channel_tts_settings');
+await ttsSettings.updateOne({ channelID: CHANNEL }, { $set: { channelID: CHANNEL, channel: 'activityfixture', enabled: false } }, { upsert: true });
+const voiceRow = async () => (await rows({ kind: 'voice', name: 'request' })).at(-1) ?? null;
+await send('!s read this please', 'act-tts-off');
+await until(async () => (await voiceRow())?.reason === 'tts_disabled', 'TTS off row');
+const off2 = await voiceRow();
+assert.deepEqual([off2.outcome, off2.actorID, off2.actorLogin, off2.data.source, off2.data.error],
+    ['skipped', VIEWER, 'activityviewer', 'ast', 'TTS is disabled for this channel']);
+assert.ok(off2.text.endsWith('read this please'), `what they asked to be read: ${off2.text}`);
+// On, but no speech page is open: the speech service refuses with 409 and a code; nobody hears the viewer.
+let speechCalls = 0;
+const speech = http.createServer((request, response) => {
+    speechCalls++;
+    response.writeHead(409, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ error: true, status: 409, code: 'no_speech_page', message: 'Speech overlay is not connected. Open the speech URL first and try again.' }));
+});
+await new Promise((resolve, reject) => { speech.once('error', reject); speech.listen(3000, '127.0.0.1', resolve); });
+await ttsSettings.updateOne({ channelID: CHANNEL }, { $set: { enabled: true } });
+await send('!s now with TTS on', 'act-tts-nopage');
+await until(async () => (await voiceRow())?.reason === 'no_speech_page', 'no speech page row');
+const noPage = await voiceRow();
+assert.deepEqual([noPage.outcome, noPage.data.error], ['failed', 'Speech overlay is not connected. Open the speech URL first and try again.']);
+assert.ok(noPage.text.endsWith('now with TTS on'));
+assert.equal(speechCalls, 1, 'one request reached the speech service');
+assert.equal((await rows({ kind: 'voice', name: 'request' })).length, 2, 'one row per refused request');
+speech.close();
+console.log('PASS refused voice requests record why: TTS off (skipped) and no speech page open (failed)');
 
 server?.close();
 process.exit(0);

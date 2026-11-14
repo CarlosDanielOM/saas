@@ -7,6 +7,7 @@ import {
     filterExpressiveTtsTags,
     normalizeTtsMessage
 } from './normalize_tts_message.util.js';
+import { recordTtsRequestRefused, type TtsRequestCode } from './tts_activity.js';
 
 interface QueueDefaultTtsInput {
     channelID: string;
@@ -33,6 +34,8 @@ interface QueueDefaultTtsResult {
     message: string;
     status?: number;
     type?: string;
+    /** Why it was refused (see `tts_activity.ts`); the speech service's own code when it refused. */
+    code?: TtsRequestCode | string;
     data?: unknown;
 }
 
@@ -58,14 +61,39 @@ function resolveTtsMode(input: QueueDefaultTtsInput, settings: ChannelTtsSetting
         : { mode: 'speak', provider: settings.provider };
 }
 
+/**
+ * Queues a viewer's voice request with the channel's settings. A request that is not queued leaves an owner
+ * activity row saying why (`tts_activity.ts`); the reply text for chat is unchanged.
+ */
 export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<QueueDefaultTtsResult> {
+    let provider: string | null = null;
+    const refused = (result: { message?: string | null; status?: number | null; code?: string | null }) => recordTtsRequestRefused({
+        channelID: input.channelID,
+        actor: input.userID || input.userLogin || input.userName ? { id: input.userID, login: input.userLogin, name: input.userName } : null,
+        source: input.redemption ? 'redemption' : input.source,
+        text: input.rawMessage,
+        provider,
+        result
+    });
+    try {
+        const result = await queueDefaultTtsRequest(input, chosen => { provider = chosen; });
+        if (result.error) refused(result);
+        return result;
+    } catch (error) {
+        refused({ message: error instanceof Error ? error.message : String(error) });
+        throw error;
+    }
+}
+
+async function queueDefaultTtsRequest(input: QueueDefaultTtsInput, onProvider: (provider: string) => void): Promise<QueueDefaultTtsResult> {
     const rawMessage = String(input.rawMessage || '').trim();
     if (!rawMessage) {
         return {
             error: true,
             message: 'No message provided',
             status: 400,
-            type: 'error'
+            type: 'error',
+            code: 'empty_text'
         };
     }
 
@@ -75,7 +103,8 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
             error: true,
             message: 'TTS is disabled for this channel',
             status: 403,
-            type: 'error'
+            type: 'error',
+            code: 'tts_disabled'
         };
     }
 
@@ -83,6 +112,7 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
         ? extractEmoteNames(rawMessage, input.emotes)
         : settings.filters.skipEmotes ? await getTtsEmoteNames(input.channelID) : []);
     const resolvedMode = resolveTtsMode(input, settings);
+    onProvider(resolvedMode.provider);
     // Remove disabled cues before truncation so a partial tag cannot be spoken.
     const filteredMessage = filterExpressiveTtsTags(rawMessage, {
         provider: resolvedMode.provider,
@@ -101,14 +131,15 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
             error: true,
             message: normalized.message,
             status: 400,
-            type: 'error'
+            type: 'error',
+            code: 'text_rejected'
         };
     }
 
     const language = input.language || settings.defaultLanguage;
     const spokenMessage = buildSpokenUserMessage(resolveDisplayName(input), normalized.text, language, input.source);
 
-    if (!spokenMessage.trim()) return { error: true, message: 'No message provided', status: 400, type: 'error' };
+    if (!spokenMessage.trim()) return { error: true, message: 'No message provided', status: 400, type: 'error', code: 'empty_text' };
 
     const payload: TtsRequestBody = {
         mode: resolvedMode.mode,

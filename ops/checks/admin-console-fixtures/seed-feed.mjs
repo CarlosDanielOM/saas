@@ -77,11 +77,14 @@ export async function seedFeed(db, redis, now, ObjectId) {
         activity(6, t(80), { channelID: '', kind: 'system', name: 'eventsub.revoked', data: { type: 'channel.follow' } }),
         activity(7, t(90), { channelID: A, kind: 'twitch_event', name: 'channel.channel_points_custom_reward_redemption.add', ...actor, data: { rewardTitle: 'Hydrate', rewardCost: 100 } }),
         activity(8, tie, { channelID: A, kind: 'command', name: '!hug', ...actor, text: '!hug' }),
+        // Settings at work, never problems: a viewer without the role, and a command that is turned off.
+        activity(10, t(25), { channelID: A, kind: 'command', name: '!mod', outcome: 'blocked', reason: 'permission_denied', ...actor, text: '!mod' }),
+        activity(11, t(30), { channelID: B, kind: 'command', name: '!s', outcome: 'skipped', reason: 'disabled', ...actor, text: '!s hi' }),
         activity(9, tooOld, { channelID: A, kind: 'command', name: '!old', ...actor })
     ];
     await db.collection('activity_logs').insertMany(activityRows);
     const actorOf = row => row.actorID ? { id: row.actorID, login: row.actorLogin } : null;
-    for (const row of activityRows.slice(0, 8)) expect(`activity:${row._id}`, row.at, row.kind, row.outcome, row.channelID || null, actorOf(row));
+    for (const row of activityRows.slice(0, 10)) expect(`activity:${row._id}`, row.at, row.kind, row.outcome, row.channelID || null, actorOf(row), { reason: row.reason || null });
 
     // ---- domain_events (+ deliveries and the stream start receipt) ----
     const event = (n, eventKey, source, type, topic, channelID, occurredAt, payloadEvent, metadata = {}) => ({
@@ -253,6 +256,12 @@ export async function cleanup(db, redis) {
 }
 
 /**
+ * A problem is a failure, or a refusal that is not a setting (Twitch held the bot's message). Skipped rows
+ * (cooldown, turned off, a review skipped for credits, a stopped assistant) and a viewer without the role never are.
+ */
+const isProblem = entry => entry.outcome === 'failed' || (entry.outcome === 'blocked' && entry.reason !== 'permission_denied');
+
+/**
  * The seed's rows a feed query must return, in order, from the spec alone: kinds, channel, chatter and
  * outcome filters. A viewer id is searched everywhere. A login that did not resolve to an id is searched
  * by login only where that is indexed or bounded by a channel (see `expectedPartial` for the rest).
@@ -268,7 +277,7 @@ export function expectedFeed(seed, query = {}) {
             if (entry.actorLogin !== query.actorLogin) return false;
             if (['event', 'usage', 'assistant'].includes(source) && !query.channel) return false;
         }
-        if (query.outcome === 'problems' && entry.outcome === 'ok') return false;
+        if (query.outcome === 'problems' && !isProblem(entry)) return false;
         if (query.outcome === 'failed' && entry.outcome !== 'failed') return false;
         return true;
     });
@@ -280,7 +289,7 @@ export function expectedCounts(seed, query = {}) {
     for (const entry of expectedFeed(seed, { channel: query.channel, actor: query.actor, actorLogin: query.actorLogin })) {
         const row = counts[entry.kind] ||= { total: 0, problems: 0, failed: 0 };
         row.total++;
-        if (entry.outcome !== 'ok') row.problems++;
+        if (isProblem(entry)) row.problems++;
         if (entry.outcome === 'failed') row.failed++;
     }
     return counts;

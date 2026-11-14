@@ -1,5 +1,5 @@
 import type { AstMessage, CommandReferenceRequest } from './ast_parser/types.js';
-import { chatActor, commandResultOutcome, recordCommandActivity, type ChatDelivery } from './activity_command.js';
+import { chatActor, commandResultOutcome, errorText, recordCommandActivity, type ChatDelivery } from './activity_command.js';
 
 /** `sent`: how many chat messages this delivery (its own text and its references' replies) really sent. */
 type SendResult = { error: boolean; message: string; status?: number; sent?: number };
@@ -52,20 +52,21 @@ export async function deliverAstMessage(
         const startedAt = Date.now();
         const path = `${parentPath}/${index}`;
         let recorded = false;
-        const record = (outcome: { outcome: 'ok' | 'skipped' | 'blocked' | 'failed'; reason: string | null }) => {
+        const record = (outcome: { outcome: 'ok' | 'skipped' | 'blocked' | 'failed'; reason: string | null }, error?: unknown) => {
             recorded = true;
             try {
                 recordCommandActivity({
                     channelID: request.channelID, name: `!${request.commandName}`, trigger: 'reference', event: request.eventData,
                     key: `${path}:${String(request.commandName).toLowerCase()}`,
-                    ...outcome, durationMs: Date.now() - startedAt
+                    ...outcome, durationMs: Date.now() - startedAt,
+                    error: outcome.outcome === 'failed' ? errorText(error) : null
                 });
             } catch { /* a debug row must never change delivery */ }
         };
         try {
             const result = await dependencies.execute(request);
             const outcome = commandResultOutcome(result.type, result.error);
-            if (outcome) record(outcome);
+            if (outcome) record(outcome, result.message);
             if (result.error) continue;
             const sent = await deliverAstMessage(request.channelID, {
                 parsedText: result.message, commandReferences: result.commandReferences,
@@ -74,7 +75,7 @@ export async function deliverAstMessage(
             if (sent.error) return sent;
             sentCount += sent.sent ?? 0;
         } catch (error) {
-            if (!recorded) record({ outcome: 'failed', reason: 'error' });
+            if (!recorded) record({ outcome: 'failed', reason: 'error' }, error);
             console.error('AST command reference failed', { channelID, command: request.commandName, error });
         }
     }

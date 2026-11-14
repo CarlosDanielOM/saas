@@ -98,7 +98,10 @@ export interface FeedQuery {
   /** Chatter login, when the id is not known. */
   actorLogin?: string | null;
   kinds?: FeedKind[] | null;
-  /** 'problems' = skipped, blocked or failed; 'failed' = failed only. */
+  /**
+   * 'problems' = failed, or refused for a reason that is not a setting (Twitch held the bot's message, a broken
+   * permission rule); 'failed' = failed only. Skipped rows (turned off, cooldown) are never problems.
+   */
   outcome?: 'problems' | 'failed' | null;
   /** ISO times. Default: the last 7 days. The window can be at most 90 days. */
   from?: string | null;

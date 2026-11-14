@@ -184,15 +184,23 @@ describe('command stats', () => {
             row('!so', 'failed', 'timeout', 1, '2026-11-11T11:00:00Z'),
             row('!so', 'skipped', 'disabled', 1, '2026-11-10T11:00:00Z'),
             row('!hi', 'ok', '', 20, '2026-11-13T12:00:00Z'),
-            row('!rare', 'failed', '', 1, '2026-11-13T12:30:00Z')
+            row('!rare', 'failed', '', 1, '2026-11-13T12:30:00Z'),
+            row('!rare', 'blocked', 'held_for_moderation', 2, '2026-11-13T12:20:00Z'),
+            row('!dc', 'skipped', 'usage', 2, '2026-11-13T09:00:00Z'),
+            row('!dc', 'failed', 'error', 1, '2026-11-13T08:00:00Z')
         ]);
-        assert.deepEqual(stats.map(stat => stat.name), ['!hi', '!so', '!rare']);
+        assert.deepEqual(stats.map(stat => stat.name), ['!hi', '!so', '!rare', '!dc']);
         assert.deepEqual(stats[1], {
-            name: '!so', runs: 14, ok: 5, skipped: 4, blocked: 4, failed: 1, lastAt: '2026-11-13T11:00:00.000Z', lastOutcome: 'skipped', lastReason: 'cooldown',
+            // Only the failure is a problem: cooldown, turned off and a viewer without the role are settings at work.
+            name: '!so', runs: 14, ok: 5, skipped: 4, blocked: 4, failed: 1, problems: 1, answered: 5, lastAt: '2026-11-13T11:00:00.000Z', lastOutcome: 'skipped', lastReason: 'cooldown',
             reasons: [{ reason: 'permission_denied', count: 4 }, { reason: 'cooldown', count: 3 }, { reason: 'disabled', count: 1 }]
         });
-        assert.deepEqual({ ...stats[0], name: undefined }, { name: undefined, runs: 20, ok: 20, skipped: 0, blocked: 0, failed: 0, lastAt: '2026-11-13T12:00:00.000Z', lastOutcome: 'ok', lastReason: null, reasons: [] });
+        assert.deepEqual({ ...stats[0], name: undefined }, { name: undefined, runs: 20, ok: 20, skipped: 0, blocked: 0, failed: 0, problems: 0, answered: 20, lastAt: '2026-11-13T12:00:00.000Z', lastOutcome: 'ok', lastReason: null, reasons: [] });
         assert.equal(stats[2].lastReason, null);
+        assert.equal(stats[2].problems, 3, 'a message Twitch held is a problem');
+        // A usage reply answered: counted as answered, not as a reason it didn't answer, and not a problem.
+        assert.deepEqual([stats[3].answered, stats[3].problems, stats[3].reasons], [2, 1, [{ reason: 'error', count: 1 }]]);
+        assert.equal(stats[3].lastReason, 'usage');
     });
 
     it('keeps at most 200 commands', () => {

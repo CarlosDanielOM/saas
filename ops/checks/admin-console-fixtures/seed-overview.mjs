@@ -231,10 +231,11 @@ export async function seedOverview({ db, redis, ObjectId, now = new Date() }) {
         logKeys: logLines.map(([key]) => key),
         expected: {
             // Last 24 hours, per seeded channel. Events: activity rows + journal (tests included) + decisions +
-            // receipts other than the chat protection one; problems: activity problems + decisions not
-            // reviewed or whose action failed; credits: usage receipts.
+            // receipts other than the chat protection one; problems: activity problems (failed, or refused by
+            // Twitch; never a skip or a viewer without the role) + reviews that failed or whose action failed;
+            // credits: usage receipts.
             topChannels: {
-                [A]: { channel: OVERVIEW_CHANNELS.alpha.login, events: 19, problems: 9, credits: 5800 },
+                [A]: { channel: OVERVIEW_CHANNELS.alpha.login, events: 19, problems: 6, credits: 5800 },
                 [B]: { channel: OVERVIEW_CHANNELS.bravo.login, events: 4, problems: 0, credits: 700 },
                 [C]: { channel: null, events: 1, problems: 0, credits: 1000 }
             },
@@ -243,7 +244,7 @@ export async function seedOverview({ db, redis, ObjectId, now = new Date() }) {
             // Decisions 0.003 + receipts 0.047 (the charged review's receipt is not counted again) + assistant 0.01 + docs 0.02.
             dayProviderUSD: 0.08,
             daily: {
-                totals: { events: 34, problems: 10, credits: 10_000, providerUSD: 0.1245 },
+                totals: { events: 34, problems: 7, credits: 10_000, providerUSD: 0.1245 },
                 [tenDaysAgo]: { events: 4, problems: 1, credits: 2000, providerUSD: 0.014 }
             },
             features: {
@@ -267,8 +268,8 @@ export async function seedOverview({ db, redis, ObjectId, now = new Date() }) {
                 }
             },
             commands7d: [
-                { name: '!so', runs: 3, ok: 1, skipped: 1, blocked: 1, failed: 0, lastAt: iso(30 * MINUTE), lastOutcome: 'skipped', lastReason: 'cooldown', reasons: [{ reason: 'cooldown', count: 1 }, { reason: 'permission_denied', count: 1 }] },
-                { name: '!hi', runs: 1, ok: 1, skipped: 0, blocked: 0, failed: 0, lastAt: iso(3 * DAY), lastOutcome: 'ok', lastReason: null, reasons: [] }
+                { name: '!so', runs: 3, ok: 1, skipped: 1, blocked: 1, failed: 0, problems: 0, answered: 1, lastAt: iso(30 * MINUTE), lastOutcome: 'skipped', lastReason: 'cooldown', reasons: [{ reason: 'cooldown', count: 1 }, { reason: 'permission_denied', count: 1 }] },
+                { name: '!hi', runs: 1, ok: 1, skipped: 0, blocked: 0, failed: 0, problems: 0, answered: 1, lastAt: iso(3 * DAY), lastOutcome: 'ok', lastReason: null, reasons: [] }
             ],
             commands30dHi: { runs: 2, ok: 1, failed: 1, lastOutcome: 'ok', reasons: [{ reason: 'timeout', count: 1 }] },
             recordsSince: iso(10 * DAY),

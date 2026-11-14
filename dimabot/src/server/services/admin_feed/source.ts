@@ -87,8 +87,6 @@ export interface FeedSource {
 /** Login only: the route could not turn the login into a Twitch id. */
 export const loginOnly = (filters: FeedFilters): boolean => !filters.actorID && !!filters.actorLogin;
 
-export const PROBLEM_OUTCOMES = ['skipped', 'blocked', 'failed'] as const;
-
 /** The kinds a source serves: the requested ones it can produce (all of them without a kind filter). */
 export const servedKinds = (filters: FeedFilters, own: readonly FeedKind[]): FeedKind[] =>
     own.filter(kind => !filters.kinds?.length || filters.kinds.includes(kind));

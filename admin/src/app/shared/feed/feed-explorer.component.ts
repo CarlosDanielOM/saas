@@ -158,7 +158,7 @@ export class FeedExplorerComponent {
   });
   readonly outcomeOptions: Array<{ value: Outcome | null; title: string; copy: string }> = [
     { value: null, title: 'Everything', copy: 'Every row, however it went.' },
-    { value: 'problems', title: "Anything that didn't go as planned", copy: 'Skipped, refused or failed.' },
+    { value: 'problems', title: 'Something went wrong', copy: "Failed, or refused by Twitch. Turned off, cooldowns and other skips on purpose aren't problems." },
     { value: 'failed', title: 'Failed only', copy: "It should have happened and didn't." },
   ];
   readonly pendingLabel = computed(() => `${formatNumber(this.pending().length)} new, tap to show`);

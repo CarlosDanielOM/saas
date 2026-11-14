@@ -432,7 +432,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             return res.status(404).json({
                 error: true,
                 message: 'Streamer not found',
-                status: 404
+                status: 404,
+                code: 'streamer_not_found'
             });
         }
 
@@ -441,7 +442,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             return res.status(403).json({
                 error: true,
                 message: 'TTS is disabled for this channel',
-                status: 403
+                status: 403,
+                code: 'tts_disabled'
             });
         }
 
@@ -465,7 +467,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             return res.status(400).json({
                 error: true,
                 message: normalizedText.message,
-                status: 400
+                status: 400,
+                code: 'text_rejected'
             });
         }
 
@@ -474,7 +477,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             return res.status(400).json({
                 error: true,
                 message: 'No voice is configured for this request',
-                status: 400
+                status: 400,
+                code: 'no_voice'
             });
         }
 
@@ -501,6 +505,7 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             error: result.error,
             message: result.message,
             status: result.status,
+            ...(result.code ? { code: result.code } : {}),
             data: result.data
         });
     } catch (error) {

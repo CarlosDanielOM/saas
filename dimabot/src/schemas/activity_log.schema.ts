@@ -17,6 +17,41 @@ export type ActivityKind = typeof ACTIVITY_KINDS[number];
  */
 export const ACTIVITY_OUTCOMES = ['ok', 'skipped', 'blocked', 'failed'] as const;
 export type ActivityOutcome = typeof ACTIVITY_OUTCOMES[number];
+
+/** Every outcome that is not ok: exactly what the partial `problems_at` index holds. */
+export const NOT_OK_OUTCOMES = ['skipped', 'blocked', 'failed'] as const;
+/** Refusals that are a channel's own setting doing its job (a viewer without the role), like a skipped row. */
+export const EXPECTED_REFUSALS = ['permission_denied'] as const;
+
+/**
+ * What the owner sees as a problem: it failed, or it was refused for a reason that is not a setting (Twitch held
+ * the bot's message, a broken permission rule). Skipped rows never are: turned off, cooldown, an alert without a
+ * message, a command used without what it needs. Use `activityProblemFilter` and `ACTIVITY_PROBLEM_EXPR` for the
+ * same rule in Mongo.
+ */
+export function isActivityProblem(outcome: string, reason: string | null | undefined): boolean {
+    return outcome === 'failed' || (outcome === 'blocked' && !(EXPECTED_REFUSALS as readonly string[]).includes(reason ?? ''));
+}
+
+/**
+ * The problem rule as a find filter. It names the partial index's exact `$in` so `problems_at` still applies;
+ * the rest is a plain filter (no `$or`, which would make the planner give up the time order).
+ */
+export function activityProblemFilter(onlyFailed = false): Record<string, unknown> {
+    if (onlyFailed) return { outcome: { $in: [...NOT_OK_OUTCOMES], $eq: 'failed' } };
+    return {
+        outcome: { $in: [...NOT_OK_OUTCOMES], $ne: 'skipped' },
+        $nor: [{ outcome: 'blocked', reason: { $in: [...EXPECTED_REFUSALS] } }]
+    };
+}
+
+/** The problem rule as an aggregation expression over `$outcome` and `$reason`. */
+export const ACTIVITY_PROBLEM_EXPR = {
+    $or: [
+        { $eq: ['$outcome', 'failed'] },
+        { $and: [{ $eq: ['$outcome', 'blocked'] }, { $not: [{ $in: ['$reason', [...EXPECTED_REFUSALS]] }] }] }
+    ]
+};
 export type ActivityService = 'bot' | 'api' | 'cron';
 export type ActivityData = Record<string, string | number | boolean | null>;
 
@@ -74,7 +109,7 @@ schema.index({ at: -1, _id: -1 });
 schema.index({ channelID: 1, at: -1, _id: -1 });
 schema.index({ kind: 1, at: -1, _id: -1 });
 // "Only problems" across channels: most rows are ok, so the index only holds the rest.
-schema.index({ at: -1, _id: -1 }, { name: 'problems_at', partialFilterExpression: { outcome: { $in: ['skipped', 'blocked', 'failed'] } } });
+schema.index({ at: -1, _id: -1 }, { name: 'problems_at', partialFilterExpression: { outcome: { $in: [...NOT_OK_OUTCOMES] } } });
 // One chatter across channels. Most rows from timers and the system have no actor.
 schema.index({ actorID: 1, at: -1, _id: -1 }, { partialFilterExpression: { actorID: { $gt: '' } } });
 schema.index({ actorLogin: 1, at: -1, _id: -1 }, { partialFilterExpression: { actorLogin: { $gt: '' } } });

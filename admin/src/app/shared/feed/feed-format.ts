@@ -112,6 +112,37 @@ const REASON: Record<string, string> = {
   user_removed: 'the Twitch account no longer exists',
   notification_failures_exceeded: 'Twitch could not reach us too many times',
   version_removed: 'Twitch retired this event version',
+  usage: 'it was used without what it needs',
+  // Voice requests that were never queued.
+  empty_text: 'there was nothing to read',
+  tts_disabled: 'TTS is turned off for this channel',
+  text_rejected: "the TTS filters left nothing to read",
+  no_voice: 'no voice is set up for it',
+  no_speech_page: 'no speech page was open in OBS',
+  queue_full: 'the TTS queue was full',
+  busy: 'TTS was busy across all channels',
+  streamer_not_found: 'the channel was not found',
+  // How a voice message ended on stream.
+  tts_skipped: 'a mod skipped it',
+  tts_stopped: 'a mod or the stream ending stopped it before it played',
+  pet_stopped: 'the desktop pet stopped reading it',
+  pet_failed: "the desktop pet couldn't read it",
+  pet_expired: 'the desktop pet took too long to read it',
+  tts_cleared: 'a mod cleared the TTS queue',
+  tts_refreshed: 'a mod reloaded the speech pages',
+  stream_ended: 'the stream ended first',
+  page_closed: 'the speech page closed before it played',
+  page_closed_while_playing: 'the speech page closed while it was playing',
+  not_played: 'it was made but no speech page took it',
+  play_error: "the speech page couldn't start the sound (often a hidden OBS source)",
+  media_error: "the speech page couldn't read the audio",
+  download_error: "the speech page couldn't download the audio",
+  stalled: 'the audio stopped loading',
+  no_start: 'the speech page never started it',
+  playback_timeout: "it didn't finish in time",
+  queue_error: 'the TTS queue hit an error',
+  suppression_unavailable: 'the speech slot was busy',
+  outcome_unknown: 'the bot lost track of it',
 };
 export function reasonText(reason: string | null | undefined): string | null {
   if (!reason) return null;
@@ -147,6 +178,21 @@ const because = (item: FeedItem): string => {
   const reason = reasonText(item.reason);
   return reason ? `: ${reason}` : '';
 };
+
+/** A row's own error text in a title: the full text is in the details. */
+const clip = (value: string, max = 140): string => (value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value);
+
+/** What a speech page reported, as `movedBecause` and `endReason` store it ("play-error"). */
+const PAGE_REASON: Record<string, string> = {
+  'play-error': "couldn't start the sound", 'media-error': "couldn't read the audio", 'download-error': "couldn't download the audio",
+  stalled: 'audio stopped loading', 'start-timeout': 'never started', 'no-start': 'never started', timeout: "didn't finish in time",
+  disconnected: 'page closed', ended: 'finished', skip: 'skipped by a mod', clear: 'queue cleared by a mod', refresh: 'pages reloaded by a mod',
+  output_unavailable: 'no speech page open', interrupted: 'stopped before it played', not_played: 'no speech page took it', stream_ended: 'stream ended',
+  'pet:completed': 'read by the desktop pet', 'pet:cancelled': 'desktop pet stopped', 'pet:state_changed': 'desktop pet stopped', 'pet:failed': 'desktop pet failed',
+};
+function pageReason(reason: string): string {
+  return PAGE_REASON[reason] ?? reason.replace(/[-_]/g, ' ');
+}
 
 /** Tone for an outcome when the kind has nothing more specific to say. */
 function toneFor(outcome: FeedOutcome): FeedTone {
@@ -198,7 +244,13 @@ export function feedLine(item: FeedItem): FeedLine {
         return { ...base, icon: 'timer', title: item.outcome === 'ok' ? `Timer ${name} posted` : `Timer ${name} didn't post${because(item)}` };
       }
       if (item.outcome === 'ok') return { ...base, title: `${name} answered ${who(item)}`, detail: trigger === 'keyword' ? 'Started by a keyword' : null };
-      if (item.outcome === 'failed') return { ...base, title: `${name} failed for ${who(item)}${because(item)}` };
+      // The command's or the error's own words say more than a reason code.
+      const error = text(data['error']);
+      if (item.outcome === 'failed') {
+        const generic = !item.reason || item.reason === 'error';
+        return { ...base, title: `${name} failed for ${who(item)}${generic && error ? `: ${clip(error)}` : because(item)}`, detail: generic ? null : error };
+      }
+      if (item.reason === 'usage') return { ...base, title: `${name}: ${who(item)} left out what it needs`, detail: error ? `The bot replied how to use it` : null };
       return { ...base, title: `${name} didn't answer ${who(item)}${because(item)}` };
     }
     case 'bot_message': {
@@ -242,6 +294,25 @@ export function feedLine(item: FeedItem): FeedLine {
     case 'voice': {
       const chars = num(data['chars']);
       const source = VOICE_SOURCE[text(data['source']) ?? ''] ?? text(data['source']);
+      if (item.name === 'request') {
+        // A voice request that never reached the queue; the quote is what they asked to be read.
+        const error = text(data['error']);
+        return {
+          ...base, icon: 'mic',
+          title: `Voice request from ${who(item)} not read${because(item)}`,
+          detail: join(error && error !== reasonText(item.reason) ? error : null, source ? `from a ${source}` : null),
+        };
+      }
+      if (item.name === 'playback') {
+        const pages = num(data['pages']);
+        const moved = text(data['movedBecause']);
+        const detail = join(text(data['provider']), text(data['voice']), chars !== null ? `${formatNumber(chars)} characters` : null,
+          moved ? `moved to another speech page (${pageReason(moved)})` : null, data['everyPage'] === true && pages ? `played on ${pages} pages` : null);
+        if (item.outcome === 'ok') return { ...base, tone: 'ok', title: `Voice message from ${who(item)} played`, detail };
+        if (item.outcome === 'skipped') return { ...base, title: `Voice message from ${who(item)} not finished${because(item)}`, detail };
+        const partly = data['heard'] === true && item.reason !== 'page_closed_while_playing' ? ' after it started' : '';
+        return { ...base, title: `Voice message from ${who(item)} didn't play${partly}${because(item)}`, detail: join(detail, text(data['error'])) };
+      }
       const detail = join(item.name, text(data['voice']), chars !== null ? `${formatNumber(chars)} characters` : null, source ? `from a ${source}` : null);
       if (item.outcome === 'ok') return { ...base, title: `Voice for ${who(item)}`, detail };
       const fallback = text(data['fallback']);
@@ -299,6 +370,8 @@ const DATA_LABEL: Record<string, string> = {
   lang: 'Language', page: 'Page', feedback: 'Rating', rounds: 'Rounds', adjustmentType: 'Type', managed: 'Managed by Dima', fallback: 'Fallback',
   title: 'Title', moderator: 'Moderator', reason: 'Reason', permanent: 'Permanent', from: 'From', error: 'Error', type: 'Type', replyTo: 'Reply to',
   latencyMs: 'Time', subscriptionId: 'Subscription', rewardId: 'Reward id',
+  heard: 'Someone heard it', pages: 'Speech pages it went to', movedBecause: 'Moved because the first page', everyPage: 'Played on every open page',
+  endReason: 'Ended as',
 };
 
 /** Internal values the operator should read in plain words. */
@@ -328,10 +401,13 @@ export function feedFacts(item: FeedItem): Array<{ label: string; value: string;
     if (key === 'action') shown = `${VALUE['action'][String(value)] ?? value}${data['actionSucceeded'] === false ? ' (Twitch refused)' : ''}`;
     else if (key === 'topScore' && typeof value === 'number') shown = `${text(data['topCategory'])?.replace(/_/g, ' ') ?? 'Highest'} ${Math.round(value * 100)}%`;
     else if (key === 'latencyMs' && typeof value === 'number') shown = formatDuration(value);
+    else if ((key === 'movedBecause' || key === 'endReason') && typeof value === 'string') shown = pageReason(value);
     else if (typeof value === 'boolean') shown = value ? 'Yes' : 'No';
     else if (typeof value === 'number') shown = formatNumber(value);
     else shown = VALUE[key]?.[value] ?? reasonText(key === 'status' ? value : null) ?? String(value);
-    facts.push({ label: DATA_LABEL[key] ?? key, value: shown, mono: /Id$|^eventKey$/.test(key) });
+    // A built-in command's error is also what the bot said in chat.
+    const label = key === 'error' && item.kind === 'command' && item.reason === 'usage' ? 'Bot replied' : DATA_LABEL[key] ?? key;
+    facts.push({ label, value: shown, mono: /Id$|^eventKey$/.test(key) });
   }
   if (item.durationMs !== null) facts.push({ label: 'Took', value: formatDuration(item.durationMs), mono: false });
   if (item.credits !== null) facts.push({ label: 'Credits', value: item.credits === 0 ? 'None (free)' : `${item.credits < 0 ? '+' : ''}${formatCredits(Math.abs(item.credits))}`, mono: false });

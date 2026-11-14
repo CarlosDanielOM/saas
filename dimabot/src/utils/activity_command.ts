@@ -35,6 +35,27 @@ export function chatActor(event: unknown): ActivityActor | null {
 
 export interface CommandResult { outcome: ActivityOutcome; reason: string | null }
 
+/** The message of a thrown error or a failed result, for the row's `error` fact; null when there is none. */
+export function errorText(value: unknown): string | null {
+    if (value instanceof Error) return value.message || value.name || null;
+    if (typeof value === 'string') return value.trim() || null;
+    if (value && typeof value === 'object' && typeof (value as { message?: unknown }).message === 'string') {
+        return ((value as { message: string }).message).trim() || null;
+    }
+    return null;
+}
+
+/**
+ * A built-in command (`!game`, `!duel`, `!dc`) that returned an error: the bot replies with that message in
+ * chat. "Usage: ..." means the chatter left out what the command needs, which is the command doing its job,
+ * not something that went wrong.
+ */
+export function builtInFailureOutcome(message: unknown): CommandResult {
+    return typeof message === 'string' && message.startsWith('Usage: ')
+        ? { outcome: 'skipped', reason: 'usage' }
+        : { outcome: 'failed', reason: 'error' };
+}
+
 /**
  * Outcome of a command run from the typed result of `commands.handler.ts`. Null means the command
  * does not exist, which is not worth a row.
@@ -62,6 +83,8 @@ export interface CommandAttempt extends CommandResult {
     /** Distinguishes two rows for the same chat message (a keyword id, a reference depth). */
     key?: string | null;
     data?: Record<string, string | number | boolean | null>;
+    /** What went wrong, in the command's or the error's own words (shown to the owner instead of "something went wrong"). */
+    error?: string | null;
 }
 
 export function commandActivity(attempt: CommandAttempt): ActivityInput {
@@ -80,7 +103,7 @@ export function commandActivity(attempt: CommandAttempt): ActivityInput {
         durationMs: attempt.durationMs ?? null,
         // Twitch retries a delivery with the same message id: one row per message and command.
         dedupeKey: messageID ? `${messageID}:${attempt.trigger}:${attempt.key ?? attempt.name.toLowerCase()}` : null,
-        data: { ...attempt.data, func: attempt.func || undefined, trigger: attempt.trigger }
+        data: { ...attempt.data, func: attempt.func || undefined, trigger: attempt.trigger, ...(attempt.error ? { error: attempt.error } : {}) }
     };
 }
 

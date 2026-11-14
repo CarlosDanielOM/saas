@@ -7,6 +7,8 @@ const queues = new Map<string, string[]>();
 const finishedActivities: string[] = [];
 const retired = new Map<string, string>(), confirmed: string[] = [];
 const synthesized: string[] = [];
+/** Synthesis waits for these (by speech id) when present, so a test can act while a message is being made. */
+const synthGates = new Map<string, Promise<void>>();
 const cache = {
   eval: async (_script: string, options: { keys: string[] }): Promise<unknown> => {
     const next = queues.get(options.keys[0])?.shift();
@@ -69,7 +71,7 @@ mock.module('../utils/tts_usage.js', { namedExports: { trackTtsUsage: async () =
 mock.module('../utils/posthog_events.js', { namedExports: { trackAiOperation: () => {} } });
 mock.module('../utils/tts/tts_playback_timeout.util.js', { namedExports: { getTtsPlaybackTimeoutMs: async () => 60000 } });
 for (const provider of ['piper', 'fish', 'kokoro']) mock.module(`../server/services/tts/${provider}_tts.service.js`, { namedExports: {
-  [`${provider}TtsService`]: { synthesize: async (input: any) => { synthesized.push(input.speechID); return { error: false, outputPath: `/tmp/${input.speechID}.wav`, publicPath: `/audio/${input.speechID}` }; } },
+  [`${provider}TtsService`]: { synthesize: async (input: any) => { synthesized.push(input.speechID); await synthGates.get(input.speechID); return { error: false, outputPath: `/tmp/${input.speechID}.wav`, publicPath: `/audio/${input.speechID}` }; } },
   ...(provider === 'piper' ? { PIPER_PUBLIC_SPEECH_DIR: '/tmp/tts-delivery' } : {})
 } });
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
@@ -351,4 +353,67 @@ test('a page that times out without starting is marked failing, even with no oth
   assert.ok(finishedActivities.includes('timeout-1'), 'a page that never started is known to be silent');
   const status = await handler.getStatus('timeout');
   assert.deepEqual([status.outputs?.failing, status.outputs?.playable], [1, 0]);
+});
+
+test('each message that was made leaves one playback row for the owner: played after a move, failed, skipped', async () => {
+  const { setActivityLogSinkForTests, pendingActivityRowsForTests } = await import('../utils/activity_log.js');
+  const written: Array<{ kind: string; name: string; ref: string; outcome: string; reason: string; actorLogin: string; data: Record<string, unknown> }> = [];
+  setActivityLogSinkForTests(async rows => { written.push(...rows); });
+  const rowsFor = (speechID: string) => [...written, ...pendingActivityRowsForTests()].filter(row => row.kind === 'voice' && row.name === 'playback' && row.ref === speechID);
+  const viewer = { requestedBy: { userID: '7', userLogin: 'Viewer', userName: 'Viewer' } };
+  try {
+    // Moved off a page that could not start it, then played on the next one.
+    const [first, second] = open('rows', new Page('a', { visible: true, probe: 'ok' }), new Page('b', { visible: true, probe: 'ok' }));
+    seed('rows', 'rows-1', viewer);
+    await handler.processNext('rows');
+    await until(() => first.got('speech', 'rows-1') === 1);
+    await ended('rows', first, 'rows-1', 'play-error');
+    playing('rows', second, 'rows-1');
+    await ended('rows', second, 'rows-1');
+    await until(() => rowsFor('rows-1').length === 1, 'played row');
+    const played = rowsFor('rows-1')[0];
+    assert.deepEqual([played.outcome, played.reason, played.actorLogin], ['ok', '', 'viewer']);
+    assert.deepEqual([played.data.movedBecause, played.data.pages, played.data.heard, played.data.provider], ['play-error', 2, true, 'piper']);
+
+    // A mod skips it while it plays.
+    seed('rows', 'rows-2', viewer);
+    await handler.processNext('rows');
+    await until(() => second.got('speech', 'rows-2') === 1);
+    playing('rows', second, 'rows-2');
+    await handler.control('rows', 'skip');
+    await until(() => rowsFor('rows-2').length === 1, 'skipped row');
+    assert.deepEqual([rowsFor('rows-2')[0].outcome, rowsFor('rows-2')[0].reason, rowsFor('rows-2')[0].data.heard], ['skipped', 'tts_skipped', true]);
+
+    // The only page cannot start it: nowhere to move, so it did not play.
+    const [only] = open('rows-one', new Page('a', { visible: true, probe: 'ok' }));
+    seed('rows-one', 'rows-3', viewer);
+    await handler.processNext('rows-one');
+    await until(() => only.got('speech', 'rows-3') === 1);
+    await ended('rows-one', only, 'rows-3', 'play-error');
+    await until(() => rowsFor('rows-3').length === 1, 'failed row');
+    const failed = rowsFor('rows-3')[0];
+    assert.deepEqual([failed.outcome, failed.reason, failed.data.heard, failed.data.pages, failed.data.endReason], ['failed', 'play_error', false, 1, 'play-error']);
+
+    // Late or repeated endings never add a second row.
+    await ended('rows', second, 'rows-1');
+    await handler.cleanupSpeech('rows-one', 'rows-3');
+    assert.deepEqual(['rows-1', 'rows-2', 'rows-3'].map(id => rowsFor(id).length), [1, 1, 1]);
+
+    // The only page closes while the message is being made: it was made, nobody got it, and no mod did anything.
+    const [lonely] = open('rows-gone', new Page('a', { visible: true, probe: 'ok' }));
+    let release!: () => void;
+    synthGates.set('rows-4', new Promise<void>(resolve => { release = resolve; }));
+    seed('rows-gone', 'rows-4', viewer);
+    const run = handler.processNext('rows-gone');
+    await until(() => synthesized.includes('rows-4'), 'synthesis started');
+    lonely.connected = false;
+    pages.delete('/speech/rows-gone');
+    await handler.handleOverlayDisconnected('rows-gone', 'legacy:a');
+    release();
+    await run;
+    await until(() => rowsFor('rows-4').length === 1, 'dropped row');
+    assert.deepEqual([rowsFor('rows-4')[0].outcome, rowsFor('rows-4')[0].reason, rowsFor('rows-4')[0].data.pages], ['failed', 'page_closed', undefined]);
+  } finally {
+    setActivityLogSinkForTests(null);
+  }
 });

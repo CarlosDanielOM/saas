@@ -1,5 +1,5 @@
 import { Types, type PipelineStage } from 'mongoose';
-import { ActivityLog } from '../../schemas/activity_log.schema.js';
+import { ACTIVITY_PROBLEM_EXPR, ActivityLog, activityProblemFilter } from '../../schemas/activity_log.schema.js';
 import AiUsageReceiptSchema from '../../schemas/ai_usage_receipt.schema.js';
 import { CreditGiftSchema } from '../../schemas/credit_gift.schema.js';
 import { DomainEventDeliverySchema } from '../../schemas/domain_event_delivery.schema.js';
@@ -13,6 +13,7 @@ import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js'
 import { MODERATION_RETENTION_DAYS } from '../../utils/moderation/advanced.js';
 import { channelLogins as realChannelLogins, creditsToUSD } from '../routes/admin_site/shared.js';
 import { listFeed as realListFeed, summarizeFeed as realSummarizeFeed, type FeedItem, type FeedKindCount } from './admin_feed/index.js';
+import { FAILED_STATUSES } from './admin_feed/sources/protection.js';
 import { moderationReviewCountsCached } from './moderation_review.service.js';
 
 /**
@@ -56,11 +57,8 @@ const DEAD_DELIVERY_DAYS = 30;
 const QUERY_MS = 4000;
 const PART_TIMEOUT_MS = 5000;
 const CACHE_MS = 15_000;
-const PROBLEM_OUTCOMES = ['skipped', 'blocked', 'failed'];
 /** A chat protection review charged to a channel is both a decision and a receipt: the decision is counted. */
 export const PROTECTION_OPERATION = 'contextual_moderation';
-/** Decision statuses that mean the AI did look at the message (or the review is still running). */
-const REVIEWED_STATUSES = ['pending', 'completed', 'uncertain', 'matched'];
 
 /** The time windows every part reads. `days` are the 14 UTC days, oldest first, the last one being today. */
 export interface OverviewWindows {
@@ -315,7 +313,7 @@ export async function loadActivityFragment(w: OverviewWindows): Promise<Overview
             { $match: { at: range } }, { $group: { _id: utcDay('$at'), n: { $sum: 1 } } }
         ]).option({ maxTimeMS: QUERY_MS }),
         ActivityLog.aggregate<{ _id: string; n: number }>([
-            { $match: { at: range, outcome: { $in: PROBLEM_OUTCOMES } } }, { $group: { _id: utcDay('$at'), n: { $sum: 1 } } }
+            { $match: { at: range, ...activityProblemFilter() } }, { $group: { _id: utcDay('$at'), n: { $sum: 1 } } }
         ]).hint('problems_at').option({ maxTimeMS: QUERY_MS }),
         DomainEventSchema.aggregate<{ _id: string; n: number }>([
             { $match: { topic: 'channel', _id: { $gte: oidAt(w.dailyFrom) } } },
@@ -323,7 +321,7 @@ export async function loadActivityFragment(w: OverviewWindows): Promise<Overview
         ]).option({ maxTimeMS: QUERY_MS }),
         ActivityLog.aggregate<{ _id: string; events: number; problems: number }>([
             { $match: { at: { $gte: w.dayFrom, $lte: w.now }, channelID: { $gt: '' } } },
-            { $group: { _id: '$channelID', events: { $sum: 1 }, problems: sumIf({ $in: ['$outcome', PROBLEM_OUTCOMES] }) } }
+            { $group: { _id: '$channelID', events: { $sum: 1 }, problems: sumIf(ACTIVITY_PROBLEM_EXPR) } }
         ]).option({ maxTimeMS: QUERY_MS }),
         DomainEventSchema.aggregate<{ _id: string; events: number }>([
             { $match: { topic: 'channel', _id: { $gte: oidAt(w.dayFrom) } } },
@@ -408,10 +406,11 @@ export async function loadUsageFragment(w: OverviewWindows): Promise<OverviewFra
     };
 }
 
-/** A decision the AI was asked for but did not answer (timeout, provider down, no credits). */
-const notReviewed = { $and: [{ $eq: ['$mode', 'semantic'] }, { $not: [{ $in: ['$status', REVIEWED_STATUSES] }] }] };
-/** Not reviewed, or the action on Twitch failed. */
-const decisionProblem = { $or: [notReviewed, { $eq: ['$consequence.success', false] }] };
+/**
+ * A review that failed (timeout, provider down), or an action Twitch refused. A review skipped on purpose (no
+ * credits, plan) is not a problem, as in the activity feed.
+ */
+const decisionProblem = { $or: [{ $in: ['$status', FAILED_STATUSES] }, { $eq: ['$consequence.success', false] }] };
 
 /**
  * Chat protection decisions. There is no cross-channel `createdAt` index; `expiresAt` is written as
@@ -435,7 +434,7 @@ export async function loadDecisionsFragment(w: OverviewWindows): Promise<Overvie
                 day: [{ $match: { $expr: inDay } }, { $group: { _id: null, providerUSD: { $sum: '$cost' } } }],
                 features: [
                     { $match: { createdAt: { $gte: w.weekFrom }, mode: 'semantic' } },
-                    { $group: { _id: null, count: { $sum: 1 }, failed: sumIf(notReviewed), credits: { $sum: '$charge.credits' }, providerUSD: { $sum: '$cost' } } }
+                    { $group: { _id: null, count: { $sum: 1 }, failed: sumIf({ $in: ['$status', FAILED_STATUSES] }), credits: { $sum: '$charge.credits' }, providerUSD: { $sum: '$cost' } } }
                 ]
             }
         }

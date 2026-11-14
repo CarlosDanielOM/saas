@@ -7,6 +7,8 @@ interface SpeechResponse {
     message: string;
     status?: number;
     type?: string;
+    /** Why the speech service refused it (`utils/tts/tts_activity.ts`); absent from older services. */
+    code?: string;
     data?: any;
 }
 
@@ -52,7 +54,8 @@ export async function requestTts(channelID: string, payload: TtsRequestBody): Pr
                 error: true,
                 message: data?.message || 'Error al enviar mensaje',
                 status: response.status,
-                type: 'error'
+                type: 'error',
+                ...(typeof data?.code === 'string' ? { code: data.code } : {})
             };
         }
 
@@ -70,7 +73,8 @@ export async function requestTts(channelID: string, payload: TtsRequestBody): Pr
                 error: true,
                 message: data.message,
                 status: data.status,
-                type: 'error'
+                type: 'error',
+                ...(typeof data.code === 'string' ? { code: data.code } : {})
             };
         }
 

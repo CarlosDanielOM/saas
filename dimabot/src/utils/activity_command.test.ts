@@ -201,3 +201,20 @@ test('a delivery reports how many chat messages it really sent, references inclu
         assert.equal((await run('hello', ['discord'], false)).sent, 0);
     } finally { setActivityLogSinkForTests(null); }
 });
+
+test('a failed command keeps its own words; a usage reply is not a failure', async () => {
+    const { builtInFailureOutcome, errorText } = await import('./activity_command.js');
+    assert.equal(errorText(new Error('Twitch said 401')), 'Twitch said 401');
+    assert.equal(errorText('  The game does not exist '), 'The game does not exist');
+    assert.equal(errorText({ message: 'Keyword is disabled or deleted' }), 'Keyword is disabled or deleted');
+    assert.equal(errorText(null), null);
+    assert.equal(errorText(''), null);
+    assert.deepEqual(builtInFailureOutcome('Usage: !dc <command name>'), { outcome: 'skipped', reason: 'usage' });
+    assert.deepEqual(builtInFailureOutcome('The game does not exist'), { outcome: 'failed', reason: 'error' });
+    assert.deepEqual(builtInFailureOutcome(undefined), { outcome: 'failed', reason: 'error' });
+    const row = buildActivityRow(commandActivity({ channelID: '100', name: '!game', trigger: 'chat', func: 'game', event: chat,
+        outcome: 'failed', reason: 'error', error: 'The game does not exist' }))!;
+    assert.deepEqual(row.data, { func: 'game', trigger: 'chat', error: 'The game does not exist' });
+    const ok = buildActivityRow(commandActivity({ channelID: '100', name: '!so', trigger: 'chat', func: 'shoutout', event: chat, outcome: 'ok', reason: null }))!;
+    assert.deepEqual(ok.data, { func: 'shoutout', trigger: 'chat' }, 'no error fact on a run that worked');
+});

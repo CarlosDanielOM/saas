@@ -55,8 +55,8 @@ export function turnFilter(filters: FeedFilters): Record<string, unknown> {
     if (filters.channelID) filter.channelId = filters.channelID;
     if (filters.actorID) filter['user.id'] = filters.actorID;
     else if (filters.actorLogin) filter['user.login'] = filters.actorLogin;
-    if (filters.outcome === 'failed') filter.status = { $in: FAILED };
-    else if (filters.outcome === 'problems') filter.status = { $in: [...FAILED, ...SKIPPED] };
+    // Someone stopping the assistant is not a problem: both filters are "failed".
+    if (filters.outcome) filter.status = { $in: FAILED };
     return filter;
 }
 
@@ -89,10 +89,9 @@ export const assistantSource: FeedSource = {
             { $group: {
                 _id: null,
                 total: { $sum: 1 },
-                failed: { $sum: { $cond: [{ $in: ['$status', FAILED] }, 1, 0] } },
-                problems: { $sum: { $cond: [{ $in: ['$status', [...FAILED, ...SKIPPED]] }, 1, 0] } }
+                failed: { $sum: { $cond: [{ $in: ['$status', FAILED] }, 1, 0] } }
             } }
         ], { maxTimeMS }).toArray();
-        return [{ kind: 'assistant', total: row?.total ?? 0, problems: row?.problems ?? 0, failed: row?.failed ?? 0 }];
+        return [{ kind: 'assistant', total: row?.total ?? 0, problems: row?.failed ?? 0, failed: row?.failed ?? 0 }];
     }
 };

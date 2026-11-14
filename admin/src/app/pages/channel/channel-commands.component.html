@@ -140,8 +140,8 @@
           @if (statLine(row); as line) {
             <span class="cmd-stat">
               {{ line.text }}
-              @if (line.problems) {
-                · <span class="cmd-stat__warn">{{ line.problems }}</span>
+              @if (line.missed) {
+                · <span [class.cmd-stat__warn]="line.warn" data-command-missed>{{ line.missed }}</span>
               }
               · {{ line.last }}
             </span>
@@ -179,7 +179,7 @@
               <div><dt>Last run</dt><dd>{{ lastRun(stat) }}</dd></div>
               <div>
                 <dt>{{ windowTitle() }}</dt>
-                <dd>{{ formatNumber(stat.ok) }} answered of {{ formatNumber(stat.runs) }}</dd>
+                <dd>{{ formatNumber(answeredOf(stat)) }} answered of {{ formatNumber(stat.runs) }}</dd>
               </div>
             }
           </dl>

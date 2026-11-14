@@ -47,7 +47,7 @@ import { splitAiResponseForTwitch, removeAiReplyRecipientTag } from "../utils/tw
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
-import { chatActor, commandResultOutcome, recordCommandActivity } from '../utils/activity_command.js';
+import { builtInFailureOutcome, chatActor, commandResultOutcome, errorText, recordCommandActivity } from '../utils/activity_command.js';
 
 const modID = '698614112';
 const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
@@ -253,8 +253,9 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 });
             });
 
-            recordCommandActivity({ ...timerAttempt, outcome: timerResponse.error ? 'failed' : 'ok',
-                reason: timerResponse.error ? 'error' : null, durationMs: Date.now() - timerStartedAt });
+            const timerFailure = timerResponse.error ? builtInFailureOutcome(timerResponse.message) : null;
+            recordCommandActivity({ ...timerAttempt, outcome: timerFailure?.outcome ?? 'ok', reason: timerFailure?.reason ?? null,
+                error: timerFailure ? errorText(timerResponse.message) : null, durationMs: Date.now() - timerStartedAt });
 
             await captureStreamActivity({ channelID, eventID: messageEventData.message_id, kind: 'command',
                 key: commandLower, label: `!${commandLower}`, actor: messageEventData.chatter_user_id,
@@ -447,7 +448,10 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         let commandFailed = false;
         // The typed refusal from commandHandler (cooldown, permission, disabled), for the activity log.
         let commandFailureType: string | null = null;
+        // What went wrong, for the owner's activity log (the handler's message or the thrown error).
+        let commandFailureMessage: string | null = null;
         let commandThrew = false;
+        let commandError: unknown = null;
         const commandStartedAt = Date.now();
         
         const commandSpan = beginSpan('command', commandDBData.command?.cmd || 'unconfigured', channelID);
@@ -786,19 +790,25 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     identity
                 }, undefined, effectContext);
                 commandFailed = cmdResult.error;
-                if (cmdResult.error) commandFailureType = cmdResult.type;
+                if (cmdResult.error) { commandFailureType = cmdResult.type; commandFailureMessage = errorText(cmdResult.message); }
                 if (!cmdResult.error) {
                     res = { error: false, message: cmdResult.message, commandReferences: cmdResult.commandReferences };
                 }
                 break;
             }
 
-        } catch (error) { commandFailed = true; commandThrew = true; commandSpan.end('error'); throw error; }
+        } catch (error) { commandFailed = true; commandThrew = true; commandError = error; commandSpan.end('error'); throw error; }
         finally {
             commandSpan.end(res?.error || commandFailed ? 'error' : 'ok');
-            const commandOutcome = commandThrew || (res?.error && !commandFailed) ? { outcome: 'failed' as const, reason: 'error' }
+            // A built-in's error message is also what the bot replies in chat.
+            const builtInFailed = !commandThrew && !!res?.error && !commandFailed;
+            const commandOutcome = commandThrew ? { outcome: 'failed' as const, reason: 'error' }
+                : builtInFailed ? builtInFailureOutcome(res?.message)
                 : commandResultOutcome(commandFailureType, commandFailed);
+            const failureText = commandThrew ? errorText(commandError) ?? 'The command crashed without a message'
+                : builtInFailed ? errorText(res?.message) : commandFailureMessage;
             if (commandOutcome) recordCommandActivity({ ...commandAttempt, ...commandOutcome, durationMs: Date.now() - commandStartedAt,
+                error: commandOutcome.outcome === 'failed' || commandOutcome.reason === 'usage' ? failureText : null,
                 data: commandOutcome.reason === 'cooldown' ? { cooldownStore: 'shared' } : undefined });
             if (shouldTrackCommandUsage) await captureStreamActivity({ channelID, eventID: messageEventData.message_id,
                 kind: 'command', key: String(commandDBData.command?.cmd || commandLower).toLowerCase(),

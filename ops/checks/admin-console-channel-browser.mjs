@@ -39,12 +39,12 @@ const commandStats = (recorded = true) => ({
   from: ago(7 * 1440), to: ago(0),
   recordsSince: recorded ? ago(9 * 1440) : null,
   commands: recorded ? [
-    { name: '!lurk', runs: 512, ok: 490, skipped: 22, blocked: 0, failed: 0, lastAt: ago(4), lastOutcome: 'ok', lastReason: null, reasons: [{ reason: 'cooldown', count: 22 }] },
-    { name: '!so', runs: 140, ok: 121, skipped: 11, blocked: 8, failed: 0, lastAt: ago(38), lastOutcome: 'blocked', lastReason: 'permission_denied', reasons: [{ reason: 'cooldown', count: 11 }, { reason: 'permission_denied', count: 8 }] },
-    { name: '!ask', runs: 61, ok: 55, skipped: 0, blocked: 0, failed: 6, lastAt: ago(130), lastOutcome: 'failed', lastReason: 'no_credits', reasons: [{ reason: 'no_credits', count: 4 }, { reason: 'exception', count: 2 }] },
-    { name: '!discord', runs: 33, ok: 33, skipped: 0, blocked: 0, failed: 0, lastAt: ago(600), lastOutcome: 'ok', lastReason: null, reasons: [] },
-    { name: '!socials', runs: 3, ok: 0, skipped: 3, blocked: 0, failed: 0, lastAt: ago(3000), lastOutcome: 'skipped', lastReason: 'disabled', reasons: [{ reason: 'disabled', count: 3 }] },
-    { name: '!tts', runs: 18, ok: 18, skipped: 0, blocked: 0, failed: 0, lastAt: ago(55), lastOutcome: 'ok', lastReason: null, reasons: [] },
+    { name: '!lurk', runs: 512, ok: 490, skipped: 22, blocked: 0, failed: 0, problems: 0, lastAt: ago(4), lastOutcome: 'ok', lastReason: null, reasons: [{ reason: 'cooldown', count: 22 }] },
+    { name: '!so', runs: 140, ok: 121, skipped: 11, blocked: 8, failed: 0, problems: 0, lastAt: ago(38), lastOutcome: 'blocked', lastReason: 'permission_denied', reasons: [{ reason: 'cooldown', count: 11 }, { reason: 'permission_denied', count: 8 }] },
+    { name: '!ask', runs: 61, ok: 55, skipped: 0, blocked: 0, failed: 6, problems: 6, lastAt: ago(130), lastOutcome: 'failed', lastReason: 'no_credits', reasons: [{ reason: 'no_credits', count: 4 }, { reason: 'exception', count: 2 }] },
+    { name: '!discord', runs: 33, ok: 33, skipped: 0, blocked: 0, failed: 0, problems: 0, lastAt: ago(600), lastOutcome: 'ok', lastReason: null, reasons: [] },
+    { name: '!socials', runs: 3, ok: 0, skipped: 3, blocked: 0, failed: 0, problems: 0, lastAt: ago(3000), lastOutcome: 'skipped', lastReason: 'disabled', reasons: [{ reason: 'disabled', count: 3 }] },
+    { name: '!tts', runs: 18, ok: 18, skipped: 0, blocked: 0, failed: 0, problems: 0, lastAt: ago(55), lastOutcome: 'ok', lastReason: null, reasons: [] },
   ] : [],
 });
 
@@ -493,6 +493,9 @@ try {
   await page.getByRole('heading', { name: 'Ran in the last 7 days but not in their list' }).waitFor();
   assert.equal(await row('!tts').count(), 1);
   assert.match(await text(row('!socials')), /Off/);
+  // Runs that didn't answer because the command is off, on cooldown or not for this viewer are not warnings; failures are.
+  const warns = async (name) => row(name).locator('[data-command-missed]').evaluate((el) => el.classList.contains('cmd-stat__warn'));
+  assert.deepEqual([await warns('!socials'), await warns('!so'), await warns('!lurk'), await warns('!ask')], [false, false, false, true]);
   await shot('commands-dark-390');
   // Sorts write the URL.
   const order = () => rows.evaluateAll((els) => els.map((el) => el.dataset.command));
@@ -503,7 +506,9 @@ try {
   assert.deepEqual((await order()).slice(0, 4), ['!lurk', '!so', '!ask', '!discord']);
   await page.locator('.cmd-sort').getByText('Most problems').click();
   await until(async () => new URL(page.url()).searchParams.get('sort') === 'problems', 'sort=problems in URL');
-  assert.deepEqual((await order()).slice(0, 4), ['!lurk', '!so', '!ask', '!socials']);
+  // Only failures count: !ask first, then the rest by use.
+  await until(async () => (await order())[0] === '!ask', 'most problems first');
+  assert.deepEqual((await order()).slice(0, 4), ['!ask', '!lurk', '!so', '!discord']);
   await page.locator('.cmd-sort').getByText('Name').click();
   await until(async () => !new URL(page.url()).searchParams.has('sort'), 'default sort leaves the URL');
   // Search writes the URL.

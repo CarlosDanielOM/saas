@@ -40,10 +40,14 @@ export interface CommandStat {
   skipped: number;
   blocked: number;
   failed: number;
+  /** Runs that went wrong: failed, or refused for a reason that is not a setting. Absent from an older API. */
+  problems?: number;
+  /** Runs the bot answered, usage replies included. Absent from an older API (then `ok`). */
+  answered?: number;
   lastAt: string;
   lastOutcome: FeedOutcome;
   lastReason: string | null;
-  /** Why it did not answer, most common first, at most 3. */
+  /** Why it did not answer, most common first, at most 3 (usage replies answered, so they are not here). */
   reasons: Array<{ reason: string; count: number }>;
 }
 

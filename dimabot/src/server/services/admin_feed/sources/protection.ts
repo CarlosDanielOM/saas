@@ -107,8 +107,8 @@ export function decisionFilter(filters: FeedFilters): Record<string, unknown> {
     if (filters.channelID) filter.channelID = filters.channelID;
     if (filters.actorID) filter.userID = filters.actorID;
     else if (filters.actorLogin) filter.userLogin = filters.actorLogin;
-    if (filters.outcome === 'failed') filter.$or = [{ status: { $in: FAILED_STATUSES } }, ACTION_FAILED];
-    else if (filters.outcome === 'problems') filter.$or = [{ status: { $in: [...FAILED_STATUSES, ...SKIPPED_STATUSES] } }, ACTION_FAILED];
+    // A skipped review (no credits, plan) is the channel's setting doing its job, never a problem: both filters are "failed".
+    if (filters.outcome) filter.$or = [{ status: { $in: FAILED_STATUSES } }, ACTION_FAILED];
     return filter;
 }
 
@@ -135,10 +135,9 @@ export const protectionSource: FeedSource = {
             { $group: {
                 _id: null,
                 total: { $sum: 1 },
-                failed: { $sum: { $cond: [failed, 1, 0] } },
-                problems: { $sum: { $cond: [{ $or: [failed, { $in: ['$status', SKIPPED_STATUSES] }] }, 1, 0] } }
+                failed: { $sum: { $cond: [failed, 1, 0] } }
             } }
         ], { maxTimeMS }).toArray();
-        return [{ kind: 'protection', total: row?.total ?? 0, problems: row?.problems ?? 0, failed: row?.failed ?? 0 }];
+        return [{ kind: 'protection', total: row?.total ?? 0, problems: row?.failed ?? 0, failed: row?.failed ?? 0 }];
     }
 };

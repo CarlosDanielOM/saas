@@ -39,6 +39,7 @@ import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { getTtsPlaybackTimeoutMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
 import { recordActivity } from "../utils/activity_log.js";
+import { recordTtsPlayback } from "../utils/tts/tts_activity.js";
 import { enqueueTtsSession, popTtsSession } from '../utils/tts/tts_session.util.js';
 import { petLaneItem, startPetLaneTurn, endPetLaneTurn, type PetLaneItem } from '../pets/tts_lane.js';
 import { rankOutputs, recordOutputFailure, recordOutputSuccess, summarizeOutputs, OUTPUT_FAILURES, type RankableOutput, type SpeechOutputInfo } from './tts_outputs.js';
@@ -86,6 +87,8 @@ interface LegacyDelivery {
   /** A move to another page is being prepared; other endings wait for it. */
   moving: boolean;
   heard: boolean; normalEnd: boolean; finished: boolean;
+  /** Why it left its first page, when it moved (for the owner's activity row). */
+  movedBecause?: string;
 }
 type SpeechSocket = RankableOutput & {
   data: { ttsReady?: boolean; ttsOutput?: SpeechOutputInfo };
@@ -177,6 +180,8 @@ export interface QueueTtsResponse {
   error: boolean;
   message: string;
   status: number;
+  /** Why it was refused (`utils/tts/tts_activity.ts` TTS_REQUEST_CODES). */
+  code?: 'no_speech_page' | 'busy' | 'queue_full';
   data?: {
     speechID: string;
     queueLength: number;
@@ -229,6 +234,13 @@ class TtsQueueHandler {
   private deliveries = new Map<string, LegacyDelivery>();
   /** Stop requests that wait for several pages to confirm before the desktop speech slot is released. */
   private retiredOutputs = new Map<string, { pending: Set<string>; expires: number }>();
+  /**
+   * Synthesized messages waiting for their owner activity row (`utils/tts/tts_activity.ts`), by channel:speech.
+   * The first end reason wins; `cleanupSpeech`, which every ending reaches, writes the row once.
+   */
+  private playbackRows = new Map<string, { item: TtsQueueItem; reason?: string; heard?: boolean }>();
+  /** End causes known before a message was made (a page closed or a mod skipped during synthesis). */
+  private playbackCauses = new Map<string, string>();
   synthesisTimeoutMs = DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS;
   /** Speech page timings (tests shorten them). */
   outputTimings = { startAfterReadyMs: START_AFTER_READY_MS, startAfterSendMs: START_AFTER_SEND_MS, cancelAckMs: CANCEL_ACK_MS };
@@ -305,7 +317,7 @@ class TtsQueueHandler {
     if (hasReadTtsTurn(channelID)) return;
     if (await this.hasOverlayConnection(channelID) || !this.processingChannels.has(channelID)) return;
     const activeID = this.activeSpeechIds.get(channelID);
-    if (activeID) this.interruptedSpeechIds.set(channelID, activeID);
+    if (activeID) { this.interruptedSpeechIds.set(channelID, activeID); this.notePlaybackEnd(channelID, activeID, 'disconnected'); }
     const speechID = this.dispatchedSpeechIds.get(channelID);
     if (speechID) await this.handleSpeechEnded(channelID, speechID, 'disconnected');
     // During synthesis, retain the lock until the provider settles. The result
@@ -327,12 +339,13 @@ class TtsQueueHandler {
         message:
           "Speech overlay is not connected. Open the speech URL first and try again.",
         status: 409,
+        code: 'no_speech_page',
       };
     }
 
     const processingKey = `twitch:${payload.channelID}:tts:processing`;
     if (!this.readHeads.has(payload.channelID) && this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS && await isReadTtsConfigured(payload.channelID))
-      return { error: true, status: 429, message: 'TTS is waiting for playback capacity' };
+      return { error: true, status: 429, message: 'TTS is waiting for playback capacity', code: 'busy' };
     let processingActive = this.processingChannels.has(payload.channelID) || this.readHeads.has(payload.channelID);
     if (!processingActive) {
       const staleLock = await this.cache!.get(processingKey);
@@ -351,6 +364,7 @@ class TtsQueueHandler {
         error: true,
         message: "TTS queue is full for this channel",
         status: 429,
+        code: 'queue_full',
       };
     }
 
@@ -741,6 +755,7 @@ class TtsQueueHandler {
           `${channelID}:${speechID}`,
           synthesisResult.outputPath,
         );
+        this.trackPlayback(channelID, queueItem);
 
         if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !hasReadTtsTurn(channelID, speechID) && !await this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
@@ -822,6 +837,9 @@ class TtsQueueHandler {
         timestamp: new Date().toISOString(),
       });
       if (activeSpeechID) {
+        // A message that was already made ends here: say so in the owner's activity log.
+        this.notePlaybackEnd(channelID, activeSpeechID, 'queue_error');
+        this.writePlaybackRow(channelID, activeSpeechID, error instanceof Error ? error.message : String(error));
         // Best effort: the local lock below must always be dropped.
         const petTurn = this.petTurns.get(channelID);
         if (petTurn?.speechID === activeSpeechID) { this.petTurns.delete(channelID); await endPetLaneTurn(petTurn.item, 'failed').catch(() => {}); }
@@ -1009,6 +1027,8 @@ class TtsQueueHandler {
       return;
     }
     if (head.session === session) return;
+    // Not a mod: the stream ended (said so before control records its 'skip').
+    this.notePlaybackEnd(channel, head.item.speechID, 'stream_ended');
     // control captures and cancels the exact old identity synchronously.
     await this.control(channel, 'skip');
   }
@@ -1138,6 +1158,7 @@ class TtsQueueHandler {
     // teardown. Controls and natural/private completion join this same promise.
     // It cannot wait on dispatch: dispatch may itself be reporting its terminal.
     const speech = head.item.speechID;
+    this.notePlaybackEnd(channel, speech, reason);
     head.cancelled = true; head.epoch++; head.phase = 'terminal'; this.headWakes.delete(channel);
     this.widgetTtsEnd(channel, speech, reason);
     head.cancellation.abort();
@@ -1220,6 +1241,7 @@ class TtsQueueHandler {
     const key = `${channelID}:${data.speechID}`;
     const previous = this.playbackPositions.get(key);
     const position = data.position;
+    if (data.phase === 'playing' || data.phase === 'progress' || Number(position) > 0.05) this.notePlaybackHeard(channelID, data.speechID);
     // Only the first receipt or advancing media time extends the deadline.
     // A stuck client sending heartbeats must not hold the queue forever.
     void reportReadTts(channelID, data.speechID, data.phase || '', Number(position)).catch(() => {});
@@ -1507,6 +1529,7 @@ class TtsQueueHandler {
       if (!next) { await this.finishDelivery(delivery, reason); return true; }
       const moved = this.sendToOutput(delivery, next);
       delivery.active = moved.source;
+      delivery.movedBecause ??= reason;
       const owner = this.readTtsOwners.get(delivery.channel);
       if (owner?.speechId === delivery.speechID) owner.source = moved.source;
       this.extendPlayback(delivery.channel, delivery.speechID);
@@ -1527,6 +1550,7 @@ class TtsQueueHandler {
     if (playbackStopped && speechID && reason === 'pet:completed' &&
         await confirmRetiredSpeechActivity(channelID, { kind: 'tts', source: 'pet' }, speechID)) return;
     if (!speechID || this.dispatchedSpeechIds.get(channelID) !== speechID) return;
+    this.notePlaybackEnd(channelID, speechID, reason);
     // Claim completion before the first await. Concurrent duplicate events must
     // not both clean up and release a newer item after Redis yields.
     const head = this.readHeads.get(channelID);
@@ -1541,6 +1565,8 @@ class TtsQueueHandler {
     const petTurn = this.petTurns.get(channelID);
     if (petTurn?.speechID === speechID) petTurn.reason = reason;
     this.retireReadOwner(channelID, speechID);
+    // Written now: a failing Studio teardown below must not lose it (the delivery is still known here).
+    this.writePlaybackRow(channelID, speechID);
     await endStudioReadTts(channelID, speechID);
     console.log('TTS finished', { channelID, speechID, reason });
     await this.cleanupSpeech(channelID, speechID, false, playbackStopped);
@@ -1552,7 +1578,7 @@ class TtsQueueHandler {
     const controlledHead = this.readHeads.get(channelID);
     const controlledSpeech = controlledHead?.item.speechID ?? this.activeSpeechIds.get(channelID);
     if (controlledHead) { controlledHead.cancelled = true; controlledHead.epoch++; controlledHead.cancellation.abort(); }
-    if (controlledSpeech) this.interruptedSpeechIds.set(channelID, controlledSpeech);
+    if (controlledSpeech) { this.interruptedSpeechIds.set(channelID, controlledSpeech); this.notePlaybackEnd(channelID, controlledSpeech, action); }
     const previous = this.controls.get(channelID) ?? Promise.resolve();
     const pending = previous.catch(() => {}).then(async () => {
       if (!this.cache) await this.init();
@@ -1642,6 +1668,58 @@ class TtsQueueHandler {
     }
   }
 
+  // ---- Owner activity: how each synthesized message ended (never changes playback) ----
+
+  private trackPlayback(channelID: string, item: TtsQueueItem): void {
+    try {
+      const key = `${channelID}:${item.speechID}`;
+      // Bounded: an ending that never reaches cleanup (a crash mid-way) must not grow the map forever.
+      while (this.playbackRows.size >= 500) this.playbackRows.delete(this.playbackRows.keys().next().value!);
+      const cause = this.playbackCauses.get(key);
+      this.playbackCauses.delete(key);
+      this.playbackRows.set(key, { item, reason: cause });
+    } catch { /* debug only */ }
+  }
+  /** The first known end cause wins, also when it arrives while the message is still being made. */
+  private notePlaybackEnd(channelID: string, speechID: string, reason: string): void {
+    try {
+      const key = `${channelID}:${speechID}`;
+      const entry = this.playbackRows.get(key);
+      if (entry) { entry.reason ??= reason; return; }
+      if (this.playbackCauses.has(key)) return;
+      while (this.playbackCauses.size >= 500) this.playbackCauses.delete(this.playbackCauses.keys().next().value!);
+      this.playbackCauses.set(key, reason);
+    } catch { /* debug only */ }
+  }
+  private notePlaybackHeard(channelID: string, speechID: string): void {
+    const entry = this.playbackRows.get(`${channelID}:${speechID}`);
+    if (entry) entry.heard = true;
+  }
+  /** Called from `cleanupSpeech` before the delivery is cleared, so the pages it reached are still known. */
+  private writePlaybackRow(channelID: string, speechID: string, error?: string): void {
+    const key = `${channelID}:${speechID}`;
+    const entry = this.playbackRows.get(key);
+    this.playbackCauses.delete(key);
+    if (!entry) return;
+    this.playbackRows.delete(key);
+    try {
+      const delivery = this.deliveries.get(channelID);
+      const own = delivery?.speechID === speechID ? delivery : undefined;
+      const members = own ? [...own.members.values()] : [];
+      // No end reason: it was dropped before any page got it (stopped by a control, or every page closed).
+      const reason = entry.reason ?? (this.interruptedSpeechIds.get(channelID) === speechID || this.controls.has(channelID) ? 'interrupted' : 'not_played');
+      // A message that ended normally was heard, even where no page reported its progress (the pet, Studio).
+      const heard = !!entry.heard || !!own?.heard || members.some(member => member.started) || (this.playbackPositions.get(key) ?? 0) > 0.05
+        || reason === 'ended' || reason === 'pet:completed';
+      const item = entry.item;
+      recordTtsPlayback({
+        channelID, speechID, reason, heard, actor: requester(item), provider: item.provider, voice: item.voice,
+        source: item.receiptSource || item.source, chars: ttsCharacters(item), pages: members.length,
+        movedBecause: own?.movedBecause ?? null, everyPage: own?.every ?? false, totalMs: Date.now() - item.timestamp, error,
+      });
+    } catch { /* the activity log is a debugging aid */ }
+  }
+
   async cleanupSpeech(channelID: string, speechID: string, keepProcessing = false, playbackStopped = false): Promise<void> {
     // Any other way a played message goes away still ends its widget event (normal endings already did).
     this.widgetTtsEnd(channelID, speechID, 'interrupted');
@@ -1653,6 +1731,7 @@ class TtsQueueHandler {
     if (head?.item.speechID === speechID) { head.cancelled = true; head.epoch++; head.phase = 'terminal'; head.cancellation.abort(); this.headWakes.delete(channelID); }
     if (!playbackStopped) await this.retireAudibleSpeech(channelID, speechID).catch(() => {});
     this.retireReadOwner(channelID, speechID);
+    this.writePlaybackRow(channelID, speechID);
     this.clearDelivery(channelID, speechID);
     // External failures are reported after local cleanup, never instead of it.
     let failure: unknown;
