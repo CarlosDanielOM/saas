@@ -1,7 +1,7 @@
 import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { authenticateAccess, oauthWebsite, rateLimit, hash } from './service.js';
-import { OAUTH_RESOURCES } from './catalog.js';
+import { OAUTH_RESOURCES, isMcpHost } from './catalog.js';
 import { clientIps } from '../../utils/client_ip.js';
 
 /** A native WebSocket protocol, deliberately separate from browser Socket.IO namespaces. */
@@ -14,6 +14,11 @@ export function attachDesktopWebsocket(server: Server): void {
         try { url = new URL(req.url || '/', 'http://localhost'); }
         catch {
             socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+            return;
+        }
+        // The MCP host serves only MCP: no desktop socket there (Socket.IO refuses it through allowRequest).
+        if (isMcpHost(req.headers.host)) {
+            if (!url.pathname.startsWith('/socket.io/')) socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
             return;
         }
         if (url.pathname !== '/v1/desktop/ws') {

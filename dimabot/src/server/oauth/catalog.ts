@@ -31,6 +31,12 @@ export const OAUTH_RESOURCES: { readonly desktop: string; readonly mcp: string }
     get desktop() { return `${new URL(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').origin}/v1`; },
     get mcp() { return process.env.MCP_PUBLIC_URL || 'https://mcp.domdimabot.com/mcp'; }
 };
+/** True when a Host header names the MCP host: such requests are served only by the MCP router, never by
+ *  Socket.IO, the desktop WebSocket or the rest of the API. */
+export function isMcpHost(host: unknown): boolean {
+    if (typeof host !== 'string' || !host) return false;
+    try { return new URL(`http://${host}`).hostname === new URL(OAUTH_RESOURCES.mcp).hostname; } catch { return false; }
+}
 /** The audience URI a catalog scope belongs to; undefined for unknown scopes. */
 export function scopeResource(scope: string): string | undefined {
     return Object.hasOwn(OAUTH_SCOPES, scope) ? OAUTH_RESOURCES[OAUTH_SCOPES[scope as OAuthScope].resource] : undefined;

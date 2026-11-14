@@ -17,6 +17,7 @@ import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
 import { registerPetSockets } from '../pets/socket.js';
 import { petSocketAdapter } from '../pets/socket_adapter.js';
 import { attachDesktopWebsocket } from './oauth/desktop-websocket.js';
+import { isMcpHost } from './oauth/catalog.js';
 import { registerDesktopSpeechActivity } from '../desktop_ai/activity.js';
 
 const DASHBOARD_LIVE_STATUS_INTERVAL_MS = Math.max(1000, Number(process.env.DASHBOARD_LIVE_STATUS_INTERVAL_MS || 1000));
@@ -46,6 +47,8 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         cacheClient = await getDragonflyClient('Websocket');
         let server = http.createServer(app);
         io = new SocketIOServer(server, {
+            // The MCP host serves only MCP (polling and upgrades alike).
+            allowRequest: (req, callback) => callback(null, !isMcpHost(req.headers.host)),
             connectionStateRecovery: {},
             adapter: petSocketAdapter,
             destroyUpgrade: false

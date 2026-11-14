@@ -13,7 +13,7 @@ const calls: { name: string; args: unknown; principal: unknown }[] = [];
 const buckets: string[] = [];
 let limited = '';
 mock.module('../oauth/catalog.js', { namedExports: {
-    OAuthError, OAUTH_RESOURCES: { desktop: 'https://api.domdimabot.com/v1', mcp: MCP },
+    OAuthError, isMcpHost: (host: unknown) => typeof host === 'string' && host.split(':')[0] === 'mcp.domdimabot.com', OAUTH_RESOURCES: { desktop: 'https://api.domdimabot.com/v1', mcp: MCP },
     OAUTH_SCOPES: { 'channel:read': { active: true, resource: 'mcp' }, 'channel:write': { active: true, resource: 'mcp' },
         'stream:act': { active: false, resource: 'mcp' }, 'profile:read': { active: true, resource: 'desktop' } },
     bearerChallenge: (realm: string, error?: string, scope: readonly string[] = [], meta?: string) =>

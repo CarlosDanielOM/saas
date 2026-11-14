@@ -74,6 +74,22 @@ assert.equal((await http('GET', '/users/me', { host: 'mcp.domdimabot.com' })).st
 assert.notEqual((await http('POST', '/mcp', { body: {} })).headers['www-authenticate']?.includes('resource_metadata'), true,
   'the API host never serves MCP');
 
+// The MCP host never reaches Socket.IO or the desktop WebSocket; the API host still does.
+result = await http('GET', '/socket.io/?EIO=4&transport=polling', { host: 'mcp.domdimabot.com' });
+assert.notEqual(result.status, 200, 'no Engine.IO polling on the MCP host');
+assert.equal((await http('GET', '/socket.io/?EIO=4&transport=polling')).status, 200, 'Engine.IO still serves the API host');
+const upgrade = host => new Promise((resolve, reject) => {
+  const req = httpRequest({ host: '127.0.0.1', port: 3000, path: '/v1/desktop/ws', headers: { Host: host, Connection: 'Upgrade',
+    Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': randomBytes(16).toString('base64'),
+    'Sec-WebSocket-Protocol': 'dima.desktop.v1', Authorization: 'Bearer dima_at_' + 'x'.repeat(43) } });
+  req.on('upgrade', (res, socket) => { socket.destroy(); resolve(101); });
+  req.on('response', res => { res.resume(); resolve(res.statusCode); });
+  req.on('error', error => error.code === 'ECONNRESET' ? resolve(0) : reject(error));
+  req.end();
+});
+assert.equal(await upgrade('mcp.domdimabot.com'), 404, 'no desktop WebSocket on the MCP host');
+assert.equal(await upgrade('api.domdimabot.com'), 401, 'the API host still checks desktop WebSocket tokens');
+
 // CIMD authorization: resource is required for CIMD; the consent view shows publisher, callback host and channel choice.
 async function begin(scope = 'channel:read channel:write', extra = {}) {
   const verifier = rand(), state = rand();

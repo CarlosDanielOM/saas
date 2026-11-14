@@ -10,7 +10,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
-import { bearerChallenge, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES } from '../oauth/catalog.js';
+import { bearerChallenge, isMcpHost, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES } from '../oauth/catalog.js';
 import { authenticateAccess, hash, oauthIssuer, rateLimit, type AccessIdentity } from '../oauth/service.js';
 import { clientIps } from '../../utils/client_ip.js';
 import { executeMcpToolCall, listMcpTools, mcpTool, type McpPrincipal } from '../../site_agent/tools/execute.js';
@@ -134,7 +134,7 @@ mcpRoute.use((error: unknown, _req: Request, res: Response, _next: NextFunction)
 
 /** Mounted first in server.ts: everything addressed to the MCP host stays inside `mcpRoute`. */
 export function mcpHostBoundary(req: Request, res: Response, next: NextFunction) {
-    if (req.hostname !== mcpUrl().hostname) return next();
+    if (!isMcpHost(req.headers.host)) return next();
     return mcpRoute(req, res, (error?: unknown) => {
         if (error) return next(error);
         if (!res.headersSent) res.status(404).json({ error: 'not_found' });
