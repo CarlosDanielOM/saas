@@ -1,0 +1,72 @@
+---
+title: Conectar apps de IA a Dima
+description: Conecta una app de IA a un canal y conoce su acceso, sus límites y su consumo de créditos.
+---
+
+Conecta una app de IA a Dima mediante MCP para permitirle consultar o administrar un canal. Está disponible en todos los planes. Para usar un asistente solo con la documentación pública, consulta [Crear comandos con un asistente de IA](/es/ai-assistants/).
+
+## Conectar una app
+
+1. En tu app de IA, agrega un conector personalizado o servidor MCP remoto por HTTP con esta dirección:
+
+   ```text
+   https://mcp.domdimabot.com/mcp
+   ```
+
+2. La app abre una página de inicio de sesión de Dima en tu navegador. Revisa el nombre de la app, si aparece como **app reconocida** o **app no verificada**, el sitio que la publica y la dirección a la que regresarás después de elegir.
+3. Elige tu propio canal o uno que administres con acceso al sitio web. Revisa lo que podrá hacer la app y el aviso de que las llamadas a herramientas usan créditos de IA de ese canal.
+4. Continúa solo si tú iniciaste esta conexión. Elige **Permitir conexión** o **Denegar**.
+
+Dima reconoce Claude (claude.ai, Desktop y móvil), Claude Code, ChatGPT, Codex CLI, VS Code, Zed y goose. Otras apps también pueden conectarse, pero aparecen como no verificadas. Cursor no se reconoce porque todavía no admite documentos de metadatos de ID de cliente.
+
+### Claude Code
+
+En una terminal, agrega el servidor y luego usa `/mcp` en Claude Code para iniciar sesión:
+
+```bash
+claude mcp add --transport http dima https://mcp.domdimabot.com/mcp
+```
+
+### VS Code
+
+Agrega este servidor al archivo `mcp.json` de VS Code:
+
+```json
+{
+  "servers": {
+    "dima": {
+      "type": "http",
+      "url": "https://mcp.domdimabot.com/mcp"
+    }
+  }
+}
+```
+
+## Permisos y funciones
+
+La página de inicio de sesión describe estos permisos:
+
+- **Ver los comandos, temporizadores, configuración, chat y estadísticas del canal y de las transmisiones:** solo lectura.
+- **Cambiar comandos, temporizadores y configuración:** cada cambio se puede deshacer en Dima.
+
+La IA puede consultar el resumen del canal, comandos, temporizadores, configuración, chat reciente, estadísticas de transmisiones, códigos de referido y cambios recientes. Puede buscar y leer la documentación de Dima. Puede crear, editar y eliminar comandos; editar y eliminar temporizadores; crear y editar metas; y administrar ruletas y sus elementos, reglas de Bits y Eventos de chat. Un mensaje repetitivo es un comando con **repetir cada N minutos**.
+
+En esta versión no puede eliminar metas ni realizar acciones de la transmisión, como probar alertas, cambiar el título o la categoría, o administrar encuestas, predicciones o recompensas de puntos del canal. Tampoco puede cambiar la personalidad de IA, la configuración de moderación ni la defensa contra follows.
+
+## Cambios y seguridad
+
+Los cambios se aplican de inmediato, sin una tarjeta de aprobación. Cada cambio se puede deshacer: pídele a la IA que use `undo_change` o deshazlo en la lista de **Cambios** del asistente en el sitio web. La IA solo puede deshacer los cambios que ella misma hizo.
+
+Los comandos y mensajes que escribe la IA solo pueden usar funciones seguras, como nombres, valores aleatorios, contadores, funciones de texto e información de Twitch de solo lectura. Configura en el sitio web las funciones que moderan, cambian la transmisión, hablan con TTS, reproducen Triggers u overlays, usan IA, programan acciones o ejecutan otros comandos. La IA tampoco puede cambiar elementos cuyo texto guardado pueda actuar en tu transmisión hasta que los corrijas en el sitio web. La IA trata los mensajes del chat como datos no confiables.
+
+## Créditos de IA
+
+Cada llamada que lee datos del canal o cambia algo cuesta **1 crédito de IA** del canal conectado. Por ejemplo, revisar tu plan, listar comandos y crear uno cuesta 3 créditos. Buscar y leer documentación es gratis, igual que deshacer un cambio. Las llamadas fallidas o rechazadas no tienen costo.
+
+Cuando se agotan los créditos de IA del canal, las llamadas que leen datos del canal o hacen cambios se detienen hasta que se agreguen créditos. Consulta [Planes y créditos](/es/plans/).
+
+## Administrar conexiones
+
+Abre [Apps conectadas](https://domdimabot.com/oauth/connections) para verlas agrupadas por app y canal. Puedes desconectar una conexión o la app completa de un canal.
+
+Si conectaste una app a un canal que administras, dejará de funcionar cuando se retire tu acceso de administrador. Eliminar tu cuenta de Dima desconecta todo.

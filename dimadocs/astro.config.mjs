@@ -90,7 +90,10 @@ const sidebar = [
   {
     label: 'Help',
     translations: { es: 'Ayuda' },
-    items: [page('ai-assistants', 'Use with AI assistants', 'Usar con asistentes de IA')],
+    items: [
+      page('ai-assistants', 'Use with AI assistants', 'Usar con asistentes de IA'),
+      page('connect-ai-apps', 'Connect AI apps', 'Conectar apps de IA'),
+    ],
   },
   {
     label: 'Legal',

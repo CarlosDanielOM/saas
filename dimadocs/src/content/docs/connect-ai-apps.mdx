@@ -1,0 +1,72 @@
+---
+title: Connect AI apps to Dima
+description: Connect an AI app to a channel and understand its access, limits, and credit use.
+---
+
+Connect an AI app to Dima using MCP to let it read or manage a channel. This is available on all plans. To use an assistant with the public documentation alone, see [Create commands with an AI assistant](/ai-assistants/).
+
+## Connect an app
+
+1. In your AI app, add a custom connector or remote MCP server over HTTP using this URL:
+
+   ```text
+   https://mcp.domdimabot.com/mcp
+   ```
+
+2. The app opens a Dima sign-in page in your browser. Check the app name, whether it says **Recognized app** or **Unverified app**, the site after **Published by**, and the address after **After you choose, you return to**.
+3. Choose your own channel or a channel you manage as an admin with website access. Review what the app can do and the notice that tool calls use that channel's AI credits.
+4. Only continue if you started this connection yourself. Choose **Allow connection** or **Deny**.
+
+Dima recognizes Claude (claude.ai, Desktop, and mobile), Claude Code, ChatGPT, Codex CLI, VS Code, Zed, and goose. Other apps can still connect but appear as unverified. Cursor is not recognized because it does not yet support Client ID Metadata Documents.
+
+### Claude Code
+
+In a terminal, add the server, then use `/mcp` in Claude Code to sign in:
+
+```bash
+claude mcp add --transport http dima https://mcp.domdimabot.com/mcp
+```
+
+### VS Code
+
+Add this server to your VS Code `mcp.json`:
+
+```json
+{
+  "servers": {
+    "dima": {
+      "type": "http",
+      "url": "https://mcp.domdimabot.com/mcp"
+    }
+  }
+}
+```
+
+## Permissions and capabilities
+
+The sign-in page describes these permissions:
+
+- **See the channel's commands, timers, settings, chat and stream stats:** read only.
+- **Change commands, timers and settings:** every change can be undone in Dima.
+
+The AI can read the channel overview, commands, timers, settings, recent chat, stream stats, referral codes, and recent changes. It can search and read the Dima docs. It can create, edit, and delete commands; edit and delete timers; create and edit goals; and manage roulettes and their items, Bits rules, and chat events. A repeating message is a command with **repeat every N minutes**.
+
+In this version, it cannot delete goals or perform stream actions such as testing alerts, changing the stream title or category, or managing polls, predictions, or channel point rewards. It cannot change AI personality, moderation settings, or follow defense.
+
+## Changes and safety
+
+Changes apply immediately, without an approval card. Every change can be undone: ask the AI to use `undo_change`, or undo it on the website in the assistant's **Changes** list. The AI can only undo changes it made itself.
+
+Commands and messages written by the AI can use only safe functions, such as names, random values, counters, text helpers, and read-only Twitch information. Set up functions that moderate, change the stream, speak with TTS, play Triggers or overlays, use AI, schedule, or run other commands on the website. The AI also cannot change items whose stored text could act on your stream until you fix them on the website. The AI treats chat messages as untrusted data.
+
+## AI credits
+
+Each call that reads channel data or changes something costs **1 AI credit** from the connected channel. For example, checking your plan, listing commands, and creating one costs 3 credits. Searching and reading docs is free, as is undoing a change. Failed or refused calls cost nothing.
+
+When the channel runs out of AI credits, calls that read channel data or make changes stop until credits are added. See [Plans and credits](/plans/).
+
+## Manage connections
+
+Open [Connected apps](https://domdimabot.com/oauth/connections) to see apps grouped by app and channel. You can disconnect one connection or the whole app from a channel.
+
+If you connected an app to a channel you manage as an admin, it stops working when your admin access is removed. Deleting your Dima account disconnects everything.
