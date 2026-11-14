@@ -102,6 +102,6 @@ try {
  const axe=async()=>{const result=await editor.evaluate(()=>window.axe.run(document.querySelector('app-overlay-queue'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};await axe();
  failControl=true;await panel.getByRole('button',{name:'Pause queue',exact:true}).click();await panel.getByText('Control failed. Check the connection and try again.',{exact:true}).waitFor();failControl=false;
  failQueue=true;await panel.getByText('Could not load the live queue.',{exact:false}).waitFor();assert.equal(await panel.getByRole('button',{name:'Pause queue',exact:true}).isDisabled(),true);failQueue=false;await panel.getByRole('button',{name:'Retry',exact:true}).click();await until(async()=>!(await panel.getByRole('button',{name:'Pause queue',exact:true}).isDisabled()));
- await navToggle(editor,'lang');await panel.getByText('Controles de la overlay en vivo',{exact:true}).waitFor();await axe();
+ await navToggle(editor,'lang');await panel.getByText('Controles del overlay en vivo',{exact:true}).waitFor();await axe();
  assert.deepEqual(errors,[]);await context.close();console.log('PASS Studio controls: same API actions, scoped AST example, visible platform labels, mobile/desktop, en/es, accessible controls, failure recovery and stale polling protection.');
 } finally {await browser.close();}

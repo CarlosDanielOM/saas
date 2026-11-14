@@ -8,7 +8,7 @@ import type { OverlayAction, OverlayScope, QueueStatus } from './overlay-queue.m
   styleUrl: './overlay-queue.component.css',
   template: `
     <section class="live-controls" aria-labelledby="overlay-live-controls-title">
-      <p class="hint">{{ t('queueReliabilityHint') }}</p><div class="heading">
+      <div class="heading">
         <div><h2 id="overlay-live-controls-title">{{ t('liveControls') }}</h2><p class="lead">{{ t('liveControlsLead') }}</p></div>
         @if (data()) { <span class="state" [class.paused]="paused() || mixed()" aria-live="polite">{{ t(paused() ? 'queuePaused' : mixed() ? 'queueMixed' : 'queueRunning') }}</span> }
       </div>
@@ -43,6 +43,7 @@ import type { OverlayAction, OverlayScope, QueueStatus } from './overlay-queue.m
         </label>
         <p class="behavior">{{ t('controlBehavior') }}</p>
         @if (data() && scope() !== 'other') { <p class="ast"><span>{{ t('controlAst') }}</span> <code>{{ astExample() }}</code></p> }
+        <p class="hint">{{ t('queueReliabilityHint') }}</p>
       </details>
     </section>
   `})

@@ -1,5 +1,5 @@
 <section class="timeline" [attr.aria-label]="t('timelineTitle')">
-  <header><div><h3>{{ t('timelineTitle') }}</h3><p>{{ t('timelineHint') }}</p></div><output>{{ (transport()?.time ?? 0).toFixed(2) }} / {{ layout().duration }} s</output></header>
+  <header><div><h3>{{ t('timelineTitle') }}</h3><p [title]="t('timelineHint')">{{ t('timelineHint') }}</p></div><output>{{ (transport()?.time ?? 0).toFixed(2) }} / {{ layout().duration }} s</output></header>
   <div class="transport">
     <button type="button" class="primary" (click)="toggle.emit()">{{ t(transport()?.playing ? 'timelinePause' : 'timelinePlay') }}</button>
     <button type="button" (click)="seek.emit(0)">{{ t('timelineStart') }}</button>

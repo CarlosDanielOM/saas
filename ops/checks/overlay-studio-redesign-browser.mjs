@@ -266,7 +266,7 @@ try {
     const { context, page } = await fixture({ width, height: 900, dark });
     await studioToggle(page, 'lang');
     await openStudio(page, 'obs');
-    await page.getByText('Añádelo a OBS', { exact: true }).waitFor();
+    await page.getByText('Agrégalo a OBS', { exact: true }).waitFor();
     await page.locator('.publish-settings').evaluate(d => { d.open = true; });
     await page.locator('details.exact').evaluate(d => { d.open = true; });
     assert.equal(await overflow(page), false, `overflow es ${width} ${dark}`);

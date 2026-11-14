@@ -1,9 +1,15 @@
 :host { display:block; min-width:0; color:var(--fg) }
 * { box-sizing:border-box }
-.timeline { border-top:1px solid var(--line); padding-block:1rem; display:grid; gap:.75rem; min-width:0 }
-header { display:flex; align-items:start; gap:.75rem; flex-wrap:wrap; justify-content:space-between }
-h3 { margin:0; font-size:1rem } p { margin:.35rem 0 0; font-size:.8rem; color:var(--muted); line-height:1.5 }
-output { font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; padding:.4rem 0 }
+/* One header row (title, time, Play/Back), the hint under it, then the scrubber and the object rows.
+   The header and its copy box are flattened into the wrapping row; the buttons drop to their own line when narrow. */
+.timeline { border-top:1px solid var(--line); padding-block:1rem; display:flex; flex-wrap:wrap; align-items:center; gap:.6rem .75rem; min-width:0 }
+header, header > div { display:contents }
+.timeline > * { flex:1 1 100%; min-width:0 }
+.timeline > .transport { flex:0 1 auto }
+h3 { margin:0; font-size:1rem; flex:none } p { margin:.35rem 0 0; font-size:.8rem; color:var(--muted); line-height:1.5 }
+header p { order:1; flex:1 1 100%; margin:0; min-width:0 }
+.timeline > .scrubber, .timeline > .ruler, .timeline > .tracks, .timeline > .legend { order:2 }
+output { flex:none; margin-right:auto; font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--muted) }
 button,input { font:inherit; color:inherit; min-height:44px }
 button { cursor:pointer; border:1px solid var(--btn-border); background:var(--btn); border-radius:1rem; padding:.5rem .75rem }
 button.primary { background:#7c3aed; color:white; border-color:#7c3aed }
@@ -18,6 +24,7 @@ button:disabled,input:disabled { opacity:.55; cursor:default }
 .lf-range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; border:2px solid var(--tile); border-radius:50%; background:#7c3aed }
 .lf-range::-moz-range-thumb { width:18px; height:18px; border:2px solid var(--tile); border-radius:50%; background:#7c3aed }
 .ruler { display:flex; justify-content:space-between; margin-left:6rem; font-size:.65rem; color:var(--muted) }
+.timeline > .ruler { flex-basis:calc(100% - 6rem) }
 .tracks { display:grid; gap:.3rem }
 .row { display:grid; grid-template-columns:5.5rem minmax(0,1fr); gap:.5rem; align-items:center; border-radius:.65rem; padding:.2rem 0 }
 .row.selected { background:var(--accent-soft) }
@@ -37,4 +44,18 @@ button:disabled,input:disabled { opacity:.55; cursor:default }
 .legend { display:flex; flex-wrap:wrap; gap:.75rem; font-size:.7rem }
 .legend span::before { content:''; display:inline-block; width:.6rem; height:.6rem; margin-right:.3rem; background:var(--accent-soft); border:1px solid var(--accent); border-radius:.15rem }
 .legend .entrance-key::before { background:var(--accent) }.legend .exit-key::before { background:var(--muted); border-color:var(--muted) }
-@media(min-width:640px) { .row { grid-template-columns:9rem minmax(0,1fr) } .ruler { margin-left:9.5rem } }
+@media(min-width:640px) { .row { grid-template-columns:9rem minmax(0,1fr) } .ruler { margin-left:9.5rem } .timeline > .ruler { flex-basis:calc(100% - 9.5rem) } }
+/* Desktop dock: it shares the space under the canvas, so the chrome is tighter and the hint stays on one line
+   (the full text is in its title). Mouse targets only: phones keep the 44px sizes above. */
+@media(min-width:960px) {
+  .timeline { border-top:0; padding-block:0; gap:.4rem .6rem }
+  h3 { font-size:.92rem }
+  header p { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:.76rem; line-height:1.35 }
+  .transport { gap:.35rem }
+  .transport button { min-height:34px; padding:.3rem .65rem; font-size:.78rem }
+  .scrubber { grid-template-columns:auto minmax(0,1fr); align-items:center; gap:.75rem; font-size:.76rem; color:var(--muted) }
+  .scrubber .lf-range { height:28px; min-height:28px }
+  .tracks { gap:.15rem }
+  .row { padding:0 }
+  .legend { margin:0 }
+}

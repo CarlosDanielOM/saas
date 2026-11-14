@@ -629,7 +629,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 :host { --ws: #e6e8ee; --ws-dot: rgba(15, 17, 21, 0.12); --pop-bg: var(--tile); --sel: #7c3aed; }
 :host-context(html.dark) { --ws: #0b0d12; --ws-dot: rgba(255, 255, 255, 0.07); --pop-bg: #1b1f28; --sel: #8b5cf6; }
 
-.lf.studio { min-height: 100dvh; padding-bottom: calc(10.5rem + env(safe-area-inset-bottom)); background: var(--bg); }
+.lf.studio { min-height: 100dvh; padding-bottom: calc(8.4rem + env(safe-area-inset-bottom)); background: var(--bg); }
 .studio-shell { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .studio .editor-fields:disabled { opacity: 1; }
 .studio .editor-fields:disabled .studio-body { opacity: 0.8; }
@@ -719,10 +719,15 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 /* Save bar: thumb reach above the tabs on phones, top right on desktop. */
 .lf-save-bar {
   position: fixed; left: 0.5rem; right: 0.5rem; bottom: calc(4.2rem + env(safe-area-inset-bottom)); z-index: 25;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 0.4rem; padding: 0.4rem;
   border: 1px solid var(--line); border-radius: 1rem; background: color-mix(in srgb, var(--tile) 96%, transparent); box-shadow: var(--shadow); backdrop-filter: blur(10px);
 }
-.lf-save-bar__status { display: flex; flex: 1 1 100%; align-items: center; gap: 0.45rem; min-width: 0; color: var(--muted); font-size: 0.78rem; font-weight: 700; line-height: 1.3; }
+.lf-save-bar__status { display: flex; flex: 1 1 auto; align-items: center; gap: 0.45rem; min-width: 0; color: var(--muted); font-size: 0.78rem; font-weight: 700; line-height: 1.3; }
+/* Small phones: one row of two buttons. The status line stays in the DOM (and its aria-live) for screen readers;
+   the buttons and the top-bar chip already say Saved / Unpublished. */
+@media (max-width: 419.98px) {
+  .lf-save-bar__status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+}
 .lf-save-bar__status .lf-dot { color: var(--ok); }
 .lf-save-bar__status .lf-dot--warn { color: var(--warn); }
 .lf-save-bar .lf-btn { flex: 1 1 0; min-width: 0; padding-inline: 0.8rem; font-size: 0.82rem; }
@@ -844,6 +849,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .guide { position: absolute; z-index: 60; background: #ec4899; pointer-events: none; }
 .guide--v { top: 0; bottom: 0; width: 1px; }
 .guide--h { left: 0; right: 0; height: 1px; }
+.studio__notes { display: contents; }
 .studio__hint { margin: 0; padding: 0.35rem 0.85rem 0.5rem; color: var(--muted); font-size: 0.74rem; line-height: 1.4; }
 /* Layers sticking out of the canvas: one quiet line with Show and a close button (the choice is remembered per layer). */
 .off-canvas { display: flex; align-items: center; gap: 0.35rem; margin: 0 0.6rem 0.5rem; padding: 0.15rem 0.15rem 0.15rem 0.6rem; border: 1px solid var(--line);
@@ -885,7 +891,8 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 
 /* Right panel */
 .studio-rtabs { gap: 3px; margin: 0.6rem 0.6rem 0; padding: 3px; border: 1px solid var(--btn-border); border-radius: 0.8rem; background: var(--btn); }
-.studio-rtab { flex: 1; min-width: 0; min-height: 2.3rem; padding: 0 0.5rem; overflow: hidden; border: 0; border-radius: 0.6rem; color: var(--fg); background: transparent; font-size: 0.8rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+/* Long labels (Spanish "Configuración del diseño") wrap to two lines instead of being cut off. */
+.studio-rtab { flex: 1; min-width: 0; min-height: 2.3rem; padding: 0.2rem 0.5rem; overflow: hidden; border: 0; border-radius: 0.6rem; color: var(--fg); background: transparent; font-size: 0.8rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
 .studio-rtab[aria-pressed='true'] { color: #fff; background: #7c3aed; }
 .properties { gap: 0.8rem; }
 .selected-card__body small { overflow: hidden; color: var(--muted); font-size: 0.76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -914,15 +921,12 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
 .studio-mtabs button[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); }
 
 /* Feedback toasts: above the save bar on phones, under it on desktop. */
-.studio .lf-dock { position: fixed; left: 0.5rem; right: 0.5rem; bottom: calc(9.4rem + env(safe-area-inset-bottom)); z-index: 35; display: grid; gap: 0.4rem; pointer-events: none; }
+.studio .lf-dock { position: fixed; left: 0.5rem; right: 0.5rem; bottom: calc(8rem + env(safe-area-inset-bottom)); z-index: 35; display: grid; gap: 0.4rem; pointer-events: none; }
 .studio .lf-dock > * { pointer-events: auto; }
 
 @media (min-width: 420px) {
-  .lf-save-bar { flex-wrap: nowrap; }
-  .lf-save-bar__status { flex: 1 1 auto; }
+  .lf-save-bar { padding-left: 0.8rem; }
   .lf-save-bar .lf-btn { flex: 0 0 auto; }
-  .lf.studio { padding-bottom: calc(8.4rem + env(safe-area-inset-bottom)); }
-  .studio .lf-dock { bottom: calc(8rem + env(safe-area-inset-bottom)); }
 }
 
 @media (min-width: 560px) {
@@ -989,12 +993,12 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
   }
   .tb { height: 44px; min-width: 44px; }
   .tb-desk { display: inline-flex; }
-  .studio__hint { position: absolute; left: 0.9rem; top: 0.45rem; z-index: 2; max-width: calc(100% - 12rem); padding: 0; pointer-events: none; font-size: 0.72rem; }
-  .lf--design .studio__hint { top: auto; bottom: 0.4rem; }
-  .off-canvas { position: absolute; left: 0.9rem; top: 0.45rem; z-index: 3; width: max-content; max-width: calc(100% - 12rem); margin: 0; box-shadow: var(--shadow); }
-  .studio__canvas--outside .studio__hint { top: 3rem; }
-  .lf--design .off-canvas { top: 3.6rem; }
-  .lf--design .studio__canvas--outside .studio__hint { top: auto; }
+  /* The hint and the off-canvas notice form a line above the canvas (under the event tabs in a design), in the
+     page flow, so they can't run under the toolbar, the tabs, the size label or each other; "fit" re-measures. */
+  .studio__events { order: -2; }
+  .studio__notes { order: -1; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; min-width: 0; padding: 0.45rem 0.9rem 0; }
+  .studio__hint { max-width: 100%; padding: 0; font-size: 0.72rem; }
+  .off-canvas { width: max-content; max-width: 100%; margin: 0; box-shadow: var(--shadow); }
 
   .studio-timeline.d-on, .tester.d-on { flex: none; max-height: 44%; overflow-y: auto; border-top: 1px solid var(--line); background: var(--tile); }
   .tester.d-on { column-gap: 1.5rem; padding-right: 3.25rem; }
@@ -1002,13 +1006,15 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6r
   .tester__close { display: inline-grid; position: absolute; top: 0.55rem; right: 0.6rem; }
 
   .studio-rtabs { display: flex; position: sticky; top: 0.6rem; z-index: 2; }
+  /* Covers the gap above the sticky tabs so scrolled settings don't show through it. */
+  .studio-rtabs::before { content: ''; position: absolute; left: -0.7rem; right: -0.7rem; bottom: 100%; height: calc(0.6rem + 1px); background: var(--tile); }
   .studio .lf-dock { left: auto; right: 1rem; top: 3.9rem; bottom: auto; width: min(26rem, calc(100vw - 2rem)); }
   .studio-mtabs { display: none; }
 }
 
 @media (min-width: 1280px) {
   .studio-body { grid-template-columns: 16rem minmax(0, 1fr) 18.5rem; }
-  .studio__timeline { grid-template-columns: minmax(0, 1fr) minmax(16rem, 21rem); align-items: start; }
+  .studio__timeline { grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem); align-items: start; }
   .studio__timeline > app-overlay-timeline { grid-row: span 2; }
 }
 

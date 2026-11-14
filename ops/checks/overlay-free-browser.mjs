@@ -77,7 +77,9 @@ try {
   const axe = await page.evaluate(() => window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
   assert.deepEqual(axe.violations.map(violation => violation.id), []);
   await navToggle(page,'lang');
-  await page.locator('.mock-chip').getByText('Alfa', { exact: true }).waitFor();
+  // Spanish keeps the English "Alpha" label (es-MX copy); confirm the editor really switched to Spanish.
+  await page.getByLabel('Nombre del overlay', { exact: true }).waitFor();
+  await page.locator('.mock-chip').getByText('Alpha', { exact: true }).waitFor();
   for (const tier of ['premium', 'pro', 'free']) {
     app.plan_tier = tier;
     await page.evaluate(app => {

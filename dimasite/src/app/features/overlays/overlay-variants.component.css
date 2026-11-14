@@ -1,0 +1,38 @@
+/* Variants list + form. Sized by the container (13–19rem sidebar, full width on phones), never by the viewport. */
+:host { container-type: inline-size; }
+.variants { gap: 0.7rem; padding: 0; border: 0; }
+.v-head { display: grid; gap: 0.3rem; min-width: 0; }
+.v-title { margin: 0; color: var(--fg); font-size: 0.95rem; font-weight: 800; }
+
+.v-list { display: grid; gap: 0.4rem; }
+.v-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 1rem;
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-align: left;
+}
+.v-row--off { border-style: dashed; color: var(--muted); }
+.v-row[aria-pressed='true'] { border-style: solid; border-color: #7c3aed; }
+.v-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-chip { flex: none; padding: 0.1rem 0.5rem; border: 1px solid var(--line); border-radius: 999px; font-size: 0.74rem; font-weight: 700; }
+.v-row[aria-pressed='true'] .v-chip { border-color: rgba(255, 255, 255, 0.45); }
+.v-add { width: 100%; border-radius: 999px; font-size: 0.86rem; font-weight: 700; }
+
+/* Settings of the open variant: one column, full-width fields. */
+.v-form { display: grid; gap: 0.65rem; min-width: 0; padding-top: 0.7rem; border-top: 1px solid var(--line); }
+.v-range { display: grid; gap: 0.65rem; min-width: 0; }
+.v-form .switch { justify-self: start; margin-right: 0; }
+.v-move { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
+.v-move button, .v-form > .danger { width: 100%; line-height: 1.25; }
+
+/* Minimum and maximum side by side once each field keeps about 8rem. */
+@container (min-width: 17rem) {
+  .v-range { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+}

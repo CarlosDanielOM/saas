@@ -173,3 +173,6 @@
   .br-dialog { width: min(100%, 36rem); border-radius: 1.25rem; }
   .br-dialog__foot .br-btn:not(.br-delete) { flex: 0 0 auto; }
 }
+
+/* Dark theme: let the browser draw the number spinners (and other native parts) dark instead of a white box. */
+:host-context(html.dark) .br-dialog input[type='number'] { color-scheme: dark; }

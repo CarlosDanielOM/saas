@@ -43,7 +43,11 @@ export async function openStudio(page, part) {
       if (phone && !(await visible(page, '.designs'))) await phoneTab(page, 'layers');
       return page.locator('.designs').waitFor();
     case 'timeline':
-      if (phone && !(await visible(page, '.studio__timeline'))) await phoneTab(page, 'edit');
+      if (!(await visible(page, '.studio__timeline'))) {
+        if (phone) await phoneTab(page, 'edit');
+        // Desktop: the Test drawer replaces the timeline in an alert design; closing it brings the timeline back.
+        else if (await visible(page, '.tester')) await page.locator('.tb--test').click();
+      }
       return page.locator('.studio__timeline').waitFor();
     case 'obs':
       if (!(await visible(page, '.lf-setup'))) await page.locator('.studio-status').click();

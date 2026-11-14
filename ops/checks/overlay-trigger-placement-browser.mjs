@@ -24,7 +24,8 @@ async function until(predicate, label) {
 async function editorGeometry(page) {
   return page.locator('.widget[data-kind="trigger"]').evaluate(node => Object.fromEntries(['left', 'top', 'width', 'height'].map(key => [key, parseFloat(node.style[key])])));
 }
-function placements(page, id) { return page.locator('[data-event="trigger"]').filter({ has: page.getByAltText(id, { exact: true }) }); }
+// Trigger images carry an empty alt since 8584aa06 (no media titles on OBS); the renderer tags each event's placements with its id.
+function placements(page, id) { return page.locator(`[data-event="trigger"][data-playback-key="${id}"]`); }
 async function runtimeGeometry(page, id, index = 0) {
   return placements(page, id).nth(index).evaluate(node => Object.fromEntries(['left', 'top', 'width', 'height'].map(key => [key, parseFloat(node.style[key])])));
 }

@@ -9,7 +9,8 @@ import type { AlertVariant } from './overlay.model';
 
 /**
  * Bits tab of an alert design: the shared Bits rules (same list as Chat events) and which of them
- * play their own look. Tabs only list editable looks; rules on the default look sit in a list below.
+ * play their own look. One list in amount order: the default look, then every rule; rules with a look are
+ * selectable and show their controls when open, the others offer "Give it its own look".
  */
 @Component({
   selector: 'app-overlay-bits-looks',
@@ -40,7 +41,8 @@ export class OverlayBitsLooksComponent {
     const look = this.looks().find(v => v.ruleId === rule.id);
     return look ? [{ rule, look }] : [];
   }));
-  readonly withoutLook = computed(() => this.rules().filter(rule => !this.looks().some(v => v.ruleId === rule.id)));
+  /** Every rule in amount order with its look (if it has one): the list shows what each cheer plays. */
+  readonly rows = computed(() => this.rules().map(rule => ({ rule, look: this.looks().find(v => v.ruleId === rule.id) ?? null })));
   readonly current = computed(() => this.tabs().find(tab => tab.look.id === this.selected()) ?? null);
 
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('bitsRules.' + key, params); }

@@ -300,7 +300,11 @@ try {
     const looks = page.locator('app-overlay-bits-looks'); await looks.waitFor();
     await looks.getByText('2 rules · 0 with their own look').waitFor();
     assert.equal(await looks.locator('.bl__tab').count(), 1, 'only the default tab');
-    await looks.getByText('Rules using the default look (2)').waitFor();
+    // Every rule is a visible row that says what it plays; no hidden step before "Give it its own look".
+    assert.equal(await looks.locator('.bl__plain').count(), 2, 'both rules listed on the default look');
+    await looks.getByRole('button', { name: 'Give Big cheer its own look' }).waitFor();
+    await looks.getByRole('button', { name: 'Turn the alert on for Nice' }).waitFor();
+    assert.equal(await looks.getByRole('button', { name: 'New rule' }).count(), 1, 'New rule is the last row');
 
     // Sample amounts explain what plays.
     await openStudio(page, 'test');
@@ -315,6 +319,8 @@ try {
     await looks.getByRole('button', { name: 'Give Big cheer its own look' }).click();
     const bigTab = looks.locator('.bl__tab').filter({ hasText: 'Big cheer' });
     await until(() => bigTab.getAttribute('aria-pressed').then(v => v === 'true'), 'look tab selected');
+    await looks.getByRole('button', { name: 'Edit rule' }).waitFor();
+    await looks.getByRole('switch', { name: 'Big cheer on' }).waitFor();
     await until(() => match.innerText().then(t => t.includes('This sample plays: Big cheer') && !t.includes('default look')), 'own look match');
     await page.locator('.properties textarea').fill('BIG $(user)');
     await page.locator('.save-button').click();
@@ -330,7 +336,6 @@ try {
     await until(() => looks.locator('.bl__tab').count().then(n => n === 2), 'undo restores look');
 
     // Nice has alerts off: turning them on is a shared rule change.
-    await looks.locator('details.bl__more').evaluate(d => { d.open = true; });
     await looks.getByRole('button', { name: 'Turn the alert on for Nice' }).click();
     await until(() => ctx.rules.find(r => r.id === 'r-nice').alert === true, 'alert turned on');
     await looks.getByRole('button', { name: 'Give Nice its own look' }).waitFor();
@@ -348,6 +353,12 @@ try {
     await until(() => ctx.overlay.designs[0].variants.bits.some(v => v.ruleId === created), 'new look saved');
 
     await noOverflow(page, `overlay ${opts.width}`);
+    const inner = await looks.evaluate(host => [host, ...host.querySelectorAll('*')].filter(el => {
+      const cs = getComputedStyle(el);
+      if ((cs.textOverflow === 'ellipsis' && cs.overflow.includes('hidden')) || el.classList.contains('br-switch')) return false;
+      return el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1;
+    }).map(el => el.className));
+    assert.deepEqual(inner, [], `overlay ${opts.width}: nothing inside the Bits looks scrolls sideways`);
     await axe(page, `overlay ${opts.width} ${opts.theme}`, 'app-overlay-bits-looks');
     await looks.scrollIntoViewIfNeeded();
     await shot(page, `overlay-looks-${opts.width}-${opts.theme}`);

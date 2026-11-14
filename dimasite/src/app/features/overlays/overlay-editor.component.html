@@ -66,7 +66,7 @@
     <div class="studio-top__chips lf-head__chips">
       @if (designDraft()) {
         <span class="lf-chip lf-chip--accent">{{ t('sharedDesign') }}</span>
-        <span class="lf-chip">{{ t('usedIn', { count: designUsage() }) }}</span>
+        <span class="lf-chip">{{ t(designUsage() === 1 ? 'usedInOne' : 'usedIn', { count: designUsage() }) }}</span>
       } @else {
         <div class="studio-obs">
           <button type="button" class="studio-status" [class.is-ok]="connection().state === 'ready'" [class.is-warn]="obsWarning()" [attr.aria-expanded]="pop() === 'obs'" (click)="togglePop('obs', $event)">
@@ -259,7 +259,7 @@
                     </div>
                   } }
                 </div></div>
-                <div class="design-row__body"><strong>{{ design.name }}</strong><span class="lf-note">{{ t('usedIn', { count: usage(design.id) }) }}</span></div>
+                <div class="design-row__body"><strong>{{ design.name }}</strong><span class="lf-note">{{ t(usage(design.id) === 1 ? 'usedInOne' : 'usedIn', { count: usage(design.id) }) }}</span></div>
                 <div class="design-row__actions">
                   <button type="button" class="lf-btn lf-btn--compact" (click)="openDesign(design.id)" [attr.aria-label]="t('editDesignAria', { name: design.name })">{{ t('editShort') }}</button>
                   <button type="button" class="lf-btn lf-btn--compact" (click)="useDesign(design.id)" [attr.aria-label]="t('useDesignAria', { name: design.name })">{{ t('useShort') }}</button>
@@ -332,7 +332,9 @@
           <span class="tb-sep tb-desk" aria-hidden="true"></span>
           <button type="button" class="tb tb-desk" [attr.aria-pressed]="panels()" [attr.aria-label]="t('studioPanels')" [title]="t('studioPanels')" (click)="panels.set(!panels())"><lucide-icon [name]="icons.PanelsTopLeft" [size]="17" aria-hidden="true" /></button>
         </div>
-        <p class="studio__hint">{{ t('canvasHint') }}</p>
+        <!-- Canvas notes: under the toolbar on phones, a line above the canvas on desktop (never over the canvas or its tools). -->
+        <div class="studio__notes">
+        <p class="studio__hint">{{ t(compact() ? 'canvasHintTouch' : 'canvasHint') }}</p>
         @if (offCanvasLayers(); as outside) {
           @if (outside.length) {
             <div class="off-canvas" role="status">
@@ -343,6 +345,7 @@
             </div>
           }
         }
+        </div>
       </div>
 
       @if (designDraft(); as draft) {

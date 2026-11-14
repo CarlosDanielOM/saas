@@ -106,7 +106,8 @@ try {
   assert.equal(ctx.state.designs[0].events.follow.widgets.at(-1).x,500);
   await page.locator('.design-event-tabs button').nth(3).click();
   const variants=page.locator('app-overlay-variants');await variants.waitFor();
-  await variants.getByRole('button',{name:es?'Añadir variante':'Add variant',exact:true}).click();
+  await variants.getByRole('heading',{name:es?'Variantes de raid':'Raid variants',exact:true}).waitFor();
+  await variants.getByRole('button',{name:es?'Agregar variante':'Add variant',exact:true}).click();
   await variants.getByLabel(es?'Nombre de variante':'Variant name').fill('Big cheers');await variants.getByLabel(es?'Nombre de variante':'Variant name').press('Tab');
   await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').fill('500');await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').press('Tab');
   await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).fill('1000');await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).press('Tab');
@@ -132,8 +133,8 @@ try {
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'rule preview');
   assert.equal(await page.locator('.variant-match button').count(),0,'no switch button when the match is already open');
   // Adding while a variant is open copies it (the old separate Duplicate button did the same thing).
-  await variants.getByRole('button',{name:es?'Añadir variante':'Add variant',exact:true}).click();
-  await until(()=>variants.locator('.tabs button').count().then(n=>n===4),'duplicate');
+  await variants.getByRole('button',{name:es?'Agregar variante':'Add variant',exact:true}).click();
+  await until(()=>variants.locator('.v-row').count().then(n=>n===3),'duplicate');
   await variants.getByLabel(es?'Nombre de variante':'Variant name').fill('Priority');await variants.getByLabel(es?'Nombre de variante':'Variant name').press('Tab');
   await variants.getByRole('button',{name:es?'Mover antes':'Move earlier',exact:true}).click();
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.raid[0].name==='Priority','order persisted');
@@ -147,6 +148,7 @@ try {
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'disabled priority skipped');
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.raid[0].enabled===false,'disabled saved');
   await axe(page,'designs '+options.width);assert.equal(await overflow(page),false);
+  assert.deepEqual(await variants.evaluate(host=>[host,...host.querySelectorAll('*')].filter(el=>{const cs=getComputedStyle(el);return !(cs.textOverflow==='ellipsis'&&cs.overflow.includes('hidden'))&&el.clientWidth>0&&el.scrollWidth>el.clientWidth+1;}).map(el=>el.className)),[],'nothing inside the variants scrolls sideways');
   if(shots){await mkdir(shots,{recursive:true});await page.screenshot({path:shots+'/designs-'+options.width+'.png',fullPage:true});}
   await page.reload();await page.locator('.design-row__actions button').first().click();await page.locator('.design-event-tabs button').nth(3).click();
   await variants.getByRole('button',{name:'Big cheers',exact:true}).click();await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='BIG $(user)'),'reload variant');

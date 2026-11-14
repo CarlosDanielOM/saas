@@ -365,6 +365,10 @@ export class OverlayEditorComponent {
     // The studio is full screen once it is open; loading, error and permission screens keep the site navbar.
     effect(() => this.layoutFocus.active.set(this.owner() && this.loaded()));
     inject(DestroyRef).onDestroy(() => this.layoutFocus.active.set(false));
+    // Desktop hides the timeline while Test is open in a design. Playback that is running when that happens
+    // (the Test button, or resizing back from the phone layout) stops instead of running out of sight.
+    const hiddenPlayback = computed(() => !this.compact() && this.testOpen() && !!this.designDraft() && !!this.timeline()?.playing);
+    effect(() => { if (hiddenPlayback()) untracked(() => this.closeTimeline()); });
     afterNextRender(() => {
       const media = window.matchMedia('(max-width: 959.98px)');
       const sync = () => this.compact.set(media.matches);
@@ -481,7 +485,8 @@ export class OverlayEditorComponent {
       case 'variants': return design;
       case 'designs': return !design;
       case 'add': case 'layers': return true;
-      case 'timeline': return design;
+      // The dock under the canvas shows one thing at a time: Test replaces the timeline until it closes.
+      case 'timeline': return design && !this.testOpen();
       case 'tester': return this.testOpen();
       case 'layer': return this.rightTab() === 'layer';
       case 'overlay': return this.rightTab() === 'overlay';
@@ -504,6 +509,8 @@ export class OverlayEditorComponent {
   setMobileTab(tab: MobileTab): void { this.closePop(); this.mobileTab.set(tab); }
   toggleTest(): void {
     if (this.compact()) { this.setMobileTab('test'); return; }
+    // The timeline hides while Test is open, so its playback stops instead of running out of sight.
+    if (!this.testOpen() && this.designDraft()) this.closeTimeline();
     this.testOpen.update(open => !open);
   }
   togglePop(pop: StudioPop, event?: Event): void {

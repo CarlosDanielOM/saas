@@ -1,79 +1,80 @@
+/* Sized by its container (the Studio sidebar is 13–19rem wide; phones give it the full screen), never by the viewport. */
+:host { container-type: inline-size; min-width: 0; }
 .bl { display: grid; gap: 0.7rem; min-width: 0; }
-.bl__head { display: grid; gap: 0.55rem; }
-.bl__copy { display: grid; gap: 0.2rem; min-width: 0; }
-.bl__title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.95rem; font-weight: 800; }
+.bl__head { display: grid; gap: 0.35rem; min-width: 0; }
+.bl__title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; min-width: 0; }
+.bl__title { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.95rem; font-weight: 800; }
 .bl__title app-lf-icon { color: var(--gold); }
-.bl__head > .br-btn { justify-self: start; }
 .bl__problem { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 
-/* Phones scroll the look tabs sideways instead of stacking them. */
-.bl__tabs { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.15rem; scrollbar-width: thin; }
+/* Buttons here may wrap their label instead of overflowing a narrow sidebar. */
+.bl .br-btn { white-space: normal; text-align: center; line-height: 1.25; padding-block: 0.35rem; }
+
+.bl__list { display: grid; gap: 0.45rem; min-width: 0; }
+.bl__item { display: grid; gap: 0; min-width: 0; border-radius: 1rem; }
+.bl__item--open { border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+
+/* One line: amount pill, name (ellipsis), chips. Chips drop below the name when there is no room. */
+.bl__line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem; min-width: 0; }
+.bl__name { flex: 0 1 auto; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bl__line .br-chip, .bl__line .br-amount { flex: none; }
+
+/* Selectable row (Default look, and rules with their own look). */
 .bl__tab {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  max-width: 16rem;
-  padding: 0 0.85rem 0 0.45rem;
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0.45rem 0.7rem;
   border: 1px solid var(--btn-border);
-  border-radius: 999px;
+  border-radius: 1rem;
   background: var(--btn);
   color: var(--fg);
   font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-align: left;
   cursor: pointer;
 }
-.bl__tab:first-child { padding-left: 0.85rem; }
-.bl__tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bl__tab[aria-pressed='true'] { border-color: #7c3aed; background: #7c3aed; color: #fff; }
+.bl__tab--off { border-style: dashed; color: var(--muted); }
+.bl__sub { color: var(--muted); font-size: 0.78rem; font-weight: 600; line-height: 1.4; }
+.bl__tab[aria-pressed='true'] { border-style: solid; border-color: #7c3aed; background: #7c3aed; color: #fff; }
+.bl__tab[aria-pressed='true'] .bl__sub { color: #fff; }
 .bl__tab[aria-pressed='true'] .br-amount { background: rgba(0, 0, 0, 0.22); color: #fff; }
 .bl__tab[aria-pressed='true'] .br-chip { border-color: rgba(255, 255, 255, 0.45); color: #fff; }
 .bl__tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bl__item--open > .bl__tab { border-radius: calc(1rem - 1px); }
 
-.bl__current {
-  display: grid;
-  gap: 0.6rem;
-  padding: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 1rem;
-  background: var(--accent-soft);
-}
-.bl__current-copy { display: grid; gap: 0.3rem; min-width: 0; }
-.bl__current-title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin: 0; overflow-wrap: anywhere; }
-.bl__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.bl__switch-state { margin-right: 0.35rem; color: var(--muted); font-size: 0.82rem; font-weight: 750; }
+/* Controls of the open rule look, right under its row. */
+.bl__controls { display: grid; gap: 0.5rem; min-width: 0; padding: 0.6rem 0.65rem 0.7rem; overflow-wrap: anywhere; }
+.bl__switch-row { display: flex; align-items: center; gap: 0.6rem; min-height: 44px; }
+.bl__switch-state { color: var(--fg); font-size: 0.84rem; font-weight: 750; }
+.bl__btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.bl__btns .br-btn { flex: 1 1 8rem; }
 
-.bl__more { border: 1px solid var(--line); border-radius: 1rem; }
-.bl__more summary {
-  display: flex;
+/* Rule on the default look: not selectable, says what it plays and offers its own look. */
+/* Line 1: amount, name, chips + gear; line 2: "Give it its own look" across the row. */
+.bl__plain {
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 44px;
-  padding: 0 0.85rem;
+  gap: 0.4rem 0.4rem;
+  padding: 0.45rem 0.5rem 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
   font-size: 0.86rem;
   font-weight: 750;
-  cursor: pointer;
 }
-.bl__more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 1rem; }
-.bl__rows { display: grid; gap: 0.4rem; margin: 0; padding: 0 0.6rem 0.6rem; list-style: none; }
-.bl__row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.45rem 0.55rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.85rem;
-  background: var(--input-bg);
-}
-.bl__row--off { border: 1px dashed var(--btn-border); background: transparent; }
-.bl__row-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; min-width: 0; font-size: 0.86rem; font-weight: 750; overflow-wrap: anywhere; }
-.bl__row-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+.bl__plain > .bl__line:only-child { min-height: 2rem; }
+.bl__plain--off { border-style: dashed; border-color: var(--btn-border); background: transparent; color: var(--muted); }
+.bl__give { grid-column: 1 / -1; min-width: 0; padding-inline: 0.75rem; }
 
-@media (min-width: 640px) {
-  .bl__head { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
-  .bl__current { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-  .bl__actions { justify-content: flex-end; }
-  .bl__row { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .bl__row-actions { grid-column: auto; }
+.bl__new { width: 100%; }
+
+/* Roomy sidebar or phone: the actions of a default-look rule sit beside its name. */
+@container (min-width: 30rem) {
+  .bl__plain { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .bl__give { grid-column: 2; grid-row: 1; }
+  .bl__gear { grid-column: 3; grid-row: 1; }
+  .bl__btns .br-btn { flex: 0 1 auto; }
 }
