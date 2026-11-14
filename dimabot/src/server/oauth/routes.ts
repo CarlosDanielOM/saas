@@ -62,21 +62,35 @@ async function browserUser(req: Request) {
 async function access(req: Request, scope?: string): Promise<AccessIdentity> {
     const token = req.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
     const identity = await authenticateAccess(token);
-    if (scope && !identity.scopes.includes(scope)) throw new OAuthError('insufficient_scope', 403);
+    if (scope && !identity.scopes.includes(scope)) throw new OAuthError('insufficient_scope', 403, [scope]);
     // Beta routes never accept a client-selected account/channel.
     if (Object.keys(req.query).length) throw new OAuthError('invalid_request');
     return identity;
 }
 
-function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
+/** RFC 6750 §3 challenge, built only here (RFC 9728 `resource_metadata` belongs to the `dima` realm alone).
+ * Values keep only the characters RFC 6750 allows in these quoted strings, so nothing needs escaping. */
+export function bearerChallenge(realm: string, error?: string, scope: readonly string[] = []) {
+    const quote = (value: string) => `"${value.replace(/[^\x20\x21\x23-\x5B\x5D-\x7E]/g, '')}"`;
+    const scopes = scope.filter(item => /^[\x21\x23-\x5B\x5D-\x7E]+$/.test(item));
+    return `Bearer ${[`realm=${quote(realm)}`, ...(error ? [`error=${quote(error)}`] : []),
+        ...(scopes.length ? [`scope=${quote(scopes.join(' '))}`] : [])].join(', ')}`;
+}
+
+/** Separate protection spaces: `/v1` takes Dima access tokens, the `/oauth` browser routes Twitch tokens. */
+const errorHandler = (realm: string) => (error: unknown, req: Request, res: Response, _next: NextFunction) => {
     const known = error instanceof OAuthError || error instanceof PetError || error instanceof PetSettingsError;
     const status = known ? error.status : 503;
-    if (status === 401) res.set('WWW-Authenticate', 'Bearer error="invalid_token"');
+    // RFC 6750 §3.1: a request without Bearer credentials gets a challenge with no error code.
+    if (status === 401) res.set('WWW-Authenticate', bearerChallenge(realm,
+        /^Bearer(?:\s|$)/i.test(req.get('authorization') ?? '') ? 'invalid_token' : undefined));
+    if (status === 403 && known && error.code === 'insufficient_scope') res.set('WWW-Authenticate',
+        bearerChallenge(realm, 'insufficient_scope', error instanceof OAuthError ? error.scope : undefined));
     if (status === 429) res.set('Retry-After', '60');
     // Do not log request bodies, bearer tokens, codes or provider error responses.
     if (!known) console.error('[OAuth] Request failed', error instanceof Error ? error.name : 'UnknownError');
     res.status(status).json({ error: known ? error.code : 'temporarily_unavailable' });
-}
+};
 
 export const oauthRoute = express.Router();
 oauthRoute.use(oauthBoundary);
@@ -170,7 +184,7 @@ oauthRoute.delete('/grants/:grant', asyncRoute(async (req, res) => {
     res.json({ revoked: true });
 }));
 oauthRoute.use((_req, res) => { res.status(404).json({ error: 'not_found' }); });
-oauthRoute.use(errorHandler);
+oauthRoute.use(errorHandler('dima-browser'));
 
 export const oauthApiRoute = express.Router();
 oauthApiRoute.use(oauthBoundary);
@@ -259,4 +273,4 @@ oauthApiRoute.delete('/desktop/session', asyncRoute(async (req, res) => {
     res.json({ revoked: true });
 }));
 oauthApiRoute.use((_req, res) => { res.status(404).json({ error: 'not_found' }); });
-oauthApiRoute.use(errorHandler);
+oauthApiRoute.use(errorHandler('dima'));

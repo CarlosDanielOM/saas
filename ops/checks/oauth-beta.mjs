@@ -119,7 +119,9 @@ assert.equal(result.status, 400);
 const start = await begin();
 result = await call(`/oauth/requests/${start.request}`);
 assert.deepEqual(result.body.scopes, ['profile:read', 'credits:read', 'desktop:connect']);
-assert.equal((await post(`/oauth/requests/${start.request}/decision`, { approve: true })).status, 401);
+result = await post(`/oauth/requests/${start.request}/decision`, { approve: true });
+assert.equal(result.status, 401);
+assert.equal(result.headers.get('www-authenticate'), 'Bearer realm="dima-browser"', 'browser routes: own realm, no Dima scopes');
 assert.equal((await post(`/oauth/requests/${start.request}/decision`, { approve: true }, 'oauth-beta-wrong-client')).status, 401);
 assert.equal((await post(`/oauth/requests/${start.request}/decision`, { approve: true }, 'oauth-beta-browser-owner', { Origin: 'https://evil.invalid' })).status, 403);
 result = await post(`/oauth/requests/${start.request}/decision`, { approve: false }, 'oauth-beta-browser-owner');
@@ -159,13 +161,22 @@ result = await get('/v1/me/credits', token.access_token);
 assert.equal(result.status, 200);
 assert.equal(result.body.balance, 42);
 assert.equal((await get(`/v1/me/credits?channelID=${other}`, token.access_token)).status, 400);
-assert.equal((await get('/v1/me', 'oauth-beta-browser-owner')).status, 401, 'Twitch tokens are not Dima tokens');
+result = await get('/v1/me', 'oauth-beta-browser-owner');
+assert.equal(result.status, 401, 'Twitch tokens are not Dima tokens');
+assert.equal(result.headers.get('www-authenticate'), 'Bearer realm="dima", error="invalid_token"');
+result = await call('/v1/me');
+assert.deepEqual([result.status, result.body], [401, { error: 'invalid_token' }], 'no credentials: body unchanged for the desktop app');
+assert.equal(result.headers.get('www-authenticate'), 'Bearer realm="dima"', 'RFC 6750 §3.1: no error code without credentials');
 const limited = await mint('profile:read');
-assert.equal((await get('/v1/me/credits', limited.access_token)).status, 403);
+result = await get('/v1/me/credits', limited.access_token);
+assert.deepEqual([result.status, result.body], [403, { error: 'insufficient_scope' }]);
+assert.equal(result.headers.get('www-authenticate'), 'Bearer realm="dima", error="insufficient_scope", scope="credits:read"');
 assert.equal((await get('/v1/desktop/session', limited.access_token)).status, 403);
 assert.equal((await post('/oauth/token', { grant_type: 'refresh_token', refresh_token: limited.refresh_token,
   client_id: 'dima-desktop', client_secret: 'not-a-secret' })).status, 400);
-assert.equal((await tokenRequest({ grant_type: 'password' })).status, 400);
+result = await tokenRequest({ grant_type: 'password' });
+assert.equal(result.status, 400);
+assert.equal(result.headers.get('www-authenticate'), null, 'token endpoint errors carry no Bearer challenge');
 assert.equal((await refresh(limited.refresh_token, { scope: 'profile:read credits:read' })).status, 400, 'refresh cannot expand scopes');
 
 // Real native WebSocket, no Socket.IO client or query-string credentials.
@@ -217,7 +228,9 @@ assert.equal((await refresh(idle.refresh_token)).status, 400);
 
 const revoked = await mint('profile:read');
 assert.equal((await post('/oauth/revoke', { client_id: 'dima-desktop', token: revoked.refresh_token })).status, 200);
-assert.equal((await get('/v1/me', revoked.access_token)).status, 401);
+result = await get('/v1/me', revoked.access_token);
+assert.equal(result.status, 401);
+assert.equal(result.headers.get('www-authenticate'), 'Bearer realm="dima", error="invalid_token"', 'revoked token');
 assert.equal((await post('/oauth/revoke', { client_id: 'dima-desktop', token: 'unknown-token' })).status, 200);
 const idleSocketToken = await mint('desktop:connect');
 const idleSocket = new WebSocket('ws://127.0.0.1:3000/v1/desktop/ws', 'dima.desktop.v1', { headers: { Authorization: `Bearer ${idleSocketToken.access_token}` } });

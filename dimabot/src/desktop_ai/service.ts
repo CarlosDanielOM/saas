@@ -69,7 +69,8 @@ export const hashTicket = (value: string) => createHash('sha256').update(value).
 export const newTicket = () => randomBytes(32).toString('base64url');
 function owner(identity: AccessIdentity) { return { ownerId: identity.user_id, clientId: identity.client_id, channelId: identity.channel_id }; }
 function requireScope(identity: AccessIdentity, target: 'bot' | 'pet') {
-    if (!identity.scopes.includes(target === 'bot' ? 'ai:interact' : 'pet:interact')) throw new OAuthError('insufficient_scope', 403);
+    const scope = target === 'bot' ? 'ai:interact' : 'pet:interact';
+    if (!identity.scopes.includes(scope)) throw new OAuthError('insufficient_scope', 403, [scope]);
 }
 async function found(identity: AccessIdentity, filter: { _id?: string; requestId?: string }) {
     const turn = await DesktopAiTurn.findOne({ ...owner(identity), ...filter }).lean();

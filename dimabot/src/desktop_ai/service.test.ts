@@ -73,7 +73,10 @@ test('durable admission is idempotent, scoped, and binds the complete frozen pay
     assert.equal(duplicate.turn_id, first.turn_id); assert.equal(rows.size, 1);
     await assert.rejects(() => submitTurn(identity, { ...input, silent: true }), (error: any) => error.code === 'idempotency_conflict');
     await assert.rejects(() => getTurn({ ...identity, user_id: 'another' }, first.turn_id), (error: any) => error.code === 'not_found');
-    await assert.rejects(() => getTurn({ ...identity, scopes: [] }, first.turn_id), (error: any) => error.code === 'insufficient_scope');
+    await assert.rejects(() => getTurn({ ...identity, scopes: [] }, first.turn_id), (error: any) =>
+        error.code === 'insufficient_scope' && error.status === 403 && error.scope?.join(' ') === 'ai:interact');
+    await assert.rejects(() => submitTurn({ ...identity, scopes: ['ai:interact'] }, { ...payload(), target: 'pet' }), (error: any) =>
+        error.code === 'insufficient_scope' && error.status === 403 && error.scope?.join(' ') === 'pet:interact');
     await new Promise<void>(resolve => setImmediate(resolve));
     assert.equal(executionCalls, 1, 'single atomic claim schedules only one execution');
 });

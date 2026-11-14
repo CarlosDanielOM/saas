@@ -22,7 +22,8 @@ export const SESSION_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000;
 export const DESKTOP_CLIENT_ID = 'dima-desktop';
 
 export class OAuthError extends Error {
-    constructor(public readonly code: string, public readonly status = 400) { super(code); }
+    /** `scope` lists the scopes an `insufficient_scope` request lacked, for the Bearer challenge. */
+    constructor(public readonly code: string, public readonly status = 400, public readonly scope?: readonly string[]) { super(code); }
 }
 
 export function parseScopes(value: unknown): OAuthScope[] {
