@@ -4490,6 +4490,7 @@
       "editAria": "Editar acceso de {{name}}",
       "removeAria": "Quitar a {{name}} de tu equipo",
       "paused": "En pausa",
+      "aiAppsTag": "Apps de IA",
       "emptyTitle": "Aún no hay ayudantes",
       "emptyOwner": "Busca arriba para agregar a un mod de confianza. Tú eliges qué puede hacer.",
       "summary": {
@@ -4501,6 +4502,8 @@
         "onePage": "1 página",
         "pages": "{{count}} páginas",
         "dashboardOnly": "Solo el panel",
+        "dashboard": "Panel",
+        "plusAiApps": "{{summary}} + apps de IA",
         "noPages": "No puede abrir las páginas de tu canal",
         "more": "{{names}} +{{count}} más"
       },
@@ -4512,6 +4515,8 @@
         "chatCopy": "Permite usar comandos del bot solo para admins en tu chat de Twitch. No da acceso a la web.",
         "pagesTitle": "Páginas: ver o editar",
         "pagesCopy": "Ver les deja mirar. Editar les deja cambiar cosas en esa página.",
+        "mcpTitle": "Apps de IA (MCP)",
+        "mcpCopy": "Les permite conectar apps de IA como Claude o ChatGPT a tu canal. El acceso total no lo incluye. Si lo apagas, sus apps dejan de funcionar al instante.",
         "ownerOnly": "La facturación, tu plan y tu cuenta siempre quedan contigo."
       },
       "editor": {
@@ -4529,9 +4534,13 @@
         "chatHint": "Usa comandos del bot solo para admins en tu chat. No da acceso a la web.",
         "pagesStep": "Páginas de la web",
         "pagesHint": "Con «No» la página queda oculta. «Ver» les deja mirar. «Editar» les deja cambiar cosas.",
-        "dashboardLocked": "Se incluye automáticamente mientras pueda abrir otra página.",
+        "dashboardLocked": "Se incluye automáticamente mientras pueda abrir otra página o conectar apps de IA.",
         "fineTitle": "¿Qué puede cambiar?",
         "oneRequired": "Activa admin del bot en el chat o dale al menos una página.",
+        "mcpStep": "Apps conectadas",
+        "mcpName": "Apps de IA (MCP)",
+        "mcpHint": "Puede conectar apps de IA como Claude o ChatGPT a este canal. Las apps solo pueden hacer lo que este admin puede, y sus llamadas a herramientas usan tus créditos de IA.",
+        "mcpRevoking": "Al guardar, las apps de IA que conectó dejan de funcionar al instante.",
         "summaryLabel": "Puede:",
         "save": "Guardar acceso",
         "addSave": "Agregar al equipo"
@@ -4628,6 +4637,7 @@
       "remove": {
         "title": "¿Quitar a {{name}}?",
         "copy": "Perderá los poderes de admin del bot en el chat y ya no podrá abrir las páginas de tu canal. Puedes volver a agregarlo cuando quieras.",
+        "aiApps": "Las apps de IA que haya conectado también dejan de funcionar.",
         "confirm": "Quitar"
       }
     },
@@ -4689,7 +4699,8 @@
           "memories": "Memorias de IA",
           "dimafx": "DimaFX",
           "admins": "Lista de admins",
-          "chat": "Rol admin en el chat"
+          "chat": "Rol admin en el chat",
+          "mcp": "Apps de IA (MCP)"
         }
       },
       "subtitle": "Administra quién puede ayudar a administrar este canal. Los admins actuales aparecen aquí y el dueño puede agregar más desde el directorio de usuarios registrados.",
@@ -10388,7 +10399,8 @@
       "signInDescription": "Inicia sesión con Twitch para elegir qué canal puede usar esta app.",
       "channelLegend": "¿Qué canal puede usar?",
       "channelTitle": "Canal",
-      "noChannels": "Todavía no tienes un canal que puedas conectar. Primero activa Dima en tu canal o pídele a un streamer que te haga admin.",
+      "noChannels": "Todavía no tienes un canal que puedas conectar. Primero activa Dima en tu canal. Para conectar un canal que ayudas a administrar, su dueño tiene que activar Apps de IA (MCP) para ti en Configuración → Equipo.",
+      "channelHint": "¿No ves un canal que ayudas a administrar? Su dueño tiene que activar Apps de IA (MCP) para ti en Configuración → Equipo.",
       "permissionsTitle": "Lo que podrá hacer",
       "credits": "Las llamadas a herramientas usan los créditos de IA de {{channel}}: 1 crédito por cada llamada que lee o cambia el canal. Las respuestas de la documentación son gratis.",
       "initiated": "Continúa solo si tú iniciaste esta conexión.",

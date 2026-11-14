@@ -13,7 +13,13 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
-import { CHANNEL_ADMIN_PERMISSION_GROUPS, ChannelAdminPermissionGroup } from './channel-admin-permissions';
+import { ThrottleClickDirective } from '../../shared/directives/throttle-click.directive';
+import {
+  CHANNEL_ADMIN_PERMISSION_GROUPS,
+  ChannelAdminPermissionGroup,
+  MCP_ADMIN_PERMISSION,
+  SWITCH_PERMISSION_GROUPS
+} from './channel-admin-permissions';
 
 type AreaLevel = 'off' | 'view' | 'manage';
 
@@ -35,7 +41,7 @@ interface ChannelResolutionState {
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.css',
-  imports: [LfIconComponent, AssetLibraryDialogComponent, RouterLink],
+  imports: [LfIconComponent, AssetLibraryDialogComponent, RouterLink, ThrottleClickDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown.escape)': 'handleEscape()'
@@ -61,7 +67,7 @@ export class SettingsPageComponent {
   readonly pendingAddIDs = signal<string[]>([]);
   readonly pendingDeleteIDs = signal<string[]>([]);
   readonly permissionPills = CHANNEL_ADMIN_PERMISSION_GROUPS
-    .filter((group) => group.key !== 'chat')
+    .filter((group) => !SWITCH_PERMISSION_GROUPS.has(group.key))
     .flatMap((group) => [
       ...group.view.map((key) => ({ key, group: group.key, kind: 'view' as const })),
       ...group.manage.map((key) => ({ key, group: group.key, kind: 'manage' as const }))
@@ -70,11 +76,23 @@ export class SettingsPageComponent {
   readonly editingCandidate = signal<AdminCandidate | null>(null);
   readonly fullAccess = signal(true);
   readonly draftPermissions = signal<string[]>(['chat:admin']);
+  /** AI apps (MCP) has its own switch: `*` never includes it, so it stays on or off across both access modes. */
+  readonly mcpAdminEnabled = signal(false);
   readonly chatAdminEnabled = computed(() => this.fullAccess() || this.draftPermissions().includes('chat:admin'));
+  /** The specific list as the API stores it: AI apps brings the dashboard with it, like any website grant. */
+  readonly customPermissions = computed(() => {
+    const draft = this.draftPermissions().filter((permission) => permission !== MCP_ADMIN_PERMISSION);
+    if (!this.mcpAdminEnabled()) return draft;
+    return [...new Set([...draft, 'dashboard:view', MCP_ADMIN_PERMISSION])];
+  });
   readonly hasWebsiteFeatureGrant = computed(() =>
-    this.draftPermissions().some((permission) => permission !== 'chat:admin' && permission !== 'dashboard:view')
+    this.customPermissions().some((permission) => permission !== 'chat:admin' && permission !== 'dashboard:view')
   );
-  readonly canSavePermissions = computed(() => this.fullAccess() || this.draftPermissions().length > 0);
+  readonly canSavePermissions = computed(() => this.fullAccess() || this.customPermissions().length > 0);
+  /** Saving would take AI apps away from someone who had it: their connected apps stop right away. */
+  readonly mcpAdminRevoking = computed(
+    () => Boolean(this.editingAdmin()?.permissions.includes(MCP_ADMIN_PERMISSION)) && !this.mcpAdminEnabled()
+  );
   readonly savingPermissions = signal(false);
   readonly confirmingRemoval = signal<AdminRecord | null>(null);
   readonly avatars = signal<Record<string, string>>({});
@@ -91,8 +109,10 @@ export class SettingsPageComponent {
   }));
   readonly draftAreaCount = computed(() => this.grantedAreas(this.draftPermissions()).length);
   readonly draftSummary = computed(() => {
-    if (this.fullAccess()) return this.t('settings.team.summary.full');
-    return this.summaryFor(this.chatAdminEnabled(), this.draftAreaCount());
+    const base = this.fullAccess()
+      ? this.t('settings.team.summary.full')
+      : this.summaryFor(this.chatAdminEnabled(), this.draftAreaCount(), this.mcpAdminEnabled());
+    return this.mcpAdminEnabled() ? this.t('settings.team.summary.plusAiApps', { summary: base }) : base;
   });
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
@@ -281,6 +301,7 @@ export class SettingsPageComponent {
       if (grants.delete('dimafx:all')) {
         for (const permission of ['dimafx:view', 'dimafx:edit', 'dimafx:delete']) grants.add(permission);
       }
+      const mcpAdmin = grants.delete(MCP_ADMIN_PERMISSION);
       for (const group of CHANNEL_ADMIN_PERMISSION_GROUPS) {
         if (group.manage.some((permission) => grants.has(permission))) {
           for (const permission of group.view) grants.add(permission);
@@ -294,11 +315,13 @@ export class SettingsPageComponent {
       this.editingCandidate.set(null);
       this.fullAccess.set(target.permissions.includes('*'));
       this.draftPermissions.set(target.permissions.includes('*') ? ['chat:admin'] : [...grants]);
+      this.mcpAdminEnabled.set(mcpAdmin);
     } else {
       this.editingCandidate.set(target);
       this.editingAdmin.set(null);
       this.fullAccess.set(true);
       this.draftPermissions.set(['chat:admin']);
+      this.mcpAdminEnabled.set(false);
       this.clearSearch();
     }
   }
@@ -320,7 +343,16 @@ export class SettingsPageComponent {
   /** Plain-language access summary shown on each helper row. */
   accessLabel(permissions: string[]): string {
     if (permissions.includes('*')) return this.t('settings.team.summary.full');
-    return this.summaryFor(permissions.includes('chat:admin'), this.grantedAreas(permissions).length);
+    return this.summaryFor(
+      permissions.includes('chat:admin'),
+      this.grantedAreas(permissions).length,
+      permissions.includes(MCP_ADMIN_PERMISSION)
+    );
+  }
+
+  /** AI apps (MCP) is shown as its own tag on the row, since full access doesn't include it. */
+  hasMcpAdmin(permissions: string[]): boolean {
+    return permissions.includes(MCP_ADMIN_PERMISSION);
   }
 
   /** Names of the website areas a helper can open, e.g. "Commands, Text to Speech +2 more". */
@@ -333,7 +365,7 @@ export class SettingsPageComponent {
   }
 
   areaLevel(group: ChannelAdminPermissionGroup): AreaLevel {
-    const draft = this.draftPermissions();
+    const draft = this.customPermissions();
     if (group.manage.some((key) => draft.includes(key))) return 'manage';
     if (group.view.some((key) => draft.includes(key))) return 'view';
     return 'off';
@@ -362,7 +394,7 @@ export class SettingsPageComponent {
   }
 
   hasGrant(key: string): boolean {
-    return this.draftPermissions().includes(key);
+    return this.customPermissions().includes(key);
   }
 
   askRemove(admin: AdminRecord): void {
@@ -385,18 +417,19 @@ export class SettingsPageComponent {
     return (name || '?').slice(0, 1).toUpperCase();
   }
 
-  private summaryFor(chat: boolean, areas: number): string {
+  /** `aiApps` only changes the dashboard-only wording; callers add the AI apps part themselves. */
+  private summaryFor(chat: boolean, areas: number, aiApps = false): string {
     if (chat && areas) return this.t(areas === 1 ? 'settings.team.summary.chatAndOnePage' : 'settings.team.summary.chatAndPages', { count: areas });
     if (chat) return this.t('settings.team.summary.chatOnly');
     if (areas) return this.t(areas === 1 ? 'settings.team.summary.onePage' : 'settings.team.summary.pages', { count: areas });
-    return this.t('settings.team.summary.dashboardOnly');
+    return this.t(aiApps ? 'settings.team.summary.dashboard' : 'settings.team.summary.dashboardOnly');
   }
 
   private grantedAreas(permissions: string[]): string[] {
     const prefixes = new Set(permissions.map((permission) => permission.split(':')[0]));
     return CHANNEL_ADMIN_PERMISSION_GROUPS
       .map((group) => group.key)
-      .filter((key) => key !== 'chat' && key !== 'dashboard' && prefixes.has(key));
+      .filter((key) => !SWITCH_PERMISSION_GROUPS.has(key) && key !== 'dashboard' && prefixes.has(key));
   }
 
   private loadAvatar(rawLogin: string): void {
@@ -420,7 +453,7 @@ export class SettingsPageComponent {
     const group = CHANNEL_ADMIN_PERMISSION_GROUPS.find((entry) =>
       entry.view.includes(key) || entry.manage.includes(key)
     );
-    if (!group || group.key === 'chat') return;
+    if (!group || SWITCH_PERMISSION_GROUPS.has(group.key)) return;
     const next = new Set(this.draftPermissions());
     if (enabled) {
       next.add(key);
@@ -443,11 +476,19 @@ export class SettingsPageComponent {
     this.draftPermissions.set([...next]);
   }
 
+  /** Works in both modes: full access is saved as `['*', 'mcp:admin']` when this is on. */
+  toggleMcpAdmin(enabled: boolean): void {
+    if (this.savingPermissions()) return;
+    this.mcpAdminEnabled.set(enabled);
+  }
+
   async savePermissions(): Promise<void> {
     if (this.savingPermissions() || !this.canSavePermissions()) return;
     const channelID = this.channelID();
     if (!channelID || !this.isOwnerView()) return;
-    const permissions = this.fullAccess() ? ['*'] : this.draftPermissions();
+    const permissions = this.fullAccess()
+      ? (this.mcpAdminEnabled() ? ['*', MCP_ADMIN_PERMISSION] : ['*'])
+      : this.customPermissions();
     const candidate = this.editingCandidate();
     const admin = this.editingAdmin();
     if (!candidate && !admin) return;

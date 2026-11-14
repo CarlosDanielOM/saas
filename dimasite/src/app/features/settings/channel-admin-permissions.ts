@@ -4,6 +4,12 @@ export interface ChannelAdminPermissionGroup {
   manage: readonly string[];
 }
 
+/** Connect AI apps (MCP) to the channel. Explicit only: full access (`*`) never includes it. */
+export const MCP_ADMIN_PERMISSION = 'mcp:admin';
+
+/** Grants with their own switch in the Team editor, not website pages. */
+export const SWITCH_PERMISSION_GROUPS: ReadonlySet<string> = new Set(['chat', 'mcp']);
+
 /** Keep these keys aligned with the backend's assignable permission catalog. */
 export const CHANNEL_ADMIN_PERMISSION_GROUPS: readonly ChannelAdminPermissionGroup[] = [
   { key: 'dashboard', view: ['dashboard:view'], manage: [] },
@@ -23,5 +29,6 @@ export const CHANNEL_ADMIN_PERMISSION_GROUPS: readonly ChannelAdminPermissionGro
   { key: 'memories', view: ['memories:view'], manage: ['memories:manage'] },
   { key: 'dimafx', view: ['dimafx:view'], manage: ['dimafx:edit', 'dimafx:delete'] },
   { key: 'admins', view: ['admins:view'], manage: [] },
-  { key: 'chat', view: [], manage: ['chat:admin'] }
+  { key: 'chat', view: [], manage: ['chat:admin'] },
+  { key: 'mcp', view: [], manage: [MCP_ADMIN_PERMISSION] }
 ];

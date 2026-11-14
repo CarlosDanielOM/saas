@@ -187,11 +187,13 @@
                       <span class="lf-chip" [class.lf-chip--accent]="channel.role === 'owner'">{{ roleLabel(channel.role) }}</span>
                     </label>
                   }
+                  <p class="lf-note lf-channels__hint">{{ t('oauth.app.channelHint') }}</p>
                 </fieldset>
               } @else if (chosenChannel(); as channel) {
                 <div class="lf-block">
                   <h2 class="lf-h2">{{ t('oauth.app.channelTitle') }}</h2>
                   <p class="lf-single"><span class="lf-radio__name">{{ channel.name }}</span><span class="lf-chip" [class.lf-chip--accent]="channel.role === 'owner'">{{ roleLabel(channel.role) }}</span></p>
+                  <p class="lf-note">{{ t('oauth.app.channelHint') }}</p>
                 </div>
               } @else {
                 <p class="lf-caution"><app-lf-icon name="alert" [size]="16" aria-hidden="true" /><span>{{ t('oauth.app.noChannels') }}</span></p>

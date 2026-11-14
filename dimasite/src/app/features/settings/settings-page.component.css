@@ -206,6 +206,11 @@
   border-top: 1px solid var(--line);
 }
 
+.lf-note--warn {
+  color: var(--warn);
+  font-weight: 650;
+}
+
 .lf-banner {
   display: flex;
   flex-wrap: wrap;
@@ -302,6 +307,8 @@
 .lf-chip--warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); color: var(--warn); }
 .lf-chip--accent { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--fg); }
 .lf-chip--gold { background: var(--gold-soft); border-color: color-mix(in srgb, var(--gold) 30%, transparent); color: var(--gold); }
+.lf-chip--apps { color: var(--fg); }
+.lf-chip--apps app-lf-icon { color: var(--accent); }
 
 .lf-chip--link {
   font-family: inherit;
@@ -702,7 +709,8 @@
   border: 0;
 }
 
-.lf-step + .lf-step {
+.lf-step + .lf-step,
+.lf-field-error + .lf-step {
   padding-top: 1.1rem;
   border-top: 1px solid var(--line);
 }

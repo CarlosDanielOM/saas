@@ -243,6 +243,7 @@ p { margin: 0; overflow-wrap: anywhere; }
 }
 .lf-radio { cursor: pointer; }
 .lf-radio + .lf-radio { margin-top: 0.45rem; }
+.lf-channels__hint { margin-top: 0.55rem; }
 .lf-radio--on { border-color: #7c3aed; background: var(--accent-soft); }
 .lf-radio--failed { border-color: var(--danger); background: var(--danger-soft); }
 .lf-radio input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: #7c3aed; }

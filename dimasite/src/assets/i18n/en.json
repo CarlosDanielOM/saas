@@ -4490,6 +4490,7 @@
       "editAria": "Edit access for {{name}}",
       "removeAria": "Remove {{name}} from your team",
       "paused": "Paused",
+      "aiAppsTag": "AI apps",
       "emptyTitle": "No helpers yet",
       "emptyOwner": "Search above to add a mod you trust. You choose what they can do.",
       "summary": {
@@ -4501,6 +4502,8 @@
         "onePage": "1 page",
         "pages": "{{count}} pages",
         "dashboardOnly": "Dashboard only",
+        "dashboard": "Dashboard",
+        "plusAiApps": "{{summary}} + AI apps",
         "noPages": "Can't open your channel pages",
         "more": "{{names}} +{{count}} more"
       },
@@ -4512,6 +4515,8 @@
         "chatCopy": "Lets them use admin-only bot commands in your Twitch chat. It does not open the website.",
         "pagesTitle": "Pages: View or Edit",
         "pagesCopy": "View lets them look around. Edit lets them change things on that page.",
+        "mcpTitle": "AI apps (MCP)",
+        "mcpCopy": "Lets them connect AI apps like Claude or ChatGPT to your channel. Full access doesn't include it. Turn it off and their apps stop right away.",
         "ownerOnly": "Billing, your plan and your account always stay with you."
       },
       "editor": {
@@ -4529,9 +4534,13 @@
         "chatHint": "Use admin-only bot commands in your chat. Doesn't open the website.",
         "pagesStep": "Website pages",
         "pagesHint": "Off hides the page. View lets them look. Edit lets them change things.",
-        "dashboardLocked": "Included automatically while they can open another page.",
+        "dashboardLocked": "Included automatically while they can open another page or connect AI apps.",
         "fineTitle": "What can they change?",
         "oneRequired": "Turn on bot admin in chat or give them at least one page.",
+        "mcpStep": "Connected apps",
+        "mcpName": "AI apps (MCP)",
+        "mcpHint": "Can connect AI apps like Claude or ChatGPT to this channel. Apps can only do what this admin can, and their tool calls use your AI credits.",
+        "mcpRevoking": "When you save, AI apps they connected stop working right away.",
         "summaryLabel": "They can:",
         "save": "Save access",
         "addSave": "Add to team"
@@ -4628,6 +4637,7 @@
       "remove": {
         "title": "Remove {{name}}?",
         "copy": "They'll lose bot admin powers in chat and can't open your channel pages anymore. You can add them again any time.",
+        "aiApps": "Any AI apps they connected stop working too.",
         "confirm": "Remove"
       }
     },
@@ -4689,7 +4699,8 @@
           "memories": "AI memories",
           "dimafx": "DimaFX",
           "admins": "Admin list",
-          "chat": "Admin chat role"
+          "chat": "Admin chat role",
+          "mcp": "AI apps (MCP)"
         }
       },
       "subtitle": "Manage who can help run this channel. Current admins are listed here, and owners can add more from the registered user directory.",
@@ -10388,7 +10399,8 @@
       "signInDescription": "Sign in with Twitch to choose which of your channels this app can use.",
       "channelLegend": "Which channel can it use?",
       "channelTitle": "Channel",
-      "noChannels": "You don't have a channel you can connect yet. Turn on Dima for your channel first, or ask a streamer to make you an admin.",
+      "noChannels": "You don't have a channel you can connect yet. Turn on Dima for your channel first. To connect a channel you help manage, its owner has to turn on AI apps (MCP) for you in Settings → Team.",
+      "channelHint": "Don't see a channel you help manage? Its owner has to turn on AI apps (MCP) for you in Settings → Team.",
       "permissionsTitle": "It will be able to",
       "credits": "Tool calls use {{channel}}'s AI credits: 1 credit for each call that reads or changes the channel. Docs answers are free.",
       "initiated": "Only continue if you started this connection yourself.",

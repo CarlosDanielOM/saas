@@ -121,6 +121,11 @@
                       <span class="lf-chip lf-chip--xs" [class.lf-chip--accent]="admin.permissions.includes('*')">
                         {{ accessLabel(admin.permissions) }}
                       </span>
+                      @if (hasMcpAdmin(admin.permissions)) {
+                        <span class="lf-chip lf-chip--xs lf-chip--apps">
+                          <app-lf-icon name="monitor" [size]="11"></app-lf-icon> {{ t('settings.team.aiAppsTag') }}
+                        </span>
+                      }
                       @if (!admin.actived) {
                         <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('settings.team.paused') }}</span>
                       }
@@ -175,6 +180,10 @@
             <div>
               <dt><app-lf-icon name="grid" [size]="14"></app-lf-icon> {{ t('settings.team.help.pagesTitle') }}</dt>
               <dd>{{ t('settings.team.help.pagesCopy') }}</dd>
+            </div>
+            <div>
+              <dt><app-lf-icon name="monitor" [size]="14"></app-lf-icon> {{ t('settings.team.help.mcpTitle') }}</dt>
+              <dd>{{ t('settings.team.help.mcpCopy') }}</dd>
             </div>
           </dl>
           <p class="lf-note lf-note--lock"><app-lf-icon name="lock" [size]="13"></app-lf-icon> {{ t('settings.team.help.ownerOnly') }}</p>
@@ -316,6 +325,31 @@
             <p class="lf-field-error" role="alert">{{ t('settings.team.editor.oneRequired') }}</p>
           }
         }
+
+        <section class="lf-step" aria-labelledby="access-mcp-title">
+          <h3 class="lf-step__title" id="access-mcp-title"><span class="lf-step__num">{{ fullAccess() ? 2 : 4 }}</span> {{ t('settings.team.editor.mcpStep') }}</h3>
+          <div class="lf-toggle-row">
+            <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="monitor"></app-lf-icon></span>
+            <span class="lf-toggle-row__copy">
+              <span class="lf-toggle-row__title" id="access-mcp-name">{{ t('settings.team.editor.mcpName') }}</span>
+              <span class="lf-toggle-row__hint" id="access-mcp-hint">{{ t('settings.team.editor.mcpHint') }}</span>
+            </span>
+            <label class="lf-switch">
+              <input
+                type="checkbox"
+                aria-labelledby="access-mcp-name"
+                aria-describedby="access-mcp-hint"
+                [checked]="mcpAdminEnabled()"
+                [disabled]="savingPermissions()"
+                (change)="toggleMcpAdmin($any($event.target).checked)"
+              />
+              <span class="lf-switch__track"></span>
+            </label>
+          </div>
+          @if (mcpAdminRevoking()) {
+            <p class="lf-note lf-note--warn">{{ t('settings.team.editor.mcpRevoking') }}</p>
+          }
+        </section>
       </div>
 
       <footer class="lf-modal__footer lf-modal__footer--split">
@@ -326,7 +360,7 @@
         <button type="button" class="lf-btn" (click)="closePermissionEditor()" [disabled]="savingPermissions()">
           {{ t('settings.admins.permissions.cancel') }}
         </button>
-        <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions() || !canSavePermissions()" (click)="savePermissions()">
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions() || !canSavePermissions()" (appThrottleClick)="savePermissions()">
           {{
             savingPermissions()
               ? t('settings.admins.permissions.saving')
@@ -356,13 +390,18 @@
         <h2 class="lf-modal__title" id="remove-title">{{ t('settings.team.remove.title', { name: admin.adminName }) }}</h2>
       </header>
       <div class="lf-modal__body">
-        <p class="lf-copy" id="remove-desc">{{ t('settings.team.remove.copy') }}</p>
+        <p class="lf-copy" id="remove-desc">
+          {{ t('settings.team.remove.copy') }}
+          @if (hasMcpAdmin(admin.permissions)) {
+            {{ t('settings.team.remove.aiApps') }}
+          }
+        </p>
       </div>
       <footer class="lf-modal__footer">
         <button type="button" class="lf-btn" (click)="confirmingRemoval.set(null)" [disabled]="isDeleting(admin.adminID)">
           {{ t('settings.admins.permissions.cancel') }}
         </button>
-        <button type="button" class="lf-btn lf-btn--danger" (click)="confirmRemove()" [disabled]="isDeleting(admin.adminID)">
+        <button type="button" class="lf-btn lf-btn--danger" (appThrottleClick)="confirmRemove()" [disabled]="isDeleting(admin.adminID)">
           {{ isDeleting(admin.adminID) ? t('settings.admins.actions.removing') : t('settings.team.remove.confirm') }}
         </button>
       </footer>

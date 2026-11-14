@@ -7,7 +7,10 @@ const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4204';
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const user = { id: '99001101', login: 'permission_owner', display_name: 'Permission Owner' };
 const app = { name: 'Permission Owner', email: 'owner@example.invalid', language: 'en', plan_tier: 'free', actived: true, chat_enabled: true, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
-const admins = [{ adminName: 'existing_admin', adminID: '99001102', channelName: user.login, channelID: user.id, actived: true, permissions: ['*'] }];
+const admins = [
+  { adminName: 'existing_admin', adminID: '99001102', channelName: user.login, channelID: user.id, actived: true, permissions: ['*'] },
+  { adminName: 'apps_admin', adminID: '99001104', channelName: user.login, channelID: user.id, actived: true, permissions: ['dashboard:view', 'commands:view', 'mcp:admin'] }
+];
 const candidates = [{ id: '99001103', login: 'new_admin', display_name: 'New Admin' }];
 const writes = [];
 
@@ -49,9 +52,13 @@ try {
   const editor = page.getByRole('dialog');
   const level = (area, value) => editor.getByRole('radiogroup', { name: area, exact: true }).getByRole('radio', { name: value, exact: true });
   const chat = () => editor.getByRole('checkbox', { name: 'Bot admin in chat', exact: true });
+  const aiApps = () => editor.getByRole('checkbox', { name: 'AI apps (MCP)', exact: true });
+  const row = name => page.locator('.lf-row').filter({ hasText: name });
   const save = () => editor.getByRole('button', { name: /^(Save access|Add to team)$/ });
   await page.getByRole('button', { name: 'Edit access for existing_admin' }).click();
   assert.equal(await editor.getByRole('radio', { name: /^Full access/ }).isChecked(), true, 'existing * admin opens as Full access');
+  assert.equal(await aiApps().isVisible(), true, 'AI apps switch is offered next to Full access');
+  assert.equal(await aiApps().isChecked(), false, 'Full access (*) does not include AI apps');
   await editor.getByRole('radio', { name: /^Choose what they can do/ }).check();
   assert.equal(await chat().isChecked(), true, 'custom access starts with Chat Admin on');
   assert.equal(await level('Text to Speech', 'Off').isChecked(), true, 'TTS starts separate from Channel settings');
@@ -72,9 +79,58 @@ try {
   await editor.waitFor({ state: 'detached' });
   assert.deepEqual(writes.at(-1).body.permissions.sort(), ['tts:manage', 'tts:view', 'dashboard:view'].sort(), 'TTS website grants work without Chat Admin');
 
+  assert.equal(await row('existing_admin').locator('.lf-chip--apps').count(), 0, 'no AI apps tag without mcp:admin');
+
+  // AI apps (MCP): explicit grant, independent of Full access, loaded from the stored list.
+  assert.match(await row('apps_admin').innerText(), /AI apps/, 'row tags an admin who can connect AI apps');
+  await page.getByRole('button', { name: 'Edit access for apps_admin' }).click();
+  assert.equal(await editor.getByRole('radio', { name: /^Choose what they can do/ }).isChecked(), true, 'specific list opens as custom access');
+  assert.equal(await aiApps().isChecked(), true, 'stored mcp:admin turns the AI apps switch on');
+  assert.equal(await level('Commands and timers', 'View').isChecked(), true, 'other grants load next to AI apps');
+  assert.match(await editor.locator('.lf-modal__footer').innerText(), /1 page \+ AI apps/, 'live summary mentions AI apps');
+  await level('Commands and timers', 'Off').check();
+  await page.waitForTimeout(100);
+  assert.equal(await level('Dashboard', 'Off').isDisabled(), true, 'AI apps keeps the dashboard, like the API does');
+  await save().click();
+  await editor.waitFor({ state: 'detached' });
+  assert.deepEqual(writes.at(-1).body.permissions.sort(), ['dashboard:view', 'mcp:admin'].sort(), 'AI apps alone saves with the dashboard');
+
+  await page.getByRole('button', { name: 'Edit access for apps_admin' }).click();
+  await level('Commands and timers', 'View').check();
+  await aiApps().uncheck();
+  await page.waitForTimeout(100);
+  await editor.getByText('When you save, AI apps they connected stop working right away.').waitFor();
+  await save().click();
+  await editor.waitFor({ state: 'detached' });
+  assert.deepEqual(writes.at(-1).body.permissions.sort(), ['commands:view', 'dashboard:view'].sort(), 'turning AI apps off drops mcp:admin only');
+  assert.equal(await row('apps_admin').locator('.lf-chip--apps').count(), 0, 'tag leaves the row once AI apps is off');
+
+  await page.getByRole('button', { name: 'Edit access for apps_admin' }).click();
+  assert.equal(await aiApps().isChecked(), false, 'saved custom access reopens without AI apps');
+  await aiApps().check();
+  await editor.getByRole('radio', { name: /^Full access/ }).check();
+  await page.waitForTimeout(100);
+  assert.equal(await aiApps().isChecked(), true, 'AI apps stays on when switching to Full access');
+  assert.match(await editor.locator('.lf-modal__footer').innerText(), /Full access \+ AI apps/, 'summary shows Full access plus AI apps');
+  await save().click();
+  await editor.waitFor({ state: 'detached' });
+  assert.deepEqual(writes.at(-1).body.permissions, ['*', 'mcp:admin'], 'Full access with AI apps saves both grants');
+  assert.match(await row('apps_admin').innerText(), /Full access[\s\S]*AI apps/, 'row shows Full access and the AI apps tag');
+  await page.getByRole('button', { name: 'Edit access for apps_admin' }).click();
+  assert.equal(await editor.getByRole('radio', { name: /^Full access/ }).isChecked(), true, '[*, mcp:admin] reopens as Full access');
+  assert.equal(await aiApps().isChecked(), true, '[*, mcp:admin] reopens with AI apps on');
+  await editor.getByRole('button', { name: 'Cancel' }).click();
+  await editor.waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Remove apps_admin from your team' }).click();
+  const appsConfirm = page.getByRole('alertdialog', { name: 'Remove apps_admin?' });
+  await appsConfirm.getByText(/Any AI apps they connected stop working too\./).waitFor();
+  await page.keyboard.press('Escape');
+  await appsConfirm.waitFor({ state: 'detached' });
+
   await page.getByRole('searchbox').fill('new_admin');
   await page.getByRole('button', { name: 'Add New Admin to your team' }).click();
   assert.equal(await editor.getByRole('radio', { name: /^Full access/ }).isChecked(), true, 'new admins default to Full access');
+  assert.equal(await aiApps().isChecked(), false, 'new admins default to AI apps off');
   await save().click();
   await editor.waitFor({ state: 'detached' });
   assert.deepEqual(writes.at(-1).body.permissions, ['*']);
@@ -127,7 +183,7 @@ try {
     await editor.waitFor({ state: 'detached' });
   }
   assert.deepEqual(errors, [], 'no browser runtime errors');
-  console.log('PASS site: plain-language access editor, independent TTS grants, combined chat/website access, fine-tuned trigger rights, remove confirmation, responsive layouts at 320/390/1280px');
+  console.log('PASS site: plain-language access editor, independent TTS grants, combined chat/website access, fine-tuned trigger rights, explicit AI apps (MCP) grant in both modes, remove confirmation, responsive layouts at 320/390/1280px');
   await context.close();
 } finally {
   await browser.close();

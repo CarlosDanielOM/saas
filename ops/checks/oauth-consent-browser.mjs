@@ -36,9 +36,9 @@ async function axe(page, label) {
 
 const states = {
   'desktop': ['Connect Dima Desktop', 'Allow connection'],
-  'cimd-recognized': ['Recognized app', 'Published by', 'After you choose, you return to', 'Which channel can it use?', 'AI credits', 'Only continue if you started this connection yourself.'],
-  'cimd-unverified': ['Unverified app', 'anyone can give an app any name', 'Published by', 'After you choose, you return to'],
-  'cimd-no-channels': ["You don't have a channel you can connect yet"],
+  'cimd-recognized': ['Recognized app', 'Published by', 'After you choose, you return to', 'Which channel can it use?', 'AI credits', 'Only continue if you started this connection yourself.', "Don't see a channel you help manage?"],
+  'cimd-unverified': ['Unverified app', 'anyone can give an app any name', 'Published by', 'After you choose, you return to', "Don't see a channel you help manage?"],
+  'cimd-no-channels': ["You don't have a channel you can connect yet", 'turn on AI apps (MCP) for you in Settings → Team'],
   'error-channel-access': ["You can't connect apps to that channel anymore"],
   'error-blocked': ['Dima blocked this app'],
   'error-unsafe-redirect': ["return address didn't match"],
@@ -56,6 +56,13 @@ for (const [state, expected] of Object.entries(states)) {
     await page.screenshot({ path: `${shots}/${state}-${view.width}-${view.dark ? 'dark' : 'light'}.png`, fullPage: true });
     await context.close();
   }
+}
+
+// The desktop flow has no channel picker, so no AI apps (MCP) hint.
+{
+  const { page, context } = await open('desktop');
+  assert.doesNotMatch(await text(page), /AI apps \(MCP\)/, 'desktop: no channel-picker hint');
+  await context.close();
 }
 
 // Spanish (es-MX) renders the same states without missing keys.
