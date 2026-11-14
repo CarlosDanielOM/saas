@@ -29,6 +29,8 @@ export const TOOL_KIND_PRICES: Readonly<Record<ToolKind, number>> = Object.freez
 export const PRICE_OVERRIDES: Readonly<Record<string, number>> = Object.freeze({
     // OWNER QUESTION (open, 2026-11-14): is undoing a change free or 1 credit? Free until the owner decides.
     undo_change: 0,
+    // Reading the balance is free so a channel that is out of credits can still see that (lead decision 2026-11-14; owner may change).
+    get_ai_credits: 0,
 });
 
 for (const [name, price] of Object.entries({ ...TOOL_KIND_PRICES, ...PRICE_OVERRIDES })) {

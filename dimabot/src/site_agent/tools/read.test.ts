@@ -75,6 +75,7 @@ test('permissions mirror the routes the site uses (see the table in read.ts)', (
         recent_chat: ['moderation:view'],
         stream_stats: ['dashboard:view'],
         get_referral_codes: ['referrals:view'],
+        get_ai_credits: ['billing:view'],
     });
     for (const tool of readTools) assert.equal(tool.kind, 'read');
 });

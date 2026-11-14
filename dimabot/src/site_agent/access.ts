@@ -6,6 +6,7 @@
 import { AdminSchema } from '../schemas/admin.schema.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { hasGlobalChannelOwnerAccess } from '../middleware/admin.middleware.js';
+import { grantsMcpAdmin } from '../middleware/channel_permissions.js';
 import { channelPlanTier } from '../server/services/command_blocks.service.js';
 import type { Lang, PlanTier } from './types.js';
 
@@ -23,14 +24,22 @@ interface Grants {
     permissions: Set<string>;
 }
 
-async function loadGrants(requesterId: string, channelId: string): Promise<Grants> {
+/**
+ * `site`: the website's rules (platform staff act as owners). `mcp`: AI apps connected over MCP act only on the
+ * requester's own channel, or as an admin the owner explicitly gave `mcp:admin` (full access `*` does not include it,
+ * and platform-staff elevation never applies).
+ */
+export type AccessMode = 'site' | 'mcp';
+
+async function loadGrants(requesterId: string, channelId: string, mode: AccessMode = 'site'): Promise<Grants> {
     if (!requesterId || !channelId) return { role: 'none', permissions: new Set() };
-    if (requesterId === channelId || await hasGlobalChannelOwnerAccess(requesterId, channelId)) {
+    if (requesterId === channelId || (mode === 'site' && await hasGlobalChannelOwnerAccess(requesterId, channelId))) {
         return { role: 'owner', permissions: new Set(['*']) };
     }
     const admin = await AdminSchema.findOne({ channelID: channelId, adminID: requesterId, actived: true })
         .select('permissions').lean() as { permissions?: string[] } | null;
     if (!admin) return { role: 'none', permissions: new Set() };
+    if (mode === 'mcp' && !grantsMcpAdmin(admin.permissions)) return { role: 'none', permissions: new Set() };
     return { role: 'admin', permissions: new Set(admin.permissions ?? []) };
 }
 
@@ -54,20 +63,20 @@ export function hasAll(g: Grants, permissions: readonly string[]): boolean {
  * Permission checker for one turn. Caches grants for a short time; `fresh` forces a reload
  * (used right before applying an approved change or undoing one).
  */
-export function permissionChecker(requesterId: string, channelId: string, ttlMs = 30_000) {
+export function permissionChecker(requesterId: string, channelId: string, ttlMs = 30_000, mode: AccessMode = 'site') {
     let cached: { at: number; grants: Grants } | null = null;
     return async (permissions: readonly string[], fresh = false): Promise<boolean> => {
         if (fresh || !cached || Date.now() - cached.at > ttlMs) {
-            cached = { at: Date.now(), grants: await loadGrants(requesterId, channelId) };
+            cached = { at: Date.now(), grants: await loadGrants(requesterId, channelId, mode) };
         }
         return hasAll(cached.grants, permissions);
     };
 }
 
 /** Null when the requester has no website access to the channel. */
-export async function resolveAccess(requesterId: string, channelId: string): Promise<ChannelAccess | null> {
+export async function resolveAccess(requesterId: string, channelId: string, mode: AccessMode = 'site'): Promise<ChannelAccess | null> {
     if (!/^\d{1,20}$/.test(channelId)) return null;
-    const g = await loadGrants(requesterId, channelId);
+    const g = await loadGrants(requesterId, channelId, mode);
     if (g.role === 'none' || !hasAll(g, ['dashboard:view'])) return null;
     const [channel, requester, plan] = await Promise.all([
         UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelId } } }).select('accounts language').lean(),

@@ -6,7 +6,7 @@ import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { OAuthRefreshToken } from '../../schemas/oauth_refresh_token.schema.js';
 import { AdminSchema } from '../../schemas/admin.schema.js';
-import { CHANNEL_WEBSITE_ACCESS_PERMISSIONS } from '../../middleware/channel_permissions.js';
+import { MCP_ADMIN_PERMISSION } from '../../middleware/channel_permissions.js';
 import { resolveAccess } from '../../site_agent/access.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES, parseScopes,
@@ -147,7 +147,7 @@ export async function approveAuthorization(id: unknown, twitchID: string, approv
     const user = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: twitchID } } }).lean();
     if (!user) throw new OAuthError('account_required', 403);
     // Checked before the request is consumed, so the user can still choose another channel.
-    if (approve && client.channel_selection && !await resolveAccess(twitchID, channelID!)) {
+    if (approve && client.channel_selection && !await resolveAccess(twitchID, channelID!, 'mcp')) {
         throw new OAuthError('channel_access_required', 403);
     }
     const value = await (await redis()).getDel(`oauth:request:${hash(id as string)}`);
@@ -193,7 +193,7 @@ export async function exchangeCode(input: Record<string, unknown>) {
     if (!await (await redis()).getDel(key)) throw new OAuthError('invalid_grant');
     const user = await UsersSchema.exists({ _id: record.user_id,
         accounts: { $elemMatch: { type: 'twitch', id: record.requester_id } } });
-    if (!user || (client.channel_selection ? !await resolveAccess(record.requester_id, record.channel_id) :
+    if (!user || (client.channel_selection ? !await resolveAccess(record.requester_id, record.channel_id, 'mcp') :
         record.channel_id !== record.requester_id)) throw new OAuthError('invalid_grant');
     const grant = await OAuthGrant.findOneAndUpdate({ user_id: record.user_id, client_id: client.client_id,
         channel_id: record.channel_id }, { $addToSet: { scopes: { $each: record.scopes } },
@@ -270,7 +270,7 @@ export async function refreshAccess(input: Record<string, unknown>) {
         throw new OAuthError('invalid_grant');
     }
     // A chosen channel keeps renewing only while the approver can still manage it.
-    if (client.channel_selection && !await resolveAccess(requester_id, session.channel_id)) throw new OAuthError('invalid_grant');
+    if (client.channel_selection && !await resolveAccess(requester_id, session.channel_id, 'mcp')) throw new OAuthError('invalid_grant');
     const refresh = secret('dima_rt_');
     const nextHash = hash(refresh);
     await OAuthRefreshToken.create({ token_hash: nextHash, session_id: session._id, expires_at: session.expires_at });
@@ -337,11 +337,15 @@ export async function revokeToken(input: Record<string, unknown>) {
 
 /** Channels an account may connect an app to: its own, and those it administers with website access. */
 export async function browserChannels(twitchID: string): Promise<{ id: string; name: string; role: 'owner' | 'admin' }[]> {
-    const rows = await AdminSchema.find({ adminID: twitchID, actived: true,
-        permissions: { $in: CHANNEL_WEBSITE_ACCESS_PERMISSIONS } }).select('channelID -_id').limit(100).lean();
+    // Only channels whose owner gave this account AI apps (MCP); resolveAccess in mcp mode re-checks it.
+    const rows = await AdminSchema.find({ adminID: twitchID, actived: true, permissions: MCP_ADMIN_PERMISSION })
+        .select('channelID -_id').limit(100).lean();
     const ids = [...new Set([twitchID, ...rows.map(row => row.channelID).filter(Boolean)])];
-    const channels = await Promise.all(ids.map(id => resolveAccess(twitchID, id)));
-    return channels.filter(access => access !== null).map(access => ({ id: access.channelId, name: access.channelLogin, role: access.role }));
+    const channels = await Promise.all(ids.map(id => resolveAccess(twitchID, id, 'mcp')));
+    // The label is the account's relationship to the channel: platform staff get owner-level access everywhere
+    // (resolveAccess role 'owner'), but only their own channel is theirs.
+    return channels.filter(access => access !== null).map(access => ({ id: access.channelId, name: access.channelLogin,
+        role: access.channelId === twitchID ? 'owner' as const : 'admin' as const }));
 }
 
 /** The connections page, from stored names only. Legacy sessions get their client's registry name and the

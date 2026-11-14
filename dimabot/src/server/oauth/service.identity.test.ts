@@ -25,6 +25,7 @@ function matches(doc: Doc, filter: Doc): boolean {
             if ('$in' in want) return (Array.isArray(have) ? have : [have]).some(item => want.$in.includes(item));
             if ('$elemMatch' in want) return (have ?? []).some((item: Doc) => matches(item, want.$elemMatch));
         }
+        if (Array.isArray(have)) return have.map(String).includes(String(want));
         return String(have) === String(want);
     });
 }
@@ -79,12 +80,16 @@ mock.module('../../schemas/oauth_refresh_token.schema.js', { namedExports: { OAu
     findOne: (filter: Doc) => chain(refreshTokens.find(token => matches(token, filter)) ?? null),
     updateOne: async (filter: Doc, change: Doc) => { const token = refreshTokens.find(item => matches(item, filter)); if (token) apply(token, change); }
 } } });
+/** Platform staff: the real access check gives them owner-level access on every channel they reach. */
+const STAFF = '900';
+/** Every access check the OAuth service makes must use the MCP rules (explicit mcp:admin, no staff elevation). */
+const accessModes: string[] = [];
 mock.module('../../schemas/admin.schema.js', { namedExports: { AdminSchema: {
     find: (filter: Doc) => chain(admins.filter(row => matches(row, filter)))
 } } });
 mock.module('../../site_agent/access.js', { namedExports: {
-    resolveAccess: async (requester: string, channel: string) => requester === channel || adminAccess.has(`${requester}>${channel}`) ?
-        { channelId: channel, channelLogin: `login_${channel}`, role: requester === channel ? 'owner' : 'admin', plan: 'free', savedLang: null } : null
+    resolveAccess: async (requester: string, channel: string, mode?: string) => (accessModes.push(mode ?? 'site'), requester === channel || adminAccess.has(`${requester}>${channel}`)) ?
+        { channelId: channel, channelLogin: `login_${channel}`, role: requester === channel || requester === STAFF ? 'owner' : 'admin', plan: 'free', savedLang: null } : null
 } });
 mock.module('./cimd.js', { namedExports: {
     RECOGNIZED_CIMD_CLIENTS: [],
@@ -113,7 +118,7 @@ beforeEach(() => {
         allowed_scopes: ['profile:read', 'credits:read', 'desktop:connect'] });
     cimdDocs.set(APP, { client_id: APP, client_name: 'Example\u0007 App', redirect_uris: [APP_CALLBACK, 'http://localhost/cb'],
         document_host: 'app.example', recognized: true });
-    admins.push({ adminID: '200', channelID: '300', actived: true, permissions: ['dashboard:view'] },
+    admins.push({ adminID: '200', channelID: '300', actived: true, permissions: ['dashboard:view', 'mcp:admin'] },
         { adminID: '200', channelID: '400', actived: true, permissions: ['dashboard:view'] },
         { adminID: '200', channelID: '500', actived: false, permissions: ['*'] });
     adminAccess.add('200>300');
@@ -311,4 +316,19 @@ test('browser channels: own channel plus active admin rows the access check acce
     assert.deepEqual(await browserChannels('200'), [{ id: '200', name: 'login_200', role: 'owner' },
         { id: '300', name: 'login_300', role: 'admin' }]);
     assert.deepEqual(await browserChannels('100'), [{ id: '100', name: 'login_100', role: 'owner' }]);
+});
+
+test('browser channels: only channels whose owner gave AI apps (mcp:admin); labels follow the relationship', async () => {
+    accessModes.length = 0;
+    // Full access alone does not include AI apps; staff elevation never counts.
+    admins.push({ adminID: STAFF, channelID: '300', actived: true, permissions: ['*'] },
+        { adminID: STAFF, channelID: '400', actived: true, permissions: ['*', 'mcp:admin'] });
+    for (const id of ['300', '400', STAFF]) adminAccess.add(`${STAFF}>${id}`);
+    assert.deepEqual(await browserChannels(STAFF), [{ id: STAFF, name: `login_${STAFF}`, role: 'owner' },
+        { id: '400', name: 'login_400', role: 'admin' }]);
+    assert.ok(accessModes.length > 0 && accessModes.every(mode => mode === 'mcp'), 'channel checks use the MCP rules');
+});
+
+test('every OAuth channel check uses the MCP rules', () => {
+    assert.ok(accessModes.every(mode => mode === 'mcp'), `modes seen: ${[...new Set(accessModes)].join(', ')}`);
 });

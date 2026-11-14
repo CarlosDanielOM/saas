@@ -123,6 +123,17 @@ assert.equal(result.body.document_host, 'client.example.com');
 assert.equal(result.body.callback_host, 'localhost:5555');
 assert.equal(result.body.channel_selection, true);
 assert.equal(result.body.resource, MCP);
+// An admin without the AI apps grant (mcp:admin) can't pick the channel, even though they manage it on the website.
+result = await api('GET', '/oauth/browser-session', undefined, 'mcp-browser-admin');
+assert.deepEqual(result.body.channels.map(channel => [channel.id, channel.role]), [[ADMIN, 'owner']]);
+result = await api('POST', `/oauth/requests/${requestId}/decision`, { approve: true, channel_id: OWNER }, 'mcp-browser-admin');
+assert.equal(result.status, 403);
+assert.equal(result.body.error, 'channel_access_required');
+// Full access alone is not enough either: AI apps is its own, explicit grant.
+await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['*'] } });
+result = await api('GET', '/oauth/browser-session', undefined, 'mcp-browser-admin');
+assert.deepEqual(result.body.channels.map(channel => channel.id), [ADMIN]);
+await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['dashboard:view', 'commands:view', 'commands:manage', 'mcp:admin'] } });
 result = await api('GET', '/oauth/browser-session', undefined, 'mcp-browser-admin');
 assert.deepEqual(result.body.channels.map(channel => [channel.id, channel.role]), [[ADMIN, 'owner'], [OWNER, 'admin']]);
 result = await api('POST', `/oauth/requests/${requestId}/decision`, { approve: true }, 'mcp-browser-admin');
@@ -208,6 +219,19 @@ start = await begin('channel:read');
 result = await api('POST', `/oauth/requests/${start.location.searchParams.get('request')}/decision`, { approve: true, channel_id: OWNER }, 'mcp-browser-owner');
 callback = new URL(result.body.redirect_uri);
 const reader = (await exchange(callback.searchParams.get('code'), start.verifier)).body.access_token;
+// The AI credit balance: free, for whoever may see the Credits page (the owner here; the admin lacks billing:view).
+assert.ok(!names.includes('get_ai_credits'), 'hidden from an admin without billing:view');
+result = await mcp(reader, 'tools/list');
+const credits = result.body.result.tools.find(item => item.name === 'get_ai_credits');
+assert.ok(credits, 'the owner sees the balance tool');
+assert.doesNotMatch(credits.description, /Costs/);
+const billedBeforeBalance = (await billing()).length;
+call = await tool(reader, 'get_ai_credits');
+assert.equal(call.error, false, call.text);
+assert.equal(call.json.result.balance, 500);
+assert.equal(call.json.result.buyMoreAt, 'https://domdimabot.com/mcp_owner/credits');
+assert.equal(call.json.charged, 0);
+assert.equal((await billing()).length, billedBeforeBalance, 'reading the balance is never billed');
 result = await mcp(reader, 'tools/call', { name: 'create_command', arguments: { name: 'nope', body: 'x' } });
 assert.equal(result.status, 403);
 assert.equal(result.headers['www-authenticate'], `Bearer realm="dima", error="insufficient_scope", scope="channel:read channel:write", resource_metadata="${META}"`);
@@ -221,7 +245,14 @@ assert.match(call.text, /\(credits_exhausted\)$/);
 assert.equal((await billing()).length, before, 'refused calls are never charged');
 await setBalance(500);
 
-// Live rights: removing the admin cuts tool access at once, and refresh is refused.
+// Live rights: taking only the AI apps grant away cuts tool access at once (the admin keeps the website).
+await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['dashboard:view', 'commands:view', 'commands:manage'] } });
+call = await tool(writer, 'list_commands');
+assert.equal(call.error, true);
+assert.match(call.text, /\(no_access\)$/);
+await AdminSchema.updateOne({ channelID: OWNER, adminID: ADMIN }, { $set: { permissions: ['dashboard:view', 'commands:view', 'commands:manage', 'mcp:admin'] } });
+assert.equal((await tool(writer, 'list_commands')).error, false, 'giving it back restores access');
+// Removing the admin entirely also cuts access, and refresh is refused.
 await AdminSchema.deleteMany({ channelID: OWNER, adminID: ADMIN });
 call = await tool(writer, 'list_commands');
 assert.equal(call.error, true);
@@ -235,8 +266,8 @@ result = await mcp(reader, 'tools/list');
 assert.equal(result.status, 401);
 await redis.sRem('oauth:cimd:deny', CIMD);
 
-console.log('PASS MCP v1: CIMD sign-in + admin channel choice, audience, PRM/challenges/step-up, host boundary, tool list, '
-  + 'reads/writes charged once, safe-body guard, undo, credits exhaustion, live rights, denylist');
+console.log('PASS MCP v1: CIMD sign-in + admin channel choice (explicit mcp:admin, not *), audience, PRM/challenges/step-up, host boundary, tool list, '
+  + 'reads/writes charged once, free credit balance, safe-body guard, undo, credits exhaustion, live rights, denylist');
 await mongo.disconnect();
 await redis.quit();
 process.exit(0);

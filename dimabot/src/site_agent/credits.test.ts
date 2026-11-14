@@ -416,3 +416,8 @@ test('release drops the hold without charging; idempotent and never throws', asy
     await releaseToolCredits(kept);
     assert.ok(holds()['op-r2'], 'Dragonfly down: the hold expires by itself');
 });
+
+test('reading the AI credit balance is free on MCP, so a channel that is out of credits can still check it', () => {
+    assert.equal(toolPrice({ name: 'get_ai_credits', kind: 'read' }, 'mcp'), 0);
+    assert.equal(toolPrice({ name: 'list_commands', kind: 'read' }, 'mcp'), 1);
+});

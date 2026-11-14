@@ -81,9 +81,9 @@ async function requesterOf(requesterId: string, access: ChannelAccess): Promise<
 }
 
 async function openCall(p: McpPrincipal, opts: { operationId: string; signal: AbortSignal }): Promise<Call | null> {
-    const access = await resolveAccess(p.requesterId, p.channelId);
+    const access = await resolveAccess(p.requesterId, p.channelId, 'mcp');
     if (!access) return null;
-    const check = permissionChecker(p.requesterId, access.channelId);
+    const check = permissionChecker(p.requesterId, access.channelId, undefined, 'mcp');
     const clientName = cleanName(p.clientName);
     return {
         check,
@@ -144,9 +144,9 @@ function listing(tool: AgentTool): McpToolListing {
 
 /** The allowlist ∩ the tools the requester may use on the channel (permissions + plan) ∩ the token's scopes. */
 export async function listMcpTools(p: McpPrincipal): Promise<McpToolListing[]> {
-    const access = await resolveAccess(p.requesterId, p.channelId);
+    const access = await resolveAccess(p.requesterId, p.channelId, 'mcp');
     if (!access) return [];
-    const check = permissionChecker(p.requesterId, access.channelId);
+    const check = permissionChecker(p.requesterId, access.channelId, undefined, 'mcp');
     const role = roleFor(p.requesterId, access);
     const can = (permissions: readonly string[]) => check(permissions);
     const site = new Set(await toolsFor(can, access.plan, role));
@@ -207,7 +207,7 @@ async function applyWrite(call: Call, tool: AgentTool, input: unknown, proposal:
     const no = (outcome: Failure): Done => ({ outcome, billable: false });
     if (opts.signal.aborted) return no(fail('failed', 'Cancelled before anything was changed.'));
     // Fresh, right before the write: access, role, plan and permissions (no card was shown, so this is the approval).
-    const access = await resolveAccess(p.requesterId, p.channelId);
+    const access = await resolveAccess(p.requesterId, p.channelId, 'mcp');
     if (!access) return no(fail('no_access', 'This account no longer has access to this channel on the website. Nothing was changed.'));
     const fresh: Call = { check: call.check, ctx: { ...call.ctx, channelLogin: access.channelLogin, role: roleFor(p.requesterId, access), plan: access.plan } };
     if (!planAllows(tool, fresh.ctx.plan)) return no(fail('plan_required', `This needs the ${planName(tool)} plan. Nothing was changed.`));

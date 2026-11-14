@@ -17,8 +17,12 @@ export const CHANNEL_ADMIN_PERMISSIONS = [
     'memories:view', 'memories:manage',
     'dimafx:view', 'dimafx:edit', 'dimafx:delete',
     'admins:view',
-    'chat:admin'
+    'chat:admin',
+    // Connect AI apps (MCP) to the channel. Explicit only: full access ('*') does not include it.
+    'mcp:admin'
 ] as const;
+
+export const MCP_ADMIN_PERMISSION = 'mcp:admin';
 
 /** A channel appears in the website's admin switcher only with dashboard access. */
 export const CHANNEL_WEBSITE_ACCESS_PERMISSIONS = ['*', 'dashboard:view'] as const;
@@ -46,6 +50,8 @@ const manageRequiresView: Record<string, string> = {
 export function parseChannelAdminPermissions(value: unknown): string[] | null {
     if (!Array.isArray(value) || value.length === 0 || value.length > CHANNEL_ADMIN_PERMISSIONS.length) return null;
     if (value.length === 1 && value[0] === '*') return ['*'];
+    // Full access plus AI apps (MCP), which '*' never implies.
+    if (value.length === 2 && value.includes('*') && value.includes(MCP_ADMIN_PERMISSION)) return ['*', MCP_ADMIN_PERMISSION];
     if (value.some((item) => typeof item !== 'string' || !assignable.has(item))) return null;
     const permissions = [...new Set(value as string[])];
     for (const permission of [...permissions]) {
@@ -61,4 +67,9 @@ export function parseChannelAdminPermissions(value: unknown): string[] | null {
 
 export function grantsChatAdminRole(permissions: unknown): boolean {
     return Array.isArray(permissions) && (permissions.includes('*') || permissions.includes('chat:admin'));
+}
+
+/** Only an explicit `mcp:admin` grant lets an admin connect AI apps (MCP); full access (`*`) does not. */
+export function grantsMcpAdmin(permissions: unknown): boolean {
+    return Array.isArray(permissions) && permissions.includes(MCP_ADMIN_PERMISSION);
 }

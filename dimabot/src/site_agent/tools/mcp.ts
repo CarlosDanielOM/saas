@@ -33,6 +33,7 @@ export const MCP_ALLOWLIST: Readonly<Record<string, string>> = {
     stream_stats: 'live stream numbers',
     recent_chat: 'recent chat (moderation:view)',
     get_referral_codes: 'the owner\'s public referral codes, links and signup counts; no secrets',
+    get_ai_credits: 'the channel\'s AI credit balance, used and limit, as the Credits page shows it (billing:view); free so an out-of-credits channel can still check',
     list_recent_changes: 'MCP-only: the change log the requester may see',
     // Writes (undo data on every change). Executable text: what the change writes plus the stored text it makes
     // reachable, checked by the safe-body guard (mcp_checks.test.ts); see each tool's executableFields.

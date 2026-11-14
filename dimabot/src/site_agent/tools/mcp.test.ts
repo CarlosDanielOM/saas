@@ -19,7 +19,7 @@ const EXECUTABLE = ['create_command', 'update_command', 'update_timer', 'create_
 test('the allowlist: knowledge, reads, undoable writes, the two MCP-only tools; nothing else', () => {
     assert.deepEqual(Object.keys(MCP_ALLOWLIST).sort(), [
         'add_roulette_items', 'channel_overview', 'create_bits_rule', 'create_chat_event', 'create_command', 'create_goal', 'create_roulette',
-        'delete_bits_rule', 'delete_chat_event', 'delete_command', 'delete_timer', 'get_command', 'get_referral_codes', 'get_settings', 'get_timer',
+        'delete_bits_rule', 'delete_chat_event', 'delete_command', 'delete_timer', 'get_ai_credits', 'get_command', 'get_referral_codes', 'get_settings', 'get_timer',
         'list_commands', 'list_recent_changes', 'list_timers', 'read_docs', 'recent_chat', 'remove_roulette_item', 'search_ast_functions', 'search_docs',
         'stream_stats', 'test_command', 'undo_change', 'update_bits_rule', 'update_chat_event', 'update_command', 'update_goal', 'update_roulette',
         'update_roulette_item', 'update_timer', 'update_tts_settings',
