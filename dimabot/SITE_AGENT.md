@@ -7,6 +7,8 @@ OpenAI key; `xhigh` until 2026-11-11) and **Expert** = Claude Haiku 5.5 (the own
 2026-11-13). Free for now: no AI credits; usage goes to Polar as
 `ai_assistant` events. Contracts: `src/site_agent/types.ts`, `config.ts`, `navigation.ts`.
 
+The assistant uses website access rules (`site` mode); MCP uses `mcp` mode. See [MCP.md](./MCP.md).
+
 ## Product rules (owner decisions, 2026-11-11)
 
 - Everyone with website access to the channel (owner, admins with `dashboard:view`) can use it, on every plan.

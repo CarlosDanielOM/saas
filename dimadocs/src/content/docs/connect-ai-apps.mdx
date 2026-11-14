@@ -14,7 +14,7 @@ Connect an AI app to Dima using MCP to let it read or manage a channel. This is 
    ```
 
 2. The app opens a Dima sign-in page in your browser. Check the app name, whether it says **Recognized app** or **Unverified app**, the site after **Published by**, and the address after **After you choose, you return to**.
-3. Choose your own channel or a channel you manage as an admin with website access. Review what the app can do and the notice that tool calls use that channel's AI credits.
+3. Choose your own channel or a channel whose owner gave you **AI apps (MCP)** access in **Settings → Team**. Full access alone is not enough. Review what the app can do and the notice that tool calls use that channel's AI credits.
 4. Only continue if you started this connection yourself. Choose **Allow connection** or **Deny**.
 
 Dima recognizes Claude (claude.ai, Desktop, and mobile), Claude Code, ChatGPT, Codex CLI, VS Code, Zed, and goose. Other apps can still connect but appear as unverified. Cursor is not recognized because it does not yet support Client ID Metadata Documents.
@@ -49,7 +49,7 @@ The sign-in page describes these permissions:
 - **See the channel's commands, timers, settings, chat and stream stats:** read only.
 - **Change commands, timers and settings:** every change can be undone in Dima.
 
-The AI can read the channel overview, commands, timers, settings, recent chat, stream stats, referral codes, and recent changes. It can search and read the Dima docs. It can create, edit, and delete commands; edit and delete timers; create and edit goals; and manage roulettes and their items, Bits rules, and chat events. A repeating message is a command with **repeat every N minutes**.
+An app connected by an admin can only do what that admin is permitted to do. The AI can read the channel overview, commands, timers, settings, recent chat, stream stats, referral codes, and recent changes. It can search and read the Dima docs. It can create, edit, and delete commands; edit and delete timers; create and edit goals; and manage roulettes and their items, Bits rules, and chat events. A repeating message is a command with **repeat every N minutes**.
 
 In this version, it cannot delete goals or perform stream actions such as testing alerts, changing the stream title or category, or managing polls, predictions, or channel point rewards. It cannot change AI personality, moderation settings, or follow defense.
 
@@ -61,12 +61,12 @@ Commands and messages written by the AI can use only safe functions, such as nam
 
 ## AI credits
 
-Each call that reads channel data or changes something costs **1 AI credit** from the connected channel. For example, checking your plan, listing commands, and creating one costs 3 credits. Searching and reading docs is free, as is undoing a change. Failed or refused calls cost nothing.
+Most calls that read channel data or change something cost **1 AI credit** from the connected channel. For example, checking your plan, listing commands, and creating one costs 3 credits. Searching and reading docs, undoing a change, and checking the channel’s AI credit balance are free. Checking the balance requires permission to view billing. Failed or refused calls cost nothing.
 
-When the channel runs out of AI credits, calls that read channel data or make changes stop until credits are added. See [Plans and credits](/plans/).
+When the channel runs out of AI credits, paid calls that read channel data or make changes stop until credits are added; checking the balance remains free. See [Plans and credits](/plans/).
 
 ## Manage connections
 
 Open [Connected apps](https://domdimabot.com/oauth/connections) to see apps grouped by app and channel. You can disconnect one connection or the whole app from a channel.
 
-If you connected an app to a channel you manage as an admin, it stops working when your admin access is removed. Deleting your Dima account disconnects everything.
+If you connected an app to a channel you manage as an admin, it stops working on its next call if the owner removes **AI apps (MCP)** access, even if you keep website access, or if your admin access is removed. Deleting your Dima account disconnects everything.
