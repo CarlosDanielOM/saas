@@ -16,20 +16,22 @@ Set `User-Agent: DimaDesktop/<app-version>` on HTTP requests and the WebSocket h
 
 Start a system-browser authorization-code flow. Bind a loopback listener before opening the browser, on an ephemeral, non-default port, and use exactly `/oauth/callback` as the path. The supported redirect hosts are `127.0.0.1` and `[::1]`; the URI must be plain HTTP and contain no user info, query, or fragment. Preserve the exact selected URI for the token exchange, including host and port. For example: `http://127.0.0.1:49152/oauth/callback`.
 
-Generate a cryptographically random PKCE verifier (43–128 characters from `A-Z a-z 0-9 . _ ~ -`), a fresh random `state` of 43 base64url characters, and `code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))` without padding. Send these authorization parameters:
+Generate a cryptographically random PKCE verifier (43–128 characters from `A-Z a-z 0-9 . _ ~ -`) and `code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))` without padding. A fresh random `state` is optional but recommended; it must contain 1–500 characters in `%x20-7E` and is echoed exactly. A 43-character base64url value is suitable. Send these authorization parameters:
 
 ```text
 client_id=dima-desktop
 response_type=code
 redirect_uri=<exact loopback callback URI>
 scope=profile:read credits:read desktop:connect
-state=<fresh random value>
+state=<optional, fresh random value>
 code_challenge=<S256 challenge>
 code_challenge_method=S256
 device_name=<optional, up to 80 characters>
 ```
 
-The browser lands on the Dima site for consent. The user must sign in to a registered Dima account; approving redirects to the exact loopback URI with `code`, `state`, and `iss=https://api.domdimabot.com`. The desktop app must compare the returned state to the one it created and verify `iss` against the expected issuer before exchanging the code. Handle an OAuth `error` callback, and reject callbacks with missing or mismatched values. Authorization requests expire after 10 minutes; authorization codes are single-use and expire after 60 seconds.
+The browser lands on the Dima site for consent. The user must sign in to a registered Dima account; approving redirects to the exact loopback URI with `code` and `iss=https://api.domdimabot.com`. Denial returns `error=access_denied` and `iss`. Both callbacks include `state` only if the client sent it. The desktop app must handle error callbacks, verify `iss` against the expected issuer, and, if it sent `state`, compare the returned value exactly before exchanging the code. Reject callbacks with missing or mismatched expected values. Authorization requests expire after 10 minutes; authorization codes are single-use and expire after 60 seconds.
+
+Once `client_id` and `redirect_uri` are valid, authorization request errors redirect to the loopback callback with `error`, `error_description`, `iss`, and `state` if valid. Error codes are `invalid_request`, `unsupported_response_type`, and `invalid_scope`. An unknown or disabled client, invalid redirect URI, or duplicated `client_id` or `redirect_uri` instead returns JSON 400 `{ "error": "..." }` in the browser and never redirects. HTTP 429 and 503 responses also remain JSON.
 
 ## Exchange, refresh, and sign-out
 
@@ -75,13 +77,29 @@ To sign out this installation, send `DELETE https://api.domdimabot.com/v1/deskto
 
 ## Active desktop API and WebSocket
 
-The issuable scopes are `profile:read`, `credits:read`, `desktop:connect`, and `pet:read`. They apply to the account that approved the grant; these beta endpoints do not accept a client-selected channel/account. Current HTTP resources include `GET /v1/me` (`profile:read`), `GET /v1/me/credits` (`credits:read`), `GET /v1/me/pet` (`pet:read`), and `GET` or `DELETE /v1/desktop/session` (the read requires `desktop:connect`; deleting the current session accepts any valid access token), authenticated with `Authorization: Bearer <access_token>`. The pet resource is available only for Premium and Pro channels; a free-tier channel receives `403 plan_required`, even when its token includes `pet:read`. Existing grants and sessions retain their original scopes, so a user must authorize again requesting `pet:read` before the pet resource is available. See [PET_CONFIGURATION.md](./PET_CONFIGURATION.md) for the pet settings contract and response shape.
+The issuable scopes for `dima-desktop` are `profile:read`, `credits:read`, `desktop:connect`, `pet:read`, `pet:receive`, `pet:interact`, `pet:control`, `pet:playback:select`, and `ai:interact`. They apply to the account that approved the grant; these beta endpoints do not accept a client-selected channel/account. Current HTTP resources include `GET /v1/me` (`profile:read`), `GET /v1/me/credits` (`credits:read`), `GET /v1/me/pet` (`pet:read`), and `GET` or `DELETE /v1/desktop/session` (the read requires `desktop:connect`; deleting the current session accepts any valid access token), authenticated with `Authorization: Bearer <access_token>`. The pet resource is available only for Premium and Pro channels; a free-tier channel receives `403 plan_required`, even when its token includes `pet:read`. A user must authorize with `pet:read` before the pet resource is available. See [PET_CONFIGURATION.md](./PET_CONFIGURATION.md) for the pet settings contract and response shape.
+
+The API also exposes `GET /v1/me/pet/runtime`, `PUT /v1/me/pet/playback`, `POST /v1/me/pet/requests/:requestId/cancel`, and AI turn routes under `/v1/me/ai/turns`. See [DESKTOP_AI_CONTRACT.md](./DESKTOP_AI_CONTRACT.md) for the AI turn contract. The session response sets `pet_available` according to whether the token has `pet:receive`.
 
 For the native WebSocket, connect to `wss://api.domdimabot.com/v1/desktop/ws` with both `Authorization: Bearer <access_token>` and the WebSocket subprotocol `dima.desktop.v1`. Do not put credentials in the URL or query string. The server sends a `hello` message with `protocol_version: 1`, session/channel IDs, granted scopes, and `pet_available: false`. The only currently supported text message is `{"type":"ping","id":"optional-correlation-id"}`, answered by `{"type":"pong","id":"optional-correlation-id"}`. The connection is periodically checked against session validity and closes after expiry or revocation.
 
 ## Beta boundary
 
-This release provides scoped authentication and identity resources, plus the Alpha dashboard pet configuration editor and the OAuth `pet:read` view of that configuration for Premium and Pro channels. Pet configuration APIs are the only implemented part of the paid pet service; paid playback is not implemented. Pet listing, configuration management by desktop clients, interaction, control, and playback are not implemented. `usage:read`, `pet:write`, `pet:receive`, `pet:interact`, `pet:control`, and `pet:playback:select` remain planned and cannot currently be requested or issued. The pet API exposes preferences and resolved personality data only; it does not synthesize speech, trigger billing, process chat or events, or provide playback. The desktop WebSocket continues to send `pet_available: false`. One-active-playback behavior remains planned and is not part of this beta contract.
+The inactive catalog scopes `usage:read` and `pet:write` are planned and cannot currently be requested or issued. Existing grants and sessions retain their original scopes; newly listed scopes require fresh consent. The native WebSocket described above does not provide pet messages.
+
+## Bearer errors
+
+A `/v1` HTTP 401 returns `{"error":"invalid_token"}`. Without Bearer credentials, its challenge is `WWW-Authenticate: Bearer realm="dima"`; when Bearer credentials were sent but rejected, it also includes `error="invalid_token"`. A 403 `insufficient_scope` includes `WWW-Authenticate: Bearer realm="dima", error="insufficient_scope", scope="<required scopes>"`, including for AI turn routes requiring `ai:interact` or `pet:interact`. Browser-route 401 `login_required` challenges use `realm="dima-browser"`; token-endpoint errors have no challenge. Use the HTTP status and body `error` for handling; do not depend on the header parameter order or set, since more parameters such as `resource_metadata` may be added.
+
+## Rate limits
+
+Per client IP, the limits per minute are 600 requests to `/oauth/*`, 1200 to `/v1/*`, and 120 native WebSocket handshakes. `/v1/*` also has a limit of 1200 per access token per minute. A rate-limited HTTP request returns 429 `{"error":"slow_down"}` with `Retry-After: 60`; a rate-limited WebSocket handshake currently receives HTTP 401. Client IP is resolved through the Cloudflare and proxy chain; conflicting forwarded addresses share an untrusted bucket.
+
+## Client scope registry
+
+First-party clients and their allowed scopes are listed in `src/server/oauth/clients.ts`; activating a catalog scope grants it to no client. At startup, listed scopes are added to existing clients, but boot never removes scopes: removing one cuts that client's live sessions with that scope. Previously stored scopes are retained. Name, redirect URIs, and `enabled` are set only on first creation. A listed inactive scope is not issuable.
+
+## Verification
 
 For the isolated API candidate behavior check, use the helper-generated API run ID and the disposable fixtures:
 
