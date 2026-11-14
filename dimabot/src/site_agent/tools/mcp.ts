@@ -81,7 +81,7 @@ export const MCP_NOTES: Readonly<Record<string, string>> = {
 };
 
 /** MCP-only tools (never in the site registry). */
-export const MCP_ONLY_TOOLS: readonly string[] = ['list_recent_changes', 'undo_change'];
+export const MCP_ONLY_TOOLS: readonly string[] = ['list_recent_changes', 'undo_change', 'get_ai_credits'];
 
 /**
  * Logged changes undo_change may undo: the ones the MCP write tools make, and the retired create_timer (its undo

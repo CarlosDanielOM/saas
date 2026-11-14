@@ -3,7 +3,7 @@ import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js"
 import { error as logError } from "../../utils/logger.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { canModifyCreatorAdminAssignment, hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
-import { parseChannelAdminPermissions } from "../../middleware/channel_permissions.js";
+import { grantsMcpAdmin, parseChannelAdminPermissions } from "../../middleware/channel_permissions.js";
 import { AdminSchema } from "../../schemas/admin.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { addAdminToRoleCache, removeAdminFromRoleCache } from "../../utils/permissions/roles.js";
@@ -441,6 +441,11 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
                 return res.status(400).json({ error: true, message: 'Invalid admin permissions', status: 400 });
             }
 
+            // AI apps (MCP) is the owner's own consent: platform staff can manage admins but never grant it.
+            if (grantsMcpAdmin(permissions) && requesterID !== channelIdStr) {
+                return res.status(403).json({ error: true, message: 'Only the channel owner can give AI apps (MCP) access', status: 403, type: 'mcp_owner_only' });
+            }
+
             if (!channelName || !adminName) {
                 return res.status(400).json({
                     error: true,
@@ -568,6 +573,10 @@ router.put('/:channelID/:adminID/permissions', authMiddleware as any, async (req
 
         const admin = await AdminSchema.findOne({ channelID, adminID });
         if (!admin) return res.status(404).json({ error: true, message: 'Admin not found', status: 404 });
+        // Only the owner adds AI apps (MCP); anyone who may manage admins can keep or remove an existing grant.
+        if (grantsMcpAdmin(permissions) && !grantsMcpAdmin(admin.permissions) && requesterID !== channelID) {
+            return res.status(403).json({ error: true, message: 'Only the channel owner can give AI apps (MCP) access', status: 403, type: 'mcp_owner_only' });
+        }
         admin.permissions = permissions;
         await admin.save();
         const cacheClient = await getDragonflyClient();

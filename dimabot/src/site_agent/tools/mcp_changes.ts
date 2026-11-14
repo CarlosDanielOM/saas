@@ -13,6 +13,7 @@ import { mcpUndoable, requiredScope, ToolDeniedError } from './mcp.js';
 import { getUndoTool, planAllows } from './registry.js';
 import { SETTINGS_READ_PERMISSIONS } from './settings_read.js';
 import { asObject, int, str, untrusted } from './util.js';
+import { getAiCreditsTool } from './credits_read.js';
 
 const l = (lang: Lang, en: string, es: string) => (lang === 'es' ? es : en);
 const CHANGE_ID = /^[a-f0-9]{24}$/i;
@@ -174,4 +175,4 @@ export const undoChangeTool: AgentTool<{ changeId: string }> = {
     },
 };
 
-export const mcpOnlyTools: AgentTool[] = [listRecentChangesTool, undoChangeTool] as unknown as AgentTool[];
+export const mcpOnlyTools: AgentTool[] = [listRecentChangesTool, undoChangeTool, getAiCreditsTool] as unknown as AgentTool[];

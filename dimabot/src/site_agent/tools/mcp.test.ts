@@ -16,7 +16,7 @@ const { mcpOnlyTools } = await import('./mcp_changes.js');
 const EXECUTABLE = ['create_command', 'update_command', 'update_timer', 'create_goal', 'update_goal', 'update_roulette', 'add_roulette_items', 'update_roulette_item',
     'remove_roulette_item', 'create_bits_rule', 'update_bits_rule', 'delete_bits_rule', 'create_chat_event', 'update_chat_event', 'delete_chat_event', 'update_tts_settings'];
 
-test('the allowlist: knowledge, reads, undoable writes, the two MCP-only tools; nothing else', () => {
+test('the allowlist: knowledge, reads, undoable writes, the MCP-only tools; nothing else', () => {
     assert.deepEqual(Object.keys(MCP_ALLOWLIST).sort(), [
         'add_roulette_items', 'channel_overview', 'create_bits_rule', 'create_chat_event', 'create_command', 'create_goal', 'create_roulette',
         'delete_bits_rule', 'delete_chat_event', 'delete_command', 'delete_timer', 'get_ai_credits', 'get_command', 'get_referral_codes', 'get_settings', 'get_timer',

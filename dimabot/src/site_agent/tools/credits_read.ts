@@ -5,6 +5,7 @@ import { getAiCredits } from '../../utils/billing.js';
 import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
 
 const l = (lang: Lang, en: string, es: string) => (lang === 'es' ? es : en);
+const BILLING_TIMEOUT_MS = 5000;
 
 export const getAiCreditsTool: AgentTool<Record<string, never>> = {
     name: 'get_ai_credits',
@@ -14,6 +15,8 @@ export const getAiCreditsTool: AgentTool<Record<string, never>> = {
         + 'credits: the buyMoreAt page.',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     kind: 'read',
+    // MCP only: the website assistant's tool list stays as it was.
+    surfaces: ['mcp'],
     // Same rule as the website's Credits page and GET /billing/ai-credits.
     permissions: ['billing:view'],
     label: (_input, lang) => l(lang, 'Checking AI credits…', 'Revisando créditos de IA…'),
@@ -21,8 +24,16 @@ export const getAiCreditsTool: AgentTool<Record<string, never>> = {
     async run(_input, ctx) {
         const owner = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: ctx.channelId } } });
         if (!owner) return { type: 'result', billable: false, result: { available: false, message: 'No account found for this channel.' } };
-        const raw = await getAiCredits(owner, ctx.channelId, { signal: ctx.signal });
-        const display = await getFreeAiCreditDisplay(owner, ctx.channelId, raw);
+        // A stalled billing lookup must read as "unavailable" quickly, never as a long tool failure.
+        const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(BILLING_TIMEOUT_MS)]);
+        let raw: Awaited<ReturnType<typeof getAiCredits>>, display: Awaited<ReturnType<typeof getFreeAiCreditDisplay>>;
+        try {
+            raw = await getAiCredits(owner, ctx.channelId, { signal });
+            display = await Promise.race([getFreeAiCreditDisplay(owner, ctx.channelId, raw),
+                new Promise<undefined>((resolve) => signal.addEventListener('abort', () => resolve(undefined), { once: true }))]);
+        } catch {
+            return { type: 'result', billable: false, result: { available: false, message: 'AI credits can\'t be read right now. Try again in a moment.' } };
+        }
         const credits = display?.credits ?? raw;
         const empty = credits.status === 'exhausted' || (credits.available && credits.balance <= 0);
         return {

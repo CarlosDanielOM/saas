@@ -25,7 +25,6 @@ import { asObject, bool, int, oneOf, str, untrusted } from './util.js';
 import { CommandsSchema } from '../../schemas/commands.schema.js';
 import UsersSchema from '../../schemas/users.schema.js';
 import { getUserCodes } from '../../utils/referral.js';
-import { getAiCreditsTool } from './credits_read.js';
 import { presentCommand } from '../../server/services/command_blocks.service.js';
 import { inspectExpression } from '../../utils/permissions/index.js';
 import { getCachedLiveStatus } from '../../utils/siteanalytics.js';
@@ -534,7 +533,6 @@ export const getReferralCodesTool: AgentTool<Record<string, never>> = {
 
 export const readTools: AgentTool[] = [
     getReferralCodesTool,
-    getAiCreditsTool,
     channelOverviewTool,
     listCommandsTool,
     getCommandTool,
