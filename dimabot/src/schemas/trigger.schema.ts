@@ -1,4 +1,17 @@
 import { Schema, model, Types } from 'mongoose';
+import type { AlertLayout } from '../overlays/model.js';
+
+/** An Overlay Studio-style layout played instead of the plain file (see overlays/trigger-look.ts). */
+export interface ITriggerLook {
+    width: number;
+    height: number;
+    layout: AlertLayout;
+    /** Library item ids the layout references, derived by the server (in-use checks). */
+    mediaIds: string[];
+    /** The trigger's `lookRevision` value of the save that wrote this look. */
+    revision: number;
+    updatedAt: Date;
+}
 
 export interface ITrigger {
     _id: Types.ObjectId;
@@ -17,6 +30,9 @@ export interface ITrigger {
     cost: number;
     cooldown: number;
     prompt: string;
+    look?: ITriggerLook | null;
+    /** Look revision counter: every look save and delete adds 1, never reset (stale-edit protection). */
+    lookRevision?: number;
     createdAt: Date;
     date: {
         day: number;
@@ -41,6 +57,8 @@ const triggerSchema = new Schema<ITrigger>({
     cost: { type: Number, default: 1 },
     cooldown: { type: Number, default: 0 },
     prompt: { type: String, default: '' },
+    look: { type: Schema.Types.Mixed, required: false, default: undefined },
+    lookRevision: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     date: {
         day: { type: Number, default: () => new Date().getDate() },

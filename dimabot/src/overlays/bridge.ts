@@ -13,7 +13,7 @@ interface Bridge {
   media(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform?: OverlayPlatform, speechID?: string): Promise<void>;
   ttsStatus?(channel: string, currentSpeechID?: string): Promise<{ connected: boolean; playing: boolean; queueLength: number }>;
   controlTts?(channel: string, action: 'skip' | 'clear' | 'refresh'): Promise<void>;
-  trigger(channel: string, body: Record<string, unknown>, platform?: OverlayPlatform): Promise<void>;
+  trigger(channel: string, body: Record<string, unknown>, platform?: OverlayPlatform, options?: { hasLook?: boolean }): Promise<void>;
   /** Custom widget bot events (`uses` gates delivery); returns how many OBS sources got it. */
   widgetEvent?(channel: string, use: string, type: string, data: unknown): number;
   /** Whether a connected OBS source has a custom widget that uses this. */
@@ -29,7 +29,7 @@ export const endStudioReadTts = (channel: string, speechID: string) => bridge?.e
 export const studioHasLiveSource = (channel: string, kind: EventKind) => bridge?.hasLiveSource?.(channel, kind) ?? bridge?.hasSource(channel, kind) ?? false;
 export const studioHasSource = (channel: string, kind: EventKind) => bridge?.hasSource(channel, kind) ?? false;
 export const publishStudioMedia = (channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform?: OverlayPlatform, speechID?: string) => bridge?.media(channel, kind, media, file, mime, text, platform, speechID) ?? Promise.resolve();
-export const publishStudioTrigger = (channel: string, body: Record<string, unknown>, platform?: OverlayPlatform) => bridge?.trigger(channel, body, platform);
+export const publishStudioTrigger = (channel: string, body: Record<string, unknown>, platform?: OverlayPlatform, options?: { hasLook?: boolean }) => bridge?.trigger(channel, body, platform, options);
 
 /** Custom widget bot events: live only, never fails or delays the producer. */
 export const publishWidgetEvent = (channel: string, use: string, type: string, data: unknown): number => { try { return bridge?.widgetEvent?.(channel, use, type, data) ?? 0; } catch { return 0; } };

@@ -36,6 +36,9 @@ import {
     isValidMediaDisplayName,
     normalizePlanTier
 } from '../services/media_library.service.js';
+import { OverlayError } from '../../overlays/store.js';
+import { renderTemplate } from '../../overlays/ast.js';
+import { LookError, MAX_LOOK_BYTES, checkLookMedia, editorLook, lookBytes, lookRevisionFilter, lookRevisionOf, lookSummary, validateLookLayout, withTriggerMediaLock, type ValidatedLook } from '../../overlays/trigger-look.js';
 
 interface TriggerRequest extends Request {
     user?: {
@@ -276,14 +279,55 @@ function buildRewardPayloadForPersistence(reward: TriggerRewardInput): Record<st
     };
 }
 
+const TRIGGER_ID_REGEX = /^[a-f0-9]{24}$/;
+
+/**
+ * Object/sound counts for looks loaded without their layout (the list route leaves layouts out).
+ */
+async function lookCounts(triggers: Array<Record<string, any>>): Promise<Map<string, { objectCount: number; soundCount: number }>> {
+    const ids = triggers.filter((trigger) => trigger.look && !trigger.look.layout).map((trigger) => trigger._id);
+    if (ids.length === 0) {
+        return new Map();
+    }
+
+    const size = (path: string) => ({ $cond: [{ $isArray: path }, { $size: path }, 0] });
+    const rows = await TriggerSchema.aggregate([
+        { $match: { _id: { $in: ids } } },
+        { $project: { objectCount: size('$look.layout.widgets'), soundCount: size('$look.layout.sounds') } }
+    ]);
+    return new Map(rows.map((row) => [String(row._id), { objectCount: row.objectCount, soundCount: row.soundCount }]));
+}
+
+/** Trigger responses carry a look only as a summary, never its layout. */
+async function withLookSummaries(triggerObjects: Array<Record<string, any>>): Promise<Array<Record<string, any>>> {
+    const counts = await lookCounts(triggerObjects);
+    return triggerObjects.map((triggerObject) => {
+        const { look, ...rest } = triggerObject;
+        return look ? { ...rest, look: lookSummary(look, counts.get(String(triggerObject._id))) } : rest;
+    });
+}
+
+function lookErrorResponse(res: Response, err: unknown): Response | null {
+    if (!(err instanceof OverlayError)) {
+        return null;
+    }
+
+    return res.status(err.status).json({
+        error: true,
+        message: err.message,
+        status: err.status,
+        code: err instanceof LookError ? err.code : 'invalid_look'
+    });
+}
+
 async function enrichTriggers(triggers: ITrigger[]): Promise<Array<ITrigger & { reward?: any | null }>> {
+    const triggerObjects = await withLookSummaries(triggers.map((trigger) => {
+        const triggerDocument = trigger as any;
+        return typeof triggerDocument.toObject === 'function' ? triggerDocument.toObject() : triggerDocument;
+    }));
     const rewardIds = Array.from(new Set(triggers.map((trigger) => trigger.rewardID).filter((rewardID) => typeof rewardID === 'string' && rewardID.trim() !== '')));
     if (rewardIds.length === 0) {
-        return triggers.map((trigger) => {
-            const triggerDocument = trigger as any;
-            const triggerObject = typeof triggerDocument.toObject === 'function' ? triggerDocument.toObject() : triggerDocument;
-            return { ...triggerObject, reward: null };
-        });
+        return triggerObjects.map((triggerObject) => ({ ...triggerObject, reward: null }) as any);
     }
 
     const rewards = await RedemptionRewardSchema.find({
@@ -291,14 +335,10 @@ async function enrichTriggers(triggers: ITrigger[]): Promise<Array<ITrigger & { 
     }).lean();
     const rewardMap = new Map(rewards.map((reward) => [reward.rewardID, reward]));
 
-    return triggers.map((trigger) => {
-        const triggerDocument = trigger as any;
-        const triggerObject = typeof triggerDocument.toObject === 'function' ? triggerDocument.toObject() : triggerDocument;
-        return {
-            ...triggerObject,
-            reward: trigger.rewardID ? rewardMap.get(trigger.rewardID) || null : null
-        };
-    });
+    return triggerObjects.map((triggerObject) => ({
+        ...triggerObject,
+        reward: triggerObject.rewardID ? rewardMap.get(triggerObject.rewardID) || null : null
+    }) as any);
 }
 
 router.get('/assets/public', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
@@ -933,65 +973,69 @@ router.delete('/library/:channelID/:libraryItemID', authMiddleware as any, async
             return;
         }
 
-        const libraryItem = await UserMediaLibraryItemSchema.findOne({
-            _id: libraryItemIdStr,
-            channelID: channelIdStr,
-            isActive: true,
-            deletedAt: null
-        });
-        if (!libraryItem) {
-            return res.status(404).json({
-                error: true,
-                message: 'Library item not found',
-                status: 404
-            });
-        }
-
-        const asset = await MediaAssetSchema.findOne({
-            _id: libraryItem.assetID,
-            deletedAt: null
-        });
-
-        const isInUse = await TriggerSchema.exists({
-            channelID: channelIdStr,
-            $or: [
-                { libraryItemID: libraryItem._id },
-                { assetID: libraryItem.assetID }
-            ]
-        });
-
-        if (isInUse) {
-            return res.status(400).json({
-                error: true,
-                message: 'Media is in use by one or more triggers',
-                status: 400
-            });
-        }
-
-        libraryItem.isActive = false;
-        libraryItem.deletedAt = new Date();
-        await libraryItem.save();
-
-        if (asset) {
-            const remainingLibraryCount = await UserMediaLibraryItemSchema.countDocuments({
-                assetID: asset._id,
+        // Same lock as look saves: a save cannot validate this item while the delete runs.
+        return await withTriggerMediaLock(channelIdStr, async () => {
+            const libraryItem = await UserMediaLibraryItemSchema.findOne({
+                _id: libraryItemIdStr,
+                channelID: channelIdStr,
                 isActive: true,
                 deletedAt: null
             });
-
-            if (asset.scope === 'private' && remainingLibraryCount === 0) {
-                await deleteTriggerFileFromS3(asset.ownerChannelID, asset.s3Key);
-                await MediaAssetSchema.deleteOne({ _id: asset._id });
-            } else {
-                await MediaAssetSchema.updateOne({ _id: asset._id }, { $set: { libraryCount: remainingLibraryCount } });
+            if (!libraryItem) {
+                return res.status(404).json({
+                    error: true,
+                    message: 'Library item not found',
+                    status: 404
+                });
             }
-        }
 
-        return res.status(200).json({
-            error: false,
-            message: 'Library item removed successfully',
-            status: 200,
-            data: mapLibraryItemResponse(libraryItem.toObject(), asset ? asset.toObject() : null)
+            const asset = await MediaAssetSchema.findOne({
+                _id: libraryItem.assetID,
+                deletedAt: null
+            });
+
+            const isInUse = await TriggerSchema.exists({
+                channelID: channelIdStr,
+                $or: [
+                    { libraryItemID: libraryItem._id },
+                    { assetID: libraryItem.assetID },
+                    { 'look.mediaIds': String(libraryItem._id) }
+                ]
+            });
+
+            if (isInUse) {
+                return res.status(400).json({
+                    error: true,
+                    message: 'Media is in use by one or more triggers',
+                    status: 400
+                });
+            }
+
+            libraryItem.isActive = false;
+            libraryItem.deletedAt = new Date();
+            await libraryItem.save();
+
+            if (asset) {
+                const remainingLibraryCount = await UserMediaLibraryItemSchema.countDocuments({
+                    assetID: asset._id,
+                    isActive: true,
+                    deletedAt: null
+                });
+
+                if (asset.scope === 'private' && remainingLibraryCount === 0) {
+                    await deleteTriggerFileFromS3(asset.ownerChannelID, asset.s3Key);
+                    await MediaAssetSchema.deleteOne({ _id: asset._id });
+                } else {
+                    await MediaAssetSchema.updateOne({ _id: asset._id }, { $set: { libraryCount: remainingLibraryCount } });
+                }
+            }
+
+            return res.status(200).json({
+                error: false,
+                message: 'Library item removed successfully',
+                status: 200,
+                data: mapLibraryItemResponse(libraryItem.toObject(), asset ? asset.toObject() : null)
+            });
         });
     } catch (err) {
         await error({
@@ -1027,7 +1071,7 @@ router.get('/:channelID', authMiddleware as any, async (req: TriggerRequest, res
             query.name = name;
         }
 
-        const triggers = await TriggerSchema.find(query);
+        const triggers = await TriggerSchema.find(query).select('-look.layout');
         const enrichedTriggers = await enrichTriggers(triggers);
 
         return res.status(200).json({
@@ -1594,6 +1638,211 @@ router.delete('/:channelID/:triggerID', authMiddleware as any, async (req: Trigg
     }
 });
 
+router.get('/:channelID/:triggerID/look', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
+    try {
+        const { channelID, triggerID } = req.params;
+        const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+        const triggerIdStr = Array.isArray(triggerID) ? triggerID[0] : triggerID;
+
+        if (!await ensureTriggerPermission(req, res, channelIdStr, ['triggers:view'])) {
+            return;
+        }
+
+        const trigger = TRIGGER_ID_REGEX.test(triggerIdStr)
+            ? await TriggerSchema.findOne({ _id: triggerIdStr, channelID: channelIdStr }).select('channelID volume look lookRevision').lean()
+            : null;
+        if (!trigger) {
+            return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
+        }
+
+        return res.status(200).json({
+            error: false,
+            message: 'OK',
+            status: 200,
+            data: { look: await editorLook(trigger), volume: trigger.volume, revision: lookRevisionOf(trigger) }
+        });
+    } catch (err) {
+        await error({
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            channelID: req.params.channelID,
+            triggerID: req.params.triggerID,
+            timestamp: new Date().toISOString()
+        }, { destination: 'both' });
+
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+/**
+ * Saves a look. `revision` is the trigger's look counter the editor loaded (`lookRevision`, 0 when never saved): a
+ * different stored counter means another tab or device saved or deleted it, so the save is refused (409, `look_conflict`).
+ * The counter only goes up (also on delete), so a tab from before a delete + recreate is still stale.
+ */
+router.put('/:channelID/:triggerID/look', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
+    try {
+        const { channelID, triggerID } = req.params;
+        const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+        const triggerIdStr = Array.isArray(triggerID) ? triggerID[0] : triggerID;
+
+        if (!await ensureTriggerPermission(req, res, channelIdStr, ['triggers:edit'])) {
+            return;
+        }
+
+        if (!TRIGGER_ID_REGEX.test(triggerIdStr)) {
+            return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
+        }
+
+        const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+        const revision = body.revision;
+        if (!Number.isSafeInteger(revision) || revision < 0) {
+            return res.status(400).json({ error: true, message: 'Invalid look revision', status: 400, code: 'invalid_look' });
+        }
+
+        let validated: ValidatedLook;
+        try {
+            validated = validateLookLayout(body);
+        } catch (validationError) {
+            const sent = lookErrorResponse(res, validationError);
+            if (sent) return sent;
+            throw validationError;
+        }
+
+        const look = { ...validated, revision: revision + 1, updatedAt: new Date() };
+        if (lookBytes(look) > MAX_LOOK_BYTES) {
+            return res.status(400).json({ error: true, message: 'This look is too large. Remove some objects or shorten its texts.', status: 400, code: 'look_too_large' });
+        }
+
+        let saved;
+        try {
+            saved = await withTriggerMediaLock(channelIdStr, async () => {
+                // Existence, then the revision, then media: a stale editor gets the conflict, not a media error.
+                const current = await TriggerSchema.findOne({ _id: triggerIdStr, channelID: channelIdStr }).select('lookRevision').lean();
+                if (!current) {
+                    throw new LookError('Trigger not found', 404, 'not_found');
+                }
+                if (lookRevisionOf(current) !== revision) {
+                    throw new LookError('This look was changed somewhere else. Reload it before saving.', 409, 'look_conflict');
+                }
+                await checkLookMedia(channelIdStr, validated);
+                // The conditional update stays the final guard (a DELETE does not take the lock).
+                const updated = await TriggerSchema.findOneAndUpdate(lookRevisionFilter(triggerIdStr, channelIdStr, revision),
+                    { $set: { look }, $inc: { lookRevision: 1 } }, { new: true }).select('channelID volume look lookRevision').lean();
+                if (!updated) {
+                    if (!await TriggerSchema.exists({ _id: triggerIdStr, channelID: channelIdStr })) {
+                        throw new LookError('Trigger not found', 404, 'not_found');
+                    }
+                    throw new LookError('This look was changed somewhere else. Reload it before saving.', 409, 'look_conflict');
+                }
+                return updated;
+            });
+        } catch (saveError) {
+            const sent = lookErrorResponse(res, saveError);
+            if (sent) return sent;
+            throw saveError;
+        }
+
+        return res.status(200).json({
+            error: false,
+            message: 'Look saved',
+            status: 200,
+            data: { look: await editorLook(saved), volume: saved.volume, revision: lookRevisionOf(saved) }
+        });
+    } catch (err) {
+        await error({
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            channelID: req.params.channelID,
+            triggerID: req.params.triggerID,
+            timestamp: new Date().toISOString()
+        }, { destination: 'both' });
+
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+router.delete('/:channelID/:triggerID/look', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
+    try {
+        const { channelID, triggerID } = req.params;
+        const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+        const triggerIdStr = Array.isArray(triggerID) ? triggerID[0] : triggerID;
+
+        if (!await ensureTriggerPermission(req, res, channelIdStr, ['triggers:edit'])) {
+            return;
+        }
+
+        if (!TRIGGER_ID_REGEX.test(triggerIdStr)) {
+            return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
+        }
+
+        const rawRevision = Array.isArray(req.query.revision) ? req.query.revision[0] : req.query.revision;
+        const revision = typeof rawRevision === 'string' && /^\d{1,15}$/.test(rawRevision) ? Number(rawRevision) : NaN;
+        if (!Number.isSafeInteger(revision)) {
+            return res.status(400).json({ error: true, message: 'Invalid look revision', status: 400, code: 'invalid_look' });
+        }
+
+        const conflict = () => res.status(409).json({ error: true, message: 'This look was changed somewhere else. Reload it first.', status: 409, code: 'look_conflict' });
+        const filter = { _id: triggerIdStr, channelID: channelIdStr };
+        const updated = await TriggerSchema.findOneAndUpdate(lookRevisionFilter(triggerIdStr, channelIdStr, revision),
+            { $unset: { look: '' }, $inc: { lookRevision: 1 } }, { new: true }).select('volume lookRevision').lean();
+        if (!updated) {
+            return await TriggerSchema.exists(filter) ? conflict() : res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
+        }
+
+        return res.status(200).json({
+            error: false,
+            message: 'Look removed',
+            status: 200,
+            data: { look: null, volume: updated.volume, revision: lookRevisionOf(updated) }
+        });
+    } catch (err) {
+        await error({
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            channelID: req.params.channelID,
+            triggerID: req.params.triggerID,
+            timestamp: new Date().toISOString()
+        }, { destination: 'both' });
+
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+/** Editor preview of a look's text objects: rendered like the Studio's own preview, with empty event data. */
+router.post('/:channelID/look/render', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
+    try {
+        const { channelID } = req.params;
+        const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        if (!await ensureTriggerPermission(req, res, channelIdStr, ['triggers:view'])) {
+            return;
+        }
+
+        const texts = req.body?.texts;
+        if (!Array.isArray(texts) || texts.length > 100) {
+            return res.status(400).json({ error: true, message: 'Invalid templates', status: 400, code: 'invalid_look' });
+        }
+
+        let rendered: string[];
+        try {
+            rendered = await Promise.all(texts.map((text: unknown) => renderTemplate(typeof text === 'string' ? text : '', channelIdStr, {})));
+        } catch (renderError) {
+            return res.status(400).json({ error: true, message: renderError instanceof Error ? renderError.message : 'Invalid template', status: 400, code: 'invalid_look' });
+        }
+
+        return res.status(200).json({ error: false, message: 'OK', status: 200, data: rendered });
+    } catch (err) {
+        await error({
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            channelID: req.params.channelID,
+            timestamp: new Date().toISOString()
+        }, { destination: 'both' });
+
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
 router.post('/:channelID/send', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
     try {
         const io = getIO();
@@ -1607,13 +1856,16 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
 
         // Stable channel-scoped identity keeps Studio filters valid after a rename.
         let studioBody = body;
+        let hasLook = false;
         if (body.triggerId !== undefined) {
             if (typeof body.triggerId !== 'string' || !/^[a-f0-9]{24}$/.test(body.triggerId)) {
                 return res.status(400).json({ error: true, message: 'Invalid trigger ID', status: 400 });
             }
-            const trigger = await TriggerSchema.findOne({ _id: body.triggerId, channelID: channelIdStr }).select('_id name').lean();
+            const trigger = await TriggerSchema.findOne({ _id: body.triggerId, channelID: channelIdStr }).select('_id name look.revision').lean();
             if (!trigger) return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
             studioBody = { ...body, triggerId: String(trigger._id), name: trigger.name };
+            // Only the stored trigger decides; the look itself is resolved when a source asks for the event.
+            hasLook = !!trigger.look;
         }
 
         if (!io) {
@@ -1651,7 +1903,7 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
 
         try {
             namespace.emit('trigger', body);
-            await publishStudioTrigger(channelIdStr, studioBody);
+            await publishStudioTrigger(channelIdStr, studioBody, undefined, { hasLook });
             // Custom widgets: which trigger was sent (never its media URL or other request fields).
             const mime = String(body.mediaType || '');
             publishWidgetEvent(channelIdStr, 'triggers', 'trigger', { id: randomUUID(), triggerId: typeof studioBody.triggerId === 'string' ? studioBody.triggerId : '',

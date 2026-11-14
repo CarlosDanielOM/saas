@@ -19,13 +19,15 @@ const path='/overlay-studio/'+channel;let state=await data('GET',path),design=st
 const shape={id:'shape',kind:'shape',x:20,y:20,width:700,height:180,visible:true,locked:false,shape:'ellipse',color:'#123456',borderColor:'#abcdef',borderWidth:4,radius:30,opacity:.75,shadow:{color:'#000000',blur:12,x:-2,y:4},motion:{enter:'fade',exit:'zoom',loop:'float',delay:.2,enterDuration:.5,exitDuration:.4,loopDuration:1}};
 const text={...design.events.bits.widgets[1],fontFamily:'serif',fontWeight:700,italic:true,textAlign:'left',text:'BIG $(user)'};
 const layout={duration:7,widgets:[shape,text],sound:{assetId:asset.id,name:'Variant.wav',volume:.4,delay:1,fadeIn:.3,fadeOut:.4}};
+// Saved without an editor version (old editor): the sound becomes the canonical `sounds` entry, `sound` stays as its mirror.
+const storedLayout={...layout,sounds:[{id:'sound',...layout.sound}]};
 // Bits looks belong to shared Bits rules (amounts live in the rule); raids keep ordered amount variants.
 const rule=async body=>{const view=await data('POST','/bits-rules/'+channel+'/rules',body,201);return view.created;};
 const bigRule=await rule({name:'Big',min:500,max:1000,chat:{mode:'default',message:''},alert:true});
 const broadRule=await rule({name:'Broad',min:100,max:null,chat:{mode:'default',message:''},alert:true});
 const quietRule=await rule({name:'Quiet',min:42,max:42,chat:{mode:'silent',message:''},alert:false});
 design.variants={bits:[{id:'big-look',name:'Big',enabled:true,ruleId:bigRule,layout}],sub:[{id:'tier2',name:'Tier 2',enabled:true,tier:'2000',layout},{id:'tier3',name:'Tier 3',enabled:true,tier:'3000',layout:{duration:8,widgets:[]}}],raid:[{id:'big',name:'Big',enabled:true,min:500,max:1000,layout},{id:'broad',name:'Broad',enabled:true,min:100,layout:{duration:3,widgets:[{...text,text:'Broad'}]}},{id:'large-raid',name:'Large raid',enabled:true,min:50,layout}]};
-state=await data('PUT',path,state);design=state.designs[0];assert.deepEqual(design.variants.bits[0].layout,layout);assert.equal(design.variants.bits[0].ruleId,bigRule);
+state=await data('PUT',path,state);design=state.designs[0];assert.deepEqual(design.variants.bits[0].layout,storedLayout);assert.equal(design.variants.bits[0].ruleId,bigRule);
 assert.deepEqual((await data('GET','/bits-rules/'+channel)).looks,{[bigRule]:1},'chat events see which rules have their own look');
 const {selectAlertLayout,matchingVariant}=await import('/app/dist/overlays/model.js');
 for(const [kind,raw,expected] of [['raid',{viewers:499},'broad'],['raid',{viewers:500},'big'],['raid',{viewers:1000},'big'],['raid',{viewers:1001},'broad'],['raid',{viewers:'500'},undefined],['raid',{},undefined],['sub',{tier:'1000'},undefined],['sub',{tier:'2000'},'tier2'],['sub',{tier:'3000'},'tier3'],['raid',{viewers:49},undefined],['raid',{viewers:50},'large-raid']])assert.equal(matchingVariant(design,kind,raw)?.id,expected);
@@ -42,7 +44,7 @@ assert.equal((await data('GET',path)).revision,state.revision);
 await req('DELETE','/asset-library/'+channel+'/'+asset.id,null,409);
 state=await data('POST',path+'/scenes/'+state.scenes[0].id+'/publish',{revision:state.revision});
 const scene=state.scenes[0],publicPath='/overlay-studio/public/'+scene.publicId;
-assert.deepEqual((await data('GET',publicPath)).snapshot.designs[0].variants.bits[0].layout,layout);
+assert.deepEqual((await data('GET',publicPath)).snapshot.designs[0].variants.bits[0].layout,storedLayout);
 const download=await req('GET',publicPath+'/assets/'+asset.id);assert.deepEqual(Buffer.from(await download.arrayBuffer()),bytes);
 await req('GET',publicPath+'/assets/'+foreign.id,null,404);
 // Real delivery resolution over a disposable Socket.IO server using the exact candidate code.

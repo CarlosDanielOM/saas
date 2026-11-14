@@ -1,11 +1,11 @@
 import { AssetError, findAsset, registerAssetConsumer } from '../assets/library.js';
 import { Studio, type StudioState } from './store.js';
-import { designLayouts } from './model.js';
+import { designLayouts, layoutSounds } from './model.js';
 import type { AlertLayout, OverlayScene } from './model.js';
 
 type Snapshot = NonNullable<OverlayScene['published']>;
 type AssetReference = { assetId?: string; kind: string };
-const layoutAssets = (layout: AlertLayout): AssetReference[] => [...layout.widgets, ...(layout.sound ? [{ assetId: layout.sound.assetId, kind: 'audio' }] : [])];
+const layoutAssets = (layout: AlertLayout): AssetReference[] => [...layout.widgets, ...layoutSounds(layout).map(sound => ({ assetId: sound.assetId, kind: 'audio' }))];
 export function snapshotAssets(snapshot: Snapshot): AssetReference[] {
   return [...snapshot.widgets, ...snapshot.designs.flatMap(d => designLayouts(d).flatMap(layoutAssets))].filter(w => w.assetId);
 }

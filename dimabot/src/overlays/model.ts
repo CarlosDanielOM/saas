@@ -29,14 +29,24 @@ export interface OverlayWidget {
   shape?: 'rectangle' | 'ellipse'; borderColor?: string; borderWidth?: number; radius?: number; opacity?: number;
   shadow?: { color: string; blur: number; x: number; y: number };
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
+  /** Trigger looks only: a channel media library item (`UserMediaLibraryItem._id`) instead of a Studio asset. */
+  mediaId?: string;
+  /** Videos inside layouts: `volume` present = plays its own sound (0 = silent but timed); `loop` absent = true. */
+  volume?: number; loop?: boolean;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
   triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
 }
 /** An omitted selection receives all triggers; an empty selection receives none. */
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
-/** `end`: seconds from the alert's start at which the sound has stopped (0.1–120). Absent: it plays out or stops with the alert. */
-export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
-export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
+/**
+ * `end`: seconds from the alert's start at which the sound has stopped (0.1–120). Absent: it plays out or stops with the alert.
+ * Alert designs reference `assetId`, trigger looks `mediaId`; `url` is only ever produced by the server for trigger looks.
+ */
+export interface AlertSound { id?: string; assetId?: string; mediaId?: string; url?: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number; end?: number }
+/** `sounds` is canonical; `sound` is the legacy mirror of `sounds[0]` (without its id) that older OBS pages play. */
+export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sounds?: AlertSound[]; sound?: AlertSound }
+/** Every sound of a layout. When `sounds` is present it wins; a legacy single `sound` reads as one sound with id `sound`. */
+export const layoutSounds = (layout: AlertLayout): AlertSound[] => layout.sounds ?? (layout.sound ? [{ id: 'sound', ...layout.sound }] : []);
 /** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
 export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {

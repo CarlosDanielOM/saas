@@ -67,6 +67,8 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/docs-assistant', docsAssistantRoute);
         // Roulette prize imports send up to 10k prizes in one atomic request (state is capped at 4 MB).
         app.use('/roulettes', express.json({ limit: '4mb' }));
+        // Trigger looks: a stored look is up to 256 kB (plus the envelope); look text previews send up to 100 templates.
+        app.use(['/triggers/:channelID/:triggerID/look', '/triggers/:channelID/look/render'], express.json({ limit: '320kb' }));
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.

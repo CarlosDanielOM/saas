@@ -236,7 +236,7 @@ overlayStudioRoute.post('/:channelID/test', wrap(async (req, res) => {
         const clients = await publishTest(channel, scene!.publicId, kind, prepared, raw);
         await prepared.cleanup(); return ok(res, { sent: true, clients, sceneId: scene!.id });
       }
-      return ok(res, { media: await previewMedia(channel, prepared), triggerId: prepared.triggerId, text: prepared.text });
+      return ok(res, { media: await previewMedia(channel, prepared), triggerId: prepared.triggerId, text: prepared.text, ...(prepared.look ? { look: prepared.look } : {}) });
     } catch (error) { await prepared.cleanup(); throw error; }
   });
 }));

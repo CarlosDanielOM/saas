@@ -14,26 +14,32 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { LiveMedia } from './live.js';
 import { MAX_MEDIA_BYTES } from './delivery-store.js';
 import { recordActivity } from '../utils/activity_log.js';
+import { resolveLook, type PlaybackLook } from './trigger-look.js';
 const run = promisify(execFile);
 interface TestFile { channel: string; path: string; mime: string; expiresAt: number; clean: () => Promise<void> }
 const files = new Map<string, TestFile>();
 export function testFile(ticket: string): TestFile | undefined {
   const file = files.get(ticket); return file && file.expiresAt > Date.now() ? file : undefined;
 }
-export interface PreparedTest { media?: LiveMedia; triggerId?: string; text?: string; file?: string; mime?: string; cleanup: () => Promise<void> }
+export interface PreparedTest { media?: LiveMedia; triggerId?: string; hasLook?: boolean; look?: PlaybackLook; text?: string; file?: string; mime?: string; cleanup: () => Promise<void> }
 /** Reads module content without joining legacy namespaces or enqueueing a real module action. */
 export async function prepareTest(channel: string, kind: string, input: unknown): Promise<PreparedTest> {
   const body = object(input);
   if (kind === 'trigger') {
-    const ids = body.triggerIds;
+    const ids = body.triggerIds, picked = body.triggerId;
     if (ids !== undefined && (!Array.isArray(ids) || ids.length > 1000 || ids.some(id => typeof id !== 'string' || !/^[a-f0-9]{24}$/.test(id)))) throw new OverlayError('Invalid trigger selection');
-    const trigger = await TriggerSchema.findOne({ channelID: channel, ...(ids ? { _id: { $in: ids } } : {}) }).lean();
+    if (picked !== undefined && (typeof picked !== 'string' || !/^[a-f0-9]{24}$/.test(picked))) throw new OverlayError('Invalid trigger selection');
+    // An explicit trigger must still pass the overlay's trigger filter.
+    if (picked !== undefined && ids !== undefined && !ids.includes(picked)) throw new OverlayError('No matching trigger is available for this overlay', 404);
+    const trigger = await TriggerSchema.findOne({ channelID: channel, ...(picked !== undefined ? { _id: picked } : ids ? { _id: { $in: ids } } : {}) }).lean();
     if (!trigger) throw new OverlayError('No matching trigger is available for this overlay', 404);
     const asset = trigger.assetID ? await MediaAssetSchema.findOne({ _id: trigger.assetID, deletedAt: null }).lean() : null;
     const url = asset?.storageUrl || trigger.file, mime = asset?.mimeType || trigger.mediaType;
     const type = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : mime.startsWith('image') || mime === 'gif' ? 'image' : null;
     if (!type || !/^https?:\/\//i.test(url)) throw new OverlayError('Trigger media is unavailable', 404);
-    return { triggerId: String(trigger._id), media: { type, url, title: trigger.name, volume: Math.max(0, Math.min(1, (trigger.volume ?? 100) / 100)) }, cleanup: async () => {} };
+    // Previews get the resolved look; OBS tests carry the marker and resolve it like real sends.
+    const look = trigger.look && body.destination === 'preview' ? await resolveLook(trigger).catch(() => null) : null;
+    return { triggerId: String(trigger._id), hasLook: !!trigger.look, ...(look ? { look } : {}), media: { type, url, title: trigger.name, volume: Math.max(0, Math.min(1, (trigger.volume ?? 100) / 100)) }, cleanup: async () => {} };
   }
   if (kind === 'tts') {
     const language = body.language === 'es' ? 'es' : 'en';

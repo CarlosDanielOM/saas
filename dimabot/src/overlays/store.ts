@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertSound, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 import { parseWidgetModuleConfig } from './widget-contract.js';
@@ -29,8 +29,11 @@ const endTime = (value: Record<string, unknown>) => value.end !== undefined ? { 
 function boolean(value: unknown) { if (typeof value !== 'boolean') throw new OverlayError('Expected a boolean'); return value; }
 function list(value: unknown, max: number): unknown[] { if (!Array.isArray(value) || value.length > max) throw new OverlayError('Too many or invalid items'); return value; }
 function unique<T extends { id: string }>(items: T[]): T[] { if (new Set(items.map(x => x.id)).size !== items.length) throw new OverlayError('Duplicate ID'); return items; }
-function canvas(v: Record<string, unknown>) { return { width: number(v.width, 100, 7680), height: number(v.height, 100, 7680) }; }
-function widgets(value: unknown, nested: boolean): OverlayWidget[] {
+export function canvas(v: Record<string, unknown>) { return { width: number(v.width, 100, 7680), height: number(v.height, 100, 7680) }; }
+/** `design`: Overlay Studio alert designs (Studio assets). `trigger`: trigger looks (channel media library items, see trigger-look.ts). */
+export type LayoutMode = 'design' | 'trigger';
+const hex24 = (value: unknown) => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value);
+function widgets(value: unknown, nested: boolean, mode: LayoutMode = 'design'): OverlayWidget[] {
   return unique(list(value, 60).map(raw => {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
     const moduleConfig = parseWidgetModuleConfig(w, nested ? 'design' : 'scene');
@@ -77,7 +80,14 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
     if (kind === 'custom' && !/^[a-f0-9]{24}$/.test(String(item.config?.['widgetId'] ?? ''))) throw new OverlayError('Choose a custom widget for this layer');
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
-    if (w.assetId) {
+    if (mode === 'trigger') {
+      // Playback URLs come from the server only: a sent mediaUrl is dropped.
+      if (w.assetId !== undefined) throw new OverlayError('Trigger looks use media from your trigger library, not Overlay Studio assets');
+      if (w.mediaId !== undefined) {
+        if (!['image', 'video'].includes(kind) || !hex24(w.mediaId)) throw new OverlayError('Invalid trigger media');
+        item.mediaId = w.mediaId as string;
+      }
+    } else if (w.assetId) {
       if (!['image', 'video'].includes(kind) || !/^[a-f0-9]{24}$/.test(String(w.assetId))) throw new OverlayError('Invalid design asset');
       item.assetId = id(w.assetId);
     } else if (w.mediaUrl) { const url = string(w.mediaUrl, 2048); if (!/^https:\/\//i.test(url) || new URL(url).username || new URL(url).password) throw new OverlayError('Media requires an HTTPS URL'); item.mediaUrl = url; }
@@ -89,34 +99,72 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (w.italic !== undefined) item.italic = boolean(w.italic);
     for (const [key, max] of [['borderWidth', 40], ['radius', 500], ['opacity', 1]] as const) if (w[key] !== undefined) item[key] = number(w[key], 0, max);
     if (w.borderColor !== undefined) item.borderColor = color(w.borderColor);
+    if (w.volume !== undefined || w.loop !== undefined) {
+      if (!nested) throw new OverlayError('Video sound and looping require an alert layout');
+      if (kind !== 'video') throw new OverlayError('Only videos have sound and looping settings');
+      if (w.volume !== undefined) item.volume = number(w.volume, 0, 1);
+      if (w.loop !== undefined) item.loop = boolean(w.loop);
+    }
     if (w.shadow !== undefined) { const shadow = object(w.shadow); item.shadow = { color: color(shadow.color), blur: number(shadow.blur, 0, 100), x: number(shadow.x, -100, 100), y: number(shadow.y, -100, 100) }; }
     return item;
   }));
 }
 function color(value: unknown): string { if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw new OverlayError('Invalid color'); return value; }
-function alertLayout(raw: unknown): AlertLayout {
-  const layout = object(raw), result: AlertLayout = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true) };
-  if (layout.sound !== undefined) {
-    const sound = object(layout.sound);
-    if (typeof sound.assetId !== 'string' || !/^[a-f0-9]{24}$/.test(sound.assetId)) throw new OverlayError('Invalid alert sound');
-    result.sound = { assetId: sound.assetId, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
-      volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10), ...endTime(sound) };
+function alertSound(raw: unknown, mode: LayoutMode, withId: boolean): AlertSound {
+  const sound = object(raw);
+  let source: Pick<AlertSound, 'assetId' | 'mediaId'>;
+  if (mode === 'trigger') {
+    if (sound.assetId !== undefined) throw new OverlayError('Trigger looks use media from your trigger library, not Overlay Studio assets');
+    if (!hex24(sound.mediaId)) throw new OverlayError('Invalid trigger sound');
+    source = { mediaId: sound.mediaId as string };
+  } else {
+    if (!hex24(sound.assetId)) throw new OverlayError('Invalid alert sound');
+    source = { assetId: sound.assetId as string };
+  }
+  // Rebuilt field by field: unknown fields (and a sent `url`) are dropped.
+  return { ...(withId ? { id: id(sound.id) } : {}), ...source, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
+    volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10), ...endTime(sound) };
+}
+export const MAX_LAYOUT_SOUNDS = 10;
+/**
+ * `writer` is the save body's editor version. From 2 on, `sounds` is authoritative and `sound` is ignored. Without one
+ * (an old editor tab, which keeps `sounds` as an unknown field and edits only `sound`), its edit is merged: `sound`
+ * replaces the fields of `sounds[0]`, a missing `sound` removes `sounds[0]`, and with no `sounds` it becomes the only one.
+ * Alert designs store the legacy mirror `sound` (= `sounds[0]` without its id) for OBS pages on the old renderer;
+ * trigger looks are `sounds`-only.
+ */
+export function alertLayout(raw: unknown, writer?: number, mode: LayoutMode = 'design'): AlertLayout {
+  const layout = object(raw), result: AlertLayout = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true, mode) };
+  const listed = layout.sounds === undefined ? undefined : list(layout.sounds, MAX_LAYOUT_SOUNDS).map(sound => alertSound(sound, mode, true));
+  let sounds: AlertSound[];
+  if (mode === 'trigger' || (writer ?? 0) >= 2) sounds = listed ?? [];
+  else {
+    const single = layout.sound === undefined ? undefined : alertSound(layout.sound, mode, false);
+    if (listed?.length) sounds = single ? [{ id: listed[0].id, ...single }, ...listed.slice(1)] : listed.slice(1);
+    else sounds = single ? [{ id: 'sound', ...single }] : [];
+  }
+  unique(sounds as (AlertSound & { id: string })[]);
+  if (sounds.length) {
+    result.sounds = sounds;
+    if (mode === 'design') { const { id: _id, ...first } = sounds[0]; result.sound = first; }
   }
   return result;
 }
 export function validateState(raw: unknown, previous: StudioState): Pick<StudioState, 'scenes' | 'designs'> {
   const body = object(raw);
+  if (body.writer !== undefined && (typeof body.writer !== 'number' || !Number.isInteger(body.writer) || body.writer < 1)) throw new OverlayError('Invalid editor version');
+  const writer = body.writer as number | undefined;
   const designs = unique(list(body.designs, 50).map(raw => {
     const d = object(raw); const events = object(d.events); const old = previous.designs.find(x => x.id === d.id);
     const design: AlertDesign = { id: id(d.id), name: string(d.name, 80), ...canvas(d), revision: (old?.revision ?? 0) + 1, events: {} as AlertDesign['events'] };
-    for (const kind of ALERT_EVENTS) design.events[kind] = alertLayout(events[kind]);
+    for (const kind of ALERT_EVENTS) design.events[kind] = alertLayout(events[kind], writer);
     if (d.variants !== undefined) {
       const variants = object(d.variants); design.variants = {};
       if (Object.keys(variants).some(key => !['sub', 'bits', 'raid'].includes(key))) throw new OverlayError('Invalid variant event');
       for (const kind of ['sub', 'bits', 'raid'] as const) if (variants[kind] !== undefined) {
         design.variants[kind] = unique(list(variants[kind], kind === 'bits' ? MAX_BITS_RULES : 10).map(raw => {
           const v = object(raw);
-          const result: AlertVariant = { id: id(v.id), name: string(v.name, 80), enabled: boolean(v.enabled), layout: alertLayout(v.layout) };
+          const result: AlertVariant = { id: id(v.id), name: string(v.name, 80), enabled: boolean(v.enabled), layout: alertLayout(v.layout, writer) };
           if (kind === 'bits') {
             // Amounts, order and on/off live in the shared Bits rule; the design only keeps the look.
             if (v.tier !== undefined || v.min !== undefined || v.max !== undefined || !validRuleId(v.ruleId)) throw new OverlayError('Bits looks follow your Bits rules now. Reload the editor.');

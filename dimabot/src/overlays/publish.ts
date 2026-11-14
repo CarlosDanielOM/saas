@@ -1,6 +1,6 @@
 import { checkOverrides, type WidgetField } from '../custom_widgets/format.js';
 import { layerGoalSource } from '../custom_widgets/goal-source.js';
-import type { AlertDesign, OverlayScene } from './model.js';
+import { layoutSounds, type AlertDesign, type AlertLayout, type OverlayScene } from './model.js';
 
 export type PublishedOverlay = NonNullable<OverlayScene['published']>;
 /** What publishing needs from each custom widget an overlay uses. */
@@ -34,8 +34,12 @@ export function buildPublished(scene: OverlayScene, designs: readonly AlertDesig
 /** Key order is not content. */
 const canonical = (value: unknown) => JSON.stringify(value, (_key, v: unknown) => v && typeof v === 'object' && !Array.isArray(v)
   ? Object.fromEntries(Object.keys(v).sort().map(key => [key, (v as Record<string, unknown>)[key]])) : v);
+/** Sounds compare in their canonical form: a copy published with only the legacy `sound` matches its saved `sounds` + mirror. */
+const soundsOf = (layout: AlertLayout) => { const { sound: _sound, sounds: _sounds, ...rest } = layout, sounds = layoutSounds(layout); return sounds.length ? { ...rest, sounds } : rest; };
 /** Design revision numbers are left out: saving bumps them even when nothing changed. */
-const content = (overlay: PublishedOverlay) => canonical({ ...overlay, designs: overlay.designs.map(({ revision: _revision, ...design }) => design) });
+const content = (overlay: PublishedOverlay) => canonical({ ...overlay, designs: overlay.designs.map(({ revision: _revision, ...design }) => ({ ...design,
+  events: Object.fromEntries(Object.entries(design.events).map(([kind, layout]) => [kind, soundsOf(layout)])),
+  ...(design.variants ? { variants: Object.fromEntries(Object.entries(design.variants).map(([kind, variants]) => [kind, variants?.map(v => ({ ...v, layout: soundsOf(v.layout) }))])) } : {}) })) });
 
 /**
  * Per overlay: true when publishing the saved draft now would not change what OBS plays. False when it
