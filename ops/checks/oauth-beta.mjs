@@ -35,25 +35,45 @@ const post = (path, input, token, extra = {}) => call(path, { method: 'POST', he
   'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: JSON.stringify(input) });
 const get = (path, token) => call(path, { headers: { Authorization: `Bearer ${token}` } });
 const tokenRequest = input => post('/oauth/token', { client_id: 'dima-desktop', ...input });
-async function begin(scope = 'profile:read credits:read desktop:connect', overrides = {}) {
-  const verifier = rand(), state = rand();
-  const input = { client_id: 'dima-desktop', response_type: 'code', scope,
-    redirect_uri: 'http://127.0.0.1:42781/oauth/callback', state,
-    code_challenge: digest(verifier), code_challenge_method: 'S256', device_name: 'Streaming PC', ...overrides };
-  const result = await call(`/oauth/authorize?${new URLSearchParams(input)}`);
-  if (result.status !== 302) return { ...result, input, verifier, state };
+/** An undefined override omits that parameter. */
+async function authorizeRequest(scope = 'profile:read credits:read desktop:connect', overrides = {}) {
+  const verifier = rand();
+  const input = Object.fromEntries(Object.entries({ client_id: 'dima-desktop', response_type: 'code', scope,
+    redirect_uri: 'http://127.0.0.1:42781/oauth/callback', state: rand(),
+    code_challenge: digest(verifier), code_challenge_method: 'S256', device_name: 'Streaming PC', ...overrides })
+    .filter(([, value]) => value !== undefined));
+  return { ...(await call(`/oauth/authorize?${new URLSearchParams(input)}`)), input, verifier, state: input.state };
+}
+async function begin(scope, overrides = {}) {
+  const result = await authorizeRequest(scope, overrides);
+  if (result.status !== 302) return result;
   const location = new URL(result.headers.get('location'));
   assert.equal(location.origin, 'https://domdimabot.com');
   assert.equal(location.pathname, '/oauth/authorize');
-  return { ...result, input, verifier, state, request: location.searchParams.get('request') };
+  return { ...result, request: location.searchParams.get('request') };
 }
-async function authorize(scope, browser = 'oauth-beta-browser-owner') {
-  const start = await begin(scope);
+/** Failures after the client and redirect_uri checks return to the callback (RFC 6749 4.1.2.1), never the Dima site. */
+async function rejected(overrides, error, echoState = true) {
+  const result = await authorizeRequest(undefined, overrides);
+  const label = JSON.stringify(overrides);
+  assert.equal(result.status, 302, label);
+  const location = new URL(result.headers.get('location'));
+  assert.equal(`${location.origin}${location.pathname}`, result.input.redirect_uri, label);
+  assert.equal(location.searchParams.get('error'), error, label);
+  assert.equal(location.searchParams.get('iss'), 'https://api.domdimabot.com', label);
+  assert.equal(location.searchParams.get('state'), echoState ? result.state : null, label);
+  assert.equal(location.searchParams.get('code'), null, label);
+  const description = location.searchParams.get('error_description');
+  assert.match(description, /^[\x20\x21\x23-\x5b\x5d-\x7e]+$/, label);
+  for (const value of Object.values(overrides)) if (value) assert.equal(description.includes(value), false, `${label} not echoed`);
+}
+async function authorize(scope, overrides = {}, browser = 'oauth-beta-browser-owner') {
+  const start = await begin(scope, overrides);
   assert.equal(start.status, 302);
   const decision = await post(`/oauth/requests/${start.request}/decision`, { approve: true }, browser);
   assert.equal(decision.status, 200);
   const callback = new URL(decision.body.redirect_uri);
-  assert.equal(callback.searchParams.get('state'), start.state);
+  assert.equal(callback.searchParams.get('state'), start.state ?? null);
   assert.equal(callback.searchParams.get('iss'), 'https://api.domdimabot.com');
   return { ...start, code: callback.searchParams.get('code') };
 }
@@ -105,16 +125,34 @@ const malformedUpgrade = await new Promise((resolve, reject) => {
 });
 assert.match(malformedUpgrade, /^HTTP\/1\.1 400/);
 assert.equal((await call('/oauth/metadata')).status, 200, 'API remains healthy after malformed upgrade');
+// An untrusted client or callback is answered in the browser, never redirected, whatever else is wrong.
 for (const override of [
-  { code_challenge_method: 'plain' }, { state: '' }, { code_challenge: 'short' },
   { redirect_uri: 'https://evil.invalid/oauth/callback' }, { redirect_uri: 'http://localhost:42781/oauth/callback' },
   { redirect_uri: 'http://127.0.0.1:42781/other' }, { redirect_uri: 'http://127.0.0.1:42781/oauth/callback?redirect=evil' },
-  { redirect_uri: 'http://127.0.0.1:42781/oauth/callback#fragment' }, { client_id: 'unknown' }, { scope: '*' },
-  { scope: 'usage:read' }, { scope: 'profile:read  credits:read' }, { device_name: 'bad\nname' }
-]) assert.equal((await begin(undefined, override)).status, 400, JSON.stringify(override));
+  { redirect_uri: 'http://127.0.0.1:42781/oauth/callback#fragment' }, { client_id: 'unknown' },
+  { client_id: 'unknown', code_challenge_method: 'plain' }, { redirect_uri: 'https://evil.invalid/oauth/callback', scope: '*' }
+]) {
+  result = await authorizeRequest(undefined, override);
+  assert.equal(result.status, 400, JSON.stringify(override));
+  assert.equal(result.headers.get('location'), null, JSON.stringify(override));
+}
+for (const [override, error, echoState] of [
+  [{ response_type: 'token' }, 'unsupported_response_type'], [{ response_type: undefined }, 'invalid_request'],
+  [{ code_challenge_method: 'plain' }, 'invalid_request'], [{ code_challenge_method: undefined }, 'invalid_request'],
+  [{ code_challenge: 'short' }, 'invalid_request'], [{ code_challenge: undefined }, 'invalid_request'],
+  [{ scope: '*' }, 'invalid_scope'], [{ scope: 'usage:read' }, 'invalid_scope'], [{ scope: 'profile:read  credits:read' }, 'invalid_scope'],
+  [{ device_name: 'bad\nname' }, 'invalid_request'], [{ scope: '*', state: 'a b+c&d=%/~' }, 'invalid_scope'],
+  [{ scope: '*', state: undefined }, 'invalid_scope', false], [{ scope: '*', redirect_uri: 'http://[::1]:42781/oauth/callback' }, 'invalid_scope'],
+  [{ state: '' }, 'invalid_request', false], [{ state: 'x'.repeat(501) }, 'invalid_request', false],
+  [{ state: 'bad\nstate' }, 'invalid_request', false], [{ state: 'caf\u00e9' }, 'invalid_request', false]
+]) await rejected(override, error, echoState ?? true);
 assert.equal((await begin(undefined, { redirect_uri: 'http://[::1]:42781/oauth/callback' })).status, 302);
 result = await call('/oauth/authorize?client_id=dima-desktop&client_id=other');
 assert.equal(result.status, 400);
+result = await call(`/oauth/authorize?client_id=dima-desktop&${new URLSearchParams([['redirect_uri', 'http://127.0.0.1:42781/oauth/callback'],
+  ['redirect_uri', 'http://127.0.0.1:42782/oauth/callback']])}`);
+assert.equal(result.status, 400, 'duplicate redirect_uri is never redirected');
+assert.equal(result.headers.get('location'), null);
 
 const start = await begin();
 result = await call(`/oauth/requests/${start.request}`);
@@ -128,6 +166,11 @@ result = await post(`/oauth/requests/${start.request}/decision`, { approve: fals
 assert.equal(result.status, 200);
 assert.equal(new URL(result.body.redirect_uri).searchParams.get('error'), 'access_denied');
 assert.equal((await post(`/oauth/requests/${start.request}/decision`, { approve: true }, 'oauth-beta-browser-owner')).status, 400);
+// state is optional: without one, neither the deny nor the approve callback carries it.
+const deniedNoState = await begin(undefined, { state: undefined });
+result = await post(`/oauth/requests/${deniedNoState.request}/decision`, { approve: false }, 'oauth-beta-browser-owner');
+assert.equal(result.status, 200);
+assert.deepEqual([...new URL(result.body.redirect_uri).searchParams.keys()], ['iss', 'error']);
 const expiredRequest = await begin();
 await redis.del(`oauth:request:${digest(expiredRequest.request)}`);
 assert.equal((await call(`/oauth/requests/${expiredRequest.request}`)).status, 400);
@@ -150,6 +193,9 @@ assert.equal(result.body.data, undefined, 'OAuth responses are not wrapped in th
 const expiredCode = await authorize('profile:read');
 await redis.del(`oauth:code:${digest(expiredCode.code)}`);
 assert.equal((await exchange(expiredCode)).status, 400);
+// Standard client libraries: a shorter state, or none, works end to end (authorize() checks the echo).
+assert.equal((await exchange(await authorize('profile:read', { state: 'abcdefghij0123456789' }))).status, 200, '20-character state');
+assert.equal((await exchange(await authorize('profile:read', { state: undefined }))).status, 200, 'omitted state');
 
 result = await get('/v1/me', token.access_token);
 assert.equal(result.status, 200);
@@ -283,7 +329,7 @@ await mongo.connection.db.collection('users').deleteOne({ _id: users.insertedIds
 assert.equal((await get('/v1/me', newApproval.access_token)).status, 401, 'deleted owner fails closed');
 assert.equal(await OAuthRefreshToken.countDocuments({ token_hash: { $regex: '^dima_' } }), 0, 'raw credentials never persisted');
 assert.ok(await OAuthGrant.countDocuments() > 0);
-console.log('PASS OAuth beta: PKCE/replay/races/expiry, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket, per-client/per-token rate limits');
+console.log('PASS OAuth beta: PKCE/replay/races/expiry, optional state + error callbacks, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket, Bearer challenges, client scope registry, per-client/per-token rate limits');
 await mongo.disconnect();
 await redis.quit();
 process.exit(0);

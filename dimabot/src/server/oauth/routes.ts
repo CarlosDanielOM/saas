@@ -14,7 +14,7 @@ import { submitTurn, getTurn, cancelTurn, cancelSpeech, claimAudio, speechEvent 
 import { TURN_STATUS_FEATURE } from '../../desktop_ai/updates.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
 import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient, hash,
-    oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
+    OAuthRedirectError, oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
     startAuthorization, type AccessIdentity } from './service.js';
 
 const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -115,7 +115,11 @@ export function oauthMetadata(_req: Request, res: Response) {
 oauthRoute.get('/metadata', oauthMetadata);
 
 oauthRoute.get('/authorize', asyncRoute(async (req, res) => {
-    const requestID = await startAuthorization(req.query);
+    let requestID: string;
+    try { requestID = await startAuthorization(req.query); } catch (error) {
+        if (error instanceof OAuthRedirectError) return res.redirect(302, error.location);
+        throw error;
+    }
     const url = new URL('/oauth/authorize', oauthWebsite());
     url.searchParams.set('request', requestID);
     res.redirect(302, url.href);

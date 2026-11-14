@@ -16,10 +16,16 @@ export const secret = (prefix = '') => prefix + randomBytes(32).toString('base64
 export const hash = (value: string) => createHash('sha256').update(value).digest('base64url');
 const redis = () => getDragonflyClient('OAuth');
 const validSecret = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
+/** RFC 6749 state is opaque: optional, 1-500 VSCHAR, echoed back exactly. */
+const validState = (value: unknown): value is string => typeof value === 'string' && /^[\x20-\x7e]{1,500}$/.test(value);
 
 interface AuthorizationRequest {
-    client_id: string; redirect_uri: string; scopes: string[]; state: string;
+    client_id: string; redirect_uri: string; scopes: string[]; state?: string;
     code_challenge: string; device_name: string;
+}
+/** RFC 6749 §4.1.2.1: once client and redirect_uri are trusted, errors go back to the client. */
+export class OAuthRedirectError extends OAuthError {
+    constructor(code: string, public readonly location: string) { super(code); }
 }
 interface AuthorizationCode extends AuthorizationRequest { user_id: string; channel_id: string }
 export interface AccessIdentity { session_id: string; user_id: string; client_id: string; channel_id: string; scopes: string[] }
@@ -52,18 +58,35 @@ export async function rateLimit(bucket: string, limit: number): Promise<void> {
 }
 
 export async function startAuthorization(input: Record<string, unknown>): Promise<string> {
-    if (input.response_type !== 'code' || input.code_challenge_method !== 'S256' ||
-        !validSecret(input.code_challenge) || !validSecret(input.state)) throw new OAuthError('invalid_request');
+    // Never redirect to an unverified client or callback: those failures stay JSON 400.
     const client = await getClient(input.client_id);
     const redirect = validateRedirect(input.redirect_uri, client.redirect_uris);
-    const scopes = parseScopes(input.scope);
-    if (scopes.some(scope => !client.allowed_scopes.includes(scope))) throw new OAuthError('invalid_scope');
+    const state = validState(input.state) ? input.state : undefined;
+    const fail = (code: string, description: string) => {
+        const url = new URL(redirect);
+        url.searchParams.set('error', code);
+        url.searchParams.set('error_description', description);
+        if (state !== undefined) url.searchParams.set('state', state);
+        url.searchParams.set('iss', oauthIssuer());
+        return new OAuthRedirectError(code, url.href);
+    };
+    if (input.response_type !== 'code') throw fail(typeof input.response_type === 'string' ?
+        'unsupported_response_type' : 'invalid_request', 'response_type must be code');
+    if (input.code_challenge_method !== 'S256' || !validSecret(input.code_challenge)) {
+        throw fail('invalid_request', 'PKCE with code_challenge_method S256 is required');
+    }
+    if (input.state !== undefined && state === undefined) throw fail('invalid_request', 'state is invalid');
+    let scopes: string[] = [];
+    try { scopes = parseScopes(input.scope); } catch { /* reported below */ }
+    if (!scopes.length || scopes.some(scope => !client.allowed_scopes.includes(scope))) {
+        throw fail('invalid_scope', 'scope is invalid or not allowed');
+    }
     const name = input.device_name;
     if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name))) {
-        throw new OAuthError('invalid_request');
+        throw fail('invalid_request', 'device_name is invalid');
     }
     const request: AuthorizationRequest = { client_id: client.client_id, redirect_uri: redirect,
-        scopes, state: input.state, code_challenge: input.code_challenge,
+        scopes, state, code_challenge: input.code_challenge,
         device_name: typeof name === 'string' ? name.trim() : 'Desktop computer' };
     const id = secret();
     await (await redis()).set(`oauth:request:${hash(id)}`, JSON.stringify(request), { EX: REQUEST_TTL_SECONDS });
@@ -88,7 +111,7 @@ export async function approveAuthorization(id: unknown, twitchID: string, approv
     const value = await (await redis()).getDel(`oauth:request:${hash(id as string)}`);
     if (!value) throw new OAuthError('invalid_request');
     const url = new URL(request.redirect_uri);
-    url.searchParams.set('state', request.state);
+    if (request.state !== undefined) url.searchParams.set('state', request.state);
     url.searchParams.set('iss', oauthIssuer());
     if (!approve) url.searchParams.set('error', 'access_denied');
     else {
