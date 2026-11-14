@@ -74,6 +74,7 @@ async function tts(ctx: ToolContext) {
         },
         filters: { skipEmotes: settings.filters.skipEmotes, stripLinks: settings.filters.stripLinks, normalizeWhitespace: settings.filters.normalizeWhitespace, maxLength: settings.filters.maxLength },
         maxQueue: settings.queue.maxItems,
+        playEverywhere: settings.playback.allOutputs,
         voiceTagsOff: Object.entries(settings.filters.expressiveTags).filter(([, on]) => !on).map(([tag]) => tag),
         builtInFishVoices: Object.keys(FISH_VOICES),
         fishFavorites: untrusted(favorites.map((item) => ({ nickname: item.alias, name: item.name }))),

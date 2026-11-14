@@ -1,8 +1,12 @@
+import type { TtsOutputsSummary } from '../../handlers/tts_outputs.js';
+
 export interface TtsStatusData {
     connected: boolean;
     playing: boolean;
     preparing: boolean;
     queueLength: number;
+    /** Open speech pages and what is wrong with them (absent from older API versions). */
+    outputs?: TtsOutputsSummary;
 }
 
 export function isTtsStatusData(value: unknown): value is TtsStatusData {

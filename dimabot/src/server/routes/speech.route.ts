@@ -393,7 +393,8 @@ router.get('/:channelID/status', authMiddleware as any, async (req: AuthRequest,
         if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:view') === 'none') {
             return res.status(403).json({ error: true, message: 'TTS view permission required', status: 403 });
         }
-        return res.json({ error: false, message: 'TTS status', status: 200, data: await ttsQueueHandler.getStatus(channelID) });
+        const playback = await getChannelTtsSettings(channelID).then(settings => settings.playback, () => undefined);
+        return res.json({ error: false, message: 'TTS status', status: 200, data: await ttsQueueHandler.getStatus(channelID, playback) });
     } catch (error) {
         console.error('TTS status failed', error);
         return res.status(500).json({ error: true, message: 'Unable to read TTS status', status: 500 });

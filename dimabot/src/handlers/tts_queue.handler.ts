@@ -41,9 +41,57 @@ import { trackAiOperation } from "../utils/posthog_events.js";
 import { recordActivity } from "../utils/activity_log.js";
 import { enqueueTtsSession, popTtsSession } from '../utils/tts/tts_session.util.js';
 import { petLaneItem, startPetLaneTurn, endPetLaneTurn, type PetLaneItem } from '../pets/tts_lane.js';
+import { rankOutputs, recordOutputFailure, recordOutputSuccess, summarizeOutputs, OUTPUT_FAILURES, type RankableOutput, type SpeechOutputInfo } from './tts_outputs.js';
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
 const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
+
+/** Owner source while a message plays on several speech pages at once. */
+const EVERY_OUTPUT = 'legacy:all';
+/** A message tries at most this many speech pages before it gives up. */
+const MAX_OUTPUTS_PER_MESSAGE = 3;
+/** Current pages say when the audio is downloaded (`ready`); playback should start right after. */
+const START_AFTER_READY_MS = 8_000;
+/** Older pages never say `ready`: allow their whole download budget (2 x 20 s) before assuming they are stuck. */
+const START_AFTER_SEND_MS = 45_000;
+/** How long a current page gets to confirm it stopped a message before it moves elsewhere. */
+const CANCEL_ACK_MS = 2_000;
+
+/** What a speech page receives for one message. */
+interface SpeechPayload { speechID: string; audioUrl: string; mimeType: string; mode: TtsMode; text: string }
+/** One speech page a message was sent to. */
+interface DeliveryMember {
+  source: string; socketId: string; pageId?: string;
+  /** It reported playing (or a position past the start): someone may have heard it. */
+  started: boolean;
+  /** It is finished with this message (ended, failed, cancelled, disconnected or moved away). */
+  done: boolean;
+  /** We know it is silent: it said so, or it was stopped before it ever started. */
+  stopped: boolean;
+  reported: boolean; position: number; readyAt?: number; timers: NodeJS.Timeout[];
+}
+/** A normal TTS message going out to speech pages (`/speech/<channel>`). */
+interface LegacyDelivery {
+  channel: string; speechID: string; payload: SpeechPayload; every: boolean;
+  members: Map<string, DeliveryMember>;
+  /** One-page mode: the page that owns playback now. */
+  active?: string;
+  /** First page sent to; drives the pet's read-TTS timeline until a page starts. */
+  primary: string;
+  /** "Every page" mode: the first page that started; its reports drive the read-TTS timeline. */
+  clock?: string;
+  /** Socket ids open when the message went out. Older pages that connect later may be a page that already saw it. */
+  eligible: Set<string>;
+  timeoutMs: number;
+  /** A move to another page is being prepared; other endings wait for it. */
+  moving: boolean;
+  heard: boolean; normalEnd: boolean; finished: boolean;
+}
+type SpeechSocket = RankableOutput & {
+  data: { ttsReady?: boolean; ttsOutput?: SpeechOutputInfo };
+  emit(event: string, ...args: unknown[]): boolean;
+  timeout(ms: number): { emitWithAck(event: string, ...args: unknown[]): Promise<unknown> };
+};
 
 /**
  * The source a request is reported under, and the receipt's own label. A channel-point reward that runs
@@ -89,6 +137,8 @@ export interface TtsQueueItem extends TtsRequestPayload {
   usageRequestID?: string;
   usageEntryID?: string;
   queueSession?: string | null;
+  /** Snapshot of `playback.allOutputs` when the message was queued (absent on older items: one page). */
+  allOutputs?: boolean;
 }
 
 const ttsCharacters = (item: TtsQueueItem) => {
@@ -175,7 +225,13 @@ class TtsQueueHandler {
   private extendingActivities = new Set<string>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
+  /** The normal TTS message currently out on speech pages, per channel. */
+  private deliveries = new Map<string, LegacyDelivery>();
+  /** Stop requests that wait for several pages to confirm before the desktop speech slot is released. */
+  private retiredOutputs = new Map<string, { pending: Set<string>; expires: number }>();
   synthesisTimeoutMs = DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS;
+  /** Speech page timings (tests shorten them). */
+  outputTimings = { startAfterReadyMs: START_AFTER_READY_MS, startAfterSendMs: START_AFTER_SEND_MS, cancelAckMs: CANCEL_ACK_MS };
   private readonly services: Record<RuntimeTtsProvider, TtsServiceContract> = {
     piper: piperTtsService,
     fish: fishTtsService,
@@ -195,7 +251,7 @@ class TtsQueueHandler {
     return this.hasOverlayConnection(channelID);
   }
 
-  async getStatus(channelID: string): Promise<TtsStatusData> {
+  async getStatus(channelID: string, playback?: { allOutputs?: boolean }): Promise<TtsStatusData> {
     if (!this.cache) await this.init();
     const currentSpeechID = this.activeSpeechIds.get(channelID);
     const studio = await studioTtsStatus(channelID, currentSpeechID);
@@ -207,7 +263,18 @@ class TtsQueueHandler {
         && this.dispatchedSpeechIds.has(channelID),
       preparing: !!currentSpeechID && !this.dispatchedSpeechIds.has(channelID),
       queueLength: await this.cache!.zCard(`twitch:${channelID}:tts:queue`) + studio.queueLength + (this.readHeads.get(channelID)?.phase === 'parked' ? 1 : 0),
+      // Speech pages only: Overlay Studio and the pet report their own connection above.
+      outputs: summarizeOutputs(sockets?.values() ?? [], playback?.allOutputs ? 'all' : 'one'),
     };
+  }
+
+  private speechSockets(channelID: string): SpeechSocket[] {
+    return [...getIO()?.of(`/speech/${channelID}`).sockets.values() ?? []] as SpeechSocket[];
+  }
+  /** Where a new message goes: the best page that can play it, or every open page. */
+  private speechTargets(channelID: string, every: boolean): SpeechSocket[] {
+    const ranked = rankOutputs(this.speechSockets(channelID));
+    return every ? ranked : ranked.slice(0, 1);
   }
 
   private async hasOverlayConnection(channelID: string): Promise<boolean> {
@@ -218,11 +285,19 @@ class TtsQueueHandler {
     return studioHasSource(channelID, 'tts') || legacy;
   }
 
-  async handleOverlayDisconnected(channelID: string): Promise<void> {
+  async handleOverlayDisconnected(channelID: string, source?: string): Promise<void> {
     if (this.petTurns.has(channelID)) return; // The pet, not the speech overlay, plays this item.
+    const delivery = this.deliveries.get(channelID);
+    if (delivery && this.deliveryCurrent(delivery)) {
+      // Only a page that has the message matters; it may move to another page.
+      const gone = [...delivery.members.values()].filter(member => !member.done &&
+        (source ? member.source === source : !this.outputSocket(delivery, member)?.connected));
+      for (const member of gone) await this.outputEnded(delivery, member, 'disconnected', 'disconnected');
+      return;
+    }
     const owner = this.readTtsOwners.get(channelID);
     if (owner) {
-      if (!owner.emitted || !owner.source.startsWith('legacy:')) return;
+      if (!owner.emitted || !owner.source.startsWith('legacy:') || owner.source === EVERY_OUTPUT) return;
       const socketId = owner.source.slice(7);
       if (!getIO()?.of(`/speech/${channelID}`).sockets.get(socketId)?.connected) await this.handleSpeechEnded(channelID, owner.speechId, 'disconnected');
       return;
@@ -290,6 +365,7 @@ class TtsQueueHandler {
       kokoroFallbackVoice: settings.voices.kokoroDefault,
       usageRequestID,
       usageEntryID: randomUUID(),
+      allOutputs: settings.playback?.allOutputs === true,
     };
 
     await enqueueTtsSession(this.cache!, payload.channelID, speechID, queueItem.timestamp, JSON.stringify(queueItem));
@@ -697,8 +773,8 @@ class TtsQueueHandler {
         this.speechActivities.set(`${channelID}:${speechID}`, activity);
         if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !await this.hasOverlayConnection(channelID) ||
             !await startSpeechActivity(activity)) { await this.cleanupSpeech(channelID, speechID, true); continue; }
-        const legacy = [...io.of(`/speech/${channelID}`).sockets.values()]
-          .filter(socket => socket.connected && socket.data.ttsReady).sort((a, b) => a.id.localeCompare(b.id))[0];
+        const targets = this.speechTargets(channelID, queueItem.allOutputs === true);
+        const legacy = targets[0];
         if (!legacy && !studioHasLiveSource(channelID, 'tts')) {
           // Keep the already synthesized file while an overlay reconnects.
           this.speechActivities.delete(`${channelID}:${speechID}`);
@@ -725,11 +801,12 @@ class TtsQueueHandler {
             legacy: !!legacy, cancelled: () => !valid(), ...(!legacy ? { beforeEmit: () => { if (!valid()) return false; owner.emitted = true; this.audibleSpeech.set(`${channelID}:${speechID}`, { source: owner.source, deadline: Date.now() + playbackTimeoutMs + 20_000 }); this.widgetTtsStart(channelID, queueItem, queueItem.text); return true; } } : {}),
             file: synthesisResult.outputPath, mime: synthesisResult.mimeType || 'audio/wav' });
           if (!valid()) return;
-          if (legacy?.connected && legacy.data.ttsReady) {
+          const live = targets.filter(socket => socket.connected && socket.data.ttsReady);
+          if (legacy && live.length) {
             owner.emitted = true;
+            this.startDelivery(channelID, owner, live, { speechID, audioUrl: synthesisResult.publicPath!, mimeType: synthesisResult.mimeType || 'audio/wav', mode: queueItem.mode, text: queueItem.text }, playbackTimeoutMs);
             this.audibleSpeech.set(`${channelID}:${speechID}`, { source: owner.source, deadline: Date.now() + playbackTimeoutMs + 20_000 });
             this.widgetTtsStart(channelID, queueItem, queueItem.text);
-            legacy.emit('speech', { speechID, audioUrl: synthesisResult.publicPath, mimeType: synthesisResult.mimeType || 'audio/wav', mode: queueItem.mode, text: queueItem.text });
           } else if (!owner.emitted) await this.handleSpeechEnded(channelID, speechID, 'output_unavailable');
         })();
         this.dispatches.set(channelID, dispatch);
@@ -1017,16 +1094,19 @@ class TtsQueueHandler {
         route = route.fallback ? await route.fallback() : { audio: 'overlay', durationMs: route.durationMs };
         if (!current()) return;
       }
-      const legacy = [...getIO()?.of(`/speech/${channel}`).sockets.values() ?? []]
-        .filter(socket => socket.connected && socket.data.ttsReady).sort((a,b) => a.id.localeCompare(b.id))[0];
+      const targets = this.speechTargets(channel, head.item.allOutputs === true);
+      const legacy = targets[0];
       if (!legacy && !studioHasLiveSource(channel, 'tts')) { await this.parkHead(channel, head); return; }
       owner.source = legacy ? `legacy:${legacy.id}` : 'studio';
       const outcome = await publishStudioReadTts(channel, { speechID: speech, durationMs: route.durationMs || 60_000, text: input.text,
         onOwner: source => { if (!legacy && current() && this.readTtsOwners.get(channel) === owner) { owner.source = source; const audible = this.audibleSpeech.get(`${channel}:${speech}`); if (audible) audible.source = source; } },
         legacy: !!legacy, cancelled: () => !current(), ...(!legacy ? { beforeEmit: markEmission } : {}), file: input.file, mime: input.mime });
       if (!current()) return;
-      if (legacy?.connected && legacy.data.ttsReady && markEmission()) {
-        legacy.emit('speech', { speechID: speech, audioUrl: input.audioUrl, mimeType: input.mime, mode: input.mode, text: input.text }); return;
+      const live = targets.filter(socket => socket.connected && socket.data.ttsReady);
+      if (legacy && live.length && markEmission()) {
+        this.startDelivery(channel, owner, live, { speechID: speech, audioUrl: input.audioUrl, mimeType: input.mime, mode: input.mode, text: input.text }, input.timeoutMs);
+        const audible = this.audibleSpeech.get(`${channel}:${speech}`); if (audible) audible.source = owner.source;
+        return;
       }
       if (owner.emitted) return;
       if (!legacy && outcome === 'emitted' && markEmission()) return;
@@ -1087,8 +1167,25 @@ class TtsQueueHandler {
     clearTimeout(this.currentTimeouts.get(key));
     this.currentTimeouts.set(key, setTimeout(() => {
       console.warn('TTS overlay playback timed out', { channelID, speechID, delay });
-      this.handleSpeechEnded(channelID, speechID, 'timeout').catch(error => { console.error('TTS timeout cleanup failed', { channelID, speechID, error }); });
+      this.playbackTimedOut(channelID, speechID).catch(error => { console.error('TTS timeout cleanup failed', { channelID, speechID, error }); });
     }, delay));
+  }
+
+  /** The message ran out of time. On one page that never started, it first moves to another page. */
+  private async playbackTimedOut(channelID: string, speechID: string): Promise<void> {
+    const delivery = this.deliveryFor(channelID, speechID);
+    if (!delivery) return this.handleSpeechEnded(channelID, speechID, 'timeout');
+    if (delivery.moving) return; // The move re-arms the deadline or settles the message itself.
+    const active = !delivery.every && delivery.active ? delivery.members.get(delivery.active) : undefined;
+    if (active && !active.done && !active.started && await this.moveDelivery(delivery, active, 'timeout', 'inferred')) return;
+    if (!this.deliveryCurrent(delivery)) return;
+    // Pages that never started count as failing (the status page says so) and are stopped.
+    for (const member of delivery.members.values()) {
+      if (member.done || member.started) continue;
+      this.noteOutputFailure(delivery, member, 'timeout');
+      this.stopUnstarted(delivery, member);
+    }
+    await this.finishDelivery(delivery, 'timeout');
   }
 
   /**
@@ -1117,6 +1214,9 @@ class TtsQueueHandler {
   handleSpeechPlayback(channelID: string, data: { speechID?: string; phase?: string; position?: number }, source?: string): void {
     if (!this.acceptsOverlayReport(channelID, data?.speechID, source)) return;
     if (!data?.speechID || this.dispatchedSpeechIds.get(channelID) !== data.speechID) return;
+    const delivery = this.deliveryFor(channelID, data.speechID);
+    const member = delivery && source ? delivery.members.get(source) : undefined;
+    if (delivery && member) return this.outputProgress(delivery, member, data);
     const key = `${channelID}:${data.speechID}`;
     const previous = this.playbackPositions.get(key);
     const position = data.position;
@@ -1125,13 +1225,7 @@ class TtsQueueHandler {
     void reportReadTts(channelID, data.speechID, data.phase || '', Number(position)).catch(() => {});
     if (previous === undefined || (Number.isFinite(position) && position! > previous + 0.05)) {
       this.playbackPositions.set(key, Number.isFinite(position) ? Math.max(0, position!) : 0);
-      const audible = this.audibleSpeech.get(key);
-      if (audible) audible.deadline = Math.max(audible.deadline, Date.now() + 80_000);
-      const activity = this.speechActivities.get(key);
-      if (activity && activity.expiresAt - Date.now() < 90_000 && !this.extendingActivities.has(key)) {
-        this.extendingActivities.add(key);
-        void extendSpeechActivity(activity, Date.now() + 120_000).catch(() => {}).finally(() => this.extendingActivities.delete(key));
-      }
+      this.extendPlayback(channelID, data.speechID);
       this.armPlaybackTimeout(channelID, data.speechID, 60_000);
       if (previous === undefined || previous === 0) {
         console.log('TTS playback', { channelID, speechID: data.speechID, phase: data.phase, position });
@@ -1139,24 +1233,295 @@ class TtsQueueHandler {
     }
   }
 
+  private extendPlayback(channelID: string, speechID: string): void {
+    const key = `${channelID}:${speechID}`;
+    const audible = this.audibleSpeech.get(key);
+    if (audible) audible.deadline = Math.max(audible.deadline, Date.now() + 80_000);
+    const activity = this.speechActivities.get(key);
+    if (activity && activity.expiresAt - Date.now() < 90_000 && !this.extendingActivities.has(key)) {
+      this.extendingActivities.add(key);
+      void extendSpeechActivity(activity, Date.now() + 120_000).catch(() => {}).finally(() => this.extendingActivities.delete(key));
+    }
+  }
+
   private acceptsOverlayReport(channelID: string, speechID?: string, source?: string): boolean {
     const owner = this.readTtsOwners.get(channelID);
-    return !owner || owner.emitted && owner.speechId === speechID && owner.source === source;
+    if (!owner) return true;
+    if (!owner.emitted || owner.speechId !== speechID) return false;
+    if (owner.source === source) return true;
+    const delivery = this.deliveries.get(channelID);
+    return owner.source === EVERY_OUTPUT && delivery?.speechID === speechID && !!source && delivery.members.has(source);
   }
   private async retireAudibleSpeech(channel: string, speech: string) {
     const key = `${channel}:${speech}`, audible = this.audibleSpeech.get(key), activity = this.speechActivities.get(key);
     if (!audible || !activity) return;
-    await retireMatchingSpeechActivity(channel, speech, activity.outputGeneration, audible.deadline, { kind: 'tts', source: audible.source });
+    let source = audible.source;
+    const delivery = this.deliveries.get(channel);
+    if (delivery?.speechID === speech) {
+      // Each page that may still be playing has to confirm it stopped before the slot is released.
+      const existing = this.retiredOutputs.get(key);
+      const unproven = [...delivery.members.values()].filter(member => !member.stopped && (!existing || existing.pending.has(member.source))).map(member => member.source);
+      if (existing) {
+        // Retired again (skip, then cleanup): keep the confirmations already received.
+        existing.pending = new Set(unproven);
+        if (!existing.pending.size) { this.retiredOutputs.delete(key); await confirmRetiredSpeechActivity(channel, { kind: 'tts', source: EVERY_OUTPUT }, speech); }
+        return;
+      }
+      if (!unproven.length) {
+        // Every page is known to be silent: release the slot instead of waiting for a confirmation.
+        this.speechActivities.delete(key);
+        await finishSpeechActivity(activity, 'ended');
+        return;
+      }
+      if (unproven.length === 1) source = unproven[0];
+      else {
+        source = EVERY_OUTPUT;
+        for (const [old, entry] of this.retiredOutputs) if (entry.expires < Date.now()) this.retiredOutputs.delete(old);
+        this.retiredOutputs.set(key, { pending: new Set(unproven), expires: Date.now() + 600_000 });
+      }
+    }
+    await retireMatchingSpeechActivity(channel, speech, activity.outputGeneration, audible.deadline, { kind: 'tts', source });
+  }
+  /** A late stop confirmation for a message that was already retired (skip, clear, timeout). */
+  private async confirmOutputStopped(channelID: string, speechID: string, source: string): Promise<boolean> {
+    const key = `${channelID}:${speechID}`, retired = this.retiredOutputs.get(key);
+    const delivery = this.deliveries.get(channelID);
+    const member = delivery?.speechID === speechID ? delivery.members.get(source) : undefined;
+    if (retired?.pending.has(source)) {
+      if (member) member.stopped = true; // A later retirement of the same message must not ask it again.
+      retired.pending.delete(source);
+      if (!retired.pending.size) {
+        this.retiredOutputs.delete(key);
+        await confirmRetiredSpeechActivity(channelID, { kind: 'tts', source: EVERY_OUTPUT }, speechID);
+      }
+      return true;
+    }
+    const confirmed = await confirmRetiredSpeechActivity(channelID, { kind: 'tts', source }, speechID);
+    if (confirmed && member) member.stopped = true;
+    return confirmed;
   }
   private retireReadOwner(channel: string, speech: string) {
     const owner = this.readTtsOwners.get(channel);
     if (!owner || owner.speechId !== speech) return;
     this.readTtsOwners.delete(channel);
+    const delivery = this.deliveries.get(channel);
+    if (delivery?.speechID === speech) {
+      // Every page that got the message drops it and resynchronises its local queue.
+      const sockets = this.speechSockets(channel);
+      for (const member of delivery.members.values()) sockets.find(socket => socket.id === member.socketId)?.emit('speech-reset');
+      return;
+    }
     if (owner.source.startsWith('legacy:')) getIO()?.of(`/speech/${channel}`).sockets.get(owner.source.slice(7))?.emit('speech-reset');
   }
-  async handleOverlayEnded(channelID: string, speechID: string | undefined, reason: string | undefined, source: string, playbackStopped = false) {
-    if (playbackStopped && speechID && await confirmRetiredSpeechActivity(channelID, { kind: 'tts', source }, speechID)) return;
+  async handleOverlayEnded(channelID: string, speechID: string | undefined, reason: string | undefined, source: string, playbackStopped = false,
+      report?: { position?: unknown; started?: unknown }) {
+    if (playbackStopped && speechID && await this.confirmOutputStopped(channelID, speechID, source)) return;
+    const delivery = speechID ? this.deliveryFor(channelID, speechID) : undefined;
+    const member = delivery?.members.get(source);
+    if (delivery && member) return this.outputEnded(delivery, member, reason || 'ended', 'reported', report);
+    if (reason === 'reset') return; // A page confirming a stop we asked for, never an ending.
     if (this.acceptsOverlayReport(channelID, speechID, source)) await this.handleSpeechEnded(channelID, speechID, reason, playbackStopped);
+  }
+
+  // ---- Speech pages: which page plays a message, and moving it when that page fails ----
+
+  private deliveryFor(channelID: string, speechID: string): LegacyDelivery | undefined {
+    const delivery = this.deliveries.get(channelID);
+    return delivery && delivery.speechID === speechID && !delivery.finished ? delivery : undefined;
+  }
+  private deliveryCurrent(delivery: LegacyDelivery): boolean {
+    return this.deliveries.get(delivery.channel) === delivery && !delivery.finished && !this.controls.has(delivery.channel)
+      && this.dispatchedSpeechIds.get(delivery.channel) === delivery.speechID;
+  }
+  private clearDelivery(channelID: string, speechID?: string): void {
+    const delivery = this.deliveries.get(channelID);
+    if (!delivery || speechID !== undefined && delivery.speechID !== speechID) return;
+    delivery.finished = true;
+    for (const member of delivery.members.values()) { for (const timer of member.timers) clearTimeout(timer); member.timers = []; }
+    this.deliveries.delete(channelID);
+  }
+  /** Sends a generated message to the chosen speech pages (several only in "every page" mode). */
+  private startDelivery(channel: string, owner: { source: string }, sockets: SpeechSocket[], payload: SpeechPayload, timeoutMs: number): void {
+    this.clearDelivery(channel);
+    const every = sockets.length > 1;
+    const delivery: LegacyDelivery = { channel, speechID: payload.speechID, payload, every, members: new Map(), primary: `legacy:${sockets[0].id}`,
+      eligible: new Set(this.speechSockets(channel).filter(socket => socket.connected).map(socket => socket.id)),
+      timeoutMs, moving: false, heard: false, normalEnd: false, finished: false };
+    if (!every) delivery.active = delivery.primary;
+    this.deliveries.set(channel, delivery);
+    owner.source = every ? EVERY_OUTPUT : delivery.primary;
+    for (const socket of sockets) this.sendToOutput(delivery, socket);
+  }
+  private sendToOutput(delivery: LegacyDelivery, socket: SpeechSocket): DeliveryMember {
+    const info = socket.data.ttsOutput;
+    const member: DeliveryMember = { source: `legacy:${socket.id}`, socketId: socket.id, pageId: info?.version === 2 ? info.pageId : undefined,
+      started: false, done: false, stopped: false, reported: false, position: 0, timers: [] };
+    delivery.members.set(member.source, member);
+    member.timers.push(setTimeout(() => {
+      this.outputStuck(delivery, member, 'no-start').catch(error => console.error('TTS speech page check failed', { channelID: delivery.channel, error }));
+    }, this.outputTimings.startAfterSendMs));
+    socket.emit('speech', delivery.payload);
+    return member;
+  }
+  private outputSocket(delivery: LegacyDelivery, member: DeliveryMember): SpeechSocket | undefined {
+    return this.speechSockets(delivery.channel).find(socket => socket.id === member.socketId);
+  }
+  /** The best untried page. A page ignores a speech id it already saw, even after reconnecting under a new socket id. */
+  private nextOutput(delivery: LegacyDelivery): SpeechSocket | undefined {
+    const tried = new Set<string>(), pages = new Set<string>();
+    for (const member of delivery.members.values()) { tried.add(member.socketId); if (member.pageId) pages.add(member.pageId); }
+    return rankOutputs(this.speechSockets(delivery.channel)).find(socket => {
+      if (tried.has(socket.id)) return false;
+      const page = socket.data.ttsOutput?.version === 2 ? socket.data.ttsOutput.pageId : undefined;
+      return page ? !pages.has(page) : delivery.eligible.has(socket.id);
+    });
+  }
+  private noteOutputFailure(delivery: LegacyDelivery, member: DeliveryMember, reason: string): void {
+    if (!OUTPUT_FAILURES.has(reason)) return;
+    const info = this.outputSocket(delivery, member)?.data.ttsOutput;
+    if (info) recordOutputFailure(info, reason);
+  }
+  /** Stops a page that has not started yet. A page that never started is silent once it handles the reset. */
+  private stopUnstarted(delivery: LegacyDelivery, member: DeliveryMember): void {
+    member.done = true;
+    this.outputSocket(delivery, member)?.emit('speech-reset');
+    member.stopped ||= !member.started;
+  }
+  /**
+   * Stops one page before the message moves elsewhere. Current pages confirm (and say if playback had
+   * started after all); older pages get a reset, which every page version understands.
+   */
+  private async stopOutput(delivery: LegacyDelivery, member: DeliveryMember): Promise<{ started: boolean }> {
+    const socket = this.outputSocket(delivery, member);
+    if (socket?.connected && socket.data.ttsOutput?.version === 2) {
+      try {
+        const reply = await socket.timeout(this.outputTimings.cancelAckMs).emitWithAck('speech-cancel', { speechID: delivery.speechID }) as { started?: unknown } | undefined;
+        if (reply?.started === true) member.started = true;
+        member.stopped = true;
+        return { started: member.started };
+      } catch {
+        // No answer in time: fall back to a reset, unless the message ended meanwhile. The page may
+        // already be playing the next message, and a reset is not scoped to one speech id.
+        if (!this.deliveryCurrent(delivery)) return { started: member.started };
+      }
+    }
+    if (socket?.connected) socket.emit('speech-reset');
+    member.stopped ||= !member.started;
+    return { started: member.started };
+  }
+  /** Progress from a page playing the message. */
+  private outputProgress(delivery: LegacyDelivery, member: DeliveryMember, data: { speechID?: string; phase?: string; position?: number }): void {
+    if (member.done) return;
+    const position = Number.isFinite(data.position) ? Math.max(0, Number(data.position)) : 0;
+    const first = !member.reported; member.reported = true;
+    if (data.phase === 'ready' && !member.readyAt) {
+      member.readyAt = Date.now();
+      member.timers.push(setTimeout(() => {
+        this.outputStuck(delivery, member, 'start-timeout').catch(error => console.error('TTS speech page check failed', { channelID: delivery.channel, error }));
+      }, this.outputTimings.startAfterReadyMs));
+    }
+    const advanced = position > member.position + 0.05;
+    if (advanced) member.position = position;
+    const startedNow = !member.started && (data.phase === 'playing' || data.phase === 'progress' || advanced);
+    if (startedNow) {
+      member.started = true; delivery.heard = true; delivery.clock ??= member.source;
+      for (const timer of member.timers) clearTimeout(timer);
+      member.timers = [];
+      const info = this.outputSocket(delivery, member)?.data.ttsOutput;
+      if (info) recordOutputSuccess(info);
+    }
+    // One page's clock drives the pet's read-TTS timeline; copies are never one coherent clock.
+    if (member.source === (delivery.every ? delivery.clock ?? delivery.primary : delivery.active)) {
+      void reportReadTts(delivery.channel, delivery.speechID, data.phase || '', position).catch(() => {});
+    }
+    if (first || advanced || startedNow) {
+      this.extendPlayback(delivery.channel, delivery.speechID);
+      this.armPlaybackTimeout(delivery.channel, delivery.speechID, 60_000);
+      if (first || startedNow) console.log('TTS playback', { channelID: delivery.channel, speechID: delivery.speechID, phase: data.phase, position, ...(delivery.every || delivery.members.size > 1 ? { page: member.socketId } : {}) });
+    }
+  }
+  /** A page did not start in time (no `ready` → play, or nothing at all from an older page). */
+  private async outputStuck(delivery: LegacyDelivery, member: DeliveryMember, reason: 'no-start' | 'start-timeout'): Promise<void> {
+    if (!this.deliveryCurrent(delivery) || member.done || member.started) return;
+    if (delivery.every) {
+      // Another page is already playing it: this one would only start late, out of step.
+      if (![...delivery.members.values()].some(other => other.started)) return;
+      await this.stopOutput(delivery, member);
+      if (!this.deliveryCurrent(delivery) || member.done) return;
+      member.done = true;
+      if (!member.started) this.noteOutputFailure(delivery, member, reason);
+      return this.everyOutputProgress(delivery, reason);
+    }
+    // Without another page this does nothing: the page may still start, and its own checks end it.
+    if (member.source === delivery.active) await this.moveDelivery(delivery, member, reason, 'inferred');
+  }
+  /** A page finished with the message: it ended, failed or disconnected. */
+  private async outputEnded(delivery: LegacyDelivery, member: DeliveryMember, reason: string, how: 'reported' | 'disconnected',
+      report?: { position?: unknown; started?: unknown }): Promise<void> {
+    if (member.done || delivery.finished) return;
+    if (report?.started === true || Number(report?.position) > 0.05) { member.started = true; delivery.heard = true; }
+    if (how === 'reported' && reason === 'reset') { member.stopped = true; return; }
+    const failed = how === 'disconnected' || OUTPUT_FAILURES.has(reason);
+    if (delivery.every) {
+      member.done = true;
+      member.stopped ||= how === 'reported' || !member.started;
+      if (failed && !member.started) this.noteOutputFailure(delivery, member, reason);
+      if (reason === 'ended') delivery.normalEnd = true;
+      return this.everyOutputProgress(delivery, reason);
+    }
+    if (member.source !== delivery.active) { member.done = true; member.stopped ||= how === 'reported' || !member.started; return; }
+    if (delivery.moving) return; // The move in progress decides; this page is being stopped anyway.
+    if (failed && !member.started && await this.moveDelivery(delivery, member, reason, how)) return;
+    member.done = true;
+    member.stopped ||= how === 'reported' || !member.started;
+    if (failed && !member.started) this.noteOutputFailure(delivery, member, reason);
+    await this.finishDelivery(delivery, reason);
+  }
+  /** "Every page" mode: done when each page that started has finished; pages that never started are stopped then. */
+  private async everyOutputProgress(delivery: LegacyDelivery, reason: string): Promise<void> {
+    if (!this.deliveryCurrent(delivery)) return;
+    const open = [...delivery.members.values()].filter(member => !member.done);
+    const heard = delivery.heard || [...delivery.members.values()].some(member => member.started);
+    if (open.length && !(heard && open.every(member => !member.started))) return;
+    for (const member of open) this.stopUnstarted(delivery, member);
+    await this.finishDelivery(delivery, delivery.normalEnd ? 'ended' : reason);
+  }
+  /**
+   * The page playing a message failed before anyone heard it: the same audio (same file, same speech id,
+   * no new synthesis or billing) goes to the next page that can play it. Returns false when there is no
+   * other page, leaving the ending to the caller; true when the message continues or was settled here.
+   */
+  private async moveDelivery(delivery: LegacyDelivery, member: DeliveryMember, reason: string, how: 'reported' | 'inferred' | 'disconnected'): Promise<boolean> {
+    if (delivery.moving) return true;
+    if (!this.deliveryCurrent(delivery) || delivery.members.size >= MAX_OUTPUTS_PER_MESSAGE || !this.nextOutput(delivery)) return false;
+    delivery.moving = true; // Claimed before the first await: a timeout, error and skip cannot all move it.
+    try {
+      if (how === 'inferred') {
+        const { started } = await this.stopOutput(delivery, member);
+        if (!this.deliveryCurrent(delivery)) return true;
+        if (started) { member.done = true; await this.finishDelivery(delivery, reason); return true; } // It was audible after all: never replay.
+      } else member.stopped ||= how === 'reported' || !member.started;
+      member.done = true;
+      if (how !== 'disconnected') this.noteOutputFailure(delivery, member, reason);
+      const next = this.nextOutput(delivery);
+      if (!next) { await this.finishDelivery(delivery, reason); return true; }
+      const moved = this.sendToOutput(delivery, next);
+      delivery.active = moved.source;
+      const owner = this.readTtsOwners.get(delivery.channel);
+      if (owner?.speechId === delivery.speechID) owner.source = moved.source;
+      this.extendPlayback(delivery.channel, delivery.speechID);
+      this.armPlaybackTimeout(delivery.channel, delivery.speechID, delivery.timeoutMs);
+      console.log('TTS moved to another speech page', { channelID: delivery.channel, speechID: delivery.speechID, reason, from: member.socketId, to: next.id });
+      return true;
+    } finally { delivery.moving = false; }
+  }
+  private async finishDelivery(delivery: LegacyDelivery, reason: string): Promise<void> {
+    if (delivery.finished) return;
+    const stopped = [...delivery.members.values()].every(member => member.stopped);
+    for (const member of delivery.members.values()) { for (const timer of member.timers) clearTimeout(timer); member.timers = []; }
+    // Stays registered until cleanup so retirement still sees which pages may be playing.
+    delivery.finished = true;
+    await this.handleSpeechEnded(delivery.channel, delivery.speechID, reason, stopped);
   }
   async handleSpeechEnded(channelID: string, speechID?: string, reason = 'ended', playbackStopped = false): Promise<void> {
     if (playbackStopped && speechID && reason === 'pet:completed' &&
@@ -1175,11 +1540,7 @@ class TtsQueueHandler {
     if (!playbackStopped) await this.retireAudibleSpeech(channelID, speechID).catch(() => {});
     const petTurn = this.petTurns.get(channelID);
     if (petTurn?.speechID === speechID) petTurn.reason = reason;
-    const owner = this.readTtsOwners.get(channelID);
-    if (owner?.speechId === speechID) {
-      this.readTtsOwners.delete(channelID);
-      if (owner.source.startsWith('legacy:')) getIO()?.of(`/speech/${channelID}`).sockets.get(owner.source.slice(7))?.emit('speech-reset');
-    }
+    this.retireReadOwner(channelID, speechID);
     await endStudioReadTts(channelID, speechID);
     console.log('TTS finished', { channelID, speechID, reason });
     await this.cleanupSpeech(channelID, speechID, false, playbackStopped);
@@ -1292,6 +1653,7 @@ class TtsQueueHandler {
     if (head?.item.speechID === speechID) { head.cancelled = true; head.epoch++; head.phase = 'terminal'; head.cancellation.abort(); this.headWakes.delete(channelID); }
     if (!playbackStopped) await this.retireAudibleSpeech(channelID, speechID).catch(() => {});
     this.retireReadOwner(channelID, speechID);
+    this.clearDelivery(channelID, speechID);
     // External failures are reported after local cleanup, never instead of it.
     let failure: unknown;
     const activityKey = `${channelID}:${speechID}`, activity = this.speechActivities.get(activityKey);

@@ -3,7 +3,7 @@ import { HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError } from 'rxjs';
 
-import { FishVoiceResults, FishVoiceFilters, FishVoiceFavorite, TtsSettings, TtsSettingsResponse } from '../models/tts-settings.model';
+import { FishVoiceResults, FishVoiceFilters, FishVoiceFavorite, TtsSettings, TtsSettingsResponse, TtsStatus } from '../models/tts-settings.model';
 import { ApiEnvelope } from '../models/admin.model';
 import { LinksService } from './links.service';
 import { HttpClient } from '@angular/common/http';
@@ -52,6 +52,15 @@ export class TtsSettingsApiService {
         }),
         catchError((error) => throwError(() => this.toRequestError(error, this.language.translate('modules.tts.errors.loadFailed'))))
       );
+  }
+
+  /** Live TTS state, including where the speech URL is open (read-only, needs TTS view access). */
+  getStatus(channelID: string) {
+    return this.http.get<ApiEnvelope<TtsStatus>>(`${this.linksService.getApiUrl()}/speech/${channelID.trim()}/status`)
+      .pipe(map(response => {
+        if (response.error || !response.data) throw new Error('status_unavailable');
+        return response.data;
+      }));
   }
 
   searchVoices(channelID: string, filters: FishVoiceFilters) {

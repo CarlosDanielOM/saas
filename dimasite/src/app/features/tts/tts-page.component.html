@@ -373,6 +373,48 @@
                   {{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}
                 </button>
               </div>
+
+              <div class="lf-outputs" data-testid="tts-outputs" aria-live="polite">
+                @if (outputReport(); as report) {
+                  <p class="lf-outputs__status" [attr.data-tone]="report.tone">
+                    <span class="lf-dot" [class.lf-dot--warn]="report.tone !== 'ok'" aria-hidden="true"></span>
+                    <span>{{ report.headline }}</span>
+                  </p>
+                  @if (report.problems.length) {
+                    <ul class="lf-outputs__list lf-outputs__list--warn">
+                      @for (problem of report.problems; track problem) { <li>{{ problem }}</li> }
+                    </ul>
+                  }
+                  @if (report.notes.length) {
+                    <ul class="lf-outputs__list">
+                      @for (note of report.notes; track note) { <li>{{ note }}</li> }
+                    </ul>
+                  }
+                  @if (ttsStatusFailed()) { <p class="lf-note">{{ t('modules.tts.outputs.stale') }}</p> }
+                } @else if (ttsStatusFailed()) {
+                  <p class="lf-note">{{ t('modules.tts.outputs.unavailable') }}</p>
+                } @else if (!ttsStatus()) {
+                  <p class="lf-note">{{ t('modules.tts.outputs.checking') }}</p>
+                }
+              </div>
+
+              <div class="lf-toggle-row lf-outputs__mode">
+                <div class="lf-toggle-row__copy">
+                  <span class="lf-outputs__mode-label" id="tts-every-copy-label">{{ t('modules.tts.outputs.everyLabel') }}</span>
+                  <p class="lf-toggle-row__hint" id="tts-every-copy-hint">{{ tts.playback.allOutputs ? t('modules.tts.outputs.everyOnHint') : t('modules.tts.outputs.everyOffHint') }}</p>
+                </div>
+                <label class="lf-switch" data-assistant-anchor="tts.every-copy">
+                  <input
+                    type="checkbox"
+                    aria-labelledby="tts-every-copy-label"
+                    aria-describedby="tts-every-copy-hint"
+                    [checked]="tts.playback.allOutputs"
+                    [disabled]="ttsReadOnly() || ttsSaving()"
+                    (change)="updatePlayEverywhere($any($event.target).checked)"
+                  />
+                  <span class="lf-switch__track"></span>
+                </label>
+              </div>
             </section>
           }
 

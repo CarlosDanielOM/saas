@@ -9,6 +9,7 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { clipQueueHandler } from "../handlers/clip_queue.handler.js";
 import { ttsQueueHandler } from "../handlers/tts_queue.handler.js";
+import { applyOutputState, newOutputInfo } from "../handlers/tts_outputs.js";
 import { registerDimafxOverlay } from './services/dimafx-overlay.service.js';
 import { registerVoicePreview } from './services/tts/voice_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
@@ -283,6 +284,9 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         io.of(/^\/speech\/\w+$/).on('connection', async (socket) => {
             const channelID = socket.nsp.name.split('/')[2];
             socket.data.ttsReady = false;
+            // What the page says about itself (visible, in OBS, can play sound) picks where TTS plays.
+            socket.data.ttsOutput = newOutputInfo(socket.handshake.auth);
+            socket.on('speech-state', (raw: unknown) => { applyOutputState(socket.data.ttsOutput, raw); });
 
             const account = await TwitchStreamers.getTwitchAccountById(channelID);
             if (!account) {
@@ -310,14 +314,15 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             socket.on('speech-playback', (data) => {
                 ttsQueueHandler.handleSpeechPlayback(channelID, data, `legacy:${socket.id}`);
             });
-            socket.on('speech-ended', async (data: { speechID?: string, reason?: string }) => {
-                await ttsQueueHandler.handleOverlayEnded(channelID, data?.speechID, data?.reason, `legacy:${socket.id}`, true);
+            socket.on('speech-ended', async (data: { speechID?: string, reason?: string, position?: unknown, started?: unknown }) => {
+                await ttsQueueHandler.handleOverlayEnded(channelID, data?.speechID, data?.reason, `legacy:${socket.id}`, true,
+                    { position: data?.position, started: data?.started });
             });
 
             // Handle disconnect with 5s delay
             socket.on('disconnect', () => {
                 console.log(`${account.name} (${channelID}) disconnected from speech`);
-                void ttsQueueHandler.handleOverlayDisconnected(channelID).catch(error => {
+                void ttsQueueHandler.handleOverlayDisconnected(channelID, `legacy:${socket.id}`).catch(error => {
                     console.error('TTS disconnect cleanup failed', { channelID, error });
                 });
 

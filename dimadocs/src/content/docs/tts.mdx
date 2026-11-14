@@ -18,7 +18,15 @@ Text to speech (TTS) reads messages aloud on your stream. Your viewers use the `
 3. In OBS, add a **Browser Source** with that URL. Keep the source active while you want speech to play.
 4. Check that the bot is on (the dashboard header shows **Bot in your chat**) and that the **Speech Chat** command (`!s`) is on under **Commands**. Then type `!s Hello chat!` in your chat to test it. `!s` works without activating the bot.
 
-If the browser source is not connected, new speech requests are refused with the message "Speech overlay is not connected." Queued speech waits until the source reconnects.
+If no copy of the speech URL is connected, new speech requests are refused with the message "Speech overlay is not connected." Messages already waiting stay in the queue until a copy reconnects.
+
+You can open the speech URL in several places at once, such as two OBS browser sources, a second PC, or a browser tab. Each copy reports whether it is visible, running inside OBS, and allowed to play sound.
+
+In the **Speech URL** card, **Play on every open copy** is off by default. Each message plays on one copy that can play it. Visible OBS sources in the program output are preferred; sources hidden in OBS, browser tabs waiting for a click or tap to allow sound, and copies that failed recently are used last. Turn the setting on to play every message on every open copy, for example in OBS and on a second PC. The next message waits for every copy that started to finish; copies that never start are stopped. The Dima assistant can also change this setting.
+
+The card shows **Open in N places** and reports problems, refreshing every 10 seconds. If a copy is hidden in OBS, put it in the scene you stream with the eye on, or delete it. It also reports browsers waiting for a click or tap, copies that could not play recently, and older copies that cannot report problems; refresh the browser source in OBS to update an older copy. If the URL is open more than once in one-copy mode, the card suggests deleting an accidental duplicate.
+
+If OBS does not start the audio, keep the TTS browser source in the scene you stream, or in a scene nested in all your scenes, with the eye on. OBS does not start audio in a browser source hidden because it is not in a scene being shown or its eye is off. A phone or normal browser tab may not play until you tap or click the page, so it is not a good test. After this update, refresh the browser source in OBS once so it can report problems.
 
 ## Choose a voice engine
 
@@ -137,8 +145,9 @@ For `$(tts.status)`, `$(tts.connected)`, `$(tts.queue.length)`, and the skip, cl
 
 - Speech plays in order, one item at a time, for each channel.
 - The **Maximum messages waiting** setting counts the message that is playing now. With the default of 5, one message can play and four can wait.
-- If the browser source is disconnected, new requests are refused. Messages already waiting stay in the queue and play when the source reconnects.
-- A message that was interrupted by a disconnect is not replayed.
+- If no copy is connected, new requests are refused. Messages already waiting stay in the queue until a copy reconnects.
+- In one-copy mode, if playback fails before anything is heard, the same message moves to the next copy that can play it. This can happen if a copy cannot play, audio fails to load or stalls, playback does not start within a few seconds after downloading, or the copy closes. Up to three copies can try a message. The audio is made once, so moving it uses no extra voice credits.
+- A message is never replayed after it starts playing, including after a disconnect.
 
 ## Message filters and limits
 

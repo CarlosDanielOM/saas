@@ -29,6 +29,10 @@ export interface ChannelTtsSettingsData {
     queue: {
         maxItems: number;
     };
+    playback: {
+        /** Play each message on every open speech page at once (off: one page that can play it). */
+        allOutputs: boolean;
+    };
 }
 
 export interface IChannelTtsSettings extends ChannelTtsSettingsData {
@@ -58,6 +62,9 @@ export const DEFAULT_TTS_SETTINGS: Omit<ChannelTtsSettingsData, 'channelID' | 'c
     },
     queue: {
         maxItems: 5
+    },
+    playback: {
+        allOutputs: false
     }
 };
 
@@ -100,7 +107,8 @@ export function createDefaultChannelTtsSettings(channelID: string, channel: stri
         defaultLanguage: DEFAULT_TTS_SETTINGS.defaultLanguage,
         voices: { ...DEFAULT_TTS_SETTINGS.voices },
         filters: { ...DEFAULT_TTS_SETTINGS.filters, expressiveTags: normalizeExpressiveTtsTags() },
-        queue: { ...DEFAULT_TTS_SETTINGS.queue }
+        queue: { ...DEFAULT_TTS_SETTINGS.queue },
+        playback: { ...DEFAULT_TTS_SETTINGS.playback }
     };
 }
 
@@ -135,6 +143,9 @@ export function normalizeChannelTtsSettings(
         },
         queue: {
             maxItems: sanitizeMaxItems(input?.queue?.maxItems, defaults.queue.maxItems)
+        },
+        playback: {
+            allOutputs: input?.playback?.allOutputs === true
         }
     };
 }
@@ -160,6 +171,9 @@ const channelTtsSettingsSchema = new Schema<IChannelTtsSettings>({
     },
     queue: {
         maxItems: { type: Number, default: DEFAULT_TTS_SETTINGS.queue.maxItems }
+    },
+    playback: {
+        allOutputs: { type: Boolean, default: DEFAULT_TTS_SETTINGS.playback.allOutputs }
     }
 }, {
     timestamps: true

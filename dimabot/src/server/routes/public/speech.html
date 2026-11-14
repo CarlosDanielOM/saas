@@ -18,7 +18,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
     <script>
         const channelID = window.location.pathname.split('/')[2];
+        // Identifies this page across reconnects: the server never retries a message on a page that already saw it.
+        const pageId = String(window.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`)
+            .replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
         const socket = io(`/speech/${channelID}`, {
+            auth: { v: 2, pageId },
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 1000,
@@ -30,6 +34,80 @@
         const seen = new Set();
         let current = null;
         let synchronized = false;
+
+        // What this page tells the server, so TTS goes to a copy that can play it. A hidden OBS source
+        // never starts audio it has not played before, and browsers block sound until the page is tapped.
+        const state = {
+            visible: document.visibilityState === 'visible',
+            obs: !!window.obsstudio,
+            obsActive: undefined,
+            played: false,
+            probe: 'idle'
+        };
+        function sendState() {
+            if (socket.connected) socket.emit('speech-state', { v: 2, pageId, ...state });
+        }
+
+        // Silent start-up probe: 50 ms of silence, played unmuted so it meets the same autoplay rules as speech.
+        const silence = (() => {
+            const samples = 400, view = new DataView(new ArrayBuffer(44 + samples * 2));
+            const text = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+            text(0, 'RIFF'); view.setUint32(4, 36 + samples * 2, true); text(8, 'WAVEfmt ');
+            view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+            view.setUint32(24, 8000, true); view.setUint32(28, 16000, true); view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true); text(36, 'data'); view.setUint32(40, samples * 2, true);
+            return URL.createObjectURL(new Blob([view.buffer], { type: 'audio/wav' }));
+        })();
+        let probeRun = 0;
+        let probeElement = null;
+        function dropProbe() {
+            probeRun++;
+            const element = probeElement;
+            probeElement = null;
+            if (!element) return;
+            element.pause();
+            element.removeAttribute('src');
+            element.load();
+        }
+        function probeAudio() {
+            // One probe at a time, and nothing left to learn once this page has played audio.
+            if (state.played || state.probe === 'pending') return;
+            dropProbe();
+            const run = probeRun;
+            const element = probeElement = new Audio();
+            element.src = silence;
+            state.probe = 'pending';
+            sendState();
+            const settle = (outcome) => {
+                if (run !== probeRun) return; // A newer probe or real speech already answered.
+                dropProbe();
+                if (state.played) return;
+                state.probe = outcome;
+                if (outcome === 'ok') state.played = true;
+                sendState();
+            };
+            element.play().then(() => settle('ok'), (error) => settle(error?.name === 'NotAllowedError' ? 'blocked' : 'failed'));
+        }
+        function markPlayed() {
+            if (state.played && state.probe === 'ok') return;
+            dropProbe();
+            state.played = true;
+            state.probe = 'ok';
+            sendState();
+        }
+        document.addEventListener('visibilitychange', () => {
+            state.visible = document.visibilityState === 'visible';
+            sendState();
+            if (state.visible) probeAudio();
+        });
+        window.addEventListener('obsSourceActiveChanged', (event) => {
+            if (typeof event.detail?.active !== 'boolean') return;
+            state.obsActive = event.detail.active;
+            sendState();
+        });
+        // A tap or key press lets a browser tab play sound.
+        for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => { if (state.probe === 'blocked') { state.probe = 'idle'; probeAudio(); } }, { passive: true });
+        probeAudio();
 
         function report(item, phase) {
             socket.emit('speech-playback', {
@@ -51,7 +129,7 @@
                 item.audio.remove();
             }
             if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
-            if (notify) socket.emit('speech-ended', { speechID: item.speechID, reason, position });
+            if (notify) socket.emit('speech-ended', { speechID: item.speechID, reason, position, started: !!item.started });
             current = null;
             void playNext();
         }
@@ -89,7 +167,7 @@
                 audio.dataset.speechId = item.speechID;
                 audio.addEventListener('ended', () => finish(item, 'ended'));
                 audio.addEventListener('error', () => finish(item, 'media-error'));
-                audio.addEventListener('playing', () => report(item, 'playing'));
+                audio.addEventListener('playing', () => { item.started = true; markPlayed(); report(item, 'playing'); });
                 document.body.appendChild(audio);
                 let lastPosition = 0;
                 let lastProgressAt = Date.now();
@@ -112,8 +190,11 @@
                         audio.play().catch(() => finish(item, 'play-error'));
                     }
                 }, 500);
+                // Downloaded: the server expects playback to start right away (or moves it to another copy).
+                report(item, 'ready');
                 await audio.play();
-            } catch {
+            } catch (error) {
+                if (error?.name === 'NotAllowedError' && !state.played) { state.probe = 'blocked'; sendState(); }
                 finish(item, item.audio ? 'play-error' : 'download-error');
             }
         }
@@ -127,8 +208,26 @@
         socket.on('disconnect', resetPlayback);
         socket.on('connect', resetPlayback);
         socket.on('speech-reset', () => {
+            // Confirm the stop, so the server knows this copy is silent.
+            if (current && !current.finished) {
+                socket.emit('speech-ended', { speechID: current.speechID, reason: 'reset', position: current.audio?.currentTime || 0, started: !!current.started });
+            }
             resetPlayback();
             synchronized = true;
+            sendState();
+        });
+        // The server moves a message that did not start to another copy: stop it here and say whether it had started.
+        socket.on('speech-cancel', (payload, ack) => {
+            const speechID = payload?.speechID;
+            let started = false;
+            if (current && current.speechID === speechID) {
+                started = !!current.started || (current.audio?.currentTime || 0) > 0.05;
+                finish(current, 'cancelled', false);
+            } else {
+                const index = queue.findIndex((item) => item.speechID === speechID);
+                if (index >= 0) queue.splice(index, 1);
+            }
+            if (typeof ack === 'function') ack({ stopped: true, started });
         });
 
         socket.on('speech', (payload) => {

@@ -35,8 +35,10 @@ export async function saveChannelTtsSettings(channelID: string, channelName: str
     if (body?.voices?.kokoroDefault !== undefined && !resolveKokoroVoice(body.voices.kokoroDefault)) {
         return { ok: false, status: 400, body: { error: true, message: 'Invalid Kokoro voice', status: 400 } };
     }
-    const nextSettings = normalizeChannelTtsSettings(body, channelID, channelName);
     const previous = await getChannelTtsSettings(channelID, channelName);
+    // A page loaded before a setting existed sends a body without it: keep the stored value.
+    const complete = body && typeof body === 'object' && body.playback === undefined ? { ...body, playback: previous.playback } : body;
+    const nextSettings = normalizeChannelTtsSettings(complete, channelID, channelName);
     const voiceProblem = await checkFishVoice(nextSettings.voices.cloneDefault!, previous.voices.cloneDefault);
     if (voiceProblem) return voiceProblem;
     return { ok: true, settings: await upsertChannelTtsSettings(channelID, nextSettings, channelName) };

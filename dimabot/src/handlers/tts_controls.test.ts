@@ -71,6 +71,7 @@ async function until(condition: () => boolean) {
   for (let i = 0; i < 200; i++) { if (condition()) return; await new Promise(resolve => setTimeout(resolve, 5)); }
   assert.fail('condition timed out');
 }
+const withoutOutputs = <T extends { outputs?: unknown }>({ outputs: _outputs, ...status }: T) => status;
 const dispatched = (id: string) => events.some(e => e.event === 'speech' && e.payload.speechID === id);
 
 test('skip advances exactly once and late completions cannot finish the next item', async () => {
@@ -142,7 +143,10 @@ test('read-only status distinguishes preparing from playing, counts waiting spee
   seed('status', 'status-a', 'status-b');
   const before = synthesized.length;
   const status = await handler.getStatus('status');
-  assert.deepEqual(status, { connected: true, playing: false, preparing: false, queueLength: 4 });
+  const { outputs, ...summary } = status;
+  assert.deepEqual(summary, { connected: true, playing: false, preparing: false, queueLength: 4 });
+  // One speech page that predates state reports: counted, playable as far as we know, mode "one page".
+  assert.deepEqual(outputs, { total: 1, playable: 1, hidden: 0, blocked: 0, failing: 0, unknown: 1, mode: 'one' });
   assert.equal(synthesized.length, before);
   assert.deepEqual(queues.get('twitch:status:tts:queue'), ['status-a', 'status-b']);
   let release!: (value: any) => void;
@@ -150,11 +154,11 @@ test('read-only status distinguishes preparing from playing, counts waiting spee
   synthesize = () => new Promise(done => { release = done; });
   const processing = handler.processNext('status');
   await until(() => !!release);
-  assert.deepEqual(await handler.getStatus('status'), { connected: true, playing: false, preparing: true, queueLength: 3 });
+  assert.deepEqual(withoutOutputs(await handler.getStatus('status')), { connected: true, playing: false, preparing: true, queueLength: 3 });
   synthesize = original;
   release(await original({}));
   await processing;
-  assert.deepEqual(await handler.getStatus('status'), { connected: true, playing: true, preparing: false, queueLength: 3 });
+  assert.deepEqual(withoutOutputs(await handler.getStatus('status')), { connected: true, playing: true, preparing: false, queueLength: 3 });
   await handler.control('status', 'clear');
 });
 

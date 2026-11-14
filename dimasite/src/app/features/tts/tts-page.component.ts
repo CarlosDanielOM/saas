@@ -15,7 +15,8 @@ import {
   type FishVoiceFavorite,
   type TtsProvider,
   type TtsRole,
-  type TtsSettings
+  type TtsSettings,
+  type TtsStatus
 } from '../../models/tts-settings.model';
 import { BotAccessService } from '../../services/bot-access.service';
 import { LanguageService } from '../../services/language.service';
@@ -166,6 +167,28 @@ export class TtsPageComponent {
   readonly initialTtsSettings = signal<TtsSettings | null>(null);
   readonly ttsRole = signal<TtsRole>('none');
   readonly ttsLoading = signal(false);
+  /** Where the speech URL is open right now (refreshed every 10 s while this page is visible). */
+  readonly ttsStatus = signal<TtsStatus | null>(null);
+  readonly ttsStatusFailed = signal(false);
+  /** Plain-language answer to "will TTS play?", plus what to fix. */
+  readonly outputReport = computed(() => {
+    this.languageService.currentLanguage();
+    const outputs = this.ttsStatus()?.outputs;
+    if (!outputs) return null;
+    const count = (key: string, value: number) => this.t(`modules.tts.outputs.${key}${value === 1 ? 'One' : 'Many'}`, { count: value });
+    const problems: string[] = [];
+    if (outputs.hidden) problems.push(count('hidden', outputs.hidden));
+    if (outputs.blocked) problems.push(count('blocked', outputs.blocked));
+    if (outputs.failing) problems.push(count('failing', outputs.failing) + (outputs.total === 1 ? ` ${this.t('modules.tts.outputs.refreshHint')}` : ''));
+    const notes: string[] = [];
+    if (outputs.unknown) notes.push(count('unknown', outputs.unknown));
+    if (outputs.total > 1 && outputs.mode === 'one') notes.push(this.t('modules.tts.outputs.duplicateHint'));
+    const headline = !outputs.total ? this.t('modules.tts.outputs.none')
+      : outputs.total === 1 ? this.t(outputs.playable ? 'modules.tts.outputs.oneReady' : 'modules.tts.outputs.oneProblem')
+      : !outputs.playable ? this.t('modules.tts.outputs.manyNone', { count: outputs.total })
+      : this.t(outputs.mode === 'all' ? 'modules.tts.outputs.manyAll' : 'modules.tts.outputs.manyOne', { count: outputs.total, playable: outputs.playable });
+    return { tone: !outputs.total || !outputs.playable ? 'warn' : problems.length ? 'mixed' : 'ok', headline, problems, notes };
+  });
   readonly ttsSaving = signal(false);
   readonly ttsErrorMessage = signal<string | null>(null);
 
@@ -316,6 +339,21 @@ export class TtsPageComponent {
   private lastLoadedChannelID = '';
 
   constructor() {
+    // Poll the live status while the page is visible; nothing here changes any setting.
+    effect((onCleanup) => {
+      const channelID = this.channelID();
+      if (!channelID || typeof document === 'undefined') return;
+      let stopped = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const tick = async () => {
+        if (document.visibilityState === 'visible') await this.refreshTtsStatus(channelID);
+        if (!stopped) timer = setTimeout(() => void tick(), 10_000);
+      };
+      this.ttsStatus.set(null);
+      this.ttsStatusFailed.set(false);
+      void tick();
+      onCleanup(() => { stopped = true; clearTimeout(timer); });
+    });
     effect(() => {
       const resolution = this.channelResolution();
 
@@ -560,6 +598,22 @@ export class TtsPageComponent {
     }));
   }
 
+  updatePlayEverywhere(enabled: boolean): void {
+    this.patchTtsSettings((settings) => ({ ...settings, playback: { ...settings.playback, allOutputs: enabled } }));
+  }
+
+  private async refreshTtsStatus(channelID: string): Promise<void> {
+    try {
+      const status = await firstValueFrom(this.ttsSettingsApi.getStatus(channelID));
+      if (this.channelID() !== channelID) return;
+      this.ttsStatus.set(status);
+      this.ttsStatusFailed.set(false);
+    } catch {
+      // Keep the last answer on screen; say it may be out of date.
+      if (this.channelID() === channelID) this.ttsStatusFailed.set(true);
+    }
+  }
+
   updateQueueMaxItems(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
@@ -691,6 +745,9 @@ export class TtsPageComponent {
       },
       queue: {
         maxItems: Number.isFinite(settings.queue.maxItems) ? Math.max(1, Math.min(20, settings.queue.maxItems)) : 5
+      },
+      playback: {
+        allOutputs: settings.playback?.allOutputs === true
       }
     };
   }
@@ -717,6 +774,9 @@ export class TtsPageComponent {
       },
       queue: {
         maxItems: 5
+      },
+      playback: {
+        allOutputs: false
       }
     };
   }
@@ -726,7 +786,8 @@ export class TtsPageComponent {
       ...settings,
       voices: { ...settings.voices },
       filters: { ...settings.filters, expressiveTags: { ...settings.filters.expressiveTags } },
-      queue: { ...settings.queue }
+      queue: { ...settings.queue },
+      playback: { ...settings.playback }
     };
   }
 

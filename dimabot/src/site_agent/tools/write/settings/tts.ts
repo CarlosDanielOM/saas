@@ -22,7 +22,8 @@ const LABELS: Record<string, FieldLabel> = {
     'filters.stripLinks': { en: 'Links become [link]', es: 'Los enlaces se leen como [link]' },
     'filters.normalizeWhitespace': { en: 'Tidy extra spaces', es: 'Quitar espacios de más' },
     'filters.maxLength': { en: 'Maximum characters per message', es: 'Máximo de caracteres por mensaje' },
-    'queue.maxItems': { en: 'Maximum messages waiting', es: 'Máximo de mensajes en espera' }
+    'queue.maxItems': { en: 'Maximum messages waiting', es: 'Máximo de mensajes en espera' },
+    'playback.allOutputs': { en: 'Play on every open TTS link', es: 'Sonar en todas las URL de voz abiertas' }
 };
 const tagLabel = (path: string): FieldLabel | undefined => path.startsWith('filters.expressiveTags.')
     ? { en: `Voice tag [${path.slice(23)}]`, es: `Etiqueta de voz [${path.slice(23)}]` } : undefined;
@@ -39,6 +40,7 @@ export interface TtsInput {
     normalizeWhitespace?: boolean;
     maxLength?: number;
     maxQueue?: number;
+    playEverywhere?: boolean;
     voiceTagsOn?: string[];
     voiceTagsOff?: string[];
 }
@@ -95,6 +97,7 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
         'Fields: enabled (channel TTS on/off; off refuses new speech); provider = default voice engine: "piper" (one English voice Ryan and one Spanish voice Ald, cheapest, works with no credits), "kokoro" (preset voices), "fish" (cloned voices, the only engine that reads voice tags, most credits);',
         'defaultLanguage (en/es, picks the Piper voice); kokoroVoice (a Kokoro preset id such as af_heart or ef_dora); fishVoice (built-in gojo, rias_gremory, toji_fushiguro, carlos_bodoque, a saved favorite nickname, or a 32-character Fish voice ID; it does not switch the engine, set provider "fish" too);',
         'skipEmotes (remove emote names), stripLinks (links become [link]), normalizeWhitespace (collapse spaces), maxLength (30–500 characters, longer messages are cut), maxQueue (1–20 messages waiting, counting the one playing);',
+        'playEverywhere (off, the default: each message plays on one open Speech URL that can play it and moves to another copy if that one fails; on: every open copy plays every message at once, e.g. OBS plus a second PC);',
         'voiceTagsOn / voiceTagsOff (Fish voice tags like whisper, laugh, excited that viewers may use or not).',
         'Only send fields that change. The user approves before anything is saved; it can be undone. The Speech URL is never shown here: tell the user to copy it from the TTS page.'
     ].join(' '),
@@ -112,6 +115,7 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
             normalizeWhitespace: { type: 'boolean' },
             maxLength: { type: 'integer', minimum: 30, maximum: 500 },
             maxQueue: { type: 'integer', minimum: 1, maximum: 20 },
+            playEverywhere: { type: 'boolean' },
             voiceTagsOn: { type: 'array', items: { type: 'string' }, maxItems: 100 },
             voiceTagsOff: { type: 'array', items: { type: 'string' }, maxItems: 100 }
         }
@@ -132,6 +136,7 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
             normalizeWhitespace: bool(input, 'normalizeWhitespace'),
             maxLength: int(input, 'maxLength', { min: 30, max: 500 }),
             maxQueue: int(input, 'maxQueue', { min: 1, max: 20 }),
+            playEverywhere: bool(input, 'playEverywhere'),
             voiceTagsOn: tagList(input, 'voiceTagsOn'),
             voiceTagsOff: tagList(input, 'voiceTagsOff')
         };
@@ -158,6 +163,7 @@ export const updateTtsSettings: AgentTool<TtsInput> = {
         if (input.normalizeWhitespace !== undefined) wanted['filters.normalizeWhitespace'] = input.normalizeWhitespace;
         if (input.maxLength !== undefined) wanted['filters.maxLength'] = input.maxLength;
         if (input.maxQueue !== undefined) wanted['queue.maxItems'] = input.maxQueue;
+        if (input.playEverywhere !== undefined) wanted['playback.allOutputs'] = input.playEverywhere;
         for (const tag of input.voiceTagsOn ?? []) wanted[`filters.expressiveTags.${tag}`] = true;
         for (const tag of input.voiceTagsOff ?? []) wanted[`filters.expressiveTags.${tag}`] = false;
 

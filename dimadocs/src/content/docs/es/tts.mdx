@@ -18,7 +18,15 @@ El texto a voz (TTS) lee mensajes en voz alta durante tu stream. Tus espectadore
 3. En OBS, agrega una **Fuente de navegador** con esa URL. Mantén la fuente activa mientras quieras que se reproduzca la voz.
 4. Revisa que el bot esté encendido (el encabezado del panel muestra **Bot en tu chat**) y que el comando **Speech Chat** (`!s`) esté activado en **Comandos**. Luego escribe `!s Hola chat!` en tu chat para probarlo. `!s` funciona sin activar el bot.
 
-Si la fuente de navegador no está conectada, las nuevas solicitudes de voz se rechazan con el mensaje "Speech overlay is not connected" (la superposición de voz no está conectada). Los mensajes en cola esperan hasta que la fuente se vuelva a conectar.
+Si no hay ninguna copia de la URL de voz conectada, las nuevas solicitudes de voz se rechazan con el mensaje "Speech overlay is not connected" (la superposición de voz no está conectada). Los mensajes que ya esperan permanecen en la cola hasta que una copia vuelva a conectarse.
+
+Puedes abrir la URL de voz en varios lugares a la vez, por ejemplo en dos fuentes de navegador de OBS, una segunda computadora o una pestaña del navegador. Cada copia informa si está visible, si está dentro de OBS y si el navegador le permite reproducir sonido.
+
+En la tarjeta **URL de voz**, **Sonar en todas las copias abiertas** está desactivado de forma predeterminada. Cada mensaje se reproduce en una copia que pueda reproducirlo. Se prefieren las fuentes de OBS visibles en la salida del programa; las fuentes ocultas en OBS, las pestañas que esperan un clic o toque para permitir sonido y las copias que fallaron recientemente se usan al final. Activa la opción para reproducir cada mensaje en todas las copias abiertas, por ejemplo en OBS y en una segunda computadora. El siguiente mensaje espera a que terminen todas las copias que comenzaron; las copias que nunca comienzan se detienen. El asistente Dima también puede cambiar esta opción.
+
+La tarjeta muestra en cuántos lugares está abierto TTS y avisa de problemas; se actualiza cada 10 segundos. Si una copia está oculta en OBS, ponla en la escena con la que transmites y activa el ojo, o elimínala. También avisa de navegadores que esperan un clic o toque, copias que no pudieron reproducir recientemente y copias antiguas que no pueden informar problemas; actualiza la fuente de navegador en OBS para actualizar una copia antigua. Si la URL está abierta más de una vez en el modo de una copia, la tarjeta sugiere eliminar cualquier duplicado accidental.
+
+Si OBS no inicia el audio, mantén la fuente de navegador de TTS en la escena con la que transmites, o en una escena anidada en todas tus escenas, con el ojo activado. OBS no inicia el audio de una fuente de navegador oculta porque no está en ninguna escena que se muestra o porque tiene el ojo desactivado. Un celular o una pestaña normal del navegador puede no reproducir sonido hasta que toques la página o hagas clic, así que no es una buena prueba. Después de esta actualización, actualiza una vez la fuente de navegador en OBS para que pueda informar problemas.
 
 ## Elegir un motor de voz
 
@@ -137,8 +145,9 @@ Para `$(tts.status)`, `$(tts.connected)`, `$(tts.queue.length)` y los controles 
 
 - La voz se reproduce en orden, de un mensaje a la vez, por canal.
 - La opción **Máximo de mensajes en espera** cuenta el mensaje que se está reproduciendo. Con el valor predeterminado de 5, uno se reproduce y cuatro esperan.
-- Si la fuente de navegador se desconecta, las nuevas solicitudes se rechazan. Los mensajes que ya esperan siguen en la cola y se reproducen cuando la fuente vuelve a conectarse.
-- Un mensaje interrumpido por una desconexión no se vuelve a reproducir.
+- Si no hay ninguna copia conectada, las nuevas solicitudes se rechazan. Los mensajes que ya esperan permanecen en la cola hasta que una copia vuelva a conectarse.
+- En el modo de una copia, si la reproducción falla antes de que se escuche algo, el mismo mensaje pasa a la siguiente copia que pueda reproducirlo. Esto puede pasar si una copia no puede reproducir, el audio no carga o se queda detenido, la reproducción no comienza unos segundos después de la descarga o la copia se cierra. Hasta tres copias pueden intentar reproducir un mensaje. El audio se genera una sola vez, así que moverlo no usa créditos de voz adicionales.
+- Un mensaje nunca se vuelve a reproducir después de que comienza a sonar, incluso tras una desconexión.
 
 ## Filtros y límites de mensajes
 

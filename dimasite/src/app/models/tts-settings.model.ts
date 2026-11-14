@@ -54,6 +54,30 @@ export interface TtsSettings {
   queue: {
     maxItems: number;
   };
+  playback: {
+    /** Every open speech URL plays every message (off: one copy that can play it). */
+    allOutputs: boolean;
+  };
+}
+
+/** Open copies of the speech URL (OBS browser sources, browser tabs) and what is wrong with them. */
+export interface TtsOutputsSummary {
+  total: number;
+  playable: number;
+  hidden: number;
+  blocked: number;
+  failing: number;
+  /** Copies from before the API could report problems (they need a refresh). */
+  unknown: number;
+  mode: 'one' | 'all';
+}
+
+export interface TtsStatus {
+  connected: boolean;
+  playing: boolean;
+  preparing: boolean;
+  queueLength: number;
+  outputs?: TtsOutputsSummary;
 }
 
 export interface TtsSettingsResponseData {
