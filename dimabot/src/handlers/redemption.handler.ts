@@ -34,6 +34,8 @@ async function runRedemptionSpecialFunctions(
             channelID,
             eventData,
             argument: eventData.user_input || '',
+            // The viewer's typed input is data, never code: &t/&pN bind it as a literal (as commands and Cheers do).
+            literalArguments: true,
             variables: {
                 user: eventData.user_name,
                 userLogin: eventData.user_login,

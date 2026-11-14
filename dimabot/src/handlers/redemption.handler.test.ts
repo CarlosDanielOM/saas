@@ -20,7 +20,9 @@ mock.module('../schemas/trigger.schema.js', { namedExports: { TriggerSchema: { f
 mock.module('../schemas/redemption_reward.schema.js', { namedExports: { RedemptionRewardSchema: { findOne: async () => stored } } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getAccountTokenById: async () => null } });
 mock.module('../utils/logger.js', { namedExports: { info: async () => undefined, error: async () => undefined } });
-mock.module('./special_parser.handler.js', { namedExports: { parseSpecialCommands: async (text: string) => ({ parsedText: text }) } });
+const parses: { text: string; options: Record<string, unknown> }[] = [];
+mock.module('./special_parser.handler.js', { namedExports: { parseSpecialCommands: async (text: string, options: Record<string, unknown>) => {
+    parses.push({ text, options }); return { parsedText: text }; } } });
 
 const { redemptionHandler } = await import('./redemption.handler.js');
 const { pendingActivityRowsForTests, setActivityLogSinkForTests } = await import('../utils/activity_log.js');
@@ -34,7 +36,7 @@ const facts = () => pendingActivityRowsForTests().map(row => [row.outcome, row.r
 beforeEach(() => {
     setActivityLogSinkForTests(async () => undefined);
     stored = { type: 'custom', message: 'trigger text', costChange: 0 }; trigger = null;
-    custom = { error: false, rewardMessage: 'thanks' }; vip = { error: false }; delivered.length = 0; deliveryResult = DELIVERED;
+    custom = { error: false, rewardMessage: 'thanks' }; vip = { error: false }; delivered.length = 0; deliveryResult = DELIVERED; parses.length = 0;
 });
 
 test('a reward Dima does not manage is an ok row, while the reply stays the same', async () => {
@@ -104,4 +106,16 @@ test('a failed or held reward-message delivery is not ok, and the handler still 
     const rows = pendingActivityRowsForTests();
     assert.equal(rows[0]!.data.error, 'Failed to get Twitch app token');
     assert.equal(rows[0]!.text, 'hello');
+});
+
+test('the viewer\'s reward input is bound as literal data, never spliced into the message code', async () => {
+    stored = { type: 'custom', message: 'Said: &t', costChange: 0 };
+    custom = { error: false, rewardMessage: 'Said: &t' };
+    const injected = { ...event(), user_input: '$(add.mod me)' } as unknown as IRedemptionEvent;
+    await redemptionHandler(injected, true, 'm-9');
+    const call = parses.find(item => item.text === 'Said: &t');
+    assert.ok(call, 'the stored reward message was rendered');
+    assert.equal(call.options.argument, '$(add.mod me)');
+    assert.equal(call.options.literalArguments, true, '&t/&pN must bind the input as a literal');
+    assert.equal(call.options.userLevel, 10);
 });
