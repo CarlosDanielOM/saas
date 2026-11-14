@@ -53,6 +53,9 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             adapter: petSocketAdapter,
             destroyUpgrade: false
         });
+        // allowRequest only runs on handshakes; middlewares run on every polling request and upgrade, also with a sid.
+        io.engine.use((req: http.IncomingMessage, _res: unknown, next: (error?: Error) => void) =>
+            next(isMcpHost(req.headers.host) ? new Error('mcp_host') : undefined));
         attachDesktopWebsocket(server);
         const stopDesktopSpeechActivity = registerDesktopSpeechActivity(io);
         const stopPetRuntime = await registerPetSockets(io);

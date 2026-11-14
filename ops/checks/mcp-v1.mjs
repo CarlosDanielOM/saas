@@ -78,8 +78,8 @@ assert.notEqual((await http('POST', '/mcp', { body: {} })).headers['www-authenti
 result = await http('GET', '/socket.io/?EIO=4&transport=polling', { host: 'mcp.domdimabot.com' });
 assert.notEqual(result.status, 200, 'no Engine.IO polling on the MCP host');
 assert.equal((await http('GET', '/socket.io/?EIO=4&transport=polling')).status, 200, 'Engine.IO still serves the API host');
-const upgrade = host => new Promise((resolve, reject) => {
-  const req = httpRequest({ host: '127.0.0.1', port: 3000, path: '/v1/desktop/ws', headers: { Host: host, Connection: 'Upgrade',
+const upgrade = (host, path = '/v1/desktop/ws') => new Promise((resolve, reject) => {
+  const req = httpRequest({ host: '127.0.0.1', port: 3000, path, headers: { Host: host, Connection: 'Upgrade',
     Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': randomBytes(16).toString('base64'),
     'Sec-WebSocket-Protocol': 'dima.desktop.v1', Authorization: 'Bearer dima_at_' + 'x'.repeat(43) } });
   req.on('upgrade', (res, socket) => { socket.destroy(); resolve(101); });
@@ -89,6 +89,12 @@ const upgrade = host => new Promise((resolve, reject) => {
 });
 assert.equal(await upgrade('mcp.domdimabot.com'), 404, 'no desktop WebSocket on the MCP host');
 assert.equal(await upgrade('api.domdimabot.com'), 401, 'the API host still checks desktop WebSocket tokens');
+// An Engine.IO session opened through the API host cannot continue through the MCP host (polling or upgrade).
+const handshake = await http('GET', '/socket.io/?EIO=4&transport=polling');
+const sid = JSON.parse(handshake.text.slice(handshake.text.indexOf('{'))).sid;
+assert.ok(sid, 'API-host handshake');
+assert.equal((await http('GET', `/socket.io/?EIO=4&transport=polling&sid=${sid}`, { host: 'mcp.domdimabot.com' })).status, 400);
+assert.notEqual(await upgrade('mcp.domdimabot.com', `/socket.io/?EIO=4&transport=websocket&sid=${sid}`), 101);
 
 // CIMD authorization: resource is required for CIMD; the consent view shows publisher, callback host and channel choice.
 async function begin(scope = 'channel:read channel:write', extra = {}) {
