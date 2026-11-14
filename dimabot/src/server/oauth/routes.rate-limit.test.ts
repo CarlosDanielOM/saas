@@ -27,7 +27,8 @@ mock.module('./service.js', { namedExports: {
     },
     oauthIssuer: () => 'https://api.domdimabot.com', oauthWebsite: () => 'https://domdimabot.com',
     approveAuthorization: unused, exchangeCode: unused, getAuthorization: unused, getClient: unused,
-    refreshAccess: unused, revokeSession: unused, revokeToken: unused, startAuthorization: unused
+    refreshAccess: unused, revokeSession: unused, revokeToken: unused, startAuthorization: unused,
+    OAuthRedirectError: class extends OAuthError {}
 } });
 mock.module('../../schemas/users.schema.js', { defaultExport: {} });
 mock.module('../../schemas/oauth_grant.schema.js', { namedExports: { OAuthGrant: {} } });

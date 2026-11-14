@@ -21,7 +21,7 @@ mock.module('./service.js', { namedExports: {
     },
     rateLimit: async () => {}, hash: (value: string) => value, oauthWebsite: () => 'https://domdimabot.com', oauthIssuer: () => 'https://api.domdimabot.com',
     approveAuthorization: idle, exchangeCode: idle, getAuthorization: idle, getClient: idle, refreshAccess: idle,
-    revokeSession: idle, revokeToken: idle, startAuthorization: idle
+    revokeSession: idle, revokeToken: idle, startAuthorization: idle, OAuthRedirectError: class extends OAuthError {}
 } });
 mock.module('../../schemas/users.schema.js', { defaultExport: { findById: async () => ({ _id: identity.user_id }) } });
 mock.module('../../schemas/oauth_grant.schema.js', { namedExports: { OAuthGrant: {} } });
