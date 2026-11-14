@@ -3,6 +3,7 @@ import { subscribePetWakeups } from '../pets/wakeups.js';
 import { randomUUID } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import { authenticateAccess, type AccessIdentity } from '../server/oauth/service.js';
+import { OAUTH_RESOURCES } from '../server/oauth/catalog.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 
 /** A shared output slot. A preparing slot is already reserved, but has not played. */
@@ -122,7 +123,7 @@ async function waitForSlot(channel: string, signal?: AbortSignal) {
 }
 async function valid(peer: Peer): Promise<boolean> {
     try {
-        const current = await authenticateAccess(peer.token);
+        const current = await authenticateAccess(peer.token, { resource: OAUTH_RESOURCES.desktop });
         return current.session_id === peer.identity.session_id && current.user_id === peer.identity.user_id &&
             current.channel_id === peer.identity.channel_id && current.client_id === peer.identity.client_id && current.scopes.includes('desktop:connect');
     } catch { return false; }
@@ -146,7 +147,7 @@ function emitTurnUpdate(update: TurnUpdate): void {
             await peer.ready;
             // Revalidate at delivery, including the target-specific scope. A
             // refresh/reconnect supplies a new token; an expired socket is fenced.
-            const current = await authenticateAccess(peer.token);
+            const current = await authenticateAccess(peer.token, { resource: OAUTH_RESOURCES.desktop });
             if (!matchesTurnPeer({ ...peer, identity: current }, update.turn) || !current.scopes.includes('desktop:connect')) return;
             if (!peer.socket.connected || (peer.turnRevisions?.get(update.turn._id) ?? 0) >= update.revision) return;
             const revisions = peer.turnRevisions ??= new Map();
@@ -297,7 +298,7 @@ export function registerDesktopSpeechActivity(io: Server): () => void {
                 Object.keys(auth).some(key => key !== 'v' && key !== 'accessToken' && key !== 'features') ||
                 ['token', 'accessToken', 'capability', 'authorization'].some(key => key in socket.handshake.query)) throw new Error('invalid_auth');
             const turnStatus = turnStatusFeature(auth);
-            const identity = await authenticateAccess(auth.accessToken);
+            const identity = await authenticateAccess(auth.accessToken, { resource: OAUTH_RESOURCES.desktop });
             if (!identity.scopes.includes('desktop:connect')) throw new Error('insufficient_scope');
             if ([...peers.values()].filter(peer => peer.identity.session_id === identity.session_id).length >= 2 || peers.size >= 1024) throw new Error('too_many_connections');
             socket.data.speechPeer = { socket, identity, token: auth.accessToken, turnStatus };

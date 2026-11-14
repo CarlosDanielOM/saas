@@ -26,7 +26,7 @@ mock.module('./service.js', { namedExports: {
         return { session_id: 's', user_id: 'u', client_id: 'dima-desktop', channel_id: '1', scopes: ['profile:read'] };
     },
     oauthIssuer: () => 'https://api.domdimabot.com', oauthWebsite: () => 'https://domdimabot.com',
-    approveAuthorization: unused, exchangeCode: unused, getAuthorization: unused, getClient: unused,
+    approveAuthorization: unused, exchangeCode: unused, getAuthorization: unused, browserChannels: unused, listConnections: unused,
     refreshAccess: unused, revokeSession: unused, revokeToken: unused, startAuthorization: unused,
     OAuthRedirectError: class extends OAuthError {}
 } });

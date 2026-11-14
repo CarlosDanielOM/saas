@@ -18,7 +18,8 @@ mock.module('./diagnostics.js', { namedExports: { petDiagnostic: (...args: any[]
 mock.module('./tts_bridge.js', { namedExports: { scheduleReadTtsResume: () => {} } });
 mock.module('../server/oauth/service.js', { namedExports: {
     hash: (token: string) => token,
-    authenticateAccess: async (token: unknown) => {
+    authenticateAccess: async (token: unknown, options?: { resource?: string }) => {
+        if (options?.resource !== 'https://api.test/v1') throw new OAuthError('invalid_token', 401);
         authenticated.push(token);
         if (token === 'new' && gate) await gate;
         const found = tokens.get(String(token));
@@ -26,7 +27,7 @@ mock.module('../server/oauth/service.js', { namedExports: {
         return found;
     }
 } });
-mock.module('../server/oauth/catalog.js', { namedExports: { OAuthError } });
+mock.module('../server/oauth/catalog.js', { namedExports: { OAuthError, OAUTH_RESOURCES: { desktop: 'https://api.test/v1', mcp: 'https://mcp.test/mcp' } } });
 mock.module('../server/services/pet_settings.service.js', { namedExports: {
     PetSettingsError, requirePetPlan: async () => {}, getPetConfiguration: async () => ({
         settings: { appearance: { kind: 'vts' }, playback: { vtsSessionId: 'controller-session' } }

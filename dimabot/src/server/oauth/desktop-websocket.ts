@@ -1,6 +1,7 @@
 import type { Server } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { authenticateAccess, oauthWebsite, rateLimit, hash } from './service.js';
+import { OAUTH_RESOURCES } from './catalog.js';
 import { clientIps } from '../../utils/client_ip.js';
 
 /** A native WebSocket protocol, deliberately separate from browser Socket.IO namespaces. */
@@ -28,7 +29,7 @@ export function attachDesktopWebsocket(server: Server): void {
             if (!req.headers['sec-websocket-protocol']?.split(',').map(value => value.trim()).includes('dima.desktop.v1')) return reject(426);
             for (const ip of clientIps(req)) await rateLimit(`ws:${ip}`, 120);
             const token = req.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
-            const identity = await authenticateAccess(token);
+            const identity = await authenticateAccess(token, { resource: OAUTH_RESOURCES.desktop });
             if (!identity.scopes.includes('desktop:connect')) return reject(403);
             if ([...connections.values()].filter(item => item.sessionID === identity.session_id).length >= 2) return reject(429);
             if (socket.destroyed) return;
@@ -47,7 +48,7 @@ export function attachDesktopWebsocket(server: Server): void {
                     busy = true;
                     void (async () => {
                         await rateLimit(`ws-message:${hash(state.token)}`, 60);
-                        await authenticateAccess(state.token);
+                        await authenticateAccess(state.token, { resource: OAUTH_RESOURCES.desktop });
                         if (binary) return ws.close(4400, 'Text messages required');
                         let input: { type?: unknown; id?: unknown };
                         try { input = JSON.parse(data.toString()); }
@@ -70,7 +71,7 @@ export function attachDesktopWebsocket(server: Server): void {
             if (state.checking) continue;
             state.alive = false;
             state.checking = true;
-            void authenticateAccess(state.token).then(() => {
+            void authenticateAccess(state.token, { resource: OAUTH_RESOURCES.desktop }).then(() => {
                 if (ws.readyState === WebSocket.OPEN) ws.ping();
             }).catch(() => ws.close(4401, 'Session expired or revoked'))
                 .finally(() => { state.checking = false; });

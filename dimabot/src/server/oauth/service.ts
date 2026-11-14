@@ -5,10 +5,14 @@ import { OAuthClient } from '../../schemas/oauth_client.schema.js';
 import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { OAuthRefreshToken } from '../../schemas/oauth_refresh_token.schema.js';
+import { AdminSchema } from '../../schemas/admin.schema.js';
+import { CHANNEL_WEBSITE_ACCESS_PERMISSIONS } from '../../middleware/channel_permissions.js';
+import { resolveAccess } from '../../site_agent/access.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
-import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_SCOPES,
-    parseScopes, REFRESH_IDLE_MS, REQUEST_TTL_SECONDS, SESSION_ABSOLUTE_MS, validateRedirect } from './catalog.js';
-import { assertClientRegistry, FIRST_PARTY_CLIENTS } from './clients.js';
+import { ACCESS_TTL_SECONDS, CODE_TTL_SECONDS, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES, parseScopes,
+    REFRESH_IDLE_MS, REQUEST_TTL_SECONDS, scopeResource, SESSION_ABSOLUTE_MS, validateRedirect } from './catalog.js';
+import { assertClientRegistry, FIRST_PARTY_CLIENTS, resolveClient, resolveSessionClient, type ClientRecord } from './clients.js';
+import { isCimdClientDenied, isCimdClientId } from './cimd.js';
 
 export const oauthIssuer = () => new URL(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').origin;
 export const oauthWebsite = () => new URL(process.env.DASHBOARD_URL || 'https://domdimabot.com').origin;
@@ -18,17 +22,46 @@ const redis = () => getDragonflyClient('OAuth');
 const validSecret = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
 /** RFC 6749 state is opaque: optional, 1-500 VSCHAR, echoed back exactly. */
 const validState = (value: unknown): value is string => typeof value === 'string' && /^[\x20-\x7e]{1,500}$/.test(value);
+/** Control characters removed, cut to `max` UTF-16 units without splitting a surrogate pair. */
+function label(value: string, max: number) {
+    return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max).replace(/[\ud800-\udbff]$/, '') || 'App';
+}
 
 interface AuthorizationRequest {
     client_id: string; redirect_uri: string; scopes: string[]; state?: string;
-    code_challenge: string; device_name: string;
+    code_challenge: string; device_name: string; resource: string;
+    /** CIMD only: the client as resolved when authorization started; its document is never fetched again. */
+    client?: ClientRecord;
 }
 /** RFC 6749 §4.1.2.1: once client and redirect_uri are trusted, errors go back to the client. */
 export class OAuthRedirectError extends OAuthError {
     constructor(code: string, public readonly location: string) { super(code); }
 }
-interface AuthorizationCode extends AuthorizationRequest { user_id: string; channel_id: string }
-export interface AccessIdentity { session_id: string; user_id: string; client_id: string; channel_id: string; scopes: string[] }
+interface AuthorizationCode extends AuthorizationRequest { user_id: string; requester_id: string; channel_id: string }
+export interface AccessIdentity {
+    session_id: string; user_id: string; client_id: string;
+    /** Twitch id of the account that approved; legacy records: = channel_id. */
+    requester_id: string;
+    /** Channel the connection acts on (Twitch id). */
+    channel_id: string;
+    /** Audience URI (RFC 8707); legacy records: OAUTH_RESOURCES.desktop. */
+    resource: string;
+    scopes: string[];
+}
+/** Records from before MCP v1 carry neither field: desktop grants, approved by the channel's own account. */
+const binding = (record: { channel_id: string; requester_id?: string | null; resource?: string | null }) =>
+    ({ requester_id: record.requester_id || record.channel_id, resource: record.resource || OAUTH_RESOURCES.desktop });
+const redirectPolicy = (client: Pick<ClientRecord, 'kind'>) => ({ localhost: client.kind === 'cimd' });
+/** Consent, decision and code exchange: first-party clients are reread from the DB; a CIMD client is the
+ *  snapshot its authorization stored, still subject to the operator denylist. */
+async function requestClient(request: AuthorizationRequest): Promise<ClientRecord> {
+    if (!isCimdClientId(request.client_id)) return resolveClient(request.client_id);
+    const client = request.client;
+    if (client?.kind !== 'cimd' || client.client_id !== request.client_id || await isCimdClientDenied(request.client_id)) {
+        throw new OAuthError('invalid_client');
+    }
+    return client;
+}
 
 export async function initializeOAuth(): Promise<void> {
     assertClientRegistry();
@@ -43,13 +76,6 @@ export async function initializeOAuth(): Promise<void> {
     }
 }
 
-export async function getClient(clientID: unknown) {
-    if (typeof clientID !== 'string' || clientID.length > 100) throw new OAuthError('invalid_client');
-    const client = await OAuthClient.findOne({ client_id: clientID, enabled: true }).lean();
-    if (!client) throw new OAuthError('invalid_client');
-    return client;
-}
-
 export async function rateLimit(bucket: string, limit: number): Promise<void> {
     const count = await (await redis()).eval(
         "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n",
@@ -59,8 +85,9 @@ export async function rateLimit(bucket: string, limit: number): Promise<void> {
 
 export async function startAuthorization(input: Record<string, unknown>): Promise<string> {
     // Never redirect to an unverified client or callback: those failures stay JSON 400.
-    const client = await getClient(input.client_id);
-    const redirect = validateRedirect(input.redirect_uri, client.redirect_uris);
+    // The only place a CIMD document is fetched.
+    const client = await resolveClient(input.client_id);
+    const redirect = validateRedirect(input.redirect_uri, client.redirect_uris, redirectPolicy(client));
     const state = validState(input.state) ? input.state : undefined;
     const fail = (code: string, description: string) => {
         const url = new URL(redirect);
@@ -76,9 +103,14 @@ export async function startAuthorization(input: Record<string, unknown>): Promis
         throw fail('invalid_request', 'PKCE with code_challenge_method S256 is required');
     }
     if (input.state !== undefined && state === undefined) throw fail('invalid_request', 'state is invalid');
+    // RFC 8707: one audience per grant. A client without a default (CIMD) must name it.
+    const resource = input.resource === undefined ? client.default_resource : input.resource;
+    if (typeof resource !== 'string' || !client.resources.includes(resource)) {
+        throw fail('invalid_target', 'resource is missing, repeated or not allowed');
+    }
     let scopes: string[] = [];
     try { scopes = parseScopes(input.scope); } catch { /* reported below */ }
-    if (!scopes.length || scopes.some(scope => !client.allowed_scopes.includes(scope))) {
+    if (!scopes.length || scopes.some(scope => !client.allowed_scopes.includes(scope) || scopeResource(scope) !== resource)) {
         throw fail('invalid_scope', 'scope is invalid or not allowed');
     }
     const name = input.device_name;
@@ -86,28 +118,38 @@ export async function startAuthorization(input: Record<string, unknown>): Promis
         throw fail('invalid_request', 'device_name is invalid');
     }
     const request: AuthorizationRequest = { client_id: client.client_id, redirect_uri: redirect,
-        scopes, state, code_challenge: input.code_challenge,
-        device_name: typeof name === 'string' ? name.trim() : 'Desktop computer' };
+        scopes, state, code_challenge: input.code_challenge, resource,
+        device_name: typeof name === 'string' ? name.trim() : client.kind === 'first_party' ? 'Desktop computer' : label(client.name, 80),
+        ...(client.kind === 'cimd' ? { client } : {}) };
     const id = secret();
     await (await redis()).set(`oauth:request:${hash(id)}`, JSON.stringify(request), { EX: REQUEST_TTL_SECONDS });
     return id;
 }
 
-export async function getAuthorization(id: unknown): Promise<AuthorizationRequest> {
+export async function getAuthorization(id: unknown): Promise<{ request: AuthorizationRequest; client: ClientRecord }> {
     if (!validSecret(id)) throw new OAuthError('invalid_request');
     const value = await (await redis()).get(`oauth:request:${hash(id)}`);
     if (!value) throw new OAuthError('invalid_request');
-    const request = JSON.parse(value) as AuthorizationRequest;
-    const client = await getClient(request.client_id);
-    validateRedirect(request.redirect_uri, client.redirect_uris);
+    const stored = JSON.parse(value) as AuthorizationRequest;
+    const request = { ...stored, resource: stored.resource || OAUTH_RESOURCES.desktop };
+    const client = await requestClient(request);
+    validateRedirect(request.redirect_uri, client.redirect_uris, redirectPolicy(client));
+    if (!client.resources.includes(request.resource)) throw new OAuthError('invalid_target');
     if (request.scopes.some(scope => !client.allowed_scopes.includes(scope))) throw new OAuthError('invalid_scope');
-    return request;
+    return { request, client };
 }
 
-export async function approveAuthorization(id: unknown, twitchID: string, approve: boolean): Promise<string> {
-    const request = await getAuthorization(id);
+/** `channelID` is required on approval for channel-selection clients and refused for all others. */
+export async function approveAuthorization(id: unknown, twitchID: string, approve: boolean, channelID?: string): Promise<string> {
+    const { request, client } = await getAuthorization(id);
+    if (channelID !== undefined ? !client.channel_selection || !/^\d{1,20}$/.test(channelID) :
+        approve && client.channel_selection) throw new OAuthError('invalid_request');
     const user = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: twitchID } } }).lean();
     if (!user) throw new OAuthError('account_required', 403);
+    // Checked before the request is consumed, so the user can still choose another channel.
+    if (approve && client.channel_selection && !await resolveAccess(twitchID, channelID!)) {
+        throw new OAuthError('channel_access_required', 403);
+    }
     const value = await (await redis()).getDel(`oauth:request:${hash(id as string)}`);
     if (!value) throw new OAuthError('invalid_request');
     const url = new URL(request.redirect_uri);
@@ -116,7 +158,8 @@ export async function approveAuthorization(id: unknown, twitchID: string, approv
     if (!approve) url.searchParams.set('error', 'access_denied');
     else {
         const code = secret();
-        const record: AuthorizationCode = { ...request, user_id: user._id.toString(), channel_id: twitchID };
+        const record: AuthorizationCode = { ...request, user_id: user._id.toString(), requester_id: twitchID,
+            channel_id: client.channel_selection ? channelID! : twitchID };
         await (await redis()).set(`oauth:code:${hash(code)}`, JSON.stringify(record), { EX: CODE_TTL_SECONDS });
         url.searchParams.set('code', code);
     }
@@ -130,28 +173,36 @@ async function makeAccess(session: AccessIdentity) {
 }
 
 export async function exchangeCode(input: Record<string, unknown>) {
-    const client = await getClient(input.client_id);
+    // Never fetches a CIMD document: the client snapshot travels with the code.
+    const caller = await resolveSessionClient(input.client_id);
     if (!validSecret(input.code) || typeof input.code_verifier !== 'string' ||
         !/^[A-Za-z0-9._~-]{43,128}$/.test(input.code_verifier)) throw new OAuthError('invalid_grant');
     const key = `oauth:code:${hash(input.code)}`;
     const value = await (await redis()).get(key);
     if (!value) throw new OAuthError('invalid_grant');
-    const record = JSON.parse(value) as AuthorizationCode;
+    const stored = JSON.parse(value) as AuthorizationCode;
+    const record = { ...stored, ...binding(stored) };
+    if (record.client_id !== caller.client_id) throw new OAuthError('invalid_grant');
+    const client = await requestClient(record);
     const challenge = hash(input.code_verifier);
     if (record.client_id !== client.client_id || record.redirect_uri !== input.redirect_uri ||
-        !timingSafeEqual(Buffer.from(challenge), Buffer.from(record.code_challenge)) ||
+        !timingSafeEqual(Buffer.from(challenge), Buffer.from(record.code_challenge)) || !client.resources.includes(record.resource) ||
         record.scopes.some(scope => !client.allowed_scopes.includes(scope))) throw new OAuthError('invalid_grant');
+    // RFC 8707 §2.2: an optional resource must name the audience that was approved.
+    if (input.resource !== undefined && input.resource !== record.resource) throw new OAuthError('invalid_target');
     if (!await (await redis()).getDel(key)) throw new OAuthError('invalid_grant');
     const user = await UsersSchema.exists({ _id: record.user_id,
-        accounts: { $elemMatch: { type: 'twitch', id: record.channel_id } } });
-    if (!user) throw new OAuthError('invalid_grant');
+        accounts: { $elemMatch: { type: 'twitch', id: record.requester_id } } });
+    if (!user || (client.channel_selection ? !await resolveAccess(record.requester_id, record.channel_id) :
+        record.channel_id !== record.requester_id)) throw new OAuthError('invalid_grant');
     const grant = await OAuthGrant.findOneAndUpdate({ user_id: record.user_id, client_id: client.client_id,
         channel_id: record.channel_id }, { $addToSet: { scopes: { $each: record.scopes } },
         $set: { revoked_at: null } }, { upsert: true, new: true });
     const now = new Date();
     const refresh = secret('dima_rt_');
     const session = await OAuthSession.create({ grant_id: grant._id, user_id: record.user_id,
-        client_id: record.client_id, channel_id: record.channel_id, device_name: record.device_name,
+        client_id: record.client_id, client_name: label(client.name, 120), requester_id: record.requester_id,
+        channel_id: record.channel_id, resource: record.resource, device_name: record.device_name,
         scopes: record.scopes, current_refresh_hash: hash(refresh), last_used_at: now,
         idle_expires_at: new Date(now.getTime() + REFRESH_IDLE_MS),
         expires_at: new Date(now.getTime() + SESSION_ABSOLUTE_MS) });
@@ -163,11 +214,13 @@ export async function exchangeCode(input: Record<string, unknown>) {
 
 interface SessionRecord {
     _id: Types.ObjectId; user_id: Types.ObjectId; client_id: string; channel_id: string;
+    requester_id?: string | null; resource?: string | null;
     scopes: string[]; idle_expires_at: Date; expires_at: Date;
 }
 async function tokenResponse(session: SessionRecord, refresh: string) {
+    const { requester_id, resource } = binding(session);
     const identity: AccessIdentity = { session_id: session._id.toString(), user_id: session.user_id.toString(),
-        client_id: session.client_id, channel_id: session.channel_id, scopes: session.scopes };
+        client_id: session.client_id, requester_id, channel_id: session.channel_id, resource, scopes: session.scopes };
     return { access_token: await makeAccess(identity), token_type: 'Bearer', expires_in: ACCESS_TTL_SECONDS,
         refresh_token: refresh, scope: session.scopes.join(' '), session_id: identity.session_id,
         refresh_expires_in: Math.max(0, Math.floor((Math.min(session.idle_expires_at.getTime(), session.expires_at.getTime()) - Date.now()) / 1000)) };
@@ -178,18 +231,27 @@ async function activeSession(id: string) {
     const session = await OAuthSession.findOne({ _id: id, revoked_at: null,
         expires_at: { $gt: now }, idle_expires_at: { $gt: now } }).select('+current_refresh_hash');
     if (!session) throw new OAuthError('invalid_token', 401);
+    const { requester_id, resource } = binding(session);
     const grant = await OAuthGrant.findOne({ _id: session.grant_id, revoked_at: null }).select('scopes').lean();
-    const client = await getClient(session.client_id);
+    // A disabled first-party client or a denylisted CIMD client ends its sessions.
+    const client = await resolveSessionClient(session.client_id).catch((error: unknown) => {
+        throw error instanceof OAuthError ? new OAuthError('invalid_token', 401) : error;
+    });
+    // The approving account must still belong to this user. The bound channel is never retargeted.
     const user = await UsersSchema.exists({ _id: session.user_id,
-        accounts: { $elemMatch: { type: 'twitch', id: session.channel_id } } });
-    if (!grant || !user || session.scopes.some(scope => !client.allowed_scopes.includes(scope) ||
+        accounts: { $elemMatch: { type: 'twitch', id: requester_id } } });
+    if (!grant || !user || !client.resources.includes(resource) || (!client.channel_selection && requester_id !== session.channel_id) ||
+        session.scopes.some(scope => !client.allowed_scopes.includes(scope) ||
         !grant.scopes.includes(scope) || !Object.hasOwn(OAUTH_SCOPES, scope) ||
-        !OAUTH_SCOPES[scope as keyof typeof OAUTH_SCOPES].active)) throw new OAuthError('invalid_token', 401);
+        !OAUTH_SCOPES[scope as keyof typeof OAUTH_SCOPES].active || scopeResource(scope) !== resource)) throw new OAuthError('invalid_token', 401);
     return session;
 }
 
 export async function refreshAccess(input: Record<string, unknown>) {
-    const client = await getClient(input.client_id);
+    // A denylisted CIMD client's grants are void, like the sessions it holds.
+    const client = await resolveSessionClient(input.client_id).catch((error: unknown) => {
+        throw error instanceof OAuthError && isCimdClientId(input.client_id) ? new OAuthError('invalid_grant') : error;
+    });
     if (typeof input.refresh_token !== 'string' || !/^dima_rt_[A-Za-z0-9_-]{43}$/.test(input.refresh_token)) throw new OAuthError('invalid_grant');
     const tokenHash = hash(input.refresh_token);
     const record = await OAuthRefreshToken.findOne({ token_hash: tokenHash, expires_at: { $gt: new Date() } });
@@ -201,10 +263,14 @@ export async function refreshAccess(input: Record<string, unknown>) {
     if (input.scope !== undefined && (typeof input.scope !== 'string' || input.scope !== session.scopes.join(' '))) {
         throw new OAuthError('invalid_scope');
     }
+    const { requester_id, resource } = binding(session);
+    if (input.resource !== undefined && input.resource !== resource) throw new OAuthError('invalid_target');
     if (record.used_at || session.current_refresh_hash !== tokenHash) {
         await revokeSession(session._id.toString(), 'refresh_reuse');
         throw new OAuthError('invalid_grant');
     }
+    // A chosen channel keeps renewing only while the approver can still manage it.
+    if (client.channel_selection && !await resolveAccess(requester_id, session.channel_id)) throw new OAuthError('invalid_grant');
     const refresh = secret('dima_rt_');
     const nextHash = hash(refresh);
     await OAuthRefreshToken.create({ token_hash: nextHash, session_id: session._id, expires_at: session.expires_at });
@@ -223,14 +289,19 @@ export async function refreshAccess(input: Record<string, unknown>) {
     } catch (error) { await revokeSession(session._id.toString(), 'rotation_failed'); throw error; }
 }
 
-export async function authenticateAccess(token: unknown): Promise<AccessIdentity> {
+/** With `options.resource`, only a token issued for that audience is accepted (RFC 8707). */
+export async function authenticateAccess(token: unknown, options: { resource?: string } = {}): Promise<AccessIdentity> {
     if (typeof token !== 'string' || !/^dima_at_[A-Za-z0-9_-]{43}$/.test(token)) throw new OAuthError('invalid_token', 401);
     const value = await (await redis()).get(`oauth:access:${hash(token)}`);
     if (!value) throw new OAuthError('invalid_token', 401);
-    const identity = JSON.parse(value) as AccessIdentity;
+    const stored = JSON.parse(value) as AccessIdentity;
+    const identity: AccessIdentity = { ...stored, ...binding(stored) };
+    if (options.resource !== undefined && identity.resource !== options.resource) throw new OAuthError('invalid_token', 401);
     const session = await activeSession(identity.session_id);
+    const bound = binding(session);
     if (identity.user_id !== session.user_id.toString() || identity.client_id !== session.client_id ||
-        identity.channel_id !== session.channel_id || identity.scopes.some(scope => !session.scopes.includes(scope))) {
+        identity.channel_id !== session.channel_id || identity.requester_id !== bound.requester_id ||
+        identity.resource !== bound.resource || identity.scopes.some(scope => !session.scopes.includes(scope))) {
         throw new OAuthError('invalid_token', 401);
     }
     return identity;
@@ -242,7 +313,8 @@ export async function revokeSession(id: string, reason = 'user_revoked') {
 
 /** RFC 7009: an unknown token returns success without exposing its existence. */
 export async function revokeToken(input: Record<string, unknown>) {
-    const client = await getClient(input.client_id);
+    // Never fetches a CIMD document: an unreachable one must not keep tokens alive.
+    const client = await resolveSessionClient(input.client_id);
     if (typeof input.token !== 'string' || input.token.length > 100) throw new OAuthError('invalid_request');
     if (/^dima_rt_[A-Za-z0-9_-]{43}$/.test(input.token)) {
         const record = await OAuthRefreshToken.findOne({ token_hash: hash(input.token) });
@@ -261,6 +333,29 @@ export async function revokeToken(input: Record<string, unknown>) {
             }
         }
     }
+}
+
+/** Channels an account may connect an app to: its own, and those it administers with website access. */
+export async function browserChannels(twitchID: string): Promise<{ id: string; name: string; role: 'owner' | 'admin' }[]> {
+    const rows = await AdminSchema.find({ adminID: twitchID, actived: true,
+        permissions: { $in: CHANNEL_WEBSITE_ACCESS_PERMISSIONS } }).select('channelID -_id').limit(100).lean();
+    const ids = [...new Set([twitchID, ...rows.map(row => row.channelID).filter(Boolean)])];
+    const channels = await Promise.all(ids.map(id => resolveAccess(twitchID, id)));
+    return channels.filter(access => access !== null).map(access => ({ id: access.channelId, name: access.channelLogin, role: access.role }));
+}
+
+/** The connections page, from stored names only. Legacy sessions get their client's registry name and the
+ *  desktop audience; sessions of a denylisted CIMD client are dead, so they are left out like revoked ones. */
+export async function listConnections(userID: Types.ObjectId) {
+    const now = new Date();
+    const found = await OAuthSession.find({ user_id: userID, revoked_at: null, expires_at: { $gt: now }, idle_expires_at: { $gt: now } })
+        .select('_id client_id client_name grant_id channel_id resource device_name scopes last_used_at expires_at createdAt').lean();
+    const apps = [...new Set(found.map(session => session.client_id).filter(id => isCimdClientId(id)))];
+    const checks = await Promise.all(apps.map(id => isCimdClientDenied(id)));
+    const denied = new Set(apps.filter((_id, index) => checks[index]));
+    const sessions = found.filter(session => !denied.has(session.client_id));
+    return sessions.map(session => ({ ...session, resource: session.resource || OAUTH_RESOURCES.desktop,
+        client_name: session.client_name || FIRST_PARTY_CLIENTS.find(item => item.client_id === session.client_id)?.name || session.client_id }));
 }
 
 export async function revokeUserOAuth(userID: string) {

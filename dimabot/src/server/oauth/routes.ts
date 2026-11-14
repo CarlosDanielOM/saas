@@ -12,20 +12,27 @@ import { getPetRuntime } from '../../pets/runtime.js';
 import { selectOwnPetPlayback } from '../../pets/selection.js';
 import { submitTurn, getTurn, cancelTurn, cancelSpeech, claimAudio, speechEvent } from '../../desktop_ai/service.js';
 import { TURN_STATUS_FEATURE } from '../../desktop_ai/updates.js';
-import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
-import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient, hash,
+import { ACCESS_TTL_SECONDS, bearerChallenge, DESKTOP_CLIENT_ID, OAuthError, OAUTH_RESOURCES, OAUTH_SCOPES } from './catalog.js';
+import { approveAuthorization, authenticateAccess, browserChannels, exchangeCode, getAuthorization, hash, listConnections,
     OAuthRedirectError, oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
     startAuthorization, type AccessIdentity } from './service.js';
 
 const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) =>
     (req: Request, res: Response, next: NextFunction) => { void fn(req, res).catch(next); };
 
-export function oauthBoundary(req: Request, res: Response, next: NextFunction) {
+/** Any app may call metadata, token and revocation from any origin: they take no cookies or browser credentials. */
+function publicCors(res: Response) {
+    res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, MCP-Protocol-Version',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+}
+/** `open` paths (relative to the router) answer every origin; the rest accept the Dima website only. */
+const boundary = (open: readonly string[]) => (req: Request, res: Response, next: NextFunction) => {
     res.set({ 'Cache-Control': 'no-store', 'Pragma': 'no-cache', 'Referrer-Policy': 'no-referrer',
         'X-Content-Type-Options': 'nosniff' });
     const origin = req.get('origin');
-    if (origin && origin !== oauthWebsite()) return res.status(403).json({ error: 'access_denied' });
-    if (origin) {
+    if (open.includes(req.path)) publicCors(res);
+    else if (origin && origin !== oauthWebsite()) return res.status(403).json({ error: 'access_denied' });
+    else if (origin) {
         res.set('Access-Control-Allow-Origin', origin);
         res.vary('Origin');
         res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Dima-Audio-Ticket');
@@ -33,7 +40,8 @@ export function oauthBoundary(req: Request, res: Response, next: NextFunction) {
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
-}
+};
+export const oauthBoundary = boundary([]);
 
 function body(req: Request): Record<string, unknown> {
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) throw new OAuthError('invalid_request');
@@ -62,20 +70,11 @@ async function browserUser(req: Request) {
 
 async function access(req: Request, scope?: string): Promise<AccessIdentity> {
     const token = req.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
-    const identity = await authenticateAccess(token);
+    const identity = await authenticateAccess(token, { resource: OAUTH_RESOURCES.desktop });
     if (scope && !identity.scopes.includes(scope)) throw new OAuthError('insufficient_scope', 403, [scope]);
     // Beta routes never accept a client-selected account/channel.
     if (Object.keys(req.query).length) throw new OAuthError('invalid_request');
     return identity;
-}
-
-/** RFC 6750 §3 challenge, built only here (RFC 9728 `resource_metadata` belongs to the `dima` realm alone).
- * Values keep only the characters RFC 6750 allows in these quoted strings, so nothing needs escaping. */
-export function bearerChallenge(realm: string, error?: string, scope: readonly string[] = []) {
-    const quote = (value: string) => `"${value.replace(/[^\x20\x21\x23-\x5B\x5D-\x7E]/g, '')}"`;
-    const scopes = scope.filter(item => /^[\x21\x23-\x5B\x5D-\x7E]+$/.test(item));
-    return `Bearer ${[`realm=${quote(realm)}`, ...(error ? [`error=${quote(error)}`] : []),
-        ...(scopes.length ? [`scope=${quote(scopes.join(' '))}`] : [])].join(', ')}`;
 }
 
 /** Separate protection spaces: `/v1` takes Dima access tokens, the `/oauth` browser routes Twitch tokens. */
@@ -94,20 +93,22 @@ const errorHandler = (realm: string) => (error: unknown, req: Request, res: Resp
 };
 
 export const oauthRoute = express.Router();
-oauthRoute.use(oauthBoundary);
+oauthRoute.use(boundary(['/metadata', '/token', '/revoke']));
 oauthRoute.use((req, _res, next) => {
     void (async () => { for (const ip of clientIps(req)) await rateLimit(`oauth:${ip}`, 600); })().then(() => next(), next);
 });
 
-export function oauthMetadata(_req: Request, res: Response) {
+export function oauthMetadata(req: Request, res: Response) {
     res.set('Cache-Control', 'no-store');
+    publicCors(res);
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
     const issuer = oauthIssuer();
     res.json({ issuer, authorization_endpoint: `${issuer}/oauth/authorize`, token_endpoint: `${issuer}/oauth/token`,
         revocation_endpoint: `${issuer}/oauth/revoke`, scopes_supported: Object.entries(OAUTH_SCOPES)
             .filter(([, scope]) => scope.active).map(([name]) => name),
         response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
         code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'],
-        authorization_response_iss_parameter_supported: true,
+        authorization_response_iss_parameter_supported: true, client_id_metadata_document_supported: true,
         beta: { client_id: DESKTOP_CLIENT_ID, protocol_version: 1, access_token_lifetime: ACCESS_TTL_SECONDS,
             websocket_endpoint: `${issuer.replace(/^http/, 'ws')}/v1/desktop/ws`,
             socket_io: { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 },
@@ -128,18 +129,21 @@ oauthRoute.get('/authorize', asyncRoute(async (req, res) => {
 }));
 
 oauthRoute.get('/requests/:request', asyncRoute(async (req, res) => {
-    const request = await getAuthorization(req.params.request);
-    const client = await getClient(request.client_id);
+    const { request, client } = await getAuthorization(req.params.request);
     res.json({ client_id: client.client_id, client_name: client.name, device_name: request.device_name,
-        scopes: request.scopes, redirect_uri: request.redirect_uri });
+        scopes: request.scopes, redirect_uri: request.redirect_uri, client_kind: client.kind, recognized: client.recognized,
+        document_host: client.document_host ?? null, callback_host: new URL(request.redirect_uri).host,
+        resource: request.resource, channel_selection: client.channel_selection });
 }));
 
 oauthRoute.post('/requests/:request/decision', asyncRoute(async (req, res) => {
     const input = body(req);
-    if (typeof input.approve !== 'boolean') throw new OAuthError('invalid_request');
+    if (typeof input.approve !== 'boolean' || (input.channel_id !== undefined && typeof input.channel_id !== 'string')) {
+        throw new OAuthError('invalid_request');
+    }
     const { twitchID } = await browserUser(req);
     await rateLimit(`approval:${twitchID}`, 30);
-    const redirect_uri = await approveAuthorization(req.params.request, twitchID, input.approve);
+    const redirect_uri = await approveAuthorization(req.params.request, twitchID, input.approve, input.channel_id);
     res.json({ redirect_uri });
 }));
 
@@ -159,16 +163,14 @@ oauthRoute.post('/revoke', asyncRoute(async (req, res) => {
 oauthRoute.get('/browser-session', asyncRoute(async (req, res) => {
     const { user, twitchID } = await browserUser(req);
     const account = user.accounts.find(item => item.type === 'twitch' && item.id === twitchID);
-    res.json({ user_id: user._id.toString(), channel_id: twitchID, name: account?.name || user.name });
+    res.json({ user_id: user._id.toString(), channel_id: twitchID, name: account?.name || user.name,
+        channels: await browserChannels(twitchID) });
 }));
 
 // Management uses browser identity, never a desktop scope that can revoke other installations.
 oauthRoute.get('/connections', asyncRoute(async (req, res) => {
     const { user } = await browserUser(req);
-    const sessions = await OAuthSession.find({ user_id: user._id, revoked_at: null,
-        expires_at: { $gt: new Date() }, idle_expires_at: { $gt: new Date() } })
-        .select('_id client_id grant_id device_name scopes last_used_at expires_at createdAt').lean();
-    res.json({ sessions });
+    res.json({ sessions: await listConnections(user._id) });
 }));
 
 oauthRoute.delete('/connections/:session', asyncRoute(async (req, res) => {
@@ -274,7 +276,7 @@ oauthApiRoute.post('/me/pet/requests/:requestId/cancel', asyncRoute(async (req, 
     res.json(await cancelPetRequest(identity.user_id, String(req.params.requestId), req.body.commandId));
 }));
 oauthApiRoute.get('/desktop/session', asyncRoute(async (req, res) => {
-    const identity = await access(req, 'desktop:connect');
+    const { requester_id: _requester, resource: _resource, ...identity } = await access(req, 'desktop:connect');
     const session = await OAuthSession.findById(identity.session_id).select('device_name expires_at').lean();
     res.json({ ...identity, device_name: session?.device_name, expires_at: session?.expires_at,
         protocol_version: 1, pet_available: identity.scopes.includes('pet:receive'),

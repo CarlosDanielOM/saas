@@ -27,6 +27,10 @@ mock.module('../../schemas/oauth_grant.schema.js', { namedExports: { OAuthGrant:
 mock.module('../../schemas/oauth_session.schema.js', { namedExports: { OAuthSession: {} } });
 mock.module('../../schemas/oauth_refresh_token.schema.js', { namedExports: { OAuthRefreshToken: {} } });
 mock.module('../../schemas/users.schema.js', { defaultExport: { findOne: () => query({ _id: 'user-a' }) } });
+mock.module('../../schemas/admin.schema.js', { namedExports: { AdminSchema: {} } });
+mock.module('../../site_agent/access.js', { namedExports: { resolveAccess: async () => null } });
+mock.module('./cimd.js', { namedExports: { RECOGNIZED_CIMD_CLIENTS: [], isCimdClientId: () => false,
+    resolveCimdClient: async () => assert.fail('no CIMD client here'), isCimdClientDenied: async () => true } });
 const { OAuthError } = await import('./catalog.js');
 const { OAuthRedirectError, approveAuthorization, hash, startAuthorization } = await import('./service.js');
 
@@ -77,7 +81,7 @@ test('the desktop request (43-character state) is stored and the callback echoes
     assert.match(id, /^[A-Za-z0-9_-]{43}$/);
     assert.deepEqual(stored(id), { client_id: 'dima-desktop', redirect_uri: CALLBACK,
         scopes: ['profile:read', 'credits:read', 'desktop:connect'], state: DESKTOP_STATE,
-        code_challenge: CHALLENGE, device_name: 'Streaming PC' });
+        code_challenge: CHALLENGE, device_name: 'Streaming PC', resource: `${ISSUER}/v1` });
     const callback = new URL(await approveAuthorization(id, '123', true));
     assert.equal(callback.origin + callback.pathname, CALLBACK);
     assert.equal(callback.searchParams.get('state'), DESKTOP_STATE);

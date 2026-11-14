@@ -11,6 +11,7 @@ const { OAuthSession } = await import('/app/dist/schemas/oauth_session.schema.js
 const { OAuthGrant } = await import('/app/dist/schemas/oauth_grant.schema.js');
 const { OAuthRefreshToken } = await import('/app/dist/schemas/oauth_refresh_token.schema.js');
 const { OAuthClient } = await import('/app/dist/schemas/oauth_client.schema.js');
+const { AdminSchema } = await import('/app/dist/schemas/admin.schema.js');
 const { AI_CREDITS_CACHE_SCHEMA_VERSION } = await import('/app/dist/utils/billing.js');
 const mongo = await getMongoDBConnection('oauth-beta-check');
 const redis = await getDragonflyClient('oauth-beta-check');
@@ -321,6 +322,81 @@ const selfLogout = await mint('profile:read');
 assert.equal((await call('/v1/desktop/session', { method: 'DELETE', headers: { Authorization: `Bearer ${selfLogout.access_token}` } })).status, 200);
 assert.equal((await get('/v1/me', selfLogout.access_token)).status, 401);
 
+// MCP v1: desktop grants stay bound to the desktop audience (RFC 8707) and the approver's own channel.
+const DESKTOP_RESOURCE = 'https://api.domdimabot.com/v1';
+const MCP_RESOURCE = process.env.MCP_PUBLIC_URL || 'https://mcp.domdimabot.com/mcp';
+await redis.del(rateKey(`approval:${owner}`));
+result = await call('/.well-known/oauth-authorization-server', { headers: { Origin: 'https://evil.invalid' } });
+assert.equal(result.body.client_id_metadata_document_supported, true);
+assert.equal(result.headers.get('access-control-allow-origin'), '*', 'any app may read the metadata');
+for (const path of ['/oauth/token', '/oauth/revoke', '/oauth/metadata']) {
+  const preflight = await fetch(base + path, { method: 'OPTIONS', headers: { Origin: 'https://evil.invalid',
+    'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type, mcp-protocol-version' } });
+  assert.equal(preflight.status, 204, path);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), '*', path);
+  assert.equal(preflight.headers.get('access-control-allow-credentials'), null, path);
+  assert.equal(preflight.headers.get('access-control-allow-headers'), 'Content-Type, MCP-Protocol-Version', path);
+}
+result = await post('/oauth/token', { client_id: 'dima-desktop', grant_type: 'password' }, undefined, { Origin: 'https://evil.invalid' });
+assert.deepEqual([result.status, result.body, result.headers.get('access-control-allow-origin')], [400, { error: 'unsupported_grant_type' }, '*']);
+assert.equal((await call('/oauth/connections', { headers: { Authorization: 'Bearer oauth-beta-browser-owner', Origin: 'https://evil.invalid' } })).status, 403,
+  'connections stay website-only');
+const explicit = await begin(undefined, { resource: DESKTOP_RESOURCE });
+result = await call(`/oauth/requests/${explicit.request}`);
+assert.deepEqual([result.body.client_kind, result.body.recognized, result.body.document_host, result.body.callback_host,
+  result.body.resource, result.body.channel_selection], ['first_party', true, null, '127.0.0.1:42781', DESKTOP_RESOURCE, false]);
+for (const decision of [{ approve: true, channel_id: owner }, { approve: false, channel_id: other }, { approve: true, channel_id: true }]) {
+  result = await post(`/oauth/requests/${explicit.request}/decision`, decision, 'oauth-beta-browser-owner');
+  assert.deepEqual([result.status, result.body], [400, { error: 'invalid_request' }], `desktop never takes a channel: ${JSON.stringify(decision)}`);
+}
+result = await post(`/oauth/requests/${explicit.request}/decision`, { approve: true }, 'oauth-beta-browser-owner');
+const explicitAuth = { ...explicit, code: new URL(result.body.redirect_uri).searchParams.get('code') };
+assert.deepEqual((await exchange(explicitAuth, { resource: MCP_RESOURCE })).body, { error: 'invalid_target' });
+const bound = await exchange(explicitAuth, { resource: DESKTOP_RESOURCE });
+assert.equal(bound.status, 200, 'a refused resource does not consume the code');
+assert.equal((await get('/v1/me', bound.body.access_token)).status, 200);
+const desktopSession = await get('/v1/desktop/session', bound.body.access_token);
+assert.deepEqual([desktopSession.body.requester_id, desktopSession.body.resource], [undefined, undefined], 'desktop session shape unchanged');
+assert.deepEqual((await refresh(bound.body.refresh_token, { resource: MCP_RESOURCE })).body, { error: 'invalid_target' });
+const renewed = await refresh(bound.body.refresh_token, { resource: DESKTOP_RESOURCE });
+assert.equal(renewed.status, 200);
+const stored = await OAuthSession.findById(bound.body.session_id).lean();
+assert.deepEqual([stored.requester_id, stored.channel_id, stored.resource, stored.client_name], [owner, owner, DESKTOP_RESOURCE, 'Dima Desktop Beta']);
+await rejected({ resource: MCP_RESOURCE }, 'invalid_target');
+await rejected({ resource: '' }, 'invalid_target');
+await rejected({ scope: 'profile:read channel:read' }, 'invalid_scope');
+result = await call(`/oauth/authorize?${new URLSearchParams([['client_id', 'dima-desktop'], ['response_type', 'code'], ['scope', 'profile:read'],
+  ['redirect_uri', 'http://127.0.0.1:42781/oauth/callback'], ['code_challenge', digest(rand())], ['code_challenge_method', 'S256'],
+  ['resource', DESKTOP_RESOURCE], ['resource', DESKTOP_RESOURCE]])}`);
+assert.equal(new URL(result.headers.get('location')).searchParams.get('error'), 'invalid_target', 'a repeated resource');
+// An MCP-audience identity never works on /v1 or the native WebSocket.
+const retargeted = await mint('profile:read desktop:connect');
+const retargetedKey = `oauth:access:${digest(retargeted.access_token)}`;
+await redis.set(retargetedKey, JSON.stringify({ ...JSON.parse(await redis.get(retargetedKey)), resource: MCP_RESOURCE }), { EX: 600 });
+assert.equal((await get('/v1/me', retargeted.access_token)).status, 401);
+assert.equal(await rejectedSocket(retargeted.access_token), 401);
+// Sessions and access tokens issued before MCP v1 carry neither requester_id nor resource.
+const legacy = await mint('profile:read desktop:connect');
+await OAuthSession.updateOne({ _id: legacy.session_id }, { $unset: { requester_id: 1, resource: 1, client_name: 1 } });
+assert.deepEqual(Object.keys(await OAuthSession.findById(legacy.session_id).lean()).filter(key => ['requester_id', 'resource', 'client_name'].includes(key)), []);
+const legacyKey = `oauth:access:${digest(legacy.access_token)}`;
+const { requester_id: legacyRequester, resource: legacyResource, ...legacyIdentity } = JSON.parse(await redis.get(legacyKey));
+assert.deepEqual([legacyRequester, legacyResource], [owner, DESKTOP_RESOURCE]);
+await redis.set(legacyKey, JSON.stringify(legacyIdentity), { EX: 600 });
+assert.equal((await get('/v1/me', legacy.access_token)).status, 200, 'legacy access identity still works');
+assert.equal(await rejectedSocket(legacy.access_token), 101, 'legacy access identity opens the native WebSocket');
+result = await refresh(legacy.refresh_token);
+assert.equal(result.status, 200, 'legacy session refreshes');
+assert.equal((await get('/v1/me', result.body.access_token)).status, 200);
+result = await get('/oauth/connections', 'oauth-beta-browser-owner');
+const listed = result.body.sessions.find(item => item._id === legacy.session_id);
+assert.deepEqual([listed.client_name, listed.channel_id, listed.resource], ['Dima Desktop Beta', owner, DESKTOP_RESOURCE]);
+// Consent offers the account's own channel plus channels it administers with website access.
+await AdminSchema.create({ adminID: other, adminName: 'oauth_other', channelID: owner, channelName: 'oauth_owner', permissions: ['dashboard:view'] });
+assert.deepEqual((await get('/oauth/browser-session', 'oauth-beta-browser-owner')).body.channels, [{ id: owner, name: 'oauth_owner', role: 'owner' }]);
+assert.deepEqual((await get('/oauth/browser-session', 'oauth-beta-browser-other')).body.channels,
+  [{ id: other, name: 'oauth_other', role: 'owner' }, { id: owner, name: 'oauth_owner', role: 'admin' }]);
+
 const managed = await mint('profile:read');
 assert.equal((await call(`/oauth/connections/${managed.session_id}`, { method: 'DELETE', headers: { Authorization: 'Bearer oauth-beta-browser-other' } })).status, 404);
 result = await get('/oauth/connections', 'oauth-beta-browser-owner');
@@ -338,7 +414,7 @@ await mongo.connection.db.collection('users').deleteOne({ _id: users.insertedIds
 assert.equal((await get('/v1/me', newApproval.access_token)).status, 401, 'deleted owner fails closed');
 assert.equal(await OAuthRefreshToken.countDocuments({ token_hash: { $regex: '^dima_' } }), 0, 'raw credentials never persisted');
 assert.ok(await OAuthGrant.countDocuments() > 0);
-console.log('PASS OAuth beta: PKCE/replay/races/expiry, optional state + error callbacks, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket, Bearer challenges, client scope registry, per-client/per-token rate limits');
+console.log('PASS OAuth beta: PKCE/replay/races/expiry, optional state + error callbacks, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket, Bearer challenges, client scope registry, per-client/per-token rate limits, desktop audience + legacy identities + no channel choice, public token CORS, consent channels');
 await mongo.disconnect();
 await redis.quit();
 process.exit(0);

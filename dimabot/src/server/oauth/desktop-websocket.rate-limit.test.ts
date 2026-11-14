@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { after, beforeEach, mock, test } from 'node:test';
 import { WebSocket } from 'ws';
-import { OAuthError } from './catalog.js';
+import { OAuthError, OAUTH_RESOURCES } from './catalog.js';
 
 const buckets: string[] = [];
 const limits = new Map<string, number>();
@@ -16,7 +16,8 @@ mock.module('./service.js', { namedExports: {
         buckets.push(bucket);
         if (buckets.filter(item => item === bucket).length > (limits.get(bucket) ?? limit)) throw new OAuthError('slow_down', 429);
     },
-    authenticateAccess: async () => {
+    authenticateAccess: async (_token: unknown, options?: { resource?: string }) => {
+        if (options?.resource !== OAUTH_RESOURCES.desktop) throw new OAuthError('invalid_token', 401);
         authenticated++;
         return { session_id: `s${authenticated}`, user_id: 'u', client_id: 'dima-desktop', channel_id: '1', scopes: ['desktop:connect'] };
     }

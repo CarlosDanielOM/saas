@@ -32,6 +32,10 @@ mock.module('../../schemas/oauth_grant.schema.js', { namedExports: { OAuthGrant:
 mock.module('../../schemas/oauth_session.schema.js', { namedExports: { OAuthSession: {} } });
 mock.module('../../schemas/oauth_refresh_token.schema.js', { namedExports: { OAuthRefreshToken: {} } });
 mock.module('../../schemas/users.schema.js', { defaultExport: {} });
+mock.module('../../schemas/admin.schema.js', { namedExports: { AdminSchema: {} } });
+mock.module('../../site_agent/access.js', { namedExports: { resolveAccess: async () => null } });
+mock.module('./cimd.js', { namedExports: { RECOGNIZED_CIMD_CLIENTS: [], isCimdClientId: () => false,
+    resolveCimdClient: async () => assert.fail('no CIMD client here'), isCimdClientDenied: async () => true } });
 mock.module('../../utils/billing.js', { namedExports: { getAiCredits: async () => ({}) } });
 mock.module('../../utils/ai_credit_display.js', { namedExports: { getFreeAiCreditDisplay: async () => null } });
 mock.module('../services/pet_settings.service.js', { namedExports: { getPetConfiguration: async () => ({}), PetSettingsError } });

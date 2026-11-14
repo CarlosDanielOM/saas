@@ -4,7 +4,7 @@ import { scheduleReadTtsResume } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
 import { authenticateAccess, hash, type AccessIdentity } from '../server/oauth/service.js';
-import { OAuthError } from '../server/oauth/catalog.js';
+import { OAuthError, OAUTH_RESOURCES } from '../server/oauth/catalog.js';
 import { PetSettingsError } from '../server/services/pet_settings.service.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { refreshPetReadiness } from './readiness.js';
@@ -56,7 +56,7 @@ export async function registerPetSockets(io: SocketServer) {
                 let identity: AccessIdentity | undefined;
                 let ownerId: string, channelId: string, label = 'Browser source', tokenHash: string | undefined;
                 if (kind === 'desktop') {
-                    identity = await authenticateAccess(auth.accessToken);
+                    identity = await authenticateAccess(auth.accessToken, { resource: OAUTH_RESOURCES.desktop });
                     if (!['desktop:connect', 'pet:read', 'pet:receive'].every(scope => identity!.scopes.includes(scope))) throw new PetError('insufficient_scope', 403);
                     if ([...petPeers.values()].filter(peer => peer.sessionId === identity!.session_id).length >= 2) throw new PetError('too_many_connections', 429);
                     ownerId = identity.user_id; channelId = identity.channel_id;
@@ -78,7 +78,7 @@ export async function registerPetSockets(io: SocketServer) {
                     revalidate: async () => {
                         if (kind === 'desktop') {
                             const accessToken = peer.accessToken!;
-                            const current = await authenticateAccess(accessToken);
+                            const current = await authenticateAccess(accessToken, { resource: OAUTH_RESOURCES.desktop });
                             if (current.session_id !== identity!.session_id || current.user_id !== ownerId ||
                                 !['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('invalid_token', 401);
                             peer.scopes = current.scopes;
@@ -163,7 +163,7 @@ export async function registerPetSockets(io: SocketServer) {
             }, ['v', 'features']);
             if (kind === 'desktop') on('desktop:reauth', async value => {
                 if (typeof value.accessToken !== 'string') throw new PetError('invalid_message');
-                const current = await authenticateAccess(value.accessToken);
+                const current = await authenticateAccess(value.accessToken, { resource: OAUTH_RESOURCES.desktop });
                 if (current.session_id !== peer.sessionId || current.user_id !== peer.ownerId) throw new PetError('invalid_token', 401);
                 if (!['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('insufficient_scope', 403);
                 peer.accessToken = value.accessToken;
