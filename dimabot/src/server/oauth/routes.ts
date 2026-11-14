@@ -5,6 +5,7 @@ import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { getAiCredits } from '../../utils/billing.js';
 import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
+import { clientIp } from '../../utils/client_ip.js';
 import { getPetConfiguration, PetSettingsError } from '../services/pet_settings.service.js';
 import { PetError, cancelPetRequest } from '../../pets/state.js';
 import { getPetRuntime } from '../../pets/runtime.js';
@@ -12,7 +13,7 @@ import { selectOwnPetPlayback } from '../../pets/selection.js';
 import { submitTurn, getTurn, cancelTurn, cancelSpeech, claimAudio, speechEvent } from '../../desktop_ai/service.js';
 import { TURN_STATUS_FEATURE } from '../../desktop_ai/updates.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
-import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient,
+import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient, hash,
     oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
     startAuthorization, type AccessIdentity } from './service.js';
 
@@ -94,7 +95,7 @@ const errorHandler = (realm: string) => (error: unknown, req: Request, res: Resp
 
 export const oauthRoute = express.Router();
 oauthRoute.use(oauthBoundary);
-oauthRoute.use((req, _res, next) => { void rateLimit(`oauth:${req.ip}`, 600).then(() => next(), next); });
+oauthRoute.use((req, _res, next) => { void rateLimit(`oauth:${clientIp(req)}`, 600).then(() => next(), next); });
 
 export function oauthMetadata(_req: Request, res: Response) {
     res.set('Cache-Control', 'no-store');
@@ -189,7 +190,10 @@ oauthRoute.use(errorHandler('dima-browser'));
 export const oauthApiRoute = express.Router();
 oauthApiRoute.use(oauthBoundary);
 oauthApiRoute.use((req, _res, next) => {
-    void rateLimit(`desktop:${req.ip}`, 1200).then(() => next(), next);
+    // Per installation too: one token cannot drain an IP shared by many users (NAT), nor rotate IPs to escape.
+    const token = req.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
+    void Promise.all([rateLimit(`desktop:${clientIp(req)}`, 1200),
+        token && rateLimit(`desktop-token:${hash(token)}`, 1200)]).then(() => next(), next);
 });
 oauthApiRoute.get('/me', asyncRoute(async (req, res) => {
     const identity = await access(req, 'profile:read');

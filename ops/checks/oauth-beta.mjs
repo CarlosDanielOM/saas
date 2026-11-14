@@ -194,9 +194,9 @@ assert.deepEqual(JSON.parse((await pongPromise)[0].toString()), { type: 'pong', 
 const unsupported = once(ws, 'message');
 ws.send(JSON.stringify({ type: 'pet:interact' }));
 assert.equal(JSON.parse((await unsupported)[0].toString()).error, 'unsupported_message');
-async function rejectedSocket(access, url = 'ws://127.0.0.1:3000/v1/desktop/ws') {
+async function rejectedSocket(access, url = 'ws://127.0.0.1:3000/v1/desktop/ws', headers = {}) {
   return new Promise(resolve => {
-    const socket = new WebSocket(url, 'dima.desktop.v1', { headers: { Authorization: `Bearer ${access}` } });
+    const socket = new WebSocket(url, 'dima.desktop.v1', { headers: { Authorization: `Bearer ${access}`, ...headers } });
     socket.on('unexpected-response', (_request, response) => { response.resume(); resolve(response.statusCode); });
     socket.on('error', () => {});
     socket.on('open', () => { socket.terminate(); resolve(101); });
@@ -204,6 +204,28 @@ async function rejectedSocket(access, url = 'ws://127.0.0.1:3000/v1/desktop/ws')
 }
 assert.equal(await rejectedSocket(limited.access_token), 403);
 assert.equal(await rejectedSocket(token.access_token, `ws://127.0.0.1:3000/v1/desktop/ws?token=${token.access_token}`), 403);
+
+// Rate limits key on the real client (CF-Connecting-IP behind a Cloudflare edge), never on the proxy.
+const rateKey = bucket => `oauth:rate:${digest(bucket)}`;
+const edge = client => ({ 'X-Real-IP': '162.158.10.1', 'CF-Connecting-IP': client });
+await redis.set(rateKey('oauth:203.0.113.7'), '600', { EX: 60 });
+result = await call('/oauth/metadata', { headers: edge('203.0.113.7') });
+assert.equal(result.status, 429, 'exhausted client is limited');
+assert.equal(result.headers.get('retry-after'), '60');
+assert.equal((await call('/oauth/metadata', { headers: edge('203.0.113.8') })).status, 200, 'clients behind the same edge keep their own bucket');
+assert.equal((await call('/oauth/metadata')).status, 200, 'direct callers use the socket address');
+await redis.set(rateKey('oauth:untrusted'), '600', { EX: 60 });
+assert.equal((await call('/oauth/metadata', { headers: { 'X-Real-IP': '192.0.2.9', 'CF-Connecting-IP': '203.0.113.9' } })).status, 429,
+  'conflicting proxy headers share one bucket');
+const cappedToken = `dima_at_${rand()}`;
+await redis.set(rateKey(`desktop-token:${digest(cappedToken)}`), '1200', { EX: 60 });
+assert.equal((await call('/v1/me', { headers: { ...edge('203.0.113.10'), Authorization: `Bearer ${cappedToken}` } })).status, 429,
+  'per-installation limit applies from any IP');
+assert.equal((await call('/v1/me', { headers: { ...edge('203.0.113.10'), Authorization: `Bearer dima_at_${rand()}` } })).status, 401,
+  'other installations behind that IP pass the limiter');
+await redis.set(rateKey('ws:203.0.113.11'), '120', { EX: 60 });
+assert.notEqual(await rejectedSocket(token.access_token, undefined, edge('203.0.113.11')), 101, 'exhausted client cannot open a socket');
+assert.equal(await rejectedSocket(token.access_token, undefined, edge('203.0.113.12')), 101, 'its neighbour can');
 
 result = await refresh(token.refresh_token);
 assert.equal(result.status, 200);
@@ -261,7 +283,7 @@ await mongo.connection.db.collection('users').deleteOne({ _id: users.insertedIds
 assert.equal((await get('/v1/me', newApproval.access_token)).status, 401, 'deleted owner fails closed');
 assert.equal(await OAuthRefreshToken.countDocuments({ token_hash: { $regex: '^dima_' } }), 0, 'raw credentials never persisted');
 assert.ok(await OAuthGrant.countDocuments() > 0);
-console.log('PASS OAuth beta: PKCE/replay/races/expiry, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket');
+console.log('PASS OAuth beta: PKCE/replay/races/expiry, provider identity, consent, own-account scopes/credits, refresh rotation/reuse, revocation, management, native WebSocket, per-client/per-token rate limits');
 await mongo.disconnect();
 await redis.quit();
 process.exit(0);
